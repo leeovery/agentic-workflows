@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The setup's trace (leeway-engine/scripts/domain/code-trace.cjs): the
+// The setup's trace (ledger-engine/scripts/domain/code-trace.cjs): the
 // commit of the ignore line and the hooks, owed until it lands, and setup
 // while git is in the middle of a bisect or a rebase.
 //
@@ -57,7 +57,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
       assert.deepStrictEqual(boot(main).warnings, []);
 
       assert.deepStrictEqual(git(main, ['log', '-2', '--format=%s']).trim().split('\n'),
-        ['chore: install Leeway session hooks', 'chore: ignore .leeway/, the workflows state']);
+        ['chore: install Ledger session hooks', 'chore: ignore .ledger/, the workflows state']);
       assert.strictEqual(git(main, ['status', '--porcelain']), '');
     });
 
@@ -78,7 +78,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
       ]);
       assert.strictEqual(readFile(main, '.claude/settings.json'), theirs);
       assert.strictEqual(git(main, ['ls-tree', '--name-only', 'HEAD', '--', '.claude']), '', 'nothing of the file committed');
-      assert.strictEqual(git(main, ['log', '-1', '--format=%s']).trim(), 'chore: ignore .leeway/, the workflows state', 'the line, the workflows\' alone, committed');
+      assert.strictEqual(git(main, ['log', '-1', '--format=%s']).trim(), 'chore: ignore .ledger/, the workflows state', 'the line, the workflows\' alone, committed');
     });
 
     it('a .gitignore of the person\'s never committed takes the line, and is left for them to commit, with a warning', () => {
@@ -88,12 +88,12 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
 
       const res = boot(main);
 
-      assert.strictEqual(readFile(main, '.gitignore'), 'node_modules\n.leeway/\n');
+      assert.strictEqual(readFile(main, '.gitignore'), 'node_modules\n.ledger/\n');
       assert.ok(res.warnings.includes(
         '.gitignore holds changes of yours not yet committed, so the workflows\' own change to it was not committed either — ' +
         'commit yours, and the next boot commits theirs',
       ));
-      assert.strictEqual(git(main, ['log', '--format=%s', `${head}..main`]).trim(), 'chore: install Leeway session hooks');
+      assert.strictEqual(git(main, ['log', '--format=%s', `${head}..main`]).trim(), 'chore: install Ledger session hooks');
     });
 
     it('a settings file git ignores is owed nothing: the hooks stay on disk, uncommitted, with no warning — the line still commits', () => {
@@ -106,7 +106,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
       for (const res of [boot(main), boot(main)]) assert.deepStrictEqual([res.state, res.warnings], ['ready', []]);
 
       assert.ok(fs.existsSync(path.join(main, '.claude/settings.json')), 'the hooks are on disk');
-      assert.strictEqual(git(main, ['log', '--format=%s', `${head}..main`]).trim(), 'chore: ignore .leeway/, the workflows state');
+      assert.strictEqual(git(main, ['log', '--format=%s', `${head}..main`]).trim(), 'chore: ignore .ledger/, the workflows state');
       assert.strictEqual(git(main, ['status', '--porcelain']), '');
     });
 
@@ -122,7 +122,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
 
       assert.deepStrictEqual(boot(main).warnings, []);
 
-      assert.strictEqual(git(main, ['show', 'HEAD~1:.gitignore']), 'node_modules\n.leeway/\n');
+      assert.strictEqual(git(main, ['show', 'HEAD~1:.gitignore']), 'node_modules\n.ledger/\n');
       assert.deepStrictEqual(boot(main).warnings, []);
     });
   });
@@ -150,7 +150,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
       git(main, ['bisect', 'reset']);
       assert.deepStrictEqual(boot(main).warnings, []);
       assert.deepStrictEqual(git(main, ['log', '-2', '--format=%s']).trim().split('\n'),
-        ['chore: install Leeway session hooks', 'chore: ignore .leeway/, the workflows state']);
+        ['chore: install Ledger session hooks', 'chore: ignore .ledger/, the workflows state']);
     });
 
     it('a boot from a code worktree reads its own tree\'s bisect, not the main checkout\'s, and commits on its branch', () => {
@@ -163,7 +163,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
 
       assert.strictEqual(tip(main, 'HEAD'), testing);
       assert.deepStrictEqual(git(main, ['log', '-2', '--format=%s', 'feature']).trim().split('\n'),
-        ['chore: install Leeway session hooks', 'chore: ignore .leeway/, the workflows state']);
+        ['chore: install Ledger session hooks', 'chore: ignore .ledger/, the workflows state']);
     });
   });
 
@@ -196,9 +196,9 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
       assert.strictEqual(git(main, ['status', '--porcelain']), '');
       git(main, ['rebase', '--abort']);
       assert.deepStrictEqual(boot(main).warnings, []);
-      assert.strictEqual(readFile(main, '.gitignore'), '.leeway/\n');
+      assert.strictEqual(readFile(main, '.gitignore'), '.ledger/\n');
       assert.deepStrictEqual(git(main, ['log', '-2', '--format=%s']).trim().split('\n'),
-        ['chore: install Leeway session hooks', 'chore: ignore .leeway/, the workflows state']);
+        ['chore: install Ledger session hooks', 'chore: ignore .ledger/, the workflows state']);
       assert.strictEqual(git(main, ['status', '--porcelain']), '');
     });
 

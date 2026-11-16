@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The cut and the merges (080; leeway-migrate/scripts/migrations/
+// The cut and the merges (080; ledger-migrate/scripts/migrations/
 // 080-cut-and-merges.md and .check.cjs, the engine's `render
 // migration-leaving`, the corrections of `cut --migrating`, the mark of
 // `task close-plan`, the per-unit agent's briefs and `migrate review`'s
@@ -49,12 +49,12 @@ const { templateFolder, copyWorld } = require('./discovery-test-utils.cjs');
 const { SESSION, refusedUntouched } = require('./migration-world.cjs');
 const { DRIVER, cutAndMergesProject } = require('./migrated-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { BRIEF_REFUSALS, briefPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
 const { conversationDir } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
 const { systemConfigDir } = require(path.join(SCRIPTS, 'kernel/system-config.cjs'));
 const { NBSP } = require(path.join(SCRIPTS, 'domain/projections/surfaces.cjs'));
-const FINISH = require('../../skills/leeway-migrate/scripts/migrations/081-reshape-finish.cjs');
+const FINISH = require('../../skills/ledger-migrate/scripts/migrations/081-reshape-finish.cjs');
 const { cutOrder } = require(path.join(SCRIPTS, 'domain/cut-merges.cjs'));
 
 const DIRECTIVE = '080-cut-and-merges';
@@ -455,7 +455,7 @@ describe('the per-phase agents and the join (21.10.5, E7)', () => {
     compose(5, exported());
     const joined = run(['migrate', 'join', 'shop', '--directive', DIRECTIVE]);
 
-    assert.deepStrictEqual(joined, { ok: true, unit: 'shop', plan: '.leeway/.cache/migrate/cut-and-merges/shop/plan.json', phases: 5, built: 4, scenarios: 1, corrections: 1 });
+    assert.deepStrictEqual(joined, { ok: true, unit: 'shop', plan: '.ledger/.cache/migrate/cut-and-merges/shop/plan.json', phases: 5, built: 4, scenarios: 1, corrections: 1 });
     assert.deepStrictEqual(JSON.parse(readState(dir, `${STAGING}/plan.json`)), {
       phases: [
         { name: 'Cart, phase 1', goal: 'Phase 1 of the cart plan, built before the migration.', sections: ['1'], built: true, tracker: PLANS.cart.phases[0] },
@@ -557,13 +557,13 @@ describe('the per-phase agents and the join (21.10.5, E7)', () => {
   it('13.S15: the brief the engine issued goes through the brief hook as issued; one written by hand is refused and recorded', () => {
     const { id } = run(['brief', 'migration-phase', 'shop', '--directive', DIRECTIVE, '--phase', '5']);
     const hook = (/** @type {string} */ prompt) => call(dir, ['brief', 'guard'], {
-      stdin: JSON.stringify({ session_id: SESSION_ID, cwd: dir, hook_event_name: 'PreToolUse', tool_name: 'Agent', tool_input: { description: 'Compose the export', prompt, subagent_type: 'leeway-migration-topic' } }),
+      stdin: JSON.stringify({ session_id: SESSION_ID, cwd: dir, hook_event_name: 'PreToolUse', tool_name: 'Agent', tool_input: { description: 'Compose the export', prompt, subagent_type: 'ledger-migration-topic' } }),
     });
 
     const issued = hook(`brief:${id}`);
     assert.deepStrictEqual([issued.code, JSON.parse(issued.stdout).hookSpecificOutput.updatedInput.prompt], [0, fs.readFileSync(briefPath(SESSION_ID, id), 'utf8')]);
     const written = hook('Compose the export\'s piece from its tasks.');
     assert.strictEqual(written.code, 2);
-    assert.deepStrictEqual(fs.readFileSync(REFUSALS, 'utf8').trim().split('\n').map((line) => JSON.parse(line)).map(({ agent, reason }) => [agent, reason]), [['leeway-migration-topic', 'no-brief']]);
+    assert.deepStrictEqual(fs.readFileSync(REFUSALS, 'utf8').trim().split('\n').map((line) => JSON.parse(line)).map(({ agent, reason }) => [agent, reason]), [['ledger-migration-topic', 'no-brief']]);
   });
 });

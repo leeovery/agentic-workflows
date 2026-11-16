@@ -7,7 +7,7 @@
 // run through the engine's verbs against each shipped driver in turn. The
 // parked fix's start refuses the put back, naming each path from the
 // project, the nested repository's folder before it, and its way on in
-// that repository's calls (leeway-engine/scripts/domain/fix-aside.cjs). The
+// that repository's calls (ledger-engine/scripts/domain/fix-aside.cjs). The
 // set-aside and put-back that go through:
 // test-engine-landing-conformance-quick-fix-nested-aside.cjs. A driver's
 // side (tests/drivers/{name}/landing.cjs) readies each repository; this
@@ -25,10 +25,10 @@ const { ok, okSections, refuses, createFile } = require('./engine-harness.cjs');
 const {
   UNIT, FLAG, HELP, BRANCH, createFix, fixDone, parkedOn, quickFixNestedConformance,
 } = require('./quick-fix-world.cjs');
-const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
+const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
 
 /** Where fix 1.1's work is set aside, in each repository holding any. */
-const ASIDE = `refs/leeway/aside/${UNIT}/${UNIT}-1-1`;
+const ASIDE = `refs/ledger/aside/${UNIT}/${UNIT}-1-1`;
 
 for (const { name } of listDrivers('landing')) {
   const { as, project } = quickFixNestedConformance(name, `engine-landing-quick-fix-nested-aside-conflict-${name}-`);

@@ -18,7 +18,7 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-const engine = require('../../skills/leeway-engine/scripts/engine.cjs');
+const engine = require('../../skills/ledger-engine/scripts/engine.cjs');
 const { recordLaunches } = require('./knowledge-harness.cjs');
 const { setupGitFixture, statePath, cleanupFixture, layout } = require('./engine-harness.cjs');
 
@@ -68,7 +68,7 @@ function cleanup(dir) {
 function indexUnderConfigDir(configDir) {
   const project = setupProject();
   try {
-    const env = configDir === undefined ? {} : { LEEWAY_CONFIG_DIR: configDir };
+    const env = configDir === undefined ? {} : { LEDGER_CONFIG_DIR: configDir };
     const res = engine.run(['knowledge', 'index', statePath(project, layout.record('auth', 'auth'))], { cwd: project, env });
     const metadataFile = statePath(project, '.knowledge', 'metadata.json');
     return { res, metadata: fs.existsSync(metadataFile) ? JSON.parse(fs.readFileSync(metadataFile, 'utf8')) : null };
@@ -79,8 +79,8 @@ function indexUnderConfigDir(configDir) {
 
 describe('hermetic environment — the pins', () => {
   it('the system config directory is set, exists, and holds nothing to read', () => {
-    const dir = process.env.LEEWAY_CONFIG_DIR;
-    assert.ok(dir, 'LEEWAY_CONFIG_DIR is set');
+    const dir = process.env.LEDGER_CONFIG_DIR;
+    assert.ok(dir, 'LEDGER_CONFIG_DIR is set');
     assert.ok(fs.existsSync(dir), `${dir} exists`);
     assert.deepStrictEqual(
       ['config.json', 'credentials.json'].filter((name) => fs.existsSync(path.join(dir, name))),
@@ -92,7 +92,7 @@ describe('hermetic environment — the pins', () => {
   it('the released migrations\' name for the user-level folder is set to a directory of its own, which exists and holds nothing — a migration never reaches the developer\'s ~/.config/workflows', () => {
     const dir = process.env.WORKFLOWS_CONFIG_DIR;
     assert.ok(dir, 'WORKFLOWS_CONFIG_DIR is set');
-    assert.notStrictEqual(dir, process.env.LEEWAY_CONFIG_DIR);
+    assert.notStrictEqual(dir, process.env.LEDGER_CONFIG_DIR);
     assert.ok(fs.existsSync(dir), `${dir} exists`);
     assert.deepStrictEqual(fs.readdirSync(dir), []);
   });
@@ -109,11 +109,11 @@ describe('hermetic environment — the pins', () => {
   });
 
   it('the gate surface is unannounced — a session that loads one announces it to every command, and the goldens pin the bytes without it', () => {
-    assert.strictEqual(process.env.LEEWAY_GATE_SURFACE, undefined);
+    assert.strictEqual(process.env.LEDGER_GATE_SURFACE, undefined);
   });
 
   it('the handoff is unannounced — the gate mod announces it to every command as it does the gate surface', () => {
-    assert.strictEqual(process.env.LEEWAY_HANDOFF, undefined);
+    assert.strictEqual(process.env.LEDGER_HANDOFF, undefined);
   });
 
   it('no Claude Code session reaches a test — every engine call marks the conversation whose id it carries', () => {
@@ -125,9 +125,9 @@ describe('hermetic environment — the pins', () => {
   });
 
   it('the separate Claude call runs the stub, never a real Claude — and the stub has no login until a test arms it', () => {
-    assert.strictEqual(process.env.LEEWAY_CLAUDE, path.join(__dirname, 'claude-stub.sh'));
-    assert.ok(fs.statSync(process.env.LEEWAY_CLAUDE).mode & 0o111, 'the stub runs as a binary');
-    const res = spawnSync(process.env.LEEWAY_CLAUDE, ['-p'], { encoding: 'utf8', input: 'a question' });
+    assert.strictEqual(process.env.LEDGER_CLAUDE, path.join(__dirname, 'claude-stub.sh'));
+    assert.ok(fs.statSync(process.env.LEDGER_CLAUDE).mode & 0o111, 'the stub runs as a binary');
+    const res = spawnSync(process.env.LEDGER_CLAUDE, ['-p'], { encoding: 'utf8', input: 'a question' });
     assert.strictEqual(res.status, 1, res.stderr);
     assert.strictEqual(JSON.parse(res.stdout).result, 'Not logged in · Please run /login');
   });
@@ -138,10 +138,10 @@ describe('hermetic environment — the pins', () => {
       return [res.status, res.stdout, res.stderr];
     };
     const node = path.join(__dirname, 'claude-stub.cjs');
-    assert.deepStrictEqual(ask(process.env.LEEWAY_CLAUDE, process.env), ask(node, process.env));
+    assert.deepStrictEqual(ask(process.env.LEDGER_CLAUDE, process.env), ask(node, process.env));
     const armed = { ...process.env, CLAUDE_STUB_ANSWERS: JSON.stringify({ '': { rules: ['One rule.'] } }) };
-    assert.deepStrictEqual(ask(process.env.LEEWAY_CLAUDE, armed), ask(node, armed));
-    assert.strictEqual(JSON.parse(ask(process.env.LEEWAY_CLAUDE, armed)[1]).structured_output.rules[0], 'One rule.');
+    assert.deepStrictEqual(ask(process.env.LEDGER_CLAUDE, armed), ask(node, armed));
+    assert.strictEqual(JSON.parse(ask(process.env.LEDGER_CLAUDE, armed)[1]).structured_output.rules[0], 'One rule.');
   });
 
   it('the stub writes down its environment\'s names, and no value a test did not name — a login the environment holds never lands in its log', () => {
@@ -149,7 +149,7 @@ describe('hermetic environment — the pins', () => {
     try {
       const log = path.join(dir, 'calls.jsonl');
       const env = { ...process.env, CLAUDE_STUB_LOG: log, CLAUDE_STUB_LOG_VALUES: 'PATH', ANTHROPIC_API_KEY: 'sk-developer', CLAUDE_CODE_OAUTH_TOKEN: 'oauth-developer' };
-      spawnSync(process.env.LEEWAY_CLAUDE, ['-p'], { encoding: 'utf8', input: 'a question', env });
+      spawnSync(process.env.LEDGER_CLAUDE, ['-p'], { encoding: 'utf8', input: 'a question', env });
       const text = fs.readFileSync(log, 'utf8');
       const logged = JSON.parse(text).env;
       assert.deepStrictEqual([logged.ANTHROPIC_API_KEY, logged.CLAUDE_CODE_OAUTH_TOKEN, logged.PATH], [null, null, process.env.PATH]);
@@ -162,7 +162,7 @@ describe('hermetic environment — the pins', () => {
   it('git reads no user or system config, and the display width is pinned', () => {
     assert.strictEqual(process.env.GIT_CONFIG_GLOBAL, '/dev/null');
     assert.strictEqual(process.env.GIT_CONFIG_SYSTEM, '/dev/null');
-    assert.strictEqual(process.env.LEEWAY_DISPLAY_WIDTH, '65');
+    assert.strictEqual(process.env.LEDGER_DISPLAY_WIDTH, '65');
   });
 
   it('git runs no ssh command of the developer\'s — it would override a suite\'s stand-in for a remote, with their keys', () => {
@@ -190,23 +190,23 @@ describe('hermetic environment — the pins', () => {
 
   it('exports exactly what it pinned, for a caller composing a child environment', () => {
     assert.deepStrictEqual(hermeticEnv, {
-      LEEWAY_CONFIG_DIR: process.env.LEEWAY_CONFIG_DIR,
+      LEDGER_CONFIG_DIR: process.env.LEDGER_CONFIG_DIR,
       WORKFLOWS_CONFIG_DIR: process.env.WORKFLOWS_CONFIG_DIR,
       CLAUDE_CONFIG_DIR: process.env.CLAUDE_CONFIG_DIR,
       GH_CONFIG_DIR: process.env.GH_CONFIG_DIR,
       GIT_CONFIG_GLOBAL: '/dev/null',
       GIT_CONFIG_SYSTEM: '/dev/null',
-      LEEWAY_DISPLAY_WIDTH: '65',
-      LEEWAY_CLAUDE: path.join(__dirname, 'claude-stub.sh'),
+      LEDGER_DISPLAY_WIDTH: '65',
+      LEDGER_CLAUDE: path.join(__dirname, 'claude-stub.sh'),
     });
   });
 
   it('a spawned process inherits the pins — every engine and knowledge call a test makes', () => {
-    const res = spawnSync('node', ['-e', 'console.log(JSON.stringify({ dir: process.env.LEEWAY_CONFIG_DIR, legacy: process.env.WORKFLOWS_CONFIG_DIR, claude: process.env.CLAUDE_CONFIG_DIR, key: process.env.OPENAI_API_KEY ?? null, surface: process.env.LEEWAY_GATE_SURFACE ?? null, handoff: process.env.LEEWAY_HANDOFF ?? null, session: process.env.CLAUDE_CODE_SESSION_ID ?? null, width: process.env.LEEWAY_DISPLAY_WIDTH, binary: process.env.LEEWAY_CLAUDE }))'],
+    const res = spawnSync('node', ['-e', 'console.log(JSON.stringify({ dir: process.env.LEDGER_CONFIG_DIR, legacy: process.env.WORKFLOWS_CONFIG_DIR, claude: process.env.CLAUDE_CONFIG_DIR, key: process.env.OPENAI_API_KEY ?? null, surface: process.env.LEDGER_GATE_SURFACE ?? null, handoff: process.env.LEDGER_HANDOFF ?? null, session: process.env.CLAUDE_CODE_SESSION_ID ?? null, width: process.env.LEDGER_DISPLAY_WIDTH, binary: process.env.LEDGER_CLAUDE }))'],
       { encoding: 'utf8' });
     assert.strictEqual(res.status, 0, res.stderr);
     assert.deepStrictEqual(JSON.parse(res.stdout), {
-      dir: process.env.LEEWAY_CONFIG_DIR,
+      dir: process.env.LEDGER_CONFIG_DIR,
       legacy: process.env.WORKFLOWS_CONFIG_DIR,
       claude: process.env.CLAUDE_CONFIG_DIR,
       key: null,

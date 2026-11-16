@@ -1,8 +1,8 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Where the state lives (leeway-engine/scripts/kernel/state-root.cjs): the
-// one `.leeway/` in the main checkout, found from any folder of the
+// Where the state lives (ledger-engine/scripts/kernel/state-root.cjs): the
+// one `.ledger/` in the main checkout, found from any folder of the
 // repository or any of its worktrees, symbolic links resolved and memoised
 // per folder; a root pinned for a world no repository holds; the nullable
 // find; and the two path forms — absolute for a
@@ -25,7 +25,7 @@ const path = require('path');
 const { git, initRepo, setupGitFixture, cleanupFixture } = require('./engine-harness.cjs');
 const {
   STATE_DIR_NAME, stateRoot, pinStateRoot, findStateRoot, statePath, stateSpec, stateRelative, insideState, ignoresCase,
-} = require('../../skills/leeway-engine/scripts/kernel/state-root.cjs');
+} = require('../../skills/ledger-engine/scripts/kernel/state-root.cjs');
 
 /** @type {string} */
 let dir;
@@ -48,7 +48,7 @@ function codeWorktree() {
 }
 
 describe('stateRoot', () => {
-  it('is `.leeway/` in the main checkout, from its root and from any folder below it', () => {
+  it('is `.ledger/` in the main checkout, from its root and from any folder below it', () => {
     assert.strictEqual(stateRoot(dir), root);
     fs.mkdirSync(path.join(dir, 'src/deep'), { recursive: true });
     assert.strictEqual(stateRoot(path.join(dir, 'src/deep')), root);
@@ -151,7 +151,7 @@ describe('stateRelative', () => {
   });
 
   it('reads a relative path from the folder it is given in', () => {
-    assert.strictEqual(stateRelative(dir, '.leeway/pay/investigation/pay.md'), 'pay/investigation/pay.md');
+    assert.strictEqual(stateRelative(dir, '.ledger/pay/investigation/pay.md'), 'pay/investigation/pay.md');
     assert.strictEqual(stateRelative(root, 'pay/investigation/pay.md'), 'pay/investigation/pay.md');
   });
 
@@ -184,7 +184,7 @@ describe('stateRelative', () => {
   it('names the part that exists as the disk spells it, where the filesystem ignores case', () => {
     if (!ignoresCase(root)) return;
     fs.mkdirSync(path.join(root, 'pay'));
-    assert.strictEqual(stateRelative(dir, path.join(dir, '.LEEWAY', 'PAY', 'New.md')), 'pay/New.md');
+    assert.strictEqual(stateRelative(dir, path.join(dir, '.LEDGER', 'PAY', 'New.md')), 'pay/New.md');
   });
 
   it('tells whether the filesystem ignores case from a folder named with no letters too, asking the folder above', () => {

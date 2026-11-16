@@ -21,7 +21,7 @@ const { describe, it } = require('node:test');
 
 const { quickFixConformance } = require('./quick-fix-world.cjs');
 const { MID_SET, mergedMidSet } = require('./quick-fix-by-hand.cjs');
-const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
+const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
 
 for (const { name } of listDrivers('landing')) {
   const conf = quickFixConformance(name, `engine-landing-quick-fix-by-hand-ways-${name}-`);

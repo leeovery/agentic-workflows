@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The ask rule's numbers (leeway-engine/scripts/domain/trust-counts.cjs,
+// The ask rule's numbers (ledger-engine/scripts/domain/trust-counts.cjs,
 // over trust-evidence.cjs's answers and trust-log.cjs's read of every
 // project): each kind's count, the one-answer calls' and each gate's — what
 // counts clean and what a loss, weighted by age and model, merged with the
@@ -32,7 +32,7 @@ const path = require('path');
 const { FROZEN_MS, statePath, layout } = require('./engine-harness.cjs');
 const { idOf, PROJECT_ID, DAY, MODEL, lines, waitingPath, useTrustWorld, history } = require('./trust-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { readTrustEvent } = require(path.join(SCRIPTS, 'domain/trust-events.cjs'));
 const { TRUST_LOG } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
 const { KINDS } = require(path.join(SCRIPTS, 'domain/event-fields.cjs'));
@@ -41,7 +41,7 @@ const {
 } = require(path.join(SCRIPTS, 'domain/trust-counts.cjs'));
 const { evidenceIn } = require(path.join(SCRIPTS, 'domain/trust-evidence.cjs'));
 
-/** @typedef {import('../../skills/leeway-engine/scripts/domain/trust-counts.cjs').Count} Count */
+/** @typedef {import('../../skills/ledger-engine/scripts/domain/trust-counts.cjs').Count} Count */
 
 // The spec's figures: the 20% default (16.4.6), 10% where a change would be
 // hard to undo (16.4.8), and an answer six months old at 183 days (16.12.6).

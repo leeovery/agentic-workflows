@@ -137,7 +137,7 @@ A change lands in one place and is owed in several. Enumerate them.
   simulation is a decision to make, never something to paper over.
 - A test lands alongside any change to engine scripts (the knowledge
   base's among them), adapters, migrations, or the gate mods
-  (`skills/leeway-gates*/`, whose gate is `npm run test:mod`).
+  (`skills/ledger-gates*/`, whose gate is `npm run test:mod`).
 - New `.cjs` migrations have a matching node:test suite, registered in
   `package.json`, covering happy path, skip, idempotency, content
   preservation, and every defensive guard.
@@ -150,7 +150,7 @@ A change lands in one place and is owed in several. Enumerate them.
 
 The code surfaces carry established conventions of their own — the engine's
 two rings, the knowledge subsystem, the migrations, the tests. Read
-`skills/leeway-engine/SKILL.md` before the diff; it is where the
+`skills/ledger-engine/SKILL.md` before the diff; it is where the
 architecture is stated.
 
 **Layering.** Kernel is mechanism and the manifest's on-disk contract;

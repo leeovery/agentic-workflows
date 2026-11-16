@@ -21,9 +21,9 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const ROOT = path.join(__dirname, '../..');
-const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/knowledge/files.cjs'));
+const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/ledger-engine/scripts/kernel/knowledge/files.cjs'));
 const { githubOffline, git, stateGit, initRepo, createFile, commitCode } = require('./engine-harness.cjs');
-const { STATE_DIR_NAME, statePath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
+const { STATE_DIR_NAME, statePath } = require(path.join(ROOT, 'skills/ledger-engine/scripts/kernel/state-root.cjs'));
 const { Sim, sessionLog, mappedEpic, enterEntry, decideTopic, askedOn, answerGate } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: sessions', () => {
@@ -134,9 +134,9 @@ describe('pipeline simulation: sessions', () => {
     const wu = 'upgraded';
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Carried through an upgrade', '--session-log-file', sessionLog(sim, wu)]);
     enterEntry(sim, wu, 'discussion', wu);
-    sim.write(`.leeway/${wu}/topics/${wu}/log.md`, '# Discussion — Upgraded\n');
+    sim.write(`.ledger/${wu}/topics/${wu}/log.md`, '# Discussion — Upgraded\n');
     sim.write('.claude/settings.json', '{}\n');
-    sim.write('.gitignore', '.leeway/\nnode_modules\n');
+    sim.write('.gitignore', '.ledger/\nnode_modules\n');
     sim.write('src/app.js', 'const x = 1;\n');
     git(sim.dir, ['add', '-A']);
     git(sim.dir, ['commit', '-q', '-m', 'a project mid-flight']);
@@ -145,8 +145,8 @@ describe('pipeline simulation: sessions', () => {
     // session's staged work.
     sim.write('.claude/settings.json', '{"permissions":{}}\n');
     sim.write('.worktreeinclude', `${STATE_DIR_NAME}/${KNOWLEDGE_DIR}/store.bin\n`);
-    sim.write('.gitignore', '.leeway/\nnode_modules\n.DS_Store\n');
-    sim.write('.leeway/.state/migrations', '062\n');
+    sim.write('.gitignore', '.ledger/\nnode_modules\n.DS_Store\n');
+    sim.write('.ledger/.state/migrations', '062\n');
     sim.write('src/app.js', 'const x = 2;\n');
     git(sim.dir, ['add', '--', 'src/app.js']);
 
@@ -154,7 +154,7 @@ describe('pipeline simulation: sessions', () => {
     // the summary in a payload in the cache, which the commit below never
     // carries, with every notice boot's migrations handed back for the person.
     sim.run(['migrate', 'review']);
-    const applied = sim.write('.leeway/.cache/migrations-applied.json', {
+    const applied = sim.write('.ledger/.cache/migrations-applied.json', {
       summary: 'Restored the settings and the worktree include.',
       notices: ['A setting you may want back was removed.'],
       migrations: 1,
@@ -178,7 +178,7 @@ describe('pipeline simulation: sessions', () => {
     assert.strictEqual(git(sim.dir, ['diff', '--cached', '--name-only']).trim(), 'src/app.js', 'the code session\'s staging stays staged');
 
     // The unit carries on from the upgraded tree.
-    sim.write(`.leeway/${wu}/topics/${wu}/log.md`, '# Discussion — Upgraded\n\nCarried on.\n');
+    sim.write(`.ledger/${wu}/topics/${wu}/log.md`, '# Discussion — Upgraded\n\nCarried on.\n');
     sim.run(['ledger', 'ask', `${wu}.discussion.${wu}`], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'What survives the upgrade?' }));
     assert.strictEqual(stateGit(sim.dir, ['status', '--porcelain', '--', wu]).trim(), '', 'the question\'s commit carries the log along');
   });
@@ -197,7 +197,7 @@ describe('pipeline simulation: sessions', () => {
     assert.strictEqual(sim.runIn(plain, ['boot']).state, 'repo');
     sim.render(['repo-stop'], { expect: 'content', cwd: plain });
 
-    // A project on the layout before Leeway's, a change in its old state not
+    // A project on the layout before Ledger's, a change in its old state not
     // committed: the reshape's guard refuses, and boot stops at its screen.
     const legacy = initRepo(fs.mkdtempSync(path.join(sim.configDir, 'legacy-')));
     createFile(legacy, '.workflows/shop/manifest.json', '{}\n');
@@ -210,14 +210,14 @@ describe('pipeline simulation: sessions', () => {
     // The state branch and its worktree gone, the code tree still ignoring
     // the state: lost, here and with no remote to restore it from.
     git(sim.dir, ['worktree', 'remove', '--force', '--force', statePath(sim.dir)]);
-    git(sim.dir, ['branch', '-D', 'leeway-state']);
+    git(sim.dir, ['branch', '-D', 'ledger-state']);
 
     assert.deepStrictEqual(sim.run(['boot']), { ok: true, state: 'lost', stop: { surface: 'state-lost-gate', next: { kind: 'gate' } }, warnings: [] });
     assert.ok(!fs.existsSync(statePath(sim.dir)), 'the stop wrote state');
     assert.match(sim.render(['state-lost-gate'], { expect: 'content' }), /Start again with a fresh state\?/);
     const restarted = sim.run(answerGate(sim, 'state lost gate', '--pick', 'y').next.argv);
     assert.deepStrictEqual([restarted.state, restarted.github_rule_offer, restarted.github_squash_offer], ['restarted', false, false]);
-    assert.strictEqual(stateGit(sim.dir, ['rev-list', '--max-parents=0', 'leeway-state']).trim().split('\n').length, 1, 'the fresh state is one orphan line');
+    assert.strictEqual(stateGit(sim.dir, ['rev-list', '--max-parents=0', 'ledger-state']).trim().split('\n').length, 1, 'the fresh state is one orphan line');
 
     // A remote on GitHub, out of reach: boot works on the state it has, and
     // offers the rule, and the squash default its landing on GitHub needs,

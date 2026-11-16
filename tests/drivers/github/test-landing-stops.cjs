@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// What stops GitHub's landing driver (leeway-engine/scripts/drivers/
+// What stops GitHub's landing driver (ledger-engine/scripts/drivers/
 // landing/github/), and where it leaves the default branch here, past what
 // every driver does (the landing conformance suite's): the refusals a person
 // meets, each saying what is missing or what happened and the way on, never
@@ -40,7 +40,7 @@ const { execFileSync, spawnSync } = require('child_process');
 
 const harness = require('../../scripts/engine-harness.cjs');
 const { TASKS, openArgs, own, cutTask, commitFiles, mergeBack, landedOn, useLandingWorld, finishReady } = require('../../scripts/landing-world.cjs');
-const { loadDriver } = require('../../../skills/leeway-engine/scripts/domain/drivers.cjs');
+const { loadDriver } = require('../../../skills/ledger-engine/scripts/domain/drivers.cjs');
 const side = require('./landing.cjs');
 const { GH_ENV, ghEnv, github, onGithub, bareOf, calls, closeByHand, lagOnGithub, tipOnGithub, pulls, ok, refused, stackOfTwo } = require('./world.cjs');
 
@@ -267,11 +267,11 @@ describe('what stops a verb, and the way on (22.4.7)', () => {
     ok(dir, ['boot']);
     const tax = cutTask(dir, '1.4', 'feat', 'Add tax', 'main', { 'tax.txt': 'tax\n' });
     const [booted] = git(dir, ['log', '--format=%H %s', 'origin/main..main']).trim().split('\n');
-    assert.strictEqual(booted.slice(41), 'chore: install Leeway session hooks');
+    assert.strictEqual(booted.slice(41), 'chore: install Ledger session hooks');
 
     assert.strictEqual(
       refused(dir, openArgs(tax)),
-      `land: main here holds a commit origin/main does not — ${booted.slice(0, 7)} "chore: install Leeway session hooks" — which a task's branch cut from it would land under the task's own subject, so task 1.4 was not opened; `
+      `land: main here holds a commit origin/main does not — ${booted.slice(0, 7)} "chore: install Ledger session hooks" — which a task's branch cut from it would land under the task's own subject, so task 1.4 was not opened; `
       + 'push it to main on GitHub if it belongs there, as `git push origin main` does, and open the task again',
     );
     assert.deepStrictEqual([tipOnGithub(dir, tax.branch), pulls(dir)], ['', []]);

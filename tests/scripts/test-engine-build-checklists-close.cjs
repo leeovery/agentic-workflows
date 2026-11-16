@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A build phase's close, as the engine checks it (leeway-engine/scripts/
+// A build phase's close, as the engine checks it (ledger-engine/scripts/
 // domain/phase-checks.cjs, through checklist.cjs), each item worked out at
 // each call (6.4.9): its tasks passed by their pairs, a settled round among
 // them (13.4.6); each scenario proven at the phase's tips or reported not
@@ -32,7 +32,7 @@ const {
   UNIT, SESSION, DROPS_CENTS, branchOf, taskFile, world, checklistHelpers,
 } = require('./build-checklists-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const landingGit = require(path.join(SCRIPTS, 'domain/landing-git.cjs'));
 const { TRAILER } = require(path.join(SCRIPTS, 'domain/commit-task.cjs'));
 
@@ -74,7 +74,7 @@ describe('a phase\'s close (6.4.9)', () => {
     seen.push(passed());
     writeState(dir, layout.unit(UNIT, 'build', 'tasks', '1.2', 'round-2-a.md'), '# Review\n\nNo verdict.\n');
     const unread = show('phase-close', 1);
-    fs.rmSync(path.join(dir, '.leeway', UNIT, 'build', 'tasks', '1.2'), { recursive: true });
+    fs.rmSync(path.join(dir, '.ledger', UNIT, 'build', 'tasks', '1.2'), { recursive: true });
     ok(dir, ['task', 'close', UNIT, '1.2', '--reason', 'Not needed.']);
 
     assert.deepStrictEqual([...seen, unread.items[0].state, passed()], ['open', 'open', 'done', 'open', 'done']);

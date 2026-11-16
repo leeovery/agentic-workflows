@@ -1,8 +1,8 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The state's locks (leeway-engine/scripts/domain/state-worktree.cjs): the
-// writer lock, `.leeway/.lock`, that keeps concurrent verbs one after the
+// The state's locks (ledger-engine/scripts/domain/state-worktree.cjs): the
+// writer lock, `.ledger/.lock`, that keeps concurrent verbs one after the
 // other — held while a verb runs and released after, taken again at once by
 // its own holder, taken over at once from a holder that is gone, never
 // broken while its holder lives — boot's lock in the main checkout's git
@@ -24,14 +24,14 @@ const { spawn, spawnSync } = require('child_process');
 const { git, layout, codeProject, tip, remoteTip } = require('./engine-harness.cjs');
 const { CHILD_TIMEOUT_MS, useWorld, ignored, childStderr } = require('./state-worktree-world.cjs');
 
-const STATE = path.join(__dirname, '../../skills/leeway-engine/scripts/domain/state-worktree.cjs');
+const STATE = path.join(__dirname, '../../skills/ledger-engine/scripts/domain/state-worktree.cjs');
 const { STATE_BRANCH, createState, withStateLock, withBootLock } = require(STATE);
-const { processStartTime } = require('../../skills/leeway-engine/scripts/kernel/process.cjs');
+const { processStartTime } = require('../../skills/ledger-engine/scripts/kernel/process.cjs');
 
 const world = useWorld();
 
 describe('the writer lock', () => {
-  it('is .leeway/.lock, held while the verb runs and released after, whatever it throws', () => {
+  it('is .ledger/.lock, held while the verb runs and released after, whatever it throws', () => {
     const { root } = codeProject(world(), { state: true });
     const lock = path.join(root, layout.lock);
 
@@ -149,9 +149,9 @@ describe('the writer lock', () => {
 });
 
 describe('boot\'s lock', () => {
-  it('is .git/leeway-boot.lock in the main checkout, there before the state worktree is, held while boot\'s checks run and released after, whatever they throw', () => {
+  it('is .git/ledger-boot.lock in the main checkout, there before the state worktree is, held while boot\'s checks run and released after, whatever they throw', () => {
     const { main, root } = codeProject(world());
-    const lock = path.join(main, '.git/leeway-boot.lock');
+    const lock = path.join(main, '.git/ledger-boot.lock');
 
     const held = withBootLock(root, () => {
       createState(root);

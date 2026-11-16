@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // GitHub's landing driver and a quick-fix's branch as GitHub has it, the
-// truth for what its pull request holds (R15; leeway-engine/scripts/domain/
+// truth for what its pull request holds (R15; ledger-engine/scripts/domain/
 // fix-branch.cjs, landing.cjs, over drivers/landing/github/), where this
 // checkout lacks it or GitHub's moves after the read: a second clone, which
 // never had the branch, taking GitHub's at its first start, so no fix in
@@ -24,8 +24,8 @@ const { useTempFolder } = require('../../scripts/discovery-test-utils.cjs');
 const { UNIT, BRANCH, SET, fixChanged, fixDone, twoFixesBuilt, fixesRecorded } = require('../../scripts/quick-fix-world.cjs');
 const side = require('./landing.cjs');
 const { GH_ENV, bareOf, tipOnGithub, madeOnGithub } = require('./world.cjs');
-const lg = require('../../../skills/leeway-engine/scripts/domain/landing-git.cjs');
-const { landOpen } = require('../../../skills/leeway-engine/scripts/domain/landing.cjs');
+const lg = require('../../../skills/ledger-engine/scripts/domain/landing-git.cjs');
+const { landOpen } = require('../../../skills/ledger-engine/scripts/domain/landing.cjs');
 
 const { ok, git, withEnv, fixtureFrom, cleanupFixture } = harness;
 
@@ -39,7 +39,7 @@ afterEach(() => {
 });
 
 /** This test's conversation, as a call's options, under the stand-in gh. */
-const as = () => ({ env: { ...GH_ENV, LEEWAY_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: 'sess-1', TMUX: undefined, TMUX_PANE: undefined } });
+const as = () => ({ env: { ...GH_ENV, LEDGER_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: 'sess-1', TMUX: undefined, TMUX_PANE: undefined } });
 
 /** Fix 1.3 made through the door, as `fixChanged` makes it. */
 const third = () => fixChanged(dir, 3, SET[2].title, SET[2].file, SET[2].text, as());

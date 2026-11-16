@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // The ledger copies' render under concurrent engines
-// (leeway-engine/scripts/domain/ledger-copies.cjs): one render at a time,
+// (ledger-engine/scripts/domain/ledger-copies.cjs): one render at a time,
 // a write landing while another holds the claim returning once the holder
 // has rendered and indexed it; a change to what is live that undoes another
 // mid-render, the copies ending as the last change left them; a render that
@@ -24,7 +24,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 // The seams go in before the engine loads, so the copies' render binds them.
 const { seams, clearSeams } = require('./ledger-copies-seams.cjs');
 const { UNIT, SESSION, MADE, NOTE, NOTE_COPY, copiesHelpers, useCopiesWorld } = require('./ledger-world.cjs');
@@ -65,8 +65,8 @@ function spawnEngine(args, content, atExit) {
 function spawnReaped(args, content) {
   const pidFile = path.join(dir(), `pid-${spawned += 1}`);
   const input = stdinPath(content);
-  const shell = spawn('sh', ['-c', '"$@" < "$LEEWAY_TEST_STDIN" & echo $! > "$LEEWAY_TEST_PID"; wait', 'sh', 'node', ENGINE, ...args], {
-    cwd: dir(), env: { ...process.env, ...SESSION, LEEWAY_TEST_STDIN: input, LEEWAY_TEST_PID: pidFile }, stdio: 'ignore', timeout: CONTENDER_TIMEOUT_MS, killSignal: 'SIGKILL',
+  const shell = spawn('sh', ['-c', '"$@" < "$LEDGER_TEST_STDIN" & echo $! > "$LEDGER_TEST_PID"; wait', 'sh', 'node', ENGINE, ...args], {
+    cwd: dir(), env: { ...process.env, ...SESSION, LEDGER_TEST_STDIN: input, LEDGER_TEST_PID: pidFile }, stdio: 'ignore', timeout: CONTENDER_TIMEOUT_MS, killSignal: 'SIGKILL',
   });
   return { pid: () => (fs.existsSync(pidFile) ? Number(fs.readFileSync(pidFile, 'utf8')) || null : null), done: new Promise((resolve) => shell.on('close', resolve)) };
 }

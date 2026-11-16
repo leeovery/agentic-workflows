@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // GitHub's landing driver and what on GitHub is a quick-fix's (R18;
-// leeway-engine/scripts/domain/landing.cjs, fix-branch.cjs, over
+// ledger-engine/scripts/domain/landing.cjs, fix-branch.cjs, over
 // drivers/landing/github/), in a nested clone the quick-fix touches: a pull
 // request of a branch by its name opened there long before the unit,
 // closed and its branch deleted, is none of its, and the fix there lands;
@@ -46,7 +46,7 @@ describe('what on GitHub is a quick-fix\'s, in a nested clone it touches (R18)',
 
   it('a branch an earlier quick-fix of the same name left there, stamped long before the unit, its pull request open: the opening refuses naming it; deleted there, the fix lands, the other never retitled', () => {
     const at = project();
-    const number = strangerPull(at.lib, { ...OLD, message: `Fix an old typo\n\nLeeway-Task: ${ID}` });
+    const number = strangerPull(at.lib, { ...OLD, message: `Fix an old typo\n\nLedger-Task: ${ID}` });
     createFix(at.dir, 1, SET[0].title, as());
     ok(at.dir, ['task', 'start', UNIT, '1.1'], as());
     createFile(at.dir, 'lib/lib.txt', LIB['lib/lib.txt']);

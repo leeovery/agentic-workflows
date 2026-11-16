@@ -33,7 +33,7 @@ const path = require('path');
 
 const { cleanupFixture } = require('./engine-harness.cjs');
 const { seeds, historyWorld, history } = require('./landing-history-world.cjs');
-const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
+const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
 
 for (const { name } of listDrivers('landing')) {
   const side = require(path.join(__dirname, '..', 'drivers', name, 'landing.cjs'));

@@ -22,7 +22,7 @@
 // assertion, and no vector fill is ever launched. A read of what a store
 // holds is refused where there is none; its absence is asserted apart.
 //
-// A fixture is a git repository with its state worktree at `.leeway/`
+// A fixture is a git repository with its state worktree at `.ledger/`
 // (`discovery-test-utils.cjs` makes it). A world many tests start from is
 // built once per process and copied for each (`fixtureFrom`). A suite reads
 // a state commit off the state branch (`stateGit`), and an owned code-tree
@@ -56,21 +56,21 @@ const {
   statePath, stateRelative, layout, writeState, readState, readManifest, createFile,
 } = require('./discovery-test-utils.cjs');
 const { FROZEN_MS, FROZEN_AT, withFrozenClock } = require('./frozen-clock.cjs');
-const store = require('../../skills/leeway-engine/scripts/kernel/knowledge/store.cjs');
-const { findStateRoot } = require('../../skills/leeway-engine/scripts/kernel/state-root.cjs');
-const { processStartTime } = require('../../skills/leeway-engine/scripts/kernel/process.cjs');
-const { knowledgeFiles } = require('../../skills/leeway-engine/scripts/kernel/knowledge/files.cjs');
-const { trustLogPath } = require('../../skills/leeway-engine/scripts/domain/trust-log.cjs');
-const { versionOf } = require('../../skills/leeway-engine/scripts/domain/git-floor.cjs');
-const { atLeast } = require('../../skills/leeway-engine/scripts/kernel/version.cjs');
-const { completeWorkUnit } = require('../../skills/leeway-engine/scripts/domain/workunit-lifecycle.cjs');
-const { followingLiveness } = require('../../skills/leeway-engine/scripts/domain/ledger-copies.cjs');
-const { startTopic } = require('../../skills/leeway-engine/scripts/domain/transitions.cjs');
-const { NBSP } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
+const store = require('../../skills/ledger-engine/scripts/kernel/knowledge/store.cjs');
+const { findStateRoot } = require('../../skills/ledger-engine/scripts/kernel/state-root.cjs');
+const { processStartTime } = require('../../skills/ledger-engine/scripts/kernel/process.cjs');
+const { knowledgeFiles } = require('../../skills/ledger-engine/scripts/kernel/knowledge/files.cjs');
+const { trustLogPath } = require('../../skills/ledger-engine/scripts/domain/trust-log.cjs');
+const { versionOf } = require('../../skills/ledger-engine/scripts/domain/git-floor.cjs');
+const { atLeast } = require('../../skills/ledger-engine/scripts/kernel/version.cjs');
+const { completeWorkUnit } = require('../../skills/ledger-engine/scripts/domain/workunit-lifecycle.cjs');
+const { followingLiveness } = require('../../skills/ledger-engine/scripts/domain/ledger-copies.cjs');
+const { startTopic } = require('../../skills/ledger-engine/scripts/domain/transitions.cjs');
+const { NBSP } = require('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs');
 const {
   STATE_BRANCH, createState, createStateBranchFromRemote, addStateWorktree, withStateLock, commitState,
-} = require('../../skills/leeway-engine/scripts/domain/state-worktree.cjs');
-const { stampBoot } = require('../../skills/leeway-engine/scripts/domain/boot-stamp.cjs');
+} = require('../../skills/ledger-engine/scripts/domain/state-worktree.cjs');
+const { stampBoot } = require('../../skills/ledger-engine/scripts/domain/boot-stamp.cjs');
 
 /** Each driver's stand-ins, as they come first on the PATH. */
 const STAND_INS = Object.freeze(fs.readdirSync(path.join(__dirname, '..', 'drivers'))
@@ -78,7 +78,7 @@ const STAND_INS = Object.freeze(fs.readdirSync(path.join(__dirname, '..', 'drive
   .filter((bin) => fs.existsSync(bin)));
 process.env.PATH = [...STAND_INS, process.env.PATH].join(path.delimiter);
 
-const ENGINE = path.join(__dirname, '../../skills/leeway-engine/scripts/engine.cjs');
+const ENGINE = path.join(__dirname, '../../skills/ledger-engine/scripts/engine.cjs');
 
 /**
  * @typedef {object} CallOptions
@@ -104,9 +104,9 @@ const ENGINE = path.join(__dirname, '../../skills/leeway-engine/scripts/engine.c
  * @param {string} [enginePath]
  */
 function harness(enginePath = ENGINE) {
-  /** @type {typeof import('../../skills/leeway-engine/scripts/engine.cjs')} */
+  /** @type {typeof import('../../skills/ledger-engine/scripts/engine.cjs')} */
   const engine = require(enginePath);
-  /** @type {typeof import('../../skills/leeway-engine/scripts/domain/boot-stamp.cjs')} */
+  /** @type {typeof import('../../skills/ledger-engine/scripts/domain/boot-stamp.cjs')} */
   const stamp = require(path.join(path.dirname(enginePath), 'domain/boot-stamp.cjs'));
 
   /**
@@ -283,7 +283,7 @@ function stateGit(dir, args) {
  * @returns {Record<string, unknown>[]}
  */
 function ledgerEntries(root, notes = []) {
-  const { withLedger } = require('../../skills/leeway-engine/scripts/domain/ledger.cjs');
+  const { withLedger } = require('../../skills/ledger-engine/scripts/domain/ledger.cjs');
   return withLedger(root, notes, (ledger) => [...ledger.entries()].map(({ event }) => event));
 }
 
@@ -563,7 +563,7 @@ function failingTrustAppends(t, lands = false) {
  * @template T @param {string} dir @param {() => T} fn @returns {T}
  */
 function failingStateCommits(dir, fn) {
-  const held = path.join(dir, '.git', 'refs', 'heads', 'leeway-state.lock');
+  const held = path.join(dir, '.git', 'refs', 'heads', 'ledger-state.lock');
   fs.writeFileSync(held, '');
   try {
     return fn();
@@ -755,9 +755,9 @@ function twoMachines(dir, { name = 'project' } = {}) {
  * @returns {Record<string, string>}
  */
 function accountFiles(dir, unit, task) {
-  const { roundReportPath, taskFolder } = require('../../skills/leeway-engine/scripts/domain/round-report.cjs');
-  const { figuresPath, takenFigures } = require('../../skills/leeway-engine/scripts/domain/task-account.cjs');
-  const { REVIEWER_LETTERS } = require('../../skills/leeway-engine/scripts/kernel/reviewers.cjs');
+  const { roundReportPath, taskFolder } = require('../../skills/ledger-engine/scripts/domain/round-report.cjs');
+  const { figuresPath, takenFigures } = require('../../skills/ledger-engine/scripts/domain/task-account.cjs');
+  const { REVIEWER_LETTERS } = require('../../skills/ledger-engine/scripts/kernel/reviewers.cjs');
   const [phase, n] = task.split('.').map(Number);
   const ref = { unit, phase, n };
   const folder = statePath(dir, taskFolder(ref));
@@ -959,7 +959,7 @@ const main = path.dirname(path.dirname(path.dirname(record)));
 const heldByCaller = (lock) => { try { return JSON.parse(fs.readFileSync(lock, 'utf8')).pid === process.ppid; } catch { return false; } };
 const noteRun = (at) => {
   if (!process.env.STUB_MIGRATE_RUNS) return;
-  const locks = { boot: heldByCaller(path.join(main, '.git', 'leeway-boot.lock')), writer: heldByCaller(path.join(main, '${STATE_DIR_NAME}', '.lock')) };
+  const locks = { boot: heldByCaller(path.join(main, '.git', 'ledger-boot.lock')), writer: heldByCaller(path.join(main, '${STATE_DIR_NAME}', '.lock')) };
   fs.appendFileSync(process.env.STUB_MIGRATE_RUNS, JSON.stringify({ at, cwd: process.cwd(), ...locks }) + '\\n');
 };
 if (mode === 'refuse') {
@@ -1026,7 +1026,7 @@ if (!process.env.STUB_MIGRATE_NO_REPORT) {
 
 // The workflows' own hooks, as boot installs them in a project's
 // `.claude/settings.json`.
-const HOOK_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/leeway-engine/scripts/engine.cjs"';
+const HOOK_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/ledger-engine/scripts/engine.cjs"';
 /** A hook running an engine verb. @param {string} verb */
 const engineHook = (verb) => ({ type: 'command', command: `${HOOK_ENGINE} ${verb}` });
 /** The workflows' own SessionEnd hooks, in every project whatever the label choice. */
@@ -1055,7 +1055,7 @@ function hooked(hooks, rest = {}) {
 let stub = null;
 
 /** The migrate skill's scripts: the modules the engine asks — the migrations' naming and the old layout — and the reshape's shared steps. */
-const MIGRATE_SCRIPTS = path.join(path.dirname(path.dirname(path.dirname(ENGINE))), 'leeway-migrate/scripts');
+const MIGRATE_SCRIPTS = path.join(path.dirname(path.dirname(path.dirname(ENGINE))), 'ledger-migrate/scripts');
 
 /**
  * The engine copied, once per process, into a skills folder beside the
@@ -1069,11 +1069,11 @@ const MIGRATE_SCRIPTS = path.join(path.dirname(path.dirname(path.dirname(ENGINE)
 function stubEngine() {
   if (stub !== null) return stub;
   const skills = templateFolder('engine-skills-');
-  fs.cpSync(path.dirname(path.dirname(ENGINE)), path.join(skills, 'leeway-engine'), { recursive: true });
-  createFile(skills, 'leeway-migrate/scripts/migrate.cjs', STUB_MIGRATE);
-  for (const script of ['migration-ids.cjs', 'old-layout.cjs']) fs.copyFileSync(path.join(MIGRATE_SCRIPTS, script), path.join(skills, 'leeway-migrate/scripts', script));
-  fs.cpSync(path.join(MIGRATE_SCRIPTS, 'migrations/reshape'), path.join(skills, 'leeway-migrate/scripts/migrations/reshape'), { recursive: true });
-  const at = path.join(skills, 'leeway-engine/scripts/engine.cjs');
+  fs.cpSync(path.dirname(path.dirname(ENGINE)), path.join(skills, 'ledger-engine'), { recursive: true });
+  createFile(skills, 'ledger-migrate/scripts/migrate.cjs', STUB_MIGRATE);
+  for (const script of ['migration-ids.cjs', 'old-layout.cjs']) fs.copyFileSync(path.join(MIGRATE_SCRIPTS, script), path.join(skills, 'ledger-migrate/scripts', script));
+  fs.cpSync(path.join(MIGRATE_SCRIPTS, 'migrations/reshape'), path.join(skills, 'ledger-migrate/scripts/migrations/reshape'), { recursive: true });
+  const at = path.join(skills, 'ledger-engine/scripts/engine.cjs');
   stub = { ...harness(at), path: at };
   return stub;
 }
@@ -1088,7 +1088,7 @@ const { booted, call, callAsync, ok, okSections, okSectionsAsync, refuses, refus
  * @param {string} dir @param {string} session @param {string} [configDir]
  */
 function stampBooted(dir, session, configDir) {
-  withEnv(configDir === undefined ? {} : { LEEWAY_CONFIG_DIR: configDir }, () => stampBoot(dir, session));
+  withEnv(configDir === undefined ? {} : { LEDGER_CONFIG_DIR: configDir }, () => stampBoot(dir, session));
 }
 
 /**

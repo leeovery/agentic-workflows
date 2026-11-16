@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // A unit's notes for later in a second clone's merge
-// (leeway-engine/scripts/domain/state-merge-paths.cjs, the notes placed
+// (ledger-engine/scripts/domain/state-merge-paths.cjs, the notes placed
 // before the tree merges and merged by note; state-merge-rules.cjs,
 // `notesSettled`, `notesMerged`; 4.7, 12.10, 6.1.7): notes both machines
 // banked — the remote's at their numbers, this machine's after them in
@@ -31,7 +31,7 @@ const fs = require('fs');
 const path = require('path');
 const { ok, git, layout, commitOnState } = require('./engine-harness.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { catchUpState, stateMergeGateSurface } = require(path.join(SCRIPTS, 'domain/state-merge.cjs'));
 const { notesAppended, notesHeldFor, notesToTake, consolidationFaults } = require(path.join(SCRIPTS, 'domain/notes.cjs'));
@@ -74,7 +74,7 @@ function sharing(extra = {}) {
 
 /** The merge's note on notes this machine banked under numbers the remote banked too. @param {string} moves @param {string} [named] */
 function movedNote(moves, named = '') {
-  return `notes in .leeway/${NOTES} were banked under the same numbers on both machines: the remote's keep theirs, and this machine's follow them — ${moves}${named}`;
+  return `notes in .ledger/${NOTES} were banked under the same numbers on both machines: the remote's keep theirs, and this machine's follow them — ${moves}${named}`;
 }
 
 describe('notes both machines banked (12.10.2)', () => {
@@ -134,7 +134,7 @@ describe('notes both machines banked (12.10.2)', () => {
     commitOnState(there.root, { [NOTES]: notes(CARDS, RECEIPT) });
 
     assert.throws(() => catchUpState(here.root), (err) => err instanceof Error
-      && err.message === `cannot merge .leeway/${NOTES}: this machine's copy numbers note 3 as 2`);
+      && err.message === `cannot merge .ledger/${NOTES}: this machine's copy numbers note 3 as 2`);
   });
 });
 
@@ -153,7 +153,7 @@ describe('the consolidation reports naming the notes (12.10.3)', () => {
       consolidation('- Note 2: a task — Show the currency'),
     ]);
     assert.deepStrictEqual([1, 2, 3].map((phase) => consolidationFaults(here.main, UNIT, phase)), [[], [], []]);
-    assert.deepStrictEqual(out.warnings, [movedNote('note 2 is now note 3, note 3 is now note 4', `; .leeway/${report(2)} names them so`)]);
+    assert.deepStrictEqual(out.warnings, [movedNote('note 2 is now note 3, note 3 is now note 4', `; .ledger/${report(2)} names them so`)]);
   });
 
   it('merges a report both machines extended in one numbering, this machine\'s renamed before the lines merge', () => {
@@ -181,7 +181,7 @@ describe('the consolidation reports naming the notes (12.10.3)', () => {
     ]]);
     const screen = stateMergeGateSurface(here.main, {});
     assert.match(screen, /^⚑ The state merge stopped: the consolidation report of phase 1 of pay set aside$/m);
-    assert.ok(screen.includes(`> No report stays at \`.leeway/${report(1)}\`, and this machine's copy is kept beside it as \`.leeway/${beside}\`.`));
+    assert.ok(screen.includes(`> No report stays at \`.ledger/${report(1)}\`, and this machine's copy is kept beside it as \`.ledger/${beside}\`.`));
     assert.throws(() => pickShown(here, '2'), /carry on past a consolidation report set aside: pick 1, got "2"/);
 
     const out = pickShown(here, '1');
@@ -220,8 +220,8 @@ describe('the notes and reports the working tree holds uncommitted (12.10.2, 12.
     ]);
     assert.strictEqual(status(here.root), ` M ${report(1)}\n M ${report(2)}\n?? ${report(3)}\n`);
     assert.deepStrictEqual(out.warnings, [
-      movedNote('note 2 is now note 3, note 3 is now note 4', `; .leeway/${report(1)}, .leeway/${report(2)} name them so`),
-      `.leeway/${report(1)}, .leeway/${report(3)} name this machine's notes by their numbers in the merge`,
+      movedNote('note 2 is now note 3, note 3 is now note 4', `; .ledger/${report(1)}, .ledger/${report(2)} name them so`),
+      `.ledger/${report(1)}, .ledger/${report(3)} name this machine's notes by their numbers in the merge`,
     ]);
   });
 
@@ -238,8 +238,8 @@ describe('the notes and reports the working tree holds uncommitted (12.10.2, 12.
       consolidation('- Note 4: a task — Round refund totals once'),
     ]);
     assert.deepStrictEqual(out.warnings, [
-      movedNote('note 2 is now note 3, note 3 is now note 4', `; .leeway/${report(1)} names them so`),
-      `.leeway/${report(2)} names this machine's notes by their numbers in the merge`,
+      movedNote('note 2 is now note 3, note 3 is now note 4', `; .ledger/${report(1)} names them so`),
+      `.ledger/${report(2)} names this machine's notes by their numbers in the merge`,
     ]);
   });
 
@@ -259,7 +259,7 @@ describe('the notes and reports the working tree holds uncommitted (12.10.2, 12.
     assert.strictEqual(status(here.root), ` M ${NOTES}\n?? ${report(1)}\n`);
     assert.deepStrictEqual(out.warnings, [
       movedNote('note 2 is now note 3'),
-      movedNote('note 3 is now note 4', `; .leeway/${report(1)} names them so`),
+      movedNote('note 3 is now note 4', `; .ledger/${report(1)} names them so`),
     ]);
   });
 
@@ -276,7 +276,7 @@ describe('the notes and reports the working tree holds uncommitted (12.10.2, 12.
     assert.deepStrictEqual([stopped.action, stopped.conflicts], ['stopped', [
       { file: report(1), setAside: { phase: 1, stays: false, renumbered: [{ from: 2, to: 3 }] }, beside, pick: null, uncommitted: true },
     ]]);
-    assert.ok(stateMergeGateSurface(here.main, {}).includes(`> No report stays at \`.leeway/${report(1)}\`, and this machine's uncommitted copy is kept beside it as \`.leeway/${beside}\`.`));
+    assert.ok(stateMergeGateSurface(here.main, {}).includes(`> No report stays at \`.ledger/${report(1)}\`, and this machine's uncommitted copy is kept beside it as \`.ledger/${beside}\`.`));
 
     const out = pickShown(here, '1');
 

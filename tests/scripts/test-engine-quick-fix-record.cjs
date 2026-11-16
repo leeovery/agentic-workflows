@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A quick-fix's short record (leeway-engine/scripts/domain/
+// A quick-fix's short record (ledger-engine/scripts/domain/
 // quick-fix-record.cjs; knowledge/artifacts.cjs): `engine quick-fix record
 // <qf> <task> --file <record.md>` — each fix's short record under its title
 // in `summary.md`, in the order the fixes were done, kept by its task —
@@ -51,7 +51,7 @@ afterEach(() => {
 });
 
 /** This test's conversation, as a call's options. */
-const as = () => ({ env: { LEEWAY_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: 'sess-1', TMUX: undefined, TMUX_PANE: undefined } });
+const as = () => ({ env: { LEDGER_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: 'sess-1', TMUX: undefined, TMUX_PANE: undefined } });
 
 /** A call that must succeed, in this test's conversation. @param {string[]} args */
 const run = (args) => ok(dir, args, as());

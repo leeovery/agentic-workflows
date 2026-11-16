@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // The landing conformance suite for a unit's own branch landed at finish
-// (7.3.4; leeway-engine/scripts/domain/landing.cjs, `finishMerge`): finish's
+// (7.3.4; ledger-engine/scripts/domain/landing.cjs, `finishMerge`): finish's
 // yes lands the phases still standing onto `feat/{unit}`, then the branch
 // on the default branch by one merge commit, `Merge feat/{unit}` described
 // by the phases merged into it — the default branch's history holding each
@@ -40,7 +40,7 @@ const harness = require('./engine-harness.cjs');
 
 const { git, tip, readManifest, createFile, commitCode, fixtureFrom, cleanupFixture, killedAt } = harness;
 const { UNIT, BASE, TASKS, openArgs, unitBranchLanded, finishReady, commitFiles } = require('./landing-world.cjs');
-const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
+const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
 
 const { rounding, currency } = TASKS;
 const BRANCH = `feat/${UNIT}`;
@@ -157,7 +157,7 @@ for (const { name } of listDrivers('landing')) {
       twoMore(at);
       mainRewrites(at);
       const theirs = side.on(at) === at ? 'main' : 'origin/main';
-      const tree = path.join(fs.realpathSync(at), '.git', 'leeway', 'feat-pay.merging');
+      const tree = path.join(fs.realpathSync(at), '.git', 'ledger', 'feat-pay.merging');
       const { error } = refuses(at, ['finish', 'yes', UNIT]);
       const held = side.landed(at, BRANCH).map(({ subject }) => subject);
       git(tree, ['checkout', '-q', '--ours', 'card.txt']);

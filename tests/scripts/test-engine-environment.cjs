@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The environment setup's verbs (leeway-engine/scripts/domain/
+// The environment setup's verbs (ledger-engine/scripts/domain/
 // environment-verbs.cjs; 22.5, 12.7.4, 15.2.11): `environment show`, the
 // setup whole, each part none where it holds none, the verify setup's place
 // and parts among them (15.S3); `environment set <part>`, a part written
@@ -46,7 +46,7 @@ const VERIFY = Object.freeze({
   ran: { unit: UNIT, scenario: '1.S1', verdict: 'proven', commits: [{ repo: '.', commit: 'a'.repeat(40) }], at: HELD_AT },
 });
 
-const world = fixtureFrom('leeway-environment-', (dir) => {
+const world = fixtureFrom('ledger-environment-', (dir) => {
   createManifest(dir, UNIT, {});
   createManifest(dir, OTHER, {});
   commitAll(dir, 'two features under way');

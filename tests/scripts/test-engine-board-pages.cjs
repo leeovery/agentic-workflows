@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// `engine board`'s pages of a task in the build (leeway-engine/scripts/
+// `engine board`'s pages of a task in the build (ledger-engine/scripts/
 // domain/projections/board-build.cjs, 20.5.4–20.5.7): a task's page with
 // its account, rounds, calls and what running the product proved, the
 // calls on no tab of their own (27.S9); a scenario's page and an evidence page; the task as written, a round of its
@@ -29,7 +29,7 @@ const {
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT, SESSION_ID, buildScreensWorld, buildScreenHelpers, boardHelpers, line } = require('./build-screens-world.cjs');
 const { fixture, misfits, place } = require('./board-world.cjs');
-const { TABS } = require('../../skills/leeway-engine/scripts/domain/board-model.cjs');
+const { TABS } = require('../../skills/ledger-engine/scripts/domain/board-model.cjs');
 
 let dir = ''; // the project
 let config = ''; // the system config: the conversations' folders

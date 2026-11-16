@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A topic's decided gate answered (leeway-engine/scripts/domain/
+// A topic's decided gate answered (ledger-engine/scripts/domain/
 // decided.cjs): `engine decided yes`, the person's yes landing each line as
 // a product-wide decision of its own at the unit's level (8.S25) — a
 // principle decided in a topic is a product-wide entry (19.S26) — the
@@ -38,7 +38,7 @@ const { ok, refusedPristine, sectionOf, readManifest, readState, writeState, sta
 const { UNIT, SESSION, MADE, NOTE, ledgerHelpers } = require('./ledger-world.cjs');
 const { SOLO, NO_PAYLOAD, NOTE_MAP, writeIn, markAllButTheClosingPass, useDecidedWorld, decidedHelpers } = require('./decided-world.cjs');
 const { labelAnswers } = require('./labels.cjs');
-const { specPage } = require('../../skills/leeway-engine/scripts/domain/spec-page-model.cjs');
+const { specPage } = require('../../skills/ledger-engine/scripts/domain/spec-page-model.cjs');
 
 const dir = useDecidedWorld();
 const { close, payload, candidate, staged, answer, run, reverse } = decidedHelpers(dir);
@@ -89,7 +89,7 @@ describe('the decided gate\'s yes (8.S25, 8.S28, 9.7.3)', () => {
     assert.ok(!('dock-icon' in manifest.phases.discovery.items), 'the struck candidate stays off the map');
     assert.deepStrictEqual(manifest.phases.discovery.dismissed, ['dock-badge', 'dock-icon'], '8.S60: the struck candidate is the person\'s answer, beside the names struck before');
     assert.strictEqual(manifest.phases.discussion.items['note-window'].status, 'completed');
-    assert.deepStrictEqual(res.next, { kind: 'handoff', skill: 'leeway-continue-epic', args: [UNIT] });
+    assert.deepStrictEqual(res.next, { kind: 'handoff', skill: 'ledger-continue-epic', args: [UNIT] });
     assert.deepStrictEqual([res.lines.length, res.candidates, res.struck, res.parked, res.warnings], [2, ['removing-fumi'], ['dock-icon'], undefined, undefined]);
     assert.strictEqual(lastMessage(dir()), 'decided(fumi): note-window');
     assert.deepStrictEqual(committedPaths(), [layout.manifest(UNIT), layout.brief(UNIT, 'removing-fumi')].sort(), 'the yes commits the map and the brief it installed');
@@ -186,14 +186,14 @@ describe('the decided gate\'s yes (8.S25, 8.S28, 9.7.3)', () => {
     ok(dir(), ['topic', 'postpone', UNIT, 'space-homing', '--horizon', 'next'], { env: SESSION });
     close();
     staged(NO_PAYLOAD);
-    assert.deepStrictEqual(run(answer('decided', 'y')).next, { kind: 'handoff', skill: 'leeway-specification-process', args: ['epic', UNIT] });
+    assert.deepStrictEqual(run(answer('decided', 'y')).next, { kind: 'handoff', skill: 'ledger-specification-process', args: ['epic', UNIT] });
   });
 
   it('counts the topic its own yes lands: a candidate taken leaves the epic a topic to work, so the yes goes back to its menu (F1)', () => {
     ok(dir(), ['topic', 'postpone', UNIT, 'space-homing', '--horizon', 'next'], { env: SESSION });
     close();
     staged({ lines: [], candidates: [candidate('removing-fumi', 'Nothing decides what removing Fumi takes back.')] });
-    assert.deepStrictEqual(run(answer('decided', 'y')).next, { kind: 'handoff', skill: 'leeway-continue-epic', args: [UNIT] });
+    assert.deepStrictEqual(run(answer('decided', 'y')).next, { kind: 'handoff', skill: 'ledger-continue-epic', args: [UNIT] });
   });
 
   it('closes a feature\'s topic into its spec with no gate: its decided screen and yes refused, naming the stage, which stages the payload against the close and hands off into the spec, the topic not yet decided; an epic\'s stages with its screen (11.2.1, 9.7.6)', () => {
@@ -206,7 +206,7 @@ describe('the decided gate\'s yes (8.S25, 8.S28, 9.7.3)', () => {
     const parked = { name: 'streak-freeze', reason: 'Nothing decides what a missed day costs.', horizon: 'later' };
     const before = entries().length;
     const stagedSolo = ok(dir(), ['decided', 'stage', SOLO, SOLO, '--file', payload({ lines: [], candidates: [parked] })], { env: SESSION });
-    assert.deepStrictEqual(stagedSolo, { ok: true, unit: SOLO, topic: SOLO, lines: 0, withdrawals: 0, candidates: ['streak-freeze'], next: { kind: 'handoff', skill: 'leeway-specification-process', args: ['feature', SOLO] } });
+    assert.deepStrictEqual(stagedSolo, { ok: true, unit: SOLO, topic: SOLO, lines: 0, withdrawals: 0, candidates: ['streak-freeze'], next: { kind: 'handoff', skill: 'ledger-specification-process', args: ['feature', SOLO] } });
     assert.deepStrictEqual([entries().length, readManifest(dir(), SOLO).phases.discussion.items[SOLO].status, JSON.parse(readState(dir(), '.cache/solo/discussion/solo/decided.json')).candidates],
       [before, 'in-progress', [{ ...parked, struck: false }]], 'nothing lands before the one screen\'s yes');
     close();

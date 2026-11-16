@@ -120,7 +120,7 @@ describe('pipeline simulation: the epic menu\'s doors', () => {
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.alpha.status, 'completed', 'the topic stays decided');
 
     sim.run(['ledger', 'hold', `${wu}.discussion.alpha`, '--entry', relying, '--after', replaced], null, JSON.stringify(CLAUDE));
-    handoff(sim, `/leeway-continue-epic ${wu}`);
+    handoff(sim, `/ledger-continue-epic ${wu}`);
     assert.match(epicMenuAt(sim, wu), /^DECIDED\n {2}└─ Alpha$/m);
     sim.refuses(['handoff', 'topic', wu, 'alpha'], /^the topic "alpha" is decided — it reopens through a message sent to it, or through the epic menu's discovery row$/);
   });
@@ -134,7 +134,7 @@ describe('pipeline simulation: the epic menu\'s doors', () => {
     assert.deepStrictEqual(next, { kind: 'engine', argv: ['workunit', 'cancel', wu] });
     const cancelled = sim.run(next.argv);
 
-    assert.deepStrictEqual(cancelled.next, { kind: 'handoff', skill: 'leeway', args: [] });
+    assert.deepStrictEqual(cancelled.next, { kind: 'handoff', skill: 'ledger', args: [] });
     assert.strictEqual(follow(sim, cancelled.next).line, '→ Start');
     assert.ok(!startMenu(sim).some((row) => row.next?.kind === 'engine' && row.next.argv.join(' ') === `handoff unit ${wu}`), 'the unit is no longer in progress');
   });

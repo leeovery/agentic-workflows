@@ -26,7 +26,7 @@ const path = require('path');
 
 const harness = require('./engine-harness.cjs');
 const { announced, auditGate, auditMarkers } = require('./gate-audit.cjs');
-const { DOTS, section, timedInstruction, STOP_CLAUSE, CONTINUE_CLAUSE, AUTO_GATE_CLAUSE, menuFrame, menu, cmdOption, bareOption, promptOption, rangeOption, callout, indentedBody, bulletRow, treeList } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
+const { DOTS, section, timedInstruction, STOP_CLAUSE, CONTINUE_CLAUSE, AUTO_GATE_CLAUSE, menuFrame, menu, cmdOption, bareOption, promptOption, rangeOption, callout, indentedBody, bulletRow, treeList } = require('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs');
 const { renderSurface, NB, setup, teardown, writeManifest, writePayload } = require('./render-surfaces-world.cjs');
 
 /**
@@ -280,8 +280,8 @@ describe('surfaces primitives', () => {
 });
 
 describe('worklist shape', () => {
-  const { worklist } = require('../../skills/leeway-engine/scripts/domain/projections/worklist.cjs');
-  const { displayWidth } = require('../../skills/leeway-engine/scripts/kernel/terminal.cjs');
+  const { worklist } = require('../../skills/ledger-engine/scripts/domain/projections/worklist.cjs');
+  const { displayWidth } = require('../../skills/ledger-engine/scripts/kernel/terminal.cjs');
 
   // Rendered width: escapes and code-span backticks are zero-width, `~~` is
   // consumed — byte length over-counts a correct row, so width properties
@@ -413,7 +413,7 @@ describe('catalogue dispatch', () => {
       catalogue = String(err.message).match(/surfaces: ([^)]+)\)/)[1].split(', ');
     }
     const engineSrc = fs.readFileSync(
-      path.join(__dirname, '..', '..', 'skills', 'leeway-engine', 'scripts', 'engine.cjs'), 'utf8');
+      path.join(__dirname, '..', '..', 'skills', 'ledger-engine', 'scripts', 'engine.cjs'), 'utf8');
     const banner = [...engineSrc.matchAll(/^ {2}render (\S+)/gm)].map((m) => m[1]);
     const missing = catalogue.filter((n) => !banner.includes(n));
     assert.deepStrictEqual(missing, [], `surfaces missing from the usage banner: ${missing.join(', ')}`);
@@ -426,7 +426,7 @@ describe('catalogue dispatch', () => {
 
 describe('single-source invariants', () => {
   it('the menu dot rule literal exists in exactly one module — surfaces.cjs', () => {
-    const scriptsRoot = path.join(__dirname, '..', '..', 'skills', 'leeway-engine', 'scripts');
+    const scriptsRoot = path.join(__dirname, '..', '..', 'skills', 'ledger-engine', 'scripts');
     const offenders = [];
     (function walk(dir) {
       for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -442,7 +442,7 @@ describe('single-source invariants', () => {
   });
 
   it('the option-line grammar exists in exactly one module — surfaces.cjs', () => {
-    const scriptsRoot = path.join(__dirname, '..', '..', 'skills', 'leeway-engine', 'scripts');
+    const scriptsRoot = path.join(__dirname, '..', '..', 'skills', 'ledger-engine', 'scripts');
     const offenders = [];
     (function walk(dir) {
       for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -458,8 +458,8 @@ describe('single-source invariants', () => {
   });
 
   it('the render forms, the menu\'s stop and the continuation exist in exactly one module — surfaces.cjs', () => {
-    const scriptsRoot = path.join(__dirname, '..', '..', 'skills', 'leeway-engine', 'scripts');
-    const { RENDER_FORMS } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
+    const scriptsRoot = path.join(__dirname, '..', '..', 'skills', 'ledger-engine', 'scripts');
+    const { RENDER_FORMS } = require('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs');
     const phrases = ['emit verbatim as', ...Object.values(RENDER_FORMS), "then STOP for the user's response", 'do not stop; continue as the workflow instructs'];
     /** @type {Record<string, string[]>} */
     const homes = Object.fromEntries(phrases.map((phrase) => [phrase, []]));
@@ -485,7 +485,7 @@ describe('single-source invariants', () => {
   // delegates to surfaces.callout — and guarded by review.
 
   it('every drawn walkthrough diagram fits the pinned width — an untagged fence cannot re-flow (D8)', () => {
-    const contentRoot = path.join(__dirname, '..', '..', 'skills', 'leeway-engine', 'content', 'walkthrough');
+    const contentRoot = path.join(__dirname, '..', '..', 'skills', 'ledger-engine', 'content', 'walkthrough');
     const offenders = [];
     (function walk(dir) {
       for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Boot's stops before the state (leeway-engine/scripts/domain/boot.cjs): a
+// Boot's stops before the state (ledger-engine/scripts/domain/boot.cjs): a
 // git on the PATH below the engine's floor, or none (domain/git-floor.cjs),
 // stops boot before anything runs, with nothing written, and `render
 // git-floor-stop` draws the stop; a git at the floor or above passes. Then a
@@ -24,9 +24,9 @@ const fs = require('fs');
 const path = require('path');
 const { ok, output, refuses, initRepo, withEnv } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
-const { conversationDir } = require('../../skills/leeway-engine/scripts/domain/conversation.cjs');
-const { trustEvent } = require('../../skills/leeway-engine/scripts/domain/trust-events.cjs');
-const { newId } = require('../../skills/leeway-engine/scripts/domain/ledger-ids.cjs');
+const { conversationDir } = require('../../skills/ledger-engine/scripts/domain/conversation.cjs');
+const { trustEvent } = require('../../skills/ledger-engine/scripts/domain/trust-events.cjs');
+const { newId } = require('../../skills/ledger-engine/scripts/domain/ledger-ids.cjs');
 
 const folder = useTempFolder('engine-boot-git-floor-');
 
@@ -71,7 +71,7 @@ function placed(file, content) {
  */
 function stopped(surface, env = {}) {
   const project = fs.mkdtempSync(path.join(folder(), 'project-'));
-  const config = { LEEWAY_CONFIG_DIR: fs.mkdtempSync(path.join(folder(), 'config-')), CLAUDE_CONFIG_DIR: fs.mkdtempSync(path.join(folder(), 'claude-')) };
+  const config = { LEDGER_CONFIG_DIR: fs.mkdtempSync(path.join(folder(), 'config-')), CLAUDE_CONFIG_DIR: fs.mkdtempSync(path.join(folder(), 'claude-')) };
   const held = { ...env, ...config };
   const session = path.basename(project);
   const [position, pending] = withEnv(config, () => [
@@ -82,7 +82,7 @@ function stopped(surface, env = {}) {
   const answer = ok(project, ['boot'], { env: { ...held, CLAUDE_CODE_SESSION_ID: session } });
 
   assert.deepStrictEqual(fs.readdirSync(project), [], 'the stop wrote nothing in the project');
-  assert.deepStrictEqual([filesUnder(config.LEEWAY_CONFIG_DIR), filesUnder(config.CLAUDE_CONFIG_DIR)], [[position, pending].map((file) => path.relative(config.LEEWAY_CONFIG_DIR, file)).sort(), []],
+  assert.deepStrictEqual([filesUnder(config.LEDGER_CONFIG_DIR), filesUnder(config.CLAUDE_CONFIG_DIR)], [[position, pending].map((file) => path.relative(config.LEDGER_CONFIG_DIR, file)).sort(), []],
     'the stop wrote nothing in the config directories: the position kept, the waiting event still waiting, no trust log begun');
   return { answer, screen: output(project, ['render', surface], { env: held }), project };
 }
@@ -101,7 +101,7 @@ const screen = (title, found) => [
   `⚑ Boot stopped: ${title}`,
   '',
   '=== DISPLAY: git floor account (emit verbatim as markdown (not a code block)) ===',
-  `> Leeway runs on git 2.40.0 or newer, ${found}`,
+  `> Ledger runs on git 2.40.0 or newer, ${found}`,
   '>',
   "> Install git 2.40.0 or newer, then start a new session in this project. git-scm.com/downloads gives the ways to get one on each system; on a Mac, Homebrew's git takes over from the one Apple's command-line tools bring.",
   '',
@@ -113,13 +113,13 @@ const repoScreen = (at) => [
   '⚑ Boot stopped: this folder is in no git repository',
   '',
   '=== DISPLAY: repo account (emit verbatim as markdown (not a code block)) ===',
-  `> Leeway runs inside a git repository, and \`${at}\` is in none.`,
+  `> Ledger runs inside a git repository, and \`${at}\` is in none.`,
   '>',
-  '> Make this folder a repository, or open Leeway in the repository the work lives in, then run `/leeway` again.',
+  '> Make this folder a repository, or open Ledger in the repository the work lives in, then run `/ledger` again.',
   '',
 ].join('\n');
 
-const NONE = ['Leeway found no git to run', 'and boot found no git it could run on this machine.'];
+const NONE = ['Ledger found no git to run', 'and boot found no git it could run on this machine.'];
 
 const MEETS = /render git-floor-stop: this git meets the floor, 2\.40\.0 — nothing stopped boot/;
 
@@ -128,7 +128,7 @@ describe('the git floor at boot', () => {
     const { answer, screen: shown } = stopped('git-floor-stop', answering('git version 2.39.5 (Apple Git-154)'));
 
     assert.deepStrictEqual(answer, { ok: true, state: 'git', stop: { surface: 'git-floor-stop', next: null }, warnings: [] });
-    assert.strictEqual(shown, screen('this git is older than Leeway needs', 'and the git on this machine is 2.39.5.'));
+    assert.strictEqual(shown, screen('this git is older than Ledger needs', 'and the git on this machine is 2.39.5.'));
   });
 
   it('no git on the PATH stops boot too, as does one that runs and fails, as Apple\'s stand-in does without the command-line tools — the screen saying none runs', () => {

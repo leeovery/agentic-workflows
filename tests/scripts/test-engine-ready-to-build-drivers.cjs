@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Ready to build's drivers' check (leeway-engine/scripts/domain/
+// Ready to build's drivers' check (ledger-engine/scripts/domain/
 // ready-to-build.cjs over domain/drivers-verbs.cjs), over the drivers that
 // ship, read from their declarations, so no tool is named here (7.1.10):
 // the drivers checked against the tools they need at the screen and again
@@ -31,11 +31,11 @@ const path = require('path');
 const { ok, output, refusedPristine, sectionOf, readManifest, readState, git, bareRepo, killedAt, stateGit, toolless, setEnvironment, commitAll } = require('./engine-harness.cjs');
 const { UNIT, SESSION, closed, useReadyWorld } = require('./ready-to-build-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { listDrivers } = require(path.join(SCRIPTS, 'domain/drivers.cjs'));
 const { driversStopScreen, driversStopReason } = require(path.join(SCRIPTS, 'domain/projections/drivers.cjs'));
 
-/** @typedef {import('../../skills/leeway-engine/scripts/domain/drivers.cjs').Driver} Driver */
+/** @typedef {import('../../skills/ledger-engine/scripts/domain/drivers.cjs').Driver} Driver */
 
 /** A kind's default: the driver it flags. @param {'task'|'landing'} kind */
 const flagged = (kind) => /** @type {Driver} */ (listDrivers(kind).find((driver) => driver.isDefault));
@@ -124,7 +124,7 @@ describe('the yes writes both drivers\' settings (22.4.3, F7)', () => {
   });
 
   it('killed once a setting is written, the yes run again begins the build, its commit carrying both and nothing left uncommitted', () => {
-    killedAt({ method: 'renameSync', file: '.leeway/manifest.json', when: 'after' }, dir(), ['ready-to-build', 'yes', UNIT, '--position', 'auto'], { env: env() });
+    killedAt({ method: 'renameSync', file: '.ledger/manifest.json', when: 'after' }, dir(), ['ready-to-build', 'yes', UNIT, '--position', 'auto'], { env: env() });
     assert.deepStrictEqual([drivers(), readManifest(dir(), UNIT).build], [{ task: TASK.name }, undefined]);
 
     yes();

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Finish's screen (leeway-engine/scripts/domain/finish.cjs, its screen
+// Finish's screen (ledger-engine/scripts/domain/finish.cjs, its screen
 // domain/projections/finish.cjs): `engine render finish <unit>`, standing on
 // finish's close — every checklist item skipped on the way, with its reason,
 // read from the manifest by a later conversation (6.S23, 6.S32), no measure

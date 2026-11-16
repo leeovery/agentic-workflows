@@ -43,7 +43,7 @@ const runFails = (dir, args) => harness.refuses(dir, ['manifest', ...args]);
 
 /** @param {string} dir @param {string} name @param {string} workType */
 function writeWorkUnit(dir, name, workType, extra = {}) {
-  const wuDir = path.join(dir, '.leeway', name);
+  const wuDir = path.join(dir, '.ledger', name);
   fs.mkdirSync(wuDir, { recursive: true });
   fs.writeFileSync(path.join(wuDir, 'manifest.json'), JSON.stringify({
     name,
@@ -54,7 +54,7 @@ function writeWorkUnit(dir, name, workType, extra = {}) {
     phases: {},
     ...extra,
   }, null, 2) + '\n');
-  const projPath = path.join(dir, '.leeway', 'manifest.json');
+  const projPath = path.join(dir, '.ledger', 'manifest.json');
   const proj = fs.existsSync(projPath) ? JSON.parse(fs.readFileSync(projPath, 'utf8')) : {};
   proj.work_units = proj.work_units || {};
   proj.work_units[name] = { work_type: workType };
@@ -62,7 +62,7 @@ function writeWorkUnit(dir, name, workType, extra = {}) {
 }
 
 function readWorkUnit(dir, name) {
-  return JSON.parse(fs.readFileSync(path.join(dir, '.leeway', name, 'manifest.json'), 'utf8'));
+  return JSON.parse(fs.readFileSync(path.join(dir, '.ledger', name, 'manifest.json'), 'utf8'));
 }
 
 describe('engine manifest — reads keep the CLI stdout contract', () => {
@@ -99,7 +99,7 @@ describe('engine manifest — reads keep the CLI stdout contract', () => {
     }
   });
 
-  it('list: [] without .leeway, full manifests with filters', () => {
+  it('list: [] without .ledger, full manifests with filters', () => {
     assert.strictEqual(runOk(dir, ['list']), '[]\n');
     writeWorkUnit(dir, 'auth', 'feature');
     writeWorkUnit(dir, 'payments', 'epic');
@@ -130,7 +130,7 @@ describe('engine manifest — reads keep the CLI stdout contract', () => {
     // A large multi-line read so `head -1` closes stdout mid-write.
     const big = { name: 'auth', work_type: 'feature', status: 'in-progress', phases: {} };
     for (let i = 0; i < 5000; i++) big['field' + i] = 'value ' + i;
-    const wuDir = path.join(dir, '.leeway', 'auth');
+    const wuDir = path.join(dir, '.ledger', 'auth');
     fs.mkdirSync(wuDir, { recursive: true });
     fs.writeFileSync(path.join(wuDir, 'manifest.json'), JSON.stringify(big, null, 2) + '\n');
 
@@ -229,7 +229,7 @@ describe('engine manifest — mutations answer with the engine JSON contract', (
   it('push failure releases the lock (the old CLI leaked it)', () => {
     writeWorkUnit(dir, 'auth', 'feature');
     runFails(dir, ['push', 'auth', 'status', 'x']);
-    assert.ok(!fs.existsSync(path.join(dir, '.leeway/auth/.lock')), 'no lock left behind on a failed mutation');
+    assert.ok(!fs.existsSync(path.join(dir, '.ledger/auth/.lock')), 'no lock left behind on a failed mutation');
   });
 
   it('pull: removed true with new length, removed false on any no-op', () => {
@@ -290,7 +290,7 @@ describe('engine manifest — mutations answer with the engine JSON contract', (
   });
 
   it('refuses set, push, pull and delete on the project\'s project_id, or under it, leaving the manifest as it was: the engine mints it with the state, and it never changes (16.13.5)', () => {
-    const file = path.join(dir, '.leeway', 'manifest.json');
+    const file = path.join(dir, '.ledger', 'manifest.json');
     const before = fs.readFileSync(file, 'utf8');
     for (const args of [['set', 'project.project_id', 'another'], ['set', 'project.project_id.part', 'x'], ['push', 'project.project_id', 'x'], ['pull', 'project.project_id', 'x'], ['delete', 'project.project_id']]) {
       assert.strictEqual(runFails(dir, args).error, 'project_id is the engine\'s own: it mints it as it creates the state, and it never changes', args.join(' '));
@@ -314,8 +314,8 @@ describe('engine manifest — the batched set holds the work-unit lock', () => {
 
   it('a held writer lock blocks a batched set until released — nothing lands early, everything lands together', (t) => {
     writeWorkUnit(dir, 'auth', 'feature', { phases: { discussion: { items: { auth: { status: 'in-progress' } } } } });
-    const lock = harness.holdLock(path.join(dir, '.leeway/.lock'));
-    const item = () => JSON.parse(fs.readFileSync(path.join(dir, '.leeway/auth/manifest.json'), 'utf8')).phases.discussion.items.auth;
+    const lock = harness.holdLock(path.join(dir, '.ledger/.lock'));
+    const item = () => JSON.parse(fs.readFileSync(path.join(dir, '.ledger/auth/manifest.json'), 'utf8')).phases.discussion.items.auth;
     /** @type {unknown[]} */
     const whileHeld = [];
     // The peer lets go at the set's second attempt: it found the lock held, and waited.
@@ -357,7 +357,7 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
   }
 
   it('refuses set, push, pull, delete and apply on the unit\'s landing record, or under it, the manifest byte-unchanged: the land verbs write it (landing-record.cjs)', () => {
-    const file = path.join(dir, '.leeway', 'payments', 'manifest.json');
+    const file = path.join(dir, '.ledger', 'payments', 'manifest.json');
     const before = fs.readFileSync(file, 'utf8');
     const refusal = '"landings" is the engine\'s own landing record: a land verb writes it as it lands a task, and a verb acting on a landing as it reads one made by hand';
     for (const args of [
@@ -374,7 +374,7 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
   });
 
   it('refuses set, push, pull, delete and apply on the pull requests the unit\'s cancel closed, or under them, the manifest byte-unchanged: the cancel writes them (18.3.9)', () => {
-    const file = path.join(dir, '.leeway', 'payments', 'manifest.json');
+    const file = path.join(dir, '.ledger', 'payments', 'manifest.json');
     const before = fs.readFileSync(file, 'utf8');
     const refusal = '"closed_by_cancel" is the engine\'s own: the unit\'s cancel writes it as it closes the unit\'s pull requests, and every landing after reads them as none while they stay closed';
     for (const args of [
@@ -389,7 +389,7 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
   });
 
   it('refuses set, push, pull, delete and apply on the unit\'s own branch, build.branch, or on build whole, the manifest byte-unchanged: the first phase start\'s close writes it (7.2.35)', () => {
-    const file = path.join(dir, '.leeway', 'payments', 'manifest.json');
+    const file = path.join(dir, '.ledger', 'payments', 'manifest.json');
     const before = fs.readFileSync(file, 'utf8');
     const refusal = '"build.branch" is the engine\'s own: the first phase start\'s close of the build writes it as it makes the unit\'s branch, and it never changes';
     for (const args of [
@@ -447,7 +447,7 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
   it('a cancelled item takes no status write — set, batch, and apply refuse it, nothing written', () => {
     const m = readWorkUnit(dir, 'payments');
     m.phases.specification.items.dropped = { status: 'cancelled', previous_status: 'completed', previous_order: 1, sources: { beta: { status: 'incorporated' } } };
-    fs.writeFileSync(path.join(dir, '.leeway', 'payments', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
+    fs.writeFileSync(path.join(dir, '.ledger', 'payments', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
     const refusal = /specification item "dropped" is cancelled — reactivate it instead \(engine topic reactivate\)/;
     assert.match(runFails(dir, ['set', 'payments.specification.dropped', 'status', 'in-progress']).error, refusal);
     assert.match(runFails(dir, ['set', 'payments.specification.dropped', 'status=in-progress', 'sources.gamma.status=pending']).error, refusal);
@@ -468,7 +468,7 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
     const m = readWorkUnit(dir, 'payments');
     m.phases.specification.items.dropped = { status: 'cancelled', previous_status: 'completed', previous_order: 1, sources: { beta: { status: 'incorporated' } } };
     m.phases.discussion = { items: { shelved: { status: 'cancelled', previous_status: 'completed' } } };
-    const manifestPath = path.join(dir, '.leeway', 'payments', 'manifest.json');
+    const manifestPath = path.join(dir, '.ledger', 'payments', 'manifest.json');
     fs.writeFileSync(manifestPath, JSON.stringify(m, null, 2) + '\n');
     const before = fs.readFileSync(manifestPath, 'utf8');
     const refusal = /specification item "dropped" is cancelled — reactivate it instead \(engine topic reactivate\)/;
@@ -492,7 +492,7 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
   it('a postponed item takes no status write and no delete either — the refusal names the roadmap', () => {
     const m = readWorkUnit(dir, 'payments');
     m.phases.discussion = { items: { shelved: { status: 'postponed', previous_status: 'in-progress' } } };
-    const manifestPath = path.join(dir, '.leeway', 'payments', 'manifest.json');
+    const manifestPath = path.join(dir, '.ledger', 'payments', 'manifest.json');
     fs.writeFileSync(manifestPath, JSON.stringify(m, null, 2) + '\n');
     const before = fs.readFileSync(manifestPath, 'utf8');
     const refusal = /discussion item "shelved" is postponed — pull it forward from the roadmap instead/;
@@ -661,7 +661,7 @@ describe('work-unit-level fields never shadow the phases tree', () => {
   it('reads and delete stay free so a stray tree can be inspected and repaired', () => {
     const m = readWorkUnit(dir, 'pay');
     m.specification = { foo: 'bar' };
-    fs.writeFileSync(path.join(dir, '.leeway', 'pay', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
+    fs.writeFileSync(path.join(dir, '.ledger', 'pay', 'manifest.json'), JSON.stringify(m, null, 2) + '\n');
     assert.strictEqual(runOk(dir, ['get', 'pay', 'specification.foo']).trim(), 'bar');
     runJson(dir, ['delete', 'pay', 'specification']);
     assert.strictEqual(readWorkUnit(dir, 'pay').specification, undefined);

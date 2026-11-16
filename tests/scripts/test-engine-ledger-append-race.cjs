@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // The ledger's appends made at once by two processes
-// (leeway-engine/scripts/domain/ledger-write.cjs): each lands under an id of
+// (ledger-engine/scripts/domain/ledger-write.cjs): each lands under an id of
 // its own, none a sequence, every write committed with no merge, and a read
 // made while they land meeting whole lines only (5.S2).
 //

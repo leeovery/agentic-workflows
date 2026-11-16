@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The drivers' verbs and screens (leeway-engine/scripts/domain/
+// The drivers' verbs and screens (ledger-engine/scripts/domain/
 // drivers-verbs.cjs, the screens domain/projections/drivers.cjs; 22.4),
 // over the drivers that ship, read from their declarations, so no tool is
 // named here (7.1.10): `drivers check`, each kind's driver as things stand
@@ -37,14 +37,14 @@ const path = require('path');
 const { ok, output, refusedPristine, screenOf, sectionOf, commitAll, fixtureFrom, cleanupFixture, killedAt, treeSnapshot, head, lastMessage, touched, statePath, stateGit, toolless } = require('./engine-harness.cjs');
 const { createManifest, readState } = require('./discovery-test-utils.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { SHOWN } = require(path.join(SCRIPTS, 'domain/gate.cjs'));
 const { listDrivers } = require(path.join(SCRIPTS, 'domain/drivers.cjs'));
 const { driversStopScreen, driversScreen } = require(path.join(SCRIPTS, 'domain/projections/drivers.cjs'));
 const { capitalise } = require(path.join(SCRIPTS, 'domain/conventions.cjs'));
 
-/** @typedef {import('../../skills/leeway-engine/scripts/domain/drivers.cjs').Driver} Driver */
-/** @typedef {import('../../skills/leeway-engine/scripts/domain/drivers.cjs').ToolState} ToolState */
+/** @typedef {import('../../skills/ledger-engine/scripts/domain/drivers.cjs').Driver} Driver */
+/** @typedef {import('../../skills/ledger-engine/scripts/domain/drivers.cjs').ToolState} ToolState */
 
 const SESSION = 'drivers-session';
 const BUILDING = 'lazy-resume-on-attach';
@@ -65,12 +65,12 @@ const atFloor = (driver) => driver.needs.map(({ tool, label, floor, update }) =>
 /** Each tool a driver needs, not installed. @param {Driver} driver @returns {ToolState[]} */
 const missing = (driver) => driver.needs.map(({ tool, label, floor, update }) => ({ tool, label, floor, update, found: null, state: 'missing' }));
 
-const idle = fixtureFrom('leeway-drivers-', (dir) => {
+const idle = fixtureFrom('ledger-drivers-', (dir) => {
   createManifest(dir, COMPLETE, { status: 'completed', build: { position: 'auto' } });
   commitAll(dir, 'a unit complete');
 });
 
-const building = fixtureFrom('leeway-drivers-building-', (dir) => {
+const building = fixtureFrom('ledger-drivers-building-', (dir) => {
   createManifest(dir, BUILDING, { build: { position: 'auto' } });
   createManifest(dir, FIXING, { work_type: 'quick-fix', fixes: {} });
   createManifest(dir, COMPLETE, { status: 'completed', build: { position: 'auto' } });
@@ -84,7 +84,7 @@ const env = (more = {}) => ({ CLAUDE_CODE_SESSION_ID: SESSION, ...more });
 const drivers = (dir) => JSON.parse(readState(dir, 'manifest.json')).drivers;
 
 /** A world copied into a folder named `lantern`. @param {(dir: string) => string} world */
-const lantern = (world) => world(path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'leeway-drivers-')), 'lantern'));
+const lantern = (world) => world(path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'ledger-drivers-')), 'lantern'));
 
 describe('the drivers\' verbs (22.4)', () => {
   /** @type {string} */
@@ -126,7 +126,7 @@ describe('the drivers\' verbs (22.4)', () => {
   });
 
   it('set killed once its setting is written: run again, it commits what the kill left', () => {
-    killedAt({ method: 'renameSync', file: '.leeway/manifest.json', when: 'after' }, dir, ['drivers', 'set', 'task', TASK.name], { env: env() });
+    killedAt({ method: 'renameSync', file: '.ledger/manifest.json', when: 'after' }, dir, ['drivers', 'set', 'task', TASK.name], { env: env() });
     assert.notStrictEqual(stateGit(dir, ['status', '--porcelain']), '');
 
     const answer = ok(dir, ['drivers', 'set', 'task', TASK.name], { env: env() });
@@ -179,7 +179,7 @@ describe('the drivers menu (22.4.4, 22.5.8)', () => {
 
   it('shows each kind\'s drivers that ship, the one in use marked, each landing through a host the project has no remote on saying so, a numbered row for each other that serves it — or, where none does, the drivers in use — and back to manage', () => {
     const out = output(dir, ['render', 'drivers'], { env: env() });
-    const shown = JSON.parse(fs.readFileSync(path.join(/** @type {string} */ (process.env.LEEWAY_CONFIG_DIR), 'conversations', SESSION, SHOWN), 'utf8'));
+    const shown = JSON.parse(fs.readFileSync(path.join(/** @type {string} */ (process.env.LEDGER_CONFIG_DIR), 'conversations', SESSION, SHOWN), 'utf8'));
     const others = (/** @type {'task'|'landing'} */ kind, /** @type {Driver} */ using) => listDrivers(kind).filter((driver) => driver !== using && !HOSTED.includes(driver)).map((driver) => ({ kind, driver }));
     const choices = [...others('task', TASK), ...others('landing', LANDING)];
     const marked = (/** @type {Driver} */ driver) => {

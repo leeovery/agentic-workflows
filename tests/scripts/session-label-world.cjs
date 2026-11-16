@@ -14,7 +14,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const assert = require('node:assert');
-const { processStartTime } = require('../../skills/leeway-engine/scripts/kernel/process.cjs');
+const { processStartTime } = require('../../skills/ledger-engine/scripts/kernel/process.cjs');
 const { installTmuxStub, tmuxStubEnv, tmuxStubName, setTmuxStubName, setTmuxStubId } = require('./tmux-stub.cjs');
 const harness = require('./engine-harness.cjs');
 
@@ -57,7 +57,7 @@ function stateGit(args) {
 /** A workflows project with the named work units — this checkout, or another. @param {string} prefix @param {string[]} units */
 function projectWith(prefix, units) {
   const root = harness.setupGitFixture(prefix);
-  for (const unit of units) fs.mkdirSync(path.join(root, '.leeway', unit), { recursive: true });
+  for (const unit of units) fs.mkdirSync(path.join(root, '.ledger', unit), { recursive: true });
   return root;
 }
 
@@ -65,12 +65,12 @@ function setup() {
   world.dir = projectWith('engine-label-', ['pay']);
   world.stubDir = installTmuxStub();
   world.configDir = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-label-config-'));
-  pinnedConfigDir = process.env.LEEWAY_CONFIG_DIR;
-  process.env.LEEWAY_CONFIG_DIR = world.configDir;
+  pinnedConfigDir = process.env.LEDGER_CONFIG_DIR;
+  process.env.LEDGER_CONFIG_DIR = world.configDir;
 }
 
 function teardown() {
-  process.env.LEEWAY_CONFIG_DIR = pinnedConfigDir;
+  process.env.LEDGER_CONFIG_DIR = pinnedConfigDir;
   for (const d of [world.dir, world.stubDir, world.configDir]) harness.cleanupFixture(d);
 }
 
@@ -131,7 +131,7 @@ function setTmuxId(id) {
 }
 
 function stashStore() {
-  return path.join(world.dir, '.leeway', '.cache', '.session-labels');
+  return path.join(world.dir, '.ledger', '.cache', '.session-labels');
 }
 
 /** The single stash file, or null when the store is empty/absent. */
@@ -192,7 +192,7 @@ function optIn() {
 }
 
 function projectManifest() {
-  return JSON.parse(fs.readFileSync(path.join(world.dir, '.leeway', 'manifest.json'), 'utf8'));
+  return JSON.parse(fs.readFileSync(path.join(world.dir, '.ledger', 'manifest.json'), 'utf8'));
 }
 
 function settingsPath() {

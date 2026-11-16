@@ -40,7 +40,7 @@ describe('engine commit --paths: the code commit', () => {
   afterEach(() => { cleanupFixture(dir); });
 
 
-  it('commits the named paths and answers the dirt still outside .leeway', () => {
+  it('commits the named paths and answers the dirt still outside .ledger', () => {
     createFile(dir, 'src/app.js', 'const x = 2;\n');
     createFile(dir, 'src/new.js', 'const n = 1;\n');
     createFile(dir, 'src/other.js', 'const y = 2;\n');
@@ -54,7 +54,7 @@ describe('engine commit --paths: the code commit', () => {
     const files = codeHeadFiles(dir);
     assert.deepStrictEqual(files.sort(), ['src/app.js', 'src/new.js'], 'exactly the named paths — untracked included');
     assert.deepStrictEqual(res.left_dirty, ['src/other.js'],
-      'the forgotten path is named; a doc session\'s .leeway dirt is its own');
+      'the forgotten path is named; a doc session\'s .ledger dirt is its own');
   });
 
   it('records a task\'s deletion', () => {
@@ -124,7 +124,7 @@ describe('engine commit --paths: the code commit', () => {
   });
 
   it('refuses a literal path git cannot stage or does not hold — a sibling its pattern would match stands in for none', () => {
-    createFile(dir, '.gitignore', '.leeway/\n*.log\n');
+    createFile(dir, '.gitignore', '.ledger/\n*.log\n');
     createFile(dir, 'app/[id]/debug.log', 'noise\n');
     createFile(dir, 'app/x/page.tsx', '// a sibling\n');
     commitAll(dir, 'routes');
@@ -143,8 +143,8 @@ describe('engine commit --paths: the code commit', () => {
   it('refuses escapes, workflow artifacts, and a missing target', () => {
     assert.match(refuses(dir, ['commit', '--paths', '../elsewhere.js', '-m', 'x', ...FOR_TASK], building).error, /resolves outside the project/);
     assert.match(refuses(dir, ['commit', '--paths', '/etc/hosts', '-m', 'x', ...FOR_TASK], building).error, /resolves outside the project/);
-    assert.strictEqual(refuses(dir, ['commit', '--paths', '.leeway/payments/topics/topic-a/log.md', '-m', 'x', ...FOR_TASK], building).error,
-      'commit --paths: ".leeway/payments/topics/topic-a/log.md" is in the workflows\' state — it commits by its own scope (--topic/--discovery)');
+    assert.strictEqual(refuses(dir, ['commit', '--paths', '.ledger/payments/topics/topic-a/log.md', '-m', 'x', ...FOR_TASK], building).error,
+      'commit --paths: ".ledger/payments/topics/topic-a/log.md" is in the workflows\' state — it commits by its own scope (--topic/--discovery)');
     assert.match(refuses(dir, ['commit', '--paths', 'src/never-written.js', '-m', 'x', ...FOR_TASK], building).error, /neither on disk nor tracked/);
     assert.match(refuses(dir, ['commit', '--paths', '-m', 'x', ...FOR_TASK], building).error, /Usage/);
     assert.match(refuses(dir, ['commit', '--paths', 'src/app.js', '-m', 'x'], building).error, /Usage/);
@@ -204,7 +204,7 @@ describe('engine commit --paths: the code commit', () => {
 
 describe('engine commit --paths: code in repos of its own', () => {
   const setup = fixtureFrom('engine-commit-', (at) => {
-    implementing(at, { '.gitignore': '.leeway/\napi/\n' });
+    implementing(at, { '.gitignore': '.ledger/\napi/\n' });
     // An ignored clone: a repo of its own that the root's .gitignore lists.
     const clone = harness.initRepo(path.join(at, 'api'));
     createFile(clone, 'src/handler.js', 'const h = 1;\n');
@@ -377,7 +377,7 @@ describe('engine commit --paths: code in repos of its own', () => {
   });
 
   it('commits beside a folder whose .git is a dangling link — no repo, never a failure', () => {
-    createFile(dir, '.gitignore', '.leeway/\napi/\nbroken/\n');
+    createFile(dir, '.gitignore', '.ledger/\napi/\nbroken/\n');
     commitAll(dir, 'the broken folder is ignored');
     fs.mkdirSync(path.join(dir, 'broken'));
     fs.symlinkSync(path.join(dir, 'nowhere'), path.join(dir, 'broken/.git'));
@@ -416,7 +416,7 @@ describe('engine commit --paths: code in repos of its own', () => {
   });
 
   it('commits beside a clone its parent ignores in a folder deeper in, and in that clone alone when the call reaches into it', () => {
-    createFile(dir, '.gitignore', '.leeway/\napi/\n/vendor/sdk/\n');
+    createFile(dir, '.gitignore', '.ledger/\napi/\n/vendor/sdk/\n');
     commitAll(dir, 'the vendored clone is ignored');
     const sdk = nestedClone('vendor/sdk');
     createFile(sdk, 'src/handler.js', 'const h = 2;\n');
@@ -476,7 +476,7 @@ describe('engine commit --paths: code in repos of its own', () => {
   });
 
   it('checks every path in the repo that owns it before any repo commits', () => {
-    createFile(dir, '.gitignore', '.leeway/\napi/\n*.log\n');
+    createFile(dir, '.gitignore', '.ledger/\napi/\n*.log\n');
     commitAll(dir, 'logs are ignored');
     createFile(api, 'src/handler.js', 'const h = 2;\n');
     createFile(dir, 'debug.log', 'noise\n');

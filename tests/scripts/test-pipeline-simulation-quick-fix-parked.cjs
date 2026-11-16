@@ -59,7 +59,7 @@ describe('pipeline simulation: quick-fix with a fix parked', () => {
     fixBuilt(sim, wu, flag, ['src/alias.js'], { record: 'The flag.' });
     const account = sim.render(['task-account', wu, flag], { expect: 'content' });
 
-    sim.write(`.leeway/${wu}/build/log.md`, '# The fixes\n');
+    sim.write(`.ledger/${wu}/build/log.md`, '# The fixes\n');
     finishClosed(sim, wu);
     sim.render(['finish', wu], { expect: 'content' });
     const unclosed = sim.handoffs.slice(handedOff);

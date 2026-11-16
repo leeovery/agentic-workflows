@@ -48,7 +48,7 @@ describe('pipeline simulation: a stuck round settled', () => {
     areaRead(sim, WU, UNCHECKED);
     testsRead(sim, WU);
     writePhaseTasks(sim, WU, phase, 'The review\'s fixes', [{ title: 'Check the hash on read', type: 'fix', scenarios: ['an entry read back'], reference: '§1' }]);
-    sim.run(['review', 'round', WU, '--file', sim.write(`.leeway/.cache/${WU}/review/round.json`, {
+    sim.run(['review', 'round', WU, '--file', sim.write(`.ledger/.cache/${WU}/review/round.json`, {
       can_now: ['Keep a ledger.'],
       findings: [{ area: '1-the-work', scope: 'in', call: 'bug', text: 'The ledger never checks its hash on read.', from: ['1-the-work-a#1'], fix: `${phase}.1` }],
     })]);

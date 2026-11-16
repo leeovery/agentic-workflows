@@ -29,7 +29,7 @@ const path = require('path');
 
 const { ok, refuses, git, createFile, readManifest } = require('./engine-harness.cjs');
 const { UNIT, DESCRIPTION, BRANCH, SET, guardedGit, checklistClosed, quickFixConformance } = require('./quick-fix-world.cjs');
-const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
+const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
 
 const [FLAG, HELP] = SET;
 const OTHER = 'const help = \'--color\';\n';

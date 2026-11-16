@@ -38,7 +38,7 @@ const { createManifest, templateFolder } = require('./discovery-test-utils.cjs')
 const { SESSION, raiseHelpers } = require('./raise-world.cjs');
 const { MADE } = require('./ledger-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { taskBranch } = require(path.join(SCRIPTS, 'domain/landing-names.cjs'));
 const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 const { listDrivers } = require(path.join(SCRIPTS, 'domain/drivers.cjs'));
@@ -135,7 +135,7 @@ function branchWith(dir, n, title, files) {
     fs.mkdirSync(path.join(dir, 'src'), { recursive: true });
     fs.writeFileSync(path.join(dir, name), text);
     git(dir, ['add', '-A']);
-    git(dir, ['commit', '-q', '-m', `feat(${UNIT}): ${name}\n\nLeeway-Task: ${UNIT}-1-${n}`]);
+    git(dir, ['commit', '-q', '-m', `feat(${UNIT}): ${name}\n\nLedger-Task: ${UNIT}-1-${n}`]);
   }
   const tip = git(dir, ['rev-parse', 'HEAD']).trim();
   git(dir, ['checkout', '-q', 'main']);
@@ -175,7 +175,7 @@ const buildScreensWorld = fixtureFrom('engine-build-screens-', (dir) => {
   ok(dir, ['task', 'link', UNIT, '1.3', '--after', '1.2']);
   const config = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-build-screens-world-'));
   try {
-    ok(dir, ['task', 'start', UNIT, '1.1'], { env: { LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'world' } });
+    ok(dir, ['task', 'start', UNIT, '1.1'], { env: { LEDGER_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'world' } });
   } finally {
     fs.rmSync(config, { recursive: true, force: true });
   }
@@ -221,7 +221,7 @@ const CALL = Object.freeze({
  */
 function buildScreenHelpers(dir, config) {
   /** The engine as the conversation runs it. */
-  const env = () => ({ LEEWAY_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: SESSION_ID });
+  const env = () => ({ LEDGER_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: SESSION_ID });
 
   /** A screen that must draw: its sections. @param {string[]} args */
   const screen = (args) => output(dir(), ['render', ...args], { env: env() });
@@ -275,7 +275,7 @@ function buildScreenHelpers(dir, config) {
    * that conversation's recovery note's in-flight lines.
    */
   function takenOver() {
-    createFile(dir(), '.claude/skills/leeway-implementation-process/SKILL.md', '# The build\n');
+    createFile(dir(), '.claude/skills/ledger-implementation-process/SKILL.md', '# The build\n');
     const conversation = { ...env(), CLAUDE_CODE_SESSION_ID: 'sess-2', CLAUDE_PID: String(process.pid) };
     const lines = okSections(dir(), ['enter', 'implementation', UNIT], { env: conversation }).sections.split('\n');
     const note = output(dir(), ['conversation', 'position'], { env: conversation }).split('\n');
@@ -309,8 +309,8 @@ function boardHelpers(dir, config) {
    * @param {string} role @param {string} task @param {string} at @param {string} [id]
    */
   function issued(role, task, at, id = `${role}${task.replace('.', '')}${Date.parse(at)}`) {
-    withEnv({ LEEWAY_CONFIG_DIR: config() }, () => {
-      storeBrief(SESSION_ID, id, 'a brief', { role, agent: 'leeway-builder', unit: UNIT, task, topic: null });
+    withEnv({ LEDGER_CONFIG_DIR: config() }, () => {
+      storeBrief(SESSION_ID, id, 'a brief', { role, agent: 'ledger-builder', unit: UNIT, task, topic: null });
       const when = new Date(at);
       fs.utimesSync(issuedPath(SESSION_ID, id), when, when);
     });

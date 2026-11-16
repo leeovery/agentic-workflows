@@ -9,7 +9,7 @@
 // once per process and copied (`midMigration`) — its `.workflows/`
 // committed on its code branch as today's layout leaves it, beside the
 // settings boot syncs while the migration runs, and its state worktree at
-// `.leeway/`, locked, on a `leeway-state` with no commit yet, holding what
+// `.ledger/`, locked, on a `ledger-state` with no commit yet, holding what
 // the move writes: the state's `.gitignore`, the project's manifest and
 // id, the unit's manifest with its three topics, and the migrations
 // record, which holds the fixture migrations the boot suites never reach
@@ -22,7 +22,7 @@
 // interview stages. The project waiting on the migration's commit
 // (`finishedMigration`), made once and copied: the project the migration
 // is under way in with every fixture migration recorded, the tracker's
-// store on its code branch where a project from before Leeway kept it and
+// store on its code branch where a project from before Ledger kept it and
 // a file its tool keeps local beside it, the state's ignore line in its
 // `.gitignore`, unstaged, as the move writes it, a decision held in the
 // ledger, and the reshape's finish (081) run over it — its drops
@@ -47,10 +47,10 @@ const { jsonText } = require(path.join(SCRIPTS, 'kernel/manifest-io.cjs'));
 const { newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 
 const FIXTURES = path.join(__dirname, '../fixtures/directives');
-const RUNNER = path.join(SCRIPTS, '../../leeway-migrate/scripts/migrate.cjs');
-const GUARD = require(path.join(SCRIPTS, '../../leeway-migrate/scripts/migrations/074-reshape-guard.cjs'));
+const RUNNER = path.join(SCRIPTS, '../../ledger-migrate/scripts/migrate.cjs');
+const GUARD = require(path.join(SCRIPTS, '../../ledger-migrate/scripts/migrations/074-reshape-guard.cjs'));
 const FINISH = require(path.join(path.dirname(RUNNER), 'migrations/081-reshape-finish.cjs'));
-const { preLeewayStores } = require(path.join(path.dirname(RUNNER), 'migrations/reshape/shared.cjs'));
+const { preLedgerStores } = require(path.join(path.dirname(RUNNER), 'migrations/reshape/shared.cjs'));
 
 const UNIT = 'fumi';
 const SESSION = Object.freeze({ CLAUDE_CODE_SESSION_ID: 'session-1' });
@@ -102,11 +102,11 @@ let engine = null;
 function directiveEngine() {
   if (engine !== null) return engine;
   const skills = templateFolder('directive-engine-');
-  fs.cpSync(path.dirname(SCRIPTS), path.join(skills, 'leeway-engine'), { recursive: true });
-  const migrations = path.join(skills, 'leeway-migrate/scripts/migrations');
+  fs.cpSync(path.dirname(SCRIPTS), path.join(skills, 'ledger-engine'), { recursive: true });
+  const migrations = path.join(skills, 'ledger-migrate/scripts/migrations');
   fs.cpSync(FIXTURES, migrations, { recursive: true });
-  for (const script of ['migrate.cjs', 'migration-ids.cjs', 'old-layout.cjs']) fs.copyFileSync(path.join(path.dirname(RUNNER), script), path.join(skills, 'leeway-migrate/scripts', script));
-  const at = path.join(skills, 'leeway-engine/scripts/engine.cjs');
+  for (const script of ['migrate.cjs', 'migration-ids.cjs', 'old-layout.cjs']) fs.copyFileSync(path.join(path.dirname(RUNNER), script), path.join(skills, 'ledger-migrate/scripts', script));
+  const at = path.join(skills, 'ledger-engine/scripts/engine.cjs');
   engine = { ...harness.harness(at), path: at, migrations };
   return engine;
 }
@@ -116,7 +116,7 @@ function directiveEngine() {
  * committed as today's layout leaves them, and in the project's folder,
  * `project` from `dir`, the settings boot syncs while the migration runs —
  * committed, so no boot of the world changes them — and whose state
- * worktree at `.leeway/`, locked, is on a `leeway-state` with no commit
+ * worktree at `.ledger/`, locked, is on a `ledger-state` with no commit
  * yet, holding the state's `.gitignore`, the project's manifest and id, and
  * `moved`, its files by path, as the move writes them.
  * @param {string} dir @param {Record<string, string>} old @param {Record<string, string>} moved @param {string} [project]
@@ -445,13 +445,13 @@ function buildSplitProject(folder) {
 const splitProject = harness.folderFrom('split-project-', buildSplitProject);
 
 // The migrations a project the reshape's guard passed has recorded.
-const GUARDED = [...new Set(fs.readdirSync(path.join(SCRIPTS, '../../leeway-migrate/scripts/migrations'))
+const GUARDED = [...new Set(fs.readdirSync(path.join(SCRIPTS, '../../ledger-migrate/scripts/migrations'))
   .filter((name) => /^[0-9]+-/.test(name) && !name.endsWith('.check.cjs'))
   .map((name) => name.slice(0, name.indexOf('-'))))].filter((id) => Number(id) <= 74).sort();
 
 /**
  * Codeintel as the reshape's guard (074) leaves it, the chain before the
- * split run: its state worktree in place on an unborn `leeway-state`,
+ * split run: its state worktree in place on an unborn `ledger-state`,
  * holding the state's `.gitignore` and the record through the guard. The
  * folder it is copied into; its repository `{dir}/codeintel`.
  */
@@ -474,12 +474,12 @@ function projectTree(dir) {
     .map((rel) => [rel, fs.readFileSync(path.join(dir, rel), 'utf8')]));
 }
 
-// Where a project from before Leeway kept the tracker's store, as the task
+// Where a project from before Ledger kept the tracker's store, as the task
 // driver that declares it says, read as the finish reads it: its file, and
 // a file its tool keeps local, named from the first pattern.
-const [PRE_LEEWAY] = preLeewayStores().stores;
-const [OLD_STORE] = PRE_LEEWAY.files;
-const OLD_LOCAL = PRE_LEEWAY.localFiles[0].replace(/^\//, '').replace(/\*.*$/, '');
+const [PRE_LEDGER] = preLedgerStores().stores;
+const [OLD_STORE] = PRE_LEDGER.files;
+const OLD_LOCAL = PRE_LEDGER.localFiles[0].replace(/^\//, '').replace(/\*.*$/, '');
 
 // Every fixture migration, recorded: the runner has nothing left to run.
 const ALL_RECORDED = ['079', '085', ...RECORDED];
@@ -490,7 +490,7 @@ function buildFinished(dir) {
   git(dir, ['add', '--', OLD_STORE]);
   git(dir, ['commit', '-q', '-m', 'the tracker\'s store']);
   createFile(dir, OLD_LOCAL, 'local\n');
-  createFile(dir, '.gitignore', '.leeway/\n');
+  createFile(dir, '.gitignore', '.ledger/\n');
   createFile(statePath(dir), layout.migrations, ALL_RECORDED.map((id) => `${id}\n`).join(''));
   enter(dir, 'licensing', 'trial-length');
   FINISH.run({ projectDir: dir, reportUpdate: () => {}, reportSkip: () => {} });
@@ -527,7 +527,7 @@ function nestedFinished(dir) {
     [layout.migrations]: ALL_RECORDED.map((id) => `${id}\n`).join(''),
   }, 'app');
   const app = path.join(dir, 'app');
-  createFile(app, '.gitignore', '.leeway/\n');
+  createFile(app, '.gitignore', '.ledger/\n');
   FINISH.run({ projectDir: app, reportUpdate: () => {}, reportSkip: () => {} });
   return app;
 }
@@ -716,7 +716,7 @@ function settledState(dir, made = []) {
   return Object.fromEntries(kept.map(([rel, text]) => [rel, read(rel, text)]));
 }
 
-/** Whether the project's `leeway-state` has no commit yet. @param {string} dir */
+/** Whether the project's `ledger-state` has no commit yet. @param {string} dir */
 function stateUnborn(dir) {
   return git(dir, ['for-each-ref', BRANCH_REF]).trim() === '';
 }

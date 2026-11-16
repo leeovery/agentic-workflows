@@ -14,7 +14,7 @@ const path = require('path');
 const { pathToFileURL } = require('url');
 
 /** The mod's fixtures, which its tests import and which can import nothing outside the mod's folder or named other than as code. */
-const FIXTURES = path.join(__dirname, '../../skills/leeway-gates/tests/fixtures');
+const FIXTURES = path.join(__dirname, '../../skills/ledger-gates/tests/fixtures');
 
 /** A fixture module of the mod's, by its file's name. @param {string} name @returns {Promise<any>} */
 async function fixtureModule(name) {

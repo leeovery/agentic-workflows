@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A review round's report read (leeway-engine/scripts/domain/review-report.cjs):
+// A review round's report read (ledger-engine/scripts/domain/review-report.cjs):
 // an area pair's or the test reader's, its verdict and findings by the
 // reviewers' grammar (round-report.cjs) and its notes for later counted —
 // each an item under a notes heading of level two or three, or a line
@@ -22,7 +22,7 @@ require('./hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const { readReviewReport } = require('../../skills/leeway-engine/scripts/domain/review-report.cjs');
+const { readReviewReport } = require('../../skills/ledger-engine/scripts/domain/review-report.cjs');
 
 /** A report's text, `notes` before its findings and `after` past them. @param {string} notes @param {string} [after] */
 const report = (notes, after = '') => `Read whole.\n\n${notes}## Findings\n\n- nit: a stray comment.\n  Scenario: a reader meets it.\n\n${after}Verdict: pass\n`;

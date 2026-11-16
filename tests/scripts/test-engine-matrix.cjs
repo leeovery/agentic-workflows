@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The matrix and the person's settings (leeway-engine/scripts/domain/
+// The matrix and the person's settings (ledger-engine/scripts/domain/
 // trust-verbs.cjs, its screen domain/projections/matrix.cjs, the findings
 // split in domain/measures.cjs): `render matrix`, per kind the overturned
 // and the lost of the answered and the rate the ask rule runs on, what is
@@ -30,7 +30,7 @@ const { DAY, MODEL, UNDRAWN, SESSION, history } = require('./trust-world.cjs');
 const { labelled } = require('./labels.cjs');
 const { UNIT, OTHER, engine, CARRY_ON, render, run, refused, pick, screen, useMatrixWorld } = require('./matrix-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { appendEntries } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 const { newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { ruled } = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));

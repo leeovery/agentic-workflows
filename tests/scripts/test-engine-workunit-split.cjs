@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// `engine workunit split` (leeway-engine/scripts/domain/workunit-split.cjs;
+// `engine workunit split` (ledger-engine/scripts/domain/workunit-split.cjs;
 // 21.8.9, 21.8.10, 21.7.4): topics leaving a building unit for a new epic
 // while the migration runs — the epic made with its description and Claude's
 // first discovery log verbatim, registered, its map approved holding the
@@ -39,7 +39,7 @@ const harness = require('./engine-harness.cjs');
 const { ok, callAsync, refuses, git, statePath, layout, writeState, readState, treeSnapshot, refusedPristine, killedAt, cleanupFixture, keywordOnlyKnowledge, indexedFiles } = harness;
 const { SESSION, cutMigration, settledState, stateUnborn, refusedUntouched } = require('./migration-world.cjs');
 
-const FINISH = require('../../skills/leeway-migrate/scripts/migrations/081-reshape-finish.cjs');
+const FINISH = require('../../skills/ledger-migrate/scripts/migrations/081-reshape-finish.cjs');
 
 const HELD = 'held for the migration\'s commit';
 const LOG = '# Discovery Session 001\n\nWhat buyers see, apart from the shop.\n';
@@ -253,7 +253,7 @@ describe('a split killed part-way finishes on its next run', () => {
     ['the folder moved, its lines not carried', { method: 'renameSync', file: layout.topic('storefront', 'reviews'), when: 'after' }],
     ['the lines carried, the unit still holding the topics', { method: 'renameSync', file: layout.ledger, when: 'after' }],
     ['the topics gone from the unit, the epic not registered', { method: 'renameSync', file: layout.manifest('shop'), when: 'after' }],
-    ['the epic registered, the copies not yet following', { method: 'renameSync', file: `.leeway/${layout.projectManifest}`, when: 'after' }],
+    ['the epic registered, the copies not yet following', { method: 'renameSync', file: `.ledger/${layout.projectManifest}`, when: 'after' }],
   ])) {
     it(`killed with ${when}: split again, the state is a clean run's`, () => {
       killedAt(at, dir, split(), { env: SESSION });

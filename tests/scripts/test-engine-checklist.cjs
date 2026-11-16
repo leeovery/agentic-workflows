@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The checklists (leeway-engine/scripts/domain/checklist.cjs): `engine
+// The checklists (ledger-engine/scripts/domain/checklist.cjs): `engine
 // checklist show|done|skip|close` over the closing points of a unit's work
 // (6.4.6–6.4.10); a directive's checklist (6.4.11) is
 // test-migration-directives.cjs's.
@@ -50,7 +50,7 @@ const {
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { MADE, ledgerHelpers } = require('./ledger-world.cjs');
-const { REVIEWERS } = require('../../skills/leeway-engine/scripts/kernel/reviewers.cjs');
+const { REVIEWERS } = require('../../skills/ledger-engine/scripts/kernel/reviewers.cjs');
 
 const UNIT = 'payments';
 const SESSION = Object.freeze({ CLAUDE_CODE_SESSION_ID: 'session-1' });

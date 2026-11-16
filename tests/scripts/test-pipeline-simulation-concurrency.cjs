@@ -22,7 +22,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const ROOT = path.join(__dirname, '../..');
 const { git, stateGit } = require('./engine-harness.cjs');
-const { STATE_DIR_NAME } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
+const { STATE_DIR_NAME } = require(path.join(ROOT, 'skills/ledger-engine/scripts/kernel/state-root.cjs'));
 const { Sim, mappedEpic, decideTopic, discussed, specToBuild, sessionLog } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: concurrency', () => {
@@ -72,8 +72,8 @@ describe('pipeline simulation: concurrency', () => {
     const codeSession = sim.session('code-session');
     const secondCoder = sim.session('review-session', reapedPid());
 
-    const DOC_FILE = `.leeway/${bug}/topics/${bug}/log.md`;
-    const TALK_FILE = `.leeway/${wu}/topics/ranking/log.md`;
+    const DOC_FILE = `.ledger/${bug}/topics/${bug}/log.md`;
+    const TALK_FILE = `.ledger/${wu}/topics/ranking/log.md`;
     const CODE_FILE = 'src/relay/dispatch.js';
     const lines = (out) => out.split('\n').filter(Boolean);
     /** The paths the head commit on a branch carries, named from the project. */
@@ -97,8 +97,8 @@ describe('pipeline simulation: concurrency', () => {
         assert.ok(!paths.includes(f), `[${label}] swept a peer's path: ${f}`);
       }
     };
-    const docScope = [DOC_FILE, `${STATE_DIR_NAME}/.ledger.jsonl`, `.leeway/${bug}/topics/${bug}/mail`, `.leeway/${bug}/manifest.json`];
-    const talkScope = [TALK_FILE, `${STATE_DIR_NAME}/.ledger.jsonl`, `.leeway/${wu}/topics/ranking/mail`, `.leeway/${wu}/manifest.json`];
+    const docScope = [DOC_FILE, `${STATE_DIR_NAME}/.ledger.jsonl`, `.ledger/${bug}/topics/${bug}/mail`, `.ledger/${bug}/manifest.json`];
+    const talkScope = [TALK_FILE, `${STATE_DIR_NAME}/.ledger.jsonl`, `.ledger/${wu}/topics/ranking/mail`, `.ledger/${wu}/manifest.json`];
     const claudes = { by: 'claude', who_moved_whom: 'none' };
     /** A question the discussion session asks, its commit the ledger's own. @param {string} text */
     const talkAsks = (text) => talkSession.run(['ledger', 'ask', `${wu}.discussion.ranking`], JSON.stringify({ ...claudes, text })).id;
@@ -159,7 +159,7 @@ describe('pipeline simulation: concurrency', () => {
     // The slot is taken at the build's entry, not at the first commit: the
     // entry that finds it free claims it, so the window between entering the
     // phase and writing anything is not a window.
-    const codeSlot = path.join(sim.dir, '.leeway/.cache', built, 'implementation', built, 'presence');
+    const codeSlot = path.join(sim.dir, '.ledger/.cache', built, 'implementation', built, 'presence');
     assert.ok(!fs.existsSync(codeSlot), 'nobody holds the code slot before anyone enters');
     assert.strictEqual(codeSession.run(['enter', 'implementation', built]).entered, true);
     assert.strictEqual(JSON.parse(fs.readFileSync(codeSlot, 'utf8')).session_id, 'code-session',
@@ -196,17 +196,17 @@ describe('pipeline simulation: concurrency', () => {
     // A discussion session died mid-write: its log is uncommitted and its
     // heartbeat names a process that is gone. A concluding session sweeps it.
     const ghostPid = reapedPid();
-    const ghostLog = `.leeway/${wu}/topics/metrics/log.md`;
+    const ghostLog = `.ledger/${wu}/topics/metrics/log.md`;
     sim.run(['enter', 'discussion', wu, 'metrics']);
     sim.write(ghostLog, '# Discussion — Metrics\n\nHalf a paragraph.\n');
-    sim.write(`.leeway/.cache/${wu}/discussion/metrics/presence`,
+    sim.write(`.ledger/.cache/${wu}/discussion/metrics/presence`,
       JSON.stringify({ pid: ghostPid, pid_start: null, session_id: 'ghost-session' }) + '\n');
     const beforeSweep = rowOf(sim.run(['presence', 'scan', wu]), 'discussion', 'metrics');
     assert.strictEqual(beforeSweep.held, false, 'a heartbeat whose process is gone reads unheld');
 
     talkSession.run(['commit', wu, '--topic', 'discussion/metrics', '--sweep',
       '-m', `chore(${wu}/metrics): sweep session leavings`]);
-    confined('sweep', [ghostLog, `.leeway/${wu}/topics/metrics/mail`, `.leeway/${wu}/manifest.json`],
+    confined('sweep', [ghostLog, `.ledger/${wu}/topics/metrics/mail`, `.ledger/${wu}/manifest.json`],
       [DOC_FILE, TALK_FILE, CODE_FILE]);
     assert.ok(!dirty().includes(ghostLog), "the dead session's log is committed");
 
@@ -245,7 +245,7 @@ describe('pipeline simulation: concurrency', () => {
     assert.strictEqual(rowOf(sim.run(['presence', 'scan', built]), 'implementation', built), undefined,
       'the conversation\'s end released the slot');
     assert.strictEqual(
-      require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/presence.cjs')).heldCodeSessions(sim.dir).length, 0,
+      require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/presence.cjs')).heldCodeSessions(sim.dir).length, 0,
       'so the next code session walks straight in');
   });
 });

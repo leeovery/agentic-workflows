@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// `engine board` on an epic's page (leeway-engine/scripts/domain/projections/
+// `engine board` on an epic's page (ledger-engine/scripts/domain/projections/
 // board-unit.cjs, board-all.cjs; 20.8, 20.16): the epic's page, its topics'
 // experiments and what happened lately, and a topic's page from it — a
 // started one's discussion, a cancelled one's once it started; and All
@@ -79,12 +79,12 @@ describe('an epic\'s page (20.8)', () => {
     ok(dir(), ['approve-map', 'yes', UNIT], { env: SESSION });
     at([UNIT]);
     sent('space-homing', 'note-window', 'Notes open on their Space');
-    const [first] = fs.readdirSync(path.join(dir(), '.leeway', UNIT, 'topics', 'note-window', 'mail'));
+    const [first] = fs.readdirSync(path.join(dir(), '.ledger', UNIT, 'topics', 'note-window', 'mail'));
     ok(dir(), ['topic', 'answered', UNIT, 'note-window', first.replace(/\.md$/, ''), '--entry', writeIn(dir(), 'ask', NOTE, [], { ...MADE, text: 'Do notes open on their Space?' })], { env: SESSION });
     const alone = board().view.lately[0];
     sent('space-homing', 'note-window', 'A note keeps its Space');
     sent('space-homing', 'note-window', 'A note follows its window');
-    for (const file of fs.readdirSync(path.join(dir(), '.leeway', UNIT, 'topics', 'note-window', 'mail'))) {
+    for (const file of fs.readdirSync(path.join(dir(), '.ledger', UNIT, 'topics', 'note-window', 'mail'))) {
       ok(dir(), ['topic', 'answered', UNIT, 'note-window', file.replace(/\.md$/, ''), '--entry', writeIn(dir(), 'ask', NOTE, [], { ...MADE, text: `Is ${file} so?` })], { env: SESSION });
     }
     const said = (/** @type {any} */ { kind, topic, detail, count }) => ({ kind, topic, detail, count });

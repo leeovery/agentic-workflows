@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // `engine cut <unit> --migrating --file <plan.json>`, `engine task adopt`
-// and `engine task close-plan` (leeway-engine/scripts/domain/cut-migrating.cjs,
+// and `engine task close-plan` (ledger-engine/scripts/domain/cut-migrating.cjs,
 // task-verbs.cjs; 21.7.1, 21.8.4–21.8.8, 21.5.21, 11.5.8, 11.5.9, P3, E6,
 // E13): a unit whose building started cut by the migration, its plan
 // applied whole — its old plans' phases the cut, the built ones name, goal,
@@ -69,7 +69,7 @@ const { templateFolder, copyWorld } = require('./discovery-test-utils.cjs');
 const { SESSION, stateUnborn, refusedUntouched } = require('./migration-world.cjs');
 const { DRIVER, SIDE, oldTask, movedProject } = require('./migrated-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { jsonText } = require(path.join(SCRIPTS, 'kernel/manifest-io.cjs'));
 const { briefPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
 const { markPath, migratedType, oldPlanOrder } = require(path.join(SCRIPTS, 'domain/cut-migrating.cjs'));
@@ -379,7 +379,7 @@ describe('the migration\'s cut of a unit whose building started (21.7.1, 21.8.6�
     for (const [tool, input] of [['Write', { file_path: spec, content: 'x' }], ['Edit', { file_path: spec, old_string: 'a', new_string: 'b' }]]) {
       const stdin = JSON.stringify({ session_id: SESSION.CLAUDE_CODE_SESSION_ID, cwd: dir, hook_event_name: 'PreToolUse', tool_name: tool, tool_input: input });
       const { code, stderr } = harness.call(dir, ['layout', 'guard'], { env: SESSION, stdin });
-      assert.deepStrictEqual({ code, stderr }, { code: 2, stderr: '.leeway/shop/spec.md is shop\'s concluded spec, never corrected — a later change replaces its entry on the ledger\n' }, tool);
+      assert.deepStrictEqual({ code, stderr }, { code: 2, stderr: '.ledger/shop/spec.md is shop\'s concluded spec, never corrected — a later change replaces its entry on the ledger\n' }, tool);
     }
   });
 
@@ -471,8 +471,8 @@ describe('the migration\'s cut of a unit whose building started (21.7.1, 21.8.6�
 
     assert.deepStrictEqual(outside, [
       'cut: a unit is cut by the migration only while it runs — the state branch has its first commit, so the migration is done',
-      'a plan from before Leeway is taken in only while the migration runs — the state branch has its first commit, so the migration is done',
-      'a plan from before Leeway is taken in only while the migration runs — the state branch has its first commit, so the migration is done',
+      'a plan from before Ledger is taken in only while the migration runs — the state branch has its first commit, so the migration is done',
+      'a plan from before Ledger is taken in only while the migration runs — the state branch has its first commit, so the migration is done',
     ]);
     assert.strictEqual(git(statePath(dir), ['rev-parse', 'HEAD']), head);
   });
@@ -605,11 +605,11 @@ describe('the old plan\'s task order, which the migration\'s cut gives adoption 
   });
 });
 
-describe('a plan from before Leeway taken in through the task verbs (21.8.8, 21.8.4)', () => {
+describe('a plan from before Ledger taken in through the task verbs (21.8.8, 21.8.4)', () => {
   beforeEach(() => { dir = world(); });
   afterEach(() => cleanupFixture(path.dirname(dir)));
 
-  it('adopts a phase of a plan from before Leeway, again to the same with nothing written, the commit held', () => {
+  it('adopts a phase of a plan from before Ledger, again to the same with nothing written, the commit held', () => {
     const args = ['task', 'adopt', 'memo', '1', '--parent', PLANS.memo.phases[0]];
     assert.deepStrictEqual(ok(dir, args, { env: SESSION }), { ok: true, phase: 1, parent: PLANS.memo.phases[0], tasks: ['1.1', '1.2'], committed: null, note: HELD });
     const once = store();
@@ -646,7 +646,7 @@ describe('a plan from before Leeway taken in through the task verbs (21.8.8, 21.
   it('refuses, closing nothing, a plan holding a task done — the tracker winning, its unit built some of it (21.8.4)', () => {
     SIDE.taskByHand(statePath(dir), 'done', 'Write a memo');
     assert.strictEqual(trackerUntouched('memo', ['task', 'close-plan', 'memo', '--parent', PLANS.memo.root]),
-      `the plan from before Leeway under ${PLANS.memo.root} holds "Write a memo" done, so unit memo built some of it — the tracker wins: the migration cuts the unit, carrying its plan on, and closes none of it`);
+      `the plan from before Ledger under ${PLANS.memo.root} holds "Write a memo" done, so unit memo built some of it — the tracker wins: the migration cuts the unit, carrying its plan on, and closes none of it`);
   });
 
   it('types a quick-fix\'s tasks fix, as a bugfix\'s, and any other unit\'s feat (21.5.21)', () => {

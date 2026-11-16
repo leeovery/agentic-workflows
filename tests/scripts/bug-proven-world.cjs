@@ -25,7 +25,7 @@ const fs = require('fs');
 const path = require('path');
 const { ok, git, commitAll, commitCode, fixtureFrom, layout, createFile, writeState, readManifest, FROZEN_AT } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
-const { taskBranch, landedMessage } = require('../../skills/leeway-engine/scripts/domain/landing-names.cjs');
+const { taskBranch, landedMessage } = require('../../skills/ledger-engine/scripts/domain/landing-names.cjs');
 
 const UNIT = 'crash';
 
@@ -94,7 +94,7 @@ const testRuns = (dir) => (fs.existsSync(logOf(dir)) ? fs.readFileSync(logOf(dir
 const tipOf = (dir, branch) => git(dir, ['rev-parse', branch]).trim();
 
 /** Where the engine lays the project out for a run on the unfixed code. @param {string} dir */
-const scratchOf = (dir) => path.join(fs.realpathSync(dir), '.claude', 'worktrees', `leeway-unfixed-${UNIT}`);
+const scratchOf = (dir) => path.join(fs.realpathSync(dir), '.claude', 'worktrees', `ledger-unfixed-${UNIT}`);
 
 /** `verify run … --unfixed`'s call for 1.S1, the command `test`. @param {string} [test] @param {string} [scenario] */
 const unfixedArgs = (test = TEST, scenario = '1.S1') => ['verify', 'run', UNIT, scenario, '--unfixed', '--test', test];
@@ -122,7 +122,7 @@ function build(dir) {
   phaseWritten(dir, 'slow', [[REPRODUCE.title, REPRODUCE.type, '1.S1']]);
   git(dir, ['checkout', '-q', '-b', branchOf(1)]);
   createFile(dir, 'test/crash.sh', CRASH_TEST);
-  commitCode(dir, `test(${UNIT}): reproduce the crash\n\nLeeway-Task: ${UNIT}-1-1`);
+  commitCode(dir, `test(${UNIT}): reproduce the crash\n\nLedger-Task: ${UNIT}-1-1`);
   git(dir, ['checkout', '-q', '-b', branchOf(2)]);
 }
 

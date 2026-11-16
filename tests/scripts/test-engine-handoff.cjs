@@ -20,10 +20,10 @@ const assert = require('node:assert');
 const { output, refuses } = require('./engine-harness.cjs');
 const { setupFixture, cleanupFixture, createManifest, createFile, readManifest, writeState, layout } = require('./discovery-test-utils.cjs');
 const { auditMarkers } = require('./gate-audit.cjs');
-const { VALID_WORK_TYPES, WORK_TYPE_PIPELINES } = require('../../skills/leeway-engine/scripts/kernel/manifest-schema.cjs');
-const { HANDOFF_TARGETS } = require('../../skills/leeway-engine/scripts/domain/handoff.cjs');
+const { VALID_WORK_TYPES, WORK_TYPE_PIPELINES } = require('../../skills/ledger-engine/scripts/kernel/manifest-schema.cjs');
+const { HANDOFF_TARGETS } = require('../../skills/ledger-engine/scripts/domain/handoff.cjs');
 
-const ANNOUNCED = { LEEWAY_HANDOFF: '1' };
+const ANNOUNCED = { LEDGER_HANDOFF: '1' };
 
 const DATA_MARKER = '=== DATA (reason from this — never display or parse the sections below) ===';
 const DISPLAY_MARKER = '=== DISPLAY: handoff (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===';
@@ -33,14 +33,14 @@ const HANDOFF_MARKER = '=== HANDOFF (json for the gate mod — never display) ==
 // but a quick-fix's implementation, which runs in the quick-fix's own skill.
 /** @type {Record<string, string>} */
 const PHASE_SKILLS = {
-  experiment: 'leeway-experiment-process',
-  discussion: 'leeway-discussion-process',
-  investigation: 'leeway-investigation-process',
-  specification: 'leeway-specification-process',
-  implementation: 'leeway-implementation-process',
-  review: 'leeway-review-process',
+  experiment: 'ledger-experiment-process',
+  discussion: 'ledger-discussion-process',
+  investigation: 'ledger-investigation-process',
+  specification: 'ledger-specification-process',
+  implementation: 'ledger-implementation-process',
+  review: 'ledger-review-process',
 };
-const QUICK_FIX_SKILL = 'leeway-quick-fix-process';
+const QUICK_FIX_SKILL = 'ledger-quick-fix-process';
 
 /** The skill a unit of `type` is handed into `phase` through. @param {string} phase @param {string} type */
 const skillOf = (phase, type) => (type === 'quick-fix' && phase === 'implementation' ? QUICK_FIX_SKILL : PHASE_SKILLS[phase]);
@@ -48,8 +48,8 @@ const skillOf = (phase, type) => (type === 'quick-fix' && phase === 'implementat
 // The phases entered at the work unit: the spec, and the build's two places.
 const AT_UNIT = ['specification', 'implementation', 'review'];
 
-const IDEA = '.leeway/.inbox/ideas/2026-01-01--dark-mode.md';
-const BUG = '.leeway/.inbox/bugs/2026-01-02--flaky-login.md';
+const IDEA = '.ledger/.inbox/ideas/2026-01-01--dark-mode.md';
+const BUG = '.ledger/.inbox/bugs/2026-01-02--flaky-login.md';
 
 /** The answer unannounced, as the session carrying the work itself reads it. @param {string} dir @param {string[]} args */
 const inline = (dir, args) => output(dir, ['handoff', ...args]);
@@ -108,63 +108,63 @@ describe('engine handoff — the composed answer for every target', () => {
   afterEach(() => cleanupFixture(dir));
 
   it('discovery for new work names no work unit — the line reads Discovery alone', () => {
-    assert.strictEqual(inline(dir, ['leeway-discovery', 'feature', 'none']),
-      inlineAnswer('leeway-discovery', 'feature none', '→ Discovery'));
+    assert.strictEqual(inline(dir, ['ledger-discovery', 'feature', 'none']),
+      inlineAnswer('ledger-discovery', 'feature none', '→ Discovery'));
   });
 
   it('discovery into an existing epic names the epic', () => {
-    assert.strictEqual(inline(dir, ['leeway-discovery', 'epic', 'fumi']),
-      inlineAnswer('leeway-discovery', 'epic fumi', '→ Discovery · fumi'));
+    assert.strictEqual(inline(dir, ['ledger-discovery', 'epic', 'fumi']),
+      inlineAnswer('ledger-discovery', 'epic fumi', '→ Discovery · fumi'));
   });
 
   it('inbox seeds travel quoted, as discovery reads them — one path, several, or none', () => {
-    assert.strictEqual(payloadOf(carried(dir, ['leeway-discovery', 'feature', 'none', IDEA])).args,
+    assert.strictEqual(payloadOf(carried(dir, ['ledger-discovery', 'feature', 'none', IDEA])).args,
       `feature none "${IDEA}"`);
-    assert.strictEqual(payloadOf(carried(dir, ['leeway-discovery', 'none', 'none', `${IDEA},${BUG}`])).text,
-      `Invoke \`/leeway-discovery none none "${IDEA},${BUG}"\`.`);
-    assert.strictEqual(inline(dir, ['leeway-discovery', 'none', 'none', 'none']),
-      inlineAnswer('leeway-discovery', 'none none "none"', '→ Discovery'));
+    assert.strictEqual(payloadOf(carried(dir, ['ledger-discovery', 'none', 'none', `${IDEA},${BUG}`])).text,
+      `Invoke \`/ledger-discovery none none "${IDEA},${BUG}"\`.`);
+    assert.strictEqual(inline(dir, ['ledger-discovery', 'none', 'none', 'none']),
+      inlineAnswer('ledger-discovery', 'none none "none"', '→ Discovery'));
   });
 
   it('a start with no kind of work yet is told apart from the product\'s conversation (8.2.9), and a pull\'s waiting roadmap items seed new work beside inbox items (8.1.8)', () => {
-    assert.strictEqual(inline(dir, ['leeway-discovery', 'start', 'none', 'none']),
-      inlineAnswer('leeway-discovery', 'start none "none"', '→ Discovery'));
-    assert.strictEqual(payloadOf(carried(dir, ['leeway-discovery', 'start', 'none', `roadmap:loyalty,${IDEA}`])).text,
-      `Invoke \`/leeway-discovery start none "roadmap:loyalty,${IDEA}"\`.`);
+    assert.strictEqual(inline(dir, ['ledger-discovery', 'start', 'none', 'none']),
+      inlineAnswer('ledger-discovery', 'start none "none"', '→ Discovery'));
+    assert.strictEqual(payloadOf(carried(dir, ['ledger-discovery', 'start', 'none', `roadmap:loyalty,${IDEA}`])).text,
+      `Invoke \`/ledger-discovery start none "roadmap:loyalty,${IDEA}"\`.`);
   });
 
   it('a seed path holding a space survives its quotes', () => {
-    const spaced = '.leeway/.inbox/ideas/2026-01-03--night mode.md';
+    const spaced = '.ledger/.inbox/ideas/2026-01-03--night mode.md';
     createFile(dir, spaced, '# Night mode\n');
-    assert.strictEqual(payloadOf(carried(dir, ['leeway-discovery', 'feature', 'none', spaced])).args,
+    assert.strictEqual(payloadOf(carried(dir, ['ledger-discovery', 'feature', 'none', spaced])).args,
       `feature none "${spaced}"`);
   });
 
   it('the start opens on its menu, named bare — where finish hands every unit but an epic once it is done (24.1.2)', () => {
-    assert.strictEqual(inline(dir, ['leeway']), inlineAnswer('leeway', '', '→ Start'));
-    assert.deepStrictEqual(payloadOf(carried(dir, ['/leeway'])), { skill: 'leeway', args: '', text: 'Invoke `/leeway`.', line: '→ Start' });
+    assert.strictEqual(inline(dir, ['ledger']), inlineAnswer('ledger', '', '→ Start'));
+    assert.deepStrictEqual(payloadOf(carried(dir, ['/ledger'])), { skill: 'ledger', args: '', text: 'Invoke `/ledger`.', line: '→ Start' });
   });
 
   it('the roadmap opens on its home, named bare', () => {
-    assert.strictEqual(inline(dir, ['leeway-roadmap']), inlineAnswer('leeway-roadmap', '', '→ Roadmap'));
+    assert.strictEqual(inline(dir, ['ledger-roadmap']), inlineAnswer('ledger-roadmap', '', '→ Roadmap'));
   });
 
   it('the epic menu names the epic alone', () => {
-    assert.strictEqual(inline(dir, ['leeway-continue-epic', 'fumi']),
-      inlineAnswer('leeway-continue-epic', 'fumi', '→ Epic · fumi'));
+    assert.strictEqual(inline(dir, ['ledger-continue-epic', 'fumi']),
+      inlineAnswer('ledger-continue-epic', 'fumi', '→ Epic · fumi'));
   });
 
   it('14.6.2, 18.4.23: the epic menu takes an epic finish completed, by its name alone — its menu the complete variant', () => {
     createManifest(dir, 'done-epic', { work_type: 'epic', status: 'completed' });
-    assert.strictEqual(inline(dir, ['leeway-continue-epic', 'done-epic']),
-      inlineAnswer('leeway-continue-epic', 'done-epic', '→ Epic · done-epic'));
+    assert.strictEqual(inline(dir, ['ledger-continue-epic', 'done-epic']),
+      inlineAnswer('ledger-continue-epic', 'done-epic', '→ Epic · done-epic'));
   });
 
   it('discovery into an existing epic takes the work type epic or none, and a waiting roadmap idea to join it as a topic (18.8.4)', () => {
-    assert.strictEqual(inline(dir, ['leeway-discovery', 'none', 'fumi']),
-      inlineAnswer('leeway-discovery', 'none fumi', '→ Discovery · fumi'));
-    assert.strictEqual(payloadOf(carried(dir, ['leeway-discovery', 'none', 'fumi', 'none'])).args, 'none fumi "none"');
-    assert.strictEqual(payloadOf(carried(dir, ['leeway-discovery', 'none', 'fumi', 'roadmap:loyalty'])).text, 'Invoke `/leeway-discovery none fumi "roadmap:loyalty"`.');
+    assert.strictEqual(inline(dir, ['ledger-discovery', 'none', 'fumi']),
+      inlineAnswer('ledger-discovery', 'none fumi', '→ Discovery · fumi'));
+    assert.strictEqual(payloadOf(carried(dir, ['ledger-discovery', 'none', 'fumi', 'none'])).args, 'none fumi "none"');
+    assert.strictEqual(payloadOf(carried(dir, ['ledger-discovery', 'none', 'fumi', 'roadmap:loyalty'])).text, 'Invoke `/ledger-discovery none fumi "roadmap:loyalty"`.');
   });
 
   it('the skill each phase is entered through takes each work type its pipeline holds — the line names the phase and the topic, else the unit; the spec and the build\'s two places, entered at the unit, an epic\'s with no topic, and refusing a topic (4.11.2)', () => {
@@ -190,19 +190,19 @@ describe('engine handoff — the composed answer for every target', () => {
   });
 
   it('a topic the work unit does not hold yet is named all the same — the phase starts it', () => {
-    assert.strictEqual(payloadOf(carried(dir, ['leeway-discussion-process', 'epic', 'fumi', 'payments'])).line,
+    assert.strictEqual(payloadOf(carried(dir, ['ledger-discussion-process', 'epic', 'fumi', 'payments'])).line,
       '→ Discussion · payments');
   });
 
   it('the skill named as its slash command — a menu\'s stored route as it stands — answers as the bare name does', () => {
-    assert.strictEqual(inline(dir, ['/leeway-roadmap']), inline(dir, ['leeway-roadmap']));
-    assert.strictEqual(carried(dir, ['/leeway-continue-epic', 'fumi']), carried(dir, ['leeway-continue-epic', 'fumi']));
+    assert.strictEqual(inline(dir, ['/ledger-roadmap']), inline(dir, ['ledger-roadmap']));
+    assert.strictEqual(carried(dir, ['/ledger-continue-epic', 'fumi']), carried(dir, ['ledger-continue-epic', 'fumi']));
   });
 
   it('the table holds the targets a move into work lands on — and the skill each phase is entered through', () => {
     assert.deepStrictEqual(Object.keys(PHASE_SKILLS).sort(), [...new Set(Object.values(WORK_TYPE_PIPELINES).flat())].sort());
     assert.deepStrictEqual([...HANDOFF_TARGETS].sort(),
-      ['leeway', 'leeway-continue-epic', 'leeway-discovery', 'leeway-roadmap', ...Object.values(PHASE_SKILLS), QUICK_FIX_SKILL].sort());
+      ['ledger', 'ledger-continue-epic', 'ledger-discovery', 'ledger-roadmap', ...Object.values(PHASE_SKILLS), QUICK_FIX_SKILL].sort());
   });
 
   it('every target is a skill on disk — a handoff never names one that is not there', () => {
@@ -212,8 +212,8 @@ describe('engine handoff — the composed answer for every target', () => {
   });
 
   it('the display names its form — the line is shown as the session emits it', () => {
-    auditMarkers(inline(dir, ['leeway-discussion-process', 'feature', 'note-window']), 'handoff');
-    auditMarkers(carried(dir, ['leeway-discussion-process', 'feature', 'note-window']), 'handoff, announced');
+    auditMarkers(inline(dir, ['ledger-discussion-process', 'feature', 'note-window']), 'handoff');
+    auditMarkers(carried(dir, ['ledger-discussion-process', 'feature', 'note-window']), 'handoff, announced');
   });
 });
 
@@ -222,15 +222,15 @@ describe('engine handoff — announced and unannounced', () => {
   beforeEach(() => { dir = seed(); });
   afterEach(() => cleanupFixture(dir));
 
-  const ARGS = ['leeway-discussion-process', 'feature', 'note-window'];
+  const ARGS = ['ledger-discussion-process', 'feature', 'note-window'];
 
   it('announced, the mod carries the work: DATA says so, and the payload holds the skill, its arguments, the continuation and the line', () => {
     const out = carried(dir, ARGS);
     assert.match(out, /^handoff: mod$/m);
     assert.deepStrictEqual(payloadOf(out), {
-      skill: 'leeway-discussion-process',
+      skill: 'ledger-discussion-process',
       args: 'feature note-window',
-      text: 'Invoke `/leeway-discussion-process feature note-window`.',
+      text: 'Invoke `/ledger-discussion-process feature note-window`.',
       line: '→ Discussion · note-window',
     });
   });
@@ -252,18 +252,18 @@ describe('engine handoff — announced and unannounced', () => {
   it('only the value 1 announces', () => {
     const plain = inline(dir, ARGS);
     for (const value of ['0', 'true', '', 'yes']) {
-      assert.strictEqual(output(dir, ['handoff', ...ARGS], { env: { LEEWAY_HANDOFF: value } }), plain, `LEEWAY_HANDOFF=${value}`);
+      assert.strictEqual(output(dir, ['handoff', ...ARGS], { env: { LEDGER_HANDOFF: value } }), plain, `LEDGER_HANDOFF=${value}`);
     }
   });
 
   it('the gate surface announces gates, never the handoff — the two are independent', () => {
     const plain = inline(dir, ARGS);
-    assert.strictEqual(output(dir, ['handoff', ...ARGS], { env: { LEEWAY_GATE_SURFACE: '1' } }), plain);
-    assert.match(output(dir, ['handoff', ...ARGS], { env: { LEEWAY_GATE_SURFACE: '1', ...ANNOUNCED } }), /^handoff: mod$/m);
+    assert.strictEqual(output(dir, ['handoff', ...ARGS], { env: { LEDGER_GATE_SURFACE: '1' } }), plain);
+    assert.match(output(dir, ['handoff', ...ARGS], { env: { LEDGER_GATE_SURFACE: '1', ...ANNOUNCED } }), /^handoff: mod$/m);
   });
 });
 
-describe('engine handoff topic — a topic opened by its unit and name, as /leeway {unit} {topic} opens it (10.3.1, 10.S2)', () => {
+describe('engine handoff topic — a topic opened by its unit and name, as /ledger {unit} {topic} opens it (10.3.1, 10.S2)', () => {
   let dir;
   /** A map row. @param {number} order @param {Record<string, unknown>} [marks] */
   const row = (order, marks = {}) => ({ order, summary: `Topic ${order}`, source: 'discovery', ...marks });
@@ -286,9 +286,9 @@ describe('engine handoff topic — a topic opened by its unit and name, as /leew
 
   it('hands off into the conversation the topic is talked through, as the menus\' route does, the work type read from the unit — an epic\'s topic or a feature\'s own in discussion, a bugfix\'s in investigation', () => {
     createManifest(dir, 'crash', { work_type: 'bugfix' });
-    assert.strictEqual(carried(dir, ['topic', 'fumi', 'commercialization']), carried(dir, ['/leeway-discussion-process', 'epic', 'fumi', 'commercialization']));
-    assert.strictEqual(inline(dir, ['topic', 'note-window', 'note-window']), inlineAnswer('leeway-discussion-process', 'feature note-window note-window', '→ Discussion · note-window'));
-    assert.strictEqual(inline(dir, ['topic', 'crash', 'crash']), inlineAnswer('leeway-investigation-process', 'bugfix crash crash', '→ Investigation · crash'));
+    assert.strictEqual(carried(dir, ['topic', 'fumi', 'commercialization']), carried(dir, ['/ledger-discussion-process', 'epic', 'fumi', 'commercialization']));
+    assert.strictEqual(inline(dir, ['topic', 'note-window', 'note-window']), inlineAnswer('ledger-discussion-process', 'feature note-window note-window', '→ Discussion · note-window'));
+    assert.strictEqual(inline(dir, ['topic', 'crash', 'crash']), inlineAnswer('ledger-investigation-process', 'bugfix crash crash', '→ Investigation · crash'));
   });
 
   it('refuses a call of another shape, and a quick-fix, which has no topics to open, in words a person reads', () => {
@@ -301,7 +301,7 @@ describe('engine handoff topic — a topic opened by its unit and name, as /leew
     createManifest(dir, 'retired', { status: 'cancelled' });
     createManifest(dir, 'shipped', { status: 'completed' });
     createManifest(dir, 'specced');
-    createFile(dir, '.leeway/specced/spec.md', '# Spec\n');
+    createFile(dir, '.ledger/specced/spec.md', '# Spec\n');
     const cases = [
       [['nowhere', 'any'], 'there is no work unit "nowhere" — the start menu lists the work in progress'],
       [['retired', 'retired'], 'retired is cancelled — reactivating it comes first'],
@@ -319,12 +319,12 @@ describe('engine handoff topic — a topic opened by its unit and name, as /leew
     createManifest(dir, 'crash', { work_type: 'bugfix', phases: { investigation: { items: { crash: { status: 'completed' } } } } });
     refused(dir, ['topic', 'crash', 'crash'], /^the topic "crash" is concluded — its work goes on in specification, from the start menu, and a message sent to it reopens it$/);
     createManifest(dir, 'crash', { work_type: 'bugfix', phases: { investigation: { items: { crash: { status: 'in-progress' } } } } });
-    assert.strictEqual(inline(dir, ['topic', 'crash', 'crash']), inlineAnswer('leeway-investigation-process', 'bugfix crash crash', '→ Investigation · crash'));
+    assert.strictEqual(inline(dir, ['topic', 'crash', 'crash']), inlineAnswer('ledger-investigation-process', 'bugfix crash crash', '→ Investigation · crash'));
   });
 
   it('refuses a bugfix\'s topic once its spec is written, the investigation behind it', () => {
     createManifest(dir, 'crash', { work_type: 'bugfix' });
-    createFile(dir, '.leeway/crash/spec.md', '# Spec\n');
+    createFile(dir, '.ledger/crash/spec.md', '# Spec\n');
     refused(dir, ['topic', 'crash', 'crash'], /^crash has its spec — a topic exists only before it/);
   });
 });
@@ -343,7 +343,7 @@ describe('engine handoff unit — Continue, into the unit where it stands (19.1.
     createManifest(dir, 'crash', { work_type: 'bugfix' });
     createManifest(dir, 'typo', { work_type: 'quick-fix' });
     createManifest(dir, 'specced', { phases: item('discussion', 'specced', 'completed') });
-    createFile(dir, '.leeway/specced/spec.md', '# Spec\n');
+    createFile(dir, '.ledger/specced/spec.md', '# Spec\n');
     createManifest(dir, 'building', { phases: item('discussion', 'building', 'completed'), build: { position: 'auto' }, cut: { phases: [PHASE] } });
     createManifest(dir, 'reviewing', {
       work_type: 'bugfix', phases: item('investigation', 'reviewing', 'completed'), build: { position: 'auto' }, cut: { phases: [PHASE] },
@@ -352,17 +352,17 @@ describe('engine handoff unit — Continue, into the unit where it stands (19.1.
     const answers = ['note-window', 'crash', 'typo', 'specced', 'building', 'reviewing'].map((unit) => inline(dir, ['unit', unit]));
 
     assert.deepStrictEqual(answers, [
-      inlineAnswer('leeway-discussion-process', 'feature note-window', '→ Discussion · note-window'),
-      inlineAnswer('leeway-investigation-process', 'bugfix crash', '→ Investigation · crash'),
-      inlineAnswer('leeway-quick-fix-process', 'quick-fix typo', '→ Implementation · typo'),
-      inlineAnswer('leeway-specification-process', 'feature specced', '→ Specification · specced'),
-      inlineAnswer('leeway-implementation-process', 'feature building', '→ Implementation · building'),
-      inlineAnswer('leeway-review-process', 'bugfix reviewing', '→ Review · reviewing'),
+      inlineAnswer('ledger-discussion-process', 'feature note-window', '→ Discussion · note-window'),
+      inlineAnswer('ledger-investigation-process', 'bugfix crash', '→ Investigation · crash'),
+      inlineAnswer('ledger-quick-fix-process', 'quick-fix typo', '→ Implementation · typo'),
+      inlineAnswer('ledger-specification-process', 'feature specced', '→ Specification · specced'),
+      inlineAnswer('ledger-implementation-process', 'feature building', '→ Implementation · building'),
+      inlineAnswer('ledger-review-process', 'bugfix reviewing', '→ Review · reviewing'),
     ]);
   });
 
   it('an epic goes onto its menu, carried as the menu\'s own handoff is', () => {
-    assert.strictEqual(carried(dir, ['unit', 'fumi']), carried(dir, ['leeway-continue-epic', 'fumi']));
+    assert.strictEqual(carried(dir, ['unit', 'fumi']), carried(dir, ['ledger-continue-epic', 'fumi']));
   });
 
   it('24.S18, P8: a feature whose discussion put an experiment off for later goes to the laboratory while it waits unrun, and back into its discussion once it is concluded or abandoned', () => {
@@ -372,8 +372,8 @@ describe('engine handoff unit — Continue, into the unit where it stands (19.1.
     createManifest(dir, 'note-window', { phases: series('abandoned') });
 
     assert.deepStrictEqual([waiting, inline(dir, ['unit', 'note-window'])], [
-      inlineAnswer('leeway-experiment-process', 'feature note-window note-window', '→ Experiment · note-window'),
-      inlineAnswer('leeway-discussion-process', 'feature note-window', '→ Discussion · note-window'),
+      inlineAnswer('ledger-experiment-process', 'feature note-window note-window', '→ Experiment · note-window'),
+      inlineAnswer('ledger-discussion-process', 'feature note-window', '→ Discussion · note-window'),
     ]);
   });
 
@@ -401,69 +401,69 @@ describe('engine handoff — refusals', () => {
   });
 
   it('a skill no move into work lands on refuses, naming the targets — scoping among them, no pipeline holding it (19.5.5)', () => {
-    for (const skill of ['leeway-help', 'leeway-bridge', 'leeway-research-process', 'leeway-scoping-process', 'leeway-log-idea', 'leeway-nonsense']) {
-      refused(dir, [skill], new RegExp(`^"${skill}" is not a handoff target — a handoff moves into work: leeway-discovery, `));
+    for (const skill of ['ledger-help', 'ledger-bridge', 'ledger-research-process', 'ledger-scoping-process', 'ledger-log-idea', 'ledger-nonsense']) {
+      refused(dir, [skill], new RegExp(`^"${skill}" is not a handoff target — a handoff moves into work: ledger-discovery, `));
     }
   });
 
   it('the wrong number of arguments refuses with that target\'s usage', () => {
     const cases = [
-      [['leeway-discovery', 'feature'], /^Usage: engine handoff leeway-discovery <work-type\|start\|none> <none\|epic> \[<seeds\|none>\]$/],
-      [['leeway-discovery', 'feature', 'none', 'none', 'extra'], /^Usage: engine handoff leeway-discovery /],
-      [['leeway', 'fumi'], /^Usage: engine handoff leeway$/],
-      [['leeway-roadmap', 'open'], /^Usage: engine handoff leeway-roadmap$/],
-      [['leeway-continue-epic'], /^Usage: engine handoff leeway-continue-epic <epic>$/],
-      [['leeway-continue-epic', 'fumi', 'discussion', 'completed'], /^Usage: engine handoff leeway-continue-epic <epic>$/],
-      [['leeway-discussion-process', 'feature'], /^Usage: engine handoff leeway-discussion-process <epic\|feature> <work-unit> \[<topic>\]$/],
-      [['leeway-quick-fix-process', 'quick-fix', 'a', 'b'], /^Usage: engine handoff leeway-quick-fix-process <quick-fix> <work-unit>$/],
-      [['leeway-implementation-process', 'epic'], /^Usage: engine handoff leeway-implementation-process <epic\|feature\|bugfix> <work-unit>$/],
+      [['ledger-discovery', 'feature'], /^Usage: engine handoff ledger-discovery <work-type\|start\|none> <none\|epic> \[<seeds\|none>\]$/],
+      [['ledger-discovery', 'feature', 'none', 'none', 'extra'], /^Usage: engine handoff ledger-discovery /],
+      [['ledger', 'fumi'], /^Usage: engine handoff ledger$/],
+      [['ledger-roadmap', 'open'], /^Usage: engine handoff ledger-roadmap$/],
+      [['ledger-continue-epic'], /^Usage: engine handoff ledger-continue-epic <epic>$/],
+      [['ledger-continue-epic', 'fumi', 'discussion', 'completed'], /^Usage: engine handoff ledger-continue-epic <epic>$/],
+      [['ledger-discussion-process', 'feature'], /^Usage: engine handoff ledger-discussion-process <epic\|feature> <work-unit> \[<topic>\]$/],
+      [['ledger-quick-fix-process', 'quick-fix', 'a', 'b'], /^Usage: engine handoff ledger-quick-fix-process <quick-fix> <work-unit>$/],
+      [['ledger-implementation-process', 'epic'], /^Usage: engine handoff ledger-implementation-process <epic\|feature\|bugfix> <work-unit>$/],
     ];
     for (const [args, pattern] of cases) refused(dir, args, pattern);
   });
 
   it('discovery refuses a pre-seed outside the work types, cross-cutting among them (19.S1), and a work unit that is no epic the project holds', () => {
-    refused(dir, ['leeway-discovery', 'cross-cutting', 'none'], /^the work type must be one of epic\|feature\|bugfix\|quick-fix\|start\|none — got "cross-cutting"$/);
-    refused(dir, ['leeway-discovery', 'epic', 'note-window'], /^work unit "note-window" is of type feature, not epic$/);
-    refused(dir, ['leeway-discovery', 'epic', 'ghost'], /^work unit "ghost" not found$/);
+    refused(dir, ['ledger-discovery', 'cross-cutting', 'none'], /^the work type must be one of epic\|feature\|bugfix\|quick-fix\|start\|none — got "cross-cutting"$/);
+    refused(dir, ['ledger-discovery', 'epic', 'note-window'], /^work unit "note-window" is of type feature, not epic$/);
+    refused(dir, ['ledger-discovery', 'epic', 'ghost'], /^work unit "ghost" not found$/);
   });
 
   it('discovery into an existing epic refuses, before anything travels, a work type that would start new work, an inbox item, a bug or a quick-fix item, and an epic past its spec, in the pull\'s words', () => {
     for (const type of [...VALID_WORK_TYPES.filter((t) => t !== 'epic'), 'start']) {
-      refused(dir, ['leeway-discovery', type, 'fumi'], new RegExp(`^the work type into an existing epic must be one of epic\\|none — got "${type}"$`));
+      refused(dir, ['ledger-discovery', type, 'fumi'], new RegExp(`^the work type into an existing epic must be one of epic\\|none — got "${type}"$`));
     }
-    refused(dir, ['leeway-discovery', 'none', 'fumi', IDEA], /^an inbox item starts new work, never joins an existing epic — only a waiting roadmap idea joins "fumi": got "\.leeway\/\.inbox\/ideas\/2026-01-01--dark-mode\.md"$/);
-    refused(dir, ['leeway-discovery', 'none', 'fumi', 'roadmap:white-label'], /^roadmap item "white-label" is joined to work unit "fumi" already/);
-    refused(dir, ['leeway-discovery', 'none', 'fumi', 'roadmap:colour-drift'], /^roadmap item "colour-drift" is a bug — only an idea joins an epic; a bug or a quick-fix starts work of its own, through w on the roadmap$/);
-    createFile(dir, '.leeway/fumi/spec.md', '# Fumi\n');
-    refused(dir, ['leeway-discovery', 'none', 'fumi', 'roadmap:loyalty'], /^fumi has its spec, so its map is closed — the item stays on the roadmap: pull it into an epic still before its spec, or start it as work of its own$/);
+    refused(dir, ['ledger-discovery', 'none', 'fumi', IDEA], /^an inbox item starts new work, never joins an existing epic — only a waiting roadmap idea joins "fumi": got "\.ledger\/\.inbox\/ideas\/2026-01-01--dark-mode\.md"$/);
+    refused(dir, ['ledger-discovery', 'none', 'fumi', 'roadmap:white-label'], /^roadmap item "white-label" is joined to work unit "fumi" already/);
+    refused(dir, ['ledger-discovery', 'none', 'fumi', 'roadmap:colour-drift'], /^roadmap item "colour-drift" is a bug — only an idea joins an epic; a bug or a quick-fix starts work of its own, through w on the roadmap$/);
+    createFile(dir, '.ledger/fumi/spec.md', '# Fumi\n');
+    refused(dir, ['ledger-discovery', 'none', 'fumi', 'roadmap:loyalty'], /^fumi has its spec, so its map is closed — the item stays on the roadmap: pull it into an epic still before its spec, or start it as work of its own$/);
   });
 
   it('discovery refuses seeds that are not live inbox items on disk, named once each', () => {
-    refused(dir, ['leeway-discovery', 'feature', 'none', '.leeway/.inbox/ideas/2026-01-09--ghost.md'], /inbox file not found/);
-    refused(dir, ['leeway-discovery', 'feature', 'none', '.leeway/.inbox/.archived/ideas/x.md'], /not a live inbox path/);
-    refused(dir, ['leeway-discovery', 'feature', 'none', 'README.md'], /not a live inbox path/);
-    refused(dir, ['leeway-discovery', 'feature', 'none', `${IDEA},${IDEA}`], /duplicate inbox path/);
-    refused(dir, ['leeway-discovery', 'feature', 'none', `${IDEA},`], /not a live inbox path/);
+    refused(dir, ['ledger-discovery', 'feature', 'none', '.ledger/.inbox/ideas/2026-01-09--ghost.md'], /inbox file not found/);
+    refused(dir, ['ledger-discovery', 'feature', 'none', '.ledger/.inbox/.archived/ideas/x.md'], /not a live inbox path/);
+    refused(dir, ['ledger-discovery', 'feature', 'none', 'README.md'], /not a live inbox path/);
+    refused(dir, ['ledger-discovery', 'feature', 'none', `${IDEA},${IDEA}`], /duplicate inbox path/);
+    refused(dir, ['ledger-discovery', 'feature', 'none', `${IDEA},`], /not a live inbox path/);
   });
 
   it('discovery refuses a roadmap seed that is no waiting item on the roadmap, or is named twice', () => {
-    refused(dir, ['leeway-discovery', 'start', 'none', 'roadmap:ghost'], /^the roadmap has no item "ghost" to seed the work$/);
-    refused(dir, ['leeway-discovery', 'start', 'none', 'roadmap:white-label'], /^roadmap item "white-label" is joined to work unit "fumi" already — only a waiting item seeds new work$/);
-    refused(dir, ['leeway-discovery', 'start', 'none', 'roadmap:loyalty,roadmap:loyalty'], /^roadmap item "loyalty" is named twice$/);
-    refused(dir, ['leeway-discovery', 'start', 'none', 'roadmap:'], /^the roadmap has no item "" to seed the work$/);
+    refused(dir, ['ledger-discovery', 'start', 'none', 'roadmap:ghost'], /^the roadmap has no item "ghost" to seed the work$/);
+    refused(dir, ['ledger-discovery', 'start', 'none', 'roadmap:white-label'], /^roadmap item "white-label" is joined to work unit "fumi" already — only a waiting item seeds new work$/);
+    refused(dir, ['ledger-discovery', 'start', 'none', 'roadmap:loyalty,roadmap:loyalty'], /^roadmap item "loyalty" is named twice$/);
+    refused(dir, ['ledger-discovery', 'start', 'none', 'roadmap:'], /^the roadmap has no item "" to seed the work$/);
   });
 
   it('a seed path holding a double quote refuses — it would end the quotes discovery reads it inside', () => {
-    const quoted = '.leeway/.inbox/ideas/2026-01-04--a "b".md';
+    const quoted = '.ledger/.inbox/ideas/2026-01-04--a "b".md';
     createFile(dir, quoted, '# Quoted\n');
-    refused(dir, ['leeway-discovery', 'feature', 'none', quoted], /^seeds travel quoted — a seed cannot hold a double quote/);
+    refused(dir, ['ledger-discovery', 'feature', 'none', quoted], /^seeds travel quoted — a seed cannot hold a double quote/);
   });
 
   it('the epic menu refuses a unit that is no epic, a completed feature among them, and one the project lacks', () => {
     createManifest(dir, 'done-feature', { work_type: 'feature', status: 'completed' });
-    refused(dir, ['leeway-continue-epic', 'note-window'], /^work unit "note-window" is of type feature, not epic$/);
-    refused(dir, ['leeway-continue-epic', 'done-feature'], /^work unit "done-feature" is of type feature, not epic$/);
-    refused(dir, ['leeway-continue-epic', 'none'], /^work unit "none" not found$/);
+    refused(dir, ['ledger-continue-epic', 'note-window'], /^work unit "note-window" is of type feature, not epic$/);
+    refused(dir, ['ledger-continue-epic', 'done-feature'], /^work unit "done-feature" is of type feature, not epic$/);
+    refused(dir, ['ledger-continue-epic', 'none'], /^work unit "none" not found$/);
   });
 
   it('every epic phase entered at a topic refuses the epic alone — the epic menu names the topic before it hands off', () => {
@@ -481,45 +481,45 @@ describe('engine handoff — refusals', () => {
         refused(dir, [skill, type, `${type}-unit`], new RegExp(`^the work type must be .* — got "${type}"$`));
       }
     }
-    refused(dir, ['leeway-discussion-process', 'saga', 'note-window'], /^the work type must be one of epic\|feature — got "saga"$/);
+    refused(dir, ['ledger-discussion-process', 'saga', 'note-window'], /^the work type must be one of epic\|feature — got "saga"$/);
   });
 
   it('a phase\'s skill refuses a work unit the project does not hold, or holds as another type', () => {
-    refused(dir, ['leeway-discussion-process', 'feature', 'ghost'], /^work unit "ghost" not found$/);
-    refused(dir, ['leeway-discussion-process', 'epic', 'note-window', 'auth'], /^work unit "note-window" is of type feature, not epic$/);
-    refused(dir, ['leeway-discussion-process', 'feature', 'none'], /^work unit "none" not found$/);
+    refused(dir, ['ledger-discussion-process', 'feature', 'ghost'], /^work unit "ghost" not found$/);
+    refused(dir, ['ledger-discussion-process', 'epic', 'note-window', 'auth'], /^work unit "note-window" is of type feature, not epic$/);
+    refused(dir, ['ledger-discussion-process', 'feature', 'none'], /^work unit "none" not found$/);
   });
 
   it('a work unit whose manifest does not parse refuses as corrupt, never as a unit not found', () => {
-    createFile(dir, '.leeway/broken/manifest.json', '{not json');
-    refused(dir, ['leeway-discussion-process', 'feature', 'broken'], /^invalid JSON in .*\/\.leeway\/broken\/manifest\.json: /);
-    refused(dir, ['leeway-continue-epic', 'broken'], /^invalid JSON in /);
+    createFile(dir, '.ledger/broken/manifest.json', '{not json');
+    refused(dir, ['ledger-discussion-process', 'feature', 'broken'], /^invalid JSON in .*\/\.ledger\/broken\/manifest\.json: /);
+    refused(dir, ['ledger-continue-epic', 'broken'], /^invalid JSON in /);
   });
 
   it('a work unit no longer in progress refuses — a handoff moves into work in progress', () => {
     createManifest(dir, 'shipped', { work_type: 'feature', status: 'completed' });
     createManifest(dir, 'dropped', { work_type: 'epic', status: 'cancelled' });
-    refused(dir, ['leeway-review-process', 'feature', 'shipped'], /^work unit "shipped" is completed — a handoff moves into work in progress$/);
-    refused(dir, ['leeway-continue-epic', 'dropped'], /^work unit "dropped" is cancelled — a handoff moves into work in progress$/);
+    refused(dir, ['ledger-review-process', 'feature', 'shipped'], /^work unit "shipped" is completed — a handoff moves into work in progress$/);
+    refused(dir, ['ledger-continue-epic', 'dropped'], /^work unit "dropped" is cancelled — a handoff moves into work in progress$/);
   });
 
   it('a name that would break addressing refuses before anything is read', () => {
-    refused(dir, ['leeway-discussion-process', 'feature', '../note-window'], /^"\.\.\/note-window" is not a legal work unit name/);
-    refused(dir, ['leeway-discussion-process', 'epic', 'fumi', 'pay.ments'], /^"pay\.ments" is not a legal topic name/);
-    refused(dir, ['leeway-discussion-process', 'epic', 'fumi', 'pay/ments'], /^"pay\/ments" is not a legal topic name/);
-    refused(dir, ['leeway-discussion-process', 'epic', 'fumi', ''], /^"" is not a legal topic name/);
+    refused(dir, ['ledger-discussion-process', 'feature', '../note-window'], /^"\.\.\/note-window" is not a legal work unit name/);
+    refused(dir, ['ledger-discussion-process', 'epic', 'fumi', 'pay.ments'], /^"pay\.ments" is not a legal topic name/);
+    refused(dir, ['ledger-discussion-process', 'epic', 'fumi', 'pay/ments'], /^"pay\/ments" is not a legal topic name/);
+    refused(dir, ['ledger-discussion-process', 'epic', 'fumi', ''], /^"" is not a legal topic name/);
   });
 
   it('an argument that whitespace or a quote would split refuses — the invocation could not carry it', () => {
     for (const arg of ['note window', 'note\twindow', 'it\'s', 'say"so']) {
-      refused(dir, ['leeway-discussion-process', 'epic', 'fumi', arg], /cannot travel as one argument — whitespace and quotes split it$/);
+      refused(dir, ['ledger-discussion-process', 'epic', 'fumi', arg], /cannot travel as one argument — whitespace and quotes split it$/);
     }
   });
 
   it('an argument holding a backtick refuses, the quoted seeds included — it would end the continuation\'s code span', () => {
-    refused(dir, ['leeway-discussion-process', 'epic', 'fumi', '`x`'], /^"`x`" cannot travel in the continuation — a backtick ends its code span$/);
-    const ticked = '.leeway/.inbox/ideas/2026-01-05--a`b.md';
+    refused(dir, ['ledger-discussion-process', 'epic', 'fumi', '`x`'], /^"`x`" cannot travel in the continuation — a backtick ends its code span$/);
+    const ticked = '.ledger/.inbox/ideas/2026-01-05--a`b.md';
     createFile(dir, ticked, '# Ticked\n');
-    refused(dir, ['leeway-discovery', 'feature', 'none', ticked], /cannot travel in the continuation — a backtick ends its code span$/);
+    refused(dir, ['ledger-discovery', 'feature', 'none', ticked], /cannot travel in the continuation — a backtick ends its code span$/);
   });
 });

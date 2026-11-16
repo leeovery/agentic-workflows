@@ -20,7 +20,7 @@ const { fixtureFrom, call } = require('./engine-harness.cjs');
 const { cleanupFixture, statePath, createFile, layout } = require('./discovery-test-utils.cjs');
 const { ENGINE_COMMAND, KEYWORD_ONLY, STUB, engineKnowledge, knowledgeDoor, refuseLaunches, knowledgeUnit, setItems, configureKnowledge, knowledgeAt } = require('./knowledge-harness.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { conversationDir, conversationsRoot } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
 const { lastQuery } = require(path.join(SCRIPTS, 'domain/knowledge/last-query.cjs'));
 
@@ -41,7 +41,7 @@ const indexedWorld = fixtureFrom('kb-query-door-', (root) => {
   knowledgeUnit(root, 'typo', 'quick-fix');
   knowledgeUnit(root, 'payments', 'epic');
   for (const [rel, text] of Object.entries(files)) createFile(statePath(root), rel, `# Notes\n\n${text}\n`);
-  for (const rel of Object.keys(files)) assert.strictEqual(call(root, ['knowledge', 'index', `.leeway/${rel}`]).code, 0, rel);
+  for (const rel of Object.keys(files)) assert.strictEqual(call(root, ['knowledge', 'index', `.ledger/${rel}`]).code, 0, rel);
 });
 
 /** Each result's phase and identity, in the order printed. @param {string} stdout */

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The driver seam (leeway-engine/scripts/domain/drivers.cjs, with the task
+// The driver seam (ledger-engine/scripts/domain/drivers.cjs, with the task
 // id's shape in domain/task-id.cjs): the loader reading a drivers' folder and
 // refusing a driver whose folder or declaration is amiss, a landing driver
 // lacking a quick-fix's or a cancel's methods among them; each kind's
@@ -24,9 +24,9 @@ const fs = require('fs');
 const path = require('path');
 
 const { useTempFolder } = require('./discovery-test-utils.cjs');
-const { pinStateRoot } = require('../../skills/leeway-engine/scripts/kernel/state-root.cjs');
-const { loadDriver, listDrivers, defaultDriver, resolveDriver, toolStates, needsRefusal } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
-const { taskId, stepOfId, parseTaskId, shownTask, parseShownTask } = require('../../skills/leeway-engine/scripts/domain/task-id.cjs');
+const { pinStateRoot } = require('../../skills/ledger-engine/scripts/kernel/state-root.cjs');
+const { loadDriver, listDrivers, defaultDriver, resolveDriver, toolStates, needsRefusal } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
+const { taskId, stepOfId, parseTaskId, shownTask, parseShownTask } = require('../../skills/ledger-engine/scripts/domain/task-id.cjs');
 
 const FIXTURES = path.join(__dirname, '..', 'fixtures', 'drivers');
 const SHIPPED = path.join(FIXTURES, 'shipped');
@@ -133,7 +133,7 @@ describe('resolveDriver: the project manifest\'s drivers setting (7.1.4)', () =>
 
   /** A project whose state root holds this project manifest. @param {object} [manifest] @returns {string} */
   function project(manifest) {
-    const root = path.join(folder(), '.leeway');
+    const root = path.join(folder(), '.ledger');
     fs.mkdirSync(root);
     if (manifest !== undefined) fs.writeFileSync(path.join(root, 'manifest.json'), JSON.stringify(manifest));
     pinStateRoot(folder(), root);
@@ -141,7 +141,7 @@ describe('resolveDriver: the project manifest\'s drivers setting (7.1.4)', () =>
   }
 
   /** @param {string} cwd */
-  const manifestOf = (cwd) => JSON.parse(fs.readFileSync(path.join(cwd, '.leeway', 'manifest.json'), 'utf8'));
+  const manifestOf = (cwd) => JSON.parse(fs.readFileSync(path.join(cwd, '.ledger', 'manifest.json'), 'utf8'));
 
   it('is the driver the setting names, of each kind, and writes nothing', () => {
     const cwd = project({ drivers: { task: 'beta', landing: 'hosted' } });

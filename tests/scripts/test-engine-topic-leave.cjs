@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // A topic leaving the board from its own conversation — cancelled or
-// postponed (leeway-engine/scripts/domain/topic-leave.cjs, with the gates in
+// postponed (ledger-engine/scripts/domain/topic-leave.cjs, with the gates in
 // domain/render.cjs and the verbs in domain/transitions.cjs and
 // domain/workunit-lifecycle.cjs). Each gate row's `next`, answered through
 // `gate`: the postpone gate's yes running the postpone, the horizon pick
@@ -77,7 +77,7 @@ afterEach(() => {
   fs.rmSync(config, { recursive: true, force: true });
 });
 
-const ENV = () => ({ LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'sess-1', CLAUDE_PID: String(process.pid), TMUX: undefined, TMUX_PANE: undefined });
+const ENV = () => ({ LEDGER_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'sess-1', CLAUDE_PID: String(process.pid), TMUX: undefined, TMUX_PANE: undefined });
 
 /** An engine call as this conversation runs it. @param {string[]} args */
 const run = (args) => ok(dir, args, { env: ENV() });
@@ -95,8 +95,8 @@ const sitIn = (topic) => run(['enter', 'discussion', EPIC, topic]);
 const labelled = (unit, phase, topic) => run(['session', 'label', unit, phase, topic]);
 
 const CONTINUE = { kind: 'continue' };
-const ONTO_MENU = { kind: 'handoff', skill: 'leeway-continue-epic', args: [EPIC] };
-const ONTO_START = { kind: 'handoff', skill: 'leeway', args: [] };
+const ONTO_MENU = { kind: 'handoff', skill: 'ledger-continue-epic', args: [EPIC] };
+const ONTO_START = { kind: 'handoff', skill: 'ledger', args: [] };
 
 describe('the gates lead to the verbs', () => {
   it('the postpone gate\'s yes runs the postpone; no and a Comment carry on', () => {

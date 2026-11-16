@@ -1,6 +1,6 @@
 'use strict';
 
-// The suite's CPU meter (tests/README.md §12). Where LEEWAY_TEST_CPU_LOG
+// The suite's CPU meter (tests/README.md §12). Where LEDGER_TEST_CPU_LOG
 // names a file, a suite's process runs the suite again under
 // `/usr/bin/time` and, as that run ends, appends one line to the file: the
 // suite's path from the repository and the CPU the run and every child it
@@ -27,8 +27,8 @@ const { spawnSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const SUITE = /(^|\/)tests\/(.+\/)?test-[^/]+\.cjs$/;
-const LOG = 'LEEWAY_TEST_CPU_LOG';
-const OUTER = 'LEEWAY_TEST_CPU_OUTER';
+const LOG = 'LEDGER_TEST_CPU_LOG';
+const OUTER = 'LEDGER_TEST_CPU_OUTER';
 const WATCH_MS = 500;
 
 /**

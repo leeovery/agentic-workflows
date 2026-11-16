@@ -15,7 +15,7 @@ require('./hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const { roadmapScreen } = require('../../skills/leeway-engine/scripts/domain/projections/roadmap.cjs');
+const { roadmapScreen } = require('../../skills/ledger-engine/scripts/domain/projections/roadmap.cjs');
 
 /** A derived-state fixture — the shape roadmapState returns. */
 function state(items, horizons = ['mvp', 'v1']) {

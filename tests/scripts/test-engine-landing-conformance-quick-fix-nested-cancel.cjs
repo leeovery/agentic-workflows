@@ -38,10 +38,10 @@ const path = require('path');
 const { ok, refuses, output, sectionOf, createFile, git } = require('./engine-harness.cjs');
 const { UNIT, BRANCH, quickFixNestedConformance, entered } = require('./quick-fix-world.cjs');
 const { NESTED } = require('./landing-world.cjs');
-const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
+const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
 
 /** Where fix 1.1's work is set aside. */
-const ASIDE = `refs/leeway/aside/${UNIT}/${UNIT}-1-1`;
+const ASIDE = `refs/ledger/aside/${UNIT}/${UNIT}-1-1`;
 
 /** The calls a receipt names for a piece of work kept at ASIDE, in a repository by its `git` call. @param {string} gitIn */
 const calls = (gitIn) => `see it with ${gitIn} diff ${ASIDE}^ ${ASIDE}; bring it into the checkout with ${gitIn} cherry-pick --no-commit ${ASIDE}, settling any conflict; drop it with ${gitIn} update-ref -d ${ASIDE}`;

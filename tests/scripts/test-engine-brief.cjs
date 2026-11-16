@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The brief filled and issued (leeway-engine/scripts/domain/brief.cjs, its
+// The brief filled and issued (ledger-engine/scripts/domain/brief.cjs, its
 // records domain/brief-records.cjs, the templates content/briefs/): `engine
 // brief <role> [<unit> <task>] [--{flag} <value> …]`. Its answer, the id,
 // the role, the agent and the pointer; the brief stored in the calling
@@ -66,7 +66,7 @@ const {
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { scratchCalls } = require('./brief-build-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { templateOf, storeBrief } = require(path.join(SCRIPTS, 'domain/brief.cjs'));
 const { OURS, ROLES, briefPath, issuedPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
 const { conversationDir, readPosition } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
@@ -76,7 +76,7 @@ const { readTaskText } = require(path.join(SCRIPTS, 'domain/task-file.cjs'));
 const { taskBranch } = require(path.join(SCRIPTS, 'domain/landing-names.cjs'));
 const { readReport, recordBuilder } = require(path.join(SCRIPTS, 'domain/round-report.cjs'));
 const { readAccount } = require(path.join(SCRIPTS, 'domain/task-account.cjs'));
-const TEMPLATES = path.join(__dirname, '../../skills/leeway-engine/content/briefs');
+const TEMPLATES = path.join(__dirname, '../../skills/ledger-engine/content/briefs');
 const AGENTS = path.join(__dirname, '../../agents');
 
 const [DRIVER] = listDrivers('task').filter((driver) => driver.isDefault);
@@ -278,7 +278,7 @@ function drawnForTakeACard() {
     `- ${calls.person}, the person's: Refunds through the API.\n  Why: They come weekly now.`,
   ].join('\n');
   return {
-    engine: `\`node ${path.join(__dirname, '../../skills/leeway-engine/scripts/engine.cjs')}\` — the engine of the checkout the orchestrator runs in. Run every engine command this brief and your instructions name as that, from wherever you run it.`,
+    engine: `\`node ${path.join(__dirname, '../../skills/ledger-engine/scripts/engine.cjs')}\` — the engine of the checkout the orchestrator runs in. Run every engine command this brief and your instructions name as that, from wherever you run it.`,
     chain: 'Your branch holds its phase\'s chain as it stands.',
     workplace: 'Before anything else, lay the task out in the worktree you were started in: from its root, run the engine\'s `task worktree pay 1.1`. It puts the worktree, and every repository nested in it, on the task\'s branch. Build, run and commit only there.',
     task, 'spec-sections': `${REFUNDS}\n\n${FORM}`, 'decided-calls': decisions, linters: '- eslint: npx eslint .\n- tsc: npx tsc --noEmit', 'account-to': `\`${statePath(dir, 'pay/build/tasks/1.1.md')}\``, 'setup-to': `\`${statePath(dir, '.cache/pay/build/verify-setup.json')}\`\n\nNo verify setup is recorded yet.`,
@@ -316,10 +316,10 @@ describe('the builder\'s brief (6.5.1–6.5.5, 6.S15)', () => {
     const { res, brief } = issued(['builder', UNIT, '1.1']);
 
     assert.match(res.id, /^[0-9A-Za-z]{21}$/);
-    assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'builder', agent: 'leeway-builder', pointer: `brief:${res.id}` });
+    assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'builder', agent: 'ledger-builder', pointer: `brief:${res.id}` });
     assert.strictEqual(brief, `Brief ${res.id} — the builder's, for pay task 1.1\n\n${filledTemplate('builder', drawnForTakeACard())}`);
     assert.ok(!brief.includes(PROJECT_WORDS) && !brief.includes('Prefer tabs.'), 'nothing of CLAUDE.md or a skill reaches the brief');
-    assert.doesNotMatch(brief, /\.claude\/skills\/(?!leeway-engine\/)/, 'no project skill\'s path reaches the brief, the engine\'s alone named as installed (15.10.2)');
+    assert.doesNotMatch(brief, /\.claude\/skills\/(?!ledger-engine\/)/, 'no project skill\'s path reaches the brief, the engine\'s alone named as installed (15.10.2)');
     assert.deepStrictEqual(stored(), [`${res.id}.json`, `${res.id}.md`]);
   });
 
@@ -361,7 +361,7 @@ describe('the builder\'s brief (6.5.1–6.5.5, 6.S15)', () => {
   it('beside the brief, a record of whose it is: its role, its agent, its unit, its task, and no topic', () => {
     const { res } = issued(['builder', UNIT, '1.1']);
 
-    assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'builder', agent: 'leeway-builder', unit: UNIT, task: '1.1', topic: null });
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'builder', agent: 'ledger-builder', unit: UNIT, task: '1.1', topic: null });
   });
 
   it('a project with no linters and a unit with no decision of its own draw each as none recorded', () => {
@@ -465,14 +465,14 @@ describe('the reviewer\'s brief (13.2.2, 13.11.5)', () => {
   it('a task whose branch is in two repositories: the builder\'s records, the task\'s additions among them, then the range and its stat in each, the project\'s own first — and no line of the diff', () => {
     const { res, brief } = issued(['reviewer', UNIT, '1.1', '--base', 'main', '--letter', 'a']);
 
-    assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'reviewer', agent: 'leeway-reviewer', pointer: `brief:${res.id}` });
+    assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'reviewer', agent: 'ledger-reviewer', pointer: `brief:${res.id}` });
     const ranges = takeACardRanges('main', 'main');
     const tipIn = (/** @type {string} */ at) => git(at, ['rev-parse', PAY_BRANCH]).trim();
     const laid = `- the project's repository: \`${PAY_BRANCH}\` — the range's tip there\n- \`${NESTED}\`: \`${PAY_BRANCH}\` — the range's tip there\n\n${
       scratchCalls(`${UNIT}-1.1-a`, tipIn(dir), [`${NESTED}=${tipIn(path.join(dir, NESTED))}`])}`;
     assert.strictEqual(brief, `Brief ${res.id} — the reviewer's, for pay task 1.1\n\n${filledTemplate('reviewer', { ...drawnForTakeACard(), 'diff-range': ranges, 'scratch-layout': laid, 'round-report-to': `\`${statePath(dir, roundAt('1.1', 2, 'a'))}\`` })}`);
     assert.ok(!brief.includes(CHANGED), 'the diff\'s text reaches no brief');
-    assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'reviewer', agent: 'leeway-reviewer', unit: UNIT, task: '1.1', topic: null });
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'reviewer', agent: 'ledger-reviewer', unit: UNIT, task: '1.1', topic: null });
   });
 
   it('a task whose branch holds work in the project\'s repository alone: its range there, a path past 80 columns drawn whole, and none in a repository naming the branch with nothing on it', () => {
@@ -544,9 +544,9 @@ describe('6.S17: the fix round\'s brief (6.5.10, 13.11.6)', () => {
   it('13.S2: each reviewer\'s report of the round, each under its label, verbatim and nothing else: less its labels, the brief under its first line is the reports byte for byte; it is the builder\'s to take', () => {
     const { res, brief } = issued([...FIX]);
 
-    assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'fix', agent: 'leeway-builder', pointer: `brief:${res.id}` });
+    assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'fix', agent: 'ledger-builder', pointer: `brief:${res.id}` });
     assert.strictEqual(brief, `Brief ${res.id} — the fix round's, for pay task 1.1\n\n${fixDrawn(REPORTS[0].text, REPORTS[1].text)}`);
-    assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'fix', agent: 'leeway-builder', unit: UNIT, task: '1.1', topic: null });
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'fix', agent: 'ledger-builder', unit: UNIT, task: '1.1', topic: null });
   });
 
   it('13.S3: a later round failing on a bug alone sends its own reports, never an earlier round\'s', () => {
@@ -574,9 +574,9 @@ describe('the product researcher\'s brief', () => {
   it('issued in a project with no unit: the template whole under its first line', () => {
     const { res, brief } = issued(['product-researcher']);
 
-    assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'product-researcher', agent: 'leeway-product-researcher', pointer: `brief:${res.id}` });
+    assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'product-researcher', agent: 'ledger-product-researcher', pointer: `brief:${res.id}` });
     assert.strictEqual(brief, `Brief ${res.id} — the product researcher's\n\n${filledTemplate('product-researcher', {})}`);
-    assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'product-researcher', agent: 'leeway-product-researcher', unit: null, task: null, topic: null });
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'product-researcher', agent: 'ledger-product-researcher', unit: null, task: null, topic: null });
   });
 
 });
@@ -716,7 +716,7 @@ describe('the templates and the store', () => {
   });
 
   it('every role is dispatched as an agent named as the workflows\' are, so the hook stands before each', () => {
-    assert.strictEqual(OURS, 'leeway-');
+    assert.strictEqual(OURS, 'ledger-');
     for (const [role, { agent }] of Object.entries(ROLES)) assert.ok(agent.startsWith(OURS) && agent.length > OURS.length, `${role}: ${agent}`);
   });
 
@@ -733,10 +733,10 @@ describe('the templates and the store', () => {
 
   it('the agents the skills dispatch are the roster, exactly: no second pass over a phase\'s tasks and no gap checker among them (12.S10, 26.S12)', () => {
     const ROSTER = [
-      'leeway-builder', 'leeway-closing-pass-reader', 'leeway-consolidation', 'leeway-deep-dive', 'leeway-discussion-perspective',
-      'leeway-discussion-reviewer', 'leeway-discussion-synthesis', 'leeway-investigation-fix-validation', 'leeway-investigation-root-cause-validation',
-      'leeway-migration-topic', 'leeway-migration-verifier', 'leeway-phase-cut', 'leeway-plain-search', 'leeway-product-researcher',
-      'leeway-reviewer', 'leeway-spec-reviewer', 'leeway-spec-writer', 'leeway-sweep', 'leeway-task-writer', 'leeway-test-surface',
+      'ledger-builder', 'ledger-closing-pass-reader', 'ledger-consolidation', 'ledger-deep-dive', 'ledger-discussion-perspective',
+      'ledger-discussion-reviewer', 'ledger-discussion-synthesis', 'ledger-investigation-fix-validation', 'ledger-investigation-root-cause-validation',
+      'ledger-migration-topic', 'ledger-migration-verifier', 'ledger-phase-cut', 'ledger-plain-search', 'ledger-product-researcher',
+      'ledger-reviewer', 'ledger-spec-reviewer', 'ledger-spec-writer', 'ledger-sweep', 'ledger-task-writer', 'ledger-test-surface',
     ];
     const skills = path.join(__dirname, '../../skills');
     const byPath = /** @type {string[]} */ (fs.readdirSync(skills, { recursive: true }))
@@ -758,7 +758,7 @@ describe('the templates and the store', () => {
   });
 
   it('a brief and its record are never stored over another\'s', () => {
-    const first = { role: 'builder', agent: 'leeway-builder', unit: UNIT, task: '1.1', topic: null };
+    const first = { role: 'builder', agent: 'ledger-builder', unit: UNIT, task: '1.1', topic: null };
     storeBrief(SESSION_ID, 'held', 'Brief held — the first\n', first);
 
     assert.throws(() => storeBrief(SESSION_ID, 'held', 'Brief held — the second\n', { ...first, task: '1.2' }), /^Error: brief: .*held\.json is stored already$/);

@@ -19,20 +19,20 @@ const childProcess = require('child_process');
 const { describe, it, before, after, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 
-const store = require('../../skills/leeway-engine/scripts/kernel/knowledge/store.cjs');
-const { StubProvider } = require('../../skills/leeway-engine/scripts/kernel/knowledge/embeddings.cjs');
-const { knowledgeFiles } = require('../../skills/leeway-engine/scripts/kernel/knowledge/files.cjs');
-const { processStartTime } = require('../../skills/leeway-engine/scripts/kernel/process.cjs');
-const { fillVectors, fill } = require('../../skills/leeway-engine/scripts/domain/knowledge/vectors.cjs');
-const { launcher } = require('../../skills/leeway-engine/scripts/kernel/call.cjs');
-const { indexPath } = require('../../skills/leeway-engine/scripts/domain/knowledge/indexing.cjs');
-const { loadSettings } = require('../../skills/leeway-engine/scripts/domain/knowledge/embedder.cjs');
-const { syncKnowledge } = require('../../skills/leeway-engine/scripts/domain/knowledge/sync.cjs');
+const store = require('../../skills/ledger-engine/scripts/kernel/knowledge/store.cjs');
+const { StubProvider } = require('../../skills/ledger-engine/scripts/kernel/knowledge/embeddings.cjs');
+const { knowledgeFiles } = require('../../skills/ledger-engine/scripts/kernel/knowledge/files.cjs');
+const { processStartTime } = require('../../skills/ledger-engine/scripts/kernel/process.cjs');
+const { fillVectors, fill } = require('../../skills/ledger-engine/scripts/domain/knowledge/vectors.cjs');
+const { launcher } = require('../../skills/ledger-engine/scripts/kernel/call.cjs');
+const { indexPath } = require('../../skills/ledger-engine/scripts/domain/knowledge/indexing.cjs');
+const { loadSettings } = require('../../skills/ledger-engine/scripts/domain/knowledge/embedder.cjs');
+const { syncKnowledge } = require('../../skills/ledger-engine/scripts/domain/knowledge/sync.cjs');
 const { embeddingEndpoint, engineKnowledge, recordLaunches } = require('./knowledge-harness.cjs');
 const { setupFixture, cleanupFixture, statePath, layout, createFile, withEnv } = require('./discovery-test-utils.cjs');
 
 const STUB = { provider: 'stub', dimensions: 8 };
-const ENGINE_CJS = path.join(__dirname, '../../skills/leeway-engine/scripts/engine.cjs');
+const ENGINE_CJS = path.join(__dirname, '../../skills/ledger-engine/scripts/engine.cjs');
 
 function writeJson(p, obj) {
   fs.mkdirSync(path.dirname(p), { recursive: true });
@@ -46,8 +46,8 @@ function writeJson(p, obj) {
  */
 function buildProject(knowledge, topics = ['alpha']) {
   const root = setupFixture('kb-fill-');
-  writeJson(path.join(root, '.leeway', 'manifest.json'), { work_units: { pay: { work_type: 'bugfix' } } });
-  writeJson(path.join(root, '.leeway', 'pay', 'manifest.json'), {
+  writeJson(path.join(root, '.ledger', 'manifest.json'), { work_units: { pay: { work_type: 'bugfix' } } });
+  writeJson(path.join(root, '.ledger', 'pay', 'manifest.json'), {
     name: 'pay', work_type: 'bugfix', status: 'in-progress',
     phases: {},
   });
@@ -62,7 +62,7 @@ function writeRecord(root, topic, body) {
 }
 
 /** A topic's record as the project names it. @param {string} topic */
-const record = (topic) => `.leeway/${layout.record('pay', topic)}`;
+const record = (topic) => `.ledger/${layout.record('pay', topic)}`;
 
 /** A topic's record's absolute path, as a regular expression matches it. @param {string} root @param {string} topic */
 const named = (root, topic) => path.join(root, record(topic)).replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
@@ -177,7 +177,7 @@ describe('the launch — only a provider that can embed, only while chunks await
     withEnv({ CLAUDE_CODE_SESSION_ID: 'launching' }, () => launcher.launch(root, ['knowledge', 'fill']));
     const [[file, argv, { env, ...options }]] = spawned;
     assert.deepStrictEqual([spawned.length, file, argv, options], [1, process.execPath, [ENGINE_CJS, 'knowledge', 'fill'], { cwd: root, detached: true, stdio: 'ignore' }]);
-    assert.deepStrictEqual([Object.hasOwn(env, 'CLAUDE_CODE_SESSION_ID'), env.LEEWAY_CONFIG_DIR], [false, process.env.LEEWAY_CONFIG_DIR], 'the launcher\'s environment, but the session id');
+    assert.deepStrictEqual([Object.hasOwn(env, 'CLAUDE_CODE_SESSION_ID'), env.LEDGER_CONFIG_DIR], [false, process.env.LEDGER_CONFIG_DIR], 'the launcher\'s environment, but the session id');
     assert.ok(unrefed);
     assert.deepStrictEqual(handled, ['error'], 'a fill that cannot start never throws in its launcher');
   });
@@ -252,7 +252,7 @@ describe('the fill — each vector into the chunks whose text it embeds', () => 
       async embedBatch(/** @type {string[]} */ texts) {
         calls += 1;
         if (texts.some((text) => text.includes('beta'))) {
-          const { InvalidRequestError } = require('../../skills/leeway-engine/scripts/kernel/knowledge/providers/openai-engine.cjs');
+          const { InvalidRequestError } = require('../../skills/ledger-engine/scripts/kernel/knowledge/providers/openai-engine.cjs');
           throw new InvalidRequestError('HTTP 400: input refused');
         }
         return stub.embedBatch(texts);
@@ -304,7 +304,7 @@ describe('the fill — one at a time, its shortfall recorded and cleared', () =>
   });
 
   it('a manifest it cannot read is recorded as a shortfall — nothing is pruned on a guess', async () => {
-    fs.writeFileSync(path.join(root, '.leeway', 'manifest.json'), '{ not json');
+    fs.writeFileSync(path.join(root, '.ledger', 'manifest.json'), '{ not json');
     assert.deepStrictEqual(await fill(statePath(root)), { unembedded: [], awaiting: 0 });
     assert.deepStrictEqual(awaiting(root), []);
     assert.match(String(metadata(root).fill_failure), /manifest/i);

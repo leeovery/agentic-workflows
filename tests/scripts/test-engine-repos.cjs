@@ -17,11 +17,11 @@ const fs = require('fs');
 const path = require('path');
 
 const { git, commitCode, initRepo, setupGitFixture, cleanupFixture, createFile, writeState, layout, traced } = require('./engine-harness.cjs');
-const { git: engineGit } = require('../../skills/leeway-engine/scripts/kernel/git.cjs');
-const { withVerbReads } = require('../../skills/leeway-engine/scripts/kernel/isolated-git.cjs');
+const { git: engineGit } = require('../../skills/ledger-engine/scripts/kernel/git.cjs');
+const { withVerbReads } = require('../../skills/ledger-engine/scripts/kernel/isolated-git.cjs');
 const {
   projectRepos, repoOf, commitGroups, projectDirtyEntries, placeOf, topPath, folderPath, checkoutTop, folderUnder,
-} = require('../../skills/leeway-engine/scripts/kernel/repos.cjs');
+} = require('../../skills/ledger-engine/scripts/kernel/repos.cjs');
 
 /** A repo of its own at `rel` inside `dir`, one commit holding `file`. */
 function nestedRepo(dir, rel, file = 'index.js') {
@@ -37,7 +37,7 @@ describe('projectRepos: the repos a project holds', () => {
   let dir;
   beforeEach(() => {
     dir = setupGitFixture('engine-repos-');
-    createFile(dir, '.gitignore', '.leeway/\napi/\nnode_modules/\n');
+    createFile(dir, '.gitignore', '.ledger/\napi/\nnode_modules/\n');
     createFile(dir, 'src/app.js', '1\n');
     commitCode(dir, 'init');
   });
@@ -118,7 +118,7 @@ describe('projectRepos: the repos a project holds', () => {
   });
 
   it('takes a folder whose .git git cannot read for no repo — never a failure', () => {
-    createFile(dir, '.gitignore', '.leeway/\napi/\nnode_modules/\nstale/\n');
+    createFile(dir, '.gitignore', '.ledger/\napi/\nnode_modules/\nstale/\n');
     commitCode(dir, 'ignore the stale worktree');
     git(dir, ['worktree', 'add', '-q', '-b', 'stale', path.join(dir, 'stale')]);
     fs.rmSync(path.join(dir, '.git/worktrees/stale'), { recursive: true });
@@ -237,14 +237,14 @@ describe('dirt and history across the repos', () => {
   let dir;
   beforeEach(() => {
     dir = setupGitFixture('engine-repos-dirt-');
-    createFile(dir, '.gitignore', '.leeway/\napi/\n');
+    createFile(dir, '.gitignore', '.ledger/\napi/\n');
     commitCode(dir, 'chore: ignore the clone');
     createFile(dir, 'src/app.js', '1\n');
     commitCode(dir, 'impl(pay): T1 — the app');
   });
   afterEach(() => cleanupFixture(dir));
 
-  it('reads every repo\'s dirt in project paths, each untracked file on its own, the root first — never a parent\'s view of a nested repo, never .leeway/', () => {
+  it('reads every repo\'s dirt in project paths, each untracked file on its own, the root first — never a parent\'s view of a nested repo, never .ledger/', () => {
     const api = nestedRepo(dir, 'api', 'src/handler.js');
     const cli = nestedRepo(dir, 'tools/cli');
     createFile(dir, 'packages/notes.txt', 'loose\n');
@@ -266,7 +266,7 @@ describe('dirt and history across the repos', () => {
     createFile(dir, '.gitignore', 'api/\n');
 
     assert.deepStrictEqual(git(dir, ['status', '--porcelain', '--untracked-files=all']).split('\n').filter(Boolean), [
-      ' M .gitignore', ' M src/app.js', 'AM vendor/sdk', '?? .leeway/', '?? packages/kit/', '?? packages/notes.txt',
+      ' M .gitignore', ' M src/app.js', 'AM vendor/sdk', '?? .ledger/', '?? packages/kit/', '?? packages/notes.txt',
       '?? src/new/a.js', '?? src/new/b.js', '?? tools/cli/',
     ], 'the root\'s git names the nested repos and the state by their folders, file by file never');
     assert.deepStrictEqual(projectDirtyEntries(projectRepos(dir)), [

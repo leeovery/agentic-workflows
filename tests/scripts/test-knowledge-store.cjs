@@ -11,9 +11,9 @@ const path = require('path');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 
-const store = require('../../skills/leeway-engine/scripts/kernel/knowledge/store.cjs');
-const { tokenize, TOKENIZER_VERSION, FIELDS } = require('../../skills/leeway-engine/scripts/kernel/knowledge/keyword.cjs');
-const { StubProvider } = require('../../skills/leeway-engine/scripts/kernel/knowledge/embeddings.cjs');
+const store = require('../../skills/ledger-engine/scripts/kernel/knowledge/store.cjs');
+const { tokenize, TOKENIZER_VERSION, FIELDS } = require('../../skills/ledger-engine/scripts/kernel/knowledge/keyword.cjs');
+const { StubProvider } = require('../../skills/ledger-engine/scripts/kernel/knowledge/embeddings.cjs');
 
 const STUB_DIMS = 16;
 const stub = new StubProvider({ dimensions: STUB_DIMS });
@@ -352,7 +352,7 @@ describe('knowledge store — tokenizer', () => {
         fields: ['content', 'heading_path', 'source'],
         tokens: ['rate-limit', 'queue', 'drain', 'na', 've', 'cafe', 'refresh', 'it', 'tokens_v2', '2026', 'generous', 'organis'],
       },
-      'the tokenizer\'s output or its fields changed: bump TOKENIZER_VERSION in skills/leeway-engine/scripts/kernel/knowledge/keyword.cjs, then update this golden to the new version, fields and tokens',
+      'the tokenizer\'s output or its fields changed: bump TOKENIZER_VERSION in skills/ledger-engine/scripts/kernel/knowledge/keyword.cjs, then update this golden to the new version, fields and tokens',
     );
   });
 });

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The hook before Bash (leeway-engine/scripts/domain/shell-guard.cjs, its
+// The hook before Bash (ledger-engine/scripts/domain/shell-guard.cjs, its
 // reader kernel/shell-reader.cjs, and the guards' door guards.cjs): `engine
 // shell guard`, Claude Code's hook before every shell command, fed its JSON
 // on stdin as Claude Code sends it. Ordinary commands pass silently and
@@ -11,7 +11,7 @@
 // read of a file only the engine writes, a write to a place the layout
 // gives Claude or to a file of an engine-only name outside any state.
 // It refuses, with exit 2 and the way on: the state worktree unlocked,
-// moved or removed, `.leeway` removed, the state branch deleted here or on
+// moved or removed, `.ledger` removed, the state branch deleted here or on
 // the remote or force-pushed, by every spelling Claude writes, in a project
 // with a remote and one without (4.S7); during a build, a raw `git commit`
 // wherever it runs, and every other git command that commits past the door
@@ -65,7 +65,7 @@ const PARALLEL = 'parallel-session';
 const IDLE = 'idle-session';
 const PLACED = 'placed-session';
 const NAMELESS = 'nameless-session';
-const CONFIG = /** @type {string} */ (process.env.LEEWAY_CONFIG_DIR);
+const CONFIG = /** @type {string} */ (process.env.LEDGER_CONFIG_DIR);
 const CLAUDE = /** @type {string} */ (process.env.CLAUDE_CONFIG_DIR);
 const TASK = [
   '# Take a card', '', '## Type', 'feat', '', '## Problem', 'A card cannot be taken.', '', '## Solution', 'Add the card form.', '',
@@ -74,12 +74,12 @@ const TASK = [
 
 /** Why each of the state's commands is refused. */
 const REFUSED = Object.freeze({
-  worktree: 'unlocking, moving or removing the state worktree (.leeway) is refused — it holds the workflows\' state, and boot keeps it locked where it is',
-  removal: 'removing .leeway is refused — it is the state worktree, holding the workflows\' state; a stray file in it is removed by its own name',
-  branch: 'deleting the state branch (leeway-state) is refused — it holds the workflows\' state, which only the engine changes',
-  remote: 'deleting leeway-state on the remote is refused — it holds the workflows\' state, and boot restores a lost local branch from it',
-  force: 'force-pushing leeway-state is refused — the engine pushes it after every commit, and a force would drop what another clone pushed; push your own branches by name',
-  stateCommit: 'a raw git commit in the state worktree (.leeway) is refused — every state commit is the engine\'s, made by the verb that changes the state',
+  worktree: 'unlocking, moving or removing the state worktree (.ledger) is refused — it holds the workflows\' state, and boot keeps it locked where it is',
+  removal: 'removing .ledger is refused — it is the state worktree, holding the workflows\' state; a stray file in it is removed by its own name',
+  branch: 'deleting the state branch (ledger-state) is refused — it holds the workflows\' state, which only the engine changes',
+  remote: 'deleting ledger-state on the remote is refused — it holds the workflows\' state, and boot restores a lost local branch from it',
+  force: 'force-pushing ledger-state is refused — the engine pushes it after every commit, and a force would drop what another clone pushed; push your own branches by name',
+  stateCommit: 'a raw git commit in the state worktree (.ledger) is refused — every state commit is the engine\'s, made by the verb that changes the state',
 });
 const BUILD_COMMIT = `a raw git commit is refused while task 1.1 of ${UNIT} is in flight — the build commits through the commit door: \`engine commit --paths <file>… --task ${UNIT} 1.1 -m "<message>"\``;
 const NAMED = 'a shell command naming it is refused, and the Read tool reads it';
@@ -206,26 +206,26 @@ describe('ordinary commands pass silently, writing nothing', () => {
       'git commit-tree HEAD^{tree} -p HEAD -m "a tree"',
       'grep -rn "git commit" skills/',
       'git log --grep \'git commit\'',
-      'echo "the state is on leeway-state" && git log leeway-state -3',
-      'cat <<EOF > notes.md\ngit commit -am "from the body"\nrm -rf .leeway\ngit push -f origin leeway-state\nEOF',
+      'echo "the state is on ledger-state" && git log ledger-state -3',
+      'cat <<EOF > notes.md\ngit commit -am "from the body"\nrm -rf .ledger\ngit push -f origin ledger-state\nEOF',
       'cat <<-\'END\' | wc -l\n\tgit commit -m x\n\tEND',
       '# git commit -am "kept for later"\nls -la',
-      'printf \'%s\\n\' "git push --force origin leeway-state"',
+      'printf \'%s\\n\' "git push --force origin ledger-state"',
       'git push origin card && git push --force-with-lease origin card && git push -f origin HEAD @',
       'git branch -d card',
       'git worktree list && git worktree remove ../card',
-      'rm -rf node_modules dist && rm -rf .leeway/pay/stray.md',
-      'ls -la .leeway && cat .leeway/manifest.json',
+      'rm -rf node_modules dist && rm -rf .ledger/pay/stray.md',
+      'ls -la .ledger && cat .ledger/manifest.json',
       `jq .status ${manifest} && jq . < ${manifest} && wc -l < ${ledger} && grep -c found ${ledger} && head -3 ${ledger}`,
       `git -C ${STATE_DIR_NAME} diff && cat ${manifest} > held.json && cp ${manifest} ${ledger} ${os.tmpdir()} && mv held.json kept.json`,
       `sed -n 1p ${manifest} && sed -e 's/i/x/' ${manifest} && perl -MList::Util -ne 'print' ${manifest} && node build.js 2>&1 | tee build.log`,
       `cat <<EOF > notes.md\necho '{}' >> ${ledger}\nEOF`,
       `echo "- tried the form" >> ${inState(layout.topic(UNIT, UNIT, 'log.md'))} && sed -i '' s/draft/final/ ${spec} && cp draft.md ${spec}`,
       `echo '{}' > manifest.json && sed -i '' s/a/b/ ${layout.manifest(UNIT)} && echo '{}' >> ${layout.ledger} && rm -f ${path.join(os.tmpdir(), 'manifest.json')}`,
-      'node .claude/skills/leeway-engine/scripts/engine.cjs commit --paths src/card.js --task pay 1.1 -m "Take the card"',
+      'node .claude/skills/ledger-engine/scripts/engine.cjs commit --paths src/card.js --task pay 1.1 -m "Take the card"',
       'npm test -- --grep "git commit"',
       `ls ${conversation} && cat ${path.join(conversation, 'position.json')}`,
-      'cat "$LEEWAY_CONFIG_DIR/trust.jsonl" "$(dirname "$X")/briefs/b1.md"',
+      'cat "$LEDGER_CONFIG_DIR/trust.jsonl" "$(dirname "$X")/briefs/b1.md"',
     ];
     writingNothing(() => {
       for (const command of commands) {
@@ -256,61 +256,61 @@ describe('4.S7: the state\'s refusals, in a project with a remote and one withou
 
   it('unlocking, moving or removing the state worktree — by its name, its path, from inside it, through `-C`', () => {
     refusedEverywhere(REFUSED.worktree, (main) => [
-      'git worktree unlock .leeway',
-      'git worktree remove --force .leeway',
-      'git worktree move .leeway ../elsewhere',
+      'git worktree unlock .ledger',
+      'git worktree remove --force .ledger',
+      'git worktree move .ledger ../elsewhere',
       `git worktree remove -f -f ${path.join(main, STATE_DIR_NAME)}/`,
-      'git -C .leeway worktree remove .',
-      'cd .leeway && git worktree unlock .',
+      'git -C .ledger worktree remove .',
+      'cd .ledger && git worktree unlock .',
     ]);
   });
 
-  it('removing .leeway — the folder, its contents, from inside it, from below it', () => {
+  it('removing .ledger — the folder, its contents, from inside it, from below it', () => {
     refusedEverywhere(REFUSED.removal, (main) => [
-      'rm -rf .leeway',
-      'rm -r .leeway/',
-      'rm -fr .leeway/*',
-      'rm -R ./.leeway/.',
+      'rm -rf .ledger',
+      'rm -r .ledger/',
+      'rm -fr .ledger/*',
+      'rm -R ./.ledger/.',
       `rm --recursive --force ${path.join(main, STATE_DIR_NAME)}`,
-      'cd .leeway && rm -rf *',
-      'cd .leeway/pay && rm -rf ..',
+      'cd .ledger && rm -rf *',
+      'cd .ledger/pay && rm -rf ..',
     ]);
   });
 
-  it('deleting leeway-state locally — `branch -d`, `-D`, `--delete`, the ref deleted', () => {
+  it('deleting ledger-state locally — `branch -d`, `-D`, `--delete`, the ref deleted', () => {
     refusedEverywhere(REFUSED.branch, () => [
-      'git branch -d leeway-state',
-      'git branch -D leeway-state',
-      'git branch --delete --force leeway-state',
-      'git -C .leeway branch -Dr leeway-state',
-      'git update-ref -d refs/heads/leeway-state',
+      'git branch -d ledger-state',
+      'git branch -D ledger-state',
+      'git branch --delete --force ledger-state',
+      'git -C .ledger branch -Dr ledger-state',
+      'git update-ref -d refs/heads/ledger-state',
     ]);
   });
 
-  it('deleting leeway-state on the remote — `--delete`, `-d`, an empty source', () => {
+  it('deleting ledger-state on the remote — `--delete`, `-d`, an empty source', () => {
     refusedEverywhere(REFUSED.remote, () => [
-      'git push origin --delete leeway-state',
-      'git push -d origin leeway-state',
-      'git push origin :leeway-state',
-      'git push origin :refs/heads/leeway-state',
+      'git push origin --delete ledger-state',
+      'git push -d origin ledger-state',
+      'git push origin :ledger-state',
+      'git push origin :refs/heads/ledger-state',
     ]);
   });
 
-  it('force-pushing leeway-state — `-f`, `--force…`, a `+` refspec, a mirror, every branch forced, the state worktree\'s own branch forced, by no refspec or by `HEAD` or `@` there — through a chain, its setup words and git\'s global options', () => {
+  it('force-pushing ledger-state — `-f`, `--force…`, a `+` refspec, a mirror, every branch forced, the state worktree\'s own branch forced, by no refspec or by `HEAD` or `@` there — through a chain, its setup words and git\'s global options', () => {
     refusedEverywhere(REFUSED.force, () => [
-      'git push --force origin leeway-state',
-      'git push -fu origin leeway-state',
-      'git push --force-with-lease origin leeway-state',
-      'git push origin +leeway-state',
-      'git push origin +HEAD:refs/heads/leeway-state',
+      'git push --force origin ledger-state',
+      'git push -fu origin ledger-state',
+      'git push --force-with-lease origin ledger-state',
+      'git push origin +ledger-state',
+      'git push origin +HEAD:refs/heads/ledger-state',
       'git push --mirror origin',
       'git push --all --force origin',
-      'cd .leeway && git push -f',
-      'cd .leeway && git push --force origin HEAD',
-      'git -C .leeway push -f origin @',
-      'cd .leeway && git push origin +@',
-      'git status && GIT_TRACE=1 command git -c core.pager=cat --no-pager push -f origin leeway-state',
-      'env -u GIT_DIR git --git-dir=.git push origin +leeway-state',
+      'cd .ledger && git push -f',
+      'cd .ledger && git push --force origin HEAD',
+      'git -C .ledger push -f origin @',
+      'cd .ledger && git push origin +@',
+      'git status && GIT_TRACE=1 command git -c core.pager=cat --no-pager push -f origin ledger-state',
+      'env -u GIT_DIR git --git-dir=.git push origin +ledger-state',
     ]);
   });
 });
@@ -439,7 +439,7 @@ describe('raw commits (6.3.7, 6.3.12, 12.9.8)', () => {
     };
     const cases = [
       { command: 'git status && git log -1 && git push origin card && rm -rf dist', session: BUILDING, reads: 0 },
-      { command: 'git -C .leeway commit -m x', session: BUILDING, reads: 0 },
+      { command: 'git -C .ledger commit -m x', session: BUILDING, reads: 0 },
       { command: 'git commit -m x', session: BUILDING, reads: 1 },
       { command: 'git commit -m a; git commit --amend --no-edit', session: PLACED, reads: 1 },
     ];
@@ -469,22 +469,22 @@ describe('raw commits (6.3.7, 6.3.12, 12.9.8)', () => {
     assertRefused(guard(state, 'git commit -am x'), REFUSED.stateCommit, 'from inside it');
     assertRefused(guard(dir, 'git commit -am x', { session: BUILDING }), BUILD_COMMIT, 'during a build, the build\'s refusal beside it');
     for (const command of [
-      'cd .leeway && git add -A && git commit -m x', 'pushd .leeway && git commit -m x', `cd .leeway && pushd ${os.tmpdir()} && popd && git commit -m x`,
-      'git -C .leeway commit -m x', `git -C ${os.tmpdir()} -C ${state} commit`, 'git --work-tree=.leeway commit', 'git --git-dir .leeway/.git commit',
+      'cd .ledger && git add -A && git commit -m x', 'pushd .ledger && git commit -m x', `cd .ledger && pushd ${os.tmpdir()} && popd && git commit -m x`,
+      'git -C .ledger commit -m x', `git -C ${os.tmpdir()} -C ${state} commit`, 'git --work-tree=.ledger commit', 'git --git-dir .ledger/.git commit',
     ]) {
       assertRefused(guard(dir, command), REFUSED.stateCommit, command);
     }
-    for (const command of ['git commit -m x', 'git -C .leeway log -1', 'cd .leeway && git status', '(cd .leeway && git status) && git commit -m x', 'pushd .leeway && popd && git commit -m x']) {
+    for (const command of ['git commit -m x', 'git -C .ledger log -1', 'cd .ledger && git status', '(cd .ledger && git status) && git commit -m x', 'pushd .ledger && popd && git commit -m x']) {
       assertPassed(guard(dir, command), command);
     }
   });
 
   it('6.S22: with the mod not running, a raw commit during a build is refused, and so is a dispatch of the builder with no brief, by the hook before Agent', () => {
-    const env = { LEEWAY_GATE_SURFACE: undefined };
+    const env = { LEDGER_GATE_SURFACE: undefined };
     assertRefused(guard(worktree, 'git commit -m x', { session: BUILDING, env }), BUILD_COMMIT, 'the raw commit');
     const dispatch = call(dir, ['brief', 'guard'], {
       env,
-      stdin: JSON.stringify({ session_id: BUILDING, cwd: dir, hook_event_name: 'PreToolUse', tool_name: 'Agent', tool_input: { subagent_type: 'leeway-builder', prompt: 'Build task 1.1.' } }),
+      stdin: JSON.stringify({ session_id: BUILDING, cwd: dir, hook_event_name: 'PreToolUse', tool_name: 'Agent', tool_input: { subagent_type: 'ledger-builder', prompt: 'Build task 1.1.' } }),
     });
     fs.rmSync(path.join(CONFIG, 'brief-refusals.jsonl'), { force: true });
     assert.deepStrictEqual([dispatch.code, dispatch.stdout], [2, '']);
@@ -513,7 +513,7 @@ describe('the files at user level the layout hook refuses, by their names (6.5.1
     scratch.push(home);
     writingNothing(() => {
       for (const [command, reason] of cases) assertRefused(guard(dir, command), reason, command);
-      const res = guard(dir, 'cat ~/.config/leeway/trust.jsonl', { env: { HOME: home, LEEWAY_CONFIG_DIR: undefined } });
+      const res = guard(dir, 'cat ~/.config/ledger/trust.jsonl', { env: { HOME: home, LEDGER_CONFIG_DIR: undefined } });
       assertRefused(res, trustLog, 'through `~`');
     });
   });
@@ -669,7 +669,7 @@ describe('the shell door', () => {
     fs.writeFileSync(path.join(bin, 'git'), `#!/bin/sh\necho "$*" >> '${ran}'\n`, { mode: 0o755 });
     const env = { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}` };
     const passes = [
-      [dir, 'git status && git commit -m x && git push origin card && rm -rf .leeway/pay/stray.md'],
+      [dir, 'git status && git commit -m x && git push origin card && rm -rf .ledger/pay/stray.md'],
       [worktree, 'git commit -am x'],
       [path.join(dir, STATE_DIR_NAME), 'git log -1 && git push origin HEAD && ls'],
     ];
@@ -683,7 +683,7 @@ describe('the shell door', () => {
   });
 
   it('a stray argument is a usage error, which lets the call through', () => {
-    const res = call(dir, ['shell', 'guard', 'extra'], { stdin: hookInput(dir, 'rm -rf .leeway') });
+    const res = call(dir, ['shell', 'guard', 'extra'], { stdin: hookInput(dir, 'rm -rf .ledger') });
     assert.deepStrictEqual([res.code, res.stdout, res.stderr], [1, '', 'Usage: engine shell guard\n']);
   });
 });

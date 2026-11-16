@@ -12,7 +12,7 @@ const path = require('path');
 const harness = require('./engine-harness.cjs');
 
 const { stateGit, commitAll, setupGitFixture, cleanupFixture } = harness;
-const { walkthroughState } = require('../../skills/leeway-engine/scripts/domain/walkthrough.cjs');
+const { walkthroughState } = require('../../skills/ledger-engine/scripts/domain/walkthrough.cjs');
 
 function writeFile(dir, rel, content) {
   const full = path.join(dir, rel);
@@ -26,19 +26,19 @@ function refuses(dir, args, pattern) {
   return parsed;
 }
 function projectManifest(dir) {
-  return JSON.parse(fs.readFileSync(path.join(dir, '.leeway/manifest.json'), 'utf8'));
+  return JSON.parse(fs.readFileSync(path.join(dir, '.ledger/manifest.json'), 'utf8'));
 }
 function setProjectManifest(dir, mutate) {
   const m = projectManifest(dir);
   mutate(m);
-  writeFile(dir, '.leeway/manifest.json', JSON.stringify(m, null, 2) + '\n');
+  writeFile(dir, '.ledger/manifest.json', JSON.stringify(m, null, 2) + '\n');
 }
 
 describe('walkthrough state', () => {
   let dir;
   beforeEach(() => {
     dir = setupGitFixture('engine-walkthrough-state-');
-    writeFile(dir, '.leeway/manifest.json', JSON.stringify({ work_units: {} }, null, 2) + '\n');
+    writeFile(dir, '.ledger/manifest.json', JSON.stringify({ work_units: {} }, null, 2) + '\n');
   });
   afterEach(() => cleanupFixture(dir));
 
@@ -52,9 +52,9 @@ describe('walkthrough state', () => {
       setProjectManifest(dir, (m) => { m.walkthrough = walkthrough; });
       assert.deepStrictEqual(walkthroughState(dir), { status: 'none' }, JSON.stringify(walkthrough));
     }
-    fs.rmSync(path.join(dir, '.leeway/manifest.json'));
+    fs.rmSync(path.join(dir, '.ledger/manifest.json'));
     assert.deepStrictEqual(walkthroughState(dir), { status: 'none' }, 'a missing project manifest');
-    writeFile(dir, '.leeway/manifest.json', '{ not json');
+    writeFile(dir, '.ledger/manifest.json', '{ not json');
     assert.deepStrictEqual(walkthroughState(dir), { status: 'none' }, 'a corrupt project manifest');
   });
 });
@@ -63,17 +63,17 @@ describe('engine walkthrough record', () => {
   let dir;
   beforeEach(() => {
     dir = setupGitFixture('engine-walkthrough-');
-    writeFile(dir, '.leeway/manifest.json', JSON.stringify({ work_units: { pay: { work_type: 'feature' } } }, null, 2) + '\n');
-    writeFile(dir, '.leeway/pay/manifest.json', '{"name":"pay","work_type":"feature","status":"in-progress"}\n');
-    writeFile(dir, '.leeway/pay/topics/pay/brief.md', '# Pay\n');
+    writeFile(dir, '.ledger/manifest.json', JSON.stringify({ work_units: { pay: { work_type: 'feature' } } }, null, 2) + '\n');
+    writeFile(dir, '.ledger/pay/manifest.json', '{"name":"pay","work_type":"feature","status":"in-progress"}\n');
+    writeFile(dir, '.ledger/pay/topics/pay/brief.md', '# Pay\n');
     commitAll(dir, 'init');
   });
   afterEach(() => cleanupFixture(dir));
 
   it('walked: writes the answer and commits it confined to the project manifest — a peer session\'s dirt never rides', () => {
     // A peer mid-write: an untracked spec and a modified brief.
-    writeFile(dir, '.leeway/pay/spec.md', 'peer scratch\n');
-    writeFile(dir, '.leeway/pay/topics/pay/brief.md', '# Pay\n\npeer session dirt\n');
+    writeFile(dir, '.ledger/pay/spec.md', 'peer scratch\n');
+    writeFile(dir, '.ledger/pay/topics/pay/brief.md', '# Pay\n\npeer session dirt\n');
 
     const res = run(dir, ['walkthrough', 'record', 'walked']);
     assert.strictEqual(res.ok, true);
@@ -116,7 +116,7 @@ describe('engine walkthrough record', () => {
     run(dir, ['walkthrough', 'record', 'walked']);
     assert.deepStrictEqual(projectManifest(dir).walkthrough, { status: 'walked' });
 
-    fs.rmSync(path.join(dir, '.leeway/manifest.json'));
+    fs.rmSync(path.join(dir, '.ledger/manifest.json'));
     stateGit(dir, ['commit', '-q', '-am', 'drop the project manifest']);
     const res = run(dir, ['walkthrough', 'record', 'skipped']);
     assert.deepStrictEqual(projectManifest(dir).walkthrough, { status: 'skipped' });

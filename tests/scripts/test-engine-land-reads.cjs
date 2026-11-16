@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// What the local landing driver (leeway-engine/scripts/drivers/landing/
+// What the local landing driver (ledger-engine/scripts/drivers/landing/
 // local/driver.cjs) records, and the shapes of landing it reads: where each
 // task's branch stood when it opened, and the commit its opening made on
 // its phase's branch, kept once its phase lands and dropped only when its
@@ -31,8 +31,8 @@ const { ok, git, tip, initRepo } = require('./engine-harness.cjs');
 const {
   TASKS, openArgs, own, track, cutTask, commitFiles, minuteBefore, mergeBack, landedOn, useLandingWorld, refusedMoving, alreadyMoving, followRemedy, commandsOf, short, finishReady,
 } = require('./landing-world.cjs');
-const { workMessage } = require('../../skills/leeway-engine/scripts/domain/commit-task.cjs');
-const { parseShownTask } = require('../../skills/leeway-engine/scripts/domain/task-id.cjs');
+const { workMessage } = require('../../skills/ledger-engine/scripts/domain/commit-task.cjs');
+const { parseShownTask } = require('../../skills/ledger-engine/scripts/domain/task-id.cjs');
 
 const { card, total, rounding } = TASKS;
 const project = useLandingWorld('engine-land-reads-');
@@ -41,7 +41,7 @@ describe('land: what the local driver records, and the shapes of landing it read
   it('records where a task\'s branch stood when it opened, and the commit its opening made, kept while its phase\'s branch is gone and once its phase lands — replayed or fast-forwarded — and dropped when its phase\'s stack begins again without it, or at finish', () => {
     const dir = project();
     /** The unit's refs under `kind`, each task's shown name and commit. @param {string} kind */
-    const refs = (kind) => git(dir, ['for-each-ref', '--format=%(refname:lstrip=4) %(objectname)', `refs/leeway/${kind}/pay/`]).split('\n').filter(Boolean);
+    const refs = (kind) => git(dir, ['for-each-ref', '--format=%(refname:lstrip=4) %(objectname)', `refs/ledger/${kind}/pay/`]).split('\n').filter(Boolean);
     const opened = () => refs('opened');
     const made = () => refs('phase-commit').map((line) => line.split(' ')[0]);
     git(dir, ['checkout', '-q', '-b', 'wip']);
@@ -117,14 +117,14 @@ describe('land: what the local driver records, and the shapes of landing it read
     }
 
     const paths = project();
-    const carried = cutTask(paths, '1.4', 'feat', 'Carry notes', 'main', { '.leeway/no`tes.md': 'state\n' });
+    const carried = cutTask(paths, '1.4', 'feat', 'Carry notes', 'main', { '.ledger/no`tes.md': 'state\n' });
     const vendored = initRepo(path.join(paths, 'vendor', 'li`b'));
     git(vendored, ['commit', '-q', '--allow-empty', '-m', 'lib']);
     git(vendored, ['branch', '-m', 'main', 'trunk']);
     git(vendored, ['checkout', '-q', '-b', card.branch]);
     git(vendored, ['commit', '-q', '--allow-empty', '-m', 'card']);
     assert.deepStrictEqual([carried, card].map((task) => refusedMoving(paths, openArgs(task))), [
-      'land: task 1.4\'s change carries .leeway/no\'tes.md — the workflows\' state never lands on a code branch, so take it off the task\'s branch and open the task again',
+      'land: task 1.4\'s change carries .ledger/no\'tes.md — the workflows\' state never lands on a code branch, so take it off the task\'s branch and open the task again',
       'land: in vendor/li\'b, no default branch to land on — the remote names none, and the repository has no branch init.defaultBranch names, nor main or master; '
       + 'name it with `git config init.defaultBranch <branch>` there',
     ]);

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The capture line (leeway-engine/scripts/domain/inbox-capture.cjs, engine
+// The capture line (ledger-engine/scripts/domain/inbox-capture.cjs, engine
 // `inbox capture <idea|bug|quick-fix> [--project <folder>]`, 18.6.1–18.6.3,
 // 18.6.8): the item's text on stdin written into the inbox where the state
 // lives, named for its title and the day, the next free `-{n}` where the
@@ -75,13 +75,13 @@ describe('inbox capture (18.6.1, 18.6.2)', () => {
 
     assert.strictEqual(res.committed, git(root, ['rev-parse', '--short', 'HEAD']).trim());
     assert.strictEqual(remoteTip(bare), before);
-    assert.match(res.warnings.join('\n'), /^leeway-state is committed here but was not pushed to origin .*no pushes today/s);
+    assert.match(res.warnings.join('\n'), /^ledger-state is committed here but was not pushed to origin .*no pushes today/s);
   });
 
   it('marks no conversation as running the workflows, where a verb of the work does', () => {
     const { main } = codeProject(world(), { state: true });
     const config = path.join(world(), 'config');
-    const env = (/** @type {string} */ id) => ({ LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: id });
+    const env = (/** @type {string} */ id) => ({ LEDGER_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: id });
     const marked = (/** @type {string} */ id) => fs.existsSync(path.join(config, 'conversations', id, 'workflow'));
     const { res } = captured(main, ['bug'], BUG, env('logging'));
     withFrozenClock(() => okSections(main, ['inbox', 'archive', res.captured], { env: env('triaging') }));
@@ -98,8 +98,8 @@ describe('inbox capture from elsewhere (18.6.3, 18.6.8)', () => {
     const { res } = captured(linked, ['bug'], BUG);
 
     assert.strictEqual(res.captured, path.join(root, layout.inbox('bugs', `${TODAY}--the-login-loops.md`)));
-    assert.strictEqual(git(root, ['log', '-1', '--format=%s', 'leeway-state']).trim(), 'workflow(inbox): capture the-login-loops');
-    assert.deepStrictEqual([fs.existsSync(path.join(linked, '.leeway')), git(linked, ['status', '--porcelain'])], [false, '']);
+    assert.strictEqual(git(root, ['log', '-1', '--format=%s', 'ledger-state']).trim(), 'workflow(inbox): capture the-login-loops');
+    assert.deepStrictEqual([fs.existsSync(path.join(linked, '.ledger')), git(linked, ['status', '--porcelain'])], [false, '']);
   });
 
   it('18.S47: from another project, --project lands it in the named project\'s inbox under that project\'s writer lock alone, its own state as it was, the line naming the project', (t) => {
@@ -118,7 +118,7 @@ describe('inbox capture from elsewhere (18.6.3, 18.6.8)', () => {
   it('a commit that fails in another project names the retry run from that project\'s folder, which commits its inbox — in its own, the retry alone', () => {
     const { main: here } = codeProject(world(), { name: 'here', state: true });
     const { main: there, root: theirs } = codeProject(world(), { name: 'there', state: true });
-    const locks = [here, there].map((main) => path.join(main, '.git', 'refs', 'heads', 'leeway-state.lock'));
+    const locks = [here, there].map((main) => path.join(main, '.git', 'refs', 'heads', 'ledger-state.lock'));
     for (const lock of locks) fs.writeFileSync(lock, '');
     const [own, another] = [[], ['--project', there]].map((project) => captured(here, ['bug', ...project], BUG).res.note);
     for (const lock of locks) fs.unlinkSync(lock);
@@ -138,7 +138,7 @@ describe('inbox capture from elsewhere (18.6.3, 18.6.8)', () => {
     assert.deepStrictEqual([
       refused(['bug', '--project', bare]), refused(['task']), refused(['bug'], 'No title here.\n'), refused(['bug'], ''), refused([]), refused(['bug', 'idea']), refused(['bug', '--file', 'x.md']),
     ], [
-      `inbox capture: ${bare} holds no Leeway state — name the folder of a project that has it: --project <folder>`,
+      `inbox capture: ${bare} holds no Ledger state — name the folder of a project that has it: --project <folder>`,
       'inbox capture: its kind is one of idea, bug, quick-fix, not "task"',
       'inbox capture: its text, on stdin, holds its title, `# Title`',
       'inbox capture: its text, on stdin, holds its title, `# Title`',

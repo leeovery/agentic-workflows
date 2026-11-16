@@ -1,6 +1,6 @@
 'use strict';
 
-// The roadmap and the inbox (skills/leeway-engine/scripts/domain/roadmap.cjs),
+// The roadmap and the inbox (skills/ledger-engine/scripts/domain/roadmap.cjs),
 // driven through the engine CLI: inbox notes moved into the product's notes
 // as roadmap items under one commit — the kind from the note's folder, the
 // origin its file stem, the note the item's one source — each refusal before
@@ -25,11 +25,11 @@ const { roadmapWorld, inState, runOk, runFail, readProject, projectManifestText,
 
 describe('engine CLI: inbox notes onto the roadmap, kept in the product\'s notes', () => {
   let dir;
-  const IDEA = '.leeway/.inbox/ideas/2026-03-01--dark-mode.md';
-  const BUG = '.leeway/.inbox/bugs/2026-03-02--login-crash.md';
-  const QUICKFIX = '.leeway/.inbox/quickfixes/2026-03-03--footer-typo.md';
-  const IDEA_NOTE = '.leeway/.product/notes/2026-03-01--dark-mode.md';
-  const BUG_NOTE = '.leeway/.product/notes/2026-03-02--login-crash.md';
+  const IDEA = '.ledger/.inbox/ideas/2026-03-01--dark-mode.md';
+  const BUG = '.ledger/.inbox/bugs/2026-03-02--login-crash.md';
+  const QUICKFIX = '.ledger/.inbox/quickfixes/2026-03-03--footer-typo.md';
+  const IDEA_NOTE = '.ledger/.product/notes/2026-03-01--dark-mode.md';
+  const BUG_NOTE = '.ledger/.product/notes/2026-03-02--login-crash.md';
 
   const setup = roadmapWorld((at) => {
     for (const rel of [IDEA, BUG, QUICKFIX]) {
@@ -85,8 +85,8 @@ describe('engine CLI: inbox notes onto the roadmap, kept in the product\'s notes
 
   it('refuses before anything moves — a clash, a contradicting kind, an origin or sources beside a note, a note not in the live inbox, one named twice, two bound for one home, a taken home', () => {
     runOk(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 's']);
-    fs.mkdirSync(path.dirname(path.join(dir, '.leeway/.inbox/.archived/ideas/x.md')), { recursive: true });
-    fs.writeFileSync(path.join(dir, '.leeway/.inbox/.archived/ideas/2026-01-01--old.md'), 'old\n');
+    fs.mkdirSync(path.dirname(path.join(dir, '.ledger/.inbox/.archived/ideas/x.md')), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.ledger/.inbox/.archived/ideas/2026-01-01--old.md'), 'old\n');
     const before = projectManifestText(dir);
     const head = stateGit(dir, ['rev-parse', 'HEAD']).trim();
     const fresh = { name: 'dark-mode', horizon: 'later', summary: 's', note: IDEA };
@@ -97,14 +97,14 @@ describe('engine CLI: inbox notes onto the roadmap, kept in the product\'s notes
       `add-batch: entry 1 — "kind" is bug, but the note "${IDEA}" is a idea — a note's kind is its inbox folder's`);
     assert.match(runFail(dir, batch([{ ...fresh, origin: 'harvest' }])).error, /entry 1 — a note sets the entry's origin and source/);
     assert.match(runFail(dir, batch([{ ...fresh, sources: [] }])).error, /entry 1 — a note sets the entry's origin and source/);
-    assert.match(runFail(dir, batch([{ ...fresh, note: '.leeway/.inbox/.archived/ideas/2026-01-01--old.md' }])).error, /entry 1 — not a live inbox path/);
-    assert.match(runFail(dir, batch([{ ...fresh, note: '.leeway/.inbox/ideas/2026-09-09--ghost.md' }])).error, /add-batch: inbox file not found/);
+    assert.match(runFail(dir, batch([{ ...fresh, note: '.ledger/.inbox/.archived/ideas/2026-01-01--old.md' }])).error, /entry 1 — not a live inbox path/);
+    assert.match(runFail(dir, batch([{ ...fresh, note: '.ledger/.inbox/ideas/2026-09-09--ghost.md' }])).error, /add-batch: inbox file not found/);
     assert.match(runFail(dir, batch([fresh, { name: 'twin', horizon: 'later', summary: 's', note: IDEA }])).error, /add-batch: duplicate inbox path/);
     assert.match(runFail(dir, batch([{ ...fresh, note: 42 }])).error, /entry 1 — "note" must be a live inbox path/);
-    const spaced = '.leeway/.inbox/ideas/2026-03-04--dark mode.md';
+    const spaced = '.ledger/.inbox/ideas/2026-03-04--dark mode.md';
     fs.writeFileSync(path.join(dir, spaced), 'a hand-dropped file\n');
-    assert.match(runFail(dir, batch([{ ...fresh, note: spaced }])).error, /^add-batch: entry 1 — the note "\.leeway\/\.inbox\/ideas\/2026-03-04--dark mode\.md" has a space in its file name — a note's name can't carry spaces; rename the file$/);
-    const sameName = '.leeway/.inbox/bugs/2026-03-01--dark-mode.md';
+    assert.match(runFail(dir, batch([{ ...fresh, note: spaced }])).error, /^add-batch: entry 1 — the note "\.ledger\/\.inbox\/ideas\/2026-03-04--dark mode\.md" has a space in its file name — a note's name can't carry spaces; rename the file$/);
+    const sameName = '.ledger/.inbox/bugs/2026-03-01--dark-mode.md';
     fs.writeFileSync(path.join(dir, sameName), '# a bug of the same name\n');
     assert.strictEqual(runFail(dir, batch([fresh, { name: 'dark-crash', horizon: 'later', summary: 's', note: sameName }])).error,
       `add-batch: the notes "${path.join(dir, IDEA)}" and "${path.join(dir, sameName)}" share the name 2026-03-01--dark-mode.md, which the product's notes hold once — rename one in the inbox`);
@@ -118,7 +118,7 @@ describe('engine CLI: inbox notes onto the roadmap, kept in the product\'s notes
   });
 
   describe('a rollback rethrows the failure that started it, every reversal attempted', () => {
-    const manifestPath = () => path.join(dir, '.leeway', 'manifest.json');
+    const manifestPath = () => path.join(dir, '.ledger', 'manifest.json');
     const both = [
       { name: 'dark-mode', horizon: 'later', summary: 's', note: IDEA },
       { name: 'login-crash', horizon: 'later', summary: 's', note: BUG },
@@ -211,10 +211,10 @@ describe('engine CLI: inbox notes onto the roadmap, kept in the product\'s notes
     const again = capture('bug');
 
     assert.deepStrictEqual([idea, bug, fix, again], [
-      '.leeway/.inbox/ideas/2026-01-01--offline-mode.md',
-      '.leeway/.inbox/bugs/2026-01-01--offline-mode-2.md',
-      '.leeway/.inbox/quickfixes/2026-01-01--offline-mode-3.md',
-      '.leeway/.inbox/bugs/2026-01-01--offline-mode-4.md',
+      '.ledger/.inbox/ideas/2026-01-01--offline-mode.md',
+      '.ledger/.inbox/bugs/2026-01-01--offline-mode-2.md',
+      '.ledger/.inbox/quickfixes/2026-01-01--offline-mode-3.md',
+      '.ledger/.inbox/bugs/2026-01-01--offline-mode-4.md',
     ]);
     assert.deepStrictEqual(['offline-mode', 'offline-crash', 'offline-typo'].map((name) => readProject(dir).roadmap.items[name].sources),
       [['.product/notes/2026-01-01--offline-mode.md'], ['.product/notes/2026-01-01--offline-mode-2.md'], ['.product/notes/2026-01-01--offline-mode-3.md']]);

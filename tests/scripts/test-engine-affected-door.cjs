@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // The door to a decided topic an answer it relied on, replaced since, holds
-// (10.2.6, 18.4.2, 18.S52; leeway-engine/scripts/domain/topic-standing.cjs,
+// (10.2.6, 18.4.2, 18.S52; ledger-engine/scripts/domain/topic-standing.cjs,
 // domain/enter.cjs): while the epic is in its discussion, `handoff topic`
 // and `enter discussion` admit that decided topic alone, every other refused
 // word for word as before — and past it that one too, its door the phase
@@ -39,7 +39,7 @@ const TOPIC = 'note-window';
 const DECIDED = `the topic "${TOPIC}" is decided — it reopens through a message sent to it, or through the epic menu's discovery row`;
 const STAYS = 'stays decided: entered for its affected entries alone';
 const AFFECTED_ROW = /"Note Window": a decision it relies on changed/;
-const AFFECTED_CALL = 'node .claude/skills/leeway-engine/scripts/engine.cjs ledger affected fumi note-window';
+const AFFECTED_CALL = 'node .claude/skills/ledger-engine/scripts/engine.cjs ledger affected fumi note-window';
 
 describe('a decided topic a replaced answer holds (10.2.6, 18.S52)', () => {
   const dir = useDecidedWorld();
@@ -56,7 +56,7 @@ describe('a decided topic a replaced answer holds (10.2.6, 18.S52)', () => {
 
   /** The lines of the note a compaction hands the conversation, the discussion's skill installed. */
   function note() {
-    const skill = path.join(dir(), '.claude/skills/leeway-discussion-process/SKILL.md');
+    const skill = path.join(dir(), '.claude/skills/ledger-discussion-process/SKILL.md');
     fs.mkdirSync(path.dirname(skill), { recursive: true });
     fs.writeFileSync(skill, '# Discussion\n');
     const out = run(['conversation', 'position']);
@@ -107,7 +107,7 @@ describe('a decided topic a replaced answer holds (10.2.6, 18.S52)', () => {
     const entry = run(['enter', 'discussion', FUMI, TOPIC]);
     const staying = note();
 
-    assert.match(door, /^skill: leeway-discussion-process\nargs: epic fumi note-window$/m);
+    assert.match(door, /^skill: ledger-discussion-process\nargs: epic fumi note-window$/m);
     assert.deepStrictEqual(enteredFor(entry), [`affected: \`${AFFECTED_CALL}\``, STAYS]);
     assert.deepStrictEqual(staying.filter((line) => !discussing.includes(line)), [
       `- \`${AFFECTED_CALL}\``,
@@ -115,7 +115,7 @@ describe('a decided topic a replaced answer holds (10.2.6, 18.S52)', () => {
     ]);
     assert.deepStrictEqual(discussing.filter((line) => !staying.includes(line)), []);
     assert.strictEqual(readManifest(dir(), FUMI).phases.discussion.items[TOPIC].status, 'completed');
-    assert.match(run(['handoff', 'leeway-continue-epic', FUMI]), /^skill: leeway-continue-epic\nargs: fumi$/m);
+    assert.match(run(['handoff', 'ledger-continue-epic', FUMI]), /^skill: ledger-continue-epic\nargs: fumi$/m);
   });
 
   it('every other decided topic keeps its refusal word for word, at the door and at the entry', () => {
@@ -135,7 +135,7 @@ describe('a decided topic a replaced answer holds (10.2.6, 18.S52)', () => {
 
     assert.deepStrictEqual(refusals(TOPIC), [DECIDED, DECIDED]);
     assert.strictEqual(shown[0], '2 topics · 2 decided');
-    assert.deepStrictEqual(ok(dir(), ['gate', 'epic menu', '--pick', '1'], { env: SESSION }).next, { kind: 'handoff', skill: 'leeway-specification-process', args: ['epic', FUMI] });
+    assert.deepStrictEqual(ok(dir(), ['gate', 'epic menu', '--pick', '1'], { env: SESSION }).next, { kind: 'handoff', skill: 'ledger-specification-process', args: ['epic', FUMI] });
   });
 
   it('18.S3, 18.2.4, 18.S52: the start menu counts it, and picking the epic opens its menu with it first and recommended, its door the topic', () => {
@@ -147,7 +147,7 @@ describe('a decided topic a replaced answer holds (10.2.6, 18.S52)', () => {
     const { rows } = menu();
 
     assert.match(/** @type {string} */ (row), /1 topic waiting for you/);
-    assert.match(opened, /^skill: leeway-continue-epic\nargs: fumi$/m);
+    assert.match(opened, /^skill: ledger-continue-epic\nargs: fumi$/m);
     assert.match(rows[0], /^1 +→ "Note Window": a decision it relies on changed —$/);
     assert.match(rows[1], /\(recommended\)$/);
     assert.deepStrictEqual(ok(dir(), ['gate', 'epic menu', '--pick', '1'], { env: SESSION }).next, { kind: 'engine', argv: ['handoff', 'topic', FUMI, TOPIC] });

@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // What setup sets on GitHub through GitHub's landing driver
-// (leeway-engine/scripts/domain/github-setup.cjs), each offer answered by
+// (ledger-engine/scripts/domain/github-setup.cjs), each offer answered by
 // its own verb, alike in shape and refusals: the GitHub rule on the state
 // branch (`github-rule`, 4.4.6, 4.S10, 4.S30) and the squash default the
 // landing needs, merge commits allowed beside it for a unit's own branch
@@ -30,7 +30,7 @@ const { execFileSync } = require('child_process');
 
 const harness = require('../../scripts/engine-harness.cjs');
 const { useLandingWorld, setLandingDriver } = require('../../scripts/landing-world.cjs');
-const { githubRuleOffered, githubSquashOffered } = require('../../../skills/leeway-engine/scripts/domain/github-setup.cjs');
+const { githubRuleOffered, githubSquashOffered } = require('../../../skills/ledger-engine/scripts/domain/github-setup.cjs');
 const { GITHUB_SQUASH } = require('./gh-stub.cjs');
 const { githubWorld, github, onGithub, calls, ok, refused } = require('./world.cjs');
 
@@ -41,7 +41,7 @@ const project = useLandingWorld('github-setup-', (dir) => {
 });
 
 /** The project manifest as the state branch holds it. @param {string} dir */
-const committedManifest = (dir) => JSON.parse(git(dir, ['show', `leeway-state:${layout.projectManifest}`]));
+const committedManifest = (dir) => JSON.parse(git(dir, ['show', `ledger-state:${layout.projectManifest}`]));
 
 const AUTH = 'auth status --hostname github.com';
 const SET_SQUASH = 'api --method PATCH repos/acme/portal -f squash_merge_commit_title=PR_TITLE -f squash_merge_commit_message=PR_BODY -F allow_merge_commit=true';
@@ -59,12 +59,12 @@ const OFFERS = [
     held: (/** @type {string} */ dir) => github(dir).rulesets,
     before: [],
     set: [{
-      name: 'leeway-state', target: 'branch', enforcement: 'active',
-      conditions: { ref_name: { include: ['refs/heads/leeway-state'], exclude: [] } },
+      name: 'ledger-state', target: 'branch', enforcement: 'active',
+      conditions: { ref_name: { include: ['refs/heads/ledger-state'], exclude: [] } },
       rules: [{ type: 'deletion' }, { type: 'non_fast_forward' }],
     }],
-    subject: 'chore: the GitHub rule on leeway-state set',
-    unset: (/** @type {string} */ why) => `the rule against deleting or force-pushing leeway-state was not set on acme/portal: ${why} — set it by hand under the repository's Settings → Rules`,
+    subject: 'chore: the GitHub rule on ledger-state set',
+    unset: (/** @type {string} */ why) => `the rule against deleting or force-pushing ledger-state was not set on acme/portal: ${why} — set it by hand under the repository's Settings → Rules`,
     answered: { refused: 'yes', why: 'an answer is recorded once' },
   },
   {
@@ -90,8 +90,8 @@ for (const offer of OFFERS) {
       assert.deepStrictEqual(calls(dir), [AUTH, ...offer.calls]);
       assert.deepStrictEqual(offer.held(dir), offer.set);
       assert.deepStrictEqual([out[offer.field], out.reason, out.warnings], ['set', undefined, undefined]);
-      assert.strictEqual(out.committed, git(dir, ['rev-parse', '--short', 'leeway-state']).trim());
-      assert.strictEqual(git(dir, ['log', '-1', '--format=%s', 'leeway-state']).trim(), offer.subject);
+      assert.strictEqual(out.committed, git(dir, ['rev-parse', '--short', 'ledger-state']).trim());
+      assert.strictEqual(git(dir, ['log', '-1', '--format=%s', 'ledger-state']).trim(), offer.subject);
       assert.deepStrictEqual(committedManifest(dir)[offer.field], { status: 'set' });
       assert.strictEqual(offer.offered(dir), false);
     });

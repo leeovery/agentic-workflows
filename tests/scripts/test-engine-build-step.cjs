@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Step's one task at a time (leeway-engine/scripts/domain/task-verbs.cjs,
+// Step's one task at a time (ledger-engine/scripts/domain/task-verbs.cjs,
 // 12.7.9): task start refused beside the task in flight; and where more
 // than one goes on — an answer freeing one while another went on, or two
 // left running in auto — the one in flight the one that went back in flight
@@ -30,7 +30,7 @@ const path = require('path');
 const { ok, refusedPristine, cleanupFixture, sectionOf, writeState, accountTaken } = require('./engine-harness.cjs');
 const { UNIT, ACCOUNT_DRAWN, taskText, buildScreensWorld, buildScreenHelpers, stepHelpers } = require('./build-screens-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { recordReviewer, recordBuilder } = require(path.join(SCRIPTS, 'domain/round-report.cjs'));
 const { freedAt } = require(path.join(SCRIPTS, 'domain/task-parks.cjs'));
 

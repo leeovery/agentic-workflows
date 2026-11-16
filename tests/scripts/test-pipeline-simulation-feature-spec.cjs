@@ -33,13 +33,13 @@ describe('pipeline simulation: feature, the spec', () => {
   it('feature: its spec written, landed, reviewed — a rewrite taken by the writer, a gap declined, a gap asked as a question and surfaced with it, the person answering through the raise — and cut, ready to build\'s pick begins the build in step, handing off into it; the position switched to auto after (11.8.1, 11.7.6, 24.S4, 3.3.6)', async () => {
     const wu = 'tally';
     startUnit(sim, 'feature', wu, 'A tally of its own');
-    handoff(sim, `/leeway-discussion-process feature ${wu}`);
+    handoff(sim, `/ledger-discussion-process feature ${wu}`);
     const { next } = discussed(sim, wu, wu);
     handoff(sim, [`/${next.skill}`, ...next.args].join(' '));
     specEntry(sim, wu, [wu]);
     const [decision] = JSON.parse(sim.read(['ledger', 'record', wu, wu])).decisions;
     sim.run(['brief', 'spec-writer', wu]);
-    sim.write(`.leeway/${wu}/spec.md`, [
+    sim.write(`.ledger/${wu}/spec.md`, [
       '# Tally', '', '## 1. Counting', '', '### 1.1 The count', '', `1.1.1 The tally counts as decided. [${decision.id}]`, '',
       '## 1-S. Scenarios for §1', '', '1.S1 Given a tally, when it counts, then it counts as decided. (1.1.1)', '',
     ].join('\n'));

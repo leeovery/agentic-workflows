@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// `engine board` in an epic's discovery (leeway-engine/scripts/domain/
+// `engine board` in an epic's discovery (ledger-engine/scripts/domain/
 // projections/board-discovery.cjs, 20.11): the map as it stands, the map
 // Claude staged while approve the map waits on the person with what it parks
 // on the roadmap, a topic's brief by its sections — a staged topic's from
@@ -270,7 +270,7 @@ describe('discovery on the board (20.11)', () => {
     staged();
     run(answer('approve the map', 'y'));
     writeState(dir(), '.cache/tour.md', '# The tour opens first\n\nIt bears on you.\n');
-    ok(dir(), ['topic', 'send', EPIC, 'sharing', '--from', 'note-model', '--content', '.leeway/.cache/tour.md', '--slug', 'tour'], { env: SESSION });
+    ok(dir(), ['topic', 'send', EPIC, 'sharing', '--from', 'note-model', '--content', '.ledger/.cache/tour.md', '--slug', 'tour'], { env: SESSION });
     const fresh = board(['--page', 'topic:sharing']).view;
     startItem(dir(), EPIC, 'discussion', 'note-model');
     const started = board(['--page', 'topic:note-model']).view.kind;
@@ -316,7 +316,7 @@ describe('the views the mod draws, shaped as the engine answers them (N8)', () =
     staged();
     run(answer('approve the map', 'y'));
     writeState(dir(), '.cache/tour.md', '# The tour opens first\n\nIt bears on you.\n');
-    ok(dir(), ['topic', 'send', EPIC, 'note-model', '--from', 'sharing', '--content', '.leeway/.cache/tour.md', '--slug', 'tour'], { env: SESSION });
+    ok(dir(), ['topic', 'send', EPIC, 'note-model', '--from', 'sharing', '--content', '.ledger/.cache/tour.md', '--slug', 'tour'], { env: SESSION });
 
     assert.deepStrictEqual(fits(await fixture('board-brief.mjs'), board(['--page', 'topic:note-model']).view), FITS);
   });

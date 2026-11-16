@@ -7,7 +7,7 @@
 // made as; the engine's phase tables hold discovery, discussion, experiment
 // and investigation in Discovery, specification in Definition,
 // implementation and review in Delivery; no engine module recognises a
-// shape an earlier version left — names the layout before Leeway, its
+// shape an earlier version left — names the layout before Ledger, its
 // planning phase, the retired type, the promoted status, the old spec's
 // statuses or a reader retired with them — but the migration's own verbs,
 // each refusing outside the migration; none reaches the old layout's
@@ -32,10 +32,10 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const schema = require('../../skills/leeway-engine/scripts/kernel/manifest-schema.cjs');
-const { HANDOFF_TARGETS } = require('../../skills/leeway-engine/scripts/domain/handoff.cjs');
-const { run, runAsync, COMMANDS } = require('../../skills/leeway-engine/scripts/engine.cjs');
-const { SURFACES } = require('../../skills/leeway-engine/scripts/domain/render.cjs');
+const schema = require('../../skills/ledger-engine/scripts/kernel/manifest-schema.cjs');
+const { HANDOFF_TARGETS } = require('../../skills/ledger-engine/scripts/domain/handoff.cjs');
+const { run, runAsync, COMMANDS } = require('../../skills/ledger-engine/scripts/engine.cjs');
+const { SURFACES } = require('../../skills/ledger-engine/scripts/domain/render.cjs');
 const { setupFixture, cleanupFixture } = require('./discovery-test-utils.cjs');
 
 const SKILLS = path.join(__dirname, '../../skills');
@@ -51,20 +51,20 @@ describe('the release ships none of the retired skills, formats or types (1.S9)'
 
   it('lists no research, planning, scoping or baseline skill, and no handoff lands on one', () => {
     const skills = fs.readdirSync(SKILLS);
-    assert.ok(skills.includes('leeway-discussion-process'), 'the listing reads the shipped skills');
+    assert.ok(skills.includes('ledger-discussion-process'), 'the listing reads the shipped skills');
     assert.deepStrictEqual(skills.filter((name) => RETIRED.test(name)), []);
     assert.deepStrictEqual(HANDOFF_TARGETS.filter((skill) => RETIRED.test(skill)), []);
   });
 
   it('8.S38: the start skill names no baseline — the judgment and the offer are its brownfield offer, pointing at the product\'s conversation', () => {
-    const start = walk(path.join(SKILLS, 'leeway')).filter((file) => file.endsWith('.md'));
+    const start = walk(path.join(SKILLS, 'ledger')).filter((file) => file.endsWith('.md'));
     assert.ok(start.some((file) => path.basename(file) === 'brownfield-offer.md'), 'the listing reads the start skill\'s files');
     assert.deepStrictEqual(start.filter((file) => /baseline/i.test(fs.readFileSync(file, 'utf8'))).map((file) => path.relative(SKILLS, file)), []);
   });
 
   it('8.4.6: no skill calls a quick-fix small — it is settled work of any size, needing no decision', () => {
     const prose = walk(SKILLS).filter((file) => /\/(?:SKILL|references\/[^/]+)\.md$/.test(file));
-    assert.ok(prose.some((file) => file.endsWith(path.join('leeway-quick-fix-process', 'SKILL.md'))), 'the listing reads the skills\' prose');
+    assert.ok(prose.some((file) => file.endsWith(path.join('ledger-quick-fix-process', 'SKILL.md'))), 'the listing reads the skills\' prose');
     const saying = (file) => fs.readFileSync(file, 'utf8').split('\n').filter((line) => !line.startsWith('_Avoid_:')).join('\n');
     assert.deepStrictEqual(prose.filter((file) => /small mechanical change|small, known change/i.test(saying(file))).map((file) => path.relative(SKILLS, file)), []);
   });
@@ -113,7 +113,7 @@ describe('the engine\'s phase tables (3.S1)', () => {
 });
 
 describe('2.S10: no runtime code handles the old shape (2.8.3)', () => {
-  const SCRIPTS = path.join(SKILLS, 'leeway-engine/scripts');
+  const SCRIPTS = path.join(SKILLS, 'ledger-engine/scripts');
   /** Every engine module, by its path in the scripts folder, with its text. */
   const modules = walk(SCRIPTS).filter((file) => file.endsWith('.cjs')).map((file) => ({ module: path.relative(SCRIPTS, file), text: fs.readFileSync(file, 'utf8') }));
   /** The migration's own verbs, which read the old shapes as they carry a unit across. */
@@ -133,7 +133,7 @@ describe('2.S10: no runtime code handles the old shape (2.8.3)', () => {
     'domain/cut-migrating.cjs': 'the migration\'s cut, reading the old plan and dropping its items',
   };
 
-  it('no engine module names the layout before Leeway, its planning phase, the retired type, the promoted status, the old spec\'s statuses or a reader retired with them, but the migration\'s own verbs, each refusing outside the migration', () => {
+  it('no engine module names the layout before Ledger, its planning phase, the retired type, the promoted status, the old spec\'s statuses or a reader retired with them, but the migration\'s own verbs, each refusing outside the migration', () => {
     assert.deepStrictEqual(modules.filter(({ module, text }) => !MIGRATION_VERBS.includes(module) && named(text).length > 0).map(({ module, text }) => `${module}: ${named(text).join(', ')}`), []);
     for (const verb of MIGRATION_VERBS) {
       const { text } = /** @type {{text: string}} */ (modules.find(({ module }) => module === verb));
@@ -143,7 +143,7 @@ describe('2.S10: no runtime code handles the old shape (2.8.3)', () => {
   });
 
   it('no engine module reaches the old layout\'s module but those the migration runs, each named for what it takes', () => {
-    assert.deepStrictEqual(modules.filter(({ text }) => text.includes('leeway-migrate/scripts/old-layout.cjs')).map(({ module }) => module).sort(), Object.keys(OLD_LAYOUT_READERS).sort());
+    assert.deepStrictEqual(modules.filter(({ text }) => text.includes('ledger-migrate/scripts/old-layout.cjs')).map(({ module }) => module).sort(), Object.keys(OLD_LAYOUT_READERS).sort());
   });
 
   it('no engine module reads the items of a phase but a topic\'s — those before the spec, the only phases that keep items (4.11.2)', () => {

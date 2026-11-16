@@ -19,8 +19,8 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { DOTS } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
-const { titlecase } = require('../../skills/leeway-engine/scripts/domain/conventions.cjs');
+const { DOTS } = require('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs');
+const { titlecase } = require('../../skills/ledger-engine/scripts/domain/conventions.cjs');
 const { renderSurface, NB, unwrap, setup, teardown, writeManifest, writePayload } = require('./render-surfaces-world.cjs');
 const { output } = require('./engine-harness.cjs');
 const { fixture } = require('./board-world.cjs');
@@ -121,8 +121,8 @@ describe('postpone-gate', () => {
 
   /** @param {object|null} roadmap */
   function writeProject(roadmap) {
-    fs.mkdirSync(path.join(dir, '.leeway'), { recursive: true });
-    fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'),
+    fs.mkdirSync(path.join(dir, '.ledger'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.ledger', 'manifest.json'),
       JSON.stringify(roadmap === null ? { work_units: {} } : { work_units: {}, roadmap }, null, 2));
   }
 
@@ -223,8 +223,8 @@ describe('topic-receipt — the postpone verb', () => {
   afterEach(() => { teardown(dir); });
 
   function writeWorld(postponed) {
-    fs.mkdirSync(path.join(dir, '.leeway'), { recursive: true });
-    fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify({
+    fs.mkdirSync(path.join(dir, '.ledger'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.ledger', 'manifest.json'), JSON.stringify({
       work_units: {},
       roadmap: { horizons: ['next'], items: {
         ordering: { horizon: 'next', summary: 's', origin: 'postpone:pay', postponed_from: { work_unit: 'pay', topic: 'auth' } },
@@ -527,7 +527,7 @@ describe('roadmap surfaces', () => {
 
   /** @param {object} roadmap @param {Record<string, object>} [workUnits] */
   function writeRoadmap(roadmap, workUnits = {}) {
-    const wf = path.join(dir, '.leeway');
+    const wf = path.join(dir, '.ledger');
     fs.mkdirSync(wf, { recursive: true });
     fs.writeFileSync(path.join(wf, 'manifest.json'), JSON.stringify({ work_units: {}, roadmap }, null, 2));
     for (const [name, manifest] of Object.entries(workUnits)) {
@@ -590,7 +590,7 @@ describe('the boot and knowledge gate surfaces', () => {
   afterEach(() => { teardown(dir); });
 
   it('migrations-applied: the session\'s summary above the run\'s counts, the counts left out where no file was updated', () => {
-    const counted = writePayload(dir, '.leeway/.cache/migrations-applied.json', {
+    const counted = writePayload(dir, '.ledger/.cache/migrations-applied.json', {
       summary: 'Recovered a message the converter missed.', migrations: 2, files: 3,
     });
     assert.strictEqual(renderSurface(dir, 'migrations-applied', { file: counted }), [
@@ -602,12 +602,12 @@ describe('the boot and knowledge gate surfaces', () => {
       '2 migration(s), 3 file(s) updated.',
       '',
     ].join('\n'));
-    const fixesOnly = writePayload(dir, '.leeway/.cache/migrations-applied.json', { summary: 'Recovered a message.' });
+    const fixesOnly = writePayload(dir, '.ledger/.cache/migrations-applied.json', { summary: 'Recovered a message.' });
     assert.ok(renderSurface(dir, 'migrations-applied', { file: fixesOnly }).endsWith('**Migrations Applied**\n\nRecovered a message.\n'));
   });
 
   it('migrations-applied: each notice the run handed back stands beneath the summary, above the counts', () => {
-    const told = writePayload(dir, '.leeway/.cache/migrations-applied.json', {
+    const told = writePayload(dir, '.ledger/.cache/migrations-applied.json', {
       summary: 'Removed a setting the workflows no longer use.',
       notices: ['Removed `showClearContextOnPlanAccept` — add it back if you want it. ', 'A second thing to know.'],
       migrations: 1,
@@ -629,14 +629,14 @@ describe('the boot and knowledge gate surfaces', () => {
 
   it('migrations-applied: refuses a payload it cannot render truthfully', () => {
     assert.throws(() => renderSurface(dir, 'migrations-applied', {}), /--file <payload\.json> is required/);
-    const blank = writePayload(dir, '.leeway/.cache/migrations-applied.json', { summary: ' ' });
+    const blank = writePayload(dir, '.ledger/.cache/migrations-applied.json', { summary: ' ' });
     assert.throws(() => renderSurface(dir, 'migrations-applied', { file: blank }), /"summary" must be a non-empty string/);
-    const half = writePayload(dir, '.leeway/.cache/migrations-applied.json', { summary: 'x', migrations: 1 });
+    const half = writePayload(dir, '.ledger/.cache/migrations-applied.json', { summary: 'x', migrations: 1 });
     assert.throws(() => renderSurface(dir, 'migrations-applied', { file: half }), /come together/);
-    const zero = writePayload(dir, '.leeway/.cache/migrations-applied.json', { summary: 'x', migrations: 1, files: 0 });
+    const zero = writePayload(dir, '.ledger/.cache/migrations-applied.json', { summary: 'x', migrations: 1, files: 0 });
     assert.throws(() => renderSurface(dir, 'migrations-applied', { file: zero }), /"files" must be a positive integer/);
     for (const notices of ['one notice', [''], [3]]) {
-      const bad = writePayload(dir, '.leeway/.cache/migrations-applied.json', { summary: 'x', notices });
+      const bad = writePayload(dir, '.ledger/.cache/migrations-applied.json', { summary: 'x', notices });
       assert.throws(() => renderSurface(dir, 'migrations-applied', { file: bad }), /"notices" must be a list of non-empty strings/);
     }
   });
@@ -661,7 +661,7 @@ describe('the boot and knowledge gate surfaces', () => {
     assert.match(offer, /\*\*`y\/yes`\*\* → Read it now, then talk the product through/);
     assert.match(unwrap(offer), /\*\*`n\/no`\*\*\s+→ Skip — it is not offered again/);
     for (const answer of ['native', 'skipped', 'accepted', 'completed']) {
-      fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify({ work_units: {}, brownfield_offer: answer }));
+      fs.writeFileSync(path.join(dir, '.ledger', 'manifest.json'), JSON.stringify({ work_units: {}, brownfield_offer: answer }));
       assert.throws(() => renderSurface(dir, 'brownfield-offer-gate', {}), new RegExp(`the offer's answer is "${answer}" — the offer is made once, while nothing is recorded`));
     }
   });
@@ -669,7 +669,7 @@ describe('the boot and knowledge gate surfaces', () => {
   it('18.2.15: the banner the bare command opens on — the art in a properties fence, the version the release writes into the engine beneath it, right-aligned, then the title', () => {
     const root = path.join(__dirname, '..', '..');
     const versionFile = /^version_file = "(.*)"$/m.exec(fs.readFileSync(path.join(root, '.mint.toml'), 'utf8'))?.[1];
-    assert.strictEqual(versionFile, 'skills/leeway-engine/content/version.txt', 'the release writes the version where the banner reads it');
+    assert.strictEqual(versionFile, 'skills/ledger-engine/content/version.txt', 'the release writes the version where the banner reads it');
     const version = fs.readFileSync(path.join(root, versionFile), 'utf8').trim();
     const [marker, ...lines] = renderSurface(dir, 'banner', {}).split('\n');
     const art = lines.slice(0, 3);
@@ -677,14 +677,14 @@ describe('the boot and knowledge gate surfaces', () => {
     assert.strictEqual(marker, '=== DISPLAY: banner (emit verbatim as a properties code block (```properties fence)) ===');
     assert.ok(art.every((line) => /^[█▀▄░]+ [█▀▄░]+$/.test(line)), `the art, its two words split at one space: ${art.join('\n')}`);
     assert.strictEqual(lines[3], version.padStart([...art[0]].length));
-    assert.match(lines.slice(4).join('\n'), /^=== TITLE[^\n]*===\n# \*\*`■ Leeway`\*\*$/m);
+    assert.match(lines.slice(4).join('\n'), /^=== TITLE[^\n]*===\n# \*\*`■ Ledger`\*\*$/m);
   });
 
   it('the state lost stop and the offers on GitHub are yes/no gates naming the project by its main checkout\'s folder', () => {
     const name = titlecase(path.basename(dir));
     const lost = renderSurface(dir, 'state-lost-gate', {});
-    assert.match(lost, /=== DISPLAY: state lost stop[^\n]*\n⚑ Boot stopped: Leeway's state branch is gone\n/);
-    assert.ok(lost.includes(`\n> ${name} keeps its Leeway state on a branch of its own, \`leeway-state\`.`), lost);
+    assert.match(lost, /=== DISPLAY: state lost stop[^\n]*\n⚑ Boot stopped: Ledger's state branch is gone\n/);
+    assert.ok(lost.includes(`\n> ${name} keeps its Ledger state on a branch of its own, \`ledger-state\`.`), lost);
     assert.match(lost, /=== MENU: state lost gate[^\n]*\n[^\n]*\n\*\*`◆ Start again with a fresh state\?`\*\*\n\n\*\*`y\/yes`\*\* → Start again — /);
     const rule = renderSurface(dir, 'github-rule-gate', {});
     assert.ok(rule.includes(`\n${name}'s remote is on GitHub.`), rule);
@@ -697,7 +697,7 @@ describe('the boot and knowledge gate surfaces', () => {
   });
 
   it('the stop the gate mod\'s band tests draw carrying ⚑ (18.S43) is the engine\'s answer under the gate surface, its project named Fumi', async () => {
-    const out = output(dir, ['render', 'state-lost-gate'], { env: { LEEWAY_GATE_SURFACE: '1' } }).replaceAll(titlecase(path.basename(dir)), 'Fumi');
+    const out = output(dir, ['render', 'state-lost-gate'], { env: { LEDGER_GATE_SURFACE: '1' } }).replaceAll(titlecase(path.basename(dir)), 'Fumi');
 
     assert.strictEqual(out, await fixture('menu-state-lost.mjs'));
   });
@@ -753,9 +753,9 @@ describe('the boot and knowledge gate surfaces', () => {
       'No OpenAI API key was found. Store one without it touching this',
       'chat — run ONE of these in your terminal, then come back:',
       '',
-      '  node .claude/skills/leeway-engine/scripts/engine.cjs knowledge setup --key-only',
+      '  node .claude/skills/ledger-engine/scripts/engine.cjs knowledge setup --key-only',
       '      Private prompt, input hidden. Stored at',
-      '      ~/.config/leeway/credentials.json (mode 0600).',
+      '      ~/.config/ledger/credentials.json (mode 0600).',
       '',
       '  export OPENAI_API_KEY=<your key>   # note: inline export lands in shell history — --key-only avoids that',
       '      Shell environment — takes precedence over the stored key.',
@@ -778,9 +778,9 @@ describe('the boot and knowledge gate surfaces', () => {
       'The endpoint requires an API key. Store one without it touching',
       'this chat — run this in your terminal, then come back:',
       '',
-      '  node .claude/skills/leeway-engine/scripts/engine.cjs knowledge setup --key-only --provider openai-compatible',
+      '  node .claude/skills/ledger-engine/scripts/engine.cjs knowledge setup --key-only --provider openai-compatible',
       '      Private prompt, input hidden. Stored at',
-      '      ~/.config/leeway/credentials.json (mode 0600).',
+      '      ~/.config/ledger/credentials.json (mode 0600).',
       '',
       "=== MENU: knowledge retry gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
     ].join('\n')), out);
@@ -792,7 +792,7 @@ describe('the boot and knowledge gate surfaces', () => {
       '=== DISPLAY: knowledge wizard (emit verbatim as a text code block (```text fence), directly above the menu) ===',
       'Run the wizard in your terminal:',
       '',
-      '  node .claude/skills/leeway-engine/scripts/engine.cjs knowledge setup',
+      '  node .claude/skills/ledger-engine/scripts/engine.cjs knowledge setup',
       '',
       'It configures system defaults, initialises the project store, and',
       'runs the initial indexing pass.',
@@ -808,7 +808,7 @@ describe('the boot and knowledge gate surfaces', () => {
   });
 
   it('knowledge-ready names the configuration this checkout\'s store was built with, read from its metadata', () => {
-    const metadata = path.join(dir, '.leeway/.knowledge/metadata.json');
+    const metadata = path.join(dir, '.ledger/.knowledge/metadata.json');
     assert.throws(() => renderSurface(dir, 'knowledge-ready', {}), new RegExp(`render knowledge-ready: no ${esc(metadata)} — this checkout has no knowledge store yet`));
     fs.mkdirSync(path.dirname(metadata), { recursive: true });
     fs.writeFileSync(metadata, JSON.stringify({ provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536 }));

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The catch-up at boot (leeway-engine/scripts/domain/boot.cjs with
+// The catch-up at boot (ledger-engine/scripts/domain/boot.cjs with
 // domain/state-merge.cjs): run before the migrations, a merge stop ending
 // boot there, what a failed push left behind pushed, the ledger's entries
 // a killed write left uncommitted committed first, so the catch-up carries
@@ -70,8 +70,8 @@ describe('the catch-up at boot (4.7.8)', () => {
     git(here.main, ['config', '--unset', 'remote.origin.pushurl']);
     commitOnState(there.root, { [layout.projectManifest]: JSON.stringify({ defaults: { plan_format: 'linear' } }, null, 2) + '\n' });
     const mark = path.join(world(), 'migrated');
-    const conversation = { CLAUDE_CODE_SESSION_ID: 'merging', LEEWAY_CONFIG_DIR: path.join(world(), 'config') };
-    const stamp = path.join(conversation.LEEWAY_CONFIG_DIR, 'conversations', 'merging', 'booted.json');
+    const conversation = { CLAUDE_CODE_SESSION_ID: 'merging', LEDGER_CONFIG_DIR: path.join(world(), 'config') };
+    const stamp = path.join(conversation.LEDGER_CONFIG_DIR, 'conversations', 'merging', 'booted.json');
 
     assert.deepStrictEqual(boot(here.main, { STUB_MIGRATE_MARK: mark, ...conversation }), { ok: true, state: 'merge', stop: { surface: 'state-merge-gate', next: { kind: 'gate' } }, warnings: [] });
     assert.ok(!fs.existsSync(mark), 'the migrations ran past the stop');
@@ -159,8 +159,8 @@ describe('the catch-up at boot (4.7.8)', () => {
     const projectIdOf = (/** @type {string} */ main) => JSON.parse(readState(main, layout.projectManifest)).project_id;
     const firstId = projectIdOf(first);
     assert.notStrictEqual(projectIdOf(second), firstId);
-    const pinned = process.env.LEEWAY_CONFIG_DIR;
-    process.env.LEEWAY_CONFIG_DIR = path.join(world(), 'config');
+    const pinned = process.env.LEDGER_CONFIG_DIR;
+    process.env.LEDGER_CONFIG_DIR = path.join(world(), 'config');
     try {
       const verdictFrom = (/** @type {string} */ cwd) => record('verdict', { entry: newId(), verdict: 'fix', point: 'decided' }, { cwd, warnings: [] }).entry;
       const onFirst = verdictFrom(first);
@@ -171,7 +171,7 @@ describe('the catch-up at boot (4.7.8)', () => {
       assert.strictEqual(projectIdOf(second), firstId);
       assert.deepStrictEqual([...evidenceOf(statePath(second)).judged], [onFirst]);
     } finally {
-      process.env.LEEWAY_CONFIG_DIR = pinned;
+      process.env.LEDGER_CONFIG_DIR = pinned;
     }
   });
 });

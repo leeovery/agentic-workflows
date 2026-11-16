@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The commit door's bug-proven check (leeway-engine/scripts/domain/
+// The commit door's bug-proven check (ledger-engine/scripts/domain/
 // commit-task.cjs, its rule bug-proven.cjs): a bugfix's code commit of any
 // task but the reproducing one — task 1.1, phase 1's lowest-numbered — is
 // refused before any check runs until the test that task wrote has run on
@@ -57,7 +57,7 @@ const {
 const BUGFIXING = 'commit-task-bugfixing';
 const ENDING = 'commit-task-bugfix-ending';
 const STEPPING = 'commit-task-bugfix-stepping';
-const CONFIG = /** @type {string} */ (process.env.LEEWAY_CONFIG_DIR);
+const CONFIG = /** @type {string} */ (process.env.LEDGER_CONFIG_DIR);
 const building = Object.freeze({ env: Object.freeze({ CLAUDE_CODE_SESSION_ID: BUGFIXING }) });
 const ending = Object.freeze({ env: Object.freeze({ CLAUDE_CODE_SESSION_ID: ENDING }) });
 const stepping = Object.freeze({ env: Object.freeze({ CLAUDE_CODE_SESSION_ID: STEPPING }) });
@@ -75,7 +75,7 @@ function fixAttempted(text = FIXED) {
 }
 
 /** The commit at HEAD, short, and the task its trailer names. */
-const lastCommit = () => ({ sha: git(dir, ['rev-parse', '--short', 'HEAD']).trim(), task: git(dir, ['log', '-1', '--format=%(trailers:key=Leeway-Task,valueonly)']).trim() });
+const lastCommit = () => ({ sha: git(dir, ['rev-parse', '--short', 'HEAD']).trim(), task: git(dir, ['log', '-1', '--format=%(trailers:key=Ledger-Task,valueonly)']).trim() });
 
 /** Where the project's checkout is, as the test logs it. */
 const here = () => fs.realpathSync(dir);

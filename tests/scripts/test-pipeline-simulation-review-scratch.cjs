@@ -41,7 +41,7 @@ const WU = CUT_CLOSED_UNIT;
 // linked `node_modules`, as the project's own checkout does.
 const DRIVE = [
   '#!/bin/sh',
-  'if [ "$(cat .env 2>/dev/null)" = "KEY=1" ] && [ -f node_modules/dep/index.js ]; then echo pass; else echo fail; fi > "$LEEWAY_RUN/verdict"',
+  'if [ "$(cat .env 2>/dev/null)" = "KEY=1" ] && [ -f node_modules/dep/index.js ]; then echo pass; else echo fail; fi > "$LEDGER_RUN/verdict"',
   '',
 ].join('\n');
 
@@ -82,7 +82,7 @@ describe('pipeline simulation: an area read in its reader\'s scratch worktree', 
     assert.strictEqual(fs.existsSync(project), false, 'taken apart once the report is written');
     landed(placeIn(sim, sim.run(['brief', 'review-area', WU, '--area', '1', '--base', 'main', '--letter', 'b']), 'Where your report goes'), PASSED_REPORT);
     testsRead(sim, WU);
-    sim.run(['review', 'round', WU, '--file', sim.write(`.leeway/.cache/${WU}/review/round.json`, { can_now: ['Keep a ledger.'], findings: [] })]);
+    sim.run(['review', 'round', WU, '--file', sim.write(`.ledger/.cache/${WU}/review/round.json`, { can_now: ['Keep a ledger.'], findings: [] })]);
     assert.match(sim.render(['review-report', WU], { expect: 'content' }), /PROVEN BY RUNNING IT \(1 of 1\)\n\s*└─ 1\.S1 /, 'the round\'s report reads the scenario proven');
   });
 
@@ -101,9 +101,9 @@ describe('pipeline simulation: an area read in its reader\'s scratch worktree', 
       dies(['brief', 'test-surface', WU, '--base', 'main']),
     ];
     const leftover = laidBeside(sim, readers[0].reader, `${WU}-phase-1-a`);
-    assert.match(git(sim.dir, ['status', '--porcelain', '--untracked-files=all']), /^\?\? \.claude\/worktrees\/leeway-scratch-ledger-tests\/$/m, 'the project does not ignore the layouts');
+    assert.match(git(sim.dir, ['status', '--porcelain', '--untracked-files=all']), /^\?\? \.claude\/worktrees\/ledger-scratch-ledger-tests\/$/m, 'the project does not ignore the layouts');
 
-    sim.run(['review', 'round', WU, '--file', sim.write(`.leeway/.cache/${WU}/review/round.json`, { can_now: ['Keep a ledger.'], findings: [] })]);
+    sim.run(['review', 'round', WU, '--file', sim.write(`.ledger/.cache/${WU}/review/round.json`, { can_now: ['Keep a ledger.'], findings: [] })]);
     assert.deepStrictEqual([...readers.map(({ project }) => project), leftover].map((top) => fs.existsSync(top)), [false, false, false, true], 'the round\'s readers\' taken apart, no other');
     finished(sim, WU);
     assert.strictEqual(fs.existsSync(leftover), false, 'finish takes apart the unit\'s left');

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The remedy table of the local landing driver (leeway-engine/scripts/
+// The remedy table of the local landing driver (ledger-engine/scripts/
 // drivers/landing/local/driver.cjs, with landing-git.cjs's remedies): one
 // row per state of the repository a `land` verb refuses, each giving the
 // verb, its refusal word for word, how its remedy is taken where that is
@@ -54,7 +54,7 @@ const CARD_LANDING = 'feat(pay): Add card\n\nTask: pay-1-1\n';
 const ROUND_LANDING = 'fix(pay): Round totals\n\nTask: pay-2-1\n';
 const CHAIN_ONE = ['land', 'chain', 'pay', '1.1'];
 // The project's own ignore rule, and a local file its keeper stops tracking.
-const IGNORE_LOCAL = { '.gitignore': '.leeway/\nlocal.env\n' };
+const IGNORE_LOCAL = { '.gitignore': '.ledger/\nlocal.env\n' };
 
 /** The step taking a commit off the top of a branch. @param {string} branch @param {string} sha */
 const offTop = (branch, sha) => moveStep(branch, `${s(sha)}^`, `take ${s(sha)} off ${branch}`);

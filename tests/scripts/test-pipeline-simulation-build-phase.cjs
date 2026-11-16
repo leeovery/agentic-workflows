@@ -46,7 +46,7 @@ const {
   Sim, worlds, SPEC_TO_BUILD_UNIT, buildEntry, startPhase, writePhaseTasks, carryOn, answerGate, briefOf, deadReader, laidBeside, placeIn, landed,
 } = require('./pipeline-world.cjs');
 
-const DOMAIN = path.join(__dirname, '../../skills/leeway-engine/scripts/domain');
+const DOMAIN = path.join(__dirname, '../../skills/ledger-engine/scripts/domain');
 const { consolidationFaults } = require(path.join(DOMAIN, 'notes.cjs'));
 
 const WU = SPEC_TO_BUILD_UNIT;
@@ -70,15 +70,15 @@ describe('pipeline simulation: a phase of the cut', () => {
     const wu = WU;
     const entered = buildEntry(sim, wu);
     assert.deepStrictEqual(entered.filter((line) => line.startsWith('phase: ')), ['phase: phase 1 of 1, "The work": not yet written'], 'a phase not yet written reads so (7.4.2)');
-    sim.write(`.leeway/${wu}/build/log.md`, '# The build\n\nPhase 1: its tasks are being written.\n');
-    assert.strictEqual(sim.run(['brief', 'task-writer', wu, '1']).agent, 'leeway-task-writer');
+    sim.write(`.ledger/${wu}/build/log.md`, '# The build\n\nPhase 1: its tasks are being written.\n');
+    assert.strictEqual(sim.run(['brief', 'task-writer', wu, '1']).agent, 'ledger-task-writer');
     writePhaseTasks(sim, wu, 1, 'The work', [{ title: 'Write the ledger', scenarios: ['1.S1'] }]);
     sim.refuses(['task', 'start', wu, '1.1'], /^task start: phase 1 of ledgerly has not started — /);
     startPhase(sim, wu, 1);
     assert.ok(stateGit(sim.dir, ['ls-files', '--', `${wu}/build/log.md`]).trim() !== '', 'the build\'s log rides the state\'s commits (12.2.3)');
-    assert.ok(carryOn(sim).text.includes(path.join(sim.dir, `.leeway/${wu}/build/log.md`)), 'a compaction re-reads the build\'s log (12.S4)');
+    assert.ok(carryOn(sim).text.includes(path.join(sim.dir, `.ledger/${wu}/build/log.md`)), 'a compaction re-reads the build\'s log (12.S4)');
     sim.run(['task', 'start', wu, '1.1']);
-    const headline = sim.write(`.leeway/.cache/${wu}/build/headline.json`, JSON.stringify({ tasks: [{ task: '1.1', changes: 'The ledger is written.', watch: 'An entry read back.' }] }));
+    const headline = sim.write(`.ledger/.cache/${wu}/build/headline.json`, JSON.stringify({ tasks: [{ task: '1.1', changes: 'The ledger is written.', watch: 'An entry read back.' }] }));
     assert.match(sim.render(['build-headline', wu, '--file', headline]), /▪ Starting 1 task\n\n {2}└─ 1\.1 Write the ledger\n/, 'the headline names the task as it starts (12.12.4)');
     const builder = sim.run(['brief', 'builder', wu, '1.1']);
     const account = placeIn(sim, builder, 'Where your account goes');
@@ -92,21 +92,21 @@ describe('pipeline simulation: a phase of the cut', () => {
     sim.runIn(tree, ['task', 'worktree', wu, '1.1']);
     fs.mkdirSync(path.join(tree, 'verify'));
     fs.writeFileSync(path.join(tree, 'verify', 'features.md'), '# Features\n');
-    fs.writeFileSync(path.join(tree, 'verify', 'drive.sh'), '#!/bin/sh\nprintf "pass\\n" > "$LEEWAY_RUN/verdict"\n', { mode: 0o755 });
+    fs.writeFileSync(path.join(tree, 'verify', 'drive.sh'), '#!/bin/sh\nprintf "pass\\n" > "$LEDGER_RUN/verdict"\n', { mode: 0o755 });
     sim.runIn(tree, ['commit', '--paths', 'verify/features.md', 'verify/drive.sh', '--task', wu, '1.1', '-m', 'feat(ledgerly): the verify setup']);
     const setup = placeIn(sim, builder, 'Where the verify setup goes');
     fs.mkdirSync(path.dirname(setup), { recursive: true });
     fs.writeFileSync(setup, JSON.stringify({
       place: 'verify', feature_map: 'verify/features.md', launch: 'true', health: 'true', drive: 'verify/drive.sh',
-      evidence: 'mkdir -p "$LEEWAY_RUN/evidence" && echo read back > "$LEEWAY_RUN/evidence/screen.txt"', cleanup: 'true',
-      mutation: 'echo "[]" > "$LEEWAY_RUN/survivors.json"',
+      evidence: 'mkdir -p "$LEDGER_RUN/evidence" && echo read back > "$LEDGER_RUN/evidence/screen.txt"', cleanup: 'true',
+      mutation: 'echo "[]" > "$LEDGER_RUN/survivors.json"',
     }));
     sim.runIn(tree, ['verify', 'setup', wu, '--file', setup, '--scenario', '1.S1']);
     const run = sim.runIn(tree, ['verify', 'run', wu, '1.S1']);
-    const recorded = JSON.parse(fs.readFileSync(path.join(sim.dir, '.leeway', run.run), 'utf8'));
+    const recorded = JSON.parse(fs.readFileSync(path.join(sim.dir, '.ledger', run.run), 'utf8'));
     assert.deepStrictEqual([run.standing, recorded.task, recorded.evidence.map((/** @type {{name: string}} */ kept) => kept.name)], ['proven', '1.1', ['screen.txt']],
       'the run from the task\'s worktree proves its scenario, for the task, its evidence kept (15.S1, 15.S4)');
-    sim.run(['task', 'note', wu, '--file', sim.write(`.leeway/.cache/${wu}/build/note.md`, 'Reading the ledger back never checks its hash.\n')]);
+    sim.run(['task', 'note', wu, '--file', sim.write(`.ledger/.cache/${wu}/build/note.md`, 'Reading the ledger back never checks its hash.\n')]);
 
     // The pair report, the builder writes its account, and the account is
     // taken from where each was written (13.5.9, 12.14), taking apart the
@@ -148,14 +148,14 @@ describe('pipeline simulation: a phase of the cut', () => {
       assert.ok(briefOf(sim, review).includes('# Its scenarios\' runs, at the phase\'s tips\n\n- 1.S1: proven\n'), 'the run from the task\'s worktree proves the scenario at the phase\'s tips');
       landed(placeIn(sim, review, 'Where your report goes'), letter === 'a' ? PASSED : OFF_PHASE);
     }
-    assert.deepStrictEqual(['a', 'b'].map((letter) => fs.existsSync(path.join(sim.dir, `.leeway/${wu}/build/phases/phase-1/review-${letter}.md`))), [true, true]);
+    assert.deepStrictEqual(['a', 'b'].map((letter) => fs.existsSync(path.join(sim.dir, `.ledger/${wu}/build/phases/phase-1/review-${letter}.md`))), [true, true]);
 
     // One reviewer failed it, on a finding outside the phase: its fixes are
     // owed, and the stack waits, until the orchestrator settles the review
     // naming none (13.10.1).
     assert.ok(buildEntry(sim, wu).some((line) => line.startsWith('fixes owed: phase 1\'s review failed, and no settlement answers it')), 'the standing says the fixes are owed');
     sim.refuses(['land', 'phase', wu, '1'], /— phase 1's review failed, and no settlement answers it — /);
-    sim.run(['task', 'settle', wu, '--phase', '1', '--file', sim.write(`.leeway/.cache/${wu}/build/why.md`, 'Checking the hash on read is the next phase\'s.\n')]);
+    sim.run(['task', 'settle', wu, '--phase', '1', '--file', sim.write(`.ledger/.cache/${wu}/build/why.md`, 'Checking the hash on read is the next phase\'s.\n')]);
     assert.deepStrictEqual([...deadPhaseReviewers, ...beside].map((top) => fs.existsSync(top)), [false, false, true, true], 'the dead phase reviewers\' scratch worktrees taken apart at the settlement, no other');
 
     // The phase review settled, its stack merges at the gate before it, in

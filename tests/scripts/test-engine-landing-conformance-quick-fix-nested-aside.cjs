@@ -7,7 +7,7 @@
 // driver in turn. A park setting aside what the fix had not committed in
 // each repository holding any — the project's and each nested clone's — and
 // its next start putting each back
-// (leeway-engine/scripts/domain/fix-aside.cjs); the fix's own commits read
+// (ledger-engine/scripts/domain/fix-aside.cjs); the fix's own commits read
 // in each repository, the other fix's between them left out, by its pair
 // and by its figures, which count their net change: a line changed twice
 // once, a file renamed then edited one file (task-base.cjs, `ownWork`;
@@ -33,13 +33,13 @@ const {
 const {
   UNIT, HELP, BRANCH, createFix, fixDone, accountFigures, parkedOn, quickFixNestedConformance,
 } = require('./quick-fix-world.cjs');
-const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
+const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { briefPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
 
 /** Where fix 1.1's work is set aside, in each repository holding any. */
-const ASIDE = `refs/leeway/aside/${UNIT}/${UNIT}-1-1`;
+const ASIDE = `refs/ledger/aside/${UNIT}/${UNIT}-1-1`;
 
 /** The project's flags page, long enough that a rename of it reads as one. */
 const FLAGS = ['# Flags', '', '--color picks the colour.', '--quiet says less.', '--verbose says more.', '--help shows this page.', '--version names the build.', ''].join('\n');
@@ -93,7 +93,7 @@ for (const { name } of listDrivers('landing')) {
       const started = run(at, ['task', 'start', UNIT, '1.1']);
       const back = Object.keys(UNCOMMITTED).map((file) => fs.readFileSync(path.join(at.dir, file), 'utf8'));
       const { id } = run(at, ['brief', 'reviewer', UNIT, '1.1', '--letter', 'a']);
-      const brief = withEnv({ LEEWAY_CONFIG_DIR: as().env.LEEWAY_CONFIG_DIR }, () => fs.readFileSync(briefPath('sess-1', id), 'utf8'));
+      const brief = withEnv({ LEDGER_CONFIG_DIR: as().env.LEDGER_CONFIG_DIR }, () => fs.readFileSync(briefPath('sess-1', id), 'utf8'));
 
       const paths = Object.keys(UNCOMMITTED).sort();
       assert.deepStrictEqual([raised.set_aside, clean, started.put_back.sort(), back], [paths, ['', '', ''], paths, Object.values(UNCOMMITTED)]);

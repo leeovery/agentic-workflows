@@ -20,7 +20,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { DOTS, gateShown } = require('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs');
+const { DOTS, gateShown } = require('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs');
 const { renderSurface, NB, setup, teardown } = require('./render-surfaces-world.cjs');
 
 describe('walkthrough surfaces', () => {
@@ -28,12 +28,12 @@ describe('walkthrough surfaces', () => {
   beforeEach(() => { dir = setup(); });
   afterEach(() => { teardown(dir); });
 
-  const SCREENS = path.join(__dirname, '..', '..', 'skills', 'leeway-engine', 'content', 'walkthrough', 'screens');
+  const SCREENS = path.join(__dirname, '..', '..', 'skills', 'ledger-engine', 'content', 'walkthrough', 'screens');
   const screenFiles = () => fs.readdirSync(SCREENS).filter((f) => f.endsWith('.md')).sort();
   const screenText = (n) => fs.readFileSync(path.join(SCREENS, screenFiles()[n - 1]), 'utf8');
   const titleOf = (n) => screenText(n).split('\n').find((l) => l.startsWith('# ')).slice(2).trim();
 
-  const TOPICS = path.join(__dirname, '..', '..', 'skills', 'leeway-engine', 'content', 'walkthrough', 'topics');
+  const TOPICS = path.join(__dirname, '..', '..', 'skills', 'ledger-engine', 'content', 'walkthrough', 'topics');
   const cardFiles = () => fs.readdirSync(TOPICS).filter((f) => f.endsWith('.md')).sort();
   const cardText = (n) => fs.readFileSync(path.join(TOPICS, cardFiles()[n - 1]), 'utf8');
   const cardTitle = (n) => cardText(n).split('\n').find((l) => l.startsWith('# ')).slice(2).trim();
@@ -70,7 +70,7 @@ describe('walkthrough surfaces', () => {
     assert.deepStrictEqual(markers(out), ['TITLE', 'DISPLAY: walkthrough prose', 'DISPLAY: walkthrough diagram', 'DISPLAY: walkthrough prose', 'MENU: walkthrough screen']);
     assert.ok(out.startsWith([
       "=== TITLE (emit verbatim as markdown (not a code block) — the view's chrome heading) ===",
-      `# **\`■ How Leeway works · 1 of ${screenFiles().length} · ${titleOf(1)}\`**`,
+      `# **\`■ How Ledger works · 1 of ${screenFiles().length} · ${titleOf(1)}\`**`,
       '',
       '=== DISPLAY: walkthrough prose (emit verbatim as markdown (not a code block)) ===',
     ].join('\n')), out.slice(0, 400));
@@ -184,7 +184,7 @@ describe('walkthrough surfaces', () => {
     assert.deepStrictEqual(markers(out), ['TITLE', 'DISPLAY: walkthrough prose', 'MENU: walkthrough offer']);
     assert.ok(out.startsWith([
       "=== TITLE (emit verbatim as markdown (not a code block) — the view's chrome heading) ===",
-      '# **`■ How Leeway works`**',
+      '# **`■ How Ledger works`**',
     ].join('\n')), out.slice(0, 200));
     assert.strictEqual(menuOf(out), [
       "=== MENU: walkthrough offer (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
@@ -193,7 +193,7 @@ describe('walkthrough surfaces', () => {
       '',
       "**`y/yes`**  → Let's do it",
       "**`s/skip`** → Skip for now — it's under h/help whenever you want it",
-      '**Ask**    → Ask anything about how Leeway works',
+      '**Ask**    → Ask anything about how Ledger works',
       '',
     ].join('\n'));
   });
@@ -244,7 +244,7 @@ describe('walkthrough surfaces', () => {
 
   it('a card\'s back draws the cards again, and its Ask carries on in the conversation', () => {
     renderSurface(dir, 'walkthrough-topic', { name: SLUGS[0] });
-    const { options, typed } = /** @type {import('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs').GateShown} */ (gateShown());
+    const { options, typed } = /** @type {import('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs').GateShown} */ (gateShown());
 
     assert.deepStrictEqual([options.map(({ key, next }) => [key, next]), typed.map(({ label, next }) => [label, next])], [
       [['b', { kind: 'engine', argv: ['render', 'help-topics'] }]],
@@ -272,14 +272,14 @@ describe('walkthrough surfaces', () => {
   });
 
   it('the answering rule names every card by its slug, and no other', () => {
-    const rule = fs.readFileSync(path.join(__dirname, '..', '..', 'skills', 'leeway-shared', 'references', 'answering-how-it-works.md'), 'utf8');
+    const rule = fs.readFileSync(path.join(__dirname, '..', '..', 'skills', 'ledger-shared', 'references', 'answering-how-it-works.md'), 'utf8');
     const named = /walkthrough-topic --name \{card:\[([^\]]+)\]\}/.exec(rule);
 
     assert.deepStrictEqual(named?.[1].split('|'), SLUGS);
   });
 
   it('a question asked at a card puts back the card\'s menu alone, as the start skill fetches it', () => {
-    const prose = fs.readFileSync(path.join(__dirname, '..', '..', 'skills', 'leeway', 'references', 'start-menu.md'), 'utf8');
+    const prose = fs.readFileSync(path.join(__dirname, '..', '..', 'skills', 'ledger', 'references', 'start-menu.md'), 'utf8');
     const call = /^node \S+engine\.cjs render (walkthrough-topic --name \{card\} .+)$/m.exec(prose.split('## The Reference Cards')[1] ?? '')?.[1];
 
     assert.strictEqual(call, 'walkthrough-topic --name {card} --menu-only');

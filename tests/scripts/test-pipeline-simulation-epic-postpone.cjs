@@ -19,7 +19,7 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 const ROOT = path.join(__dirname, '../..');
-const derivations = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/derivations.cjs'));
+const derivations = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/derivations.cjs'));
 const { Sim, mapTopics, sessionLog, answerGate, enterEntry, discussed, epicSetAside } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: epic postpone', () => {
@@ -38,7 +38,7 @@ describe('pipeline simulation: epic postpone', () => {
     ]);
     sim.run(['topic', 'order', wu, 'fresh-one=1', 'talking=2', 'decided=3', 'stays=4']);
     sim.run(['discovery-session', 'close', wu, '-m', `discovery(${wu}): shape the map`]);
-    const discoveryMap = () => derivations.buildDiscoveryMap(sim.manifest(wu), path.join(sim.dir, '.leeway'));
+    const discoveryMap = () => derivations.buildDiscoveryMap(sim.manifest(wu), path.join(sim.dir, '.ledger'));
     const setAside = () => epicSetAside(sim, wu);
 
     for (const topic of ['decided', 'stays']) discussed(sim, wu, topic);
@@ -73,10 +73,10 @@ describe('pipeline simulation: epic postpone', () => {
     // The roadmap owns it: cancel and reactivate refuse, a send lands.
     sim.refuses(['topic', 'cancel', wu, 'discovery', 'decided'], /"decided" is postponed — the roadmap owns it/);
     sim.refuses(['topic', 'reactivate', wu, 'discovery', 'decided'], /"decided" is postponed, not cancelled — pull it forward from the roadmap instead/);
-    sim.write('.leeway/.cache/scratch/message-scratch.md', 'Mail that waits\n\nStill?\n');
+    sim.write('.ledger/.cache/scratch/message-scratch.md', 'Mail that waits\n\nStill?\n');
     const held = JSON.stringify(sim.manifest(wu));
-    const mail = sim.run(['topic', 'send', wu, 'decided', '--from', 'fresh-one', '--content', '.leeway/.cache/scratch/message-scratch.md', '--slug', 'mail-that-waits']);
-    assert.strictEqual(mail.message_path, path.join(sim.dir, `.leeway/${wu}/topics/decided/mail/001-mail-that-waits.md`),
+    const mail = sim.run(['topic', 'send', wu, 'decided', '--from', 'fresh-one', '--content', '.ledger/.cache/scratch/message-scratch.md', '--slug', 'mail-that-waits']);
+    assert.strictEqual(mail.message_path, path.join(sim.dir, `.ledger/${wu}/topics/decided/mail/001-mail-that-waits.md`),
       'a message for a topic that waits is mail that waits with it');
     assert.strictEqual(JSON.stringify(sim.manifest(wu)), held, 'the send leaves the hold alone');
 

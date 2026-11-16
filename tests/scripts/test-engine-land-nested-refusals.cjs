@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // The local landing driver's nested repositories it passes over
-// (leeway-engine/scripts/drivers/landing/local/driver.cjs): a clone with no
+// (ledger-engine/scripts/drivers/landing/local/driver.cjs): a clone with no
 // default branch, the unit's branches in it holding nothing, passed over in
 // every verb. The rest of the driver across nested repositories is
 // test-engine-land-nested.cjs's. Git layer: the nested world

@@ -43,19 +43,19 @@ describe('pipeline simulation: experiments, in an epic', () => {
     for (const topic of ['timing', 'layout']) {
       epicPick(sim, wu, topic);
       enterEntry(sim, wu, 'discussion', topic);
-      sim.write(`.leeway/${wu}/topics/${topic}/log.md`, `# Discussion — ${topic}\n`);
+      sim.write(`.ledger/${wu}/topics/${topic}/log.md`, `# Discussion — ${topic}\n`);
     }
 
     // The spawn, mid-discussion: id + item + the problem statement + the
     // spawning item's lock, one transaction that commits the record — the
     // session writes the problem to a cache scratch and the create installs
     // it, so no conceived record ever exists without its problem file.
-    const e1Problem = sim.write(`.leeway/.cache/${wu}/discussion/timing/problem.md`,
+    const e1Problem = sim.write(`.ledger/.cache/${wu}/discussion/timing/problem.md`,
       '# Problem — window placement\n\n*From: timing · discussion*\n');
     const placement = askedOn(sim, wu, 'timing', 'Where does a new window open?');
     const e1 = sim.run(['experiment', 'create', wu, 'timing', '--slug', 'window-placement', '--from', 'discussion', '--problem', e1Problem, '--question', placement]);
     assert.strictEqual(e1.id, 'E1');
-    assert.strictEqual(e1.dir, path.join(sim.dir, `.leeway/${wu}/topics/timing/experiments/E1-window-placement`));
+    assert.strictEqual(e1.dir, path.join(sim.dir, `.ledger/${wu}/topics/timing/experiments/E1-window-placement`));
     assert.deepStrictEqual(e1.awaiting, { phase: 'discussion', ids: ['E1'] });
     assert.ok(fs.existsSync(path.join(e1.dir, 'problem.md')), 'the create installs the problem statement');
     assert.ok(!fs.existsSync(path.join(sim.dir, e1Problem)), 'the scratch is consumed');
@@ -70,7 +70,7 @@ describe('pipeline simulation: experiments, in an epic', () => {
     // Another topic's spawn numbers its own series.
     const density = askedOn(sim, wu, 'layout', 'How dense is the grid?');
     const e2 = sim.run(['experiment', 'create', wu, 'layout', '--slug', 'grid-density', '--from', 'discussion', '--question', density,
-      '--problem', sim.write(`.leeway/.cache/${wu}/discussion/layout/problem.md`, '# Problem — grid density\n')]);
+      '--problem', sim.write(`.ledger/.cache/${wu}/discussion/layout/problem.md`, '# Problem — grid density\n')]);
     assert.strictEqual(e2.id, 'E1');
 
     // Each topic with an experiment waiting is one row into the laboratory —
@@ -94,8 +94,8 @@ describe('pipeline simulation: experiments, in an epic', () => {
     waitAgents(sim, wu, 'timing', true);
     sim.render(['experiment-spawn-gate', `${wu}.discussion.timing`, '--id', 'E1'], { expect: 'content' });
     assert.deepStrictEqual(sim.run(['gate', 'experiment spawn gate', '--pick', 'y']).next,
-      { kind: 'handoff', skill: 'leeway-experiment-process', args: ['epic', wu, 'timing'] });
-    handoff(sim, `/leeway-experiment-process epic ${wu} timing`);
+      { kind: 'handoff', skill: 'ledger-experiment-process', args: ['epic', wu, 'timing'] });
+    handoff(sim, `/ledger-experiment-process epic ${wu} timing`);
 
     // The walk to verdict: design → the register and the briefing freeze →
     // run → conclude. The freeze is its own verb; the approval gate renders
@@ -109,20 +109,20 @@ describe('pipeline simulation: experiments, in an epic', () => {
       /Approve E1's design\?/);
     sim.run(['experiment', 'approve', wu, 'timing', 'E1']);
     sim.run(['experiment', 'advance', wu, 'timing', 'E1']);
-    sim.run(['experiment', 'runs', wu, 'timing', 'E1', '--file', sim.write(`.leeway/.cache/${wu}/experiment/timing/E1-runs.json`,
+    sim.run(['experiment', 'runs', wu, 'timing', 'E1', '--file', sim.write(`.ledger/.cache/${wu}/experiment/timing/E1-runs.json`,
       JSON.stringify([{ condition: 'one monitor', of: 4, values: [1, 1] }, { condition: 'two monitors', of: 4, values: [] }]))]);
 
     // A split: the running question decomposes into sub-experiments walked in
     // miniature; the lock stays on E1 and the parent's verdict waits for them.
     const sub = sim.run(['experiment', 'create', wu, 'timing', '--slug', 'single-monitor', '--parent', 'E1']);
     assert.strictEqual(sub.id, 'E1.1');
-    assert.strictEqual(sub.dir, path.join(sim.dir, `.leeway/${wu}/topics/timing/experiments/E1-window-placement/E1.1-single-monitor`));
+    assert.strictEqual(sub.dir, path.join(sim.dir, `.ledger/${wu}/topics/timing/experiments/E1-window-placement/E1.1-single-monitor`));
     sim.refuses(['experiment', 'conclude', wu, 'timing', 'E1', '--verdict', 'held'], /live sub-experiments/);
     sim.write(`${sub.dir}/design.md`, '# Design — E1.1\n');
     sim.run(['experiment', 'advance', wu, 'timing', 'E1.1']);
     sim.run(['experiment', 'approve', wu, 'timing', 'E1.1']);
     sim.run(['experiment', 'advance', wu, 'timing', 'E1.1']);
-    assert.deepStrictEqual(sim.run(['experiment', 'runs', wu, 'timing', 'E1.1', '--file', sim.write(`.leeway/.cache/${wu}/experiment/timing/E1.1-runs.json`,
+    assert.deepStrictEqual(sim.run(['experiment', 'runs', wu, 'timing', 'E1.1', '--file', sim.write(`.ledger/.cache/${wu}/experiment/timing/E1.1-runs.json`,
       JSON.stringify([{ condition: 'one monitor', of: 2, values: [3, 5], unit: 'ms' }]))]).runs, [{ condition: 'one monitor', of: 2, done: 2, median: 4, unit: 'ms' }]);
     const subDone = sim.run(['experiment', 'conclude', wu, 'timing', 'E1.1', '--verdict', 'placed correctly']);
     assert.strictEqual(subDone.released_waits, undefined, 'a sub releases nothing — the lock is the parent to release');
@@ -167,18 +167,18 @@ describe('pipeline simulation: experiments, in an epic', () => {
     const monitor = askedOn(sim, wu, 'timing', 'Which monitor takes a new window?');
     sim.run(['topic', 'answered', wu, 'timing', path.basename(toTiming.message_path, '.md'), '--entry', monitor]);
     const next = sim.run(['experiment', 'create', wu, 'timing', '--slug', 'multi-monitor', '--from', 'discussion', '--question', monitor,
-      '--problem', sim.write(`.leeway/.cache/${wu}/discussion/timing/problem.md`, '# Problem — multi-monitor\n')]);
+      '--problem', sim.write(`.ledger/.cache/${wu}/discussion/timing/problem.md`, '# Problem — multi-monitor\n')]);
     assert.strictEqual(next.id, 'E2');
     const stacking = askedOn(sim, wu, 'timing', 'Which window stacks on top?');
     const third = sim.run(['experiment', 'create', wu, 'timing', '--slug', 'stacking-order', '--from', 'discussion', '--question', stacking,
-      '--problem', sim.write(`.leeway/.cache/${wu}/discussion/timing/problem.md`, '# Problem — stacking order\n')]);
+      '--problem', sim.write(`.ledger/.cache/${wu}/discussion/timing/problem.md`, '# Problem — stacking order\n')]);
     assert.strictEqual(third.id, 'E3');
     // Entered over two live records, the laboratory puts the pick to the
     // user, and a back out of it hands the work to the epic menu with no
     // banner — nothing ended.
     sim.render(['experiment-pick', `${wu}.experiment.timing`], { expect: 'content' });
     const back = answerGate(sim, 'experiment pick', '--pick', 'b').next;
-    assert.deepStrictEqual(back, { kind: 'handoff', skill: 'leeway-continue-epic', args: [wu] });
+    assert.deepStrictEqual(back, { kind: 'handoff', skill: 'ledger-continue-epic', args: [wu] });
     follow(sim, back);
     // Reached from the return leg's gate instead, the same pick's back puts
     // that gate back — the person came to the picker through it — and keeps
@@ -208,7 +208,7 @@ describe('pipeline simulation: experiments, in an epic', () => {
     assert.deepStrictEqual(last.released_waits, [{ phase: 'discussion', released: ['E3'], remaining: [] }]);
     assert.strictEqual(last.item_status, 'completed', 'every record terminal closes the item');
     sim.refuses(['render', 'experiment-next-gate', `${wu}.experiment.timing`], /no live experiments/);
-    assert.strictEqual(handoffBy(sim, ['handoff', 'unit', wu]).invoked, `/leeway-continue-epic ${wu}`);
+    assert.strictEqual(handoffBy(sim, ['handoff', 'unit', wu]).invoked, `/ledger-continue-epic ${wu}`);
     claudeDecides(sim, wu, 'timing', monitor, 'The one holding focus.');
     claudeDecides(sim, wu, 'timing', stacking, 'The newest.');
     decideTopic(sim, wu, 'timing');
@@ -248,7 +248,7 @@ describe('pipeline simulation: experiments, in an epic', () => {
     const scale = askedOn(sim, wu, 'layout', 'Does the grid hold at scale?');
     sim.run(['topic', 'answered', wu, 'layout', path.basename(reopened.message_path, '.md'), '--entry', scale]);
     const revived = sim.run(['experiment', 'create', wu, 'layout', '--slug', 'follow-up', '--from', 'discussion', '--question', scale,
-      '--problem', sim.write(`.leeway/.cache/${wu}/discussion/layout/problem.md`, '# Problem — follow-up\n')]);
+      '--problem', sim.write(`.ledger/.cache/${wu}/discussion/layout/problem.md`, '# Problem — follow-up\n')]);
     assert.strictEqual(revived.id, 'E2', 'the revival allocates the next id over the closed rows');
     assert.strictEqual(sim.manifest(wu).phases.experiment.items.layout.status, 'in-progress');
     // Raised while the follow-up measures it, the question's raise names it

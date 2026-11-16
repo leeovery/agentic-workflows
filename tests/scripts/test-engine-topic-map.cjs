@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The map's verbs (leeway-engine/scripts/domain/discovery-map.cjs): `engine
+// The map's verbs (ledger-engine/scripts/domain/discovery-map.cjs): `engine
 // topic add|add-batch|edit|rename|remove|order|brief`, each doing what it was
 // asked, committing it, and answering its JSON and then its one-line report,
 // with no confirm (8.8.6, 8.8.7); a topic's brief installed from Claude's
@@ -36,7 +36,7 @@ const {
 const { createManifest, readManifest, readState, writeState, statePath, layout } = require('./discovery-test-utils.cjs');
 const { SESSION, SESSION_ID, MADE } = require('./ledger-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { removeTopic, renameTopic } = require(path.join(SCRIPTS, 'domain/discovery-map.cjs'));
 const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 const { processStartTime } = require(path.join(SCRIPTS, 'kernel/process.cjs'));

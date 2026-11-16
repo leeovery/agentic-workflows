@@ -22,7 +22,7 @@ const { NESTED, TRACKER, track, setLandingDriver, useNestedWorld } = require('./
 const SIDE = require(path.join(__dirname, '..', 'drivers', TRACKER.name, 'task.cjs'));
 
 const UNIT = 'pay';
-const CONFIG = /** @type {string} */ (process.env.LEEWAY_CONFIG_DIR);
+const CONFIG = /** @type {string} */ (process.env.LEDGER_CONFIG_DIR);
 
 /** Phase 3's tasks' branches, as the landing names them. */
 const FEES = 'feat/pay-3.1-add-fees';
@@ -81,7 +81,7 @@ function layOutOrRefusal(tree, session) {
 
 /** What a layout makes, in each repository of the nested world: its branches at their tips, and its worktrees on theirs. @param {import('./landing-world.cjs').Nested} at */
 const madeIn = (at) => [at.dir, at.ext, at.lib].map((repo) => [
-  git(repo, ['for-each-ref', '--format=%(refname) %(objectname)', 'refs/heads/']).split('\n').filter((line) => !line.startsWith('refs/heads/leeway-state ')),
+  git(repo, ['for-each-ref', '--format=%(refname) %(objectname)', 'refs/heads/']).split('\n').filter((line) => !line.startsWith('refs/heads/ledger-state ')),
   git(repo, ['worktree', 'list', '--porcelain']),
 ]);
 

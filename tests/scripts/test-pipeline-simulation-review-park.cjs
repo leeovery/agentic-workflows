@@ -54,7 +54,7 @@ describe('pipeline simulation: a fix task parked on the person in the review pha
     sim.handOver();
 
     assert.strictEqual(reviewNext(sim, WU).move, 'fixes');
-    assert.strictEqual(carryOn(sim).skill, path.join(sim.dir, '.claude/skills/leeway-review-process/SKILL.md'), 'a compaction there carries on in the review phase\'s skill');
+    assert.strictEqual(carryOn(sim).skill, path.join(sim.dir, '.claude/skills/ledger-review-process/SKILL.md'), 'a compaction there carries on in the review phase\'s skill');
 
     answeredAtStop(sim, WU);
     loop.brief(['builder', WU, task]);

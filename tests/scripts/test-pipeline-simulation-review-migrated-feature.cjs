@@ -16,7 +16,7 @@
 // unit test-pipeline-simulation-build-migrated.cjs's.
 //
 // Layer: simulation. World: this file's own — a project in the layout from
-// before Leeway, the old plan in the project's tracker, moved by the real
+// before Ledger, the old plan in the project's tracker, moved by the real
 // move (078), cut by `cut --migrating` and the migration's commit made
 // (migrated-world.cjs), the last phase then built and closed through the
 // verbs — built once and copied per scenario, which replays the engine
@@ -45,9 +45,9 @@ const WU = 'quill';
 const UNDONE = '## Findings\n\n- bug: an undo past the first edit loses the note\n  Scenario: two edits undone\n\nVerdict: fail\n';
 
 /** What the area's brief says of the work of it landed before the migration. */
-const PARTLY = 'Some of §1 was built before the migration cut the unit: that work landed before Leeway, so no commit of the change carries it, and the rest is the change\'s. Hold the product at the change\'s tips against the area';
+const PARTLY = 'Some of §1 was built before the migration cut the unit: that work landed before Ledger, so no commit of the change carries it, and the rest is the change\'s. Hold the product at the change\'s tips against the area';
 
-/** The project from before Leeway, the feature moved and cut, the migration's commit made: built once. */
+/** The project from before Ledger, the feature moved and cut, the migration's commit made: built once. */
 function buildMigrated(/** @type {string} */ dir) {
   const plans = movedProject(dir, oldFiles([
     { manifest: buildingUnit(WU, 'feature', [WU], 'in-progress'), specs: { [WU]: '# Specification: Quill\n\n## Notes\n\nA note holds its words.\n' } },
@@ -134,7 +134,7 @@ describe('pipeline simulation: the review of a feature the migration cut mid-bui
       'the board draws round 1 read, the area partly built before, its checks judged at the change\'s tips');
 
     writePhaseTasks(sim, WU, phase, 'The review\'s fixes', [{ title: 'Undo every edit', type: 'fix', scenarios: ['two edits undone'], reference: '§1' }]);
-    const failed = sim.run(['review', 'round', WU, '--file', sim.write(`.leeway/.cache/${WU}/review/round.json`, {
+    const failed = sim.run(['review', 'round', WU, '--file', sim.write(`.ledger/.cache/${WU}/review/round.json`, {
       can_now: ['Undo an edit.'],
       findings: [{ area: `1-${WU}`, scope: 'in', call: 'bug', text: 'An undo past the first edit loses the note.', from: [`1-${WU}-a#1`], fix: `${phase}.1` }],
     })]);
@@ -153,7 +153,7 @@ describe('pipeline simulation: the review of a feature the migration cut mid-bui
     assert.ok(briefOf(sim, areaBrief(sim, 'a')).includes(PARTLY), 'the area read again after its fix still partly built before');
     assert.deepStrictEqual(sim.board().view.areas.map(({ area, before }) => [area, before]), [['1', 'partly'], ['tests', null]]);
     areaRead(sim, WU);
-    assert.strictEqual(sim.run(['review', 'round', WU, '--file', sim.write(`.leeway/.cache/${WU}/review/round.json`, { can_now: ['Undo every edit.'], findings: [] })]).ends, true);
+    assert.strictEqual(sim.run(['review', 'round', WU, '--file', sim.write(`.ledger/.cache/${WU}/review/round.json`, { can_now: ['Undo every edit.'], findings: [] })]).ends, true);
 
     assert.strictEqual(reviewNext(sim, WU).move, 'closing');
     assert.strictEqual(JSON.parse(sim.read(['checklist', 'show', 'finish', WU])).items.find((/** @type {{key: string}} */ { key }) => key === 'review-passed').state, 'done');

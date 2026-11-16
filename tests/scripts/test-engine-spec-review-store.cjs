@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A pass of the spec's review in the unit's agent store (leeway-engine/
+// A pass of the spec's review in the unit's agent store (ledger-engine/
 // scripts/domain/agent-state.cjs, its `spec-review` rows; domain/
 // spec-passes.cjs, what they hold the review on): a pass's report is taken in
 // only as it reads (spec-report.cjs), once, the findings it read kept on its
@@ -46,7 +46,7 @@ const {
   UNIT, SESSION, MADE, AT_SPEC, FOUND, LANED, OWNER, made, useSpecReviewWorld, specReviewHelpers, section, unchangedSince,
 } = require('./spec-review-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { reportedPasses, runningAgents, agentsLeft } = require(path.join(SCRIPTS, 'domain/agent-state.cjs'));
 
 const dir = useSpecReviewWorld();

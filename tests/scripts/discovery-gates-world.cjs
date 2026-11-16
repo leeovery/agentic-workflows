@@ -30,7 +30,7 @@ const IDEA = layout.inbox('ideas', '2026-06-01--smart-retry.md');
 const BUG = layout.inbox('bugs', '2026-06-02--login-loop.md');
 const EPIC = 'fumi';
 /** The config folder the hermetic env pinned, put back after each test. */
-const PINNED = /** @type {string} */ (process.env.LEEWAY_CONFIG_DIR);
+const PINNED = /** @type {string} */ (process.env.LEDGER_CONFIG_DIR);
 
 /** @param {string} dir */
 function beforeTheWork(dir) {
@@ -69,10 +69,10 @@ function useGatesWorld(which = 'start') {
   let dir;
   beforeEach(() => {
     dir = worlds[which]();
-    process.env.LEEWAY_CONFIG_DIR = config();
+    process.env.LEDGER_CONFIG_DIR = config();
   });
   afterEach(() => {
-    process.env.LEEWAY_CONFIG_DIR = PINNED;
+    process.env.LEDGER_CONFIG_DIR = PINNED;
     cleanupFixture(dir);
   });
   return () => dir;

@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // What the menus read of a bug in its investigation: what waits on the
-// person there (leeway-engine/scripts/domain/waits.cjs; 18.2.3) — each
+// person there (ledger-engine/scripts/domain/waits.cjs; 18.2.3) — each
 // raise sealed at its places, at its topic or its own level, counted in the
 // conversation that drew it alone, where it can be shown and answered, and
 // in no other nor in none (N1); its door the investigation; and how far the
@@ -40,7 +40,7 @@ describe('a bug\'s investigation (18.2.3, N1)', () => {
   afterEach(() => cleanupFixture(dir));
 
   /** The conversation the raises are sealed in. */
-  const as = () => ({ LEEWAY_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: HUNT, TMUX: undefined, TMUX_PANE: undefined });
+  const as = () => ({ LEDGER_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: HUNT, TMUX: undefined, TMUX_PANE: undefined });
 
   /** Claude's question at a bug's investigation, at its topic or its own level, raised in the conversation: the question's short id and the raise's id. @param {string} bug @param {string} at */
   async function raisedAt(bug, at) {
@@ -59,7 +59,7 @@ describe('a bug\'s investigation (18.2.3, N1)', () => {
     const read = { here: waiting(HUNT), elsewhere: waiting('sess-cleared'), nowhere: waiting() };
     ok(dir, ['raise', 'answer', killAll.raise, '--pick', '1'], { env: as(), stdin: JSON.stringify({ why: 'Every session is lost.' }) });
     /** The question raised at `bug`, waiting as its raise. @param {string} bug @param {{asked: string, raise: string}} at */
-    const raised = (bug, { asked, raise }) => sealed(wait('raise', asked, `What does ${bug} lose?`, door('leeway-investigation-process', 'bugfix', bug)), raise);
+    const raised = (bug, { asked, raise }) => sealed(wait('raise', asked, `What does ${bug} lose?`, door('ledger-investigation-process', 'bugfix', bug)), raise);
     const none = { [BUGS[0]]: [], [BUGS[1]]: [] };
 
     assert.deepStrictEqual([read, waiting(HUNT), progress(dir, BUGS[0])], [

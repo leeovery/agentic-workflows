@@ -41,7 +41,7 @@ const leaveTheLab = (sim, wu) => handoffBy(sim, ['handoff', 'unit', wu]).invoked
 /** The feature's topic closed into its spec, and its `next` followed there. @param {Sim} sim @param {string} wu */
 function intoTheSpec(sim, wu) {
   const { next } = decideTopic(sim, wu, wu);
-  assert.deepStrictEqual(next, { kind: 'handoff', skill: 'leeway-specification-process', args: ['feature', wu] });
+  assert.deepStrictEqual(next, { kind: 'handoff', skill: 'ledger-specification-process', args: ['feature', wu] });
   follow(sim, next);
 }
 
@@ -64,16 +64,16 @@ describe('pipeline simulation: experiments, in a feature', () => {
     continueUnit(sim, wu);
     handoffEntry(sim, wu, 'discussion', wu);
     enterEntry(sim, wu, 'discussion', wu);
-    sim.write(`.leeway/${wu}/topics/${wu}/log.md`, `# Discussion — ${wu}\n`);
+    sim.write(`.ledger/${wu}/topics/${wu}/log.md`, `# Discussion — ${wu}\n`);
     for (const slug of ['vsync-cost', 'jank-budget']) {
       sim.run(['experiment', 'create', wu, wu, '--slug', slug, '--from', 'discussion', '--question', askedOn(sim, wu, wu, `What does ${slug} settle?`),
-        '--problem', sim.write(`.leeway/.cache/${wu}/discussion/${wu}/problem.md`, `# Problem — ${slug}\n`)]);
+        '--problem', sim.write(`.ledger/.cache/${wu}/discussion/${wu}/problem.md`, `# Problem — ${slug}\n`)]);
     }
     waitAgents(sim, wu, wu);
     assert.deepStrictEqual(spawnGate(sim, wu, 'E2', 'l'), { kind: 'continue' });
     // 24.S18: put off for later, the laboratory is reached by the feature's
     // Continue while a record waits unrun.
-    assert.strictEqual(continueUnit(sim, wu).text, `Invoke \`/leeway-experiment-process feature ${wu} ${wu}\`.`);
+    assert.strictEqual(continueUnit(sim, wu).text, `Invoke \`/ledger-experiment-process feature ${wu} ${wu}\`.`);
     sim.handOver();
 
     // Two live records put the pick to the user; a back out of it, on a unit
@@ -90,7 +90,7 @@ describe('pipeline simulation: experiments, in a feature', () => {
     sim.handOver();
     sim.run(['experiment', 'abandon', wu, wu, 'E1', '--reason', 'covered by jank-budget']);
     sim.render(['experiment-next-gate', `${wu}.experiment.${wu}`], { expect: 'content' });
-    assert.deepStrictEqual(answerGate(sim, 'experiment next gate', '--pick', 'm').next, { kind: 'handoff', skill: 'leeway', args: [] });
+    assert.deepStrictEqual(answerGate(sim, 'experiment next gate', '--pick', 'm').next, { kind: 'handoff', skill: 'ledger', args: [] });
   });
 
   it('feature experiments: the waiting conversation routes to the laboratory and back, and decided over them goes on to its specification', () => {
@@ -99,14 +99,14 @@ describe('pipeline simulation: experiments, in a feature', () => {
     continueUnit(sim, wu);
     handoffEntry(sim, wu, 'discussion', wu);
     enterEntry(sim, wu, 'discussion', wu);
-    sim.write(`.leeway/${wu}/topics/${wu}/log.md`, `# Discussion — ${wu}\n`);
+    sim.write(`.ledger/${wu}/topics/${wu}/log.md`, `# Discussion — ${wu}\n`);
 
     // The spawn holds the conversation behind its evidence: the unit's
     // Continue goes to the laboratory until the wait releases — the
     // now-and-later exits land on the same state.
     const budget = askedOn(sim, wu, wu, 'What frame budget do we hold to?');
     const e1 = sim.run(['experiment', 'create', wu, wu, '--slug', 'frame-budget', '--from', 'discussion', '--question', budget,
-      '--problem', sim.write(`.leeway/.cache/${wu}/discussion/${wu}/problem.md`, '# Problem — frame budget\n')]);
+      '--problem', sim.write(`.ledger/.cache/${wu}/discussion/${wu}/problem.md`, '# Problem — frame budget\n')]);
     assert.ok(fs.existsSync(path.join(e1.dir, 'problem.md')), 'the spawn installs the problem statement');
     sim.refuses(['ledger', 'decide', `${wu}.discussion.${wu}`, '--answers', budget], /is measured by experiment E1, still running/, null,
       JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: '60fps.', why: 'A guess.' }));
@@ -120,14 +120,14 @@ describe('pipeline simulation: experiments, in a feature', () => {
     sim.run(['experiment', 'advance', wu, wu, 'E1']);
     sim.run(['experiment', 'approve', wu, wu, 'E1']);
     sim.run(['experiment', 'advance', wu, wu, 'E1']);
-    sim.run(['experiment', 'runs', wu, wu, 'E1', '--file', sim.write(`.leeway/.cache/${wu}/experiment/${wu}/E1-runs.json`,
+    sim.run(['experiment', 'runs', wu, wu, 'E1', '--file', sim.write(`.ledger/.cache/${wu}/experiment/${wu}/E1-runs.json`,
       JSON.stringify([{ condition: 'a full scroll', of: 3, values: [16.1, 16.4, 15.9], unit: 'ms' }]))]);
     sim.run(['experiment', 'conclude', wu, wu, 'E1', '--verdict', 'budget holds at 60fps']);
     sim.run(['commit', wu, '-m', `experiment(${wu}): conclude E1`, '--topic', `experiment/${wu}`]);
 
     // The series has nothing left to work: the laboratory's leave is the
     // unit's Continue, back into the conversation.
-    assert.strictEqual(leaveTheLab(sim, wu), `/leeway-discussion-process feature ${wu}`);
+    assert.strictEqual(leaveTheLab(sim, wu), `/ledger-discussion-process feature ${wu}`);
     handoffEntry(sim, wu, 'discussion', wu);
 
     // A second spawn holds the conversation again; the record's abandon is
@@ -136,7 +136,7 @@ describe('pipeline simulation: experiments, in a feature', () => {
     // is the epic's; the work-unit cancel abandons a feature whole.
     const latency = askedOn(sim, wu, wu, 'What input latency do we hold to?');
     sim.run(['experiment', 'create', wu, wu, '--slug', 'input-latency', '--from', 'discussion', '--question', latency,
-      '--problem', sim.write(`.leeway/.cache/${wu}/discussion/${wu}/problem.md`, '# Problem — input latency\n')]);
+      '--problem', sim.write(`.ledger/.cache/${wu}/discussion/${wu}/problem.md`, '# Problem — input latency\n')]);
     sim.refuses(['ledger', 'decide', `${wu}.discussion.${wu}`, '--answers', latency], /is measured by experiment E2, still running/, null,
       JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'What 60fps leaves.', why: 'A guess.' }));
     const dropped = sim.run(['experiment', 'abandon', wu, wu, 'E2', '--reason', 'settled by E1']);
@@ -167,7 +167,7 @@ describe('pipeline simulation: experiments, in a feature', () => {
     // map's waiting mark to the record after every call.
     const budget = ledger(['ask', at], { ...made, text: 'What launch time do we hold to?' });
     const e1 = sim.run(['experiment', 'create', wu, wu, '--slug', 'launch-budget', '--from', 'discussion', '--question', budget,
-      '--problem', sim.write(`.leeway/.cache/${wu}/discussion/${wu}/problem.md`, '# Problem — launch budget\n')]);
+      '--problem', sim.write(`.ledger/.cache/${wu}/discussion/${wu}/problem.md`, '# Problem — launch budget\n')]);
     sim.refuses(['ledger', 'decide', at, '--answers', budget], /is measured by experiment E1, still running/, null,
       JSON.stringify({ ...made, text: 'Under a second.', why: 'It feels instant.' }));
 

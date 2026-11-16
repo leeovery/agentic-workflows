@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A fact raised (leeway-engine/scripts/domain/raise.cjs, its screen
+// A fact raised (ledger-engine/scripts/domain/raise.cjs, its screen
 // domain/projections/raise.cjs): `engine raise <place> --answers <question>
 // --fact`, a fact Claude cannot check and only the person holds, on stdin
 // with no lean — asked whatever the decision point would answer, its rows
@@ -32,7 +32,7 @@ const { UNIT, NOTE, PHASES, askedWorld, ledgerHelpers, leaningCall } = require('
 const { SESSION, WHY, raiseHelpers } = require('./raise-world.cjs');
 const { auditGate } = require('./gate-audit.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
 
 const ONLY_YOU_KNOW = 'Only you know this: it\'s a fact I can\'t check.';
@@ -184,8 +184,8 @@ describe('the draw (16.S75, 16.3.8)', () => {
   });
 
   it('the gate audit holds a fact\'s screen to its payload with the mod announced, with rows and with none', async () => {
-    const rowed = await raiseFact(FACT, { env: { LEEWAY_GATE_SURFACE: '1' } });
-    const bare = await raiseFact(BARE, { answers: asked.team, env: { LEEWAY_GATE_SURFACE: '1' } });
+    const rowed = await raiseFact(FACT, { env: { LEDGER_GATE_SURFACE: '1' } });
+    const bare = await raiseFact(BARE, { answers: asked.team, env: { LEDGER_GATE_SURFACE: '1' } });
 
     assert.strictEqual(auditGate(rowed.sections, 'a fact with rows')?.gate, `raise — ${rowed.res.raise}`);
     assert.strictEqual(auditGate(bare.sections, 'a fact with none')?.gate, `raise — ${bare.res.raise}`);

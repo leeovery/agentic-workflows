@@ -48,8 +48,8 @@ const { history, lines, DAY } = require('./trust-world.cjs');
 const { trustLines } = require('./pipeline-oracle.cjs');
 const { FROZEN_AT } = require('./engine-harness.cjs');
 const { statePath } = require('./discovery-test-utils.cjs');
-const decisionPoint = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/decision-point.cjs'));
-const { TRUST_LOG } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/trust-log.cjs'));
+const decisionPoint = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/decision-point.cjs'));
+const { TRUST_LOG } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/trust-log.cjs'));
 
 const CLAUDES = Object.freeze({ by: 'claude', who_moved_whom: 'none' });
 
@@ -126,9 +126,9 @@ describe('pipeline simulation: bugfix', () => {
     startUnit(sim, 'feature', 'saving', 'Saving the file');
     startNew(sim);
     const started = startUnit(sim, 'bugfix', wu, 'Fix the crash');
-    assert.deepStrictEqual(started.next, { kind: 'handoff', skill: 'leeway-investigation-process', args: ['bugfix', wu] });
+    assert.deepStrictEqual(started.next, { kind: 'handoff', skill: 'ledger-investigation-process', args: ['bugfix', wu] });
 
-    handoff(sim, `/leeway-investigation-process bugfix ${wu}`);
+    handoff(sim, `/ledger-investigation-process bugfix ${wu}`);
     assert.deepStrictEqual(await huntedAsking(sim, wu), [['root-cause'], ['fix']], 'the board says which validation raised each');
     const { decisions, findings } = JSON.parse(sim.read(['ledger', 'record', wu, wu]));
     assert.deepStrictEqual([findings.map((f) => f.text), decisions.map((d) => d.text)], [
@@ -149,8 +149,8 @@ describe('pipeline simulation: bugfix', () => {
     // A gap routed back before the spec lands in the topic's mailbox, waiting
     // for its investigation: the delivery reopens the item, and the start
     // menu's row has the bugfix back in its investigation, mail waiting.
-    sim.write('.leeway/.cache/scratch/gap-message.md', 'Gap — retry semantics\n\nWhat the spec needs decided.\n');
-    const gapLand = sim.run(['topic', 'send', wu, wu, '--from', wu, '--content', '.leeway/.cache/scratch/gap-message.md', '--slug', 'retry-semantics']);
+    sim.write('.ledger/.cache/scratch/gap-message.md', 'Gap — retry semantics\n\nWhat the spec needs decided.\n');
+    const gapLand = sim.run(['topic', 'send', wu, wu, '--from', wu, '--content', '.ledger/.cache/scratch/gap-message.md', '--slug', 'retry-semantics']);
     assert.strictEqual(gapLand.reopened, true);
     assert.strictEqual(startRow(sim, wu), 'Continue bugfix: Crash Fix — *investigation* · mail waiting');
 
@@ -163,7 +163,7 @@ describe('pipeline simulation: bugfix', () => {
     for (const view of ['product', 'record', 'map']) sim.read(['ledger', view, wu, wu]);
     await query('save crash');
     const gapMailbox = sim.run(['topic', 'mailbox', wu, wu]);
-    assert.deepStrictEqual(gapMailbox.files, [path.join(sim.dir, `.leeway/${wu}/topics/${wu}/mail/001-retry-semantics.md`)]);
+    assert.deepStrictEqual(gapMailbox.files, [path.join(sim.dir, `.ledger/${wu}/topics/${wu}/mail/001-retry-semantics.md`)]);
     const gapQuestion = sim.run(['ledger', 'ask', `${wu}.investigation.${wu}`], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'What are the retry semantics?' }));
     sim.run(['topic', 'answered', wu, wu, '001-retry-semantics', '--entry', gapQuestion.id]);
     assert.strictEqual(sim.run(['topic', 'mailbox', wu, wu]).files.length, 0);
@@ -185,11 +185,11 @@ describe('pipeline simulation: bugfix', () => {
     const wu = 'save-crash';
     startNew(sim);
     startUnit(sim, 'bugfix', wu, 'Fix the crash');
-    handoff(sim, `/leeway-investigation-process bugfix ${wu}`);
+    handoff(sim, `/ledger-investigation-process bugfix ${wu}`);
     await rootCaused(sim, wu);
     validated(sim, wu, 'root-cause');
     await fixDirected(sim, wu, { pick: 'rework', design: true });
-    const hunt = fs.readFileSync(path.join(sim.dir, `.leeway/${wu}/topics/${wu}/log.md`), 'utf8');
+    const hunt = fs.readFileSync(path.join(sim.dir, `.ledger/${wu}/topics/${wu}/log.md`), 'utf8');
     assert.match(hunt, /^## Fix direction\n\n- How should the save stop crashing\? \[\w+\]\n {4}The save was right for the fields it knew/m,
       'the fix direction is logged once it is decided, carrying what the step back found');
 
@@ -201,7 +201,7 @@ describe('pipeline simulation: bugfix', () => {
       description: 'Rework saving', reason: 'The crash is the design\'s: saving meets fields it was never built for.', brief,
     })]);
     const { next } = sim.run(answerGate(sim, 'start this work', '--pick', 'y').next.argv);
-    const route = `/leeway-discussion-process feature ${wu}`;
+    const route = `/ledger-discussion-process feature ${wu}`;
     assert.strictEqual([`/${next.skill}`, ...next.args].join(' '), route, 'the move hands off into the feature\'s discussion');
     handoff(sim, route);
 
@@ -218,7 +218,7 @@ describe('pipeline simulation: bugfix', () => {
     // Each showing told by its place and the frozen instant it was entered
     // at alone, no key: none blind here.
     const wu = 'save-null';
-    const { project_id: project } = JSON.parse(fs.readFileSync(path.join(sim.dir, '.leeway/manifest.json'), 'utf8'));
+    const { project_id: project } = JSON.parse(fs.readFileSync(path.join(sim.dir, '.ledger/manifest.json'), 'utf8'));
     const seeded = history({ project, start: Date.now() - DAY });
     for (const gate of ['plan gate', 'check-in gate', 'conclude gate']) for (let i = 0; i < 13; i += 1) seeded.gate(gate, { picked: 'y' });
     for (let i = 0; i < 13; i += 1) seeded.gate('ready to build', { picked: 's' });
@@ -228,7 +228,7 @@ describe('pipeline simulation: bugfix', () => {
 
     startNew(sim);
     startUnit(sim, 'bugfix', wu, 'Fix the crash');
-    handoff(sim, `/leeway-investigation-process bugfix ${wu}`);
+    handoff(sim, `/ledger-investigation-process bugfix ${wu}`);
     await rootCaused(sim, wu);
     validated(sim, wu, 'root-cause');
     await fixDirected(sim, wu, { pick: '2' });

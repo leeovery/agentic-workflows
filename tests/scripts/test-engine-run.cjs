@@ -40,9 +40,9 @@ const { setupFixture, cleanupFixture, createManifest, createFile, layout } = req
 const { stampBooted } = require('./engine-harness.cjs');
 
 const REPO = path.join(__dirname, '../..');
-const ENGINE = path.join(REPO, 'skills/leeway-engine/scripts/engine.cjs');
+const ENGINE = path.join(REPO, 'skills/ledger-engine/scripts/engine.cjs');
 const engine = require(ENGINE);
-const { displayWidth } = require('../../skills/leeway-engine/scripts/kernel/terminal.cjs');
+const { displayWidth } = require('../../skills/ledger-engine/scripts/kernel/terminal.cjs');
 
 /** A bugfix work unit with one investigation item to write to. */
 function seed(dir, name = 'payments') {
@@ -54,12 +54,12 @@ function seed(dir, name = 'payments') {
 }
 
 function manifestOf(dir, name = 'payments') {
-  return fs.readFileSync(path.join(dir, '.leeway', name, 'manifest.json'), 'utf8');
+  return fs.readFileSync(path.join(dir, '.ledger', name, 'manifest.json'), 'utf8');
 }
 
 /** The one presence record a beat leaves, or null. */
 function presenceRecord(dir, wu, phase, topic) {
-  const file = path.join(dir, '.leeway', '.cache', wu, phase, topic, 'presence');
+  const file = path.join(dir, '.ledger', '.cache', wu, phase, topic, 'presence');
   return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null;
 }
 
@@ -204,14 +204,14 @@ describe('engine.run — the invocation is the caller\'s', () => {
   it('a call reads the config\'s hooks once in each folder its git runs in — boot\'s many calls in each among them', () => {
     const folders = hooksReadIn((env) => assert.strictEqual(engine.run(['boot'], { cwd: dir, env }).code, 0));
 
-    assert.deepStrictEqual(folders.sort(), [dir, path.join(dir, '.leeway')]);
+    assert.deepStrictEqual(folders.sort(), [dir, path.join(dir, '.ledger')]);
   });
 
   it('the display width resolves per call, and the process keeps its own', () => {
     createFile(dir, 'payload.json', JSON.stringify({ missing: ['notes/one.md'] }));
     const ambient = displayWidth();
     const rendered = (w) => engine.run(['render', 'import-reprompt', '--file', 'payload.json'],
-      { cwd: dir, env: { LEEWAY_DISPLAY_WIDTH: w } }).stdout;
+      { cwd: dir, env: { LEDGER_DISPLAY_WIDTH: w } }).stdout;
     const narrow = rendered('40');
     assert.notStrictEqual(rendered('100'), narrow, 'the width a call carries is the width it renders at');
     assert.strictEqual(rendered('40'), narrow, 'and no memo carries the last call\'s width into this one');
@@ -276,7 +276,7 @@ describe('no uninstall in the release (27.2.3)', () => {
 
     assert.strictEqual(res.code, 1);
     assert.match(res.stderr, /^Usage: engine <command> \[args\]\n\nCommands:\n {2}boot /);
-    assert.ok(Object.hasOwn(engine.COMMANDS, 'boot') && shipped.includes('leeway') && shipped.includes('leeway-product-researcher.md'));
+    assert.ok(Object.hasOwn(engine.COMMANDS, 'boot') && shipped.includes('ledger') && shipped.includes('ledger-product-researcher.md'));
     assert.deepStrictEqual([...Object.keys(engine.COMMANDS), res.stderr, ...shipped].filter((name) => /uninstall/i.test(name)), []);
   });
 });
@@ -287,9 +287,9 @@ describe('engine.runAsync — a command that waits on the embedding provider', (
   beforeEach(() => {
     dir = setupFixture();
     seed(dir);
-    createFile(dir, '.leeway/.knowledge/config.json', '{ "knowledge": { "provider": null } }\n');
-    createFile(dir, `.leeway/${layout.record('payments', 'payments')}`, '# Payments\n\nCards settle nightly.\n');
-    engine.run(['knowledge', 'index', `.leeway/${layout.record('payments', 'payments')}`], { cwd: dir });
+    createFile(dir, '.ledger/.knowledge/config.json', '{ "knowledge": { "provider": null } }\n');
+    createFile(dir, `.ledger/${layout.record('payments', 'payments')}`, '# Payments\n\nCards settle nightly.\n');
+    engine.run(['knowledge', 'index', `.ledger/${layout.record('payments', 'payments')}`], { cwd: dir });
   });
   afterEach(() => cleanupFixture(dir));
 
@@ -300,19 +300,19 @@ describe('engine.runAsync — a command that waits on the embedding provider', (
   });
 
   it('holds the call\'s environment until the answer settles, then restores it', async () => {
-    delete process.env.LEEWAY_PROBE;
-    const pending = engine.runAsync(['knowledge', 'query', 'cards'], { cwd: dir, env: { LEEWAY_PROBE: 'held' } });
-    assert.strictEqual(process.env.LEEWAY_PROBE, 'held', 'held while the query waits');
+    delete process.env.LEDGER_PROBE;
+    const pending = engine.runAsync(['knowledge', 'query', 'cards'], { cwd: dir, env: { LEDGER_PROBE: 'held' } });
+    assert.strictEqual(process.env.LEDGER_PROBE, 'held', 'held while the query waits');
     await pending;
-    assert.ok(!('LEEWAY_PROBE' in process.env), 'and gone once it answered');
+    assert.ok(!('LEDGER_PROBE' in process.env), 'and gone once it answered');
   });
 
   it('overlapping calls each hold their own environment, and leave none behind', async () => {
-    delete process.env.LEEWAY_PROBE;
+    delete process.env.LEDGER_PROBE;
     const answers = await Promise.all(['first', 'second', 'third'].map((probe) =>
-      engine.runAsync(['knowledge', 'query', 'cards'], { cwd: dir, env: { LEEWAY_PROBE: probe } })));
+      engine.runAsync(['knowledge', 'query', 'cards'], { cwd: dir, env: { LEDGER_PROBE: probe } })));
     for (const res of answers) assert.strictEqual(res.code, 0, res.stderr);
-    assert.ok(!('LEEWAY_PROBE' in process.env), `left behind: ${process.env.LEEWAY_PROBE}`);
+    assert.ok(!('LEDGER_PROBE' in process.env), `left behind: ${process.env.LEDGER_PROBE}`);
   });
 
   it('answers a command that never waits exactly as run does', async () => {
@@ -332,36 +332,36 @@ describe('engine.runAsync — a command that waits on the embedding provider', (
   });
 
   it('run refuses a waiting command before it acts — nothing written, the environment untouched', () => {
-    const knowledge = path.join(dir, '.leeway', '.knowledge');
+    const knowledge = path.join(dir, '.ledger', '.knowledge');
     fs.rmSync(path.join(knowledge, 'store.bin'));
     fs.rmSync(path.join(knowledge, 'metadata.json'));
-    const conversations = path.join(process.env.LEEWAY_CONFIG_DIR, 'conversations');
-    delete process.env.LEEWAY_PROBE;
+    const conversations = path.join(process.env.LEDGER_CONFIG_DIR, 'conversations');
+    delete process.env.LEDGER_PROBE;
     assert.throws(
-      () => engine.run(['knowledge', 'index'], { cwd: dir, env: { LEEWAY_PROBE: 'held', CLAUDE_CODE_SESSION_ID: 'refused-before-acting' } }),
+      () => engine.run(['knowledge', 'index'], { cwd: dir, env: { LEDGER_PROBE: 'held', CLAUDE_CODE_SESSION_ID: 'refused-before-acting' } }),
       /engine knowledge index answers asynchronously — call runAsync/,
     );
-    assert.ok(!('LEEWAY_PROBE' in process.env));
+    assert.ok(!('LEDGER_PROBE' in process.env));
     assert.ok(!fs.existsSync(path.join(knowledge, 'store.bin')), 'no store built');
     assert.ok(!fs.existsSync(path.join(conversations, 'refused-before-acting')), 'no conversation marked');
   });
 
   it('a single-file index answers at once, so run takes it', () => {
-    const res = engine.run(['knowledge', 'index', `.leeway/${layout.record('payments', 'payments')}`], { cwd: dir });
+    const res = engine.run(['knowledge', 'index', `.ledger/${layout.record('payments', 'payments')}`], { cwd: dir });
     assert.strictEqual(res.code, 0, res.stderr);
   });
 
   it('--dry-run is a switch: it never takes the argument after it as its value', () => {
-    const res = engine.run(['knowledge', 'index', '--dry-run', `.leeway/${layout.record('payments', 'payments')}`], { cwd: dir });
+    const res = engine.run(['knowledge', 'index', '--dry-run', `.ledger/${layout.record('payments', 'payments')}`], { cwd: dir });
     assert.strictEqual(res.code, 0, res.stderr);
     assert.match(res.stdout, /^Indexed \d+ chunks from /);
-    assert.ok(res.stdout.endsWith(` from ${path.join(dir, `.leeway/${layout.record('payments', 'payments')}`)}\n`), res.stdout);
+    assert.ok(res.stdout.endsWith(` from ${path.join(dir, `.ledger/${layout.record('payments', 'payments')}`)}\n`), res.stdout);
   });
 
   it('the verdict before a knowledge command runs is the one its answer bears out', async () => {
-    const { runKnowledge, knowledgeWaits } = require('../../skills/leeway-engine/scripts/domain/knowledge/commands.cjs');
+    const { runKnowledge, knowledgeWaits } = require('../../skills/ledger-engine/scripts/domain/knowledge/commands.cjs');
     const forms = [
-      ['index'], ['index', `.leeway/${layout.record('payments', 'payments')}`], ['query', 'cards'], ['check'], ['status'],
+      ['index'], ['index', `.ledger/${layout.record('payments', 'payments')}`], ['query', 'cards'], ['check'], ['status'],
       ['remove', '--work-unit', 'payments', '--dry-run'], ['compact', '--dry-run'], ['rebuild'], ['fill'],
       ['--help'], ['bogus'], [], ['setup', '--keyword-only'],
     ];

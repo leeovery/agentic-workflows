@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// `engine board` in a quick-fix (leeway-engine/scripts/domain/projections/
+// `engine board` in a quick-fix (ledger-engine/scripts/domain/projections/
 // board-quick-fix.cjs, 20.14), its fixes: This session in its one session —
 // the change its note pins, each fix as the build draws a task with its
 // pair's rounds, Claude's calls and the earlier decision the change
@@ -28,7 +28,7 @@ const { UNIT, PLACE, DESCRIPTION, FLAG, HELP, BRANCH } = require('./quick-fix-wo
 const { place } = require('./board-world.cjs');
 const { SESSION, RULED, CALL_TEXT, CALL, made, working, fix, quickFixBoard } = require('./quick-fix-board-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { BOARD_VERSION } = require(path.join(SCRIPTS, 'domain/board-model.cjs'));
 const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 const { phaseViewOf } = require(path.join(SCRIPTS, 'domain/board.cjs'));

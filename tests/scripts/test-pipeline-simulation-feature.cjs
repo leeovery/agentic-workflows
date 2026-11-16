@@ -24,8 +24,8 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const ROOT = path.join(__dirname, '../..');
-const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/knowledge/files.cjs'));
-const { statePath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
+const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/ledger-engine/scripts/kernel/knowledge/files.cjs'));
+const { statePath } = require(path.join(ROOT, 'skills/ledger-engine/scripts/kernel/state-root.cjs'));
 const { sectionOf } = require('./engine-harness.cjs');
 const {
   Sim, sessionLog, enterEntry, carryOn, handoff, handoffBy, answerGate, gatesAnswered, decideTopic, startPick, startNew, shapedInTheProduct, briefDraft, startThisWork, workTheSet,
@@ -50,8 +50,8 @@ describe('pipeline simulation: feature', () => {
       type: 'feature', name: wu, description: 'Payments feature', reason: 'One topic, decided in one discussion.',
       shaped_by: [shaped], brief: briefDraft(sim, wu, wu),
     });
-    assert.deepStrictEqual(started.next, { kind: 'handoff', skill: 'leeway-discussion-process', args: ['feature', wu] });
-    handoff(sim, `/leeway-discussion-process feature ${wu}`);
+    assert.deepStrictEqual(started.next, { kind: 'handoff', skill: 'ledger-discussion-process', args: ['feature', wu] });
+    handoff(sim, `/ledger-discussion-process feature ${wu}`);
 
     // First phase: discussion (topic = work unit for single-topic types),
     // entered through `enter`, which starts it; the conversation reads the
@@ -64,7 +64,7 @@ describe('pipeline simulation: feature', () => {
     const person = { by: 'person', who_moved_whom: 'none' };
     const asked = sim.run(['ledger', 'ask', at], null, JSON.stringify({ ...person, text: 'Which card networks does checkout take?' })).id;
     const card = sim.run(['ledger', 'decide', at, '--answers', asked], null, JSON.stringify({ ...person, text: 'Visa and Mastercard.', why: 'Our acquirer takes those two.' })).id;
-    sim.write(`.leeway/${wu}/topics/${wu}/log.md`, `# ${wu}\n\nVisa and Mastercard; refunds left to another day.\n`);
+    sim.write(`.ledger/${wu}/topics/${wu}/log.md`, `# ${wu}\n\nVisa and Mastercard; refunds left to another day.\n`);
     // The person puts Apple Pay off for later, naming its horizon: it goes on
     // the roadmap at once. The closing pass then finds work no topic owns,
     // which the person says waits for later too: a feature has no map, so
@@ -78,17 +78,17 @@ describe('pipeline simulation: feature', () => {
       lines: [{ text: 'Payments take Visa and Mastercard only.', why: 'The acquirer takes those two.', widens: card }],
       candidates: [{ name: 'refunds', reason: 'Nothing decides how a refund reaches the card.', horizon: 'later' }],
     });
-    assert.deepStrictEqual(closed, { ok: true, unit: wu, topic: wu, lines: 1, withdrawals: 0, candidates: ['refunds'], next: { kind: 'handoff', skill: 'leeway-specification-process', args: ['feature', wu] } });
-    assert.deepStrictEqual([sim.manifest(wu).phases.discussion.items[wu].status, handoffBy(sim, ['handoff', 'unit', wu]).invoked], ['in-progress', `/leeway-specification-process feature ${wu}`],
+    assert.deepStrictEqual(closed, { ok: true, unit: wu, topic: wu, lines: 1, withdrawals: 0, candidates: ['refunds'], next: { kind: 'handoff', skill: 'ledger-specification-process', args: ['feature', wu] } });
+    assert.deepStrictEqual([sim.manifest(wu).phases.discussion.items[wu].status, handoffBy(sim, ['handoff', 'unit', wu]).invoked], ['in-progress', `/ledger-specification-process feature ${wu}`],
       'its Continue goes into the spec, the topic staged there');
     sim.refuses(['render', 'decided', `${wu}.${wu}`], /^render decided: pay is a feature, whose topic closes into its spec with no gate/);
-    handoff(sim, `/leeway-specification-process feature ${wu}`);
+    handoff(sim, `/ledger-specification-process feature ${wu}`);
 
     // The spec, entered at the unit, lands citing what was decided, is
     // reviewed and cut into phases.
     specEntry(sim, wu, [wu]);
     sim.run(['brief', 'spec-writer', wu]);
-    sim.write(`.leeway/${wu}/spec.md`, [
+    sim.write(`.ledger/${wu}/spec.md`, [
       '# Pay', '', '## 1. Checkout', '', '### 1.1 Cards', '', `1.1.1 Checkout takes Visa and Mastercard. [${card}]`, '',
       '## 1-S. Scenarios for §1', '', '1.S1 Given a Visa, when it pays, then checkout takes it. (1.1.1)', '',
     ].join('\n'));
@@ -126,14 +126,14 @@ describe('pipeline simulation: feature', () => {
 
   it('start: inbox ideas and a bug picked in triage and worked as one hand discovery their seeds with no type, which start this work lands as a feature, where no investigation runs for the bug (19.S9, 18.S49)', () => {
     const ideas = [
-      sim.write('.leeway/.inbox/ideas/2026-01-01--saved-search-filters.md', '# Saved Search Filters\n'),
-      sim.write('.leeway/.inbox/ideas/2026-01-01--filter-default-view.md', '# Filter Default View\n'),
-      sim.write('.leeway/.inbox/bugs/2026-01-01--filters-lost-on-reload.md', '# Filters Lost On Reload\n'),
+      sim.write('.ledger/.inbox/ideas/2026-01-01--saved-search-filters.md', '# Saved Search Filters\n'),
+      sim.write('.ledger/.inbox/ideas/2026-01-01--filter-default-view.md', '# Filter Default View\n'),
+      sim.write('.ledger/.inbox/bugs/2026-01-01--filters-lost-on-reload.md', '# Filters Lost On Reload\n'),
     ];
     assert.strictEqual(startPick(sim, 't'), null, 'the start menu\'s triage draws triage');
     // Triage carries no work type: discovery finds it.
     const seeds = ideas.map((rel) => path.join(sim.dir, rel));
-    const route = `/leeway-discovery start none "${seeds.join(',')}"`;
+    const route = `/ledger-discovery start none "${seeds.join(',')}"`;
     assert.strictEqual(workTheSet(sim, ideas).text, `Invoke \`${route}\`.`);
     const wu = 'saved-filters';
     const started = startThisWork(sim, {
@@ -141,7 +141,7 @@ describe('pipeline simulation: feature', () => {
       shaped_by: [shapedInTheProduct(sim, 'filters')], seeds, brief: briefDraft(sim, wu, wu),
     });
     assert.deepStrictEqual(started.seeds.map((/** @type {{source: string}} */ seed) => seed.source), ['inbox:idea', 'inbox:idea', 'inbox:bug']);
-    assert.deepStrictEqual([started.next.skill, handoffBy(sim, ['handoff', 'unit', wu]).invoked], ['leeway-discussion-process', `/leeway-discussion-process feature ${wu}`], 'the bug is the feature\'s to discuss: no investigation runs for it');
+    assert.deepStrictEqual([started.next.skill, handoffBy(sim, ['handoff', 'unit', wu]).invoked], ['ledger-discussion-process', `/ledger-discussion-process feature ${wu}`], 'the bug is the feature\'s to discuss: no investigation runs for it');
     sim.refuses(['enter', 'investigation', wu], /^a feature has no investigation/);
     // The yes moved the seeds out of the inbox, and the handoff checks each
     // is still there — so it can only come first.
@@ -152,10 +152,10 @@ describe('pipeline simulation: feature', () => {
     const wu = 'filters';
     const keys = () => [...sim.sections.matchAll(/^([a-z ]+): /gm)].map((m) => m[1]);
     const header = () => /^log header: (.*)$/m.exec(sim.sections)?.[1];
-    const log = `.leeway/${wu}/topics/${wu}/log.md`;
+    const log = `.ledger/${wu}/topics/${wu}/log.md`;
     startNew(sim);
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Saved filters', '--session-log-file', sessionLog(sim, wu)]);
-    handoff(sim, `/leeway-discussion-process feature ${wu}`);
+    handoff(sim, `/ledger-discussion-process feature ${wu}`);
     const first = enterEntry(sim, wu, 'discussion', wu);
     assert.deepStrictEqual([first.started, typeof first.committed], [true, 'string'], 'the first entry starts the topic and commits the start');
     assert.ok(!fs.existsSync(path.join(sim.dir, log)), 'nothing is written ahead of the opening');
@@ -173,7 +173,7 @@ describe('pipeline simulation: feature', () => {
     const wu = 'filters';
     startNew(sim);
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Saved filters', '--session-log-file', sessionLog(sim, wu)]);
-    handoff(sim, `/leeway-discussion-process feature ${wu}`);
+    handoff(sim, `/ledger-discussion-process feature ${wu}`);
     enterEntry(sim, wu, 'discussion', wu);
     const at = `${wu}.discussion.${wu}`;
     const person = { by: 'person', who_moved_whom: 'none' };
@@ -181,7 +181,7 @@ describe('pipeline simulation: feature', () => {
 
     sim.run(['workunit', 'pivot', wu, '--summary', 'Filters saved and shared', '--description', 'A filter kept by name, for its owner and those it is shared with.']);
     const added = sim.run(['topic', 'add', wu, 'sharing', '--summary', 'Who sees a shared filter', '--brief', briefDraft(sim, wu, 'sharing')]);
-    const message = sim.write(`.leeway/.cache/${wu}/discussion/${wu}/message-team-sight.md`, 'Who sees a shared filter\n\nSharing needs decisions of its own.\n');
+    const message = sim.write(`.ledger/.cache/${wu}/discussion/${wu}/message-team-sight.md`, 'Who sees a shared filter\n\nSharing needs decisions of its own.\n');
     const sent = sim.run(['topic', 'send', wu, 'sharing', '--from', wu, '--content', message, '--slug', 'team-sight']);
     sim.run(['ledger', 'move', at, '--question', point, '--to', 'sharing'], null, JSON.stringify(person));
     assert.match(sim.render(['send-report', `${wu}.sharing`, '--sent', sent.message_path], { expect: 'content' }), /^Sent to Sharing, on Filters$/m);

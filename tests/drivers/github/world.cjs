@@ -31,13 +31,13 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 const { git, bareRepo, githubOffline, createFile, ok: harnessOk, refuses } = require('../../scripts/engine-harness.cjs');
 const { TASKS, openArgs, mergeBack, cutTask, phaseReviewed } = require('../../scripts/landing-world.cjs');
-const { STATE_BRANCH } = require('../../../skills/leeway-engine/scripts/domain/state-worktree.cjs');
+const { STATE_BRANCH } = require('../../../skills/ledger-engine/scripts/domain/state-worktree.cjs');
 const stub = require('./gh-stub.cjs');
 
 const REPOSITORY = 'acme/portal';
 const SSH = path.join(__dirname, 'ssh');
 /** The environment every call runs under, as a call's overlay. */
-const GH_ENV = Object.freeze({ PATH: `${path.join(__dirname, 'bin')}:${process.env.PATH}`, LEEWAY_MERGEABLE_PAUSE_MS: '0' });
+const GH_ENV = Object.freeze({ PATH: `${path.join(__dirname, 'bin')}:${process.env.PATH}`, LEDGER_MERGEABLE_PAUSE_MS: '0' });
 
 /** `GH_ENV` over the process's own, as a spawned shell takes it. @param {Record<string, string|undefined>} [more] */
 function ghEnv(more = {}) {
@@ -262,7 +262,7 @@ function stackOfTwo(dir) {
 
 /** Task 4.1, its commit stamped as the door stamps it, opened, squashed by hand on GitHub's site, and phase 4 landed. @param {string} dir */
 function squashedByHand(dir) {
-  const task = cutTask(dir, '4.1', 'feat', 'Add tip', 'main', { 'tip.txt': 'tip\n' }, { message: 'feat(pay): add the tip\n\nLeeway-Task: pay-4-1' });
+  const task = cutTask(dir, '4.1', 'feat', 'Add tip', 'main', { 'tip.txt': 'tip\n' }, { message: 'feat(pay): add the tip\n\nLedger-Task: pay-4-1' });
   ok(dir, openArgs(task));
   mergeByHand(dir, 1, undefined, 'squash');
   phaseReviewed(dir, 4, 'auto');

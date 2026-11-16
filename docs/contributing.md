@@ -8,7 +8,7 @@ Start by reading `CLAUDE.md` at the repository root — the standing rules
 for working on this repository that are easy to violate by accident, a
 short map of the system, and the documents that own each part. How the
 system behaves lives in the skills themselves, the engine's command
-reference (`skills/leeway-engine/references/commands.md`), the module
+reference (`skills/ledger-engine/references/commands.md`), the module
 header comments, and this book.
 
 ## Getting set up
@@ -35,7 +35,7 @@ is to run them before every commit rather than at the end of a branch.
 | `npm run test:cli` | The shell contract suite of the manifest field surface | shell, closing into verb |
 | `npm run test:migrations` | Every `tests/scripts/test-migration-*.sh` | migration (the frozen fleet) |
 | `npm run typecheck` | JSDoc type contracts (`tsc --noEmit`) | — |
-| `npm run test:mod` | Both gate mods' suites (`leeway-gates` and `leeway-gates-rows`) under `claude plugin test` — owed for any change under `skills/leeway-gates*/` | the mods' own |
+| `npm run test:mod` | Both gate mods' suites (`ledger-gates` and `ledger-gates-rows`) under `claude plugin test` — owed for any change under `skills/ledger-gates*/` | the mods' own |
 
 What each layer holds, and how a test in it is written, is `tests/README.md`.
 
@@ -48,14 +48,14 @@ check `$?` instead. This has produced a falsely-green report before.
 ## After changing the knowledge base
 
 The knowledge base is engine code — its mechanism in
-`skills/leeway-engine/scripts/kernel/knowledge/`, its workflow side in
-`skills/leeway-engine/scripts/domain/knowledge/`. The kernel holds the
+`skills/ledger-engine/scripts/kernel/knowledge/`, its workflow side in
+`skills/ledger-engine/scripts/domain/knowledge/`. The kernel holds the
 store's file format, the tokenizer and stemmer, ranking, chunking,
 excerpts and outlines, the embedding providers and the config; the domain
 side holds artifact identity against the manifests, indexing, the vector
 fill, query and the passages it prints, status, decay, setup, and
 `commands.cjs`, the `engine knowledge` door; the per-phase chunking
-configs sit in `skills/leeway-engine/content/knowledge/chunking/`. Each
+configs sit in `skills/ledger-engine/content/knowledge/chunking/`. Each
 module's header states its contract. The modules take no dependencies:
 Node's built-ins alone, none newer than Node 18.
 
@@ -69,20 +69,20 @@ node tests/scripts/knowledge-eval.cjs --pin
 ## Writing a migration
 
 Migrations bring an existing project's state forward to the current
-design; `engine boot` runs them at `/leeway`. The rules
+design; `engine boot` runs them at `/ledger`. The rules
 every migration keeps are CLAUDE.md's (Migrations). The orchestrator's
-header (`skills/leeway-migrate/scripts/migrate.cjs`) states the module
+header (`skills/ledger-migrate/scripts/migrate.cjs`) states the module
 contract — `id`, `description`, `run`, the report callbacks, the optional
 verification addendum and notice.
 
 - A new migration is
-  `skills/leeway-migrate/scripts/migrations/NNN-description.cjs`, the
+  `skills/ledger-migrate/scripts/migrations/NNN-description.cjs`, the
   next number after the highest. The `*.sh` files are the frozen fleet:
   nothing new is written in bash.
 - Two migrations write outside the project. 066 edits the user's own
   Claude Code settings, and its verification addendum names the change,
   since the review diff cannot show it. 078 moves the user-level folder
-  to `~/.config/leeway/`, leaving a link to it in its place.
+  to `~/.config/ledger/`, leaving a link to it in its place.
 - Its suite is `tests/scripts/test-migration-NNN.cjs`, registered in
   `package.json`'s `test` script. Like its siblings it drives `run()`
   against a temp `projectDir` with counting `reportUpdate`/`reportSkip`
@@ -116,12 +116,12 @@ format and its check's contract.
   (`tests/scripts/migration-world.cjs`).
 
 The **reshape** — the migration from the workflows' `.workflows/` to
-Leeway's `.leeway/` — keeps a contract of its own in the runner, stated
+Ledger's `.ledger/` — keeps a contract of its own in the runner, stated
 in the same header:
 
-- Whether a project owes it is `skills/leeway-migrate/scripts/old-layout.cjs`'s
+- Whether a project owes it is `skills/ledger-migrate/scripts/old-layout.cjs`'s
   to answer (`owed`): its `.workflows/` on the main checkout's code
-  branch, and no commit on `leeway-state`. The engine and the runner ask
+  branch, and no commit on `ledger-state`. The engine and the runner ask
   it there, so no engine module names the old layout.
 - Where the run's record holds no line, the old record,
   `.workflows/.state/migrations`, seeds it, written whole, so a project
@@ -151,8 +151,8 @@ in the same header:
   and the review at the migration's end lists them among what was done.
   The chain's notices never stop it: they wait for that review.
 - No migration loads the engine: each task driver's folder declares where
-  a project from before Leeway kept its tracker's store as data,
-  `pre-leeway-store.json`, which the reshape's steps read with fs alone,
+  a project from before Ledger kept its tracker's store as data,
+  `pre-ledger-store.json`, which the reshape's steps read with fs alone,
   and a folder whose declaration is missing or does not read is named in
   their notice.
 - The engine's verbs only the migration's directives call — `ledger
@@ -162,7 +162,7 @@ in the same header:
   part-way.
 - The reshape's finish (081) journals the code side's drops —
   `.workflows/` and each declared store — in the state's cache,
-  `.leeway/.cache/migrate/finish.json`, `{drops}`, staging nothing, so
+  `.ledger/.cache/migrate/finish.json`, `{drops}`, staging nothing, so
   the engine names neither and a commit of the person's own takes none of
   them. Boot then answers `finish`, committing nothing, and the
   migration's commit, `engine commit --migrations` on the person's yes,
@@ -229,7 +229,7 @@ pass cuts what that model no longer needs. Beyond the prose, the pass
 re-weighs each item below, each held as it is for today's model:
 
 - the brief templates in the engine's content folder
-  (`skills/leeway-engine/content/briefs/`);
+  (`skills/ledger-engine/content/briefs/`);
 - the checklist items held for the model: a topic's close's "every
   decision in the conversation has an entry", and the closing pass's
   second reader;
@@ -243,7 +243,7 @@ re-weighs each item below, each held as it is for today's model:
 - the raw calls' models and efforts: the one-decision check, the
   labeller, and the typed-answer reader;
 - the one-decision check's hit rate, read from its log,
-  `~/.config/leeway/decision-checks.jsonl`: a line per run, across every
+  `~/.config/ledger/decision-checks.jsonl`: a line per run, across every
   project, with its outcome (`one`, `several`, or `unchecked` where the
   call could not judge) and how many rules it found;
 - the knowledge eval's index arm.

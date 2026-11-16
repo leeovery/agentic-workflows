@@ -18,9 +18,9 @@ const path = require('path');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 
-const store = require('../../skills/leeway-engine/scripts/kernel/knowledge/store.cjs');
-const { StubProvider } = require('../../skills/leeway-engine/scripts/kernel/knowledge/embeddings.cjs');
-const { knowledgeFiles } = require('../../skills/leeway-engine/scripts/kernel/knowledge/files.cjs');
+const store = require('../../skills/ledger-engine/scripts/kernel/knowledge/store.cjs');
+const { StubProvider } = require('../../skills/ledger-engine/scripts/kernel/knowledge/embeddings.cjs');
+const { knowledgeFiles } = require('../../skills/ledger-engine/scripts/kernel/knowledge/files.cjs');
 const { setupFixtureAt, statePath, layout } = require('./engine-harness.cjs');
 const knowledgeEval = require('./knowledge-eval.cjs');
 const embeddings = require('./knowledge-eval-embeddings.cjs');

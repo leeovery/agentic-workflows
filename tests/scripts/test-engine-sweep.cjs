@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The sweep before the spec (leeway-engine/scripts/domain/sweep.cjs, its
+// The sweep before the spec (ledger-engine/scripts/domain/sweep.cjs, its
 // take domain/sweep-take.cjs, its brief's records in
 // domain/brief-records.cjs, the map after it in domain/approve-map.cjs):
 // `brief sweep <unit>`, the sweep's own named agent briefed for the unit
@@ -52,7 +52,7 @@ const { createManifest } = require('./discovery-test-utils.cjs');
 const { MADE, SESSION, ledgerHelpers } = require('./ledger-world.cjs');
 const { gatesHelpers } = require('./discovery-gates-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { BRIEFS, briefPath, issuedPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
 const { conversationDir } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
 
@@ -159,8 +159,8 @@ describe('the sweep\'s brief (8.10.8, 8.S43, 26.5.1)', () => {
   it('names its agent, and fills its template for the unit: every live topic\'s entries under its title, a "don\'t care" decision marked, then the unit\'s own and what was made here on another unit\'s place, each by short id and kind, the product record, the names struck, no refusal, and where the report goes', () => {
     const { res, text } = briefed();
 
-    assert.deepStrictEqual([res.role, res.agent, res.pointer], ['sweep', 'leeway-sweep', `brief:${res.id}`]);
-    assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'sweep', agent: 'leeway-sweep', unit: UNIT, task: null, topic: null });
+    assert.deepStrictEqual([res.role, res.agent, res.pointer], ['sweep', 'ledger-sweep', `brief:${res.id}`]);
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'sweep', agent: 'ledger-sweep', unit: UNIT, task: null, topic: null });
     assert.strictEqual(text.split('\n')[0], `Brief ${res.id} — the sweep's, for ${UNIT}`);
     assert.strictEqual(part(text, 'This work\'s records'), [
       '## Note Model (note-model)', '',
@@ -295,7 +295,7 @@ describe('sweep take: what it sends, records and stages, and where it goes next 
 
     assert.deepStrictEqual(res, {
       ok: true, unit: UNIT, sent: [{ topic: 'note-model', message: statePath(dir, message) }], reopened: ['note-model'], candidates: [], committed: res.committed,
-      next: { kind: 'handoff', skill: 'leeway-continue-epic', args: [UNIT] },
+      next: { kind: 'handoff', skill: 'ledger-continue-epic', args: [UNIT] },
     });
     assert.match(readState(dir, message), /^A title is required\nFrom Specification · .*\n\nStorage names each file by its title\.\n$/);
     assert.deepStrictEqual(JSON.parse(readState(dir, REPORT)).messages, [{ ...TITLE_REQUIRED, sent: message }]);
@@ -388,7 +388,7 @@ describe('approve the map after the sweep (8.8.4, 8.10.9, 8.S50)', () => {
     assert.match(sectionOf(swept(), 'DISPLAY: approve the map'), /^THE MAP \(2 topics, 1 decided\)\n {2}├─ ◐ 1\. Note Model\n {2}└─ ✓ 2\. Storage And Sync$/m);
     ok(dir, ['approve-map', 'strike', UNIT, '1']);
 
-    assert.deepStrictEqual(ok(dir, ['approve-map', 'yes', UNIT]).next, { kind: 'handoff', skill: 'leeway-continue-epic', args: [UNIT] });
+    assert.deepStrictEqual(ok(dir, ['approve-map', 'yes', UNIT]).next, { kind: 'handoff', skill: 'ledger-continue-epic', args: [UNIT] });
   });
 
   it('strikes one of several through a pick, marks it struck, and keeps the strike through a restage; unstrike undoes it (P8)', () => {
@@ -448,7 +448,7 @@ describe('approve the map after the sweep (8.8.4, 8.10.9, 8.S50)', () => {
       struck: ['exporting-notes'],
       session_closed: null,
       committed: res.committed,
-      next: { kind: 'handoff', skill: 'leeway-continue-epic', args: [UNIT] },
+      next: { kind: 'handoff', skill: 'ledger-continue-epic', args: [UNIT] },
     });
     assert.deepStrictEqual([discovery.items['backing-up-notes'], discovery.dismissed], [{ source: 'sweep', summary: BACKUPS.reason, order: 3 }, ['dock-badge', 'exporting-notes']]);
     assert.strictEqual(readState(dir, layout.topic(UNIT, 'backing-up-notes', 'brief.md')), `${BACKUPS.brief}\n`);
@@ -508,13 +508,13 @@ describe('the sweep\'s step, held until approve the map answers its candidates (
     const taken = `brief: ${UNIT}'s sweep is taken already — one sweep for the spec (8.10.3)`;
 
     assert.strictEqual(sweepRun(), 'open');
-    assert.ok(entered().includes(`approve the map: \`node .claude/skills/leeway-engine/scripts/engine.cjs render approve-map ${UNIT} --sweep\``));
+    assert.ok(entered().includes(`approve the map: \`node .claude/skills/ledger-engine/scripts/engine.cjs render approve-map ${UNIT} --sweep\``));
     assert.deepStrictEqual([refused(['spec', 'land', UNIT]), refused(['brief', 'spec-writer', UNIT]), refused(['brief', 'sweep', UNIT])], [`spec land: ${approve}`, `brief: ${approve}`, `${taken}; ${approve}`]);
 
     swept();
     const shaped = { topics: [{ name: 'storage-and-sync' }, { name: 'note-model' }] };
     output(dir, ['render', 'approve-map', UNIT, '--file', scratch(JSON.stringify(shaped), 'json')], { env: SESSION });
-    assert.ok(entered().includes(`approve the map: \`node .claude/skills/leeway-engine/scripts/engine.cjs render approve-map ${UNIT}\`\n`), 'the map Keep shaping staged is read back, never staged again from the sweep');
+    assert.ok(entered().includes(`approve the map: \`node .claude/skills/ledger-engine/scripts/engine.cjs render approve-map ${UNIT}\`\n`), 'the map Keep shaping staged is read back, never staged again from the sweep');
     assert.match(sectionOf(output(dir, ['render', 'approve-map', UNIT], { env: SESSION }), 'DISPLAY: approve the map'), /^ {2}├─ ✓ 1\. Storage And Sync\n {2}└─ ✓ 2\. Note Model\n/m);
     ok(dir, ['approve-map', 'strike', UNIT, '2']);
     ok(dir, ['approve-map', 'yes', UNIT]);

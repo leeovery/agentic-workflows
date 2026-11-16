@@ -11,7 +11,7 @@ const path = require('path');
 const { UNIT, SESSION_ID, env, ok } = require('./review-world.cjs');
 const { place } = require('./board-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { projectName } = require(path.join(SCRIPTS, 'domain/state-checks.cjs'));
 
 /** An area's line, of a unit the migration did not cut. @param {string} area @param {string} title @param {string} state @param {{ran?: number, found?: number, since?: string|null}} [more] */

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// `engine discovery-log not-taken|view|spike <epic> …` (leeway-engine/
+// `engine discovery-log not-taken|view|spike <epic> …` (ledger-engine/
 // scripts/domain/discovery-log.cjs, 20.11.1, 20.11.3): each entry put in its
 // fixed shape under its fixed heading in the log of the epic's open session
 // — after the last entry of the last heading of its name, or under the

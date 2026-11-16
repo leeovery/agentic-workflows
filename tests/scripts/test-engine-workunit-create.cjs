@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A work unit's creation (leeway-engine/scripts/domain/workunit-create.cjs):
+// A work unit's creation (ledger-engine/scripts/domain/workunit-create.cjs):
 // what a created unit holds, through the door that creates work — start this
 // work's yes — its canonical manifest and registration, the marker only an
 // epic's first session takes, and its inbox seeds, each moved with its
@@ -88,7 +88,7 @@ describe('a created unit, through start this work', () => {
     commitOnState(statePath(dir()), { [QUICKFIX]: '# Typo Fix\n' });
     const record = layout.record('atlas', 'atlas');
     output(dir(), ['knowledge', 'index', writeState(dir(), record, '# Atlas\n\nMaps settled.\n')]);
-    const res = started('epic', 'payments', { seeds: [`.leeway/${IDEA}`, `.leeway/${BUG}`, `.leeway/${QUICKFIX}`] });
+    const res = started('epic', 'payments', { seeds: [`.ledger/${IDEA}`, `.ledger/${BUG}`, `.ledger/${QUICKFIX}`] });
     assert.deepStrictEqual(res.seeds, [
       { path: landed('seeds/2026-06-01-smart-retry.md'), source: 'inbox:idea' },
       { path: landed('seeds/2026-06-02-login-loop.md'), source: 'inbox:bug' },
@@ -117,8 +117,8 @@ describe('a created unit, through start this work', () => {
   it('refuses a seed outside the inbox, one missing, and one named twice — nothing touched', () => {
     codeFile('notes/rogue.md', 'not an inbox item\n');
     assert.match(refusedSeeds(['notes/rogue.md']), /not a live inbox path/);
-    assert.match(refusedSeeds(['.leeway/.inbox/ideas/2026-06-09--ghost.md']), /inbox file not found/);
-    assert.match(refusedSeeds([`.leeway/${IDEA}`, `.leeway/${IDEA}`]), /duplicate inbox path/);
+    assert.match(refusedSeeds(['.ledger/.inbox/ideas/2026-06-09--ghost.md']), /inbox file not found/);
+    assert.match(refusedSeeds([`.ledger/${IDEA}`, `.ledger/${IDEA}`]), /duplicate inbox path/);
   });
 });
 
@@ -131,7 +131,7 @@ describe('workunit create, its log', () => {
   });
 
   it('puts the unit back where its registration fails — no folder, its seed back in the inbox', () => {
-    const args = createArgs('payments', 'epic', ['--seed', `.leeway/${IDEA}`]);
+    const args = createArgs('payments', 'epic', ['--seed', `.ledger/${IDEA}`]);
     const refused = failingWrites(manifestTemp(statePath(dir())), () => refusedPristine(dir(), args));
     assert.strictEqual(refused.error, 'disk full');
   });
@@ -151,7 +151,7 @@ describe('workunit create, refused', () => {
   });
 
   it('refuses a missing log file, and missing arguments with the usage', () => {
-    assert.match(refusedPristine(dir(), ['workunit', 'create', 'payments', 'epic', '--description', 'd', '--session-log-file', '.leeway/.cache/ghost.md']).error, /session log file not found/);
+    assert.match(refusedPristine(dir(), ['workunit', 'create', 'payments', 'epic', '--description', 'd', '--session-log-file', '.ledger/.cache/ghost.md']).error, /session log file not found/);
     const usage = /Usage: engine workunit create .* --session-log-file <path>/;
     for (const args of [[], ['payments'], ['payments', 'epic'], ['payments', 'feature', '--description', 'd']]) assert.match(refuses(dir(), ['workunit', 'create', ...args]).error, usage);
     assert.match(refuses(dir(), ['workunit', 'destroy', 'payments']).error, /Usage: engine workunit <create\|cancel\|reactivate\|pivot\|absorb\|move\|split\|retire\|position>/);

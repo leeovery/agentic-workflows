@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Blind questions (16.17; leeway-engine/scripts/domain/raise.cjs, its
+// Blind questions (16.17; ledger-engine/scripts/domain/raise.cjs, its
 // screen domain/projections/raise.cjs, the draw domain/decision-point.cjs):
 // a question's call the ask rule lets proceed, drawn blind by its
 // question's id — the root of its chain, so every raise of it draws alike,
@@ -52,7 +52,7 @@ const { labelAnswers } = require('./labels.cjs');
 const { auditGate } = require('./gate-audit.cjs');
 const { fixture } = require('./board-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
 const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 const { projectName } = require(path.join(SCRIPTS, 'domain/state-checks.cjs'));
@@ -234,8 +234,8 @@ describe('the draw (16.17.1–16.17.5)', () => {
     const env = conversation({ CLAUDE_STUB_ANSWERS: JSON.stringify({ [`The answer: ${MAIN.text}`]: { rules: ['One rule.'] }, [CALL.question]: labelAnswers('behaviour'), '': 'no-login' }) });
 
     const { res, sections } = await raised(NOTE, ['--answers', ASKED.note], CALL, env);
-    const again = await raised(NOTE, ['--answers', ASKED.note], CALL, { ...env, LEEWAY_GATE_SURFACE: '1' });
-    const technical = okSections(dir, ['raise', 'show', res.raise, '--technical'], { env: { ...env, LEEWAY_GATE_SURFACE: '1' } }).sections;
+    const again = await raised(NOTE, ['--answers', ASKED.note], CALL, { ...env, LEDGER_GATE_SURFACE: '1' });
+    const technical = okSections(dir, ['raise', 'show', res.raise, '--technical'], { env: { ...env, LEDGER_GATE_SURFACE: '1' } }).sections;
 
     assert.deepStrictEqual([res, sections], [{ ok: true, decision: 'blind', reason: BLIND, raise: res.raise, redrawn: false }, blindScreen(res.raise)]);
     assert.deepStrictEqual([again.res, again.sections.replace(/^=== GATE.*\n.*\n/, '')], [{ ok: true, decision: 'blind', reason: BLIND, raise: res.raise, redrawn: true }, blindScreen(res.raise)]);
@@ -413,7 +413,7 @@ describe('mid-build (16.17.6, 12.13)', () => {
    * Claude picked as the person did, and the project's own answers the
    * kind counts at the conversation's model.
    */
-  const onTheKind = () => withEnv({ LEEWAY_CONFIG_DIR: config() }, () => {
+  const onTheKind = () => withEnv({ LEDGER_CONFIG_DIR: config() }, () => {
     const model = logged().find((event) => event.session === SESSION)?.model ?? null;
     return [alikeOn(evidenceOf(statePath(dir)).answers, 'behaviour'), ownOf(countsOf(statePath(dir), { model, now: Date.now() }).kinds.behaviour)];
   });
@@ -423,7 +423,7 @@ describe('mid-build (16.17.6, 12.13)', () => {
    * stands, and the entry of the reversal cancelling it, null for none.
    */
   const standings = () => {
-    const answers = withEnv({ LEEWAY_CONFIG_DIR: config() }, () => evidenceOf(statePath(dir)).answers).filter(({ event }) => event.session === SESSION);
+    const answers = withEnv({ LEDGER_CONFIG_DIR: config() }, () => evidenceOf(statePath(dir)).answers).filter(({ event }) => event.session === SESSION);
     const entryOf = new Map(answers.map(({ event }) => [event.id, event.entry]));
     return answers.map(({ event, standing, cancelled_by: by }) => [event.type, standing, by === null ? null : entryOf.get(by)]);
   };
@@ -469,7 +469,7 @@ describe('mid-build (16.17.6, 12.13)', () => {
       call: MAIN_FIRST, rows_judged: [], why_asking: BLIND, model: null, blocks_build: true, replaced_by: null, always: null, measured: null, chain: ASKED.where, blind: true,
     });
     assert.deepStrictEqual(loggedOf('blind-draw').map(({ entry, kind }) => [entry, kind]), [[decided.id, 'behaviour']]);
-    const ahead = withEnv({ LEEWAY_CONFIG_DIR: config() }, () => evidenceOf(statePath(dir))).answers.find(({ event }) => event.entry === decided.id);
+    const ahead = withEnv({ LEDGER_CONFIG_DIR: config() }, () => evidenceOf(statePath(dir))).answers.find(({ event }) => event.entry === decided.id);
     assert.strictEqual(ahead?.standing, 'no-weight');
     const waiting = ok(dir, ['raise', 'waiting', BUILT]).waiting.map((/** @type {{question: string, parks: string[], about: string}} */ q) => [q.question, q.parks, full(q.about)]);
     assert.deepStrictEqual(waiting, [['Q1', [], ASKED.where]]);
@@ -614,7 +614,7 @@ describe('mid-build (16.17.6, 12.13)', () => {
     assert.deepStrictEqual([event, entry, reason, moved, why, given], ['kept', full(landed.id), 'asked-blind', 'none', 'They don\'t mind which: left to the builder.', 'dont-care']);
     assert.deepStrictEqual(loggedOf('raise').map((raised) => raised.entry), [full(landed.id)], 'its raise event names the call it keeps');
     const record = recordOf(landed.id);
-    const line = /** @type {import('../../skills/leeway-engine/scripts/domain/unit-entries.cjs').UnitEntry} */ (unitEntries(dir, BUILT).get(full(landed.id))).line;
+    const line = /** @type {import('../../skills/ledger-engine/scripts/domain/unit-entries.cjs').UnitEntry} */ (unitEntries(dir, BUILT).get(full(landed.id))).line;
     assert.deepStrictEqual([whoseIs(landed.id), record.by, record.given, line.given, output(dir, ['render', 'review-calls', BUILT], { env: conversation() }).includes('[implementation · don\'t care]')], ['dont-care', 'claude', 'dont-care', 'dont-care', true]);
     assert.deepStrictEqual([res.receipt, sections, marked(), callsOn()], ['Q1 answered · my answer stands as the builder\'s: On the screen the cursor is on · task 2.3 stands as built · nothing waiting on you', '', null, [full(landed.id)]]);
     assert.deepStrictEqual(standings().filter(([type]) => type === 'raise'), [['raise', 'no-weight', null]]);

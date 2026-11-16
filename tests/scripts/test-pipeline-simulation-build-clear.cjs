@@ -75,7 +75,7 @@ describe('pipeline simulation: the build across /clears', () => {
   const reviewed = (letter, report) => landed(placeIn(sim, loop.brief(['reviewer', WU, '1.1', '--letter', letter]), 'Where your report goes'), report);
 
   /** The reports of round `round` of task 1.1, as a line names them. @param {number} round */
-  const reportsOf = (round) => ['a', 'b'].map((letter) => `\`${path.join(sim.dir, `.leeway/${WU}/build/tasks/1.1/round-${round}-${letter}.md`)}\``).join(' and ');
+  const reportsOf = (round) => ['a', 'b'].map((letter) => `\`${path.join(sim.dir, `.ledger/${WU}/build/tasks/1.1/round-${round}-${letter}.md`)}\``).join(' and ');
 
   it('24.2.4, 12.1.4, 13.4.5, 12.14: a /clear mid-fix, while the pair reads, between a pass and its account, and once it is taken — each line in flight naming where the task goes, a new builder briefed before any fix brief, a report that does not read back to its reviewer, the pass\'s nit fixed in the worktree the line names before the account, and the task landed; the first conversation, resumed, carrying it no more', () => {
     const opened = sim.env.CLAUDE_CODE_SESSION_ID;

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The one-decision check (leeway-engine/scripts/domain/ledger-one-decision
+// The one-decision check (ledger-engine/scripts/domain/ledger-one-decision
 // .cjs) and its late check (domain/ledger-late-check.cjs): every decision
 // `ledger decide` writes, and every one `ledger replace` writes in place of
 // a decision, judged by the separate Claude call before the writer lock,
@@ -33,7 +33,7 @@ const path = require('path');
 const { holdLock, lockAttempts, ok, refuses, refusedPristine, head, stateGit, statePath, layout, cleanupFixture } = require('./engine-harness.cjs');
 const { UNIT, SESSION_ID, MADE, NOTE, ledgerWorld, ledgerHelpers } = require('./ledger-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { PROMPT, SCHEMA, judgeDecision } = require(path.join(SCRIPTS, 'domain/ledger-one-decision.cjs'));
 const { launchLateCheck } = require(path.join(SCRIPTS, 'domain/ledger-late-check.cjs'));
 const { launcher } = require(path.join(SCRIPTS, 'kernel/call.cjs'));
@@ -153,7 +153,7 @@ function flagValue(argv, flag) {
  * The separate call answered in process, in turn, by `answers` — each a
  * call's answer, or an error it throws — for the length of the test; how
  * many times it was called.
- * @param {import('node:test').TestContext} t @param {(import('../../skills/leeway-engine/scripts/kernel/claude-call.cjs').Answer|Error)[]} answers
+ * @param {import('node:test').TestContext} t @param {(import('../../skills/ledger-engine/scripts/kernel/claude-call.cjs').Answer|Error)[]} answers
  * @returns {{count: number}}
  */
 function callAnswering(t, answers) {

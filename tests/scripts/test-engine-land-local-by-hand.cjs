@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The local landing driver (leeway-engine/scripts/drivers/landing/local/
+// The local landing driver (ledger-engine/scripts/drivers/landing/local/
 // driver.cjs) and work landed by hand, read as the one read of what has
 // landed reads it (task-landed.cjs, 7.2.22): a phase squashed by hand —
 // under the person's own message, git's own squash message, or its task's
@@ -46,10 +46,10 @@ const assert = require('node:assert');
 const { ok, git, tip, traced, statePath, datedAt, MERGED_BY_HAND } = require('./engine-harness.cjs');
 const { TASKS, TRACKER, openArgs, own, cutTask, commitFiles, useLandingWorld, alreadyMoving, finishReady } = require('./landing-world.cjs');
 
-const { changeOf } = require('../../skills/leeway-engine/scripts/domain/review-change.cjs');
-const { unitLanded } = require('../../skills/leeway-engine/scripts/domain/task-landed.cjs');
-const { projectRepos } = require('../../skills/leeway-engine/scripts/kernel/repos.cjs');
-const { workMessage } = require('../../skills/leeway-engine/scripts/domain/commit-task.cjs');
+const { changeOf } = require('../../skills/ledger-engine/scripts/domain/review-change.cjs');
+const { unitLanded } = require('../../skills/ledger-engine/scripts/domain/task-landed.cjs');
+const { projectRepos } = require('../../skills/ledger-engine/scripts/kernel/repos.cjs');
+const { workMessage } = require('../../skills/ledger-engine/scripts/domain/commit-task.cjs');
 
 const { card } = TASKS;
 const project = useLandingWorld('engine-land-local-by-hand-');

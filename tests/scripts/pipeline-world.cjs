@@ -25,28 +25,28 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const ROOT = path.join(__dirname, '../..');
-const engine = require(path.join(ROOT, 'skills/leeway-engine/scripts/engine.cjs'));
-const schema = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/manifest-schema.cjs'));
-const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/knowledge/files.cjs'));
-const { drawLabel } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/surfaces.cjs'));
-const { startMenuScreen } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/start-menu.cjs'));
-const { startMenuRead } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/start-menu.cjs'));
-const { skillAt } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/position.cjs'));
-const { HANDOFF_TARGETS } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/handoff.cjs'));
-const { SHOWN, RAISE_SHOWN } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/gate.cjs'));
+const engine = require(path.join(ROOT, 'skills/ledger-engine/scripts/engine.cjs'));
+const schema = require(path.join(ROOT, 'skills/ledger-engine/scripts/kernel/manifest-schema.cjs'));
+const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/ledger-engine/scripts/kernel/knowledge/files.cjs'));
+const { drawLabel } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/projections/surfaces.cjs'));
+const { startMenuScreen } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/projections/start-menu.cjs'));
+const { startMenuRead } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/start-menu.cjs'));
+const { skillAt } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/position.cjs'));
+const { HANDOFF_TARGETS } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/handoff.cjs'));
+const { SHOWN, RAISE_SHOWN } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/gate.cjs'));
 const { initRepo, fixtureFrom, cleanupFixture, git, stateGit, withEnv, screenOf, stampBooted } = require('./engine-harness.cjs');
-const { BOOTED } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/user-files.cjs'));
-const { briefPath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/brief-names.cjs'));
+const { BOOTED } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/user-files.cjs'));
+const { briefPath } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/brief-names.cjs'));
 const { copyWorld, templateFolder } = require('./discovery-test-utils.cjs');
 const { worldOfTheRun } = require('./run-worlds.cjs');
-const { STATE_DIR_NAME, statePath } = require(path.join(ROOT, 'skills/leeway-engine/scripts/kernel/state-root.cjs'));
+const { STATE_DIR_NAME, statePath } = require(path.join(ROOT, 'skills/ledger-engine/scripts/kernel/state-root.cjs'));
 
 const { shellWords, auditState, auditGatePayload, auditTrust, trustLines, auditGateAnswer } = require('./pipeline-oracle.cjs');
 const { leaningCall } = require('./ledger-world.cjs');
 const { labelAnswers } = require('./labels.cjs');
-const decisionPoint = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/decision-point.cjs'));
+const decisionPoint = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/decision-point.cjs'));
 
-/** @typedef {import('../../skills/leeway-engine/scripts/domain/projections/surfaces.cjs').Next} Next */
+/** @typedef {import('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs').Next} Next */
 
 // The project every scenario starts from, made once per process.
 // The topic family's map verbs, which answer their one-line report after
@@ -90,7 +90,7 @@ const simWorld = fixtureFrom('pipeline-sim-', readyForSim);
 class Sim {
   /** @param {() => string} [world] the project the sim starts from, copied for it: the one every scenario starts from, or a scenario file's own (`worldFrom`) */
   constructor(world = simWorld) {
-    // A project with its state worktree at `.leeway/`, which ignores the
+    // A project with its state worktree at `.ledger/`, which ignores the
     // cache and the checkout's own knowledge directory.
     this.dir = world();
     // The system config directory sits beside the project, as a real one
@@ -114,7 +114,7 @@ class Sim {
     // The sim's own identity: this process, alive with a real start time, so
     // the rows its verbs beat read `held`.
     this.env = {
-      LEEWAY_CONFIG_DIR: this.configDir,
+      LEDGER_CONFIG_DIR: this.configDir,
       CLAUDE_CODE_SESSION_ID: 'sim-session',
       CLAUDE_PID: String(process.pid),
       TMUX: undefined,
@@ -355,7 +355,7 @@ class Sim {
   }
 
   manifest(wu) {
-    return JSON.parse(fs.readFileSync(path.join(this.dir, '.leeway', wu, 'manifest.json'), 'utf8'));
+    return JSON.parse(fs.readFileSync(path.join(this.dir, '.ledger', wu, 'manifest.json'), 'utf8'));
   }
 
   /** The board as the sim's conversation draws it — This session unless `args` name a tab — the mod's read, nothing to audit. @param {string[]} [args] */
@@ -366,13 +366,13 @@ class Sim {
 
 /** Session-log helper — workunit create needs one. */
 function sessionLog(sim, wu, n = 1) {
-  return sim.write(`.leeway/.cache/${wu}/discovery/session-00${n}.md`,
+  return sim.write(`.ledger/.cache/${wu}/discovery/session-00${n}.md`,
     `# Discovery Session 00${n}\n\n## Conclusion\n\n(none)\n`);
 }
 
 /** Write a message scratch and return the `topic send` argv delivering it from `from`. */
 function sendArgv(sim, wu, topic, from, slug = 'a-message') {
-  const scratch = sim.write(`.leeway/.cache/scratch/${slug}.md`, `${slug}\n\nBody of ${slug}.\n`);
+  const scratch = sim.write(`.ledger/.cache/scratch/${slug}.md`, `${slug}\n\nBody of ${slug}.\n`);
   return ['topic', 'send', wu, topic, '--from', from, '--content', scratch, '--slug', slug];
 }
 
@@ -432,7 +432,7 @@ function mappedEpic(sim, wu, names) {
 
 /** Topics landed on an epic's map in one batch, each with a brief drafted for it. @param {Sim} sim @param {string} wu @param {{name: string}[]} topics */
 function mapTopics(sim, wu, topics) {
-  return sim.run(['topic', 'add-batch', wu, '--file', sim.write(`.leeway/.cache/${wu}/discovery/topics.json`,
+  return sim.run(['topic', 'add-batch', wu, '--file', sim.write(`.ledger/.cache/${wu}/discovery/topics.json`,
     topics.map((topic) => ({ ...topic, brief: briefDraft(sim, wu, topic.name) })))]);
 }
 
@@ -475,7 +475,7 @@ function arrive(sim, name) {
 function arrived(sim, name) {
   const here = carryOn(sim);
   assert.deepStrictEqual(here.position, { name }, `the arrival records the place alone (${name})`);
-  const skill = schema.PROJECT_IDENTITIES.includes(name) ? `leeway-${name}` : skillAt(name, undefined, sim.manifest(name).work_type);
+  const skill = schema.PROJECT_IDENTITIES.includes(name) ? `ledger-${name}` : skillAt(name, undefined, sim.manifest(name).work_type);
   assert.strictEqual(here.skill, path.join(sim.dir, '.claude/skills', /** @type {string} */ (skill), 'SKILL.md'), `the ${name} carries on in its own skill`);
 }
 
@@ -484,7 +484,7 @@ function arrived(sim, name) {
 /** @param {Sim} sim @param {string} wu */
 function continueEpic(sim, wu) {
   assert.strictEqual(sim.manifest(wu).work_type, 'epic', 'only an epic has a menu of its own — any other unit is continued where it stands');
-  assert.strictEqual(continueUnit(sim, wu).text, `Invoke \`/leeway-continue-epic ${wu}\`.`, 'an epic\'s Continue opens its menu');
+  assert.strictEqual(continueUnit(sim, wu).text, `Invoke \`/ledger-continue-epic ${wu}\`.`, 'an epic\'s Continue opens its menu');
 }
 
 // The start menu, then an epic's menu, as a conversation reaches them: the
@@ -572,14 +572,14 @@ function handoffBy(sim, argv) {
   assert.ok(!inline.stdout.includes('=== HANDOFF'), 'the payload is the mod\'s, present only announced');
   const data = (/** @type {string} */ field) => inline.stdout.match(new RegExp(`^${field}: (.*)$`, 'm'))?.[1];
   const invoked = [`/${data('skill')}`, data('args')].filter(Boolean).join(' ');
-  const carried = engine.run(argv, { cwd: sim.dir, env: { ...sim.env, LEEWAY_HANDOFF: '1' } });
+  const carried = engine.run(argv, { cwd: sim.dir, env: { ...sim.env, LEDGER_HANDOFF: '1' } });
   assert.match(carried.stdout, /^handoff: mod$/m);
   const payload = JSON.parse(carried.stdout.split(/^=== HANDOFF .*$/m)[1].trim());
   assert.strictEqual(payload.text, `Invoke \`${invoked}\`.`, 'nothing travels but the route');
   return { invoked, payload };
 }
 
-// The epic's menu as its skill draws it (leeway-continue-epic): the render
+// The epic's menu as its skill draws it (ledger-continue-epic): the render
 // alone, which leaves the conversation at the epic. Answers the menu drawn.
 /** @param {Sim} sim @param {string} wu @returns {string} */
 function epicMenuAt(sim, wu) {
@@ -593,7 +593,7 @@ function epicMenuAt(sim, wu) {
 // the verb's `next` followed. Answers the menu drawn.
 /** @param {Sim} sim @param {string} wu @param {Next} next @returns {string} */
 function arriveAtEpicMenu(sim, wu, next) {
-  assert.deepStrictEqual(next, { kind: 'handoff', skill: 'leeway-continue-epic', args: [wu] }, 'the move lands on the epic\'s menu');
+  assert.deepStrictEqual(next, { kind: 'handoff', skill: 'ledger-continue-epic', args: [wu] }, 'the move lands on the epic\'s menu');
   follow(sim, next);
   return epicMenuAt(sim, wu);
 }
@@ -743,7 +743,7 @@ function decideTopic(sim, wu, topic, payload = { lines: [], candidates: [] }) {
   waitAgents(sim, wu, topic);
   for (const item of DECIDED_ITEMS) sim.run(['checklist', 'done', 'decided', wu, topic, item]);
   sim.run(['checklist', 'close', 'decided', wu, topic]);
-  const file = sim.write(`.leeway/.cache/scratch/decided-${topic}.json`, payload);
+  const file = sim.write(`.ledger/.cache/scratch/decided-${topic}.json`, payload);
   if (sim.manifest(wu).work_type === 'feature') return sim.run(['decided', 'stage', wu, topic, '--file', file]);
   assert.match(sim.render(['decided', `${wu}.${topic}`, '--file', file], { expect: 'content' }), /^=== MENU: decided /m);
   const { next } = answerGate(sim, 'decided', '--pick', 'y');
@@ -778,7 +778,7 @@ function discussed(sim, wu, topic, { question = `What does ${topic} settle?`, an
   }
   const asked = sim.run(['ledger', 'ask', at], null, JSON.stringify({ ...person, text: question })).id;
   sim.run(['ledger', 'decide', at, '--answers', asked], null, JSON.stringify({ ...person, text: answer, why: 'The person said so.' }));
-  const log = `.leeway/${wu}/topics/${topic}/log.md`;
+  const log = `.ledger/${wu}/topics/${topic}/log.md`;
   if (!fs.existsSync(path.join(sim.dir, log))) sim.write(log, `# ${topic}\n\n${question} ${answer}\n`);
   return decideTopic(sim, wu, topic, payload);
 }
@@ -936,7 +936,7 @@ function concluded(sim, wu, bug = {}) {
   const recap = sim.write(investigationCache(wu, 'recap.json'), { hunt: 'Two hypotheses; the save wrote a null on every crash, and nothing checked it.', ...bug });
   const shown = sim.render(['conclude', wu, '--file', recap], { expect: 'content' });
   const { next } = sim.run(/** @type {{argv: string[]}} */ (passGate(sim, shown, 'conclude gate', 'y')).argv);
-  const route = `/leeway-specification-process bugfix ${wu}`;
+  const route = `/ledger-specification-process bugfix ${wu}`;
   assert.strictEqual([`/${next.skill}`, ...next.args].join(' '), route, 'the conclude hands off into the spec');
   handoff(sim, route);
 }
@@ -947,7 +947,7 @@ function concluded(sim, wu, bug = {}) {
 async function investigated(sim, wu, description) {
   startNew(sim);
   startUnit(sim, 'bugfix', wu, description);
-  handoff(sim, `/leeway-investigation-process bugfix ${wu}`);
+  handoff(sim, `/ledger-investigation-process bugfix ${wu}`);
   await hunted(sim, wu);
   concluded(sim, wu);
 }
@@ -1106,7 +1106,7 @@ function roadmapMenu(sim) {
 function pullFromRoadmap(sim, items) {
   roadmapMenu(sim);
   assert.deepStrictEqual(answerGate(sim, 'roadmap', '--pick', 'w').next, { kind: 'continue' }, 'w carries on, where Claude asks which items');
-  return handoff(sim, `/leeway-discovery start none "${items.map((name) => `roadmap:${name}`).join(',')}"`);
+  return handoff(sim, `/ledger-discovery start none "${items.map((name) => `roadmap:${name}`).join(',')}"`);
 }
 
 // Items picked in triage (triage.md): Claude's pick, by the items' paths,
@@ -1152,7 +1152,7 @@ function specWritten(sim, wu, topics) {
     const [decision] = JSON.parse(sim.read(['ledger', 'record', wu, topic])).decisions;
     return `1.1.${i + 1} ${topic} holds as decided. [${decision.id}]`;
   });
-  sim.write(`.leeway/${wu}/spec.md`, [
+  sim.write(`.ledger/${wu}/spec.md`, [
     `# ${wu}`, '', '## 1. The work', '', '### 1.1 As decided', '', ...statements.flatMap((s) => [s, '']),
     '## 1-S. Scenarios for §1', '', '1.S1 Given the work, when it runs, then it holds as decided. (1.1.1)', '',
   ].join('\n'));
@@ -1179,7 +1179,7 @@ function specBuilt(sim, wu, position = 's') {
 // Answers the yes.
 /** @param {Sim} sim @param {string} wu @param {Record<string, any>} begun */
 function intoTheBuild(sim, wu, begun) {
-  const route = `/leeway-implementation-process ${sim.manifest(wu).work_type} ${wu}`;
+  const route = `/ledger-implementation-process ${sim.manifest(wu).work_type} ${wu}`;
   assert.strictEqual([`/${begun.next.skill}`, ...begun.next.args].join(' '), route, 'the yes hands off into the build');
   handoff(sim, route);
   sim.run(['presence', 'cleanup', sim.env.CLAUDE_CODE_SESSION_ID]);
@@ -1243,8 +1243,8 @@ function specReviewed(sim, wu, findings = []) {
  * @returns {Record<string, any>} the cut's answer
  */
 function cutTheSpec(sim, wu, phases) {
-  assert.strictEqual(sim.run(['brief', 'phase-cut', wu]).agent, 'leeway-phase-cut');
-  sim.write(`.leeway/.cache/${wu}/specification/cut.json`, { phases });
+  assert.strictEqual(sim.run(['brief', 'phase-cut', wu]).agent, 'ledger-phase-cut');
+  sim.write(`.ledger/.cache/${wu}/specification/cut.json`, { phases });
   return sim.run(['cut', wu]);
 }
 
@@ -1329,7 +1329,7 @@ function writePhaseTasks(sim, wu, phase, title, tasks) {
 function writeTasks(sim, wu, phase, tasks) {
   const created = tasks.map((task) => {
     const scenarios = task.scenarios ?? [`Given a ledger, when ${task.title.toLowerCase()} runs, then it answers.`];
-    const file = sim.write(`.leeway/.cache/${wu}/build/task.md`, [
+    const file = sim.write(`.ledger/.cache/${wu}/build/task.md`, [
       `# ${task.title}`, '', '## Type', task.type ?? 'feat', '', '## Problem', `${task.title} is missing.`, '', '## Solution', `Build ${task.title.toLowerCase()}.`, '',
       '## Outcome', `${task.title} works.`, '', '## Acceptance scenarios', ...scenarios.map((scenario) => `- ${scenario}`), '',
       '## Spec reference', task.reference ?? '§1', '',
@@ -1348,7 +1348,7 @@ function literal(text) {
 }
 
 /** A brief as the conversation stored it. @param {Sim} sim @param {{id: string}} res */
-const briefOf = (sim, res) => withEnv({ LEEWAY_CONFIG_DIR: sim.configDir }, () => fs.readFileSync(briefPath(sim.env.CLAUDE_CODE_SESSION_ID, res.id), 'utf8'));
+const briefOf = (sim, res) => withEnv({ LEDGER_CONFIG_DIR: sim.configDir }, () => fs.readFileSync(briefPath(sim.env.CLAUDE_CODE_SESSION_ID, res.id), 'utf8'));
 
 /** The engine calls a reader's brief names to lay out its scratch worktree and take it apart, each by its argv. @param {string} brief */
 function scratchCalls(brief) {
@@ -1387,7 +1387,7 @@ const PASSED_REPORT = '## Findings\n\nNone.\n\nVerdict: pass\n';
 /** The verify setup the first task's builder builds: its files, by path. */
 const VERIFY_FILES = Object.freeze({
   'verify/features.md': '# Features\n',
-  'verify/drive.sh': '#!/bin/sh\nprintf "pass\\n" > "$LEEWAY_RUN/verdict"\n',
+  'verify/drive.sh': '#!/bin/sh\nprintf "pass\\n" > "$LEDGER_RUN/verdict"\n',
 });
 
 // A worktree a builder's isolation makes, under a folder of its own; and
@@ -1435,7 +1435,7 @@ function taskBuilt(sim, wu, task, tree, files, setup, { gated = false, note, acc
     sim.runIn(tree, ['verify', 'setup', wu, '--file', at, '--scenario', '1.S1']);
     sim.runIn(tree, ['verify', 'run', wu, '1.S1']);
   }
-  const banked = note === undefined ? null : sim.run(['task', 'note', wu, '--file', sim.write(`.leeway/.cache/${wu}/build/note.md`, `${note}\n`)]).number;
+  const banked = note === undefined ? null : sim.run(['task', 'note', wu, '--file', sim.write(`.ledger/.cache/${wu}/build/note.md`, `${note}\n`)]).number;
   for (const letter of ['a', 'b']) landed(placeIn(sim, sim.run(['brief', 'reviewer', wu, task, '--letter', letter]), 'Where your report goes'), PASSED_REPORT);
   const back = sim.run(['brief', 'builder', wu, task]);
   assert.match(briefOf(sim, back), /Your reviewers passed the task in round 1: it has landed, so write its account now\./);
@@ -1474,7 +1474,7 @@ function fixBuilt(sim, wu, task, files, { record } = {}) {
   sim.run(['land', 'open', wu, task]);
   for (const letter of ['a', 'b']) landed(placeIn(sim, sim.run(['brief', 'reviewer', wu, task, '--letter', letter]), 'Where your report goes'), PASSED_REPORT);
   if (record !== undefined) {
-    sim.run(['quick-fix', 'record', wu, task, '--file', sim.write(`.leeway/.cache/${wu}/build/record.md`, `## What changed\n${record}\n\n## Why\nIt was spelt the American way.\n\n## Leaves out\nOld scripts.\n`)]);
+    sim.run(['quick-fix', 'record', wu, task, '--file', sim.write(`.ledger/.cache/${wu}/build/record.md`, `## What changed\n${record}\n\n## Why\nIt was spelt the American way.\n\n## Leaves out\nOld scripts.\n`)]);
   }
   const back = sim.run(['brief', 'builder', wu, task]);
   assert.match(briefOf(sim, back), /Your reviewers passed the task in round 1: it has landed, so write its account now\./);
@@ -1553,7 +1553,7 @@ const worlds = Object.freeze({
 // answering that nothing survived.
 const VERIFY_SETUP = Object.freeze({
   place: 'verify', feature_map: 'verify/features.md', launch: 'true', health: 'true', drive: 'verify/drive.sh', evidence: 'true', cleanup: 'true',
-  mutation: 'echo "[]" > "$LEEWAY_RUN/survivors.json"',
+  mutation: 'echo "[]" > "$LEDGER_RUN/survivors.json"',
 });
 
 // The build's task loop as its skill's prose runs it (the-task-loop.md), for
@@ -1646,7 +1646,7 @@ function twoPhaseEpic(sim, wu) {
   specEntry(sim, wu, ['alpha']);
   sim.run(['brief', 'spec-writer', wu]);
   const [decision] = JSON.parse(sim.read(['ledger', 'record', wu, 'alpha'])).decisions;
-  sim.write(`.leeway/${wu}/spec.md`, [
+  sim.write(`.ledger/${wu}/spec.md`, [
     '# Ledgerly', '', '## 1. The ledger', '', '### 1.1 Settling', '', `1.1.1 An entry settles as alpha decided. [${decision.id}]`, '',
     '### 1.2 Showing', '', `1.2.1 A settled entry shows as alpha decided. [${decision.id}]`, '',
     '## 1-S. Scenarios for §1', '', '1.S1 Given an entry, when it settles, then it holds as alpha decided. (1.1.1)', '',
@@ -1688,7 +1688,7 @@ function reviewCall(sim, wu, question, text, why) {
 /** @param {Sim} sim @param {string} wu @param {object} account @param {string} key */
 function strayRound(sim, wu, account, key) {
   fs.writeFileSync(path.join(sim.dir, 'stray.txt'), 'left in the checkout\n');
-  const file = sim.write(`.leeway/.cache/${wu}/review/round.json`, account);
+  const file = sim.write(`.ledger/.cache/${wu}/review/round.json`, account);
   sim.refuses(['review', 'round', wu, '--file', file], null);
   sim.render(['review-tree', wu], { expect: 'content' });
   sim.run(answerGate(sim, 'review tree', '--pick', key).next.argv);
@@ -1712,7 +1712,7 @@ function failedHashRound(sim, wu) {
   areaRead(sim, wu, '## Findings\n\n- bug: the ledger never checks its hash on read\n  Scenario: an entry read back\n\nVerdict: fail\n');
   testsRead(sim, wu);
   writePhaseTasks(sim, wu, phase, 'The review\'s fixes', [{ title: 'Check the hash on read', type: 'fix', scenarios: ['an entry read back'], reference: '§1' }]);
-  sim.run(['review', 'round', wu, '--file', sim.write(`.leeway/.cache/${wu}/review/round.json`, {
+  sim.run(['review', 'round', wu, '--file', sim.write(`.ledger/.cache/${wu}/review/round.json`, {
     can_now: ['Keep a ledger.'],
     findings: [{ area: '1-the-work', scope: 'in', call: 'bug', text: 'The ledger never checks its hash on read.', from: ['1-the-work-a#1'], fix: `${phase}.1` }],
   })]);

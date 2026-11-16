@@ -31,8 +31,8 @@ const path = require('path');
 const { ok, refuses, git, createFile } = require('./engine-harness.cjs');
 const { UNIT, BRANCH, SET, createFix, quickFixNestedConformance } = require('./quick-fix-world.cjs');
 const { NESTED } = require('./landing-world.cjs');
-const { STATE_BRANCH } = require('../../skills/leeway-engine/scripts/domain/state-worktree.cjs');
-const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
+const { STATE_BRANCH } = require('../../skills/ledger-engine/scripts/domain/state-worktree.cjs');
+const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
 
 /** The nested repositories the unit's record names, as the state branch holds it. @param {string} dir the project */
 const recorded = (dir) => JSON.parse(git(dir, ['show', `${STATE_BRANCH}:${UNIT}/manifest.json`])).fixes.repos;

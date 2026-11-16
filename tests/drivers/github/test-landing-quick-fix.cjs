@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // GitHub's landing driver and a quick-fix's one pull request merged by hand
-// on the site (leeway-engine/scripts/domain/landing.cjs, finish.cjs,
+// on the site (ledger-engine/scripts/domain/landing.cjs, finish.cjs,
 // fix-branch.cjs, over drivers/landing/github/), past what every driver
 // gives (the landing conformance suites' quick-fix): by each method the
 // conformance suite's side does not, pulled or not — each fix read as
@@ -42,7 +42,7 @@ afterEach(() => {
 });
 
 /** This test's conversation, as a call's options, under the stand-in gh. */
-const as = () => ({ env: { ...GH_ENV, LEEWAY_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: 'sess-1', TMUX: undefined, TMUX_PANE: undefined } });
+const as = () => ({ env: { ...GH_ENV, LEDGER_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: 'sess-1', TMUX: undefined, TMUX_PANE: undefined } });
 
 /** Fix 1.3 made through the door, as `fixChanged` makes it. */
 const third = () => fixChanged(dir, 3, SET[2].title, SET[2].file, SET[2].text, as());

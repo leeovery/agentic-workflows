@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// GitHub's landing driver and a quick-fix's one pull request (leeway-engine/
+// GitHub's landing driver and a quick-fix's one pull request (ledger-engine/
 // scripts/domain/landing.cjs, finish.cjs, over drivers/landing/github/),
 // past what every driver gives (the landing conformance suites'
 // quick-fix): its title and body kept its landing's as a fix joins it,
@@ -27,7 +27,7 @@ const side = require('./landing.cjs');
 const { GH_ENV, github, bareOf, closeByHand, pulls, tipOnGithub } = require('./world.cjs');
 
 const { ok, refuses, git, withEnv, fixtureFrom, cleanupFixture } = harness;
-const { quickFixLanding, quickFixClose } = require('../../../skills/leeway-engine/scripts/domain/landing.cjs');
+const { quickFixLanding, quickFixClose } = require('../../../skills/ledger-engine/scripts/domain/landing.cjs');
 
 const world = fixtureFrom('github-landing-quick-fix-pull-', (dir) => twoFixesBuilt(dir, { ready: side.prepare, env: GH_ENV }));
 const config = useTempFolder('github-landing-quick-fix-pull-config-');
@@ -39,7 +39,7 @@ afterEach(() => {
 });
 
 /** This test's conversation, as a call's options, under the stand-in gh. */
-const as = () => ({ env: { ...GH_ENV, LEEWAY_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: 'sess-1', TMUX: undefined, TMUX_PANE: undefined } });
+const as = () => ({ env: { ...GH_ENV, LEDGER_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: 'sess-1', TMUX: undefined, TMUX_PANE: undefined } });
 
 /** Fix 1.3 made through the door, as `fixChanged` makes it. */
 const third = () => fixChanged(dir, 3, SET[2].title, SET[2].file, SET[2].text, as());

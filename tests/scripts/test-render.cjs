@@ -14,7 +14,7 @@ const {
   wrapWithPrefix,
   signpost,
   renderTree,
-} = require('../../skills/leeway-engine/scripts/kernel/render.cjs');
+} = require('../../skills/ledger-engine/scripts/kernel/render.cjs');
 
 const {
   capitalise,
@@ -23,7 +23,7 @@ const {
   title,
   discoveryGlyph,
   discoveryLifecycleLabel,
-} = require('../../skills/leeway-engine/scripts/domain/conventions.cjs');
+} = require('../../skills/ledger-engine/scripts/domain/conventions.cjs');
 
 // A realistic discovery-map fixture, composed via the conventions layer (proving
 // the split: conventions builds the strings, the renderer lays them out).

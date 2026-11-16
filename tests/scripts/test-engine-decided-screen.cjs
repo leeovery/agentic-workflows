@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A topic's decided screen and what Claude stages on it (leeway-engine/
+// A topic's decided screen and what Claude stages on it (ledger-engine/
 // scripts/domain/decided.cjs, its screens domain/projections/decided.cjs,
 // the close it stands on domain/checklist.cjs): `engine render decided`,
 // shown once the topic's checklist is closed — what the person decided, the
@@ -29,9 +29,9 @@ const { ok, output, refusedPristine, sectionOf, readManifest, readState, statePa
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT, SESSION, MADE, NOTE, SPACE, ledgerHelpers } = require('./ledger-world.cjs');
 const { SOLO, NO_PAYLOAD, NOTE_MAP, writeIn, answeredIn, markAllButTheClosingPass, useDecidedWorld, decidedHelpers } = require('./decided-world.cjs');
-const decisionPoint = require('../../skills/leeway-engine/scripts/domain/decision-point.cjs');
-const { showingOf, drawnBlind } = require('../../skills/leeway-engine/scripts/domain/learned-gates.cjs');
-const { idFrom } = require('../../skills/leeway-engine/scripts/domain/ledger-ids.cjs');
+const decisionPoint = require('../../skills/ledger-engine/scripts/domain/decision-point.cjs');
+const { showingOf, drawnBlind } = require('../../skills/ledger-engine/scripts/domain/learned-gates.cjs');
+const { idFrom } = require('../../skills/ledger-engine/scripts/domain/ledger-ids.cjs');
 const { DAY, lines, history, showingAnswers } = require('./trust-world.cjs');
 
 const HOUR = 60 * 60 * 1000;
@@ -128,7 +128,7 @@ describe('the decided screen (9.7.3, 9.S21)', () => {
       [{ lines: [], candidates: [candidate('dock-badge', 'R.')] }, 'the candidates: "dock-badge" was previously dismissed from this map — nothing was added; the person re-adds it on the map'],
       [{ lines: [], candidates: [candidate('dock.badge', 'R.')] }, 'the candidates: "dock.badge" is not a topic name — a lowercase slug of letters, digits and hyphens, since it names the topic\'s folder'],
       [{ lines: [], candidates: [candidate('a', 'R.'), candidate('a', 'S.')] }, 'the candidates: "a" appears more than once in the batch'],
-      [{ lines: [], candidates: [{ name: 'removing-fumi', reason: 'R.' }] }, 'candidate 1 has no brief — a candidate lands as a topic with its brief, "brief" naming its draft under .leeway/.cache/'],
+      [{ lines: [], candidates: [{ name: 'removing-fumi', reason: 'R.' }] }, 'candidate 1 has no brief — a candidate lands as a topic with its brief, "brief" naming its draft under .ledger/.cache/'],
       [{ lines: [], candidates: [{ name: 'removing-fumi', reason: 'R.', brief: 'notes/brief.md' }] }, `the candidates: entry 1 ("removing-fumi") — "brief" must point inside ${statePath(dir(), '.cache')}/ — got "notes/brief.md"`],
       [{ lines: [], candidates: [{ ...candidate('removing-fumi', 'R.'), horizon: 'next' }] }, 'candidate 1 must be {name, reason, brief, from_roadmap?}'],
       [{ lines: [], withdraws: [{ line: NOTE_MAP.shape.answer, why: 'Why.' }], candidates: [] }, `withdrawal 1 withdraws ${NOTE_MAP.shape.answer}: ${NOTE_MAP.shape.answer} is no line of the product record`],
@@ -270,11 +270,11 @@ describe('the wait for agents (9.7.8, 9.S63)', () => {
     const none = wait();
 
     assert.deepStrictEqual([kept, afresh, none, held()], [showingOf(place, null, [dive, review]), showingOf(place, null, [next]), '', null]);
-    assert.deepStrictEqual(showingAnswers(/** @type {string} */ (process.env.LEEWAY_CONFIG_DIR), 'wait for agents'), [['w', 'w'], [0, 1]]);
+    assert.deepStrictEqual(showingAnswers(/** @type {string} */ (process.env.LEDGER_CONFIG_DIR), 'wait for agents'), [['w', 'w'], [0, 1]]);
   });
 
   it('3.2.7, 16.21.3: a showing is one occurrence of the wait at the topic — drawn at a pause and drawn again within that entry, it is one step; drawn at the close once the topic is entered again, the same agent running, it is a showing of its own, its step under an id of its own and its blind draw its own', (t) => {
-    const config = /** @type {string} */ (process.env.LEEWAY_CONFIG_DIR);
+    const config = /** @type {string} */ (process.env.LEDGER_CONFIG_DIR);
     const { project_id: project } = JSON.parse(readState(dir(), layout.projectManifest));
     const went = history({ project, start: Date.now() - DAY });
     for (let i = 0; i < 13; i += 1) went.gate('wait for agents', { picked: 'g' });

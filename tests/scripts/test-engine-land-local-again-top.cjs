@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The local landing driver (leeway-engine/scripts/drivers/landing/local/
+// The local landing driver (ledger-engine/scripts/drivers/landing/local/
 // driver.cjs) and the tasks a phase landed, read off its branch's top
 // (7.2.23, 12.14, `landedTop`): however many, the commit at its top alone,
 // the line below never read — a task landed below it, changed since, read

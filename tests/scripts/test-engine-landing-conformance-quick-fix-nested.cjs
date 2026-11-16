@@ -28,7 +28,7 @@ const assert = require('node:assert');
 
 const { git } = require('./engine-harness.cjs');
 const { UNIT, SET, quickFixNestedConformance } = require('./quick-fix-world.cjs');
-const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
+const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
 
 const ID = `${UNIT}-1-1`;
 

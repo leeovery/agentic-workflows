@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The review page's model (leeway-engine/scripts/domain/spec-page-model.cjs):
+// The review page's model (ledger-engine/scripts/domain/spec-page-model.cjs):
 // a spec as the person's review page draws it — every statement, scenario
 // and screen a line, its id its number dashed, its fingerprint the first 12
 // hex digits of the SHA-256 of its wording, the source bracket left out, its
@@ -21,7 +21,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { specReading } = require(path.join(SCRIPTS, 'domain/spec-sections.cjs'));
 const { pageOf, lineId } = require(path.join(SCRIPTS, 'domain/spec-page-model.cjs'));
 const { fingerprint } = require(path.join(SCRIPTS, 'kernel/fingerprint.cjs'));

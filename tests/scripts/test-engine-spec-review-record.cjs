@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The person's review of the spec (leeway-engine/scripts/domain/
+// The person's review of the spec (ledger-engine/scripts/domain/
 // spec-review.cjs, and the page's model, domain/spec-page-model.cjs): Claude's
 // tick on each line, drawn from the entries it cites (11.11.15, 11.S32) — a
 // line restating the person's decisions or resting on findings, or the
@@ -41,7 +41,7 @@ const { createManifest } = require('./discovery-test-utils.cjs');
 const { MADE, SESSION, ledgerHelpers } = require('./ledger-world.cjs');
 const { labelling } = require('./labels.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { specPage } = require(path.join(SCRIPTS, 'domain/spec-page-model.cjs'));
 const { settleReview } = require(path.join(SCRIPTS, 'domain/spec-review.cjs'));
 const { trustLogPath } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));

@@ -84,10 +84,10 @@ describe('19.S23: the review asked for runs over the quick-fix\'s record and its
     firstRoundFailed();
     const { ask, decide } = ledgerReadHelpers(() => dir);
     const asked = ask(`${UNIT}.review`, 'Does the man page spell it --colour?');
-    createFile(dir, '.claude/skills/leeway-review-process/SKILL.md', '# The review\n');
+    createFile(dir, '.claude/skills/ledger-review-process/SKILL.md', '# The review\n');
     const cleared = sectionOf(okSections(dir, ['enter', 'review', UNIT], { env: { ...as().env, CLAUDE_CODE_SESSION_ID: 'sess-2' } }).sections, 'DATA').split('\n');
     const note = output(dir, ['conversation', 'position', 'sess-2'], { env: { ...as().env, CLAUDE_CODE_SESSION_ID: 'sess-2' } }).split('\n');
-    fs.rmSync(`${dir}/.claude/skills/leeway-review-process`, { recursive: true });
+    fs.rmSync(`${dir}/.claude/skills/ledger-review-process`, { recursive: true });
     fixTaskBuilt();
     secondRoundPassed();
     const held = [refused(['render', 'finish', UNIT]), refused(['finish', 'yes', UNIT]), refused(['land', 'finish', UNIT]), refused(['land', 'phase', UNIT, '1'])];
@@ -105,7 +105,7 @@ describe('19.S23: the review asked for runs over the quick-fix\'s record and its
     firstRoundFailed();
     run(['task', 'start', UNIT, '2.1']);
     const again = entered();
-    createFile(dir, '.claude/skills/leeway-review-process/SKILL.md', '# The review\n');
+    createFile(dir, '.claude/skills/ledger-review-process/SKILL.md', '# The review\n');
     const note = output(dir, ['conversation', 'position', 'sess-1'], as());
     const fresh = sectionOf(okSections(dir, ['enter', 'review', UNIT], { env: { ...as().env, CLAUDE_CODE_SESSION_ID: 'sess-2' } }).sections, 'DATA').split('\n');
 

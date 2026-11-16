@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // The landing default read from the project's real remote
-// (leeway-engine/scripts/domain/drivers.cjs `resolveDriver`, through
+// (ledger-engine/scripts/domain/drivers.cjs `resolveDriver`, through
 // domain/remote.cjs): the landing driver serving the remote where it is on
 // GitHub, the one flagged default where it is elsewhere, and the default
 // written once, so a remote changed afterwards changes no driver (22.4.3,
@@ -18,7 +18,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { git, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
-const { resolveDriver } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
+const { resolveDriver } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
 
 const SHIPPED = path.join(__dirname, '..', 'fixtures', 'drivers', 'shipped');
 const ON_GITHUB = 'https://github.com/acme/pay.git';
@@ -29,7 +29,7 @@ const onGithub = withOrigin(ON_GITHUB);
 const elsewhere = withOrigin('https://git.example.org/acme/pay.git');
 
 /** @param {string} project */
-const landingSetting = (project) => JSON.parse(fs.readFileSync(path.join(project, '.leeway', 'manifest.json'), 'utf8')).drivers.landing;
+const landingSetting = (project) => JSON.parse(fs.readFileSync(path.join(project, '.ledger', 'manifest.json'), 'utf8')).drivers.landing;
 
 describe('resolveDriver: the landing default from the remote (22.4.3)', () => {
   it('is the driver serving a remote on GitHub, written as the setting', () => {

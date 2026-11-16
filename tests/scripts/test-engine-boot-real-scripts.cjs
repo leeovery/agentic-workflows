@@ -1,14 +1,14 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Boot through the repo's real scripts (leeway-engine/scripts/domain/boot.cjs
-// with leeway-migrate/scripts/migrate.cjs and the knowledge base): the
+// Boot through the repo's real scripts (ledger-engine/scripts/domain/boot.cjs
+// with ledger-migrate/scripts/migrate.cjs and the knowledge base): the
 // real migrations and index against an isolated project, a migration's
 // checks handed back, and its notices told once. A project with a legacy
 // `.workflows/` meets the reshape's directives: boot stops at each, bare,
 // until the session records it, and the boot that completes the run hands
 // back everything the migrations before them journaled. A real project on
-// the layout before Leeway's, with no `.leeway/`, meets the reshape: the
+// the layout before Ledger's, with no `.ledger/`, meets the reshape: the
 // guard refusing over uncommitted changes and over a live session, boot
 // stopping with nothing written (21.S5, 21.S6), and a project at 070 running
 // the guard, then the chain from its old record, then the move, a run killed
@@ -36,7 +36,7 @@ const store = require(path.join(REAL_SCRIPTS, 'kernel/knowledge/store.cjs'));
 const { briefPath } = require(path.join(REAL_SCRIPTS, 'domain/brief-names.cjs'));
 
 const { createFile } = require('./discovery-test-utils.cjs');
-const { LAST_CODE_TREE_MIGRATION } = require(path.join(REAL_ENGINE_SKILL, '..', 'leeway-migrate/scripts/migrate.cjs'));
+const { LAST_CODE_TREE_MIGRATION } = require(path.join(REAL_ENGINE_SKILL, '..', 'ledger-migrate/scripts/migrate.cjs'));
 const { FLAG, LABELS_ON, MIGRATED_TO_070, legacyLayout, setupProject, legacyProject, real, runEngine, runEngineFails } = require('./boot-world.cjs');
 
 /** A process's start time as the old skills recorded it: `ps`, in UTC and the C locale. @param {number} pid */
@@ -91,7 +91,7 @@ describe('engine boot (real scripts)', () => {
     // recorded unrun, none creates the folder, and the settings stay as found;
     // the migrations past it run and find nothing to do, its directives
     // recorded unrun beside it, each with its unrun line.
-    const names = fs.readdirSync(path.join(REAL_ENGINE_SKILL, '..', 'leeway-migrate/scripts/migrations'))
+    const names = fs.readdirSync(path.join(REAL_ENGINE_SKILL, '..', 'ledger-migrate/scripts/migrations'))
       .filter((f) => /^[0-9]+-/.test(f) && !f.endsWith('.check.cjs'));
     const idOf = (/** @type {string} */ f) => f.slice(0, f.indexOf('-'));
     const fleet = names.map(idOf).sort();
@@ -209,7 +209,7 @@ describe('engine boot runs the reshape (real scripts)', () => {
     assert.match(real.output(project, ['render', live.stop.surface, ...live.stop.args]), /^> Another session is working in this project: Payments, in its discussion, last active 3m ago\./m);
     assert.deepStrictEqual(projectAsItStands(), before);
     assert.ok(!fs.existsSync(statePath(project)), 'no state folder: no record, no lock, no journal');
-    assert.strictEqual(fs.readFileSync(path.join(project, '.git/info/exclude'), 'utf8').split('\n').filter((line) => line === '/.leeway/').length, 1);
+    assert.strictEqual(fs.readFileSync(path.join(project, '.git/info/exclude'), 'utf8').split('\n').filter((line) => line === '/.ledger/').length, 1);
   });
 
   it('21.3.4: the guard\'s stop draws its two screens from boot\'s facts — the live session by its unit, phase and topic, the topic left out where it is the unit, and how long ago — refusing facts that are not a refusal\'s', () => {
@@ -222,7 +222,7 @@ describe('engine boot runs the reshape (real scripts)', () => {
       '=== DISPLAY: migration guard account (emit verbatim as markdown (not a code block)) ===',
       '> Another session is working in this project: Fumi, in the discussion of Licensing And Trial Integrity, last active 3m ago. A major upgrade never runs under a live session, so nothing has been changed.',
       '>',
-      '> End that session, then run `/leeway` here again.',
+      '> End that session, then run `/ledger` here again.',
       '',
     ].join('\n'));
     assert.strictEqual(screen(['--cause', 'dirty']), [
@@ -232,7 +232,7 @@ describe('engine boot runs the reshape (real scripts)', () => {
       '=== DISPLAY: migration guard account (emit verbatim as markdown (not a code block)) ===',
       '> The migration\'s commit would sweep them in with its own, so nothing has been changed.',
       '>',
-      '> Commit or discard them, then run `/leeway` here again.',
+      '> Commit or discard them, then run `/ledger` here again.',
       '',
     ].join('\n'));
     assert.deepStrictEqual([
@@ -262,7 +262,7 @@ describe('engine boot runs the reshape (real scripts)', () => {
     assert.deepStrictEqual([stopped.state, stopped.id], ['directive', '079-records']);
     assert.deepStrictEqual(recordOf(project), [...MIGRATED_TO_070, '074', '071', '072', '073', '075', '076', '076 unrun', '077', '078']);
     assert.strictEqual(JSON.parse(fs.readFileSync(statePath(project, layout.projectManifest), 'utf8')).roadmap.items['dark-mode'].kind, 'idea');
-    assert.strictEqual(git(project, ['for-each-ref', 'refs/heads/leeway-state']), '', 'nothing committed before the migration\'s commit');
+    assert.strictEqual(git(project, ['for-each-ref', 'refs/heads/ledger-state']), '', 'nothing committed before the migration\'s commit');
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(path.join(project, '.claude/settings.json'), 'utf8')), JSON.parse(LABELS_ON));
     assert.deepStrictEqual([git(project, ['rev-parse', 'HEAD']).trim(), git(project, ['status', '--porcelain', '--', '.claude']).trim()], [code, 'M .claude/settings.json']);
 

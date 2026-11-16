@@ -12,7 +12,7 @@ const {
   AuthError,
   DEFAULT_MODEL,
   DEFAULT_DIMENSIONS,
-} = require('../../skills/leeway-engine/scripts/kernel/knowledge/providers/openai.cjs');
+} = require('../../skills/ledger-engine/scripts/kernel/knowledge/providers/openai.cjs');
 const {
   OpenAIEmbeddingsEngine,
   InvalidRequestError,
@@ -23,8 +23,8 @@ const {
   MAX_BATCH_SIZE,
   MAX_BATCH_CHARS,
   REQUEST_TIMEOUT_MS,
-} = require('../../skills/leeway-engine/scripts/kernel/knowledge/providers/openai-engine.cjs');
-const { isPermanentError, withRetry } = require('../../skills/leeway-engine/scripts/kernel/knowledge/retry.cjs');
+} = require('../../skills/ledger-engine/scripts/kernel/knowledge/providers/openai-engine.cjs');
+const { isPermanentError, withRetry } = require('../../skills/ledger-engine/scripts/kernel/knowledge/retry.cjs');
 
 // ---------------------------------------------------------------------------
 // Constructor
@@ -243,7 +243,7 @@ describe('OpenAIEmbeddingsEngine rate limits (mocked)', () => {
 
   /** The engine module loaded afresh — a process of its own, its budget untouched. */
   function freshEngineModule() {
-    const id = require.resolve('../../skills/leeway-engine/scripts/kernel/knowledge/providers/openai-engine.cjs');
+    const id = require.resolve('../../skills/ledger-engine/scripts/kernel/knowledge/providers/openai-engine.cjs');
     const loaded = require.cache[id];
     delete require.cache[id];
     try {
@@ -640,7 +640,7 @@ describe('OpenAIProvider vector-width validation', () => {
 // ---------------------------------------------------------------------------
 
 describe('resolveProvider with openai', () => {
-  const { resolveProvider } = require('../../skills/leeway-engine/scripts/kernel/knowledge/config.cjs');
+  const { resolveProvider } = require('../../skills/ledger-engine/scripts/kernel/knowledge/config.cjs');
 
   it('creates OpenAIProvider when provider is openai and key is present', () => {
     const provider = resolveProvider({

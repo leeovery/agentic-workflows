@@ -22,14 +22,14 @@ const { commitAll, ok, refuses } = harness;
  */
 function roadmapWorld(build = () => {}) {
   return harness.fixtureFrom('engine-roadmap-', (dir) => {
-    fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), '{}\n');
+    fs.writeFileSync(path.join(dir, '.ledger', 'manifest.json'), '{}\n');
     commitAll(dir, 'init');
     build(dir);
   });
 }
 
 /** A path in the state as a state commit names it: from the state root. */
-const inState = (rel) => rel.replace(/^\.leeway\//, '');
+const inState = (rel) => rel.replace(/^\.ledger\//, '');
 
 /** Run a roadmap command expecting success; returns the parsed JSON line. */
 const runOk = (dir, args) => ok(dir, ['roadmap', ...args]);
@@ -38,16 +38,16 @@ const runOk = (dir, args) => ok(dir, ['roadmap', ...args]);
 const runFail = (dir, args) => refuses(dir, ['roadmap', ...args]);
 
 function readProject(dir) {
-  return JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'manifest.json'), 'utf8'));
+  return JSON.parse(fs.readFileSync(path.join(dir, '.ledger', 'manifest.json'), 'utf8'));
 }
 
 function projectManifestText(dir) {
-  return fs.readFileSync(path.join(dir, '.leeway', 'manifest.json'), 'utf8');
+  return fs.readFileSync(path.join(dir, '.ledger', 'manifest.json'), 'utf8');
 }
 
-/** Put a source on disk under `.leeway/` — an item records only a file already there. */
+/** Put a source on disk under `.ledger/` — an item records only a file already there. */
 function writeSource(dir, rel) {
-  const abs = path.join(dir, '.leeway', rel);
+  const abs = path.join(dir, '.ledger', rel);
   fs.mkdirSync(path.dirname(abs), { recursive: true });
   fs.writeFileSync(abs, '# Session\n');
 }
@@ -56,7 +56,7 @@ function writeSource(dir, rel) {
 function joinItem(dir, name, workUnit, topic) {
   const manifest = readProject(dir);
   manifest.roadmap.items[name].pulled_to = topic ? { work_unit: workUnit, topic } : { work_unit: workUnit };
-  fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify(manifest, null, 2));
+  fs.writeFileSync(path.join(dir, '.ledger', 'manifest.json'), JSON.stringify(manifest, null, 2));
 }
 
 /**

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The notes for later and their consolidation (leeway-engine/scripts/
+// The notes for later and their consolidation (ledger-engine/scripts/
 // domain/notes.cjs): `engine task note <unit> --file <note> [--phase N]`.
 // A note deposited into the unit's notes as it arrives, numbered after the
 // last, and committed alone (12.10.2, 13.S8); one held for a phase not yet
@@ -33,7 +33,7 @@ const {
 } = require('./engine-harness.cjs');
 const { createManifest, useTempFolder } = require('./discovery-test-utils.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { readConsolidation, consolidationFaults } = require(path.join(SCRIPTS, 'domain/notes.cjs'));
 
 const UNIT = 'pay';

@@ -44,7 +44,7 @@ const harness = require('./engine-harness.cjs');
 const { git, tip, fixtureFrom, cleanupFixture, readManifest, writeState, commitAll } = harness;
 const fs = require('fs');
 const { UNIT, openArgs, own, cutTask, commitFiles, buildLanding } = require('./landing-world.cjs');
-const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
+const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
 
 const WAYS = ['a squash under the default message', 'a squash under the person\'s own message', 'a merge commit'];
 

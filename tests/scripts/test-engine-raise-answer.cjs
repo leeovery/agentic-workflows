@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The person's answer to a raise (leeway-engine/scripts/domain/raise.cjs,
+// The person's answer to a raise (ledger-engine/scripts/domain/raise.cjs,
 // landed through domain/ledger-write.cjs, its press read as domain/gate.cjs
 // reads a gate's): `engine raise answer <id> (--pick <key> | --own |
 // --dont-care | --didnt-follow)` in the conversation that drew the raise — a
@@ -42,7 +42,7 @@ const { SESSION, WHY, raiseHelpers } = require('./raise-world.cjs');
 const { lines, history } = require('./trust-world.cjs');
 const { labelAnswers } = require('./labels.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { PENDING } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
 const { RAISE_SHOWN, PRESSED } = require(path.join(SCRIPTS, 'domain/gate.cjs'));
 const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
@@ -165,7 +165,7 @@ function killedPick(point, id, key) {
   killedAt(point, dir, ['raise', 'answer', id, '--pick', key], { env: conversation(), stdin: JSON.stringify({ why: WHY }) });
 }
 
-const ANNOUNCED = Object.freeze({ LEEWAY_GATE_SURFACE: '1' });
+const ANNOUNCED = Object.freeze({ LEDGER_GATE_SURFACE: '1' });
 
 describe('the answer recorded (16.S44, 6.1.5)', () => {
   it('16.S44: a pick of the lean lands as the person\'s decision at the raise\'s id — the row\'s answer, the other rows what it rules out, the lean sealed, what it relies on and whether it is product-wide as sealed, unchecked — and the same command logs one raise event naming it, holding no word of the call or the why; the seal is marked answered', async () => {
@@ -474,7 +474,7 @@ function drawnAtOnce(questions, meet, count) {
     'require(engine).runAsync(args, { cwd, env: JSON.parse(env), stdin }).then(report);',
   ].join('\n');
   const env = conversation({ CLAUDE_STUB_MEET: `${count}:${meet}` });
-  stampBooted(dir, env.CLAUDE_CODE_SESSION_ID, env.LEEWAY_CONFIG_DIR);
+  stampBooted(dir, env.CLAUDE_CODE_SESSION_ID, env.LEDGER_CONFIG_DIR);
   return contend(questions.length, body, (i) => [ENGINE, dir, JSON.stringify(env), JSON.stringify(CALL), 'raise', NOTE, '--answers', questions[i]]);
 }
 

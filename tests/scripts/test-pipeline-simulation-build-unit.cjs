@@ -65,7 +65,7 @@ describe('pipeline simulation: the build on a unit\'s own branch', () => {
     const base = data.base[0].split(' ')[0];
     areaRead(sim, WU, PASSED_REPORT, 1, base);
     testsRead(sim, WU, PASSED_REPORT, base);
-    const round = sim.run(['review', 'round', WU, '--file', sim.write(`.leeway/.cache/${WU}/review/round.json`, { can_now: ['Settle and show an entry.'], findings: [] })]).ends;
+    const round = sim.run(['review', 'round', WU, '--file', sim.write(`.ledger/.cache/${WU}/review/round.json`, { can_now: ['Settle and show an entry.'], findings: [] })]).ends;
     const closing = reviewNext(sim, WU).move;
     finishClosed(sim, WU);
     sim.render(['finish', WU], { expect: 'content' });

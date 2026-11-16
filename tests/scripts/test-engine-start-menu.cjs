@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The start menu (leeway-engine/scripts/domain/start-menu.cjs, its screen
+// The start menu (ledger-engine/scripts/domain/start-menu.cjs, its screen
 // projections/start-menu.cjs; 18.2.12): a row per unit in progress, type
 // first, with how far it has come and what waits on the person in it
 // counted, each kind of wait in one count, the units with something waiting
@@ -41,7 +41,7 @@ const { SOLO, SOLO_AT, NO_PAYLOAD, NOTE_MAP, writeIn, answeredIn, useDecidedWorl
 const review = require('./review-world.cjs');
 const { fixture } = require('./board-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { SHOWN } = require(path.join(SCRIPTS, 'domain/gate.cjs'));
 const { NBSP } = require(path.join(SCRIPTS, 'domain/projections/surfaces.cjs'));
 const { WAIT_KINDS } = require(path.join(SCRIPTS, 'domain/waits.cjs'));
@@ -85,7 +85,7 @@ describe('the start menu (18.2.12)', () => {
 
   /** Each row of the gate the conversation `session` was last shown, with where it leads. @param {string} [session] */
   function rowsShown(session = HERE) {
-    const shown = JSON.parse(fs.readFileSync(path.join(/** @type {string} */ (process.env.LEEWAY_CONFIG_DIR), 'conversations', session, SHOWN), 'utf8'));
+    const shown = JSON.parse(fs.readFileSync(path.join(/** @type {string} */ (process.env.LEDGER_CONFIG_DIR), 'conversations', session, SHOWN), 'utf8'));
     return Object.fromEntries(shown.options.map((/** @type {{key: string, next: unknown}} */ { key, next }) => [key, next]));
   }
 
@@ -117,7 +117,7 @@ describe('the start menu (18.2.12)', () => {
   const mailFor = (unit, topic) => writeState(dir(), `${unit}/topics/${topic}/mail/001-a-note.md`, '# A note\n\nFrom Discovery · 1 Oct\n');
 
   it('the start menu the gate mod\'s band tests draw (18.S42) is the engine\'s answer under the gate surface', async () => {
-    const out = output(dir(), ['render', 'start-menu'], { env: { CLAUDE_CODE_SESSION_ID: HERE, LEEWAY_GATE_SURFACE: '1' } });
+    const out = output(dir(), ['render', 'start-menu'], { env: { CLAUDE_CODE_SESSION_ID: HERE, LEDGER_GATE_SURFACE: '1' } });
 
     assert.strictEqual(out, await fixture('menu-start.mjs'));
   });
@@ -201,7 +201,7 @@ describe('the start menu (18.2.12)', () => {
     assert.deepStrictEqual([solo.replace(/^\S+ /, ''), lettered(menu).find((row) => row.startsWith('e/')), e, continued], [
       '→ Continue feature: Solo — discussion', 'e/verdicts → Give the verdict waiting on a call you changed', VERDICTS, { kind: 'engine', argv: ['handoff', 'unit', SOLO] },
     ]);
-    assert.match(output(dir(), ['handoff', 'unit', SOLO], { env: { CLAUDE_CODE_SESSION_ID: HERE } }), /^skill: leeway-discussion-process\nargs: feature solo$/m);
+    assert.match(output(dir(), ['handoff', 'unit', SOLO], { env: { CLAUDE_CODE_SESSION_ID: HERE } }), /^skill: ledger-discussion-process\nargs: feature solo$/m);
   });
 
   it('18.2.3: the count says each kind waiting — the gates, the questions and the topics a changed answer holds — and the verdicts\' row how many wait', () => {
@@ -271,7 +271,7 @@ describe('the start menu (18.2.12)', () => {
       't/triage → Triage the inbox',
       'r/roadmap → Open the product roadmap',
       'm/manage → Manage work units',
-      'h/help → How Leeway works',
+      'h/help → How Ledger works',
     ]);
     assert.match(lettered(full.menu)[0], /^p\/product → Talk about the product — 1 session, last on \d{1,2} [A-Z][a-z]{2} · research owed$/);
     assert.deepStrictEqual(lettered(full.menu).slice(1), [
@@ -280,15 +280,15 @@ describe('the start menu (18.2.12)', () => {
       'r/roadmap → Open the product roadmap',
       'v/view → View completed & cancelled work units',
       'm/manage → Manage work units',
-      'h/help → How Leeway works',
+      'h/help → How Ledger works',
     ]);
     assert.deepStrictEqual(rowsShown(), {
       1: { kind: 'engine', argv: ['handoff', 'unit', 'solo'] },
       2: { kind: 'engine', argv: ['handoff', 'unit', FUMI] },
-      p: { kind: 'handoff', skill: 'leeway-discovery', args: ['none', 'none'] },
-      s: { kind: 'handoff', skill: 'leeway-discovery', args: ['start', 'none'] },
+      p: { kind: 'handoff', skill: 'ledger-discovery', args: ['none', 'none'] },
+      s: { kind: 'handoff', skill: 'ledger-discovery', args: ['start', 'none'] },
       t: { kind: 'engine', argv: ['render', 'triage'] },
-      r: { kind: 'handoff', skill: 'leeway-roadmap', args: [] },
+      r: { kind: 'handoff', skill: 'ledger-roadmap', args: [] },
       v: { kind: 'engine', argv: ['render', 'closed'] },
       m: { kind: 'engine', argv: ['render', 'manage'] },
       h: { kind: 'engine', argv: ['render', 'help', 'start-menu'] },
@@ -338,13 +338,13 @@ describe('the start menu (18.2.12)', () => {
       'e/verdicts → Give the verdict waiting on a call you changed',
       'v/view → View completed & cancelled work units',
       'm/manage → Manage work units',
-      'h/help → How Leeway works',
+      'h/help → How Ledger works',
     ]);
   });
 
   it('20.3.3: drawn, the start menu leaves the conversation at no position, and `gate` answers a row with where it leads', () => {
     const position = () => {
-      const file = path.join(/** @type {string} */ (process.env.LEEWAY_CONFIG_DIR), 'conversations', HERE, 'position.json');
+      const file = path.join(/** @type {string} */ (process.env.LEDGER_CONFIG_DIR), 'conversations', HERE, 'position.json');
       return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null;
     };
     ok(dir(), ['session', 'label', FUMI], { env: { CLAUDE_CODE_SESSION_ID: HERE } });
@@ -355,10 +355,10 @@ describe('the start menu (18.2.12)', () => {
     assert.deepStrictEqual(ok(dir(), ['gate', 'start menu', '--pick', '2'], { env: { CLAUDE_CODE_SESSION_ID: HERE } }).next, { kind: 'engine', argv: ['handoff', 'unit', FUMI] });
   });
 
-  it('23.2.3: its help, until the help home, a row into the walk through Leeway, which the start skill carries on into', () => {
+  it('23.2.3: its help, until the help home, a row into the walk through Ledger, which the start skill carries on into', () => {
     const out = output(dir(), ['render', 'help', 'start-menu'], { env: { CLAUDE_CODE_SESSION_ID: HERE } });
 
-    assert.match(sectionOf(out, 'MENU: help'), /w\/walk`\*\* +→ Walk through how Leeway works/);
+    assert.match(sectionOf(out, 'MENU: help'), /w\/walk`\*\* +→ Walk through how Ledger works/);
     assert.deepStrictEqual(rowsShown().w, { kind: 'continue' });
   });
 });

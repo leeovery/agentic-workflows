@@ -35,7 +35,7 @@ const FEATURE = 'quick-sync';
 const RIPE = 'ripe';
 const AT = `${HUNT}.investigation.${HUNT}`;
 const RIPE_AT = `${RIPE}.investigation.${RIPE}`;
-const ENGINE = 'node .claude/skills/leeway-engine/scripts/engine.cjs';
+const ENGINE = 'node .claude/skills/ledger-engine/scripts/engine.cjs';
 const TODAY = FROZEN_AT.slice(0, 10);
 const CLAUDE = Object.freeze({ by: 'claude', who_moved_whom: 'none' });
 const PERSON = Object.freeze({ by: 'person', who_moved_whom: 'none' });
@@ -126,7 +126,7 @@ function useInvestigationWorld(use) {
   });
 
   /** The engine as the conversation runs it. */
-  const env = () => ({ LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'sess-1', CLAUDE_PID: String(process.pid), TMUX: undefined, TMUX_PANE: undefined });
+  const env = () => ({ LEDGER_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'sess-1', CLAUDE_PID: String(process.pid), TMUX: undefined, TMUX_PANE: undefined });
   /** A call that must succeed: its response. @param {string[]} args */
   const run = (args) => ok(dir, args, { env: env() });
   /** A file of Claude's, absolute, holding `text`. @param {string} name @param {string} text */
@@ -141,7 +141,7 @@ function useInvestigationWorld(use) {
     /** A call that must succeed: its response and its sections. @param {string[]} args */
     drawn: (/** @type {string[]} */ args) => okSections(dir, args, { env: env() }),
     /** A render that must succeed: what it draws, with the gate mod announced where `announced`. @param {string[]} args @param {boolean} [announced] */
-    rendered: (/** @type {string[]} */ args, announced = false) => output(dir, ['render', ...args], { env: { ...env(), ...(announced ? { LEEWAY_GATE_SURFACE: '1' } : {}) } }),
+    rendered: (/** @type {string[]} */ args, announced = false) => output(dir, ['render', ...args], { env: { ...env(), ...(announced ? { LEDGER_GATE_SURFACE: '1' } : {}) } }),
     /** A call that must refuse, writing and committing nothing: its error. @param {string[]} args */
     refused: (/** @type {string[]} */ args) => refusedPristine(dir, args, { env: env() }).error,
     /** An entry of the hunt's log. @param {string} kind @param {string[]} args */

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The roadmap's menus (leeway-engine/scripts/domain/projections/roadmap.cjs,
+// The roadmap's menus (ledger-engine/scripts/domain/projections/roadmap.cjs,
 // 18.8): `render roadmap`, the roadmap's home — a DATA line naming each
 // waiting item by its number (18.8.5), the screen the projection composes,
 // and the menu in the frame (18.8.10); where each row leads, through `gate
@@ -34,7 +34,7 @@ const { ok, output, refusedPristine, screenOf, sectionOf, commitAll, cleanupFixt
 const { createManifest, writeState, statePath, layout } = require('./discovery-test-utils.cjs');
 const { runOk, readProject, writeSource, joinedTo } = require('./roadmap-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { SHOWN } = require(path.join(SCRIPTS, 'domain/gate.cjs'));
 const { projectName } = require(path.join(SCRIPTS, 'domain/state-checks.cjs'));
 const { roadmapState } = require(path.join(SCRIPTS, 'domain/roadmap.cjs'));
@@ -83,7 +83,7 @@ function drawn(args, gate) {
 }
 
 /** The test's conversation's folder. */
-const conversationDir = () => path.join(/** @type {string} */ (process.env.LEEWAY_CONFIG_DIR), 'conversations', SESSION);
+const conversationDir = () => path.join(/** @type {string} */ (process.env.LEDGER_CONFIG_DIR), 'conversations', SESSION);
 
 /** The roadmap drawn. */
 const roadmap = () => drawn(['roadmap'], 'roadmap');
@@ -123,7 +123,7 @@ describe('the roadmap\'s home (18.8.10)', () => {
   it('18.S37, 18.8.7: p opens the product\'s conversation, the same one as the start menu\'s; b draws the start menu', () => {
     roadmap();
     const product = picked('roadmap', 'p');
-    assert.deepStrictEqual(product, { kind: 'handoff', skill: 'leeway-discovery', args: ['none', 'none'] });
+    assert.deepStrictEqual(product, { kind: 'handoff', skill: 'ledger-discovery', args: ['none', 'none'] });
     assert.match(output(dir, ['handoff', product.skill, ...product.args]), /^→ Discovery$/m);
     roadmap();
     assert.deepStrictEqual(picked('roadmap', 'b'), { kind: 'engine', argv: ['render', 'start-menu'] });

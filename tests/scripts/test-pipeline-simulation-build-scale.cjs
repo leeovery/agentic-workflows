@@ -30,7 +30,7 @@ const { traced, git } = require('./engine-harness.cjs');
 const {
   Sim, worldFrom, worlds, SPEC_TO_BUILD_UNIT, buildEntry, startPhase, writeTasks, landed, placeIn, buildLoop, builders, VERIFY_FILES, PASSED_REPORT,
 } = require('./pipeline-world.cjs');
-const engine = require('../../skills/leeway-engine/scripts/engine.cjs');
+const engine = require('../../skills/ledger-engine/scripts/engine.cjs');
 
 const WU = SPEC_TO_BUILD_UNIT;
 const TASKS = 6;

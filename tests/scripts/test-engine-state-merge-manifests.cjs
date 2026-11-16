@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // The migrations record and the manifests through a merge where both sides
-// moved (leeway-engine/scripts/domain/state-merge-paths.cjs): a migration
+// moved (ledger-engine/scripts/domain/state-merge-paths.cjs): a migration
 // kept once, a field each side changed kept from each — the environment
 // setup's parts among them, both sides' entries of its lists kept — and a
 // field both changed differently stopping the merge with nothing written
@@ -21,7 +21,7 @@ const fs = require('fs');
 const path = require('path');
 const { git, tip, remoteTip, layout, commitOnState, traced } = require('./engine-harness.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const MERGE = path.join(SCRIPTS, 'domain/state-merge.cjs');
 const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { catchUpState, pendingStateMerge, pickStateMerge, stateMergeGateSurface } = require(MERGE);
@@ -79,7 +79,7 @@ describe('the manifests (4.S17)', () => {
     commitUnpushed(here, { [layout.projectManifest]: '[]\n' });
     commitOnState(there.root, { [layout.projectManifest]: projectManifest('next') });
 
-    assert.throws(() => catchUpState(here.root), { message: `cannot merge .leeway/${layout.projectManifest}: this machine's copy is not a JSON object` });
+    assert.throws(() => catchUpState(here.root), { message: `cannot merge .ledger/${layout.projectManifest}: this machine's copy is not a JSON object` });
   });
 
   it('stops on a field both sides changed to different values, with both values and nothing written; the pick finishes the merge', () => {

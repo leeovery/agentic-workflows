@@ -38,11 +38,11 @@
 //
 // `entry` names where the walk starts, and it may only be somewhere a
 // real session starts — one of the engine's HANDOFF_TARGETS:
-// `leeway` (the user's way in) or a skill a handoff lands the work
+// `ledger` (the user's way in) or a skill a handoff lands the work
 // on in a fresh context — a phase's skill, the epic menu, discovery, the
 // roadmap. Nothing else is a legitimate opening — help is only ever
 // opened in place, mid-session, and a reference is never
-// entered directly. A case about help enters at leeway and picks the
+// entered directly. A case about help enters at the start skill and picks the
 // start menu's `h/help` row.
 //
 // This matters because a walk carries only the context it accumulates.
@@ -64,14 +64,14 @@
 const fs = require('fs');
 const path = require('path');
 const invariants = require('./invariants.cjs');
-const { HANDOFF_TARGETS } = require('../../../skills/leeway-engine/scripts/domain/handoff.cjs');
+const { HANDOFF_TARGETS } = require('../../../skills/ledger-engine/scripts/domain/handoff.cjs');
 
 const ROOT = path.join(__dirname, '../../..');
 const PROSE_DIR = path.join(ROOT, 'tests/prose');
 // The folder holding the cases and the harness's local cache: tests/prose,
-// unless LEEWAY_PROSE_ROOT names another — a suite's own temp folder, so its
+// unless LEDGER_PROSE_ROOT names another — a suite's own temp folder, so its
 // scratch cases never land in the repository.
-const CASES_ROOT = process.env.LEEWAY_PROSE_ROOT || PROSE_DIR;
+const CASES_ROOT = process.env.LEDGER_PROSE_ROOT || PROSE_DIR;
 const CASES_DIR = path.join(CASES_ROOT, 'cases');
 const CACHE_DIR = path.join(CASES_ROOT, '.cache');
 const STUBS_DIR = path.join(PROSE_DIR, 'stubs');
@@ -187,7 +187,7 @@ function headingExists(absPath, anchor) {
 }
 
 /**
- * Where a walk may begin: a skill a conversation opens on — leeway or
+ * Where a walk may begin: a skill a conversation opens on — the start skill or
  * wherever a handoff lands the work — never anywhere else.
  */
 function entryErrors(entry) {

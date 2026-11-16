@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// GitHub's landing driver (leeway-engine/scripts/drivers/landing/github/)
+// GitHub's landing driver (ledger-engine/scripts/drivers/landing/github/)
 // and a stack of two — 1.1 opened from main, 1.2 stacked on its branch —
 // whose landed task's branch moved on GitHub's site since its landing, a
 // commit made there, nothing of it here (`refuseMovedSince`). 1.2 merged on

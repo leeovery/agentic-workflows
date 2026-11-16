@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The decided screen as drawn from its view (leeway-engine/scripts/domain/
+// The decided screen as drawn from its view (ledger-engine/scripts/domain/
 // projections/decided.cjs): the verdict's question cut to the map's length,
 // as the other rows are, the gate's yes saying the small counts it covers
 // in words, as 9.7.3 draws it, and a one-topic unit's candidates spoken of
@@ -15,9 +15,9 @@ require('./hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const { decidedScreen, strikePick } = require('../../skills/leeway-engine/scripts/domain/projections/decided.cjs');
+const { decidedScreen, strikePick } = require('../../skills/ledger-engine/scripts/domain/projections/decided.cjs');
 
-/** @type {import('../../skills/leeway-engine/scripts/domain/projections/decided.cjs').DecidedView} */
+/** @type {import('../../skills/ledger-engine/scripts/domain/projections/decided.cjs').DecidedView} */
 const VIEW = {
   unit: 'fumi', topic: 'note-window', title: 'Note Window',
   decided: [], carried: [], moved: 0, calls: [], listed: false,

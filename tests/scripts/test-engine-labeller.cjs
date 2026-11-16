@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The labeller (leeway-engine/scripts/domain/labeller.cjs): the kind of a
+// The labeller (ledger-engine/scripts/domain/labeller.cjs): the kind of a
 // question Claude put, read by the separate Claude call (16.11, 16.19). The
 // kind each set of twelve answers composes, as `trust/kinds.py` composes it
 // (16.S39); the call, the stated `claude -p` on Sonnet at effort high from
@@ -24,7 +24,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const labeller = require(path.join(SCRIPTS, 'domain/labeller.cjs'));
 const { KINDS } = require(path.join(SCRIPTS, 'domain/event-fields.cjs'));
 

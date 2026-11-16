@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The measures (leeway-engine/scripts/domain/measures.cjs), over the
+// The measures (ledger-engine/scripts/domain/measures.cjs), over the
 // projects named, the calling one where none is: `engine measures findings
 // [--project <path>]…`, review findings per phase (17.1.5, 17.2.4) —
 // discussion's reviews and closing pass, the spec's review, the task
@@ -99,7 +99,7 @@ describe('measures findings (17.1.5, 17.2.4)', () => {
           { phase: 'review', findings: 1, calls: { serious: 0, bug: 1, nit: 0 }, rounds: 1, failed: 1 },
         ],
       });
-      assert.deepStrictEqual(unread.map((/** @type {string} */ line) => line.split(' — ')[0]), [path.join(dir, '.leeway', UNIT, 'build', 'tasks', '1.2', 'round-1-a.md')]);
+      assert.deepStrictEqual(unread.map((/** @type {string} */ line) => line.split(' — ')[0]), [path.join(dir, '.ledger', UNIT, 'build', 'tasks', '1.2', 'round-1-a.md')]);
     } finally {
       cleanupFixture(elsewhere);
     }
@@ -142,8 +142,8 @@ describe('measures bugs (17.1.6, 17.3.1)', () => {
     bugfix(dir, 'old-code', 1, { area: 'CheckOut' });
     ok(dir, ['manifest', 'set', 'card-refund', 'status', 'cancelled']);
     createManifest(dir, 'moved', { phases: { investigation: { items: { moved: { status: 'completed', fixes: 'cards', after_review: true, area: 'checkout' } } } } });
-    const project = JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'manifest.json'), 'utf8'));
-    const units = fs.readdirSync(path.join(dir, '.leeway'), { withFileTypes: true }).filter((e) => e.isDirectory() && !e.name.startsWith('.')).map((e) => e.name).sort().reverse();
+    const project = JSON.parse(fs.readFileSync(path.join(dir, '.ledger', 'manifest.json'), 'utf8'));
+    const units = fs.readdirSync(path.join(dir, '.ledger'), { withFileTypes: true }).filter((e) => e.isDirectory() && !e.name.startsWith('.')).map((e) => e.name).sort().reverse();
     writeState(dir, 'manifest.json', JSON.stringify({ ...project, work_units: Object.fromEntries(units.map((unit) => [unit, project.work_units?.[unit] ?? {}])) }, null, 2));
     const elsewhere = other();
 

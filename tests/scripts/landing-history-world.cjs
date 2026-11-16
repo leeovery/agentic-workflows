@@ -71,7 +71,7 @@
 // holding every task's final work once, and the person's own.
 //
 // The gate runs `GATE` histories on each driver from seed 1;
-// LEEWAY_LANDING_HISTORIES and LEEWAY_LANDING_SEED run another count from
+// LEDGER_LANDING_HISTORIES and LEDGER_LANDING_SEED run another count from
 // another seed.
 
 require('./hermetic-env.cjs');
@@ -82,8 +82,8 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const { git, tip, call, commitAll, readManifest, fixtureFrom } = require('./engine-harness.cjs');
 const { UNIT, track, commitFiles, buildLanding, buildBegun, startClosed, phaseReviewed, finishReady, openArgs, wordsOf, commandsOf, rebaseStopped } = require('./landing-world.cjs');
-const names = require('../../skills/leeway-engine/scripts/domain/landing-names.cjs');
-const { parseShownTask, taskId } = require('../../skills/leeway-engine/scripts/domain/task-id.cjs');
+const names = require('../../skills/ledger-engine/scripts/domain/landing-names.cjs');
+const { parseShownTask, taskId } = require('../../skills/ledger-engine/scripts/domain/task-id.cjs');
 
 /** The histories the gate runs on each driver. */
 const GATE = 4;
@@ -130,8 +130,8 @@ const MOVED = /task (\d+\.\d+)'s branch \S+ has moved since it was opened at \w+
 
 /** The seeds a run takes: the gate's, else those the environment names. */
 function seeds() {
-  const first = Number(process.env.LEEWAY_LANDING_SEED ?? 1);
-  const count = Number(process.env.LEEWAY_LANDING_HISTORIES ?? GATE);
+  const first = Number(process.env.LEDGER_LANDING_SEED ?? 1);
+  const count = Number(process.env.LEDGER_LANDING_HISTORIES ?? GATE);
   return Array.from({ length: count }, (_, at) => first + at);
 }
 

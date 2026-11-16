@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Step's one task at a time where more than one is freed (leeway-engine/
+// Step's one task at a time where more than one is freed (ledger-engine/
 // scripts/domain/task-verbs.cjs, task-parks.cjs; 12.7.9): the one in flight
 // the one that went back in flight first, by when each was last freed — an
 // answer to its question, a replacement or a keep of the decision it would

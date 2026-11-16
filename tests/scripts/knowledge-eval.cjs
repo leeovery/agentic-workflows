@@ -31,22 +31,22 @@ const path = require('path');
 const { execFile, execFileSync } = require('child_process');
 const { promisify } = require('util');
 
-const config = require('../../skills/leeway-engine/scripts/kernel/knowledge/config.cjs');
-const store = require('../../skills/leeway-engine/scripts/kernel/knowledge/store.cjs');
-const { knowledgeFiles } = require('../../skills/leeway-engine/scripts/kernel/knowledge/files.cjs');
-const { deriveIdentity } = require('../../skills/leeway-engine/scripts/domain/knowledge/artifacts.cjs');
-const { createState } = require('../../skills/leeway-engine/scripts/domain/state-worktree.cjs');
-const { STATE_DIR_NAME } = require('../../skills/leeway-engine/scripts/kernel/state-root.cjs');
-const { keyUnresolvedError } = require('../../skills/leeway-engine/scripts/domain/knowledge/embedder.cjs');
-const { boostProblem, querySettings, queryStore, renderQuery } = require('../../skills/leeway-engine/scripts/domain/knowledge/query.cjs');
-const { buildOptions } = require('../../skills/leeway-engine/scripts/domain/knowledge/commands.cjs');
-const engine = require('../../skills/leeway-engine/scripts/engine.cjs');
+const config = require('../../skills/ledger-engine/scripts/kernel/knowledge/config.cjs');
+const store = require('../../skills/ledger-engine/scripts/kernel/knowledge/store.cjs');
+const { knowledgeFiles } = require('../../skills/ledger-engine/scripts/kernel/knowledge/files.cjs');
+const { deriveIdentity } = require('../../skills/ledger-engine/scripts/domain/knowledge/artifacts.cjs');
+const { createState } = require('../../skills/ledger-engine/scripts/domain/state-worktree.cjs');
+const { STATE_DIR_NAME } = require('../../skills/ledger-engine/scripts/kernel/state-root.cjs');
+const { keyUnresolvedError } = require('../../skills/ledger-engine/scripts/domain/knowledge/embedder.cjs');
+const { boostProblem, querySettings, queryStore, renderQuery } = require('../../skills/ledger-engine/scripts/domain/knowledge/query.cjs');
+const { buildOptions } = require('../../skills/ledger-engine/scripts/domain/knowledge/commands.cjs');
+const engine = require('../../skills/ledger-engine/scripts/engine.cjs');
 const embeddings = require('./knowledge-eval-embeddings.cjs');
 
 const REPO = path.resolve(__dirname, '..', '..');
 const EVAL_DIR = path.join(REPO, 'tests', 'fixtures', 'knowledge-eval');
 const EMBEDDINGS_DIR = path.join(REPO, 'tests', '.cache', 'knowledge-eval', 'embeddings');
-const ENGINE_CJS = path.join(REPO, 'skills', 'leeway-engine', 'scripts', 'engine.cjs');
+const ENGINE_CJS = path.join(REPO, 'skills', 'ledger-engine', 'scripts', 'engine.cjs');
 const PROJECTS = ['portal', 'tick', 'fumi'];
 
 const CASE_KEYS = new Set(['id', 'project', 'origin', 'asked', 'from', 'need', 'terms', 'options', 'relevant']);

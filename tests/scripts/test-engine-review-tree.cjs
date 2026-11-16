@@ -1,8 +1,8 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A round's snapshot of the working tree outside `.leeway/` and the
-// person's word over it (leeway-engine/scripts/domain/review-verbs.cjs,
+// A round's snapshot of the working tree outside `.ledger/` and the
+// person's word over it (ledger-engine/scripts/domain/review-verbs.cjs,
 // review-phase.cjs, review-round.cjs): a later round's taken as `review
 // reads` opens the round, entered or not, kept while held as more reads are
 // named, and the round held to its own alone; and `engine review accept-tree
@@ -63,7 +63,7 @@ describe('a later round\'s snapshot, taken as review reads opens the round (14.1
     enter();
     const again = refusedRound({ can_now: [], findings: [] });
 
-    assert.strictEqual(stopped, `review round: the working tree outside .leeway/ changed since the snapshot the round is held to: src/card.js — nothing is put back unasked: render review-tree ${UNIT} asks the person whether it is put back or kept`);
+    assert.strictEqual(stopped, `review round: the working tree outside .ledger/ changed since the snapshot the round is held to: src/card.js — nothing is put back unasked: render review-tree ${UNIT} asks the person whether it is put back or kept`);
     assert.strictEqual(again, stopped);
     assert.deepStrictEqual(ok(dir, ['review', 'accept-tree', UNIT], { env: env() }), { ok: true, round: 2, snapshot: 'taken' });
     assert.strictEqual(recorded({ can_now: [], findings: [] }).round, 2);
@@ -78,7 +78,7 @@ describe('a later round\'s snapshot, taken as review reads opens the round (14.1
     reported(2, AREAS);
 
     assert.strictEqual(fs.readFileSync(statePath(dir, SNAPSHOT), 'utf8'), held);
-    assert.match(refusedRound({ can_now: [], findings: [] }), /^review round: the working tree outside \.leeway\/ changed since the snapshot the round is held to: src\/card\.js — /);
+    assert.match(refusedRound({ can_now: [], findings: [] }), /^review round: the working tree outside \.ledger\/ changed since the snapshot the round is held to: src\/card\.js — /);
   });
 
   it('a snapshot held for an earlier round is no snapshot of this one\'s — the round holds the tree to its own alone, the refusal naming the round it holds', () => {
@@ -105,7 +105,7 @@ describe('review accept-tree: the tree taken as it is, on the person\'s word (12
     const res = ok(dir, ['review', 'accept-tree', UNIT], { env: env() });
     const after = stateBeside();
 
-    assert.strictEqual(stopped, `review round: the working tree outside .leeway/ changed since the snapshot the round is held to: src/card.js — nothing is put back unasked: render review-tree ${UNIT} asks the person whether it is put back or kept`);
+    assert.strictEqual(stopped, `review round: the working tree outside .ledger/ changed since the snapshot the round is held to: src/card.js — nothing is put back unasked: render review-tree ${UNIT} asks the person whether it is put back or kept`);
     assert.strictEqual(again, stopped);
     assert.deepStrictEqual([res, after], [{ ok: true, round: 1, snapshot: 'taken' }, before]);
     assert.match(JSON.parse(fs.readFileSync(statePath(dir, SNAPSHOT), 'utf8')).paths['src/card.js'], /^ M /);

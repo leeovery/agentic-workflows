@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The spec's loop, walked (leeway-engine/scripts/domain/spec-passes.cjs, the
+// The spec's loop, walked (ledger-engine/scripts/domain/spec-passes.cjs, the
 // loop's states; agent-state.cjs, the store a pass's report is taken in by;
 // brief-records.cjs, the briefs that read them): seeded walks of the loop's
 // events — the writer's brief, alone or landed; spec.md edited, a statement,
@@ -61,7 +61,7 @@ const {
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { ledgerHelpers } = require('./ledger-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { RECORDS } = require(path.join(SCRIPTS, 'domain/brief-records.cjs'));
 const {
   waitingOn, printOf, changedSince, reviewSettled,

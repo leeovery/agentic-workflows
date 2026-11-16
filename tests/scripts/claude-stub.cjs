@@ -3,7 +3,7 @@
 
 //
 // A stand-in for the `claude` binary, run through claude-stub.sh, which
-// hermetic-env.cjs pins LEEWAY_CLAUDE to, so no test reaches a real Claude.
+// hermetic-env.cjs pins LEDGER_CLAUDE to, so no test reaches a real Claude.
 // It answers as `claude -p --output-format json` does, its result shaped as
 // Claude Code's:
 //

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// `workunit pivot` (leeway-engine/scripts/domain/workunit-lifecycle.cjs): a
+// `workunit pivot` (ledger-engine/scripts/domain/workunit-lifecycle.cjs): a
 // feature in progress before its spec made an epic in one transaction, its
 // one topic first on the map with the summary and description Claude
 // drafted (18.3.5, 18.3.7), and its receipt; the guards refusing with
@@ -21,7 +21,7 @@ const path = require('path');
 const {
   git, stateGit, commitAll, setupFixtureAt, okSections, refuses, output, keywordOnlyKnowledge, unreadableKnowledge, indexedFiles, withFrozenClock, FROZEN_AT,
 } = require('./engine-harness.cjs');
-const store = require('../../skills/leeway-engine/scripts/kernel/knowledge/store.cjs');
+const store = require('../../skills/ledger-engine/scripts/kernel/knowledge/store.cjs');
 
 function writeFile(dir, rel, content) {
   const full = path.join(dir, rel);
@@ -50,13 +50,13 @@ function setupFixture(manifest = featureManifest()) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-wu-pivot-'));
   const project = setupFixtureAt(path.join(root, 'project'));
   keywordOnlyKnowledge(project);
-  writeFile(project, '.leeway/manifest.json', JSON.stringify({
+  writeFile(project, '.ledger/manifest.json', JSON.stringify({
     work_units: { 'auth-flow': { work_type: 'feature' }, payments: { work_type: 'epic' } },
   }, null, 2) + '\n');
-  writeFile(project, '.leeway/auth-flow/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
-  writeFile(project, '.leeway/auth-flow/topics/auth-flow/log.md', '# Discussion — the conversation, never indexed\n');
-  writeFile(project, '.leeway/.knowledge/records/auth-flow/auth-flow.md', '# Auth Flow — the decided record\n');
-  writeFile(project, '.leeway/auth-flow/seeds/seed.md', '# Seed\n');
+  writeFile(project, '.ledger/auth-flow/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
+  writeFile(project, '.ledger/auth-flow/topics/auth-flow/log.md', '# Discussion — the conversation, never indexed\n');
+  writeFile(project, '.ledger/.knowledge/records/auth-flow/auth-flow.md', '# Auth Flow — the decided record\n');
+  writeFile(project, '.ledger/auth-flow/seeds/seed.md', '# Seed\n');
   commitAll(project, 'init');
 
   return { root, project, codeHead: git(project, ['rev-parse', 'HEAD']).trim() };
@@ -81,21 +81,21 @@ const UNIT_FILES = ['.knowledge/records/auth-flow/auth-flow.md'];
 
 /** Index each of the feature's artifacts. */
 function indexUnit(fix) {
-  for (const file of UNIT_FILES) output(fix.project, ['knowledge', 'index', path.join(fix.project, '.leeway', file)]);
+  for (const file of UNIT_FILES) output(fix.project, ['knowledge', 'index', path.join(fix.project, '.ledger', file)]);
 }
 
 /** The distinct work types the store's chunks carry. */
 function chunkWorkTypes(fix) {
-  const chunks = store.allChunks(store.loadStore(path.join(fix.project, '.leeway/.knowledge/store.bin')));
+  const chunks = store.allChunks(store.loadStore(path.join(fix.project, '.ledger/.knowledge/store.bin')));
   return [...new Set(chunks.map((chunk) => chunk.work_type))];
 }
 
 function readManifest(fix, wu) {
-  return JSON.parse(fs.readFileSync(path.join(fix.project, '.leeway', wu, 'manifest.json'), 'utf8'));
+  return JSON.parse(fs.readFileSync(path.join(fix.project, '.ledger', wu, 'manifest.json'), 'utf8'));
 }
 
 function readProjectManifest(fix) {
-  return JSON.parse(fs.readFileSync(path.join(fix.project, '.leeway/manifest.json'), 'utf8'));
+  return JSON.parse(fs.readFileSync(path.join(fix.project, '.ledger/manifest.json'), 'utf8'));
 }
 
 function shortHead(fix) {
@@ -105,8 +105,8 @@ function shortHead(fix) {
 /** Snapshot of everything pivot may touch, for nothing-touched assertions. */
 function snapshot(fix) {
   return {
-    manifest: fs.readFileSync(path.join(fix.project, '.leeway/auth-flow/manifest.json'), 'utf8'),
-    project: fs.readFileSync(path.join(fix.project, '.leeway/manifest.json'), 'utf8'),
+    manifest: fs.readFileSync(path.join(fix.project, '.ledger/auth-flow/manifest.json'), 'utf8'),
+    project: fs.readFileSync(path.join(fix.project, '.ledger/manifest.json'), 'utf8'),
     commits: stateGit(fix.project, ['rev-list', '--count', 'HEAD']).trim(),
     status: git(fix.project, ['status', '--porcelain']) + stateGit(fix.project, ['status', '--porcelain']),
   };
@@ -171,7 +171,7 @@ describe('engine workunit pivot — happy path', () => {
 
   it('registers an unregistered legacy unit rather than skipping it', () => {
     fix = setupFixture();
-    writeFile(fix.project, '.leeway/manifest.json', JSON.stringify({ work_units: { payments: { work_type: 'epic' } } }, null, 2) + '\n');
+    writeFile(fix.project, '.ledger/manifest.json', JSON.stringify({ work_units: { payments: { work_type: 'epic' } } }, null, 2) + '\n');
     commitAll(fix.project, 'drop registration');
 
     engine(fix, PIVOT);
@@ -223,9 +223,9 @@ describe('engine workunit pivot — guards refuse loudly, nothing touched', () =
   it('refuses a corrupt project manifest before flipping anything', () => {
     fix = setupFixture();
     indexUnit(fix);
-    const storeFile = path.join(fix.project, '.leeway/.knowledge/store.bin');
+    const storeFile = path.join(fix.project, '.ledger/.knowledge/store.bin');
     const before = fs.readFileSync(storeFile);
-    writeFile(fix.project, '.leeway/manifest.json', '{ corrupt\n');
+    writeFile(fix.project, '.ledger/manifest.json', '{ corrupt\n');
     const err = engineFails(fix, PIVOT);
     assert.match(err.error, /not valid JSON/);
     assert.strictEqual(readManifest(fix, 'auth-flow').work_type, 'feature');

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// `engine board` in a bug's investigation (leeway-engine/scripts/domain/
+// `engine board` in a bug's investigation (ledger-engine/scripts/domain/
 // projections/board-investigation.cjs; 20.12): This session drawn from the
 // hunt's log, the ledger at its place, its validations' rows and the raises
 // this conversation sealed there — what waits on the person with the
@@ -34,8 +34,8 @@ const os = require('os');
 const path = require('path');
 const { ok, okSectionsAsync, refuses, output, readManifest, writeState, commitAll, fixtureFrom, cleanupFixture, layout } = require('./engine-harness.cjs');
 const { createManifest, withEnv } = require('./discovery-test-utils.cjs');
-const { boardOf, BOARD_USAGE } = require('../../skills/leeway-engine/scripts/domain/board.cjs');
-const { startMenuRead } = require('../../skills/leeway-engine/scripts/domain/start-menu.cjs');
+const { boardOf, BOARD_USAGE } = require('../../skills/ledger-engine/scripts/domain/board.cjs');
+const { startMenuRead } = require('../../skills/ledger-engine/scripts/domain/start-menu.cjs');
 const { ledgerHelpers } = require('./ledger-world.cjs');
 const { fixture, misfits, emptyLists, place, standingOn } = require('./board-world.cjs');
 
@@ -82,7 +82,7 @@ let dir; // the project
 let config; // the system config: the conversation's folder
 
 /** The engine as the conversation runs it, `session` its id. @param {string} [session] */
-const env = (session = 'sess-1') => ({ LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: session, CLAUDE_PID: String(process.pid), TMUX: undefined, TMUX_PANE: undefined });
+const env = (session = 'sess-1') => ({ LEDGER_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: session, CLAUDE_PID: String(process.pid), TMUX: undefined, TMUX_PANE: undefined });
 
 /** A call that must succeed: its response. @param {string[]} args */
 const run = (args) => ok(dir, args, { env: env() });

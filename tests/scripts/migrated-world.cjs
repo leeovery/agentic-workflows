@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // What the suites of a unit the migration cut share (21.8.4–21.8.8): a
-// project in the layout from before Leeway, its old plans in the project's
+// project in the layout from before Ledger, its old plans in the project's
 // tracker and the tasks its old process moved by hand, moved by the real
 // move (078); the migration's cut of a unit through `cut --migrating`; and
 // the migration's commit made on both branches. The cut and the merges'
@@ -21,19 +21,19 @@ const path = require('path');
 const { ok, git, initRepo, createFile, statePath } = require('./engine-harness.cjs');
 const { SESSION } = require('./migration-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { listDrivers } = require(path.join(SCRIPTS, 'domain/drivers.cjs'));
 const { jsonText } = require(path.join(SCRIPTS, 'kernel/manifest-io.cjs'));
-const MOVE = require('../../skills/leeway-migrate/scripts/migrations/078-reshape-move.cjs');
+const MOVE = require('../../skills/ledger-migrate/scripts/migrations/078-reshape-move.cjs');
 
-const DRIVER = /** @type {import('../../skills/leeway-engine/scripts/domain/drivers.cjs').TaskDriver} */ (listDrivers('task').find(({ isDefault }) => isDefault));
+const DRIVER = /** @type {import('../../skills/ledger-engine/scripts/domain/drivers.cjs').TaskDriver} */ (listDrivers('task').find(({ isDefault }) => isDefault));
 const SIDE = require(path.join(__dirname, '../drivers', DRIVER.name, 'task.cjs'));
 
 /** @typedef {{root: string, phases: string[]}} OldPlan */
 /** A phase of an old plan: its title, and each task by its title, or with its text and tags. @typedef {{title: string, tasks: (string|{title: string, text?: string, tags?: string[]})[]}} OldPhase */
 
 /**
- * An old task's text, as the plan from before Leeway wrote it, citing an
+ * An old task's text, as the plan from before Ledger wrote it, citing an
  * old spec by `cites`, its path, where given.
  * @param {string} problem @param {string} [cites]
  */
@@ -42,7 +42,7 @@ const oldTask = (problem, cites) => [
   ...(cites === undefined ? [] : ['', `**Spec Reference**: \`${cites}\``]),
 ].join('\n');
 
-/** An old spec's path as the work-unit layout before Leeway kept it. @param {string} unit @param {string} topic */
+/** An old spec's path as the work-unit layout before Ledger kept it. @param {string} unit @param {string} topic */
 const oldSpecPath = (unit, topic) => `.workflows/${unit}/specification/${topic}/specification.md`;
 
 /**
@@ -66,7 +66,7 @@ function buildingUnit(name, type, topics, building) {
 }
 
 /**
- * The files of a project in the layout from before Leeway: its README, its
+ * The files of a project in the layout from before Ledger: its README, its
  * registry, and each unit's own — its manifest, and for each topic a
  * discussion and the spec `specs` gives it.
  * @param {{manifest: Record<string, any>, specs: Record<string, string>}[]} units
@@ -84,7 +84,7 @@ function oldFiles(units) {
 }
 
 /**
- * A project in the layout from before Leeway at `dir`, holding `files`, each
+ * A project in the layout from before Ledger at `dir`, holding `files`, each
  * old plan of `plans` in its tracker by its topic, each task `byHand` names
  * moved as the old process left it, committed and moved by the real move:
  * answers the tracker's ids of each plan's root and phases, by topic.

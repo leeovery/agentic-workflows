@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The lifecycle transactions (leeway-engine/scripts/domain/transitions.cjs
+// The lifecycle transactions (ledger-engine/scripts/domain/transitions.cjs
 // and workunit-lifecycle.cjs): `topic cancel` and `topic reactivate` at an
 // epic's discovery map, the stash and the map's order each keeps; a topic's
 // start as `enter` runs it, the discovery map gating the birth of a phase
@@ -28,7 +28,7 @@ const fs = require('fs');
 const path = require('path');
 
 const harness = require('./engine-harness.cjs');
-const { computeTopicLifecycle } = require('../../skills/leeway-engine/scripts/domain/derivations.cjs');
+const { computeTopicLifecycle } = require('../../skills/ledger-engine/scripts/domain/derivations.cjs');
 
 const { git, stateGit, commitAll, cleanupFixture, call, ok: engine, okSections, refuses: engineFails, completeUnit, startItem } = harness;
 
@@ -52,7 +52,7 @@ function shortHead(dir) {
 }
 
 function readManifest(dir, wu) {
-  return JSON.parse(fs.readFileSync(path.join(dir, '.leeway', wu, 'manifest.json'), 'utf8'));
+  return JSON.parse(fs.readFileSync(path.join(dir, '.ledger', wu, 'manifest.json'), 'utf8'));
 }
 
 /** An epic manifest with plural phase items and a discovery-map entry carrying `order`. */
@@ -73,13 +73,13 @@ function epicManifest() {
 function parkStub(dir, phase, topic) {
   const m = readManifest(dir, 'payments');
   m.phases[phase].items[topic] = { status: 'unstarted' };
-  writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+  writeFile(dir, '.ledger/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
 }
 
 /** A world built once over the payments epic as `manifest` gives it, every test given a copy. @param {Record<string, unknown>} manifest */
 function paymentsFixture(manifest) {
   return harness.fixtureFrom('engine-tx-', (dir) => {
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
+    writeFile(dir, '.ledger/payments/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
     commitAll(dir, 'init');
   });
 }
@@ -164,7 +164,7 @@ describe('engine topic cancel — the discovery unit', () => {
   it('a parked stub is taken with the topic — unstarted stashed like any status', () => {
     const m = unitManifest();
     m.phases.discussion.items['data-export'] = { status: 'unstarted' };
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.ledger/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
     const res = engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'data-export']);
     assert.deepStrictEqual(res.cancelled, [{ phase: 'discussion', previous_status: 'unstarted' }]);
     assert.deepStrictEqual(readManifest(dir, 'payments').phases.discussion.items['data-export'], { status: 'cancelled', previous_status: 'unstarted' });
@@ -173,7 +173,7 @@ describe('engine topic cancel — the discovery unit', () => {
   it('an off-map topic reads cancelled, and reactivates', () => {
     const m = unitManifest();
     m.phases.discussion.items.legacy = { status: 'cancelled', previous_status: 'completed' };
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.ledger/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
     assert.strictEqual(computeTopicLifecycle(readManifest(dir, 'payments'), 'legacy').lifecycle, 'cancelled');
     assert.match(engineFails(dir, ['topic', 'cancel', 'payments', 'discovery', 'legacy']).error, /"legacy" is already cancelled/);
     const res = engine(dir, ['topic', 'reactivate', 'payments', 'discovery', 'legacy']);
@@ -184,7 +184,7 @@ describe('engine topic cancel — the discovery unit', () => {
   it('a legacy topic with no map row cancels through its items and reads cancelled', () => {
     const m = unitManifest();
     m.phases.discussion.items.legacy = { status: 'completed' };
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.ledger/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
     const res = engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'legacy']);
     assert.deepStrictEqual(res.cancelled, [{ phase: 'discussion', previous_status: 'completed' }]);
     assert.strictEqual(computeTopicLifecycle(readManifest(dir, 'payments'), 'legacy').lifecycle, 'cancelled');
@@ -258,7 +258,7 @@ describe('engine topic reactivate', () => {
   it('a stash-less cancelled item returns to never-attempted — the per-item cancel of a status-less item stashed nothing', () => {
     const m = unitManifest();
     m.phases.discussion.items.stuck = { status: 'cancelled', dismissed_grounds: ['not this year'] };
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.ledger/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
     const topic = engine(dir, ['topic', 'reactivate', 'payments', 'discovery', 'stuck']);
     assert.deepStrictEqual(topic.restored, [{ phase: 'discussion', status: null }]);
     const after = readManifest(dir, 'payments');
@@ -268,7 +268,7 @@ describe('engine topic reactivate', () => {
   it('a legacy topic with no map row reactivates the item carrying a stash', () => {
     const m = unitManifest();
     m.phases.discussion.items.legacy = { status: 'cancelled', previous_status: 'in-progress' };
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.ledger/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
     const res = engine(dir, ['topic', 'reactivate', 'payments', 'discovery', 'legacy']);
     assert.deepStrictEqual(res.restored, [{ phase: 'discussion', status: 'in-progress' }]);
   });
@@ -303,7 +303,7 @@ describe('a topic\'s start — the function `enter` runs', () => {
   it('creates an absent phase item with status in-progress — init-phase semantics, no commit', () => {
     const m0 = epicManifest();
     delete m0.phases.investigation;
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m0, null, 2) + '\n');
+    writeFile(dir, '.ledger/payments/manifest.json', JSON.stringify(m0, null, 2) + '\n');
     commitAll(dir, 'no investigation');
     const res = startItem(dir, 'payments', 'investigation', 'auth-flow');
 
@@ -331,7 +331,7 @@ describe('a topic\'s start — the function `enter` runs', () => {
   it('resumes an existing in-progress item: created false, fields preserved', () => {
     const m0 = epicManifest();
     m0.phases.investigation.items['auth-flow'].note = 'keep me';
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify(m0, null, 2) + '\n');
+    writeFile(dir, '.ledger/payments/manifest.json', JSON.stringify(m0, null, 2) + '\n');
 
     const res = startItem(dir, 'payments', 'investigation', 'auth-flow');
 
@@ -357,26 +357,26 @@ describe('a topic\'s start — the function `enter` runs', () => {
   });
 
   it('refuses a specification item on every unit, a quick-fix\'s too — the spec is entered at the work unit — and a planning item, a phase no table holds', () => {
-    writeFile(dir, '.leeway/typo/manifest.json', JSON.stringify({ name: 'typo', work_type: 'quick-fix', status: 'in-progress', phases: {} }, null, 2) + '\n');
-    const before = ['payments', 'typo'].map((unit) => fs.readFileSync(path.join(dir, '.leeway', unit, 'manifest.json'), 'utf8'));
+    writeFile(dir, '.ledger/typo/manifest.json', JSON.stringify({ name: 'typo', work_type: 'quick-fix', status: 'in-progress', phases: {} }, null, 2) + '\n');
+    const before = ['payments', 'typo'].map((unit) => fs.readFileSync(path.join(dir, '.ledger', unit, 'manifest.json'), 'utf8'));
     for (const unit of ['payments', 'typo']) {
       assert.throws(() => startItem(dir, unit, 'specification', unit),
         { message: `${unit}'s spec keeps no items — it is entered at the work unit: engine enter specification ${unit}` }, unit);
       assert.throws(() => startItem(dir, unit, 'planning', unit), { message: /^unknown or non-lifecycle phase "planning"/ }, unit);
     }
-    assert.deepStrictEqual(['payments', 'typo'].map((unit) => fs.readFileSync(path.join(dir, '.leeway', unit, 'manifest.json'), 'utf8')), before, 'nothing written');
+    assert.deepStrictEqual(['payments', 'typo'].map((unit) => fs.readFileSync(path.join(dir, '.ledger', unit, 'manifest.json'), 'utf8')), before, 'nothing written');
   });
 
   it('refuses the build\'s places on every unit, a quick-fix\'s too — they stand by the build\'s cut, entered by `enter`', () => {
-    writeFile(dir, '.leeway/typo/manifest.json', JSON.stringify({
+    writeFile(dir, '.ledger/typo/manifest.json', JSON.stringify({
       name: 'typo', work_type: 'quick-fix', status: 'in-progress', phases: {},
     }, null, 2) + '\n');
-    const before = fs.readFileSync(path.join(dir, '.leeway/typo/manifest.json'), 'utf8');
+    const before = fs.readFileSync(path.join(dir, '.ledger/typo/manifest.json'), 'utf8');
     for (const phase of ['implementation', 'review']) {
       assert.throws(() => startItem(dir, 'typo', phase, 'typo'),
         { message: `${phase} stands by the build's cut — it is entered by \`engine enter ${phase} <work-unit>\`, never written by a topic verb` }, phase);
     }
-    assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/typo/manifest.json'), 'utf8'), before, 'nothing written');
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.ledger/typo/manifest.json'), 'utf8'), before, 'nothing written');
   });
 
   it('flips an unstarted stub to in-progress — the one exit from unstarted', () => {
@@ -415,12 +415,12 @@ describe('topic start, reopen and complete — no verbs of their own', () => {
   afterEach(() => { cleanupFixture(dir); });
 
   it('each answers the usage, writing nothing: a topic starts at `enter`, and closes and reopens through its phase\'s own doors', () => {
-    const before = fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8');
+    const before = fs.readFileSync(path.join(dir, '.ledger/payments/manifest.json'), 'utf8');
     for (const [verb, topic] of [['start', 'brand-new'], ['reopen', 'fee-model'], ['complete', 'auth-flow']]) {
       assert.match(engineFails(dir, ['topic', verb, 'payments', 'investigation', topic]).error,
         /^Usage: engine topic <send\|cancel\|reactivate\|postpone\|mailbox\|answered\|/, verb);
     }
-    assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8'), before);
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.ledger/payments/manifest.json'), 'utf8'), before);
   });
 });
 
@@ -440,30 +440,30 @@ function featureManifest() {
 }
 
 const setupFeatureFixture = harness.fixtureFrom('engine-tx-', (dir) => {
-  writeFile(dir, '.leeway/auth-flow/manifest.json', JSON.stringify(featureManifest(), null, 2) + '\n');
+  writeFile(dir, '.ledger/auth-flow/manifest.json', JSON.stringify(featureManifest(), null, 2) + '\n');
   // The completed phase artifacts (the re-index discovers only files that
   // exist on disk).
-  writeFile(dir, '.leeway/auth-flow/topics/auth-flow/log.md', '# Discussion\n');
+  writeFile(dir, '.ledger/auth-flow/topics/auth-flow/log.md', '# Discussion\n');
   // A log, never indexed.
-  writeFile(dir, '.leeway/auth-flow/discovery/session-001.md', '# Session 001\n');
+  writeFile(dir, '.ledger/auth-flow/discovery/session-001.md', '# Session 001\n');
   // A store that cannot be loaded, checkout-local and never committed: a
   // removal or re-index fails deterministically, so warn-don't-block is
   // provable as a warning.
-  writeFile(dir, '.leeway/.gitignore', '.knowledge/\n');
+  writeFile(dir, '.ledger/.gitignore', '.knowledge/\n');
   harness.unreadableKnowledge(dir);
   commitAll(dir, 'init');
 });
 
 /** A quick-fix, over a knowledge store that cannot be loaded. */
 const setupBrokenStoreQuickFixFixture = harness.fixtureFrom('engine-tx-', (dir) => {
-  writeFile(dir, '.leeway/caching/manifest.json', JSON.stringify({
+  writeFile(dir, '.ledger/caching/manifest.json', JSON.stringify({
     name: 'caching',
     work_type: 'quick-fix',
     status: 'in-progress',
     phases: {},
   }, null, 2) + '\n');
   // Deterministic KB failure: a store that cannot be loaded.
-  writeFile(dir, '.leeway/.gitignore', '.knowledge/\n');
+  writeFile(dir, '.ledger/.gitignore', '.knowledge/\n');
   harness.unreadableKnowledge(dir);
   commitAll(dir, 'init');
 });
@@ -497,10 +497,10 @@ describe('work-unit completion — finish\'s, in process', () => {
   });
 
   it('purges the work unit\'s scratch cache on complete, the old cache\'s reports the migration copied into its earlier/ with it — untracked scratch leaves no dirt', () => {
-    writeFile(dir, '.leeway/.cache/auth-flow/discussion/auth-flow/review-1.md', 'scratch\n');
-    writeFile(dir, '.leeway/.cache/auth-flow/earlier/discussion/auth-flow/review-001.md', 'an old report\n');
+    writeFile(dir, '.ledger/.cache/auth-flow/discussion/auth-flow/review-1.md', 'scratch\n');
+    writeFile(dir, '.ledger/.cache/auth-flow/earlier/discussion/auth-flow/review-001.md', 'an old report\n');
     completeUnit(dir, 'auth-flow', 'workflow(auth-flow): complete feature pipeline');
-    assert.strictEqual(fs.existsSync(path.join(dir, '.leeway/.cache/auth-flow')), false, 'cache dir removed');
+    assert.strictEqual(fs.existsSync(path.join(dir, '.ledger/.cache/auth-flow')), false, 'cache dir removed');
     assert.strictEqual(git(dir, ['status', '--porcelain']).trim() + stateGit(dir, ['status', '--porcelain']).trim(), '', 'no stray dirt');
   });
 
@@ -545,10 +545,10 @@ describe('engine workunit cancel', () => {
   afterEach(() => { cleanupFixture(dir); });
 
   it('purges the work unit\'s scratch cache on cancel, the old cache\'s reports the migration copied into its earlier/ with it', () => {
-    writeFile(dir, '.leeway/.cache/auth-flow/discussion/auth-flow/deep-dive-1.md', 'scratch\n');
-    writeFile(dir, '.leeway/.cache/auth-flow/earlier/discussion/auth-flow/review-001.md', 'an old report\n');
+    writeFile(dir, '.ledger/.cache/auth-flow/discussion/auth-flow/deep-dive-1.md', 'scratch\n');
+    writeFile(dir, '.ledger/.cache/auth-flow/earlier/discussion/auth-flow/review-001.md', 'an old report\n');
     engine(dir, ['workunit', 'cancel', 'auth-flow']);
-    assert.strictEqual(fs.existsSync(path.join(dir, '.leeway/.cache/auth-flow')), false, 'cache dir removed');
+    assert.strictEqual(fs.existsSync(path.join(dir, '.ledger/.cache/auth-flow')), false, 'cache dir removed');
     assert.strictEqual(git(dir, ['status', '--porcelain']).trim() + stateGit(dir, ['status', '--porcelain']).trim(), '', 'no stray dirt');
   });
 
@@ -600,7 +600,7 @@ describe('engine workunit reactivate', () => {
 
   it('refuses a completed feature, bugfix, quick-fix and epic, writing nothing: a finished unit stays finished, and a later change is new work', () => {
     for (const type of ['feature', 'bugfix', 'quick-fix', 'epic']) {
-      writeFile(dir, `.leeway/done-${type}/manifest.json`, `${JSON.stringify({ name: `done-${type}`, work_type: type, status: 'completed', completed_at: '2026-11-01' }, null, 2)}\n`);
+      writeFile(dir, `.ledger/done-${type}/manifest.json`, `${JSON.stringify({ name: `done-${type}`, work_type: type, status: 'completed', completed_at: '2026-11-01' }, null, 2)}\n`);
     }
     commitAll(dir, 'the finished units');
     const before = { head: shortHead(dir), manifests: ['feature', 'bugfix', 'quick-fix', 'epic'].map((type) => readManifest(dir, `done-${type}`)) };
@@ -627,16 +627,16 @@ describe('engine workunit reactivate', () => {
 
   it('epic reactivate re-indexes in one scoped bulk pass — failure is a warning', () => {
     const epicDir = harness.setupGitFixture('engine-tx-');
-    writeFile(epicDir, '.leeway/payments/manifest.json', JSON.stringify({
+    writeFile(epicDir, '.ledger/payments/manifest.json', JSON.stringify({
       name: 'payments', work_type: 'epic', status: 'in-progress',
       phases: {
         discovery: { items: { 'auth-flow': { source: 'discovery' } } },
         discussion: { items: { 'auth-flow': { status: 'completed' } } },
       },
     }, null, 2) + '\n');
-    writeFile(epicDir, '.leeway/payments/topics/auth-flow/log.md', '# Discussion\n');
+    writeFile(epicDir, '.ledger/payments/topics/auth-flow/log.md', '# Discussion\n');
     // Deterministic KB failure: a store that cannot be loaded.
-    writeFile(epicDir, '.leeway/.gitignore', '.knowledge/\n');
+    writeFile(epicDir, '.ledger/.gitignore', '.knowledge/\n');
     harness.unreadableKnowledge(epicDir);
     commitAll(epicDir, 'init');
 
@@ -673,7 +673,7 @@ describe('engine workunit reactivate', () => {
 
     const m = featureManifest();
     m.status = 'archived';
-    writeFile(dir, '.leeway/auth-flow/manifest.json', JSON.stringify(m, null, 2) + '\n');
+    writeFile(dir, '.ledger/auth-flow/manifest.json', JSON.stringify(m, null, 2) + '\n');
     assert.match(
       engineFails(dir, ['workunit', 'reactivate', 'auth-flow']).error,
       /not cancelled \(status: archived\)/);
@@ -681,17 +681,17 @@ describe('engine workunit reactivate', () => {
 });
 
 describe('schema enforcement: transitions refuse what the field surface refuses', () => {
-  const { VALID_PHASE_STATUSES } = require('../../skills/leeway-engine/scripts/kernel/manifest-schema.cjs');
+  const { VALID_PHASE_STATUSES } = require('../../skills/ledger-engine/scripts/kernel/manifest-schema.cjs');
 
   it('discovery is not a lifecycle phase — a start refuses it; cancel addresses the unit', () => {
     const dir = harness.setupGitFixture('engine-tx-');
-    writeFile(dir, '.leeway/payments/manifest.json', JSON.stringify({
+    writeFile(dir, '.ledger/payments/manifest.json', JSON.stringify({
       name: 'payments', work_type: 'epic', status: 'in-progress',
       phases: { discovery: { items: { 'auth-flow': {} } } },
     }, null, 2));
     assert.throws(() => startItem(dir, 'payments', 'discovery', 'auth-flow'), { message: /non-lifecycle phase "discovery"[\s\S]*discovery tooling/ });
     // the invalid state the live drive produced must now be impossible
-    const m = JSON.parse(fs.readFileSync(path.join(dir, '.leeway/payments/manifest.json'), 'utf8'));
+    const m = JSON.parse(fs.readFileSync(path.join(dir, '.ledger/payments/manifest.json'), 'utf8'));
     assert.strictEqual(m.phases.discovery.items['auth-flow'].status, undefined);
     cleanupFixture(dir);
   });
@@ -699,7 +699,7 @@ describe('schema enforcement: transitions refuse what the field surface refuses'
   it('the enforcement table IS the kernel schema (shared module, no mirror)', () => {
     assert.deepStrictEqual(VALID_PHASE_STATUSES.discovery, []);  // map items carry no status — empty vocabulary refuses every write
     const src = fs.readFileSync(
-      path.join(__dirname, '../../skills/leeway-engine/scripts/domain/transitions.cjs'), 'utf8');
+      path.join(__dirname, '../../skills/ledger-engine/scripts/domain/transitions.cjs'), 'utf8');
     assert.ok(src.includes("require('../kernel/manifest-schema.cjs')"),
       'transitions must require the shared schema, not mirror it');
     assert.ok(!/VALID_PHASE_STATUSES\s*=\s*{/.test(src), 'no local copy of the status table');
@@ -729,7 +729,7 @@ describe('engine usage banner', () => {
 
 describe('a topic\'s start — the discovery map gates the birth of a phase item', () => {
   const mapped = harness.fixtureFrom('engine-tx-', (dir) => {
-    writeFile(dir, '.leeway/mapped/manifest.json', JSON.stringify({
+    writeFile(dir, '.ledger/mapped/manifest.json', JSON.stringify({
       name: 'mapped',
       work_type: 'epic',
       status: 'in-progress',
@@ -765,10 +765,10 @@ describe('a topic\'s start — the discovery map gates the birth of a phase item
   });
 
   it('a topic off the map is refused, writing nothing; a non-epic work unit is ungated by the map', () => {
-    const before = fs.readFileSync(path.join(dir, '.leeway/mapped/manifest.json'), 'utf8');
+    const before = fs.readFileSync(path.join(dir, '.ledger/mapped/manifest.json'), 'utf8');
     assert.throws(() => startItem(dir, 'mapped', 'discussion', 'unmapped'), { message: 'discussion can\'t start on "unmapped" — it is not on the map; a topic starts from its row on the epic menu' });
-    assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/mapped/manifest.json'), 'utf8'), before);
-    writeFile(dir, '.leeway/feat/manifest.json', JSON.stringify({
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.ledger/mapped/manifest.json'), 'utf8'), before);
+    writeFile(dir, '.ledger/feat/manifest.json', JSON.stringify({
       name: 'feat', work_type: 'feature', status: 'in-progress',
       phases: { discovery: { items: { feat: { source: 'discovery' } } } },
     }, null, 2) + '\n');

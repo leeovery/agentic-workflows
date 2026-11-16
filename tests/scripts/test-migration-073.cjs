@@ -16,7 +16,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const MIGRATION = require('../../skills/leeway-migrate/scripts/migrations/073-environment-linters.cjs');
+const MIGRATION = require('../../skills/ledger-migrate/scripts/migrations/073-environment-linters.cjs');
 
 describe('migration 073: a step that does nothing', () => {
   it('reports a skip, hands nothing back and writes nothing', () => {

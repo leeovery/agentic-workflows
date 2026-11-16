@@ -19,7 +19,7 @@ const harness = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 const { git, commitOnState, withEnv } = harness;
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const MERGE = path.join(SCRIPTS, 'domain/state-merge.cjs');
 const { STATE_BRANCH, openWorktree } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { isolatedGit } = require(path.join(SCRIPTS, 'kernel/isolated-git.cjs'));
@@ -123,7 +123,7 @@ function projectManifest(horizon, extra = {}) {
 function appendOnly(root) {
   try {
     checkLedger(root, []);
-    checkLedgerCommit(/** @type {import('../../skills/leeway-engine/scripts/domain/state-worktree.cjs').OpenWorktree} */ (openWorktree(root)), `${STATE_BRANCH}^`, STATE_BRANCH);
+    checkLedgerCommit(/** @type {import('../../skills/ledger-engine/scripts/domain/state-worktree.cjs').OpenWorktree} */ (openWorktree(root)), `${STATE_BRANCH}^`, STATE_BRANCH);
     return true;
   } catch (err) {
     if (err instanceof LedgerChanged) return false;
@@ -133,7 +133,7 @@ function appendOnly(root) {
 
 /** Where the merge keeps its stop: the state worktree's git dir. @param {string} root */
 function keptStopFile(root) {
-  return path.resolve(root, git(root, ['rev-parse', '--git-path', 'leeway-merge.json']).trim());
+  return path.resolve(root, git(root, ['rev-parse', '--git-path', 'ledger-merge.json']).trim());
 }
 
 /** The identity of the choice the stop's screen shows, from its DATA section. @param {Machine} machine */
@@ -150,7 +150,7 @@ function pickShown(machine, key) {
 
 /** The merge's own files left in the state worktree's git dir. @param {string} root */
 function mergeLeftovers(root) {
-  return fs.readdirSync(path.dirname(keptStopFile(root))).filter((name) => name.startsWith('leeway-merge'));
+  return fs.readdirSync(path.dirname(keptStopFile(root))).filter((name) => name.startsWith('ledger-merge'));
 }
 
 /**

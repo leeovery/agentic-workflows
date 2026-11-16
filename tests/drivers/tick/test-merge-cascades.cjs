@@ -22,8 +22,8 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const { templateFolder, useTempFolder } = require('../../scripts/discovery-test-utils.cjs');
-const DRIVER = require('../../../skills/leeway-engine/scripts/drivers/task/tick/driver.cjs');
-const { endedInTracker, phaseName, unitName } = require('../../../skills/leeway-engine/scripts/domain/task-id.cjs');
+const DRIVER = require('../../../skills/ledger-engine/scripts/drivers/task/tick/driver.cjs');
+const { endedInTracker, phaseName, unitName } = require('../../../skills/ledger-engine/scripts/domain/task-id.cjs');
 
 const UNIT = 'pay';
 const STORE = '.tick/tasks.jsonl';

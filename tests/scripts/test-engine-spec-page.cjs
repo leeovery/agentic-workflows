@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The person's review page (leeway-engine/scripts/domain/spec-page.cjs):
+// The person's review page (ledger-engine/scripts/domain/spec-page.cjs):
 // `engine spec page <unit>`, writing the one fixed page with the spec as its
 // data and the store's first writes — every line with its tick and flags,
 // each screen after its line, each area's count, Claude's tick on each line
@@ -44,7 +44,7 @@ const { createManifest } = require('./discovery-test-utils.cjs');
 const { MADE, SESSION, ledgerHelpers } = require('./ledger-world.cjs');
 const { labelling } = require('./labels.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { specPage } = require(path.join(SCRIPTS, 'domain/spec-page-model.cjs'));
 
 const UNIT = 'payments';

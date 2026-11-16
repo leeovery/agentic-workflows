@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A unit's own branch kept current (7.2.36; leeway-engine/scripts/domain/
+// A unit's own branch kept current (7.2.36; ledger-engine/scripts/domain/
 // unit-branch.cjs, `bringUp`, through checklist.cjs and review-entry.cjs):
 // each later phase start's close, once nothing else refuses it, brings the
 // default branch, as the driver lands it — never a commit here the host
@@ -51,13 +51,13 @@ const harness = require('./engine-harness.cjs');
 const { git, tip, readManifest, createFile, commitCode, fixtureFrom, cleanupFixture, killedAt, refusedPristine, sectionOf } = harness;
 const { UNIT, TASKS, openArgs, unitBranchLanded, startClosed, reviewReady, commitFiles } = require('./landing-world.cjs');
 const { statePath } = require('./discovery-test-utils.cjs');
-const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
+const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
 
 const { total } = TASKS;
 const BRANCH = `feat/${UNIT}`;
 
 /** Where a step's merge is begun in the repository at `dir`: the worktree made for it. @param {string} dir */
-const mergeTree = (dir) => path.join(fs.realpathSync(dir), '.git', 'leeway', 'feat-pay.merging');
+const mergeTree = (dir) => path.join(fs.realpathSync(dir), '.git', 'ledger', 'feat-pay.merging');
 
 /** A commit's parents and subject, in the repository at `dir`. @param {string} dir @param {string} commit */
 const madeOf = (dir, commit) => git(dir, ['log', '-1', '--format=%P%n%s', commit]).trim().split('\n');

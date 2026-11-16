@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // GitHub's landing driver bringing a stack up to date across nested
-// repositories (leeway-engine/scripts/drivers/landing/github/), past what
+// repositories (ledger-engine/scripts/drivers/landing/github/), past what
 // every driver gives (the nested conformance suites'): a stack built on a
 // phase GitHub squashed, its bottom's or one above it of a phase beside it,
 // brought up to date with the default branch on GitHub first, the default

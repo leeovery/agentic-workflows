@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The local landing driver's stacks (leeway-engine/scripts/drivers/landing/
+// The local landing driver's stacks (ledger-engine/scripts/drivers/landing/
 // local/driver.cjs), beyond what every driver does — the landing conformance
 // suite's: each phase's stack read off its branch, and merged by one rule,
 // the one read of what has landed (task-landed.cjs); the work a task is
@@ -32,7 +32,7 @@ const assert = require('node:assert');
 const { ok, refuses, git, tip } = require('./engine-harness.cjs');
 const { TASKS, openArgs, own, cutTask, commitFiles, mergeBack, landedOn, useLandingWorld, refusedMoving, alreadyMoving, way, rebaseSteps, finishReady } = require('./landing-world.cjs');
 
-const localDriver = require('../../skills/leeway-engine/scripts/drivers/landing/local/driver.cjs');
+const localDriver = require('../../skills/ledger-engine/scripts/drivers/landing/local/driver.cjs');
 
 const { card, rounding, currency } = TASKS;
 const project = useLandingWorld('engine-land-local-');

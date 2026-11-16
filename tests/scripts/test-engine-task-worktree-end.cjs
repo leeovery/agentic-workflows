@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // A task's worktree as the task ends, and tasks side by side
-// (leeway-engine/scripts/domain/task-worktree.cjs, `task done` and `task
+// (ledger-engine/scripts/domain/task-worktree.cjs, `task done` and `task
 // close` in task-verbs.cjs; the commit door's binding, commit-task.cjs):
 // `task done` and `task close` take every child repository's worktree the
 // task has apart before the tracker moves — each with its branch out, never
@@ -31,7 +31,7 @@ const path = require('path');
 
 const { ok, refuses, refusedPristine, git, tip, createFile, initRepo, statePath, accountTaken, confirmEnvironment } = require('./engine-harness.cjs');
 const { NESTED, landedOn } = require('./landing-world.cjs');
-const { readPosition } = require('../../skills/leeway-engine/scripts/domain/conversation.cjs');
+const { readPosition } = require('../../skills/ledger-engine/scripts/domain/conversation.cjs');
 const { SIDE, UNIT, FEES, SHOW, taskWorktreeWorld, as, building, isolation, layOut, checkoutsOf, statusOf } = require('./task-worktree-world.cjs');
 
 const project = taskWorktreeWorld('engine-task-worktree-end-');

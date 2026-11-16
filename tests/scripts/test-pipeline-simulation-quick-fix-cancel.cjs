@@ -52,7 +52,7 @@ describe('pipeline simulation: quick-fix cancelled mid-fix', () => {
     sim.run(['enter', 'implementation', wu]);
     const started = sim.run(['task', 'start', wu, help]);
     fixBuilt(sim, wu, help, ['src/help.js'], { record: 'The help.' });
-    sim.write(`.leeway/${wu}/build/log.md`, '# The fixes\n');
+    sim.write(`.ledger/${wu}/build/log.md`, '# The fixes\n');
     finishClosed(sim, wu);
     sim.render(['finish', wu], { expect: 'content' });
     const yes = sim.run(answerGate(sim, 'finish', '--pick', 'y').next.argv);

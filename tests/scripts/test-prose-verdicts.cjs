@@ -21,7 +21,7 @@ const { execFileSync } = require('child_process');
 // inherits it, so the store's real entries are never touched and nothing
 // lands in the repository. Each test starts from an empty store.
 const PROSE_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'prose-verdicts-'));
-process.env.LEEWAY_PROSE_ROOT = PROSE_ROOT;
+process.env.LEDGER_PROSE_ROOT = PROSE_ROOT;
 after(() => fs.rmSync(PROSE_ROOT, { recursive: true, force: true }));
 
 const verdicts = require('../prose/lib/verdicts.cjs');

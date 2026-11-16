@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// What put back sets aside (leeway-engine/scripts/domain/review-tree.cjs,
+// What put back sets aside (ledger-engine/scripts/domain/review-tree.cjs,
 // its place review-phase.cjs): `engine review restore-tree` copies what
 // each path it touches holds into a folder of its own, `.cache/.set-aside/
 // {unit}/round-{N}/put-{k}/{path}` — a link as a link, to a folder or to
@@ -29,7 +29,7 @@ const {
   ASIDE, flat, excluded, treeKit,
 } = require('./review-tree-world.cjs');
 
-const { workUnitNameRefusal } = require('../../skills/leeway-engine/scripts/kernel/manifest-schema.cjs');
+const { workUnitNameRefusal } = require('../../skills/ledger-engine/scripts/kernel/manifest-schema.cjs');
 
 /** @type {string} */
 let dir;
@@ -133,8 +133,8 @@ describe('what put back sets aside (12.7.8, 14.S13)', () => {
     firstRoundReady();
     strayPutBack('stray.txt', 'left in the checkout\n');
     recorded({ can_now: ['Pay by card.'], findings: [RECEIPT] });
-    fs.mkdirSync(path.join(dir, '.claude/skills/leeway-review-process'), { recursive: true });
-    fs.writeFileSync(path.join(dir, '.claude/skills/leeway-review-process/SKILL.md'), '# The review\n');
+    fs.mkdirSync(path.join(dir, '.claude/skills/ledger-review-process'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.claude/skills/ledger-review-process/SKILL.md'), '# The review\n');
     const note = output(dir, ['conversation', 'position', SESSION_ID], { env: { ...env(), CLAUDE_CODE_SESSION_ID: '' } });
 
     assert.ok(reportDrawn().includes(asideBlock('round-1/put-1/stray.txt')), reportDrawn());

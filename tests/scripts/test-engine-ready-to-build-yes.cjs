@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Ready to build's yes and after (leeway-engine/scripts/domain/ready-to-build.cjs):
+// Ready to build's yes and after (ledger-engine/scripts/domain/ready-to-build.cjs):
 // `engine ready-to-build yes <unit> --position auto|step [--marks <file>]`,
 // writing `build: {position}` and committing it, the review settled on fresh
 // marks while the page is open and none written while it is not (11.S22,
@@ -22,7 +22,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const { ok, refuses, statePath, layout, readState, readManifest, stateGit, head, lastMessage, touched, failingStateCommits, retried } = require('./engine-harness.cjs');
-const { trustLogPath } = require('../../skills/leeway-engine/scripts/domain/trust-log.cjs');
+const { trustLogPath } = require('../../skills/ledger-engine/scripts/domain/trust-log.cjs');
 const { UNIT, SESSION, READ_BACK, commented, closed, useReadyWorld, readyHelpers } = require('./ready-to-build-world.cjs');
 
 const dir = useReadyWorld(closed);
@@ -33,7 +33,7 @@ describe('the yes (11.8.1, 11.8.6, E11)', () => {
     const before = head(dir());
     const answer = yes(['--position', 'auto']);
 
-    assert.deepStrictEqual(answer, { ok: true, unit: UNIT, position: 'auto', record: null, committed: stateGit(dir(), ['rev-parse', '--short', 'HEAD']).trim(), next: { kind: 'handoff', skill: 'leeway-implementation-process', args: ['epic', UNIT] } });
+    assert.deepStrictEqual(answer, { ok: true, unit: UNIT, position: 'auto', record: null, committed: stateGit(dir(), ['rev-parse', '--short', 'HEAD']).trim(), next: { kind: 'handoff', skill: 'ledger-implementation-process', args: ['epic', UNIT] } });
     assert.deepStrictEqual(readManifest(dir(), UNIT).build, { position: 'auto' });
     assert.deepStrictEqual([lastMessage(dir()), touched(statePath(dir()), 'HEAD'), stateGit(dir(), ['rev-parse', 'HEAD~1']).trim()], [`ready-to-build(${UNIT}): auto`, ['M\tmanifest.json', `M\t${layout.manifest(UNIT)}`], before]);
     assert.ok(!fs.existsSync(statePath(dir(), layout.unit(UNIT, 'spec-review.json'))));

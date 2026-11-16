@@ -11,7 +11,7 @@
 // test-pipeline-simulation-review-migrated-feature.cjs's.
 //
 // Layer: simulation. World: this file's own — a project in the layout from
-// before Leeway, the old plans in the project's tracker, moved by the real
+// before Ledger, the old plans in the project's tracker, moved by the real
 // move (078), cut by `cut --migrating` and the migration's commit made
 // (migrated-world.cjs) — built once and copied per scenario, which replays
 // the engine calls the review phase's prose makes, in order, the oracle
@@ -36,9 +36,9 @@ const WU = 'atlas';
 const UNPINNED = '## Findings\n\n- bug: a pin dropped is gone on reload\n  Scenario: a pin kept\n\nVerdict: fail\n';
 
 /** What an area's brief says of an area built before the migration. @param {number} area */
-const built = (area) => `§${area} was built before the migration cut the unit: its work landed before Leeway, so no commit of the change carries it. Hold the product at the change's tips against the area`;
+const built = (area) => `§${area} was built before the migration cut the unit: its work landed before Ledger, so no commit of the change carries it. Hold the product at the change's tips against the area`;
 
-/** The project from before Leeway, the epic moved and cut, the migration's commit made: built once. */
+/** The project from before Ledger, the epic moved and cut, the migration's commit made: built once. */
 function buildMigrated(/** @type {string} */ dir) {
   const plans = movedProject(dir, oldFiles([
     { manifest: buildingUnit(WU, 'epic', ['maps', 'pins'], 'completed'), specs: { maps: '# Specification: Maps\n\n## Tiles\n\nA map is drawn from tiles.\n', pins: '# Specification: Pins\n\n## Dropping\n\nA pin marks a place.\n' } },
@@ -95,7 +95,7 @@ describe('pipeline simulation: the review of an epic the migration cut whole bui
     areaRead(sim, WU, UNPINNED, 2);
     testsRead(sim, WU);
     writePhaseTasks(sim, WU, phase, 'The review\'s fixes', [{ title: 'Keep a pin', type: 'fix', scenarios: ['a pin kept'], reference: '§2' }]);
-    assert.strictEqual(sim.run(['review', 'round', WU, '--file', sim.write(`.leeway/.cache/${WU}/review/round.json`, {
+    assert.strictEqual(sim.run(['review', 'round', WU, '--file', sim.write(`.ledger/.cache/${WU}/review/round.json`, {
       can_now: ['Draw a map.'],
       findings: [{ area: '2-pins', scope: 'in', call: 'bug', text: 'A pin dropped is gone on reload.', from: ['2-pins-a#1'], fix: `${phase}.1` }],
     })]).ends, false);
@@ -112,7 +112,7 @@ describe('pipeline simulation: the review of an epic the migration cut whole bui
     assert.ok(again.includes(built(2)) && /### Landed: `[0-9a-f]{12}` /.test(again), 'the area its fix landed on read with the fix its change, still built before');
     assert.deepStrictEqual(sim.board().view.areas.map(({ area, before }) => [area, before]), [['1', 'built'], ['2', 'built'], ['tests', null]], 'the board draws it built before still');
     areaRead(sim, WU, PASSED_REPORT, 2);
-    assert.strictEqual(sim.run(['review', 'round', WU, '--file', sim.write(`.leeway/.cache/${WU}/review/round.json`, { can_now: ['Draw a map and keep a place marked.'], findings: [] })]).ends, true);
+    assert.strictEqual(sim.run(['review', 'round', WU, '--file', sim.write(`.ledger/.cache/${WU}/review/round.json`, { can_now: ['Draw a map and keep a place marked.'], findings: [] })]).ends, true);
     assert.strictEqual(reviewNext(sim, WU).move, 'closing');
     assert.strictEqual(JSON.parse(sim.read(['checklist', 'show', 'finish', WU])).items.find((/** @type {{key: string}} */ { key }) => key === 'review-passed').state, 'done');
     assert.deepStrictEqual(finished(sim, WU).landed, []);

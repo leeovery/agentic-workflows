@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The one-decision check's log (leeway-engine/scripts/domain/ledger-one-
+// The one-decision check's log (ledger-engine/scripts/domain/ledger-one-
 // decision.cjs, 5.5.9): every run of the check as a decision is written and
 // in the late check (domain/ledger-late-check.cjs) appends one line to
 // `{config}/decision-checks.jsonl` — its verb, unit, rule count, outcome and
@@ -26,7 +26,7 @@ const path = require('path');
 const { ok, refuses, refusedPristine, cleanupFixture } = require('./engine-harness.cjs');
 const { SESSION_ID, MADE, NOTE, PHASES, writtenWorld, ledgerHelpers } = require('./ledger-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { systemConfigDir } = require(path.join(SCRIPTS, 'kernel/system-config.cjs'));
 const { DECISION_CHECKS } = require(path.join(SCRIPTS, 'domain/user-files.cjs'));
 

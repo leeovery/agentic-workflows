@@ -22,11 +22,11 @@ const { ledgerHelpers } = require('./ledger-world.cjs');
 const { DAY, lines, history, trustLogHelpers } = require('./trust-world.cjs');
 const { labelling } = require('./labels.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { RAISE_SHOWN } = require(path.join(SCRIPTS, 'domain/gate.cjs'));
 const { TRUST_LOG } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
 
-/** @typedef {import('../../skills/leeway-engine/scripts/domain/event-fields.cjs').Kind} Kind */
+/** @typedef {import('../../skills/ledger-engine/scripts/domain/event-fields.cjs').Kind} Kind */
 /** @typedef {import('./labels.cjs').Marks} Marks */
 
 // A Claude Code session's id: the conversation the raises are drawn in.
@@ -47,7 +47,7 @@ function raiseHelpers(dir, config, call) {
   const { logText, logEvents, project } = trustLogHelpers(dir, config);
 
   /** The calling conversation's environment, over `env`. @param {Record<string, string|undefined>} [env] */
-  const conversation = (env = {}) => ({ CLAUDE_CODE_SESSION_ID: SESSION, LEEWAY_CONFIG_DIR: config(), ...env });
+  const conversation = (env = {}) => ({ CLAUDE_CODE_SESSION_ID: SESSION, LEDGER_CONFIG_DIR: config(), ...env });
 
   /** A file in the conversation's folder. @param {string} name */
   const inFolder = (name) => path.join(config(), 'conversations', SESSION, name);

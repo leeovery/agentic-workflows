@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// GitHub's landing driver (leeway-engine/scripts/drivers/landing/github/)
+// GitHub's landing driver (ledger-engine/scripts/drivers/landing/github/)
 // and a task landed outside its open pull request — squashed or picked onto
 // main by hand and pushed, which GitHub never marks merged (N3) — past what
 // every driver does (the landing conformance suite's). With nothing past

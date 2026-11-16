@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // The working tree's uncommitted state through a catch-up
-// (leeway-engine/scripts/domain/state-merge-worktree.cjs): an uncommitted
+// (ledger-engine/scripts/domain/state-merge-worktree.cjs): an uncommitted
 // file merged in place with the update and never committed, a field it and
 // the update changed differently asked of the person, and a file and a
 // folder at one path set beside each other.
@@ -21,7 +21,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const { git, tip, remoteTip, layout, commitOnState } = require('./engine-harness.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const MERGE = path.join(SCRIPTS, 'domain/state-merge.cjs');
 const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { catchUpState, stateMergeGateSurface } = require(MERGE);
@@ -67,7 +67,7 @@ describe('the worktree\'s uncommitted state through a catch-up', () => {
     assert.strictEqual(git(bare, ['show', `${STATE_BRANCH}:unit/topics/a/log.md`]), theirsText);
     assert.strictEqual(readFile(here.root, 'unit/topics/a/log.md'), '# a\n\n## first\n\n## elsewhere\n## here, uncommitted\n');
     assert.strictEqual(status(here.root), ' M unit/topics/a/log.md\n');
-    assert.match(out.warnings.join('\n'), /^\.leeway\/unit\/topics\/a\/log\.md was changed in the same place on both machines/m);
+    assert.match(out.warnings.join('\n'), /^\.ledger\/unit\/topics\/a\/log\.md was changed in the same place on both machines/m);
   });
 
   it('merges committed state alone into the merge commit where both moved, the uncommitted bytes merged into the working tree', () => {
@@ -163,8 +163,8 @@ describe('the worktree\'s uncommitted state through a catch-up', () => {
     assert.strictEqual(readFile(here.root, 'unit/assets/x'), 'x changed elsewhere\n');
     assert.strictEqual(readFile(here.root, `${beside}/new.md`), 'uncommitted, where x was\n');
     assert.deepStrictEqual(out.warnings, [
-      '.leeway/unit/assets/x was deleted on one machine and changed on the other: the changed copy is kept',
-      `.leeway/unit/assets/x is a file on the remote and a folder on this machine: the remote's file stays at .leeway/unit/assets/x, and this machine's folder is kept beside it as .leeway/${beside}`,
+      '.ledger/unit/assets/x was deleted on one machine and changed on the other: the changed copy is kept',
+      `.ledger/unit/assets/x is a file on the remote and a folder on this machine: the remote's file stays at .ledger/unit/assets/x, and this machine's folder is kept beside it as .ledger/${beside}`,
     ]);
     assert.deepStrictEqual(out.uncommitted, { kept: [], merged: ['unit/assets/x', 'unit/assets/x/new.md'] });
     assert.strictEqual(status(here.root), `?? ${beside}/new.md\n`);
@@ -182,7 +182,7 @@ describe('the worktree\'s uncommitted state through a catch-up', () => {
     assert.strictEqual(readFile(here.root, 'unit/assets/y/b.md'), 'b, there\n');
     assert.strictEqual(readFile(here.root, beside), 'an uncommitted file\n');
     assert.deepStrictEqual(out.warnings, [
-      `.leeway/unit/assets/y is a folder on the remote and a file on this machine: the remote's folder stays at .leeway/unit/assets/y, and this machine's file is kept beside it as .leeway/${beside}`,
+      `.ledger/unit/assets/y is a folder on the remote and a file on this machine: the remote's folder stays at .ledger/unit/assets/y, and this machine's file is kept beside it as .ledger/${beside}`,
     ]);
     assert.strictEqual(status(here.root), `?? ${beside}\n`);
   });

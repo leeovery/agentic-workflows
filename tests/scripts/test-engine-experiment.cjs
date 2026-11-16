@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The experiment series (leeway-engine/scripts/domain/experiment.cjs,
+// The experiment series (ledger-engine/scripts/domain/experiment.cjs,
 // `engine experiment create|advance|approve|runs|conclude|abandon`): the
 // spawn from a discussion, measuring a question on its map it must name, and
 // its lock, the records in the topic's folder (4.11.15), its now-or-later
@@ -25,8 +25,8 @@ const path = require('path');
 
 const { cleanupFixture, commitAll, ok: engine, refuses: engineFails, refusedPristine, lastMessage, statePath, layout, withFrozenClock, FROZEN_AT, stateGit, output, fixtureFrom, startItem } = require('./engine-harness.cjs');
 const { writeManifest, readManifest, setup, problemScratch, SESSION, MADE, walkTo } = require('./experiment-world.cjs');
-const decisionPoint = require('../../skills/leeway-engine/scripts/domain/decision-point.cjs');
-const { showingOf } = require('../../skills/leeway-engine/scripts/domain/learned-gates.cjs');
+const decisionPoint = require('../../skills/ledger-engine/scripts/domain/decision-point.cjs');
+const { showingOf } = require('../../skills/ledger-engine/scripts/domain/learned-gates.cjs');
 const { shownIn, showingAnswers } = require('./trust-world.cjs');
 
 /** A question asked on timing's map: its short id. */
@@ -71,7 +71,7 @@ describe('engine experiment create — the spawn', () => {
     assert.deepStrictEqual(m.phases.discussion.items.timing.awaiting_experiments, ['E1']);
     assert.strictEqual(fs.readFileSync(path.join(res.dir, 'problem.md'), 'utf8'),
       '# Problem — window-placement\n', 'the create installs the problem statement in the same transaction');
-    assert.ok(!fs.existsSync(path.join(dir, '.leeway/.cache/lab/scratch/window-placement-problem.md')),
+    assert.ok(!fs.existsSync(path.join(dir, '.ledger/.cache/lab/scratch/window-placement-problem.md')),
       'the scratch is consumed');
   });
 
@@ -116,7 +116,7 @@ describe('engine experiment create — the spawn', () => {
     writeManifest(dir, 'lab', m);
     assert.match(engineFails(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'x', '--from', 'discussion', '--problem', scratch(), '--question', placement]).error,
       /discussion "timing" is completed — only an in-progress discussion spawns/);
-    assert.ok(fs.existsSync(path.join(dir, '.leeway/.cache/lab/scratch/x-problem.md')),
+    assert.ok(fs.existsSync(path.join(dir, '.ledger/.cache/lab/scratch/x-problem.md')),
       'a refused spawn leaves the problem scratch intact — nothing consumed, nothing conceived');
   });
 
@@ -127,10 +127,10 @@ describe('engine experiment create — the spawn', () => {
       '--question <id> is required on a spawn — an experiment measures an open question on the topic\'s map, and its report reaches the topic through it');
     const unread = ['--question', 'abc'];
     assert.match(engineFails(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'x', '--from', 'discussion', '--problem', 'notes/problem.md', ...unread]).error,
-      /--problem must point inside \S*\/\.leeway\/\.cache\//);
-    assert.match(engineFails(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'x', '--from', 'discussion', '--problem', '.leeway/.cache/lab/scratch/ghost.md', ...unread]).error,
+      /--problem must point inside \S*\/\.ledger\/\.cache\//);
+    assert.match(engineFails(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'x', '--from', 'discussion', '--problem', '.ledger/.cache/lab/scratch/ghost.md', ...unread]).error,
       /problem file not found/);
-    const empty = '.leeway/.cache/lab/scratch/empty.md';
+    const empty = '.ledger/.cache/lab/scratch/empty.md';
     fs.mkdirSync(path.join(dir, path.dirname(empty)), { recursive: true });
     fs.writeFileSync(path.join(dir, empty), '  \n');
     assert.match(engineFails(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'x', '--from', 'discussion', '--problem', empty, ...unread]).error,
@@ -180,7 +180,7 @@ describe('the spawn commits its record and hands the conversation on', () => {
 
   it('yes takes an epic\'s discussion into the laboratory for its topic, later carries the conversation on', () => {
     spawn(dir, 'discussion', 'window-placement');
-    assert.deepStrictEqual(answered('lab', 'timing', 'y'), { kind: 'handoff', skill: 'leeway-experiment-process', args: ['epic', 'lab', 'timing'] });
+    assert.deepStrictEqual(answered('lab', 'timing', 'y'), { kind: 'handoff', skill: 'ledger-experiment-process', args: ['epic', 'lab', 'timing'] });
     assert.deepStrictEqual(answered('lab', 'timing', 'l'), { kind: 'continue' });
   });
 
@@ -190,7 +190,7 @@ describe('the spawn commits its record and hands the conversation on', () => {
     const out = output(dir, ['render', 'experiment-spawn-gate', 'lab.discussion.timing', '--id', 'E1'], { env: SESSION });
 
     assert.deepStrictEqual(asked.mock.calls.map(({ arguments: [name, { place, key }] }) => [name, place, key]), [['experiment spawn gate', { unit: 'lab', phase: 'discussion', topic: 'timing' }, 'E1']]);
-    assert.deepStrictEqual(out.split('\n').slice(1, 4), ['automatic step: experiment spawn gate', 'ran: y', 'next: {"kind":"handoff","skill":"leeway-experiment-process","args":["epic","lab","timing"]}']);
+    assert.deepStrictEqual(out.split('\n').slice(1, 4), ['automatic step: experiment spawn gate', 'ran: y', 'next: {"kind":"handoff","skill":"ledger-experiment-process","args":["epic","lab","timing"]}']);
     assert.match(out, /^=== DISPLAY: automatic step .*\nExperiment worked now \[auto\]\. Opening the laboratory\.\n$/m);
   });
 
@@ -198,7 +198,7 @@ describe('the spawn commits its record and hands the conversation on', () => {
     const config = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-exp-config-'));
     try {
       /** The conversation `session`, its trust log in the test's own config folder. @param {string} session */
-      const as = (session) => ({ ...SESSION, LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: session });
+      const as = (session) => ({ ...SESSION, LEDGER_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: session });
       /** The gate for `id` drawn in `session`: the showing it was shown on. @param {string} id @param {string} session */
       const gate = (id, session) => {
         output(dir, ['render', 'experiment-spawn-gate', 'lab.discussion.timing', '--id', id], { env: as(session) });
@@ -228,7 +228,7 @@ describe('the spawn commits its record and hands the conversation on', () => {
     commitAll(dir, 'solo');
     const question = engine(dir, ['ledger', 'ask', 'solo.discussion.solo'], { env: SESSION, stdin: JSON.stringify({ ...MADE, text: 'What does a tally cost?' }) }).id;
     engine(dir, ['experiment', 'create', 'solo', 'solo', '--slug', 'tally-cost', '--from', 'discussion', '--problem', problemScratch(dir, 'tally-cost'), '--question', question]);
-    assert.deepStrictEqual(answered('solo', 'solo', 'y'), { kind: 'handoff', skill: 'leeway-experiment-process', args: ['feature', 'solo', 'solo'] });
+    assert.deepStrictEqual(answered('solo', 'solo', 'y'), { kind: 'handoff', skill: 'ledger-experiment-process', args: ['feature', 'solo', 'solo'] });
   });
 });
 
@@ -297,7 +297,7 @@ describe('engine experiment runs — the tally of its runs (20.13.1)', () => {
 
   /** Claude's tally written into the cache: its project-relative path. @param {unknown} tally */
   function tallied(tally) {
-    const rel = '.leeway/.cache/lab/experiment/timing/runs.json';
+    const rel = '.ledger/.cache/lab/experiment/timing/runs.json';
     fs.mkdirSync(path.join(dir, path.dirname(rel)), { recursive: true });
     fs.writeFileSync(path.join(dir, rel), JSON.stringify(tally));
     return rel;
@@ -632,7 +632,7 @@ describe('the field surface guards the series exactly as the verbs write it', ()
   it('a leaf set on an id the series does not hold refuses — the surface repairs, never creates', () => {
     assert.match(engineFails(dir, ['manifest', 'set', 'lab.experiment.timing', 'experiments.E9.status', 'running']).error,
       /no experiment E9 in "timing"'s series — records are allocated by the spawn/);
-    const ops = '.leeway/.cache/lab/scratch/ops.json';
+    const ops = '.ledger/.cache/lab/scratch/ops.json';
     fs.mkdirSync(path.join(dir, path.dirname(ops)), { recursive: true });
     fs.writeFileSync(path.join(dir, ops), JSON.stringify([
       { op: 'set', path: 'lab.experiment.timing', fields: { 'experiments.E9.status': 'running' } },
@@ -649,7 +649,7 @@ describe('presence rides the experiment verbs mechanically', () => {
   beforeEach(() => { dir = labWorld(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  const presenceFile = (phase) => path.join(dir, '.leeway/.cache/lab', phase, 'timing/presence');
+  const presenceFile = (phase) => path.join(dir, '.ledger/.cache/lab', phase, 'timing/presence');
 
   it('the spawn beats the spawning conversation; the walk beats the laboratory; the close releases it', () => {
     spawn(dir, 'discussion', 'window-placement');

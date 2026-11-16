@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The brownfield offer (leeway-engine/scripts/domain/brownfield.cjs):
+// The brownfield offer (ledger-engine/scripts/domain/brownfield.cjs):
 // `brownfield record`, the offer's answer written and committed confined to
 // the project manifest — native, skipped or accepted once, while nothing is
 // recorded, and completed once an accepted offer's research has landed
@@ -24,7 +24,7 @@ const { execFileSync } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
 const { datedAt, createFile: writeFile, writeState, readState, statePath, layout } = require('./discovery-test-utils.cjs');
-const { createState } = require('../../skills/leeway-engine/scripts/domain/state-worktree.cjs');
+const { createState } = require('../../skills/ledger-engine/scripts/domain/state-worktree.cjs');
 
 const { git, stateGit, commitAll, refusedPristine } = harness;
 
@@ -107,7 +107,7 @@ describe('engine brownfield record', () => {
  * @param {string} dir @param {string} date
  */
 function beginState(dir, date) {
-  datedAt(`${date}T12:00:00Z`, () => createState(path.join(dir, '.leeway')));
+  datedAt(`${date}T12:00:00Z`, () => createState(path.join(dir, '.ledger')));
 }
 
 /** A repo with no state yet, its code history the test's to write. @param {string} prefix */
@@ -116,12 +116,12 @@ function bareProject(prefix) {
 }
 
 describe('the brownfield signal across the project\'s repos', () => {
-  const { brownfieldSignal } = require('../../skills/leeway-engine/scripts/domain/brownfield.cjs');
+  const { brownfieldSignal } = require('../../skills/ledger-engine/scripts/domain/brownfield.cjs');
   let dir;
   let api;
   beforeEach(() => {
     dir = bareProject('engine-brownfield-repos-');
-    writeFile(dir, '.gitignore', 'api/\n.leeway/\n');
+    writeFile(dir, '.gitignore', 'api/\n.ledger/\n');
     writeFile(dir, 'README.md', '# Project\n');
     api = harness.initRepo(path.join(dir, 'api'));
   });
@@ -197,8 +197,8 @@ describe('the brownfield signal across the project\'s repos', () => {
 });
 
 describe('the brownfield signal\'s failures', () => {
-  const reposModule = require.resolve('../../skills/leeway-engine/scripts/kernel/repos.cjs');
-  const brownfieldModule = require.resolve('../../skills/leeway-engine/scripts/domain/brownfield.cjs');
+  const reposModule = require.resolve('../../skills/ledger-engine/scripts/kernel/repos.cjs');
+  const brownfieldModule = require.resolve('../../skills/ledger-engine/scripts/domain/brownfield.cjs');
 
   it('throws a failure that is no git read — only a failed git read nulls the signal', () => {
     const dir = harness.setupGitFixture('engine-brownfield-bug-');
@@ -219,11 +219,11 @@ describe('the brownfield signal\'s failures', () => {
 });
 
 describe('the brownfield signal of a project inside a larger repository', () => {
-  const { brownfieldSignal } = require('../../skills/leeway-engine/scripts/domain/brownfield.cjs');
+  const { brownfieldSignal } = require('../../skills/ledger-engine/scripts/domain/brownfield.cjs');
   let dir;
   beforeEach(() => {
     dir = bareProject('engine-brownfield-nested-');
-    writeFile(dir, '.gitignore', '.leeway/\n');
+    writeFile(dir, '.gitignore', '.ledger/\n');
   });
   afterEach(() => harness.cleanupFixture(dir));
 

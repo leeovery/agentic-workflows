@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A quick-fix's set-aside at its edges (leeway-engine/scripts/domain/
+// A quick-fix's set-aside at its edges (ledger-engine/scripts/domain/
 // fix-aside.cjs, 19.5.23): in a project that is a folder of a larger
 // repository (7.2.17), a park setting aside the fix's change to a file and
 // a file it added, read from the folder — the file of the same path at the
@@ -42,7 +42,7 @@ const {
 } = require('./quick-fix-world.cjs');
 
 /** Where fix 1.1's work is set aside. */
-const ASIDE = `refs/leeway/aside/${UNIT}/${UNIT}-1-1`;
+const ASIDE = `refs/ledger/aside/${UNIT}/${UNIT}-1-1`;
 
 /** The question the world asks at the quick-fix's place: its short id. */
 const asked = { id: '' };
@@ -84,7 +84,7 @@ afterEach(() => {
 const app = () => path.join(dir, 'app');
 
 /** This test's conversation, as a call's options. */
-const as = () => ({ env: { LEEWAY_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: 'sess-1', CLAUDE_PID: String(process.pid), TMUX: undefined, TMUX_PANE: undefined } });
+const as = () => ({ env: { LEDGER_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: 'sess-1', CLAUDE_PID: String(process.pid), TMUX: undefined, TMUX_PANE: undefined } });
 
 /** A call that must succeed, made from the project. @param {string[]} args */
 const run = (args) => ok(app(), args, as());

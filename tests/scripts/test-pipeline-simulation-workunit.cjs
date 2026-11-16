@@ -28,7 +28,7 @@ const path = require('path');
 const { stateGit, sectionOf, completeUnit, startItem, git, githubOffline } = require('./engine-harness.cjs');
 const { Sim, sessionLog, continueUnit, enterEntry, discussed, askedOn, epicRow, startMenu, answerGate } = require('./pipeline-world.cjs');
 
-const { SHOWN } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/gate.cjs'));
+const { SHOWN } = require(path.join(__dirname, '../../skills/ledger-engine/scripts/domain/gate.cjs'));
 
 /** @typedef {import('./pipeline-world.cjs').Sim} SimT */
 /** @typedef {{kind: string, argv?: string[]}} Next */
@@ -165,7 +165,7 @@ describe('pipeline simulation: workunit', () => {
     const answer = sim.run(set);
     const again = drawn(sim, answer.next.argv.slice(1));
 
-    assert.deepStrictEqual([rows['1'].argv, JSON.parse(fs.readFileSync(path.join(sim.dir, '.leeway', 'manifest.json'), 'utf8')).drivers[set[2]]], [set, set[3]]);
+    assert.deepStrictEqual([rows['1'].argv, JSON.parse(fs.readFileSync(path.join(sim.dir, '.ledger', 'manifest.json'), 'utf8')).drivers[set[2]]], [set, set[3]]);
     assert.ok(sectionOf(again.out, 'DISPLAY: drivers').includes(`${answer.title} — in use`), 'the drivers drawn again, the one set in use');
   });
 
@@ -174,7 +174,7 @@ describe('pipeline simulation: workunit', () => {
     const log = sessionLog(sim, wu);
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Outgrew itself', '--session-log-file', log]);
     enterEntry(sim, wu, 'discussion', wu);
-    sim.write(`.leeway/${wu}/topics/${wu}/log.md`, '# Discussion\n');
+    sim.write(`.ledger/${wu}/topics/${wu}/log.md`, '# Discussion\n');
     sim.run(['commit', wu, '-m', `discussion(${wu}): capture`, '--topic', `discussion/${wu}`]);
 
     pivoted(sim, wu);
@@ -188,19 +188,19 @@ describe('pipeline simulation: workunit', () => {
 
     // The pivoted epic's map and phases still derive; the topic is decided
     // as any epic topic is, and, the epic's last, the yes goes into its spec.
-    assert.deepStrictEqual(discussed(sim, wu, wu).next, { kind: 'handoff', skill: 'leeway-specification-process', args: ['epic', wu] });
+    assert.deepStrictEqual(discussed(sim, wu, wu).next, { kind: 'handoff', skill: 'ledger-specification-process', args: ['epic', wu] });
   });
 
   it('pivot: the map it lands is approved in its order, so its first re-shape marks a topic added as new (8.8.21, 8.S48)', () => {
     const wu = 'bigger';
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Outgrew itself', '--session-log-file', sessionLog(sim, wu)]);
     enterEntry(sim, wu, 'discussion', wu);
-    sim.write(`.leeway/${wu}/topics/${wu}/log.md`, '# Discussion\n');
+    sim.write(`.ledger/${wu}/topics/${wu}/log.md`, '# Discussion\n');
     sim.run(['commit', wu, '-m', `discussion(${wu}): capture`, '--topic', `discussion/${wu}`]);
     pivoted(sim, wu);
     sim.run(['enter', 'discovery', wu]);
-    const brief = sim.write('.leeway/.cache/briefs/extra.md', '# Extra\n\nWhat it is.\n');
-    const map = sim.write('.leeway/.cache/scratch/approve-map.json', { topics: [{ name: wu }, { name: 'extra', summary: 'An extra point', brief }], parks: [] });
+    const brief = sim.write('.ledger/.cache/briefs/extra.md', '# Extra\n\nWhat it is.\n');
+    const map = sim.write('.ledger/.cache/scratch/approve-map.json', { topics: [{ name: wu }, { name: 'extra', summary: 'An extra point', brief }], parks: [] });
 
     const screen = sectionOf(sim.render(['approve-map', wu, '--file', map], { expect: 'content' }), 'DISPLAY: approve the map');
     assert.deepStrictEqual(screen.split('\n').filter((line) => /─ \d\./.test(line)), ['  ├─ 1. Bigger', '  └─ 2. Extra    [new]']);
@@ -212,7 +212,7 @@ describe('pipeline simulation: workunit', () => {
     sim.run(['workunit', 'create', epic, 'epic', '--description', 'The umbrella', '--session-log-file', sessionLog(sim, epic)]);
     sim.run(['workunit', 'create', feat, 'feature', '--description', 'A stray feature', '--session-log-file', sessionLog(sim, feat)]);
     enterEntry(sim, feat, 'discussion', feat);
-    sim.write(`.leeway/${feat}/topics/${feat}/log.md`, '# Discussion — Stray\n');
+    sim.write(`.ledger/${feat}/topics/${feat}/log.md`, '# Discussion — Stray\n');
     sim.run(['commit', feat, '-m', `discussion(${feat}): capture`, '--topic', `discussion/${feat}`]);
     // The discussion decides one question, linking the file the person
     // shared, moves another to the roadmap as later, and spawns an
@@ -223,21 +223,21 @@ describe('pipeline simulation: workunit', () => {
     const made = { by: 'claude', who_moved_whom: 'none' };
     const owner = askedOn(sim, feat, feat, 'Who owns the cutover?');
     const owned = sim.run(['ledger', 'decide', at, '--answers', owner], null, JSON.stringify({ ...made, text: 'The platform team.', why: 'They run the switch.' })).id;
-    sim.write(`.leeway/${feat}/assets/runbook.png`, 'the runbook the person shared\n');
+    sim.write(`.ledger/${feat}/assets/runbook.png`, 'the runbook the person shared\n');
     sim.run(['asset', 'add', feat, `${feat}/assets/runbook.png`, '--entry', owned, '--status', 'reference']);
     const rollback = askedOn(sim, feat, feat, 'Can a cutover roll back part way?');
     sim.run(['roadmap', 'add', 'rollback', '--horizon', 'v2', '--summary', 'Rolling a cutover back']);
     sim.run(['ledger', 'move', at, '--question', rollback, '--to', 'roadmap:rollback'], null, JSON.stringify(made));
     const cost = askedOn(sim, feat, feat, 'What does a cutover cost?');
     const spawned = sim.run(['experiment', 'create', feat, feat, '--slug', 'cutover-cost', '--from', 'discussion', '--question', cost,
-      '--problem', sim.write(`.leeway/.cache/${feat}/discussion/${feat}/problem.md`, '# Problem — what a cutover actually costs\n')]);
+      '--problem', sim.write(`.ledger/.cache/${feat}/discussion/${feat}/problem.md`, '# Problem — what a cutover actually costs\n')]);
     assert.ok(fs.existsSync(path.join(spawned.dir, 'problem.md')), 'the spawn installs the problem statement');
     // A peer sends a message to the topic — it waits in the topic's
     // mailbox, and the mailbox follows the topic.
-    const scratch = sim.write(`.leeway/.cache/${feat}/discussion/${feat}/message-rollback-owner.md`,
+    const scratch = sim.write(`.ledger/.cache/${feat}/discussion/${feat}/message-rollback-owner.md`,
       'Rollback owner\n\nWho owns a rollback once the cutover starts?\n');
     const landed = sim.run(['topic', 'send', feat, feat, '--from', feat, '--content', scratch, '--slug', 'rollback-owner']);
-    assert.strictEqual(landed.message_path, path.join(sim.dir, `.leeway/${feat}/topics/${feat}/mail/001-rollback-owner.md`));
+    assert.strictEqual(landed.message_path, path.join(sim.dir, `.ledger/${feat}/topics/${feat}/mail/001-rollback-owner.md`));
 
     // Manage's absorb (absorb-into-epic.md): the epic picked, the topic
     // named as the feature and its words drafted, the confirm over what
@@ -249,17 +249,17 @@ describe('pipeline simulation: workunit', () => {
     assert.match(drawn(sim, ['absorb-confirm-gate', feat, '--into', epic, '--topic', feat, ...words]).out, /Experiments: {2}1 experiment\(s\)/,
       'the summary over the confirm derives from the feature manifest — top-level records only');
     const absorbed = ran(sim, answerGate(sim, 'absorb confirm gate', '--pick', 'y').next);
-    assert.ok(!fs.existsSync(path.join(sim.dir, '.leeway', feat)), 'feature directory removed');
-    assert.deepStrictEqual(absorbed.mail_moved, { path: path.join(sim.dir, `.leeway/${epic}/topics/${feat}/mail`), count: 1 });
+    assert.ok(!fs.existsSync(path.join(sim.dir, '.ledger', feat)), 'feature directory removed');
+    assert.deepStrictEqual(absorbed.mail_moved, { path: path.join(sim.dir, `.ledger/${epic}/topics/${feat}/mail`), count: 1 });
     assert.deepStrictEqual(sim.run(['topic', 'mailbox', epic, feat]).files,
-      [path.join(sim.dir, `.leeway/${epic}/topics/${feat}/mail/001-rollback-owner.md`)],
+      [path.join(sim.dir, `.ledger/${epic}/topics/${feat}/mail/001-rollback-owner.md`)],
       'the waiting message waits on the epic topic — its session raises it');
     assert.match(epicRow(sim, epic, 'Stray') ?? '', /mail waiting/, 'the epic\'s menu cues the waiting message');
     const m = sim.manifest(epic);
     assert.deepStrictEqual(m.phases.discovery.items[feat], { source: 'discovery', summary: 'Cutting over', description: 'Who runs a cutover, and what it costs.' },
       '18.3.7: the topic lands on the map with the words drafted');
     assert.strictEqual(m.phases.discussion.items[feat].status, 'in-progress');
-    assert.ok(fs.existsSync(path.join(sim.dir, '.leeway', epic, 'topics', feat, 'log.md')),
+    assert.ok(fs.existsSync(path.join(sim.dir, '.ledger', epic, 'topics', feat, 'log.md')),
       'the discussion\'s log moved into the epic');
 
     // The series audits whole at its epic identity — item, record, wait,
@@ -268,7 +268,7 @@ describe('pipeline simulation: workunit', () => {
     assert.deepStrictEqual([series.status, series.experiments.E1.slug, series.experiments.E1.status], ['in-progress', 'cutover-cost', 'conceived'],
       'the series travels whole — records and derived status intact');
     assert.deepStrictEqual(m.phases.discussion.items[feat].awaiting_experiments, ['E1'], 'the evidence wait rides the moved discussion item');
-    assert.ok(fs.existsSync(path.join(sim.dir, '.leeway', epic, 'topics', feat, 'experiments', 'E1-cutover-cost', 'problem.md')),
+    assert.ok(fs.existsSync(path.join(sim.dir, '.ledger', epic, 'topics', feat, 'experiments', 'E1-cutover-cost', 'problem.md')),
       'the record directory moved under the topic name');
     assert.match(sim.render(['experiment-register', `${epic}.experiment.${feat}`], { expect: 'content' }),
       /E1 cutover-cost/, 'the register renders the moved series at the epic address');
@@ -321,7 +321,7 @@ describe('pipeline simulation: workunit', () => {
     sim.write('shared/Onboarding.txt', 'the walkthrough\n');
     const landed = sim.run(['asset', 'import', feat, 'shared/Dockset 05.PNG', 'shared/Onboarding.txt']);
     assert.deepStrictEqual(landed.imports, [`${feat}/assets/dockset-05.png`, `${feat}/assets/onboarding.md`]);
-    sim.write(`.leeway/${feat}/topics/${feat}/log.md`,
+    sim.write(`.ledger/${feat}/topics/${feat}/log.md`,
       `# Discussion — ${feat}\n\n![the fifth onboarding screen](../../assets/dockset-05.png)\n`);
     sim.run(['commit', feat, '-m', `discussion(${feat}): capture`, '--topic', `discussion/${feat}`]);
 
@@ -338,8 +338,8 @@ describe('pipeline simulation: workunit', () => {
     const absorbed = sim.run(['workunit', 'absorb', feat, '--into', epic, '--topic', topic, '--summary', 'The ledger\'s work']);
     assert.deepStrictEqual(absorbed.renamed_assets, [{ from: 'dockset-05.png', to: 'dockset-05-2.png' }]);
     const read = (rel) => fs.readFileSync(path.join(sim.dir, rel), 'utf8');
-    assert.match(read(`.leeway/${epic}/topics/${topic}/log.md`), /\.\.\/\.\.\/assets\/dockset-05-2\.png/);
-    assert.deepStrictEqual(fs.readdirSync(path.join(sim.dir, `.leeway/${epic}/assets`)).sort(), ['dockset-05-2.png', 'dockset-05.png', 'onboarding.md']);
+    assert.match(read(`.ledger/${epic}/topics/${topic}/log.md`), /\.\.\/\.\.\/assets\/dockset-05-2\.png/);
+    assert.deepStrictEqual(fs.readdirSync(path.join(sim.dir, `.ledger/${epic}/assets`)).sort(), ['dockset-05-2.png', 'dockset-05.png', 'onboarding.md']);
     const renamedArg = absorbed.renamed_assets.map((r) => `${r.from}:${r.to}`).join(',');
     assert.match(sim.render(['absorb-receipt', epic, '--topic', topic, '--moved', 'assets',
       '--renamed', renamedArg], { expect: 'content' }),
@@ -362,7 +362,7 @@ describe('pipeline simulation: workunit', () => {
     const takenManifest = JSON.stringify(sim.manifest(wu));
     const head = stateGit(sim.dir, ['rev-parse', 'HEAD']).trim();
     const taken = /work unit "guarded" already exists — pick a different name/;
-    const draft = sim.write('.leeway/.cache/guarded/discovery/session-001.md', '# Discovery Session 001\n');
+    const draft = sim.write('.ledger/.cache/guarded/discovery/session-001.md', '# Discovery Session 001\n');
     sim.refuses(['workunit', 'create', wu, 'feature', '--description', 'Again', '--session-log-file', draft], taken);
     sim.refuses(['workunit', 'create', wu, 'bugfix', '--description', 'Reuse', '--session-log-file', draft], taken);
     assert.strictEqual(JSON.stringify(sim.manifest(wu)), takenManifest, 'a refused create rewrote the manifest');
@@ -401,7 +401,7 @@ describe('pipeline simulation: workunit', () => {
     assert.match(answer.committed, /^[0-9a-f]+$/, 'the answer commits in the same call');
     assert.strictEqual(sim.read(['manifest', 'get', 'project.walkthrough.status']), 'walked');
     sim.refuses(['walkthrough', 'record', 'skipped'], /recorded once/);
-    assert.match(sim.render(['walkthrough-screen', '--screen', '1', '--from', 'first-run'], { expect: 'content' }), /How Leeway works · 1 of 8/);
+    assert.match(sim.render(['walkthrough-screen', '--screen', '1', '--from', 'first-run'], { expect: 'content' }), /How Ledger works · 1 of 8/);
     // Screen 2 draws the start menu as its sample; the gate it stops at is its own.
     assert.match(sim.render(['walkthrough-screen', '--screen', '2', '--from', 'help'], { expect: 'content' }), /n\/next/);
     // The start menu's help reaches the reference cards, each card's back
@@ -415,7 +415,7 @@ describe('pipeline simulation: workunit', () => {
     assert.match(sim.render(['walkthrough-screen', '--screen', '8', '--from', 'help', '--menu-only'], { expect: 'content' }), /d\/done/);
 
     // After every refusal the unit still derives and is decided normally.
-    assert.deepStrictEqual(discussed(sim, wu, wu).next, { kind: 'handoff', skill: 'leeway-specification-process', args: ['feature', wu] });
+    assert.deepStrictEqual(discussed(sim, wu, wu).next, { kind: 'handoff', skill: 'ledger-specification-process', args: ['feature', wu] });
   });
 });
 

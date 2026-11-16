@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// GitHub's landing driver and a unit's cancel (18.3.9; leeway-engine/
+// GitHub's landing driver and a unit's cancel (18.3.9; ledger-engine/
 // scripts/domain/landing.cjs, `cancelClose`, over drivers/landing/github/,
 // the record domain/cancel-closed.cjs), past what every driver does
 // (test-engine-landing-conformance-cancel.cjs): the pull requests it
@@ -31,7 +31,7 @@ const assert = require('node:assert');
 const { readManifest, output, sectionOf, git, statePath } = require('../../scripts/engine-harness.cjs');
 const { createManifest } = require('../../scripts/discovery-test-utils.cjs');
 const { UNIT, TASKS, TRACKER, openArgs, own, mergeBack, useLandingWorld, phaseReviewed, setLandingDriver } = require('../../scripts/landing-world.cjs');
-const { parseShownTask } = require('../../../skills/leeway-engine/scripts/domain/task-id.cjs');
+const { parseShownTask } = require('../../../skills/ledger-engine/scripts/domain/task-id.cjs');
 const side = require('./landing.cjs');
 const { GH_ENV, calls, github, onGithub, ok, refused } = require('./world.cjs');
 
@@ -53,7 +53,7 @@ const pulls = (dir) => github(dir).pulls.map(({ number, state, head }) => `${num
 
 /**
  * Each of `tasks` ended in the tracker as `end` ends it, the state committed.
- * @param {string} dir @param {{shown: string}[]} tasks @param {(root: string, ref: import('../../../skills/leeway-engine/scripts/domain/task-id.cjs').TaskRef) => void} [end]
+ * @param {string} dir @param {{shown: string}[]} tasks @param {(root: string, ref: import('../../../skills/ledger-engine/scripts/domain/task-id.cjs').TaskRef) => void} [end]
  */
 function ended(dir, tasks, end = (root, ref) => TRACKER.done(root, ref)) {
   for (const { shown } of tasks) {

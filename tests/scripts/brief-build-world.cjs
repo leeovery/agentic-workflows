@@ -28,7 +28,7 @@ const {
 } = require('./engine-harness.cjs');
 const { createManifest, templateFolder } = require('./discovery-test-utils.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { ENGINE_RUN } = require(path.join(SCRIPTS, 'kernel/call.cjs'));
 const { briefPath, issuedPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
 const { conversationDir } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
@@ -38,7 +38,7 @@ const { readTaskText } = require(path.join(SCRIPTS, 'domain/task-file.cjs'));
 const { taskBranch } = require(path.join(SCRIPTS, 'domain/landing-names.cjs'));
 const { readConsolidation } = require(path.join(SCRIPTS, 'domain/notes.cjs'));
 const { runsRel } = require(path.join(SCRIPTS, 'domain/runs.cjs'));
-const TEMPLATES = path.join(__dirname, '../../skills/leeway-engine/content/briefs');
+const TEMPLATES = path.join(__dirname, '../../skills/ledger-engine/content/briefs');
 const AGENTS = path.join(__dirname, '../../agents');
 
 const [DRIVER] = listDrivers('task').filter((driver) => driver.isDefault);
@@ -100,7 +100,7 @@ function commitFile(repo, file, trailer) {
   fs.mkdirSync(path.dirname(path.join(repo, file)), { recursive: true });
   fs.writeFileSync(path.join(repo, file), `export const ${path.basename(file, '.js')} = 1;\n`);
   git(repo, ['add', file]);
-  git(repo, ['commit', '-q', '-m', `add ${file}${trailer === undefined ? '' : `\n\nLeeway-Task: ${trailer}`}`]);
+  git(repo, ['commit', '-q', '-m', `add ${file}${trailer === undefined ? '' : `\n\nLedger-Task: ${trailer}`}`]);
 }
 
 /**
@@ -129,7 +129,7 @@ const VERIFY = Object.freeze({
 });
 
 const MUTATE = `steer="$(git rev-parse --path-format=absolute --git-common-dir)/mutants.json"
-if [ -f "$steer" ]; then cp "$steer" "$LEEWAY_RUN/survivors.json"; else echo '[]' > "$LEEWAY_RUN/survivors.json"; fi
+if [ -f "$steer" ]; then cp "$steer" "$LEDGER_RUN/survivors.json"; else echo '[]' > "$LEDGER_RUN/survivors.json"; fi
 `;
 
 /** The survivors the mutation tool answers, steered. @param {unknown[]} survivors */

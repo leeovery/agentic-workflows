@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // GitHub's landing driver and what on GitHub is a quick-fix's (R18, R19;
-// leeway-engine/scripts/domain/landing.cjs, fix-branch.cjs, over
+// ledger-engine/scripts/domain/landing.cjs, fix-branch.cjs, over
 // drivers/landing/github/), in the project's own repository: a pull request
 // of a branch by its name opened long before the unit, closed and its
 // branch deleted, is none of its — never "reopen it there" — and the

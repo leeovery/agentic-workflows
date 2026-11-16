@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The labeller (leeway-engine/scripts/domain/labeller.cjs) armed in the
+// The labeller (ledger-engine/scripts/domain/labeller.cjs) armed in the
 // suite's stub binary (claude-stub.cjs), so a world gives a decision's
 // question its kind as the engine does: from the label the separate call
 // answers. A label's twelve answers compose to the kind asked for, marked
@@ -12,10 +12,10 @@
 // builds the trust log's events or the ask rule's inputs itself.
 // ---------------------------------------------------------------------------
 
-const { ORDER } = require('../../skills/leeway-engine/scripts/domain/labeller.cjs');
+const { ORDER } = require('../../skills/ledger-engine/scripts/domain/labeller.cjs');
 
-/** @typedef {import('../../skills/leeway-engine/scripts/domain/event-fields.cjs').Kind} Kind */
-/** @typedef {import('../../skills/leeway-engine/scripts/domain/labeller.cjs').Label} Label */
+/** @typedef {import('../../skills/ledger-engine/scripts/domain/event-fields.cjs').Kind} Kind */
+/** @typedef {import('../../skills/ledger-engine/scripts/domain/labeller.cjs').Label} Label */
 /** How a label is marked beside its kind: hard to undo, and the other answers said yes. @typedef {{hardToUndo?: boolean, yes?: string[]}} Marks */
 
 /** The answers yes that compose each kind (16.11.3). @type {Readonly<Record<Kind, string[]>>} */

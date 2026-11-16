@@ -24,7 +24,7 @@ const { ok, okSections, createFile, writeState, layout } = require('./engine-har
 const { UNIT, BRANCH, SET, fixFile, fixDone, checklistClosed, quickFixConformance } = require('./quick-fix-world.cjs');
 const { reportText } = require('./review-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { briefPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
 const { listDrivers } = require(path.join(SCRIPTS, 'domain/drivers.cjs'));
 
@@ -60,7 +60,7 @@ function partsOf(brief) {
  */
 function changeRead({ as }, at) {
   const { id } = ok(at, ['brief', 'test-surface', UNIT, '--base', 'main'], as());
-  return partsOf(fs.readFileSync(path.join(as().env.LEEWAY_CONFIG_DIR ?? '', 'conversations', 'sess-1', 'briefs', path.basename(briefPath('sess-1', id))), 'utf8'));
+  return partsOf(fs.readFileSync(path.join(as().env.LEDGER_CONFIG_DIR ?? '', 'conversations', 'sess-1', 'briefs', path.basename(briefPath('sess-1', id))), 'utf8'));
 }
 
 /** A payload file beside the project, outside its working tree. @param {string} at @param {string} name @param {unknown} content */

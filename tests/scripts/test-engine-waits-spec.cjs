@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // What the menus read of a unit at its spec: what waits on the person there
-// (leeway-engine/scripts/domain/waits.cjs; 18.2.3) — the spec's gaps while
+// (ledger-engine/scripts/domain/waits.cjs; 18.2.3) — the spec's gaps while
 // it is under way, and else ready to build once its screen draws — each its
 // door the specification; and how far the unit has come. Before the spec:
 // test-engine-waits.cjs.
@@ -28,7 +28,7 @@ describe('a spec\'s gaps and ready to build (18.2.3)', () => {
   const { cleanPass } = specReviewHelpers(dir);
   const { tracedLanded, readyClosed, bothWaiting } = specBoard(dir);
   const { write } = ledgerHelpers(dir);
-  const intoSpec = door('leeway-specification-process', 'epic', PAYMENTS);
+  const intoSpec = door('ledger-specification-process', 'epic', PAYMENTS);
 
   it('each gap waits while the spec is under way, by its entry and words, its door the specification: a question asked at the spec and a replacement a pass raised — the spec written, still once a topic is set back in progress, and no longer once the build has begun', () => {
     const asked = bothWaiting();

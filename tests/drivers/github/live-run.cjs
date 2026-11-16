@@ -197,11 +197,11 @@ function landNested(dir, repository) {
  * @returns {string[]}
  */
 function landOwnBranch(repository) {
-  const at = harness.setupGitFixture('leeway-live-run-unit-');
+  const at = harness.setupGitFixture('ledger-live-run-unit-');
   process.on('exit', () => harness.cleanupFixture(at));
   buildLanding(at);
   setLandingDriver(at, 'github');
-  onGithub(at, repository, ['refs/heads/main:refs/heads/main', 'refs/heads/leeway-state:refs/heads/leeway-state']);
+  onGithub(at, repository, ['refs/heads/main:refs/heads/main', 'refs/heads/ledger-state:refs/heads/ledger-state']);
   setSquash(at);
   buildBegun(at, 5);
   land(at, ['checklist', 'done', 'phase-start', 'pay', '1', 'design-settled']);
@@ -232,11 +232,11 @@ refuseUnlessEmpty(named);
 if (nested !== undefined) refuseUnlessEmpty(nested);
 if (unitRepo !== undefined) refuseUnlessEmpty(unitRepo);
 
-const dir = harness.setupGitFixture('leeway-live-run-');
+const dir = harness.setupGitFixture('ledger-live-run-');
 process.on('exit', () => harness.cleanupFixture(dir));
 buildLanding(dir);
 setLandingDriver(dir, 'github');
-onGithub(dir, named, ['refs/heads/main:refs/heads/main', 'refs/heads/leeway-state:refs/heads/leeway-state']);
+onGithub(dir, named, ['refs/heads/main:refs/heads/main', 'refs/heads/ledger-state:refs/heads/ledger-state']);
 setSquash(dir);
 
 land(dir, openArgs(card));

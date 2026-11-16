@@ -1,14 +1,14 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A project being set up (leeway-engine/scripts/domain/boot.cjs with
+// A project being set up (ledger-engine/scripts/domain/boot.cjs with
 // domain/state-checks.cjs and domain/code-trace.cjs): the orphan state
-// branch checked out at .leeway/ and locked, pushed where there is a remote,
+// branch checked out at .ledger/ and locked, pushed where there is a remote,
 // then the ignore line committed through the code door; a boot cut short
 // leaving no trace; the line kept in a nested project's .gitignore and the
 // exclude file; a boot from a code worktree; and a project owing the
 // reshape, whose migration boot runs in the main checkout's project folder
-// under its lock, a plain .leeway/ left to it to set aside — its guard's
+// under its lock, a plain .ledger/ left to it to set aside — its guard's
 // refusal a stop with nothing written, boot reading that refusal alone and
 // only its facts, a warning naming what a boot from another checkout leaves
 // unmoved, held to what the main checkout's HEAD holds, for a project in a
@@ -42,7 +42,7 @@ const { TODAYS_HOOKS_UNLABELLED, sessionEndAsInstalled } = require('./boot-world
 
 const world = useWorld();
 
-/** A project on the layout before Leeway's, its `.workflows/` and the workflows' hooks committed: its main checkout. */
+/** A project on the layout before Ledger's, its `.workflows/` and the workflows' hooks committed: its main checkout. */
 function owingProject() {
   const main = projectInWorld();
   createFile(main, '.workflows/payments/manifest.json', '{}\n');
@@ -67,7 +67,7 @@ async function until(holds) {
 // --- setting the state up ---------------------------------------------------
 
 describe('a project being set up (4.S12, 4.5.2)', () => {
-  it('gets the orphan leeway-state checked out at .leeway/ and locked, then the ignore line in .gitignore committed through the code door — and the next boot has nothing to do', () => {
+  it('gets the orphan ledger-state checked out at .ledger/ and locked, then the ignore line in .gitignore committed through the code door — and the next boot has nothing to do', () => {
     const main = projectInWorld();
 
     const res = boot(main);
@@ -77,11 +77,11 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     assert.deepStrictEqual(git(main, ['rev-list', STATE_BRANCH]).trim().split('\n'), [tip(main, STATE_BRANCH)], 'one commit, with no parent');
     assert.strictEqual(git(main, ['show', `${STATE_BRANCH}:.gitignore`]), STATE_GITIGNORE);
     assert.deepStrictEqual(placed(root), IN_PLACE);
-    assert.strictEqual(readFile(main, '.gitignore'), '.leeway/\n');
+    assert.strictEqual(readFile(main, '.gitignore'), '.ledger/\n');
     const ignored = git(main, ['log', '--format=%H %s', '--', '.gitignore']).trim();
-    assert.match(ignored, / chore: ignore \.leeway\/, the workflows state$/);
+    assert.match(ignored, / chore: ignore \.ledger\/, the workflows state$/);
     assert.deepStrictEqual(git(main, ['show', '--name-only', '--format=', ignored.split(' ')[0]]).trim().split('\n'), ['.gitignore']);
-    assert.strictEqual(git(main, ['status', '--porcelain', '--', '.gitignore', '.leeway']), '');
+    assert.strictEqual(git(main, ['status', '--porcelain', '--', '.gitignore', '.ledger']), '');
 
     bootsWithNothingToDo(main, null);
   });
@@ -102,13 +102,13 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     git(main, ['commit', '-q', '-m', 'ignore']);
 
     boot(main);
-    assert.strictEqual(readFile(main, '.gitignore'), 'node_modules\n.leeway/\n');
+    assert.strictEqual(readFile(main, '.gitignore'), 'node_modules\n.ledger/\n');
 
-    createFile(main, '.gitignore', 'node_modules\n/.leeway\n');
+    createFile(main, '.gitignore', 'node_modules\n/.ledger\n');
     git(main, ['commit', '-q', '-am', 'anchored']);
     const before = tip(main, 'main');
     boot(main);
-    assert.strictEqual(readFile(main, '.gitignore'), 'node_modules\n/.leeway\n');
+    assert.strictEqual(readFile(main, '.gitignore'), 'node_modules\n/.ledger\n');
     assert.strictEqual(tip(main, 'main'), before);
   });
 
@@ -129,7 +129,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
 
     assert.strictEqual(boot(main).state, 'ready');
     assert.strictEqual(tip(main, STATE_BRANCH), made, 'the state was made once');
-    assert.strictEqual(readFile(main, '.gitignore'), '.leeway/\n');
+    assert.strictEqual(readFile(main, '.gitignore'), '.ledger/\n');
   });
 
   it('a boot whose branch cannot be checked out writes no trace', () => {
@@ -145,7 +145,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     assert.ok(!fs.existsSync(path.join(main, '.claude/settings.json')));
     assert.strictEqual(boot(main).state, 'ready', 'the branch made is checked out at the next boot');
     assert.deepStrictEqual(placed(statePath(main)), IN_PLACE);
-    assert.strictEqual(readFile(main, '.gitignore'), '.leeway/\n');
+    assert.strictEqual(readFile(main, '.gitignore'), '.ledger/\n');
   });
 
   it('reads only the person\'s own commits as the history before the workflows — never the setup\'s ignore line and hooks', () => {
@@ -166,13 +166,13 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     assert.strictEqual(boot(app).state, 'ready');
 
     assert.deepStrictEqual(placed(statePath(top)), IN_PLACE);
-    assert.strictEqual(readFile(app, '.gitignore'), '.leeway/\n');
+    assert.strictEqual(readFile(app, '.gitignore'), '.ledger/\n');
     assert.ok(fs.existsSync(path.join(app, '.claude/settings.json')), 'the hooks it sits beside');
     assert.ok(!fs.existsSync(path.join(top, '.gitignore')), 'nothing written outside the project');
     assert.deepStrictEqual(git(top, ['show', '--name-only', '--format=', 'HEAD~1', 'HEAD']).trim().split('\n').filter(Boolean).sort(), ['app/.claude/settings.json', 'app/.gitignore']);
     assert.strictEqual(git(top, ['status', '--porcelain']), '');
     assert.strictEqual(boot(app).state, 'ready');
-    assert.strictEqual(readFile(app, '.gitignore'), '.leeway/\n');
+    assert.strictEqual(readFile(app, '.gitignore'), '.ledger/\n');
   });
 
   it('keeps the state folder in the repository\'s exclude file, once, on every boot — so no branch takes it in', () => {
@@ -180,11 +180,11 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     const exclude = path.join(main, '.git/info/exclude');
 
     boot(main);
-    fs.writeFileSync(exclude, readFile(main, '.git/info/exclude').replace('/.leeway/\n', ''));
+    fs.writeFileSync(exclude, readFile(main, '.git/info/exclude').replace('/.ledger/\n', ''));
     boot(main);
     boot(main);
 
-    assert.strictEqual(readFile(main, '.git/info/exclude').split('\n').filter((line) => line === '/.leeway/').length, 1);
+    assert.strictEqual(readFile(main, '.git/info/exclude').split('\n').filter((line) => line === '/.ledger/').length, 1);
   });
 
   it('a code branch cut before setup, checked out in the main checkout, takes nothing of the state in — `git add -A` stages none of it (4.1.2, 4.1.3)', () => {
@@ -197,7 +197,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     git(main, ['add', '-A']);
 
     assert.strictEqual(git(main, ['status', '--porcelain']), '');
-    assert.strictEqual(git(main, ['ls-files', '--stage', '--', '.leeway']), '', 'no gitlink, no file of the state');
+    assert.strictEqual(git(main, ['ls-files', '--stage', '--', '.ledger']), '', 'no gitlink, no file of the state');
   });
 
   it('a fresh clone ignores the state at once, before any commit — even a boot killed as the worktree is locked', () => {
@@ -216,7 +216,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     assert.ok(fs.existsSync(statePath(fresh, layout.gitignore)), 'the state is checked out');
     assert.strictEqual(git(fresh, ['status', '--porcelain']), '');
     git(fresh, ['add', '-A']);
-    assert.strictEqual(git(fresh, ['ls-files', '--stage', '--', '.leeway']), '');
+    assert.strictEqual(git(fresh, ['ls-files', '--stage', '--', '.ledger']), '');
   });
 
   it('a boot from a code worktree commits the line and the hooks on that worktree\'s branch, never on the main checkout\'s', () => {
@@ -232,8 +232,8 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     assert.strictEqual(tip(fresh, 'main'), before.main, 'the main checkout\'s branch gained nothing');
     assert.strictEqual(git(fresh, ['status', '--porcelain']), '');
     assert.deepStrictEqual(git(fresh, ['log', '--format=%s', `${before.feature}..feature`]).trim().split('\n'),
-      ['chore: install Leeway session hooks', 'chore: ignore .leeway/, the workflows state']);
-    assert.strictEqual(readFile(code, '.gitignore'), '.leeway/\n');
+      ['chore: install Ledger session hooks', 'chore: ignore .ledger/, the workflows state']);
+    assert.strictEqual(readFile(code, '.gitignore'), '.ledger/\n');
     assert.ok(!fs.existsSync(path.join(code, STATE_DIR_NAME)));
   });
 
@@ -264,7 +264,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     assert.deepStrictEqual(placed(statePath(main)), IN_PLACE);
   });
 
-  it('a plain .leeway/ in a project owing the reshape, holding no link git can read, is the migration\'s to set aside: boot runs it, the state is in place, and what the folder held is kept inside it', () => {
+  it('a plain .ledger/ in a project owing the reshape, holding no link git can read, is the migration\'s to set aside: boot runs it, the state is in place, and what the folder held is kept inside it', () => {
     const main = owingProject();
     createFile(main, path.join(STATE_DIR_NAME, 'notes.md'), 'kept\n');
 
@@ -281,7 +281,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     const main = owingProject();
     const refused = { cause: 'live', unit: 'payments', phase: 'discussion', topic: 'checkout', active: 42 };
     const config = path.join(world(), 'config');
-    const env = { STUB_MIGRATE_MODE: 'refuse', STUB_MIGRATE_REFUSAL: JSON.stringify(refused), CLAUDE_CODE_SESSION_ID: 'guarded', LEEWAY_CONFIG_DIR: config };
+    const env = { STUB_MIGRATE_MODE: 'refuse', STUB_MIGRATE_REFUSAL: JSON.stringify(refused), CLAUDE_CODE_SESSION_ID: 'guarded', LEDGER_CONFIG_DIR: config };
     const before = untouched(main, null);
 
     assert.deepStrictEqual(boot(main, env), { ok: true, state: 'guard', ...refused, stop: GUARDED, warnings: [] });
@@ -289,7 +289,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     assert.deepStrictEqual(untouched(main, null), before);
     assert.ok(!fs.existsSync(statePath(main)), 'no state folder, so no record, lock or journal');
     assert.ok(!fs.existsSync(path.join(config, 'conversations', 'guarded', 'booted.json')), 'nothing may touch the work at the stop (22.1.7)');
-    assert.strictEqual(readFile(main, '.git/info/exclude').split('\n').filter((line) => line === '/.leeway/').length, 1);
+    assert.strictEqual(readFile(main, '.git/info/exclude').split('\n').filter((line) => line === '/.ledger/').length, 1);
     assert.strictEqual(boot(main, env).state, 'guard');
   });
 
@@ -387,7 +387,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     const first = spawn(process.execPath, [STUB_ENGINE, 'boot'], { cwd: main, env: { ...process.env, ...env }, stdio: 'ignore', timeout: 30000, killSignal: 'SIGKILL' });
     const firstEnded = new Promise((resolve) => first.on('close', resolve));
     await until(() => runsOf(runs).length === 1);
-    const attempts = lockAttempts(t, path.join(main, '.git/leeway-boot.lock'), (taken) => { if (taken === 1) fs.writeFileSync(go, ''); });
+    const attempts = lockAttempts(t, path.join(main, '.git/ledger-boot.lock'), (taken) => { if (taken === 1) fs.writeFileSync(go, ''); });
 
     assert.strictEqual(boot(main, env).state, 'finish');
 
@@ -396,7 +396,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     assert.deepStrictEqual(runsOf(runs).map((run) => [run.at, run.writer]), [['start', false], ['end', false], ['start', true], ['end', true]]);
   });
 
-  it('the old layout beside a remote holding leeway-state is a clone to bring the state into, not refused', () => {
+  it('the old layout beside a remote holding ledger-state is a clone to bring the state into, not refused', () => {
     const { main, bare } = setUp({ remote: true });
     const other = cloneInWorld(bare, 'other');
     createFile(other, '.workflows/payments/manifest.json', '{}\n');

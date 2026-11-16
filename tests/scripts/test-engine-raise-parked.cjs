@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The build's questions (leeway-engine/scripts/domain/raise.cjs, the
+// The build's questions (ledger-engine/scripts/domain/raise.cjs, the
 // projection domain/questions.cjs, the park's line domain/ledger-events.cjs,
 // landed through domain/ledger-write.cjs): a raise at a build place,
 // `--parks <phase>.<n>`, parking its task where it asks — one `parked` line,
@@ -49,7 +49,7 @@ const { UNIT, SESSION_ID, MADE, PHASES, ledgerHelpers } = require('./ledger-worl
 const { SESSION, WHY, raiseHelpers } = require('./raise-world.cjs');
 const { labelAnswers } = require('./labels.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { DISCUSSING } = require(path.join(SCRIPTS, 'domain/questions.cjs'));
 const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 const { shortIds } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
@@ -996,7 +996,7 @@ describe('raise aside (12.13.17)', () => {
 describe('the discussion queue the gate mod keeps (P16, 20.6.9)', () => {
   /** A string constant as the gate mod's source spells it: a mod cannot import the engine. @param {string} name */
   const modLiteral = (name) => {
-    const found = new RegExp(`const ${name} = '([^']*)'`).exec(fs.readFileSync(path.join(__dirname, '../../skills/leeway-gates/hooks/discuss.ts'), 'utf8'));
+    const found = new RegExp(`const ${name} = '([^']*)'`).exec(fs.readFileSync(path.join(__dirname, '../../skills/ledger-gates/hooks/discuss.ts'), 'utf8'));
     assert.ok(found, `discuss.ts names ${name}`);
     return found[1];
   };

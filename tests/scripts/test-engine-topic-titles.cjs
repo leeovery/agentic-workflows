@@ -32,7 +32,7 @@ const { markAllButTheClosingPass } = require('./decided-world.cjs');
 const { renderSurface } = require('./render-surfaces-world.cjs');
 
 const SKILLS = path.join(__dirname, '../../skills');
-const DOMAIN = path.join(SKILLS, 'leeway-engine/scripts/domain');
+const DOMAIN = path.join(SKILLS, 'ledger-engine/scripts/domain');
 const { raiseScreenOf } = require(path.join(DOMAIN, 'raise.cjs'));
 
 const UNIT = 'fumi';
@@ -50,7 +50,7 @@ function write(dir, verb, topic, flags, content) {
 function asPeer(dir, args) {
   const config = fs.mkdtempSync(path.join(os.tmpdir(), 'topic-titles-peer-'));
   try {
-    return ok(dir, args, { env: { LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: PEER.id, CLAUDE_PID: PEER.pid, TMUX: undefined } });
+    return ok(dir, args, { env: { LEDGER_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: PEER.id, CLAUDE_PID: PEER.pid, TMUX: undefined } });
   } finally {
     fs.rmSync(config, { recursive: true, force: true });
   }
@@ -129,7 +129,7 @@ describe('a started topic renamed goes by its title on every screen that names i
     ['the raise screen', () => raiseScreenOf(dir, /** @type {any} */ (SEAL)), `Fumi · ${TITLE}`],
     ['the epic menu', () => shown('epic-menu', { dotpath: UNIT }), `Close "${TITLE}" as decided`],
     ['enter\'s held question', () => output(dir, ['enter', 'discussion', UNIT, KEY], { env: SESSION }), `"${TITLE}" is open in another session`],
-    ['the handoff line', () => output(dir, ['handoff', 'leeway-discussion-process', 'epic', UNIT, KEY]), `→ Discussion · ${NAME}`],
+    ['the handoff line', () => output(dir, ['handoff', 'ledger-discussion-process', 'epic', UNIT, KEY]), `→ Discussion · ${NAME}`],
   ];
 
   for (const [surface, render, phrase] of SURFACES) {
@@ -283,7 +283,7 @@ describe('the hand into the spec names the unit it is entered at (8.8.17)', () =
   const handLine = (...args) => output(dir, ['handoff', ...args]).split('\n').find((line) => line.startsWith('→ '));
 
   it('the hand into the spec names the unit it is entered at, the hand into the topic\'s discussion by the title', () => {
-    assert.deepStrictEqual([handLine('leeway-specification-process', 'epic', UNIT), handLine('leeway-discussion-process', 'epic', UNIT, KEY)],
+    assert.deepStrictEqual([handLine('ledger-specification-process', 'epic', UNIT), handLine('ledger-discussion-process', 'epic', UNIT, KEY)],
       [`→ Specification · ${UNIT}`, `→ Discussion · ${NAME}`]);
   });
 

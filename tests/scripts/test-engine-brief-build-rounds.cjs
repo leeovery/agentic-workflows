@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Where a reviewer's report goes (leeway-engine/scripts/domain/
+// Where a reviewer's report goes (ledger-engine/scripts/domain/
 // brief-records.cjs, round-report.cjs; 13.5.9): a task's reviewer's file of
 // the round under review, read from the reports on disk so it holds across
 // a `/clear`, a report that does not read replaced, refused once written or
@@ -49,7 +49,7 @@ const {
   added,
 } = require('./brief-build-world.cjs');
 
-const { recordLaidOut } = require('../../skills/leeway-engine/scripts/domain/round-report.cjs');
+const { recordLaidOut } = require('../../skills/ledger-engine/scripts/domain/round-report.cjs');
 
 /** @type {string} */
 let dir;

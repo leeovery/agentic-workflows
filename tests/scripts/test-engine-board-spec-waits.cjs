@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// What waits on the person in a specification on the board (leeway-engine/
+// What waits on the person in a specification on the board (ledger-engine/
 // scripts/domain/projections/board-spec.cjs, 20.9.1): each gap by its entry,
 // its words, the pass and finding that raised it and its sections, and whose
 // a finding asked as a question is as it stands (D23); ready to build's yes
@@ -27,7 +27,7 @@ const {
 } = require('./spec-review-world.cjs');
 const { fact, gap, READY, specBoard } = require('./spec-board-world.cjs');
 
-const { appendEntry } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/ledger.cjs'));
+const { appendEntry } = require(path.join(__dirname, '../../skills/ledger-engine/scripts/domain/ledger.cjs'));
 
 const dir = useSpecReviewWorld();
 const { write, full } = ledgerHelpers(dir);

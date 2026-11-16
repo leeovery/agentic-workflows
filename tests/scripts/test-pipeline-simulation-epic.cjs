@@ -44,7 +44,7 @@ describe('pipeline simulation: epic', () => {
     // behind: the epic's first log, pointing back, takes the conversation.
     sim.run(started.next.argv);
     assert.deepStrictEqual(carryOn(sim).position, { name: wu, phase: 'discovery', topic: wu });
-    const [pointer, ...rest] = fs.readFileSync(path.join(sim.dir, '.leeway', wu, 'discovery/session-001.md'), 'utf8').split('\n');
+    const [pointer, ...rest] = fs.readFileSync(path.join(sim.dir, '.ledger', wu, 'discovery/session-001.md'), 'utf8').split('\n');
     assert.strictEqual(pointer, 'Shaped by: [.product/sessions/session-001.md#notes](../../.product/sessions/session-001.md#notes)');
     assert.match(rest.find((line) => line !== '') ?? '', /^## /, 'the conversation\'s line follows the pointer');
     assert.ok(presenceRow(sim.run(['presence', 'scan', wu]), 'discovery', wu)?.held, 'the presence is the epic\'s');
@@ -56,15 +56,15 @@ describe('pipeline simulation: epic', () => {
       ],
       parks: [{ name: 'fumi-sync', summary: 'A hosted sync service', horizon: 'later', sources: [`${wu}/discovery/session-001.md`] }],
     };
-    sim.render(['approve-map', wu, '--file', sim.write('.leeway/.cache/scratch/staged-map.json', map)], { expect: 'content' });
+    sim.render(['approve-map', wu, '--file', sim.write('.ledger/.cache/scratch/staged-map.json', map)], { expect: 'content' });
     const drawn = (/** @type {string[]} */ args) => sim.board(args).view;
     const [shaping] = drawn(['--tab', 'unit']).phases;
     const { phase, standing } = drawn(['--tab', 'all']).units.find((/** @type {{unit: string}} */ { unit }) => unit === wu);
     assert.deepStrictEqual([shaping.phase, shaping.words, phase, standing], ['discovery', '2 topics', 'discovery', '2 topics on the map'],
       'N1, 20.15.2, 20.16.1: while the map waits, the epic\'s tab and All work say it is in discovery with the map\'s topics');
     const approved = approveTheMap(sim, wu, map);
-    assert.deepStrictEqual(approved.next, { kind: 'handoff', skill: 'leeway-continue-epic', args: [wu] });
-    handoff(sim, `/leeway-continue-epic ${wu}`);
+    assert.deepStrictEqual(approved.next, { kind: 'handoff', skill: 'ledger-continue-epic', args: [wu] });
+    handoff(sim, `/ledger-continue-epic ${wu}`);
     sim.handOver();
     const first = epicKey(sim, wu, 'note-model');
     assert.deepStrictEqual([first.key, first.recommended], ['1', true]);
@@ -80,7 +80,7 @@ describe('pipeline simulation: epic', () => {
     enterEntry(sim, wu, 'discussion', 'note-model');
     const inTopic = drawn([]);
     const decided = discussed(sim, wu, 'note-model');
-    assert.deepStrictEqual(decided.next, { kind: 'handoff', skill: 'leeway-continue-epic', args: [wu] });
+    assert.deepStrictEqual(decided.next, { kind: 'handoff', skill: 'ledger-continue-epic', args: [wu] });
     follow(sim, decided.next);
     sim.handOver();
     epicMenuAt(sim, wu);
@@ -114,10 +114,10 @@ describe('pipeline simulation: epic', () => {
     // topic's one mailbox, the discussion under way left as it stands, and
     // the mail rides alpha's row; the report ends with the way into it.
     const decision = send(sim, wu, 'alpha', 'beta', 'a-decision');
-    assert.strictEqual(decision.message_path, path.join(sim.dir, `.leeway/${wu}/topics/alpha/mail/001-a-decision.md`));
+    assert.strictEqual(decision.message_path, path.join(sim.dir, `.ledger/${wu}/topics/alpha/mail/001-a-decision.md`));
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.alpha.status, 'in-progress');
     assert.strictEqual(row('Alpha'), '1 → Continue "Alpha" — in progress · mail waiting (recommended)');
-    assert.match(sim.render(['send-report', `${wu}.alpha`, '--sent', decision.message_path], { expect: 'content' }), /^\/leeway orbit alpha$/m);
+    assert.match(sim.render(['send-report', `${wu}.alpha`, '--sent', decision.message_path], { expect: 'content' }), /^\/ledger orbit alpha$/m);
     // The entry raises the waiting message before anything is read; the
     // question it raised is asked, and the message answered by it leaves.
     enterEntry(sim, wu, 'discussion', 'alpha');
@@ -131,12 +131,12 @@ describe('pipeline simulation: epic', () => {
     const claudes = (/** @type {string} */ question, /** @type {string} */ text) => sim.run(['ledger', 'decide', `${wu}.discussion.alpha`, '--answers', question], null,
       JSON.stringify({ by: 'claude', who_moved_whom: 'none', text, why: 'The message changes nothing alpha decided.' }));
     claudes(raised.id, 'It leaves alpha as it stands.');
-    const brief = sim.write('.leeway/.cache/scratch/brief-gamma.md', '# Gamma\n\nWhat alpha opened, where, why it matters, and what stays open.\n');
+    const brief = sim.write('.ledger/.cache/scratch/brief-gamma.md', '# Gamma\n\nWhat alpha opened, where, why it matters, and what stays open.\n');
     const decided = decideTopic(sim, wu, 'alpha', { lines: [], candidates: [{ name: 'gamma', reason: 'Alpha opened a question of its own.', brief }] });
     assert.deepStrictEqual(decided.candidates, ['gamma']);
-    assert.deepStrictEqual(decided.next, { kind: 'handoff', skill: 'leeway-continue-epic', args: [wu] });
+    assert.deepStrictEqual(decided.next, { kind: 'handoff', skill: 'ledger-continue-epic', args: [wu] });
     assert.strictEqual(sim.manifest(wu).phases.discovery.items.gamma.summary, 'Alpha opened a question of its own.');
-    assert.ok(fs.existsSync(path.join(sim.dir, `.leeway/${wu}/topics/gamma/brief.md`)), 'the candidate lands with its brief');
+    assert.ok(fs.existsSync(path.join(sim.dir, `.ledger/${wu}/topics/gamma/brief.md`)), 'the candidate lands with its brief');
 
     // A message to the decided topic sets it back in progress, its mail
     // waiting on its row; answered, it is decided again, its checklist
@@ -155,13 +155,13 @@ describe('pipeline simulation: epic', () => {
   it('epic: an epic enters discussion at a topic, and a topic landed in discovery has its own start row, whose entry starts it', () => {
     const wu = 'lumen';
     mappedEpic(sim, wu, ['alpha']);
-    handoff(sim, `/leeway-continue-epic ${wu}`);
+    handoff(sim, `/ledger-continue-epic ${wu}`);
     epicMenuAt(sim, wu);
-    sim.refuses(['handoff', '/leeway-discussion-process', 'epic', wu], /^an epic enters discussion at a topic/);
+    sim.refuses(['handoff', '/ledger-discussion-process', 'epic', wu], /^an epic enters discussion at a topic/);
 
     const topic = 'omega';
     sim.run(['topic', 'add', wu, topic, '--summary', `What ${topic} covers`, '--description', `Why ${topic} matters now.`, '--brief', briefDraft(sim, wu, topic)]);
-    const route = `/leeway-discussion-process epic ${wu} ${topic}`;
+    const route = `/ledger-discussion-process epic ${wu} ${topic}`;
     assert.strictEqual(epicPick(sim, wu, topic).text, `Invoke \`${route}\`.`);
     assert.strictEqual(enterEntry(sim, wu, 'discussion', topic).started, true);
   });

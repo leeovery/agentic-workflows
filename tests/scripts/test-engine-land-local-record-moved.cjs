@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The local landing driver (leeway-engine/scripts/drivers/landing/local/
+// The local landing driver (ledger-engine/scripts/drivers/landing/local/
 // driver.cjs) and a recorded task whose branch moved after its landing with
 // no change of its own (landing-record.cjs, 7.2.22, R29): a later task
 // rewriting its line landed by hand, then its last commit reworded, its
@@ -22,9 +22,9 @@ const assert = require('node:assert');
 
 const { ok, git, tip, readManifest } = require('./engine-harness.cjs');
 const { UNIT, TASKS, openArgs, cutTask, commitFiles, useLandingWorld, mergedInto } = require('./landing-world.cjs');
-const { unitLanded } = require('../../skills/leeway-engine/scripts/domain/task-landed.cjs');
-const { workMessage } = require('../../skills/leeway-engine/scripts/domain/commit-task.cjs');
-const { projectRepos } = require('../../skills/leeway-engine/scripts/kernel/repos.cjs');
+const { unitLanded } = require('../../skills/ledger-engine/scripts/domain/task-landed.cjs');
+const { workMessage } = require('../../skills/ledger-engine/scripts/domain/commit-task.cjs');
+const { projectRepos } = require('../../skills/ledger-engine/scripts/kernel/repos.cjs');
 
 const { card } = TASKS;
 const CARD = { unit: UNIT, phase: 1, n: 1 };

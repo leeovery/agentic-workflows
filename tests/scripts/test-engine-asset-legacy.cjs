@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The legacy files (leeway-engine/scripts/domain/legacy-files.cjs, through
+// The legacy files (ledger-engine/scripts/domain/legacy-files.cjs, through
 // asset.cjs, following moves through follow-moves.cjs): `engine asset
 // legacy`, each place holding files the migration kept below its
 // `assets/legacy/`, read from disk, the tools' sidecars left out, with its
@@ -55,7 +55,7 @@ const { ok, refusedPristine, holdLock, lockAttempts, stateGit, statePath, layout
 const { createManifest, writeState, readState } = require('./discovery-test-utils.cjs');
 const { SESSION, MADE } = require('./ledger-world.cjs');
 
-const { carriedTo } = require('../../skills/leeway-engine/scripts/domain/ledger-fold.cjs');
+const { carriedTo } = require('../../skills/ledger-engine/scripts/domain/ledger-fold.cjs');
 
 const EPIC = 'evvi';
 const LEGACY = `${EPIC}/assets/legacy`;

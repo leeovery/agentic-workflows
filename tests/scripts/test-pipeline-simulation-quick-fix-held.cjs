@@ -46,7 +46,7 @@ describe('pipeline simulation: quick-fix with a fix held open on its blind quest
   }
 
   /** Something added to `fix` by the orchestrator. @param {string} fix @param {string} text */
-  const added = (fix, text) => sim.run(['task', 'add', WU, fix, '--file', sim.write(`.leeway/.cache/${WU}/build/addition.md`, `${text}\n`), '--by', 'orchestrator']);
+  const added = (fix, text) => sim.run(['task', 'add', WU, fix, '--file', sim.write(`.ledger/.cache/${WU}/build/addition.md`, `${text}\n`), '--by', 'orchestrator']);
 
   /**
    * The flag's fix built and pushed, its builder's call going ahead while

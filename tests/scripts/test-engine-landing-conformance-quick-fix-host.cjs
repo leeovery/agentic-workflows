@@ -26,7 +26,7 @@ const assert = require('node:assert');
 const { git, readManifest } = require('./engine-harness.cjs');
 const { UNIT, DESCRIPTION, BRANCH, SET, quickFixConformance } = require('./quick-fix-world.cjs');
 const { HELP, steps } = require('./quick-fix-by-hand.cjs');
-const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
+const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
 
 for (const { name } of listDrivers('landing')) {
   const conf = quickFixConformance(name, `engine-landing-quick-fix-host-${name}-`);

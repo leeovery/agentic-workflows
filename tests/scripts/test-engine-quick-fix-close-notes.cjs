@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // A quick-fix's notes for later, answered at its close (R24;
-// leeway-engine/scripts/domain/review-round.cjs's `quick-fix notes`,
+// ledger-engine/scripts/domain/review-round.cjs's `quick-fix notes`,
 // finish-checks.cjs, finish.cjs): a builder's note and a reviewer's, banked
 // with `task note`, holding the close — its checklist's `notes-answered`
 // open, naming each and the verb, and its screen refused — until each is

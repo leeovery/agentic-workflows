@@ -1,7 +1,7 @@
 'use strict';
 
 // The roadmap as the work's own verbs move it
-// (skills/leeway-engine/scripts/domain/roadmap.cjs), driven through the
+// (skills/ledger-engine/scripts/domain/roadmap.cjs), driven through the
 // engine CLI: a topic postponed to the roadmap — its horizon born JIT, its
 // files the item's sources — pulled back, or archived with its epic's row; and
 // a join reverted by the cancel of its topic or its unit, never by the unit's
@@ -22,7 +22,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { createManifest } = require('./discovery-test-utils.cjs');
-const { postponeToRoadmap } = require('../../skills/leeway-engine/scripts/domain/roadmap.cjs');
+const { postponeToRoadmap } = require('../../skills/ledger-engine/scripts/domain/roadmap.cjs');
 const { stateGit, commitAll, cleanupFixture: cleanup, ok, output, refuses, completeUnit, startItem, withFrozenClock } = require('./engine-harness.cjs');
 const { roadmapWorld, runOk, runFail, readProject, projectManifestText, writeSource, joinedTo, boundTo } = require('./roadmap-world.cjs');
 
@@ -42,7 +42,7 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
       },
     });
     for (const rel of ['topics/ordering/brief.md', 'topics/ordering/log.md']) {
-      const abs = path.join(at, '.leeway', 'mvp', rel);
+      const abs = path.join(at, '.ledger', 'mvp', rel);
       fs.mkdirSync(path.dirname(abs), { recursive: true });
       fs.writeFileSync(abs, '# x\n');
     }
@@ -53,20 +53,20 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
 
   const engineOk = (/** @type {string[]} */ args) => ok(dir, args);
   const engineFails = (/** @type {string[]} */ args, /** @type {RegExp} */ p) => refuses(dir, args, p);
-  const epicText = () => fs.readFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), 'utf8');
+  const epicText = () => fs.readFileSync(path.join(dir, '.ledger', 'mvp', 'manifest.json'), 'utf8');
   const epic = () => JSON.parse(epicText());
 
   it('roadmap state names the record a postponed topic left as its item\'s earlier: the brief and log where they exist, the call reading its record as it stood, each message waiting (18.8.17)', () => {
-    const mail = path.join(dir, '.leeway', 'mvp', 'topics', 'ordering', 'mail', '001-tax.md');
+    const mail = path.join(dir, '.ledger', 'mvp', 'topics', 'ordering', 'mail', '001-tax.md');
     fs.mkdirSync(path.dirname(mail), { recursive: true });
     fs.writeFileSync(mail, 'Tax\nFrom Discovery · 1 Jan\n');
     commitAll(dir, 'a message waits');
     engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']);
-    const at = (/** @type {string} */ rel) => path.join(fs.realpathSync(dir), '.leeway', 'mvp', 'topics', 'ordering', rel);
+    const at = (/** @type {string} */ rel) => path.join(fs.realpathSync(dir), '.ledger', 'mvp', 'topics', 'ordering', rel);
     const rows = runOk(dir, ['state']).items;
     assert.deepStrictEqual(rows.find((/** @type {{name: string}} */ r) => r.name === 'ordering').earlier, {
       brief: at('brief.md'),
-      record: 'node .claude/skills/leeway-engine/scripts/engine.cjs ledger earlier mvp ordering',
+      record: 'node .claude/skills/ledger-engine/scripts/engine.cjs ledger earlier mvp ordering',
       log: at('log.md'),
       mail: [at('mail/001-tax.md')],
     });
@@ -210,7 +210,7 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     // the name in the window — no CLI sequence can reach.
     const project = readProject(dir);
     project.roadmap = { horizons: {}, items: {} };
-    fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify(project, null, 2));
+    fs.writeFileSync(path.join(dir, '.ledger', 'manifest.json'), JSON.stringify(project, null, 2));
     const before = epicText();
     assert.match(refuses(dir, ['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']).error,
       /roadmap\.horizons is malformed/);
@@ -250,21 +250,21 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     engineFails(['manifest', 'delete', 'mvp.discussion.ordering', 'previous_status'],
       /discussion item "ordering" is postponed — pull it forward from the roadmap instead/);
     // A message for a topic that waits is mail that waits with it.
-    fs.mkdirSync(path.join(dir, '.leeway/.cache/scratch'), { recursive: true });
-    fs.writeFileSync(path.join(dir, '.leeway/.cache/scratch/message.md'), 'Ordering\n\nA question for later.\n');
-    const before = fs.readFileSync(path.join(dir, '.leeway/mvp/manifest.json'), 'utf8');
-    const parked = engineOk(['topic', 'send', 'mvp', 'ordering', '--from', 'menus', '--content', '.leeway/.cache/scratch/message.md', '--slug', 'a-question']);
-    assert.strictEqual(parked.message_path, path.join(dir, '.leeway/mvp/topics/ordering/mail/001-a-question.md'));
-    assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/mvp/manifest.json'), 'utf8'), before, 'the send leaves the hold alone');
+    fs.mkdirSync(path.join(dir, '.ledger/.cache/scratch'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.ledger/.cache/scratch/message.md'), 'Ordering\n\nA question for later.\n');
+    const before = fs.readFileSync(path.join(dir, '.ledger/mvp/manifest.json'), 'utf8');
+    const parked = engineOk(['topic', 'send', 'mvp', 'ordering', '--from', 'menus', '--content', '.ledger/.cache/scratch/message.md', '--slug', 'a-question']);
+    assert.strictEqual(parked.message_path, path.join(dir, '.ledger/mvp/topics/ordering/mail/001-a-question.md'));
+    assert.strictEqual(fs.readFileSync(path.join(dir, '.ledger/mvp/manifest.json'), 'utf8'), before, 'the send leaves the hold alone');
   });
 
   it('roadmap archive cancels the epic\'s row in the same transaction, its waiting mail to the inbox as a cancel\'s, the hold gone from the item, one commit over both manifests and the mail (18.S62, 10.1.6)', () => {
     engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']);
-    const message = '.leeway/mvp/topics/ordering/mail/001-a-question.md';
-    const idea = '.leeway/.inbox/ideas/2026-01-01--a-question.md';
-    fs.mkdirSync(path.join(dir, '.leeway/.cache/scratch'), { recursive: true });
-    fs.writeFileSync(path.join(dir, '.leeway/.cache/scratch/message.md'), 'A question\n\nAsked while it waited.\n');
-    engineOk(['topic', 'send', 'mvp', 'ordering', '--from', 'menus', '--content', '.leeway/.cache/scratch/message.md', '--slug', 'a-question']);
+    const message = '.ledger/mvp/topics/ordering/mail/001-a-question.md';
+    const idea = '.ledger/.inbox/ideas/2026-01-01--a-question.md';
+    fs.mkdirSync(path.join(dir, '.ledger/.cache/scratch'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.ledger/.cache/scratch/message.md'), 'A question\n\nAsked while it waited.\n');
+    engineOk(['topic', 'send', 'mvp', 'ordering', '--from', 'menus', '--content', '.ledger/.cache/scratch/message.md', '--slug', 'a-question']);
     const sent = fs.readFileSync(path.join(dir, message), 'utf8');
     const { horizon: _horizon, postponed_from: _hold, ...kept } = readProject(dir).roadmap.items.ordering;
     const res = withFrozenClock(() => runOk(dir, ['archive', 'ordering']));
@@ -281,7 +281,7 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
       { ...kept, archived: { at: '2026-01-01T00:00:00Z', horizon: 'next', postponed_from: { work_unit: 'mvp', topic: 'ordering' } } }, 'the hold ended, kept on the mark');
     assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: archive ordering — ordering cancelled in mvp');
     assert.deepStrictEqual(stateGit(dir, ['show', '--no-renames', '--name-status', '--pretty=format:', 'HEAD']).trim().split('\n').sort(), [
-      `A\t${idea.slice('.leeway/'.length)}`, 'M\tmanifest.json', `D\t${message.slice('.leeway/'.length)}`, 'M\tmvp/manifest.json',
+      `A\t${idea.slice('.ledger/'.length)}`, 'M\tmanifest.json', `D\t${message.slice('.ledger/'.length)}`, 'M\tmvp/manifest.json',
     ].sort());
     // And the reactivate is then the way back, as for any cancelled unit.
     assert.deepStrictEqual(ok(dir, ['topic', 'reactivate', 'mvp', 'discovery', 'ordering']).restored,
@@ -289,8 +289,8 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
   });
 
   it('roadmap archive of a re-waited item brought from the inbox keeps its note and cancels the epic\'s row, one commit over both manifests', () => {
-    const inboxNote = '.leeway/.inbox/ideas/2026-03-01--guest-ordering.md';
-    const note = '.leeway/.product/notes/2026-03-01--guest-ordering.md';
+    const inboxNote = '.ledger/.inbox/ideas/2026-03-01--guest-ordering.md';
+    const note = '.ledger/.product/notes/2026-03-01--guest-ordering.md';
     fs.mkdirSync(path.dirname(path.join(dir, inboxNote)), { recursive: true });
     fs.writeFileSync(path.join(dir, inboxNote), '# Guest ordering\n');
     commitAll(dir, 'inbox');
@@ -304,7 +304,7 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     assert.strictEqual('notes_moved' in res, false);
     assert.deepStrictEqual(res.epic_row_cancelled, { work_unit: 'mvp', topic: 'ordering' });
     assert.ok(fs.existsSync(path.join(dir, note)), 'the note stays in the product\'s notes');
-    assert.ok(fs.existsSync(path.join(dir, '.leeway/mvp/topics/ordering/log.md')), 'the topic\'s own files are its epic\'s, never archived');
+    assert.ok(fs.existsSync(path.join(dir, '.ledger/mvp/topics/ordering/log.md')), 'the topic\'s own files are its epic\'s, never archived');
     assert.strictEqual(epic().phases.discovery.items.ordering.cancelled, true);
     assert.ok(readProject(dir).roadmap.items['guest-ordering'].sources.includes('.product/notes/2026-03-01--guest-ordering.md'));
     assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'roadmap: archive guest-ordering — ordering cancelled in mvp');
@@ -319,7 +319,7 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     const m = epic();
     delete m.phases.discovery.items.ordering.postponed;
     m.phases.discussion.items.ordering.status = 'in-progress';
-    fs.writeFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), JSON.stringify(m, null, 2));
+    fs.writeFileSync(path.join(dir, '.ledger', 'mvp', 'manifest.json'), JSON.stringify(m, null, 2));
     const before = epicText();
     assert.match(runFail(dir, ['archive', 'ordering']).error,
       /"ordering" was postponed from "ordering" in work unit "mvp", where nothing is postponed — the join is stale/);
@@ -329,7 +329,7 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
 
   it('roadmap archive of an item whose epic is gone refuses rather than orphaning the row', () => {
     engineOk(['topic', 'postpone', 'mvp', 'ordering', '--horizon', 'next']);
-    fs.rmSync(path.join(dir, '.leeway', 'mvp'), { recursive: true, force: true });
+    fs.rmSync(path.join(dir, '.ledger', 'mvp'), { recursive: true, force: true });
     const before = projectManifestText(dir);
     assert.match(runFail(dir, ['archive', 'ordering']).error,
       /"ordering" was postponed from work unit "mvp", which no longer exists — the join is orphaned/);
@@ -377,7 +377,7 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     createManifest(dir, 'v2', { work_type: 'epic', status: 'in-progress', phases: { discovery: { items: {} } } });
     const res = runOk(dir, ['pull-forward', 'ordering', '--into', 'v2']);
     assert.deepStrictEqual(res.prior, { work_unit: 'mvp', topic: 'ordering' });
-    const row = JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'v2', 'manifest.json'), 'utf8')).phases.discovery.items.ordering;
+    const row = JSON.parse(fs.readFileSync(path.join(dir, '.ledger', 'v2', 'manifest.json'), 'utf8')).phases.discovery.items.ordering;
     assert.deepStrictEqual(row, { source: 'roadmap', summary: 'Customers order', prior: { work_unit: 'mvp', topic: 'ordering' } });
     assert.strictEqual(epic().phases.discovery.items.ordering.postponed, true, 'the prior epic keeps its record and its marker');
     assert.deepStrictEqual(readProject(dir).roadmap.items.ordering.postponed_from, { work_unit: 'mvp', topic: 'ordering' });
@@ -481,7 +481,7 @@ describe('engine CLI: the cancel-revert hop', () => {
   });
 
   it('a never-started topic\'s cancel reverts the join too — the marker alone reads cancelled', () => {
-    const p = path.join(dir, '.leeway', 'mvp', 'manifest.json');
+    const p = path.join(dir, '.ledger', 'mvp', 'manifest.json');
     const manifest = JSON.parse(fs.readFileSync(p, 'utf8'));
     delete manifest.phases.discussion;
     fs.writeFileSync(p, JSON.stringify(manifest, null, 2));
@@ -496,7 +496,7 @@ describe('engine CLI: the cancel-revert hop', () => {
 
   it('a topic\'s reactivate takes back what its cancel put back, joined to the topic as the pull joined it, the cancel\'s record dropped (18.8.20)', () => {
     engineOk(['topic', 'cancel', 'mvp', 'discovery', 'ordering']);
-    const row = () => JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), 'utf8')).phases.discovery.items.ordering;
+    const row = () => JSON.parse(fs.readFileSync(path.join(dir, '.ledger', 'mvp', 'manifest.json'), 'utf8')).phases.discovery.items.ordering;
     assert.deepStrictEqual(row().roadmap_put_back, [{ item: 'ordering', topic: 'ordering' }]);
     const res = engineOk(['topic', 'reactivate', 'mvp', 'discovery', 'ordering']);
     assert.deepStrictEqual([res.roadmap_rejoined, 'roadmap_stayed' in res], [['ordering'], false]);
@@ -511,7 +511,7 @@ describe('engine CLI: the cancel-revert hop', () => {
     assert.deepStrictEqual([...res.roadmap_rejoined].sort(), ['menus', 'ordering']);
     const items = readProject(dir).roadmap.items;
     assert.deepStrictEqual([items.menus.pulled_to, items.ordering.pulled_to], [{ work_unit: 'mvp' }, { work_unit: 'mvp', topic: 'ordering' }]);
-    assert.deepStrictEqual(['roadmap_put_back' in JSON.parse(fs.readFileSync(path.join(dir, '.leeway', 'mvp', 'manifest.json'), 'utf8')), projectStaged()], [false, true]);
+    assert.deepStrictEqual(['roadmap_put_back' in JSON.parse(fs.readFileSync(path.join(dir, '.ledger', 'mvp', 'manifest.json'), 'utf8')), projectStaged()], [false, true]);
     assert.deepStrictEqual(runOk(dir, ['state']).totals, { items: 2, waiting: 0, in_flight: 2, shipped: 0, orphaned: 0 });
     assert.match(refuses(dir, ['render', 'workunit-receipt', 'mvp', '--verb', 'reactivate', '--stayed', 'menus']).error, /"menus" stayed nowhere/, 'an item taken back stayed nowhere');
   });

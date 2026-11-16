@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The topic's map as the conversation shows it (leeway-engine/scripts/
+// The topic's map as the conversation shows it (ledger-engine/scripts/
 // domain/topic-map.cjs, drawn by domain/projections/map.cjs): `engine render
 // map <unit>.<topic>` — the person's questions and Claude's calls, one line
 // each, with where each stands: open, a question moved in shown as the

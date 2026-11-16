@@ -85,7 +85,7 @@ function useMatrixWorld(prefix) {
   /** The record of the person holding the care entries `entries` alone, each `[kind, project id, when added]`, the project Fumi. @param {...[string, string, number]} entries */
   function careHeld(...entries) {
     fs.mkdirSync(path.join(folder(), 'config'), { recursive: true });
-    fs.writeFileSync(path.join(folder(), 'config', 'person.md'), `<!-- leeway: the record of you, version 1 -->\n\n# The record of you\n\n## Care entries\n\n${entries.map(([kind, id, added]) => `- Fumi: ${kind} · ${id} · ${new Date(added).toISOString()}`).join('\n')}\n`);
+    fs.writeFileSync(path.join(folder(), 'config', 'person.md'), `<!-- Ledger: the record of you, version 1 -->\n\n# The record of you\n\n## Care entries\n\n${entries.map(([kind, id, added]) => `- Fumi: ${kind} · ${id} · ${new Date(added).toISOString()}`).join('\n')}\n`);
   }
 
   return { folder, logPath, logHolding, settingsFile, settingsHolding, fumi, careHeld };

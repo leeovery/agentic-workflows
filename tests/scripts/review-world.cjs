@@ -35,7 +35,7 @@ const {
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { labelling } = require('./labels.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { SPEC_FILE } = require(path.join(SCRIPTS, 'domain/spec-sections.cjs'));
 const { listDrivers } = require(path.join(SCRIPTS, 'domain/drivers.cjs'));
 const { readTaskText } = require(path.join(SCRIPTS, 'domain/task-file.cjs'));
@@ -48,10 +48,10 @@ const UNIT = 'pay';
 const SESSION_ID = 'review-session';
 const MADE = Object.freeze({ who_moved_whom: 'none' });
 const LINTERS = Object.freeze([{ name: 'eslint', command: 'npx eslint .' }]);
-const ENGINE = 'node .claude/skills/leeway-engine/scripts/engine.cjs';
+const ENGINE = 'node .claude/skills/ledger-engine/scripts/engine.cjs';
 
 /** The entry's line naming the engine by its absolute path, for a call made from a task's worktree. */
-const ENGINE_LINE = `engine: \`node ${path.join(__dirname, '../../skills/leeway-engine/scripts/engine.cjs')}\` — the engine by its absolute path, for a call made from a task's worktree`;
+const ENGINE_LINE = `engine: \`node ${path.join(__dirname, '../../skills/ledger-engine/scripts/engine.cjs')}\` — the engine by its absolute path, for a call made from a task's worktree`;
 
 /**
  * A spec of two areas, each its scenarios, each statement citing the entry
@@ -227,7 +227,7 @@ function useWorld(into) {
 }
 
 /** The engine as the world's conversation runs it. @param {string} [sessionId] */
-const env = (sessionId = SESSION_ID) => ({ LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: sessionId, CLAUDE_PID: String(process.pid), TMUX: undefined, TMUX_PANE: undefined });
+const env = (sessionId = SESSION_ID) => ({ LEDGER_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: sessionId, CLAUDE_PID: String(process.pid), TMUX: undefined, TMUX_PANE: undefined });
 
 /** `enter review`, which must succeed: its response and its sections. @param {string[]} [args] */
 const enter = (args = [UNIT]) => okSections(dir, ['enter', 'review', ...args], { env: env() });
@@ -322,7 +322,7 @@ const lastStateCommit = () => {
 /** A brief issued in the world's conversation, which must succeed: its response, the brief as stored, and the record of whose it is. @param {string[]} args */
 function issued(args) {
   const res = ok(dir, ['brief', ...args], { env: env() });
-  return withEnv({ LEEWAY_CONFIG_DIR: config }, () => ({
+  return withEnv({ LEDGER_CONFIG_DIR: config }, () => ({
     res, brief: fs.readFileSync(briefPath(SESSION_ID, res.id), 'utf8'), whose: JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')),
   }));
 }
@@ -423,7 +423,7 @@ function secondRoundReady(found = {}) {
 
 /** The briefs stored for the world's conversation, by file name. */
 function storedBriefs() {
-  const folder = withEnv({ LEEWAY_CONFIG_DIR: config }, () => path.dirname(briefPath(SESSION_ID, 'x')));
+  const folder = withEnv({ LEDGER_CONFIG_DIR: config }, () => path.dirname(briefPath(SESSION_ID, 'x')));
   return fs.existsSync(folder) ? fs.readdirSync(folder) : [];
 }
 

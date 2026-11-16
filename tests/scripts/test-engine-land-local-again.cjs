@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The local landing driver (leeway-engine/scripts/drivers/landing/local/
+// The local landing driver (ledger-engine/scripts/drivers/landing/local/
 // driver.cjs) and a task changed after the engine landed its phase
 // (7.2.23): not landed, `land phase` lands its change onto main over its
 // tip at that landing (R29) — refused where it conflicts with what main
@@ -137,7 +137,7 @@ describe('land: a task changed after its phase landed, on the local driver (7.2.
     git(dir, ['switch', '-q', task.branch]);
     fs.writeFileSync(path.join(dir, 'tip-more.txt'), 'more\n');
     git(dir, ['add', 'tip-more.txt']);
-    git(dir, ['commit', '-q', '-m', 'feat(pay): more on the tip', '-m', 'Leeway-Task: pay-4-1']);
+    git(dir, ['commit', '-q', '-m', 'feat(pay): more on the tip', '-m', 'Ledger-Task: pay-4-1']);
     const changed = tip(dir, task.branch);
     git(dir, ['switch', '-q', back]);
     git(dir, ['branch', '-q', '-D', task.branch]);

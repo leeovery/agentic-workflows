@@ -206,7 +206,7 @@ function checkout(name, source) {
  */
 function metered(dir, name, log = path.join(dir, 'cpu.jsonl')) {
   const run = spawnSync(process.execPath, [path.join('tests', name)], {
-    cwd: dir, encoding: 'utf8', timeout: 60_000, env: { ...process.env, LEEWAY_TEST_CPU_LOG: log },
+    cwd: dir, encoding: 'utf8', timeout: 60_000, env: { ...process.env, LEDGER_TEST_CPU_LOG: log },
   });
   return { status: run.status, signal: run.signal, left: fs.readdirSync(dir).sort() };
 }
@@ -219,7 +219,7 @@ async function until(done, tries) {
 
 describe('the meter', () => {
   it('logs a suite\'s CPU with its child\'s, which never sees the log, and the npm script keeps the whole last run and ends with the run\'s status after the report', () => {
-    const burn = `const t = process.cpuUsage(); while (process.cpuUsage(t).user + process.cpuUsage(t).system < ${BURN * 1e6}); require('fs').writeFileSync('child-env.json', JSON.stringify([process.env.LEEWAY_TEST_CPU_LOG, process.env.LEEWAY_TEST_CPU_OUTER]));`;
+    const burn = `const t = process.cpuUsage(); while (process.cpuUsage(t).user + process.cpuUsage(t).system < ${BURN * 1e6}); require('fs').writeFileSync('child-env.json', JSON.stringify([process.env.LEDGER_TEST_CPU_LOG, process.env.LEDGER_TEST_CPU_OUTER]));`;
     const dir = checkout('test-burn.cjs', [
       "const fs = require('fs');",
       "const { it } = require('node:test');",
@@ -293,7 +293,7 @@ describe('the meter', () => {
     const dir = checkout('test-wait.cjs', "require('fs').writeFileSync('inner.pid', String(process.pid));\nsetInterval(() => {}, 1000);\n");
     const pidFile = path.join(dir, 'inner.pid');
     const outer = spawn(process.execPath, [path.join(dir, 'tests', 'test-wait.cjs')], {
-      cwd: dir, stdio: 'ignore', env: { ...process.env, LEEWAY_TEST_CPU_LOG: path.join(dir, 'cpu.jsonl') },
+      cwd: dir, stdio: 'ignore', env: { ...process.env, LEDGER_TEST_CPU_LOG: path.join(dir, 'cpu.jsonl') },
     });
     const exited = new Promise((resolve) => { outer.on('exit', (_, signal) => resolve(signal)); });
     let inner = 0;

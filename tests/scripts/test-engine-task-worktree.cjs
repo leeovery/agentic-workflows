@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A task's worktree laid out (leeway-engine/scripts/domain/task-worktree.cjs,
+// A task's worktree laid out (ledger-engine/scripts/domain/task-worktree.cjs,
 // `task worktree` in task-verbs.cjs; the record on the position, position.cjs
 // and conversation.cjs's `taskAt`): run by the builder in the worktree Claude
 // Code's isolation made, it makes the task's branch there where the task is
@@ -51,8 +51,8 @@ const {
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { NESTED, NESTED_TASKS, TRACKER, commitFiles, followRemedy } = require('./landing-world.cjs');
-const { readPosition, tasksInFlight } = require('../../skills/leeway-engine/scripts/domain/conversation.cjs');
-const { laidOutOf } = require('../../skills/leeway-engine/scripts/domain/round-report.cjs');
+const { readPosition, tasksInFlight } = require('../../skills/ledger-engine/scripts/domain/conversation.cjs');
+const { laidOutOf } = require('../../skills/ledger-engine/scripts/domain/round-report.cjs');
 const {
   SIDE, UNIT, FEES, SHOW, CAP, taskWorktreeWorld, as, building, isolation, layOut, layOutOrRefusal, madeIn, checkoutsOf,
 } = require('./task-worktree-world.cjs');
@@ -425,7 +425,7 @@ describe('task worktree: the steps that prepare the environment (22.5.1)', () =>
     assert.deepStrictEqual([tried, heldAsLaidOut], [['taken', 'made'], [true]], 'the layout waits on a live holder and writes holding the lock');
     assert.deepStrictEqual([first.prepared.map((/** @type {{name: string}} */ step) => step.name), wrote(tree)], [['Secret', 'Unlocked', 'Dependencies'], 'SECRET=1\nunlocked\nboth\n']);
     assert.deepStrictEqual([again.prepared, again.repos.every((/** @type {{already?: boolean}} */ repo) => repo.already), wrote(tree)], [undefined, true, 'SECRET=1\nunlocked\nboth\n']);
-    assert.deepStrictEqual([git(tree, ['status', '--porcelain']), fs.existsSync(path.join(gitDirOf(tree), 'leeway-prepared'))], ['?? prepared.txt\n', true], 'the worktree holds nothing but what the steps wrote');
+    assert.deepStrictEqual([git(tree, ['status', '--porcelain']), fs.existsSync(path.join(gitDirOf(tree), 'ledger-prepared'))], ['?? prepared.txt\n', true], 'the worktree holds nothing but what the steps wrote');
   });
 
   it('a step that fails stops the task with its exit code and output, the project\'s setup, the worktree laid out; the call again runs the steps again', () => {
@@ -443,7 +443,7 @@ describe('task worktree: the steps that prepare the environment (22.5.1)', () =>
 
   it('a call while another runs the steps there refuses, running none; a claim whose holder is gone is taken over', () => {
     const { session, tree } = preparing(() => [{ name: 'Dependencies', when: 'worktree', command: 'echo both >> prepared.txt' }]);
-    const claim = holdLock(path.join(gitDirOf(tree), 'leeway-preparing'));
+    const claim = holdLock(path.join(gitDirOf(tree), 'ledger-preparing'));
 
     const refused = refuses(tree, layOut('3.1'), as(session)).error;
     const ran = fs.existsSync(path.join(tree, 'prepared.txt'));

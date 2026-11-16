@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // What an entry says of where it came from
-// (leeway-engine/scripts/domain/ledger-events.cjs, written by
+// (ledger-engine/scripts/domain/ledger-events.cjs, written by
 // domain/ledger-write.cjs, folded by domain/ledger-fold.cjs and read by
 // domain/ledger-read.cjs): who decided a decision — the person, Claude, the
 // person handing it over, the builder, or carried over, who decided it
@@ -24,7 +24,7 @@ const assert = require('node:assert');
 const path = require('path');
 const { ok, stateGit, statePath, layout, cleanupFixture } = require('./engine-harness.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 
 const { UNIT, SESSION, SESSION_ID, MADE, NOTE, ids, ledgerHelpers, ledgerReadHelpers, ledgerWriteHelpers, ledgerWorld } = require('./ledger-world.cjs');

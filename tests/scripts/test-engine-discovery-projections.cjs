@@ -9,9 +9,9 @@ const assert = require('node:assert');
 const path = require('path');
 
 const { setupFixture, cleanupFixture, createManifest } = require('./discovery-test-utils.cjs');
-const { loadManifest } = require('../../skills/leeway-engine/scripts/domain/reads.cjs');
-const { buildDiscoveryMap } = require('../../skills/leeway-engine/scripts/domain/derivations.cjs');
-const { discoveryMapView } = require('../../skills/leeway-engine/scripts/domain/projections/discovery-map.cjs');
+const { loadManifest } = require('../../skills/ledger-engine/scripts/domain/reads.cjs');
+const { buildDiscoveryMap } = require('../../skills/ledger-engine/scripts/domain/derivations.cjs');
+const { discoveryMapView } = require('../../skills/ledger-engine/scripts/domain/projections/discovery-map.cjs');
 
 // Golden tests: byte-exact expected strings for the map's render. Fixtures go
 // through real manifests in temp dirs and the one map-row builder, so the
@@ -47,7 +47,7 @@ function richFixture(dir) {
 }
 
 function mapOf(dir, workUnit) {
-  const { map, summary } = buildDiscoveryMap(loadManifest(dir, workUnit), path.join(dir, '.leeway'));
+  const { map, summary } = buildDiscoveryMap(loadManifest(dir, workUnit), path.join(dir, '.ledger'));
   return { rows: map, summary };
 }
 

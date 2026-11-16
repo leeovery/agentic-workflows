@@ -28,10 +28,10 @@ const {
   ok, okSections, writeState, layout, sectionOf, createFile, git,
 } = require('./engine-harness.cjs');
 const { UNIT, FLAG, createFix, quickFixConformance } = require('./quick-fix-world.cjs');
-const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
+const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
 
 /** Where fix 1.1's work is set aside. */
-const ASIDE = `refs/leeway/aside/${UNIT}/${UNIT}-1-1`;
+const ASIDE = `refs/ledger/aside/${UNIT}/${UNIT}-1-1`;
 
 /** What fix 1.1 holds not committed as the quick-fix moves: a change to a tracked file, and a file of its own. */
 const UNCOMMITTED = Object.freeze({ 'README.md': '# The project, its flag spelt --colour\n', 'src/alias.js': 'module.exports = \'color\';\n' });

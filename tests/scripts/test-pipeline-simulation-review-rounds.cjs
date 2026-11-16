@@ -49,7 +49,7 @@ function fixedRound(sim, phase, {
   call, text, scenario, title, file, note,
 }) {
   writePhaseTasks(sim, WU, phase, 'Review fixes', [{ title, type: 'fix', scenarios: [scenario], reference: '§1' }]);
-  const res = sim.run(['review', 'round', WU, '--file', sim.write(`.leeway/.cache/${WU}/review/round.json`, {
+  const res = sim.run(['review', 'round', WU, '--file', sim.write(`.ledger/.cache/${WU}/review/round.json`, {
     can_now: ['Keep a ledger.'],
     findings: [{ area: '1-the-work', scope: 'in', call, text, from: ['1-the-work-a#1'], fix: `${phase}.1` }],
   })]);
@@ -93,7 +93,7 @@ describe('pipeline simulation: the review\'s rounds', () => {
     const notes = reviewNext(sim, WU);
     assert.deepStrictEqual([notes.move, notes.data['builder note']], ['notes', [`notes#${note}`]], 'the fix\'s builder\'s note is answered before finish (14.3.5)');
     const dropped = reviewCall(sim, WU, 'Is the export\'s note filed or dropped?', 'Dropped: the export\'s refunds.', 'The export is rewritten next.');
-    sim.run(['review', 'notes', WU, '--file', sim.write(`.leeway/.cache/${WU}/review/notes.json`, {
+    sim.run(['review', 'notes', WU, '--file', sim.write(`.ledger/.cache/${WU}/review/notes.json`, {
       findings: [{ area: 'notes', scope: 'out', call: 'nit', text: 'The export skips refunds.', from: [`notes#${note}`], drop: 'The export is rewritten next.', ledger: dropped }],
     })]);
     sim.render(['review-report', WU], { expect: 'content' });

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Ready to build's screen (leeway-engine/scripts/domain/ready-to-build.cjs,
+// Ready to build's screen (ledger-engine/scripts/domain/ready-to-build.cjs,
 // its screen domain/projections/ready-to-build.cjs): `engine render
 // ready-to-build <unit> [--page] [--calls]`, an epic's screen as 11.8.8
 // draws it — Claude's calls at the spec as they stand decided, counted by
@@ -27,8 +27,8 @@ const { ok, sectionOf, statePath, layout, readState, readManifest, commitAll } =
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { MADE, ledgerHelpers } = require('./ledger-world.cjs');
 const { NB, unwrap } = require('./render-surfaces-world.cjs');
-const { renderSurface } = require('../../skills/leeway-engine/scripts/domain/render.cjs');
-const { appendEntry } = require('../../skills/leeway-engine/scripts/domain/ledger.cjs');
+const { renderSurface } = require('../../skills/ledger-engine/scripts/domain/render.cjs');
+const { appendEntry } = require('../../skills/ledger-engine/scripts/domain/ledger.cjs');
 const { UNIT, SESSION, SPEC_AT, READ_BACK, CARDS, REFUNDS, made, write, answered, written, cut, closeReady, closed, useReadyWorld, readyHelpers } = require('./ready-to-build-world.cjs');
 
 const dir = useReadyWorld(closed);

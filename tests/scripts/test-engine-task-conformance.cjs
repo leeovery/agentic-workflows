@@ -20,7 +20,7 @@
 // with the driver is refused here: a store it cannot read, or a line of it,
 // a link that would make a cycle, a name carried twice, and a unit or phase the person
 // ended in the tracker, cancelled or done — a parent the tracker ended itself
-// is reopened. A plan the tracker held from before Leeway adopted phase by
+// is reopened. A plan the tracker held from before Ledger adopted phase by
 // phase (21.8.8): the engine's names added in the order the tracker made
 // its tasks, the unit's on the plan's root where it is free — a root
 // another unit's taking none — nothing else of a task changed and nothing
@@ -58,9 +58,9 @@ const fs = require('fs');
 const path = require('path');
 
 const { STATE_DIR_NAME, templateFolder, useTempFolder } = require('./discovery-test-utils.cjs');
-const { listDrivers, toolStates, needsRefusal } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
-const { phaseName, unitName, taskName, endedInTracker, FOREIGN_TASK } = require('../../skills/leeway-engine/scripts/domain/task-id.cjs');
-const { MergeError } = require('../../skills/leeway-engine/scripts/domain/state-merge-rules.cjs');
+const { listDrivers, toolStates, needsRefusal } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
+const { phaseName, unitName, taskName, endedInTracker, FOREIGN_TASK } = require('../../skills/ledger-engine/scripts/domain/task-id.cjs');
+const { MergeError } = require('../../skills/ledger-engine/scripts/domain/state-merge-rules.cjs');
 
 const UNIT = 'pay';
 const SIDES = path.join(__dirname, '..', 'drivers');
@@ -424,7 +424,7 @@ for (const driver of listDrivers('task')) {
       assert.throws(() => driver.show(root, ref(1, 1)), /\btask 1\.1 of pay\b.*\btask 1\.3 of pay\b/);
     });
 
-    describe('adopt (21.8.8): a plan the tracker held from before Leeway given the engine\'s names, phase by phase', () => {
+    describe('adopt (21.8.8): a plan the tracker held from before Ledger given the engine\'s names, phase by phase', () => {
       const OLD = 'shop';
       const PLAN = [
         { title: 'The basket', tasks: ['Hold the basket', 'Price the basket', 'Empty the basket'] },

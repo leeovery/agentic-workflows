@@ -14,7 +14,7 @@ const {
   fileExists, listFiles, listDirs, filesChecksum,
   loadManifest, loadActiveManifests, loadAllManifests,
   loadProjectManifest,
-} = require('../../skills/leeway-engine/scripts/domain/reads.cjs');
+} = require('../../skills/ledger-engine/scripts/domain/reads.cjs');
 const {
   phaseStatus, phaseItems, phaseData, computeNextPhase,
   computeTopicLifecycle, computeNextAction, computeMapSummary,
@@ -24,7 +24,7 @@ const {
   TIER_RANK,
   cancelPlan, postponePlan, postponeTarget, postponeClashPhrase, postponedItem, topicKey, noTopicRefusal,
   fixesUnderWay, investigationUnderWay,
-} = require('../../skills/leeway-engine/scripts/domain/derivations.cjs');
+} = require('../../skills/ledger-engine/scripts/domain/derivations.cjs');
 
 /**
  * A unit of `type` whose build runs by its two-phase cut, the phases named
@@ -116,7 +116,7 @@ describe('reads + derivations', () => {
 
   describe('loadManifest', () => {
     it('loads valid manifest', () => {
-      const mdir = path.join(dir, '.leeway', 'test');
+      const mdir = path.join(dir, '.ledger', 'test');
       fs.mkdirSync(mdir, { recursive: true });
       fs.writeFileSync(path.join(mdir, 'manifest.json'), JSON.stringify({ name: 'test', work_type: 'feature' }));
       const m = loadManifest(dir, 'test');
@@ -141,7 +141,7 @@ describe('reads + derivations', () => {
     it('skips dotfiles', () => {
       const { createManifest } = require('./discovery-test-utils.cjs');
       createManifest(dir, 'good', {});
-      fs.mkdirSync(path.join(dir, '.leeway', '.state'), { recursive: true });
+      fs.mkdirSync(path.join(dir, '.ledger', '.state'), { recursive: true });
       const results = loadActiveManifests(dir);
       assert.strictEqual(results.length, 1);
     });
@@ -160,7 +160,7 @@ describe('reads + derivations', () => {
     it('skips dotfiles', () => {
       const { createManifest } = require('./discovery-test-utils.cjs');
       createManifest(dir, 'good', {});
-      fs.mkdirSync(path.join(dir, '.leeway', '.state'), { recursive: true });
+      fs.mkdirSync(path.join(dir, '.ledger', '.state'), { recursive: true });
       const results = loadAllManifests(dir);
       assert.strictEqual(results.length, 1);
     });
@@ -169,13 +169,13 @@ describe('reads + derivations', () => {
   describe('loadProjectManifest', () => {
     it('returns parsed project manifest', () => {
       const proj = { work_units: { alpha: { work_type: 'feature' } } };
-      fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify(proj));
+      fs.writeFileSync(path.join(dir, '.ledger', 'manifest.json'), JSON.stringify(proj));
       const result = loadProjectManifest(dir);
       assert.deepStrictEqual(result, proj);
     });
 
     it('returns null when missing', () => {
-      fs.rmSync(path.join(dir, '.leeway', 'manifest.json'));
+      fs.rmSync(path.join(dir, '.ledger', 'manifest.json'));
       assert.strictEqual(loadProjectManifest(dir), null);
     });
   });
@@ -187,7 +187,7 @@ describe('reads + derivations', () => {
       createManifest(dir, 'beta', { status: 'completed' });
       // Project manifest only lists alpha and beta
       const proj = { work_units: { alpha: { work_type: 'feature' }, beta: { work_type: 'feature' } } };
-      fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify(proj));
+      fs.writeFileSync(path.join(dir, '.ledger', 'manifest.json'), JSON.stringify(proj));
       const results = loadActiveManifests(dir);
       assert.strictEqual(results.length, 1);
       assert.strictEqual(results[0].name, 'alpha');
@@ -198,7 +198,7 @@ describe('reads + derivations', () => {
       createManifest(dir, 'exists', { status: 'in-progress' });
       // "ghost" is in project manifest but has no directory
       const proj = { work_units: { exists: { work_type: 'feature' }, ghost: { work_type: 'epic' } } };
-      fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify(proj));
+      fs.writeFileSync(path.join(dir, '.ledger', 'manifest.json'), JSON.stringify(proj));
       const results = loadActiveManifests(dir);
       assert.strictEqual(results.length, 1);
       assert.strictEqual(results[0].name, 'exists');
@@ -220,7 +220,7 @@ describe('reads + derivations', () => {
       createManifest(dir, 'a', { status: 'in-progress' });
       createManifest(dir, 'b', { status: 'completed' });
       const proj = { work_units: { a: { work_type: 'feature' }, b: { work_type: 'epic' } } };
-      fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify(proj));
+      fs.writeFileSync(path.join(dir, '.ledger', 'manifest.json'), JSON.stringify(proj));
       const results = loadAllManifests(dir);
       assert.strictEqual(results.length, 2);
     });
@@ -229,7 +229,7 @@ describe('reads + derivations', () => {
       const { createManifest } = require('./discovery-test-utils.cjs');
       createManifest(dir, 'real', { status: 'in-progress' });
       const proj = { work_units: { real: { work_type: 'feature' }, gone: { work_type: 'epic' } } };
-      fs.writeFileSync(path.join(dir, '.leeway', 'manifest.json'), JSON.stringify(proj));
+      fs.writeFileSync(path.join(dir, '.ledger', 'manifest.json'), JSON.stringify(proj));
       const results = loadAllManifests(dir);
       assert.strictEqual(results.length, 1);
       assert.strictEqual(results[0].name, 'real');

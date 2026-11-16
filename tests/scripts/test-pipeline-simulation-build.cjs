@@ -76,7 +76,7 @@ describe('pipeline simulation: the build', () => {
     assert.deepStrictEqual([...new Set(entered.map((line) => line.slice(0, line.indexOf(': '))))], ['position', 'phase', 'affected', 'record', 'build log', 'engine'],
       '22.S7: the project\'s first build starts asking nothing — no plan format, no project skills');
     for (const call of [['ledger', 'record', WU], ['ledger', 'affected', WU]]) sim.read(call);
-    sim.write(`.leeway/${WU}/build/log.md`, '# The build\n\nPhase 1: its tasks are being written.\n');
+    sim.write(`.ledger/${WU}/build/log.md`, '# The build\n\nPhase 1: its tasks are being written.\n');
 
     // Phase 1's start: written into the tracker, its tasks by the writer.
     sim.run(['task', 'phase', WU, '1', '--title', 'Settling']);
@@ -86,8 +86,8 @@ describe('pipeline simulation: the build', () => {
 
     // The person reports a bug mid-build, for the phase not yet written: one
     // door, its writer's, and the concluded spec is never corrected (12.S19).
-    const spec = fs.readFileSync(path.join(sim.dir, `.leeway/${WU}/spec.md`), 'utf8');
-    sim.run(['task', 'note', WU, '--phase', '2', '--file', sim.write(`.leeway/.cache/${WU}/build/note.md`, 'A shown entry never checks its hash.\n')]);
+    const spec = fs.readFileSync(path.join(sim.dir, `.ledger/${WU}/spec.md`), 'utf8');
+    sim.run(['task', 'note', WU, '--phase', '2', '--file', sim.write(`.ledger/.cache/${WU}/build/note.md`, 'A shown entry never checks its hash.\n')]);
     sim.refuses(['spec', 'land', WU], /spec is concluded, and a concluded spec is never corrected/);
 
     // Task 1.1: its pair fails round 1, the fix round goes to the same
@@ -95,7 +95,7 @@ describe('pipeline simulation: the build', () => {
     // commits in the task's worktree, under the task (12.S22).
     assert.deepStrictEqual(sim.run(['task', 'ready', WU]).tasks.map((/** @type {{task: string}} */ t) => t.task), ['1.1']);
     sim.run(['task', 'start', WU, '1.1']);
-    sim.render(['build-headline', WU, '--file', sim.write(`.leeway/.cache/${WU}/build/headline.json`, { tasks: [{ task: '1.1', changes: 'An entry settles.', watch: 'The ledger.' }] })], { expect: 'content' });
+    sim.render(['build-headline', WU, '--file', sim.write(`.ledger/.cache/${WU}/build/headline.json`, { tasks: [{ task: '1.1', changes: 'An entry settles.', watch: 'The ledger.' }] })], { expect: 'content' });
     const builder = loop.brief(['builder', WU, '1.1']);
     const settling = loop.isolated('1.1');
     loop.committed(settling, '1.1', { ...VERIFY_FILES, 'src/settle.js': 'export const settle = 1;\n' }, 'feat(ledgerly): settle an entry');
@@ -105,7 +105,7 @@ describe('pipeline simulation: the build', () => {
     loop.committed(settling, '1.1', { 'src/settle.js': '// Phase 1 writes the header first.\nexport const settle = 2;\n' }, 'fix(ledgerly): an empty ledger writes its header');
     loop.pairRound('1.1', NIT);
     loop.committed(settling, '1.1', { 'src/settle.js': '// Writes the header first.\nexport const settle = 2;\n' }, 'fix(ledgerly): the comment says what the code does');
-    assert.match(git(settling, ['log', '-1', '--format=%B']), /^Leeway-Task: ledgerly-1-1$/m, 'the nit lands in the task\'s commit, under the task');
+    assert.match(git(settling, ['log', '-1', '--format=%B']), /^Ledger-Task: ledgerly-1-1$/m, 'the nit lands in the task\'s commit, under the task');
     loop.accounted('1.1', ['An empty ledger wrote no header; the builder wrote it.', 'Passed, one nit fixed.']);
     sim.render(['task-landed', WU, '1.1'], { expect: 'content' });
     sim.refuses(['render', 'step-gate', WU, '1.1'], /builds in auto, where no gate follows a task/);
@@ -126,16 +126,16 @@ describe('pipeline simulation: the build', () => {
     assert.deepStrictEqual([deadReviewer, ...beside].map((top) => fs.existsSync(top)), [false, true, true], 'the dead phase reviewer\'s scratch worktree taken apart as the phase merges, no other');
     assert.deepStrictEqual(Object.entries(sim.manifest(WU).landings).map(([id, byRepo]) => [id, Object.entries(byRepo).map(([repo, { by }]) => [repo, by])]), [[`${WU}-1-1`, [['.', 'engine']]]], 'the phase\'s landing recorded by the engine, its task in the project\'s repository');
     sim.run(['checklist', 'close', 'phase-close', WU, '1']);
-    fs.appendFileSync(path.join(sim.dir, `.leeway/${WU}/build/log.md`), '\nPhase 1 closed.\n');
+    fs.appendFileSync(path.join(sim.dir, `.ledger/${WU}/build/log.md`), '\nPhase 1 closed.\n');
 
     // Phase 2 starts with no handoff: the same conversation, the same skill.
     assert.deepStrictEqual(sim.handoffs.slice(handedOff), [], 'no handoff at the phase boundary');
     assert.deepStrictEqual(carryOn(sim).position.phase, 'implementation');
     sim.run(['task', 'phase', WU, '2', '--title', 'Showing']);
     assert.ok(briefOf(sim, loop.brief(['task-writer', WU, '2'])).includes('A shown entry never checks its hash.'), 'the note held for the phase reaches its writer');
-    assert.ok(fs.readFileSync(path.join(sim.dir, `.leeway/${WU}/spec.md`), 'utf8') === spec, 'the spec is as it concluded');
+    assert.ok(fs.readFileSync(path.join(sim.dir, `.ledger/${WU}/spec.md`), 'utf8') === spec, 'the spec is as it concluded');
     assert.deepStrictEqual(Object.fromEntries([...loop.agents].map(([role, named]) => [role, [...named]])), {
-      'task-writer': ['leeway-task-writer'], builder: ['leeway-builder'], reviewer: ['leeway-reviewer'], fix: ['leeway-builder'], 'phase-review': ['leeway-reviewer'],
+      'task-writer': ['ledger-task-writer'], builder: ['ledger-builder'], reviewer: ['ledger-reviewer'], fix: ['ledger-builder'], 'phase-review': ['ledger-reviewer'],
     }, 'the agents run as defined');
 
     // The build learns two of its runs share a port and records it, so no

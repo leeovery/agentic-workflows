@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // The tracker's store in a second clone's merge
-// (leeway-engine/scripts/domain/state-merge-paths.cjs and state-merge.cjs,
+// (ledger-engine/scripts/domain/state-merge-paths.cjs and state-merge.cjs,
 // the store merged by its task driver; 4.7, 7.5, 29.14.9): each side's
 // tasks merged by the tracker's records, a field both machines set
 // differently asked at the merge's stop and the pick written, and a name
@@ -24,7 +24,7 @@ const fs = require('fs');
 const path = require('path');
 const { git, commitOnState } = require('./engine-harness.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { STATE_DIR_NAME } = require(path.join(SCRIPTS, 'kernel/state-root.cjs'));
 const { catchUpState, stateMergeGateSurface } = require(path.join(SCRIPTS, 'domain/state-merge.cjs'));
@@ -37,7 +37,7 @@ const { useWorld, machinesSharing, blobId, status, commitUnpushed, pickShown } =
 /** @typedef {import('./state-merge-world.cjs').Machine} Machine */
 
 const world = useWorld();
-const DRIVER = /** @type {import('../../skills/leeway-engine/scripts/domain/drivers.cjs').TaskDriver} */ (listDrivers('task').find((driver) => driver.isDefault));
+const DRIVER = /** @type {import('../../skills/ledger-engine/scripts/domain/drivers.cjs').TaskDriver} */ (listDrivers('task').find((driver) => driver.isDefault));
 const [STORE] = DRIVER.storeFiles();
 const UNIT = 'pay';
 

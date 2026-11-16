@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The `land` verbs' argv contract (leeway-engine/scripts/domain/landing.cjs,
+// The `land` verbs' argv contract (ledger-engine/scripts/domain/landing.cjs,
 // with landing-git.cjs and landing-names.cjs): the usage and the shapes they
 // refuse, writing nothing; the landing driver settled and committed by the
 // first verb where no setting names one, and kept once it does (7.S21); the
@@ -44,10 +44,10 @@ const {
   refusedMoving,
 } = require('./landing-world.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
-const { STATE_BRANCH } = require('../../skills/leeway-engine/scripts/domain/state-worktree.cjs');
-const { roundReportPath, phaseReviewPath } = require('../../skills/leeway-engine/scripts/domain/round-report.cjs');
-const { parseShownTask } = require('../../skills/leeway-engine/scripts/domain/task-id.cjs');
-const { REVIEWER_LETTERS } = require('../../skills/leeway-engine/scripts/kernel/reviewers.cjs');
+const { STATE_BRANCH } = require('../../skills/ledger-engine/scripts/domain/state-worktree.cjs');
+const { roundReportPath, phaseReviewPath } = require('../../skills/ledger-engine/scripts/domain/round-report.cjs');
+const { parseShownTask } = require('../../skills/ledger-engine/scripts/domain/task-id.cjs');
+const { REVIEWER_LETTERS } = require('../../skills/ledger-engine/scripts/kernel/reviewers.cjs');
 
 const { card } = TASKS;
 const project = useLandingWorld('engine-land-verbs-');
@@ -231,10 +231,10 @@ describe('land: the default branch everything lands on', () => {
   it('4.S20: is never the state branch: the verb refuses, writing nothing (4.9.4)', () => {
     const dir = project();
     const before = stateAt(dir);
-    git(dir, ['config', 'init.defaultBranch', 'leeway-state']);
+    git(dir, ['config', 'init.defaultBranch', 'ledger-state']);
     assert.strictEqual(
       refuses(dir, openArgs(card)).error,
-      'land: the default branch reads as leeway-state, the workflows\' state branch, which nothing lands on — name the project\'s own with `git config init.defaultBranch <branch>`',
+      'land: the default branch reads as ledger-state, the workflows\' state branch, which nothing lands on — name the project\'s own with `git config init.defaultBranch <branch>`',
     );
     assert.deepStrictEqual(stateAt(dir), before);
   });
@@ -264,10 +264,10 @@ describe('land open: a task judged by its own change', () => {
     it('refuses a task carrying the state, which sits at the repository\'s top whatever the person\'s diff.relative', () => {
       const [dir, app] = nested();
       git(dir, ['config', 'diff.relative', 'true']);
-      const notes = cutTask(dir, '1.4', 'feat', 'Note it', 'main', { 'app/note.txt': 'note\n', '.leeway/notes.md': 'state\n' });
+      const notes = cutTask(dir, '1.4', 'feat', 'Note it', 'main', { 'app/note.txt': 'note\n', '.ledger/notes.md': 'state\n' });
       assert.strictEqual(
         refuses(app, openArgs(notes)).error,
-        'land: task 1.4\'s change carries .leeway/notes.md — the workflows\' state never lands on a code branch, so take it off the task\'s branch and open the task again',
+        'land: task 1.4\'s change carries .ledger/notes.md — the workflows\' state never lands on a code branch, so take it off the task\'s branch and open the task again',
       );
     });
 

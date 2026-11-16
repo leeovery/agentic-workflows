@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The environment setup's screen (leeway-engine/scripts/domain/projections/
+// The environment setup's screen (ledger-engine/scripts/domain/projections/
 // environment-setup.cjs; 22.5.7, 22.5.8, 22.5.9): drawn at the project's
 // first ready to build from what Claude found — how to run the product, the
 // steps that prepare the environment, what cannot run at once so far and the
@@ -20,10 +20,10 @@ const assert = require('node:assert');
 const path = require('path');
 const { screenOf } = require('./engine-harness.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { environmentSetupScreen } = require(path.join(SCRIPTS, 'domain/projections/environment-setup.cjs'));
 
-/** @typedef {import('../../skills/leeway-engine/scripts/domain/environment.cjs').Setup} Setup */
+/** @typedef {import('../../skills/ledger-engine/scripts/domain/environment.cjs').Setup} Setup */
 
 /** What Claude found in a Go project, the setup not yet asked. @type {Setup} */
 const FOUND = Object.freeze({

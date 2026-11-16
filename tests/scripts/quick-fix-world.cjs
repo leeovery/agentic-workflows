@@ -48,7 +48,7 @@ const { createManifest, useTempFolder } = require('./discovery-test-utils.cjs');
 const { NESTED } = require('./landing-world.cjs');
 const { MADE, ledgerHelpers } = require('./ledger-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const store = require(path.join(SCRIPTS, 'kernel/knowledge/store.cjs'));
 const { knowledgeFiles } = require(path.join(SCRIPTS, 'kernel/knowledge/files.cjs'));
 const { quickFixBranch } = require(path.join(SCRIPTS, 'domain/landing-names.cjs'));
@@ -88,12 +88,12 @@ const fixFile = (n, title) => [
 /** The quick-fix made from its inbox note, or where `seeded` is false from none, beside a feature, the code committed. @param {string} dir @param {{seeded?: boolean}} [options] */
 function quickFix(dir, { seeded = true } = {}) {
   createFile(dir, 'src/flag.js', 'const flag = \'color\';\n');
-  createFile(dir, '.claude/skills/leeway-quick-fix-process/SKILL.md', '# Quick-Fix\n');
+  createFile(dir, '.claude/skills/ledger-quick-fix-process/SKILL.md', '# Quick-Fix\n');
   writeState(dir, NOTE, '# The colour flag\n');
   createManifest(dir, 'other', {});
   commitAll(dir, 'init');
   const log = writeState(dir, layout.cache(UNIT, 'session-001.md'), '# Discovery Session 001\n');
-  ok(dir, ['workunit', 'create', UNIT, 'quick-fix', '--description', DESCRIPTION, '--session-log-file', log, ...(seeded ? ['--seed', `.leeway/${NOTE}`] : [])]);
+  ok(dir, ['workunit', 'create', UNIT, 'quick-fix', '--description', DESCRIPTION, '--session-log-file', log, ...(seeded ? ['--seed', `.ledger/${NOTE}`] : [])]);
 }
 
 /** Fix `n` made through the tracker's verb. @param {string} dir @param {number} n @param {string} title @param {As} [as] */
@@ -249,7 +249,7 @@ function quickFixConformance(name, prefix) {
     made = [];
   });
   /** @returns {As} */
-  const as = () => ({ env: { ...side.env, LEEWAY_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: 'sess-1', TMUX: undefined, TMUX_PANE: undefined } });
+  const as = () => ({ env: { ...side.env, LEDGER_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: 'sess-1', TMUX: undefined, TMUX_PANE: undefined } });
   /** @param {string} at @param {number} n */
   const record = (at, n) => ok(at, ['quick-fix', 'record', UNIT, `1.${n}`, '--file', recordFile(at, n, { changed: `${SET[n - 1].title}.`, why: 'It was spelt the American way.', leaves: 'Nothing.' })], as());
   /** A copy of the world `from` makes, the quick-fix entered by the suite's conversation. @param {() => string} from */
@@ -341,7 +341,7 @@ function quickFixNestedConformance(name, prefix) {
     made = [];
   });
   /** @returns {As} */
-  const as = () => ({ env: { ...side.env, LEEWAY_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: 'sess-1', TMUX: undefined, TMUX_PANE: undefined } });
+  const as = () => ({ env: { ...side.env, LEDGER_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: 'sess-1', TMUX: undefined, TMUX_PANE: undefined } });
   return {
     side,
     as,
@@ -485,7 +485,7 @@ const closeYes = (dir, as) => /\*\*`y\/yes`\*\* {4}→ ([^*]*?)\s*\*\*/.exec(sec
 function asGone(build, env = {}) {
   const gone = fs.mkdtempSync(path.join(os.tmpdir(), 'quick-fix-gone-'));
   try {
-    build({ env: { ...env, LEEWAY_CONFIG_DIR: gone, CLAUDE_CODE_SESSION_ID: 'gone', TMUX: undefined, TMUX_PANE: undefined } });
+    build({ env: { ...env, LEDGER_CONFIG_DIR: gone, CLAUDE_CODE_SESSION_ID: 'gone', TMUX: undefined, TMUX_PANE: undefined } });
   } finally {
     fs.rmSync(gone, { recursive: true, force: true });
   }

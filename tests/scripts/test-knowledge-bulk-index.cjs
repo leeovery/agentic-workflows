@@ -18,12 +18,12 @@ const path = require('path');
 const { describe, it, before, after, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 
-const store = require('../../skills/leeway-engine/scripts/kernel/knowledge/store.cjs');
-const { CHUNKER_VERSION } = require('../../skills/leeway-engine/scripts/kernel/knowledge/chunker.cjs');
-const { StubProvider } = require('../../skills/leeway-engine/scripts/kernel/knowledge/embeddings.cjs');
-const { InvalidRequestError, QuotaError } = require('../../skills/leeway-engine/scripts/kernel/knowledge/providers/openai-engine.cjs');
-const { indexBulk } = require('../../skills/leeway-engine/scripts/domain/knowledge/bulk.cjs');
-const { indexPath } = require('../../skills/leeway-engine/scripts/domain/knowledge/indexing.cjs');
+const store = require('../../skills/ledger-engine/scripts/kernel/knowledge/store.cjs');
+const { CHUNKER_VERSION } = require('../../skills/ledger-engine/scripts/kernel/knowledge/chunker.cjs');
+const { StubProvider } = require('../../skills/ledger-engine/scripts/kernel/knowledge/embeddings.cjs');
+const { InvalidRequestError, QuotaError } = require('../../skills/ledger-engine/scripts/kernel/knowledge/providers/openai-engine.cjs');
+const { indexBulk } = require('../../skills/ledger-engine/scripts/domain/knowledge/bulk.cjs');
+const { indexPath } = require('../../skills/ledger-engine/scripts/domain/knowledge/indexing.cjs');
 const { ENGINE_COMMAND, embeddingEndpoint, engineKnowledge, heldCall, recordLaunches, withoutBackoff } = require('./knowledge-harness.cjs');
 const { setupFixture, cleanupFixture, statePath, layout, createFile } = require('./discovery-test-utils.cjs');
 
@@ -55,11 +55,11 @@ function writeRecord(root, topic, body) {
  * @param {string} root @param {string} name @param {Record<string, any>} [unit]  over the manifest's own fields
  */
 function addFeature(root, name, unit = {}) {
-  const registry = path.join(root, '.leeway', 'manifest.json');
+  const registry = path.join(root, '.ledger', 'manifest.json');
   const project = JSON.parse(fs.readFileSync(registry, 'utf8'));
   project.work_units[name] = { work_type: 'feature' };
   writeJson(registry, project);
-  writeJson(path.join(root, '.leeway', name, 'manifest.json'), {
+  writeJson(path.join(root, '.ledger', name, 'manifest.json'), {
     name, work_type: 'feature', status: 'in-progress', created: '2026-01-01', ...unit,
     phases: {},
   });
@@ -69,13 +69,13 @@ function addFeature(root, name, unit = {}) {
 /** An epic whose three topics' records are on disk, no store yet. */
 function buildProject() {
   const root = setupFixture('kb-bulk-');
-  writeJson(path.join(root, '.leeway', 'manifest.json'), { work_units: { payments: { work_type: 'epic' } } });
-  writeJson(path.join(root, '.leeway', 'payments', 'manifest.json'), {
+  writeJson(path.join(root, '.ledger', 'manifest.json'), { work_units: { payments: { work_type: 'epic' } } });
+  writeJson(path.join(root, '.ledger', 'payments', 'manifest.json'), {
     name: 'payments', work_type: 'epic', status: 'in-progress', created: '2026-01-01',
     phases: {},
   });
   for (const topic of TOPICS) writeRecord(root, topic, `The ${topic} decision.`);
-  fs.mkdirSync(path.join(root, '.leeway', '.knowledge'), { recursive: true });
+  fs.mkdirSync(path.join(root, '.ledger', '.knowledge'), { recursive: true });
   return root;
 }
 
@@ -106,7 +106,7 @@ function spyProvider({ refuse = () => false, during = async () => {}, unreachabl
 }
 
 function storeFile(root) {
-  return path.join(root, '.leeway', '.knowledge', 'store.bin');
+  return path.join(root, '.ledger', '.knowledge', 'store.bin');
 }
 
 function chunksFor(root, topic) {
@@ -195,7 +195,7 @@ describe('knowledge bulk index — keywords in one write, then vectors batch by 
     });
     await bulk(root, output, CFG, spyProvider());
     t.mock.restoreAll();
-    assert.deepStrictEqual(Object.fromEntries(reads), { '.leeway/manifest.json': 2, '.leeway/payments/manifest.json': 2 });
+    assert.deepStrictEqual(Object.fromEntries(reads), { '.ledger/manifest.json': 2, '.ledger/payments/manifest.json': 2 });
   });
 
   it('writes the keyword side before any embed: a provider failing its first call leaves every new file searchable by keyword', async () => {
@@ -338,7 +338,7 @@ describe('knowledge bulk index — keywords in one write, then vectors batch by 
 
   /** A rebuild landing mid-run: the store's recorded embedder rewritten. @param {Record<string, any>} identity */
   const rebuiltAs = (identity) => async () => {
-    const file = path.join(root, '.leeway', '.knowledge', 'metadata.json');
+    const file = path.join(root, '.ledger', '.knowledge', 'metadata.json');
     writeJson(file, { ...JSON.parse(fs.readFileSync(file, 'utf8')), ...identity });
   };
 
@@ -430,9 +430,9 @@ describe('knowledge bulk index — keywords in one write, then vectors batch by 
   });
 
   it('takes a configured provider into a keyword-only store, and embeds every chunk', async () => {
-    fs.writeFileSync(path.join(root, '.leeway', '.knowledge', 'config.json'), '{ "knowledge": { "provider": null } }\n');
+    fs.writeFileSync(path.join(root, '.ledger', '.knowledge', 'config.json'), '{ "knowledge": { "provider": null } }\n');
     await bulk(root, output, { provider: null }, null);
-    const metadata = () => JSON.parse(fs.readFileSync(path.join(root, '.leeway', '.knowledge', 'metadata.json'), 'utf8'));
+    const metadata = () => JSON.parse(fs.readFileSync(path.join(root, '.ledger', '.knowledge', 'metadata.json'), 'utf8'));
     assert.strictEqual(metadata().provider, null);
     const provider = spyProvider();
     const summary = await bulk(root, output, CFG, provider);
@@ -634,11 +634,11 @@ describe('knowledge index — `engine knowledge index`, without a vector', () =>
 
   /** @param {Record<string, any>} knowledge */
   function configure(knowledge) {
-    writeJson(path.join(root, '.leeway', '.knowledge', 'config.json'), { knowledge });
+    writeJson(path.join(root, '.ledger', '.knowledge', 'config.json'), { knowledge });
   }
 
   function metadata() {
-    return JSON.parse(fs.readFileSync(path.join(root, '.leeway', '.knowledge', 'metadata.json'), 'utf8'));
+    return JSON.parse(fs.readFileSync(path.join(root, '.ledger', '.knowledge', 'metadata.json'), 'utf8'));
   }
 
   /** @param {...string} args */
@@ -661,7 +661,7 @@ describe('knowledge index — `engine knowledge index`, without a vector', () =>
 
   it('a single-file index writes by keyword and launches the fill; a fill that falls short exits non-zero, and a search says why until one lands', async (t) => {
     const launched = recordLaunches(t);
-    const indexed = await cli('index', `.leeway/${layout.record('payments', 'alpha')}`);
+    const indexed = await cli('index', `.ledger/${layout.record('payments', 'alpha')}`);
     assert.deepStrictEqual(indexed, { code: 0, stdout: `Indexed 1 chunks from ${recordPath(root, 'alpha')}\n`, stderr: '' });
     assert.deepStrictEqual(launched, [statePath(root)], 'the fill works on the state\'s store');
     assert.deepStrictEqual(endpoint.requests, [], 'the index itself embeds nothing');
@@ -702,7 +702,7 @@ describe('knowledge index — `engine knowledge index`, without a vector', () =>
   it('a bulk index over a store whose provider key does not resolve exits non-zero naming the key, with nothing awaiting, and check stays ready', async () => {
     assert.strictEqual((await cli('index')).code, 0);
     const openai = { provider: 'openai', model: 'text-embedding-3-small', dimensions: 8 };
-    writeJson(path.join(root, '.leeway', '.knowledge', 'metadata.json'), { ...metadata(), ...openai });
+    writeJson(path.join(root, '.ledger', '.knowledge', 'metadata.json'), { ...metadata(), ...openai });
     configure(openai);
     const indexed = await cli('index');
     assert.strictEqual(indexed.code, 1);
@@ -741,9 +741,9 @@ describe('knowledge index — `engine knowledge index`, without a vector', () =>
   it('a project setup --keyword-only pins never takes the provider the machine names', async () => {
     const system = fs.mkdtempSync(path.join(os.tmpdir(), 'kb-system-'));
     writeJson(path.join(system, 'config.json'), { knowledge: endpoint.config });
-    fs.rmSync(path.join(root, '.leeway', '.knowledge'), { recursive: true, force: true });
+    fs.rmSync(path.join(root, '.ledger', '.knowledge'), { recursive: true, force: true });
     try {
-      const env = { LEEWAY_CONFIG_DIR: system };
+      const env = { LEDGER_CONFIG_DIR: system };
       assert.strictEqual((await engineKnowledge(root, ['setup', '--keyword-only'], env)).code, 0);
       assert.strictEqual((await engineKnowledge(root, ['index'], env)).code, 0);
       assert.strictEqual(metadata().provider, null);

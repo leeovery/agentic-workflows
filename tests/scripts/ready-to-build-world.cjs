@@ -34,7 +34,7 @@ const { MADE } = require('./ledger-world.cjs');
 const { labelling } = require('./labels.cjs');
 const { DECIDED_ITEMS } = require('./pipeline-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { trustLogPath } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
 
 const UNIT = 'payments';
@@ -45,7 +45,7 @@ const PERSON = Object.freeze({ by: 'person', who_moved_whom: 'none' });
 const SPEC_AT = `${UNIT}.specification`;
 const READ_BACK = layout.cache(UNIT, 'specification', 'read-back.json');
 /** The config folder the hermetic env pinned, put back after each test. */
-const PINNED = /** @type {string} */ (process.env.LEEWAY_CONFIG_DIR);
+const PINNED = /** @type {string} */ (process.env.LEDGER_CONFIG_DIR);
 
 /** Each entry's short id by name, filled as the world is built. @type {Record<string, string>} */
 const made = {};
@@ -204,7 +204,7 @@ const feature = fixtureFrom('ready-to-build-feature-', (dir) => buildFeature(dir
 /** Where the departed world keeps the trust log its departures were logged in, carried with each copy. @param {string} dir */
 const worldConfig = (dir) => path.join(dir, '.trust');
 
-const featureDeparted = fixtureFrom('ready-to-build-feature-departed-', (dir) => withEnv({ LEEWAY_CONFIG_DIR: worldConfig(dir) }, () => buildFeature(dir, { departed: true })));
+const featureDeparted = fixtureFrom('ready-to-build-feature-departed-', (dir) => withEnv({ LEDGER_CONFIG_DIR: worldConfig(dir) }, () => buildFeature(dir, { departed: true })));
 
 /**
  * Each test of the calling file on a copy of `world`, removed after it, its
@@ -219,10 +219,10 @@ function useReadyWorld(world, named) {
   let dir = '';
   beforeEach(() => {
     dir = folder === null ? world() : world(path.join(folder(), /** @type {string} */ (named)));
-    process.env.LEEWAY_CONFIG_DIR = config();
+    process.env.LEDGER_CONFIG_DIR = config();
   });
   afterEach(() => {
-    process.env.LEEWAY_CONFIG_DIR = PINNED;
+    process.env.LEDGER_CONFIG_DIR = PINNED;
     cleanupFixture(dir);
   });
   return () => dir;

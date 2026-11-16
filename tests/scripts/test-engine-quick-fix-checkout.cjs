@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // A quick-fix's one checkout, held by one fix at a time (19.5.23;
-// leeway-engine/scripts/domain/fix-aside.cjs, task-verbs.cjs's `stepTurn`):
+// ledger-engine/scripts/domain/fix-aside.cjs, task-verbs.cjs's `stepTurn`):
 // a builder's question parking the fix that holds it setting aside what it
 // had not committed, its untracked files among it, at a ref of the unit's
 // own, the checkout left clean at the branch's tip for the next fix; the
@@ -49,13 +49,13 @@ const {
   UNIT, PLACE, FLAG, HELP, BRANCH, CALL, quickFix, createFix, fixDone, accountFigures, asGone, entered: enteredBy,
 } = require('./quick-fix-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { briefPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
 const { roundReportPath } = require(path.join(SCRIPTS, 'domain/round-report.cjs'));
 const { REVIEWER_LETTERS } = require(path.join(SCRIPTS, 'kernel/reviewers.cjs'));
 
 /** Where fix 1.1's work is set aside. */
-const ASIDE = `refs/leeway/aside/${UNIT}/${UNIT}-1-1`;
+const ASIDE = `refs/ledger/aside/${UNIT}/${UNIT}-1-1`;
 
 /** The questions the world asks at the quick-fix's place: their short ids. */
 const asked = { first: '', second: '' };
@@ -80,7 +80,7 @@ afterEach(() => {
 });
 
 /** The engine as this test's conversation runs it. */
-const env = () => ({ LEEWAY_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: 'sess-1', CLAUDE_PID: String(process.pid), TMUX: undefined, TMUX_PANE: undefined });
+const env = () => ({ LEDGER_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: 'sess-1', CLAUDE_PID: String(process.pid), TMUX: undefined, TMUX_PANE: undefined });
 
 /** A call that must succeed, in this test's conversation. @param {string[]} args */
 const run = (args) => ok(dir, args, { env: env() });
@@ -115,7 +115,7 @@ const at = (ref) => git(dir, ['for-each-ref', '--format=%(objectname)', ref]).tr
 /** The brief `args` issue in this test's conversation, as stored. @param {string[]} args */
 function briefText(args) {
   const { id } = run(['brief', ...args]);
-  return withEnv({ LEEWAY_CONFIG_DIR: config() }, () => fs.readFileSync(briefPath('sess-1', id), 'utf8'));
+  return withEnv({ LEDGER_CONFIG_DIR: config() }, () => fs.readFileSync(briefPath('sess-1', id), 'utf8'));
 }
 
 /** The entry's line for fix 1.1 after a /clear, its work set aside, up to what its review's rounds say. */

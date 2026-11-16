@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A quick-fix's fix given up (leeway-engine/scripts/domain/fix-end.cjs;
+// A quick-fix's fix given up (ledger-engine/scripts/domain/fix-end.cjs;
 // task-verbs.cjs; fix-branch.cjs): `task close` taking a fix holding no
 // work of its own — given up before its commit — and the door then refusing
 // a commit under it, which takes no more work, naming the next fix's start
@@ -35,7 +35,7 @@ const {
   UNIT, DESCRIPTION, BRANCH, RECORDS, createFix, fixChanged, fixDone, recordFile, twoFixesBuilt, guardedGit, checklistClosed,
 } = require('./quick-fix-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { roundReportPath } = require(path.join(SCRIPTS, 'domain/round-report.cjs'));
 const { REVIEWER_LETTERS } = require(path.join(SCRIPTS, 'kernel/reviewers.cjs'));
 
@@ -55,7 +55,7 @@ afterEach(() => {
 });
 
 /** This test's conversation, as a call's options. */
-const as = () => ({ env: { LEEWAY_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: 'sess-1', TMUX: undefined, TMUX_PANE: undefined } });
+const as = () => ({ env: { LEDGER_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: 'sess-1', TMUX: undefined, TMUX_PANE: undefined } });
 
 /** A call that must succeed, in this test's conversation. @param {string[]} args */
 const run = (args) => ok(dir, args, as());

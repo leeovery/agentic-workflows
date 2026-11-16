@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The project's session hooks at boot (leeway-engine/scripts/domain/boot.cjs
+// The project's session hooks at boot (ledger-engine/scripts/domain/boot.cjs
 // with domain/session-label.cjs): the tmux label choice reported, the
 // calling conversation's position dropped, the workflows' own hooks and the
 // label hooks installed or taken out, the sync under the writer lock, and
@@ -95,7 +95,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     recordChoice(false);
     const config = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-boot-config-'));
     try {
-      const as = (id) => ({ LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: id });
+      const as = (id) => ({ LEDGER_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: id });
       const positionOf = (id) => path.join(config, 'conversations', id, 'position.json');
       for (const id of ['sess-1', 'sess-2']) runEngine(stubbed, fix.project, ['session', 'label', 'payments', 'discussion', 'payments'], as(id));
       assert.ok(fs.existsSync(positionOf('sess-1')) && fs.existsSync(positionOf('sess-2')));
@@ -110,7 +110,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
   it('drops the calling conversation\'s own position before its migrations run — a boot that fails leaves none', () => {
     const config = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-boot-config-'));
     try {
-      const as = { LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'sess-1' };
+      const as = { LEDGER_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'sess-1' };
       const position = path.join(config, 'conversations', 'sess-1', 'position.json');
       runEngine(stubbed, fix.project, ['session', 'label', 'payments', 'discussion', 'payments'], as);
       assert.ok(fs.existsSync(position));
@@ -131,9 +131,9 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     assert.strictEqual(res.session_hooks_installed, true);
     assert.deepStrictEqual(res.warnings, []);
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), hooked(WORKFLOW_HOOKS));
-    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s', 'main']).trim(), 'chore: install Leeway session hooks');
+    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s', 'main']).trim(), 'chore: install Ledger session hooks');
     assert.deepStrictEqual(git(fix.project, ['show', '--name-only', '--pretty=format:', 'main']).trim().split('\n'), ['.claude/settings.json']);
-    assert.strictEqual(stateGit(fix.project, ['rev-parse', 'HEAD']).trim(), stateHead, 'no commit on leeway-state');
+    assert.strictEqual(stateGit(fix.project, ['rev-parse', 'HEAD']).trim(), stateHead, 'no commit on ledger-state');
     assert.strictEqual(fs.existsSync(path.join(state, '.claude')), false);
     assert.strictEqual(fs.existsSync(path.join(state, '.worktreeinclude')), false);
     assert.strictEqual(stateGit(fix.project, ['status', '--porcelain']), '', 'nothing written into the state worktree');
@@ -145,14 +145,14 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     assert.strictEqual(first.session_hooks_installed, true);
     assert.deepStrictEqual(first.warnings, []);
     assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), hooked(WORKFLOW_HOOKS));
-    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore: install Leeway session hooks');
+    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore: install Ledger session hooks');
     assert.deepStrictEqual(git(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n'), ['.claude/settings.json']);
     const head = git(fix.project, ['rev-parse', 'HEAD']);
 
     const second = bootWith();
     assert.strictEqual(second.session_hooks_installed, false);
     assert.strictEqual(git(fix.project, ['rev-parse', 'HEAD']), head, 'nothing new to commit');
-    assert.strictEqual(git(fix.project, ['status', '--porcelain', '--', '.claude', '.leeway']).trim(), '', 'and no new dirt');
+    assert.strictEqual(git(fix.project, ['status', '--porcelain', '--', '.claude', '.ledger']).trim(), '', 'and no new dirt');
   });
 
   it('a project holding the layout group alone gains the brief and shell groups beside it — the foreign groups as they were, a foreign Bash group among them — committed, and a second boot changes nothing', () => {
@@ -161,7 +161,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     const first = bootWith();
     assert.strictEqual(first.session_hooks_installed, true);
     assert.deepStrictEqual(settings(), { hooks: { SessionEnd: [{ hooks: WORKFLOW_HOOKS }], PreToolUse: [theirs, ...GUARD_GROUPS] } });
-    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore: install Leeway session hooks');
+    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore: install Ledger session hooks');
     const head = git(fix.project, ['rev-parse', 'HEAD']);
 
     assert.strictEqual(bootWith().session_hooks_installed, false);
@@ -170,7 +170,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
 
   it('6.S31: boot installs the hooks before Bash and before Agent and SendMessage beside the layout hook, committed on the branch checked out, naming no task while one is in flight (6.S25); a later session with the mod off runs them as installed, and a raw commit during a build and a dispatch of the builder with no brief are each refused', () => {
     const session = 'later-session';
-    const refusals = path.join(/** @type {string} */ (process.env.LEEWAY_CONFIG_DIR), 'brief-refusals.jsonl');
+    const refusals = path.join(/** @type {string} */ (process.env.LEDGER_CONFIG_DIR), 'brief-refusals.jsonl');
     /** The installed hook for `matcher`, run as Claude Code runs it on `toolInput`. @param {string} matcher @param {string} tool @param {object} toolInput */
     const asInstalled = (matcher, tool, toolInput) => {
       const { command } = settings().hooks.PreToolUse.find((/** @type {{matcher: string}} */ group) => group.matcher === matcher).hooks[0];
@@ -186,16 +186,16 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
 
       assert.strictEqual(bootWith().session_hooks_installed, true);
       assert.deepStrictEqual(settings().hooks.PreToolUse, GUARD_GROUPS);
-      assert.strictEqual(git(fix.project, ['log', '-1', '--format=%B', 'feature']), 'chore: install Leeway session hooks\n\n', 'the subject alone, no Leeway-Task trailer');
+      assert.strictEqual(git(fix.project, ['log', '-1', '--format=%B', 'feature']), 'chore: install Ledger session hooks\n\n', 'the subject alone, no Ledger-Task trailer');
       assert.strictEqual(git(fix.project, ['rev-parse', 'main']), main, 'the branch checked out takes the commit');
 
       fs.mkdirSync(path.join(fix.project, '.claude', 'skills'));
-      fs.symlinkSync(path.dirname(REAL_SCRIPTS), path.join(fix.project, '.claude', 'skills', 'leeway-engine'));
-      assert.strictEqual(process.env.LEEWAY_GATE_SURFACE, undefined, 'the mod is off');
+      fs.symlinkSync(path.dirname(REAL_SCRIPTS), path.join(fix.project, '.claude', 'skills', 'ledger-engine'));
+      assert.strictEqual(process.env.LEDGER_GATE_SURFACE, undefined, 'the mod is off');
       const commit = asInstalled('Bash', 'Bash', { command: 'git commit -am "Take the card"' });
       assert.deepStrictEqual([commit.status, commit.stdout], [2, '']);
       assert.match(commit.stderr, /^a raw git commit is refused while task 1\.1 of payments is in flight/);
-      const dispatch = asInstalled('Agent|SendMessage', 'Agent', { subagent_type: 'leeway-builder', prompt: 'Build task 1.1.' });
+      const dispatch = asInstalled('Agent|SendMessage', 'Agent', { subagent_type: 'ledger-builder', prompt: 'Build task 1.1.' });
       assert.deepStrictEqual([dispatch.status, dispatch.stdout], [2, '']);
       assert.match(dispatch.stderr, /this one names no brief\n$/);
     } finally {
@@ -284,7 +284,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     assert.deepStrictEqual(settings(), { effortLevel: 'high', hooks: OWN_HOOKS });
   });
 
-  it('LEEWAY_HOLD_PROJECT_SETTINGS=1 — the test harness\'s switch — never touches settings, labels on or off', () => {
+  it('LEDGER_HOLD_PROJECT_SETTINGS=1 — the test harness\'s switch — never touches settings, labels on or off', () => {
     dropSettings();
     assert.strictEqual(bootWith({ holdSettings: true }).session_hooks_installed, false);
     assert.ok(!fs.existsSync(path.join(fix.project, '.claude/settings.json')));

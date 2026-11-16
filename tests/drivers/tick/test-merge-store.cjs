@@ -19,8 +19,8 @@ require('../../scripts/hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const DRIVER = require('../../../skills/leeway-engine/scripts/drivers/task/tick/driver.cjs');
-const { FOREIGN_TASK } = require('../../../skills/leeway-engine/scripts/domain/task-id.cjs');
+const DRIVER = require('../../../skills/ledger-engine/scripts/drivers/task/tick/driver.cjs');
+const { FOREIGN_TASK } = require('../../../skills/ledger-engine/scripts/domain/task-id.cjs');
 
 const AT = (/** @type {number} */ minute) => `2026-11-02T10:${String(minute).padStart(2, '0')}:00Z`;
 

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The ledger's rendered copies (leeway-engine/scripts/domain/ledger-copies.cjs
+// The ledger's rendered copies (ledger-engine/scripts/domain/ledger-copies.cjs
 // and domain/projections/ledger-copy.cjs) and their indexing: after a ledger
 // write the copies in the gitignored `.knowledge/` are rendered against the
 // ledger — each record holding a current entry, a topic's or a unit's own
@@ -26,7 +26,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 // The seams go in before the engine loads, so the copies' render binds them.
 const { seams, clearSeams } = require('./ledger-copies-seams.cjs');
 const { UNIT, SESSION_ID, MADE, NOTE, SPACE, NOTE_COPY, SPACE_COPY, MINT_COPY, copiesHelpers, ledgerHelpers, useCopiesWorld } = require('./ledger-world.cjs');

@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // "What have you decided without me?" and "since you last looked"
-// (leeway-engine/scripts/domain/ledger-since.cjs): `engine ledger since`,
+// (ledger-engine/scripts/domain/ledger-since.cjs): `engine ledger since`,
 // Claude's current calls showing in a unit or on a topic — where each
 // stands, where it was made, and on the map of each question it answers —
 // that no look on this machine has shown, the build's calls among them;
@@ -35,7 +35,7 @@ const {
 const { UNIT, SESSION, MADE, NOTE, SPACE, ledgerWorld } = require('./ledger-world.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { createStateBranchFromRemote, addStateWorktree } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { catchUpState } = require(path.join(SCRIPTS, 'domain/state-merge.cjs'));
 const { stateRoot } = require(path.join(SCRIPTS, 'kernel/state-root.cjs'));
@@ -210,7 +210,7 @@ describe('since you last looked (5.8.7, 5.8.14, 5.8.15)', () => {
       git(dir, ['push', '-q', 'origin', 'main']);
       stateGit(dir, ['add', '-A']);
       stateGit(dir, ['commit', '-q', '-m', 'state: the unit']);
-      stateGit(dir, ['push', '-q', 'origin', 'leeway-state']);
+      stateGit(dir, ['push', '-q', 'origin', 'ledger-state']);
       const first = call(NOTE, 'A note is a panel.');
       const second = call(NOTE, 'A note has no title bar.');
       const other = path.join(world, 'other-machine');
@@ -218,7 +218,7 @@ describe('since you last looked (5.8.7, 5.8.14, 5.8.15)', () => {
       testIdentity(other);
       createStateBranchFromRemote(stateRoot(other));
       addStateWorktree(stateRoot(other));
-      const branch = () => [stateGit(dir, ['rev-list', '--count', 'leeway-state']).trim(), git(bare, ['rev-parse', 'leeway-state']).trim()];
+      const branch = () => [stateGit(dir, ['rev-list', '--count', 'ledger-state']).trim(), git(bare, ['rev-parse', 'ledger-state']).trim()];
       const before = branch();
 
       assert.deepStrictEqual(calls('shown', 'note-window'), [first, second]);
@@ -339,9 +339,9 @@ describe('nothing on disk (4.11.9)', () => {
     call(SPACE, 'A note opens on the active Space.');
     stateGit(dir, ['add', '-A']);
     stateGit(dir, ['commit', '-q', '-m', 'state: the unit']);
-    const tree = () => stateGit(dir, ['ls-tree', '-r', '--name-only', 'leeway-state']).trim().split('\n');
+    const tree = () => stateGit(dir, ['ls-tree', '-r', '--name-only', 'ledger-state']).trim().split('\n');
     const branch = tree();
-    const head = stateGit(dir, ['rev-parse', 'leeway-state']);
+    const head = stateGit(dir, ['rev-parse', 'ledger-state']);
     const onDisk = files(statePath(dir));
 
     const answers = [
@@ -353,7 +353,7 @@ describe('nothing on disk (4.11.9)', () => {
 
     assert.ok(answers.every((answer) => answer.length > 0), 'a read answered nothing, so proves nothing');
     assert.deepStrictEqual(branch, ['.gitignore', '.ledger.jsonl', `${UNIT}/manifest.json`, 'manifest.json']);
-    assert.deepStrictEqual([tree(), stateGit(dir, ['rev-parse', 'leeway-state'])], [branch, head], 'a read committed');
+    assert.deepStrictEqual([tree(), stateGit(dir, ['rev-parse', 'ledger-state'])], [branch, head], 'a read committed');
     assert.deepStrictEqual(files(statePath(dir)), [...onDisk, `.cache/.marks/${UNIT}.json`].sort());
     assert.deepStrictEqual(fs.readdirSync(statePath(dir, UNIT)), ['manifest.json']);
     assert.strictEqual(stateGit(dir, ['status', '--porcelain', '--untracked-files=all']), '');

@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // A feature's one screen, decided and ready to build
-// (leeway-engine/scripts/domain/ready-to-build.cjs, its close's half
+// (ledger-engine/scripts/domain/ready-to-build.cjs, its close's half
 // decided.cjs, drawn by projections/ready-to-build.cjs over closing.cjs): its
 // topic closed into its spec with no gate, `render ready-to-build` draws the
 // topic's close — what the person decided, the product-record lines, the
@@ -37,8 +37,8 @@ const { ok, output, refuses, refusedPristine, sectionOf, statePath, layout, read
 const { DECIDED_ITEMS } = require('./pipeline-world.cjs');
 const { FEATURE, FEATURE_PHASE, SESSION, write, written, cut, closeReady, made, feature, featureDeparted, worldConfig, useReadyWorld, readyHelpers, commented } = require('./ready-to-build-world.cjs');
 
-const { progressOf, progressWords } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/progress.cjs'));
-const { listDrivers } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/drivers.cjs'));
+const { progressOf, progressWords } = require(path.join(__dirname, '../../skills/ledger-engine/scripts/domain/progress.cjs'));
+const { listDrivers } = require(path.join(__dirname, '../../skills/ledger-engine/scripts/domain/drivers.cjs'));
 
 /** Whether a kind's default driver needs any tool, which a PATH without them stops. */
 const NEEDS_TOOLS = ['task', 'landing'].some((kind) => listDrivers(kind).some((driver) => driver.isDefault && driver.needs.length > 0));
@@ -113,7 +113,7 @@ describe('the one screen\'s verdicts (16.10.2, 16.10.11)', () => {
   const dir = useReadyWorld(featureDeparted);
   const { screen, pick, refused } = readyHelpers(dir, FEATURE);
   beforeEach(() => {
-    process.env.LEEWAY_CONFIG_DIR = worldConfig(dir());
+    process.env.LEDGER_CONFIG_DIR = worldConfig(dir());
   });
 
   it('asks decided\'s first, given at decided, then the spec\'s, given at ready to build, counted across the whole close, the yes refused until each is asked (9.7.3)', () => {

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// `engine board` in the review phase (leeway-engine/scripts/domain/
+// `engine board` in the review phase (ledger-engine/scripts/domain/
 // projections/board-review.cjs, 20.10): the round under way, each area by
 // its reports and the briefs this conversation issued for it in that round;
 // and the build past the cut in step, its fix phase with a task behind the
@@ -29,7 +29,7 @@ const { MADE } = require('./ledger-world.cjs');
 const { area, tests, facts, placed, reviewBoard } = require('./review-board-world.cjs');
 const { withEnv, holdLock, lockAttempts, layout, traced } = require('./engine-harness.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { issuedPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
 const { runsRel } = require(path.join(SCRIPTS, 'domain/runs.cjs'));
 
@@ -120,7 +120,7 @@ describe('the round under way (20.10.1)', () => {
 
 /** Where the conversation keeps the record of whose a brief is. @param {string} id */
 function issuedOf(id) {
-  return withEnv({ LEEWAY_CONFIG_DIR: env().LEEWAY_CONFIG_DIR }, () => issuedPath(SESSION_ID, id));
+  return withEnv({ LEDGER_CONFIG_DIR: env().LEDGER_CONFIG_DIR }, () => issuedPath(SESSION_ID, id));
 }
 
 describe('the build past the cut (P14, 7.2.4, 12.7.9)', () => {

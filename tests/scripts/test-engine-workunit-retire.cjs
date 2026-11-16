@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// `engine workunit retire` (leeway-engine/scripts/domain/workunit-retire.cjs;
+// `engine workunit retire` (ledger-engine/scripts/domain/workunit-retire.cjs;
 // 21.7.3, 21.7.5, 19.6.7): a cross-cutting unit leaving the registry while
 // the migration runs — its folder kept whole in the product's assets, its
 // manifest, its spec and its topic's log among it, nothing of it deleted; off
@@ -184,7 +184,7 @@ describe('a retire killed part-way finishes on its next run', () => {
     ['its lines carried, its folder not moved', { method: 'renameSync', file: layout.ledger, when: 'after' }],
     ['its folder moved, the epic still holding the topic promoted to it', { method: 'renameSync', file: layout.productAssets('caching'), when: 'after' }],
     ['the promoted topic gone, the unit still on the registry', { method: 'renameSync', file: layout.manifest('gateway'), when: 'after' }],
-    ['the unit off the registry, the copies not yet following', { method: 'renameSync', file: `.leeway/${layout.projectManifest}`, when: 'after' }],
+    ['the unit off the registry, the copies not yet following', { method: 'renameSync', file: `.ledger/${layout.projectManifest}`, when: 'after' }],
   ])) {
     it(`killed with ${when}: retired again, the state is a clean run's`, () => {
       killedAt(at, dir, RETIRE, { env: SESSION });

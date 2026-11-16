@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // A task's account and its review rounds' reports
-// (leeway-engine/scripts/domain/task-account.cjs, the reports' grammar
+// (ledger-engine/scripts/domain/task-account.cjs, the reports' grammar
 // domain/round-report.cjs, its lists domain/list-items.cjs): `engine task
 // account <unit> <task>` and `engine task settle <unit> <task> --file
 // <why>`. A reviewer's report read by its grammar — its findings, each with
@@ -48,7 +48,7 @@ const {
 } = require('./engine-harness.cjs');
 const { createManifest, templateFolder, useTempFolder } = require('./discovery-test-utils.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const {
   readReport, taskRounds, roundUnderReview, recordReviewer, recordLaidOut,
 } = require(path.join(SCRIPTS, 'domain/round-report.cjs'));
@@ -112,7 +112,7 @@ function workCommit(repo, id, files) {
     fs.writeFileSync(path.join(repo, file), text);
   }
   git(repo, ['add', '-A']);
-  git(repo, ['commit', '-q', '-m', `work on ${id}\n\nLeeway-Task: ${id}`]);
+  git(repo, ['commit', '-q', '-m', `work on ${id}\n\nLedger-Task: ${id}`]);
 }
 
 /**

@@ -4,7 +4,7 @@
 // A fix task of the review's in flight (P14, 14.3.2): one another
 // conversation left in progress is taken over by either entry, `enter
 // implementation` and `enter review`, at the place entered, its recovery
-// note naming it (leeway-engine/scripts/domain/build-entry.cjs, 24.2.4);
+// note naming it (ledger-engine/scripts/domain/build-entry.cjs, 24.2.4);
 // `task start` of a fix task keeps the review phase the conversation is at,
 // or, with no build place held, puts it there — its tasks riding between the unit's implementation and
 // its review phase (domain/position.cjs); and
@@ -40,14 +40,14 @@ useWorld((at) => { dir = at; });
 
 /** A conversation's position as recorded, or null. @param {string} [session] */
 function positionOf(session = SESSION_ID) {
-  const file = path.join(/** @type {string} */ (env().LEEWAY_CONFIG_DIR), 'conversations', session, 'position.json');
+  const file = path.join(/** @type {string} */ (env().LEDGER_CONFIG_DIR), 'conversations', session, 'position.json');
   return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null;
 }
 
 describe('the takeover after a /clear: every phase written (12.13.2, 24.2.4)', () => {
   it('enter review takes a fix task another conversation left in progress onto this one\'s position at the review phase, with no builder and no pair, its answer and its recovery note naming it; enter implementation takes it over at the build', () => {
     firstRoundFailed();
-    createFile(dir, '.claude/skills/leeway-review-process/SKILL.md', '# The review\n');
+    createFile(dir, '.claude/skills/ledger-review-process/SKILL.md', '# The review\n');
     ok(dir, ['task', 'start', UNIT, '3.1'], { env: env('earlier') });
     const { sections } = enter();
     const note = output(dir, ['conversation', 'position', SESSION_ID], { env: { ...env(), CLAUDE_CODE_SESSION_ID: '' } });

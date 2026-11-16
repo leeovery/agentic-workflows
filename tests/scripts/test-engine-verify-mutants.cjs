@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The mutation tool over a phase's lines (leeway-engine/scripts/domain/
+// The mutation tool over a phase's lines (ledger-engine/scripts/domain/
 // verify.cjs, `verify mutants`): run at the phase's tips wherever it is
 // called from, the project laid out there in a scratch worktree of the
 // engine's beside the builders' isolation worktrees, below no folder a test
@@ -39,7 +39,7 @@ const {
 } = require('./engine-harness.cjs');
 const { UNIT, SETUP, steer, steering, setupArgs, world } = require('./verify-world.cjs');
 
-const { taskBranch } = require('../../skills/leeway-engine/scripts/domain/landing-names.cjs');
+const { taskBranch } = require('../../skills/ledger-engine/scripts/domain/landing-names.cjs');
 
 /** Task 1.`n`'s branch, as the landing names it. @param {number} n */
 const branchOf = (n) => taskBranch({ unit: UNIT, phase: 1, n }, 'feat', 'Take a card');
@@ -63,22 +63,22 @@ describe('verify mutants: the mutation tool over a phase\'s lines (15.6.3, 15.6.
    */
   function phaseWork() {
     git(dir, ['checkout', '-q', '-b', branchOf(1)]);
-    commitWith(dir, { 'src/card.js': 'const card = 1;\nconst brand = "visa";\nconst cvc = 3;\n' }, 'Leeway-Task: pay-1-1');
-    commitWith(dir, { 'src/other.js': 'other\n' }, 'Leeway-Task: pay-1-2-1');
+    commitWith(dir, { 'src/card.js': 'const card = 1;\nconst brand = "visa";\nconst cvc = 3;\n' }, 'Ledger-Task: pay-1-1');
+    commitWith(dir, { 'src/other.js': 'other\n' }, 'Ledger-Task: pay-1-2-1');
     git(dir, ['checkout', '-q', '-b', branchOf(2)]);
-    commitWith(dir, { 'src/form.js': 'a\nb\n', 'src/card.js': 'const card = 1;\nconst brand = "visa";\nconst cvc = 4;\n' }, 'Leeway-Task: pay-1-2');
-    commitWith(dir, { 'src/refund.js': 'refund\n' }, 'Leeway-Task: pay-2-1');
+    commitWith(dir, { 'src/form.js': 'a\nb\n', 'src/card.js': 'const card = 1;\nconst brand = "visa";\nconst cvc = 4;\n' }, 'Ledger-Task: pay-1-2');
+    commitWith(dir, { 'src/refund.js': 'refund\n' }, 'Ledger-Task: pay-2-1');
     git(dir, ['checkout', '-q', 'main']);
     const lib = initRepo(path.join(dir, 'lib'));
     createFile(lib, 'x.js', 'x\n');
     commitCode(lib, 'init');
     git(lib, ['checkout', '-q', '-b', branchOf(1)]);
-    commitWith(lib, { 'x.js': 'x\ny\n' }, 'Leeway-Task: pay-1-1');
+    commitWith(lib, { 'x.js': 'x\ny\n' }, 'Ledger-Task: pay-1-1');
     git(lib, ['checkout', '-q', 'main']);
   }
 
   /** Where the engine lays the project out at phase 1's tips: beside the builders' isolation worktrees. */
-  const scratch = () => path.join(fs.realpathSync(dir), '.claude', 'worktrees', `leeway-mutants-${UNIT}-phase-1`);
+  const scratch = () => path.join(fs.realpathSync(dir), '.claude', 'worktrees', `ledger-mutants-${UNIT}-phase-1`);
 
   /** The folders Jest, Vitest and their like leave out of a test run wherever they fall on its path. */
   const LEFT_OUT = ['.git', '.hg', '.sl', '.cache', '.idea', '.output', '.temp'];
@@ -131,16 +131,16 @@ describe('verify mutants: the mutation tool over a phase\'s lines (15.6.3, 15.6.
     byHand('src/hotfix.js', 'my own hotfix on main');
     git(dir, ['checkout', '-q', '-b', branchOf(1)]);
     byHand('src/start.js', 'my own start');
-    ofPhase({ 'src/pin.js': 'pin\n' }, 'Leeway-Task: pay-1-1');
+    ofPhase({ 'src/pin.js': 'pin\n' }, 'Ledger-Task: pay-1-1');
     byHand('src/note.js', 'my own words between');
     git(dir, ['checkout', '-q', 'main']);
     git(dir, ['merge', '-q', '--ff-only', branchOf(1)]);
     git(dir, ['checkout', '-q', branchOf(1)]);
-    ofPhase({ 'src/pin.js': 'pin\npin again\n' }, 'Leeway-Task: pay-1-1');
+    ofPhase({ 'src/pin.js': 'pin\npin again\n' }, 'Ledger-Task: pay-1-1');
     byHand('src/tail.js', 'my own words past it');
     git(dir, ['checkout', '-q', '-b', branchOf(2)]);
     byHand('src/before.js', 'my own words before its first');
-    ofPhase({ 'src/form.js': 'form\n' }, 'Leeway-Task: pay-1-2');
+    ofPhase({ 'src/form.js': 'form\n' }, 'Ledger-Task: pay-1-2');
     git(dir, ['checkout', '-q', 'main']);
     surviving([]);
 
@@ -156,9 +156,9 @@ describe('verify mutants: the mutation tool over a phase\'s lines (15.6.3, 15.6.
 
   it('a task squashed by hand under the person\'s own message, main merged back into a later task\'s branch cut before it, and that task\'s open recording the squash by its read: the squash is its task\'s work as its record reads it, its lines handed to the tool at the phase\'s tip (R32)', () => {
     git(dir, ['checkout', '-q', '-b', branchOf(1)]);
-    commitWith(dir, { 'src/card.js': 'const card = 2;\n' }, 'Leeway-Task: pay-1-1');
+    commitWith(dir, { 'src/card.js': 'const card = 2;\n' }, 'Ledger-Task: pay-1-1');
     git(dir, ['checkout', '-q', '-b', branchOf(2), 'main']);
-    commitWith(dir, { 'src/total.js': 'total\n' }, 'Leeway-Task: pay-1-2');
+    commitWith(dir, { 'src/total.js': 'total\n' }, 'Ledger-Task: pay-1-2');
     git(dir, ['checkout', '-q', 'main']);
     for (const task of ['1.1', '1.2']) accountTaken(dir, UNIT, task);
     ok(dir, ['land', 'open', UNIT, '1.1']);
@@ -252,14 +252,14 @@ describe('verify mutants: the mutation tool over a phase\'s lines (15.6.3, 15.6.
     steering(dir, 'verdict', 'pass\n');
     ok(app, setupArgs(dir, SETUP));
     git(dir, ['checkout', '-q', '-b', branchOf(1)]);
-    commitWith(dir, { 'app/src/card.js': 'const card = 1;\nconst brand = "visa";\n' }, 'Leeway-Task: pay-1-1');
+    commitWith(dir, { 'app/src/card.js': 'const card = 1;\nconst brand = "visa";\n' }, 'Ledger-Task: pay-1-1');
     git(dir, ['checkout', '-q', 'main']);
     const lib = initRepo(path.join(app, 'lib'));
     for (const [file, text] of Object.entries({ '.gitignore': 'vendor/\n', 'x.js': 'x\n' })) createFile(lib, file, text);
     commitCode(lib, 'init');
     createFile(lib, 'vendor/kit.txt', 'kit\n');
     git(lib, ['checkout', '-q', '-b', branchOf(1)]);
-    commitWith(lib, { 'x.js': 'y\n' }, 'Leeway-Task: pay-1-1');
+    commitWith(lib, { 'x.js': 'y\n' }, 'Ledger-Task: pay-1-1');
     git(lib, ['checkout', '-q', 'main']);
     steering(dir, 'look', '.env\nsrc/.env\nconfig/secrets.json\nconfig/skip.json\ntop.key\nsrc/top.key\nsrc/deep.key\nlib/x.js\nlib/vendor\n');
     surviving([]);
@@ -279,14 +279,14 @@ describe('verify mutants: the mutation tool over a phase\'s lines (15.6.3, 15.6.
     surviving([{ path: 'src/refund.js', line: 1, mutant: 'removed' }, { path: 'x.js', line: 2, mutant: 'y → z' }, { path: 'src/card.js', line: 2, mutant: 'kept' }]);
 
     assert.strictEqual(refusedPristine(dir, ['verify', 'mutants', UNIT, '1']).error,
-      'verify mutants: the mutation tool named src/refund.js, x.js, none of the files the phase changed — a survivor\'s path is the project\'s, from its root, as $LEEWAY_CHANGED names each file');
+      'verify mutants: the mutation tool named src/refund.js, x.js, none of the files the phase changed — a survivor\'s path is the project\'s, from its root, as $LEDGER_CHANGED names each file');
   });
 
   it('survivors the tool did not write are refused with its exit code and output, the scratch worktree taken apart all the same in every repository, and survivors not of their shape are refused', () => {
     phaseWork();
     steering(dir, 'fail-mutate', '2');
     assert.strictEqual(refusedPristine(dir, ['verify', 'mutants', UNIT, '1']).error,
-      'verify mutants: the mutation tool wrote no $LEEWAY_RUN/survivors.json — it writes what survived there, [] where nothing did; it exited 2. The last of its output, 40 lines at most:\nmutants survived');
+      'verify mutants: the mutation tool wrote no $LEDGER_RUN/survivors.json — it writes what survived there, [] where nothing did; it exited 2. The last of its output, 40 lines at most:\nmutants survived');
     const registered = (/** @type {string} */ repo) => git(repo, ['worktree', 'list', '--porcelain']).includes(scratch());
     assert.deepStrictEqual([fs.existsSync(scratch()), registered(dir), registered(path.join(dir, 'lib'))], [false, false, false], 'the scratch worktree is taken apart where the tool fails');
     for (const written of ['not json', JSON.stringify([{ path: 'src/card.js', line: '2', mutant: 'x' }]), JSON.stringify({ survivors: [] })]) {

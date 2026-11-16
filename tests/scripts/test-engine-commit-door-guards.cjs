@@ -25,7 +25,7 @@ const { execFileSync, spawn } = require('child_process');
 const harness = require('./engine-harness.cjs');
 const { ENGINE, ok, refuses, git, stateGit, commitAll, cleanupFixture, fixtureFrom, setupGitFixture, STATE_DIR_NAME, statePath, layout, createFile, writeState, readState, readManifest, startItem } = harness;
 const { headFiles, statusLines, codeHeadFiles, codeStatusLines, holdStateRef, epicManifest, implementing, setupTwoTopicFixture, building, FOR_TASK, startBuilding } = require('./commit-door-world.cjs');
-const { withCommitLock, commitAcrossRepos, commitPathspecScoped } = require('../../skills/leeway-engine/scripts/domain/commit.cjs');
+const { withCommitLock, commitAcrossRepos, commitPathspecScoped } = require('../../skills/ledger-engine/scripts/domain/commit.cjs');
 
 describe('mechanical heartbeats: the self-referential rule', () => {
   let dir;
@@ -186,16 +186,16 @@ describe('commit door: never a code commit on the state branch', () => {
   beforeEach(() => { dir = setupGitFixture('engine-commit-'); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('4.S20: refuses a tree that has leeway-state checked out, running nothing there', () => {
+  it('4.S20: refuses a tree that has ledger-state checked out, running nothing there', () => {
     const state = statePath(dir);
     createFile(state, 'stray.md', '# stray\n');
     const before = stateGit(dir, ['rev-parse', 'HEAD']).trim();
     let ran = false;
 
     assert.throws(() => withCommitLock(state, () => { ran = true; }),
-      new RegExp(`^Error: refusing a code commit in ${state}: it has the state branch leeway-state checked out`));
+      new RegExp(`^Error: refusing a code commit in ${state}: it has the state branch ledger-state checked out`));
     assert.throws(() => commitAcrossRepos([{ repo: { dir: '', path: state, prefix: '', heldOut: [] }, paths: ['stray.md'] }], 'stray'),
-      /leeway-state checked out/);
+      /ledger-state checked out/);
 
     assert.strictEqual(ran, false);
     assert.strictEqual(stateGit(dir, ['rev-parse', 'HEAD']).trim(), before, 'nothing committed on the state branch');
@@ -232,7 +232,7 @@ describe('commit door: never a code commit inside an operation git holds open', 
       else fs.writeFileSync(at, git(dir, ['rev-parse', 'HEAD']));
       const [head, status] = [git(dir, ['rev-parse', 'HEAD']), codeStatusLines(dir)];
 
-      assert.throws(() => commitPathspecScoped(dir, '.claude/settings.json', 'chore: install Leeway session hooks'),
+      assert.throws(() => commitPathspecScoped(dir, '.claude/settings.json', 'chore: install Ledger session hooks'),
         new RegExp(`^Error: ${operation} is in progress \\(${marker}\\) — finish or abort it, then commit again$`));
 
       assert.strictEqual(git(dir, ['rev-parse', 'HEAD']), head);
@@ -318,14 +318,14 @@ describe('commit door: index.lock retry and the commit lock', () => {
   it('surfaces the git error once the retry budget is exhausted, and releases the commit lock', () => {
     fs.writeFileSync(path.join(dir, '.git', 'index.lock'), '');
 
-    const res = refuses(dir, task, { env: { ...building.env, LEEWAY_GIT_LOCK_BUDGET_MS: '200' } });
+    const res = refuses(dir, task, { env: { ...building.env, LEDGER_GIT_LOCK_BUDGET_MS: '200' } });
 
     assert.match(res.error, /index\.lock/);
-    assert.ok(!fs.existsSync(path.join(dir, '.git', 'leeway-commit.lock')), 'commit lock released on failure');
+    assert.ok(!fs.existsSync(path.join(dir, '.git', 'ledger-commit.lock')), 'commit lock released on failure');
   });
 
   it('breaks a stale commit lock left by a crashed process', () => {
-    const lock = path.join(dir, '.git', 'leeway-commit.lock');
+    const lock = path.join(dir, '.git', 'ledger-commit.lock');
     fs.writeFileSync(lock, '99999');
     const past = new Date(Date.now() - 360000);
     fs.utimesSync(lock, past, past);
@@ -340,7 +340,7 @@ describe('commit door: index.lock retry and the commit lock', () => {
     fs.writeFileSync(path.join(dir, '.git', 'index.lock'), '');
     writeState(dir, layout.doc('payments', 'investigation', 'topic-a'), '# Topic A\nprogress\n');
 
-    const res = ok(dir, ['commit', 'payments', '-m', 'investigation(payments/topic-a): progress', '--topic', 'investigation/topic-a'], { env: { LEEWAY_GIT_LOCK_BUDGET_MS: '200' } });
+    const res = ok(dir, ['commit', 'payments', '-m', 'investigation(payments/topic-a): progress', '--topic', 'investigation/topic-a'], { env: { LEDGER_GIT_LOCK_BUDGET_MS: '200' } });
 
     assert.strictEqual(res.committed, stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim());
   });
@@ -474,7 +474,7 @@ describe('commit door: a push the remote refuses (4.S4)', () => {
     dir = setupTwoTopicFixture();
     bare = harness.bareRepo(fs.mkdtempSync(path.join(os.tmpdir(), 'engine-commit-remote-')));
     git(dir, ['remote', 'add', 'origin', bare]);
-    git(dir, ['push', '-q', 'origin', 'leeway-state']);
+    git(dir, ['push', '-q', 'origin', 'ledger-state']);
     fs.writeFileSync(path.join(bare, 'hooks', 'pre-receive'), '#!/bin/sh\necho "no pushes today" >&2\nexit 1\n', { mode: 0o755 });
   });
   afterEach(() => {
@@ -483,14 +483,14 @@ describe('commit door: a push the remote refuses (4.S4)', () => {
   });
 
   it('a verb\'s commit stands, its response carries the warning, and it answers ok with exit 0', () => {
-    const pushed = git(bare, ['rev-parse', 'leeway-state']).trim();
+    const pushed = git(bare, ['rev-parse', 'ledger-state']).trim();
 
     const res = ok(dir, ['topic', 'cancel', 'payments', 'discovery', 'topic-b']);
 
     assert.strictEqual(res.status, 'cancelled');
-    assert.strictEqual(res.committed, stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(), 'the commit stands on leeway-state');
+    assert.strictEqual(res.committed, stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(), 'the commit stands on ledger-state');
     assert.deepStrictEqual(headFiles(dir), [layout.manifest('payments')]);
-    assert.strictEqual(git(bare, ['rev-parse', 'leeway-state']).trim(), pushed, 'the remote refused it');
+    assert.strictEqual(git(bare, ['rev-parse', 'ledger-state']).trim(), pushed, 'the remote refused it');
     assert.strictEqual(res.warnings.length, 1, JSON.stringify(res.warnings));
   });
 });
@@ -525,7 +525,7 @@ describe('commit door: transaction-tail degrade', () => {
       '--content', path.join(STATE_DIR_NAME, layout.cache('scratch', 'c.md')), '--slug', 'q']);
     assert.strictEqual(delivered.committed, null);
     assert.match(delivered.note, /retry with: engine commit payments --topic discussion\/topic-b --sweep -m /, 'the delivery\'s retry is a sweep of the target, so it never beats it');
-    fs.unlinkSync(path.join(dir, '.git/refs/heads/leeway-state.lock'));
+    fs.unlinkSync(path.join(dir, '.git/refs/heads/ledger-state.lock'));
     ok(dir, ['commit', 'payments', '--topic', 'investigation/topic-b', '--sweep', '-m', 'the retry']);
     assert.deepStrictEqual(headFiles(dir), [layout.mailbox('payments', 'topic-b', '001-q.md')]);
   });

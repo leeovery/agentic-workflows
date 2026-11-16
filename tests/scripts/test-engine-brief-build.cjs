@@ -1,9 +1,9 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The build's briefs (leeway-engine/scripts/domain/brief.cjs, its records
+// The build's briefs (ledger-engine/scripts/domain/brief.cjs, its records
 // domain/brief-records.cjs, the templates content/briefs/) and the build's
-// agents (agents/leeway-{builder,reviewer,task-writer,consolidation}.md):
+// agents (agents/ledger-{builder,reviewer,task-writer,consolidation}.md):
 // `engine brief <role> <unit> <N> [--base <branch>]` for a phase of the
 // unit's cut. The task writer's brief — the phase from the cut, its
 // sections verbatim and which of them it builds first, never the rest of
@@ -90,8 +90,8 @@ describe('the task writer\'s brief (12.5, 12.S9, 11.S17)', () => {
   it('for a phase not yet written: the phase, its sections and which an earlier phase built, its scenarios, the note held for it, the earlier phases\' unfinished tasks, the calls made in the build, the entries a replacement affects, and where its files go', () => {
     const { res, brief, whose } = issued(['task-writer', UNIT, '3']);
 
-    assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'task-writer', agent: 'leeway-task-writer', pointer: `brief:${res.id}` });
-    assert.deepStrictEqual(whose, { role: 'task-writer', agent: 'leeway-task-writer', unit: UNIT, task: null, topic: null });
+    assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'task-writer', agent: 'ledger-task-writer', pointer: `brief:${res.id}` });
+    assert.deepStrictEqual(whose, { role: 'task-writer', agent: 'ledger-task-writer', unit: UNIT, task: null, topic: null });
     const { affected } = ok(dir, ['ledger', 'affected', UNIT]);
     assert.strictEqual(affected.length, 1, 'the finding resting on the replaced decision is affected');
     assert.strictEqual(brief, `Brief ${res.id} — the task writer's, for pay phase 3\n\n${filledTemplate('task-writer', {
@@ -163,8 +163,8 @@ describe('the consolidation agent\'s brief (12.10.3, 13.8.3, 12.S23, 13.S12)', (
   it('the notes the phase takes — never one held for another phase — its tasks whole, its range to the stack\'s tip in each repository, a closed task\'s branch beside it read in none, where its report goes and where its task files go', () => {
     const { res, brief, whose } = issued(['consolidation', UNIT, '1', '--base', 'main']);
 
-    assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'consolidation', agent: 'leeway-consolidation', pointer: `brief:${res.id}` });
-    assert.deepStrictEqual(whose, { role: 'consolidation', agent: 'leeway-consolidation', unit: UNIT, task: null, topic: null });
+    assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'consolidation', agent: 'ledger-consolidation', pointer: `brief:${res.id}` });
+    assert.deepStrictEqual(whose, { role: 'consolidation', agent: 'ledger-consolidation', unit: UNIT, task: null, topic: null });
     const whole = (/** @type {number} */ n, /** @type {string} */ stands) => {
       const [name, reference] = TASKS[1][n - 1];
       return taskText(name, reference).replace(/^#/gm, '##').replace(`## ${name}\n`, `## 1.${n} ${name}\n\n${stands}\n`);
@@ -264,7 +264,7 @@ describe('the build\'s templates', () => {
   });
 
   it('15.S15: no builder\'s or reviewer\'s template names a project skill\'s path — the engine\'s alone, as installed', () => {
-    for (const role of ['builder', 'fix', 'reviewer', 'phase-review']) assert.doesNotMatch(template(role), /\.claude\/skills\/(?!leeway-engine\/scripts\/engine\.cjs )|SKILL\.md/, role);
+    for (const role of ['builder', 'fix', 'reviewer', 'phase-review']) assert.doesNotMatch(template(role), /\.claude\/skills\/(?!ledger-engine\/scripts\/engine\.cjs )|SKILL\.md/, role);
   });
 
   it('12.7.10: the builder runs the engine by the absolute path of the checkout the orchestrator runs in, never the one its worktree holds, which starts at the remote\'s default branch', () => {
@@ -275,7 +275,7 @@ describe('the build\'s templates', () => {
   });
 
   it('12.7.10: the orchestrator\'s own commit from a task\'s worktree — a nit it fixes — runs the engine by the absolute path its entry names, never the worktree\'s', () => {
-    const build = path.join(__dirname, '../../skills/leeway-implementation-process');
+    const build = path.join(__dirname, '../../skills/ledger-implementation-process');
     const skill = fs.readFileSync(path.join(build, 'SKILL.md'), 'utf8');
     const loop = fs.readFileSync(path.join(build, 'references/the-task-loop.md'), 'utf8');
 
@@ -299,7 +299,7 @@ describe('the build\'s templates', () => {
 
   it('13.2.2: the reviewer and the test reader test in the scratch worktree their brief lays out, taking it apart after, and never move another checkout; the phase review\'s template points to it and never repeats it', () => {
     const rule = 'Run the tests, and make any break, in the scratch worktree your brief lays out under "Laying out your scratch worktree", as it says. Never check out, detach or switch anything in another checkout.';
-    for (const agent of ['leeway-reviewer', 'leeway-test-surface']) assert.ok(fs.readFileSync(path.join(AGENTS, `${agent}.md`), 'utf8').includes(rule), agent);
+    for (const agent of ['ledger-reviewer', 'ledger-test-surface']) assert.ok(fs.readFileSync(path.join(AGENTS, `${agent}.md`), 'utf8').includes(rule), agent);
     for (const role of ['reviewer', 'phase-review']) assert.ok(!template(role).includes('Run the tests, and make any break'), role);
     assert.ok(template('reviewer').includes('# Laying out your scratch worktree\n\n{{scratch-layout}}\n'));
     assert.ok(template('phase-review').includes('# Laying out your scratch worktree\n\n{{phase-scratch-layout}}\n'));
@@ -389,10 +389,10 @@ describe('the build\'s agents (26.4, 26.5.3, 15.10.6)', () => {
     const head = /^---\n([\s\S]*?)\n---\n/.exec(fs.readFileSync(path.join(AGENTS, `${agent}.md`), 'utf8'))?.[1] ?? '';
     return Object.fromEntries(head.split('\n').map((line) => /^(\w+): (.*)$/.exec(line)).filter((match) => match !== null).map((match) => [match[1], match[2]]));
   };
-  const BUILD = ['leeway-builder', 'leeway-reviewer', 'leeway-task-writer', 'leeway-consolidation'];
+  const BUILD = ['ledger-builder', 'ledger-reviewer', 'ledger-task-writer', 'ledger-consolidation'];
 
   it('15.S22: the builder\'s and the reviewer\'s definitions give each the Skill tool', () => {
-    for (const agent of ['leeway-builder', 'leeway-reviewer']) assert.ok(frontmatter(agent).tools.split(', ').includes('Skill'), agent);
+    for (const agent of ['ledger-builder', 'ledger-reviewer']) assert.ok(frontmatter(agent).tools.split(', ').includes('Skill'), agent);
   });
 
   it('26.S7, 26.S8, 26.S11, 27.S7: each build agent runs Opus at medium, fixed in its definition; the roster names no variant of one — a definition named for it — and no agent of it runs another model or above medium but the root-cause validation', () => {
@@ -402,7 +402,7 @@ describe('the build\'s agents (26.4, 26.5.3, 15.10.6)', () => {
     for (const agent of roster) {
       const { model, effort } = frontmatter(agent);
       assert.strictEqual(model, 'opus', agent);
-      if (agent !== 'leeway-investigation-root-cause-validation') assert.ok(effort === undefined || effort === 'medium', `${agent}: ${effort}`);
+      if (agent !== 'ledger-investigation-root-cause-validation') assert.ok(effort === undefined || effort === 'medium', `${agent}: ${effort}`);
     }
   });
 });

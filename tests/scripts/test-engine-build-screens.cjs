@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The build's screens that report (leeway-engine/scripts/domain/
+// The build's screens that report (ledger-engine/scripts/domain/
 // build-screens.cjs, drawn by domain/projections/build.cjs): a task's landing
 // summary, its account printed when asked, the headline as tasks start, the
 // build's phases and tasks, and the stop report. The gates in step are
@@ -24,7 +24,7 @@ const { ok, refusedPristine, git, writeState, readManifest, layout, cleanupFixtu
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT, QUESTIONS, CALL, ACCOUNT_DRAWN, taskText, reportOf, buildScreensWorld, buildScreenHelpers } = require('./build-screens-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { taskBranch } = require(path.join(SCRIPTS, 'domain/landing-names.cjs'));
 const { titlecase } = require(path.join(SCRIPTS, 'domain/conventions.cjs'));
 
@@ -94,7 +94,7 @@ describe('the landing summary (12.12.5, 12.12.6)', () => {
   });
 
   it('a scenario its runs no longer prove at the task\'s code reads not proven, in its criterion\'s words', () => {
-    const run = JSON.parse(fs.readFileSync(path.join(dir, '.leeway', UNIT, 'build/runs/1.S1/run-001.json'), 'utf8'));
+    const run = JSON.parse(fs.readFileSync(path.join(dir, '.ledger', UNIT, 'build/runs/1.S1/run-001.json'), 'utf8'));
     writeState(dir, layout.unit(UNIT, 'build/runs/1.S1/run-002.json'), JSON.stringify({ ...run, verdict: 'fail', at: '2026-12-01T00:00:00.000Z' }));
     const lines = sectionOf(screen(['task-landed', UNIT, '1.1']), 'DISPLAY: task landed').split('\n');
     const at = lines.indexOf(`RUNNING ${product()} PROVED 0 OF 1`);
@@ -103,7 +103,7 @@ describe('the landing summary (12.12.5, 12.12.6)', () => {
   });
 
   it('a run at code the task\'s branch does not hold — another task\'s — never counts for it, however late', () => {
-    const run = JSON.parse(fs.readFileSync(path.join(dir, '.leeway', UNIT, 'build/runs/1.S1/run-001.json'), 'utf8'));
+    const run = JSON.parse(fs.readFileSync(path.join(dir, '.ledger', UNIT, 'build/runs/1.S1/run-001.json'), 'utf8'));
     const elsewhere = git(dir, ['rev-parse', taskBranch({ unit: UNIT, phase: 1, n: 2 }, 'feat', 'Show a receipt')]).trim();
     writeState(dir, layout.unit(UNIT, 'build/runs/1.S1/run-002.json'), JSON.stringify({ ...run, verdict: 'fail', at: '2026-12-01T00:00:00.000Z', commits: [{ repo: '.', commit: elsewhere }] }));
 
@@ -111,7 +111,7 @@ describe('the landing summary (12.12.5, 12.12.6)', () => {
   });
 
   it('a scenario whose only run at the task\'s code was skipped reads named, not run, and no proof is pointed to', () => {
-    const run = JSON.parse(fs.readFileSync(path.join(dir, '.leeway', UNIT, 'build/runs/1.S1/run-001.json'), 'utf8'));
+    const run = JSON.parse(fs.readFileSync(path.join(dir, '.ledger', UNIT, 'build/runs/1.S1/run-001.json'), 'utf8'));
     const tip = git(dir, ['rev-parse', taskBranch({ unit: UNIT, phase: 1, n: 2 }, 'feat', 'Show a receipt')]).trim();
     writeState(dir, layout.unit(UNIT, 'build/runs/1.S2/run-001.json'), JSON.stringify({ ...run, verdict: 'skipped', task: '1.2', commits: [{ repo: '.', commit: tip }] }));
     const lines = sectionOf(screen(['task-landed', UNIT, '1.2']), 'DISPLAY: task landed').split('\n');

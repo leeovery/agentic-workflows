@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The phase cut (leeway-engine/scripts/domain/cut.cjs): `engine cut <unit>
+// The phase cut (ledger-engine/scripts/domain/cut.cjs): `engine cut <unit>
 // [--file <cut.json>]`. The cut written onto the unit's manifest as the file
 // gives it, `{phases: [{name, goal, scenarios, sections, relies_on}]}`, each
 // phase's fields in that order, and committed alone on the state branch, under the writer lock; each refusal of
@@ -60,11 +60,11 @@ const {
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { MADE, ledgerHelpers } = require('./ledger-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { SPEC_FILE } = require(path.join(SCRIPTS, 'domain/spec-sections.cjs'));
 const { briefPath, issuedPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
 const { conversationDir } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
-const TEMPLATES = path.join(__dirname, '../../skills/leeway-engine/content/briefs');
+const TEMPLATES = path.join(__dirname, '../../skills/ledger-engine/content/briefs');
 
 const UNIT = 'payments';
 
@@ -411,8 +411,8 @@ describe('the cut\'s corridor (11.5.1, 11.5.6, 11.S5, 11.S7)', () => {
   it('briefs the phase cut for the unit from the spec\'s outline, its scenarios each with its area, the graph of what its parts rely on, and where the cut goes', () => {
     const { res, brief } = briefed();
 
-    assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'phase-cut', agent: 'leeway-phase-cut', pointer: `brief:${res.id}` });
-    assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'phase-cut', agent: 'leeway-phase-cut', unit: EPIC, task: null, topic: null });
+    assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'phase-cut', agent: 'ledger-phase-cut', pointer: `brief:${res.id}` });
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'phase-cut', agent: 'ledger-phase-cut', unit: EPIC, task: null, topic: null });
     assert.strictEqual(brief, `Brief ${res.id} — the phase cut's, for ${EPIC}\n\n${filledCutTemplate({
       'spec-outline': [
         `\`${statePath(dir, layout.unit(EPIC, SPEC_FILE))}\``, '',

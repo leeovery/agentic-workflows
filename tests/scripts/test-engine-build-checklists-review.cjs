@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// A build phase's review at its close, as the engine checks it (leeway-
+// A build phase's review at its close, as the engine checks it (ledger-
 // engine/scripts/domain/phase-checks.cjs, through checklist.cjs): reported
 // by every reviewer of the count, passing, or failing with a settlement
 // answering its reports and every fix it names done, the way on named while
@@ -27,7 +27,7 @@ const {
   UNIT, SESSION, DROPS_CENTS, WHY, SETTLED, taskFile, world, checklistHelpers,
 } = require('./build-checklists-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { fingerprint } = require(path.join(SCRIPTS, 'kernel/fingerprint.cjs'));
 
 let dir = '';

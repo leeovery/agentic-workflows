@@ -63,13 +63,13 @@ describe('pipeline simulation: epic-topics', () => {
     // released first, so the flag lands on the holder while it is still
     // live.
     enterEntry(sim, wu, 'discussion', 'auth');
-    sim.write(`.leeway/${wu}/topics/auth/log.md`, '# Discussion — Auth\n');
+    sim.write(`.ledger/${wu}/topics/auth/log.md`, '# Discussion — Auth\n');
     const latency = askedOn(sim, wu, 'auth', 'What latency does auth hold to?');
     const e1 = sim.run(['experiment', 'create', wu, 'auth', '--slug', 'latency', '--from', 'discussion', '--question', latency,
-      '--problem', sim.write(`.leeway/.cache/${wu}/discussion/auth/problem.md`, '# Problem — latency\n')]);
+      '--problem', sim.write(`.ledger/.cache/${wu}/discussion/auth/problem.md`, '# Problem — latency\n')]);
     assert.strictEqual(e1.id, 'E1');
-    sim.write('.leeway/.cache/scratch/message-scratch.md', 'Token lifetime\n\nHow long?\n');
-    sim.run(['topic', 'send', wu, 'auth', '--from', 'billing', '--content', '.leeway/.cache/scratch/message-scratch.md', '--slug', 'token-lifetime']);
+    sim.write('.ledger/.cache/scratch/message-scratch.md', 'Token lifetime\n\nHow long?\n');
+    sim.run(['topic', 'send', wu, 'auth', '--from', 'billing', '--content', '.ledger/.cache/scratch/message-scratch.md', '--slug', 'token-lifetime']);
     assert.match(sim.render(['cancel-gate', `${wu}.discovery.auth`], { expect: 'content' }).replace(/\n\u00a0+/g, ' '),
       /Cancelling \*\*Auth\*\* marks its discussion \[in-progress\] cancelled — it can be reactivated later\. 1 open experiment \(E1\) ends abandoned on the register\./);
     const taken = sim.run(['topic', 'cancel', wu, 'discovery', 'auth']);
@@ -103,7 +103,7 @@ describe('pipeline simulation: epic-topics', () => {
     // A cancelled map row takes no message — the backstop for a peer closing
     // the target under a landing.
     sim.run(['topic', 'cancel', wu, 'discovery', 'export']);
-    assert.match(sim.run(sendArgv(sim, wu, 'export', 'auth')).inbox_path, /\/\.leeway\/\.inbox\/ideas\/\d{4}-\d{2}-\d{2}--a-message\.md$/,
+    assert.match(sim.run(sendArgv(sim, wu, 'export', 'auth')).inbox_path, /\/\.ledger\/\.inbox\/ideas\/\d{4}-\d{2}-\d{2}--a-message\.md$/,
       'a cancelled topic\'s message goes to the inbox as an idea');
     sim.run(['topic', 'reactivate', wu, 'discovery', 'export']);
 
@@ -134,7 +134,7 @@ describe('pipeline simulation: epic-topics', () => {
     mappedEpic(sim, wu, ['alpha']);
     enterEntry(sim, wu, 'discussion', 'alpha');
     sim.run(['experiment', 'create', wu, 'alpha', '--slug', 'latency', '--from', 'discussion', '--question', askedOn(sim, wu, 'alpha', 'What latency does alpha hold to?'),
-      '--problem', sim.write(`.leeway/.cache/${wu}/discussion/alpha/problem.md`, '# Problem — latency\n')]);
+      '--problem', sim.write(`.ledger/.cache/${wu}/discussion/alpha/problem.md`, '# Problem — latency\n')]);
     peer.run(['presence', 'beat', wu, 'experiment', 'alpha']);
 
     const before = sim.run(['presence', 'scan', wu]);

@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // GitHub's landing driver and a nested clone a quick-fix never touches (R18;
-// leeway-engine/scripts/domain/landing.cjs, over drivers/landing/github/):
+// ledger-engine/scripts/domain/landing.cjs, over drivers/landing/github/):
 // the repositories a quick-fix reads come from its own record, so a clone
 // it never committed in, whose host refuses every read — an organisation
 // whose sign-on the token lacks, a repository gone, a rate limit — never

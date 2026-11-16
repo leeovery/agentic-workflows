@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// `engine board`'s build (leeway-engine/scripts/domain/projections/
+// `engine board`'s build (ledger-engine/scripts/domain/projections/
 // board-build.cjs, 20.5): This session following the session into its
 // build, its progress, phases, tasks and their states — a task building,
 // in review, failed, waiting on a question, at its gate or behind the one
@@ -32,7 +32,7 @@ const { createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT, SESSION_ID, QUESTIONS, taskText, buildScreensWorld, buildScreenHelpers, boardHelpers, line } = require('./build-screens-world.cjs');
 const { standingOn, place } = require('./board-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { BOARD_VERSION } = require(path.join(SCRIPTS, 'domain/board-model.cjs'));
 const { storeBrief } = require(path.join(SCRIPTS, 'domain/brief.cjs'));
 
@@ -102,7 +102,7 @@ describe('the build on the board (20.5)', () => {
 
   it('a task in progress builds, or is in review, by the last brief this conversation issued for it, since it was issued — the builder\'s and a fix round\'s building, a reviewer\'s in review (P15)', () => {
     enterBuild();
-    fs.rmSync(path.join(dir, '.leeway', UNIT, 'build/tasks/1.1/figures.json'));
+    fs.rmSync(path.join(dir, '.ledger', UNIT, 'build/tasks/1.1/figures.json'));
     const states = [];
     for (const [role, at] of [['builder', '2026-10-21T10:00:00.000Z'], ['reviewer', '2026-10-21T10:20:00.000Z'], ['fix', '2026-10-21T10:40:00.000Z']]) {
       issued(role, '1.1', at);
@@ -151,7 +151,7 @@ describe('the build on the board (20.5)', () => {
 
   it('24.2.4: a task\'s page opened in the build, the session gone to the start menu with the task still in flight, still clocks it by the brief issued for it (P15)', () => {
     enterBuild();
-    fs.rmSync(path.join(dir, '.leeway', UNIT, 'build/tasks/1.1/figures.json'));
+    fs.rmSync(path.join(dir, '.ledger', UNIT, 'build/tasks/1.1/figures.json'));
     issued('reviewer', '1.1', '2026-10-21T10:20:00.000Z');
     ok(dir, ['session', 'repair'], { env: env() });
 
@@ -160,10 +160,10 @@ describe('the build on the board (20.5)', () => {
 
   it('a brief the conversation issued for another unit\'s task of the same number never clocks this one (P15)', () => {
     enterBuild();
-    fs.rmSync(path.join(dir, '.leeway', UNIT, 'build/tasks/1.1/figures.json'));
+    fs.rmSync(path.join(dir, '.ledger', UNIT, 'build/tasks/1.1/figures.json'));
     issued('builder', '1.1', '2026-10-21T10:00:00.000Z');
-    withEnv({ LEEWAY_CONFIG_DIR: config }, () => {
-      storeBrief(SESSION_ID, 'elsewhere', 'a brief', { role: 'reviewer', agent: 'leeway-reviewer', unit: 'shop', task: '1.1', topic: null });
+    withEnv({ LEDGER_CONFIG_DIR: config }, () => {
+      storeBrief(SESSION_ID, 'elsewhere', 'a brief', { role: 'reviewer', agent: 'ledger-reviewer', unit: 'shop', task: '1.1', topic: null });
     });
 
     assert.strictEqual(board().view.phases[0].tasks[0].state, 'building');

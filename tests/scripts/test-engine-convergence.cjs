@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Convergence (16.8; leeway-engine/scripts/domain/convergence.cjs, its screen
+// Convergence (16.8; ledger-engine/scripts/domain/convergence.cjs, its screen
 // domain/projections/convergence.cjs, the decision point's seam
 // domain/decision-point.cjs `convergenceDue`, and the cue on a raise's answer
 // in domain/raise.cjs): the run of the person's agreements in a topic's
@@ -48,7 +48,7 @@ const { DAY, UNDRAWN, lines, history, trustLogHelpers } = require('./trust-world
 const { labelAnswers } = require('./labels.cjs');
 const { auditGate } = require('./gate-audit.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
 const { SHOWN } = require(path.join(SCRIPTS, 'domain/gate.cjs'));
 const { offerDue } = require(path.join(SCRIPTS, 'domain/convergence.cjs'));
@@ -157,7 +157,7 @@ function logOf(build, start = Date.now() - DAY) {
 const agreeing = (h, n, from = 0) => made.here.slice(from, from + n).forEach((entry) => h.answered(entry, '1'));
 
 /** The offer due on `topic` as the decision point reads it once switched on: its run, or null. */
-const due = (topic = TOPIC) => withEnv({ LEEWAY_CONFIG_DIR: config() }, () => offerDue(dir, UNIT, topic));
+const due = (topic = TOPIC) => withEnv({ LEDGER_CONFIG_DIR: config() }, () => offerDue(dir, UNIT, topic));
 
 /** The decision point's seam as switching the rule on makes it, for the test `t`. @param {TestContext} t */
 const switchedOn = (t) => t.mock.method(decisionPoint, 'convergenceDue', offerDue);
@@ -169,7 +169,7 @@ const ruledOn = (t) => t.mock.method(decisionPoint, 'decide', (/** @type {any} *
 const notDue = () => refusedPristine(dir, ['render', 'convergence', AT], { env: conversation() }).error;
 
 /** The offer, drawn in the conversation `env` names, its payload announced: the whole render. @param {string[]} [flags] @param {Record<string, string>} [env] */
-const offer = (flags = [], env = {}) => output(dir, ['render', 'convergence', AT, ...flags], { env: conversation({ LEEWAY_GATE_SURFACE: '1', ...env }) });
+const offer = (flags = [], env = {}) => output(dir, ['render', 'convergence', AT, ...flags], { env: conversation({ LEDGER_GATE_SURFACE: '1', ...env }) });
 
 /** The person's answer `pick` on the offer last drawn: the gate's answer. @param {'y'|'n'} pick */
 const answerOffer = (pick) => ok(dir, ['gate', 'convergence offer', '--pick', pick], { env: conversation() });
@@ -383,7 +383,7 @@ describe('the offer (16.8.2)', () => {
 
   it('16.8.5: the forecast reads the person\'s care entries — a quiet kind under one in this project comes to them', () => {
     logOf((h) => h.agree(30, 'behaviour'));
-    fs.writeFileSync(path.join(config(), 'person.md'), `<!-- leeway: the record of you, version 1 -->\n\n# The record of you\n\n## Care entries\n\n- Fumi: behaviour · ${project()} · 2026-01-01T00:00:00.000Z\n`);
+    fs.writeFileSync(path.join(config(), 'person.md'), `<!-- Ledger: the record of you, version 1 -->\n\n# The record of you\n\n## Care entries\n\n- Fumi: behaviour · ${project()} · 2026-01-01T00:00:00.000Z\n`);
 
     const out = offer(['--asked'], { CLAUDE_STUB_ANSWERS: LABELS });
 
@@ -489,7 +489,7 @@ describe('settling (16.8.5)', () => {
 
 describe('the defaults (16.20.1)', () => {
   it('16.S60: a fresh install decides at the release\'s numbers — 20%, 10% where hard to undo, asking again at 25% and 12.5%, the other projects capped at 10 answers\' weight, half at six months old and for a new model\'s inheritance, blind questions at one in ten — and offers convergence after 8 agreements in a row', () => {
-    const { threshold, build_threshold: build } = withEnv({ LEEWAY_CONFIG_DIR: config() }, () => settings.trustSettings());
+    const { threshold, build_threshold: build } = withEnv({ LEDGER_CONFIG_DIR: config() }, () => settings.trustSettings());
 
     assert.deepStrictEqual({
       threshold, build, hard: threshold * settings.HARD_TO_UNDO, again: threshold * settings.ASK_AGAIN, hardAgain: threshold * settings.HARD_TO_UNDO * settings.ASK_AGAIN,

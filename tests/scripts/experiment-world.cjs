@@ -14,13 +14,13 @@ const path = require('path');
 const { commitAll, ok: engine } = require('./engine-harness.cjs');
 
 function writeManifest(dir, wu, manifest) {
-  const full = path.join(dir, '.leeway', wu, 'manifest.json');
+  const full = path.join(dir, '.ledger', wu, 'manifest.json');
   fs.mkdirSync(path.dirname(full), { recursive: true });
   fs.writeFileSync(full, JSON.stringify(manifest, null, 2) + '\n');
 }
 
 function readManifest(dir, wu) {
-  return JSON.parse(fs.readFileSync(path.join(dir, '.leeway', wu, 'manifest.json'), 'utf8'));
+  return JSON.parse(fs.readFileSync(path.join(dir, '.ledger', wu, 'manifest.json'), 'utf8'));
 }
 
 /** An epic with timing's discussion open — the discussion spawns. */
@@ -52,7 +52,7 @@ function setup(dir) {
 
 /** Write a problem scratch into the cache and return its project-relative path. */
 function problemScratch(dir, slug) {
-  const rel = `.leeway/.cache/lab/scratch/${slug}-problem.md`;
+  const rel = `.ledger/.cache/lab/scratch/${slug}-problem.md`;
   fs.mkdirSync(path.join(dir, path.dirname(rel)), { recursive: true });
   fs.writeFileSync(path.join(dir, rel), `# Problem — ${slug}\n`);
   return rel;

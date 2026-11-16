@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Boot's migrations (leeway-engine/scripts/domain/boot.cjs): the run's
+// Boot's migrations (ledger-engine/scripts/domain/boot.cjs): the run's
 // report and notices, the stop gate's lines stripped; what boot commits of a
 // run and what it leaves to the reviewed commit, the migrations record
 // included; a peer session's staged work surviving every commit; and a
@@ -38,7 +38,7 @@ describe('engine boot', () => {
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.migrations.changed, true);
     assert.strictEqual(res.migrations.output, '1 migration(s) applied, 2 file(s) updated.');
-    // The migration landed in the project's .leeway tree.
+    // The migration landed in the project's .ledger tree.
     assert.ok(fs.existsSync(statePath(fix.project, layout.unit('payments', 'marker.md'))));
     assert.match(stateGit(fix.project, ['status', '--porcelain']), /marker\.md/);
   });
@@ -123,10 +123,10 @@ describe('engine boot', () => {
   it('no migrations ran: dirty config files are left untouched, never committed by boot', () => {
     // Track a config baseline, then dirty both files with no migration running.
     createFile(fix.project, '.claude/settings.json', hooked(WORKFLOW_HOOKS, { permissions: {} }));
-    createFile(fix.project, '.gitignore', '.leeway/\nnode_modules\n');
+    createFile(fix.project, '.gitignore', '.ledger/\nnode_modules\n');
     commitAll(fix.project, 'config baseline');
     createFile(fix.project, '.claude/settings.json', hooked(WORKFLOW_HOOKS, { permissions: { allow: ['x'] } }));
-    createFile(fix.project, '.gitignore', '.leeway/\nnode_modules\n.DS_Store\n');
+    createFile(fix.project, '.gitignore', '.ledger/\nnode_modules\n.DS_Store\n');
 
     const res = runEngine(stubbed, fix.project, ['boot']);
 
@@ -200,7 +200,7 @@ describe('engine boot', () => {
 
   it('a failing commit of the migrations record is a warning, never a block — the record is already right on disk', () => {
     // Another git process holding the state branch's ref lock.
-    fs.writeFileSync(path.join(fix.project, '.git/refs/heads/leeway-state.lock'), '');
+    fs.writeFileSync(path.join(fix.project, '.git/refs/heads/ledger-state.lock'), '');
 
     const res = runEngine(stubbed, fix.project, ['boot'], { STUB_MIGRATE_MODE: 'record-only' });
 
@@ -241,7 +241,7 @@ describe('engine boot', () => {
   });
 
   it('a peer session\'s staged work survives every one of boot\'s commits', () => {
-    // Boot runs at `leeway`, which is a session opening beside every
+    // Boot runs at `ledger`, which is a session opening beside every
     // other one on the checkout. Its commits — the migrations record and the
     // project settings sync — must take their own paths and nothing else,
     // staged peer content included.
@@ -257,7 +257,7 @@ describe('engine boot', () => {
     assert.deepStrictEqual(res.warnings, []);
     assert.strictEqual(res.session_hooks_installed, true);
     assert.deepStrictEqual(git(fix.project, ['log', '-2', '--pretty=%s']).trim().split('\n'), [
-      'chore: install Leeway session hooks',
+      'chore: install Ledger session hooks',
       'init',
     ]);
     assert.deepStrictEqual(stateGit(fix.project, ['log', '-2', '--pretty=%s']).trim().split('\n'), [

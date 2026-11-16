@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // Tick's driver in the drivers' check and at ready to build
-// (leeway-engine/scripts/domain/drivers-verbs.cjs, ready-to-build.cjs;
+// (ledger-engine/scripts/domain/drivers-verbs.cjs, ready-to-build.cjs;
 // 22.4.9): Tick read by the check at the version it answers; older than its
 // floor, ready to build stopped naming the version found, the one needed and
 // where its update instructions live (22.S34); and a Tick whose version does

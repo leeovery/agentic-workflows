@@ -26,10 +26,10 @@ const path = require('path');
 
 const { ok, git, head, lastMessage, readManifest, createFile, commitCode, commitAll, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
-const { recordLandings, recordsIn } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/landing-record.cjs'));
-const { repoLanded } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/task-landed.cjs'));
-const { TRAILER } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/commit-task.cjs'));
-const { quickFixBranch } = require(path.join(__dirname, '../../skills/leeway-engine/scripts/domain/landing-names.cjs'));
+const { recordLandings, recordsIn } = require(path.join(__dirname, '../../skills/ledger-engine/scripts/domain/landing-record.cjs'));
+const { repoLanded } = require(path.join(__dirname, '../../skills/ledger-engine/scripts/domain/task-landed.cjs'));
+const { TRAILER } = require(path.join(__dirname, '../../skills/ledger-engine/scripts/domain/commit-task.cjs'));
+const { quickFixBranch } = require(path.join(__dirname, '../../skills/ledger-engine/scripts/domain/landing-names.cjs'));
 
 const UNIT = 'pay';
 

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The entry (leeway-engine/scripts/domain/enter.cjs): `engine enter <phase>
+// The entry (ledger-engine/scripts/domain/enter.cjs): `engine enter <phase>
 // <unit> [<topic>] [--take] [--move]`, the one call a phase is entered by,
 // discussion its first row and discovery its second. What it refuses, each
 // refusal naming its way on and writing nothing — a unit this project lacks
@@ -64,14 +64,14 @@ const {
   lockAttempts, holdLock, withFrozenClock, withEnv, FROZEN_AT,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
-const { entrySections } = require('../../skills/leeway-engine/scripts/domain/projections/enter.cjs');
-const { ENTRIES, CARRIED, enterThrough } = require('../../skills/leeway-engine/scripts/domain/enter.cjs');
-const { SHAPED_BY } = require('../../skills/leeway-engine/scripts/domain/discovery-entry.cjs');
+const { entrySections } = require('../../skills/ledger-engine/scripts/domain/projections/enter.cjs');
+const { ENTRIES, CARRIED, enterThrough } = require('../../skills/ledger-engine/scripts/domain/enter.cjs');
+const { SHAPED_BY } = require('../../skills/ledger-engine/scripts/domain/discovery-entry.cjs');
 
 const EPIC = 'fumi';
 const ATLAS = 'atlas';
 const FEATURE = 'quick-sync';
-const ENGINE = 'node .claude/skills/leeway-engine/scripts/engine.cjs';
+const ENGINE = 'node .claude/skills/ledger-engine/scripts/engine.cjs';
 const USAGE = 'Usage: engine enter <discussion|discovery|specification|implementation|review|investigation> <work-unit|product> [<topic>] [--take] [--move] [--seeds <seeds>]';
 const TODAY = FROZEN_AT.slice(0, 10);
 
@@ -89,7 +89,7 @@ const postponedAs = (topic, marks = {}) => ({ horizon: 'next', summary: topic, o
 function runAs(dir, args, sessionId, pid) {
   const config = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-enter-other-'));
   try {
-    return ok(dir, args, { env: { LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: sessionId, CLAUDE_PID: pid, TMUX: undefined } });
+    return ok(dir, args, { env: { LEDGER_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: sessionId, CLAUDE_PID: pid, TMUX: undefined } });
   } finally {
     fs.rmSync(config, { recursive: true, force: true });
   }
@@ -149,7 +149,7 @@ let claude; // Claude Code's config: the transcripts
 /** The engine as the conversation `sessionId` runs it — null runs it with no id. @param {string|null} [sessionId] */
 function env(sessionId = 'sess-1') {
   return {
-    LEEWAY_CONFIG_DIR: config, CLAUDE_CONFIG_DIR: claude, CLAUDE_CODE_SESSION_ID: sessionId ?? undefined,
+    LEDGER_CONFIG_DIR: config, CLAUDE_CONFIG_DIR: claude, CLAUDE_CODE_SESSION_ID: sessionId ?? undefined,
     CLAUDE_PID: String(process.pid), TMUX: undefined, TMUX_PANE: undefined,
   };
 }
@@ -314,7 +314,7 @@ describe('a place another live session holds (18.4.21)', () => {
     enter(['discussion', EPIC, 'licence']);
     runAs(dir, ['presence', 'beat', EPIC, 'discussion', 'licence'], 'peer', PEER);
     enter(['discussion', EPIC, 'licence']);
-    assert.deepStrictEqual(ok(dir, ['gate', 'held topic gate', '--pick', 'n'], { env: env() }).next, { kind: 'handoff', skill: 'leeway-continue-epic', args: [EPIC] });
+    assert.deepStrictEqual(ok(dir, ['gate', 'held topic gate', '--pick', 'n'], { env: env() }).next, { kind: 'handoff', skill: 'ledger-continue-epic', args: [EPIC] });
   });
 
   it('a single-topic unit has no menu to go back to: leaving it carries on, to the end of the turn', () => {
@@ -441,7 +441,7 @@ describe('the answer', () => {
     const records = [
       `# The record of you\n\n## Care entries\n\n- Fumi: look · ${'Fumi'.padEnd(21, '0')} · 2026-01-01T00:00:00.000Z\n`,
       '# The record of you\n\n## Care entries\n\n- Fumi: look\n',
-      '<!-- leeway: the record of you, version 9 -->\n\nAnything at all\n',
+      '<!-- Ledger: the record of you, version 9 -->\n\nAnything at all\n',
     ];
 
     for (const text of records) {
@@ -602,8 +602,8 @@ describe('what a move carries, read by the skill a topic opens in (19.5.16, R26)
     const unread = (/** @type {string} */ skill, /** @type {string[]} */ keys) => keys.filter((key) => !entering(skill).includes(`\`${key}\``));
     const all = Object.values(CARRIED);
 
-    assert.deepStrictEqual(unread('leeway-discussion-process', all), []);
-    assert.deepStrictEqual(unread('leeway-investigation-process', all.filter((key) => key !== CARRIED.investigationLog)), []);
+    assert.deepStrictEqual(unread('ledger-discussion-process', all), []);
+    assert.deepStrictEqual(unread('ledger-investigation-process', all.filter((key) => key !== CARRIED.investigationLog)), []);
   });
 });
 
@@ -650,7 +650,7 @@ describe('discovery: the product\'s conversation (8.2.7–8.2.10)', () => {
   });
 
   it('18.S60: a start from seeds reads the seeds and only those — each inbox item, each roadmap item\'s note and the logs its other sources point at — and no session log; a return with none reads the two latest (8.2.10, 18.8.15)', () => {
-    const idea = '.leeway/.inbox/ideas/2026-01-03--dark-mode.md';
+    const idea = '.ledger/.inbox/ideas/2026-01-03--dark-mode.md';
     writeState(dir, '.inbox/ideas/2026-01-03--dark-mode.md', '# Dark mode\n');
     writeState(dir, '.product/notes/2026-01-02--pinned.md', '# Pinned above every window\n');
     project({ roadmap: { horizons: ['next'], items: {

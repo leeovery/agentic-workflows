@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The person's answer at a gate (leeway-engine/scripts/domain/gate.cjs):
+// The person's answer at a gate (ledger-engine/scripts/domain/gate.cjs):
 // the record of the gate shown — every MENU's gate stated through
 // `section()` (surfaces.cjs), the command's MENU kept for the calling
 // conversation by the engine's dispatch, with the mod announced or not,
@@ -42,7 +42,7 @@ const { ok, output, refuses, initRepo, cleanupFixture } = require('./engine-harn
 const { setupFixture, createManifest, statePath, useTempFolder, withEnv, layout, filesUnder } = require('./discovery-test-utils.cjs');
 
 const SKILLS = path.join(__dirname, '../../skills');
-const SCRIPTS = path.join(SKILLS, 'leeway-engine/scripts');
+const SCRIPTS = path.join(SKILLS, 'ledger-engine/scripts');
 const {
   openGate, gateShown, illustrate, section, menu, cmdOption, promptOption, rangeOption, MENU_INSTRUCTION,
 } = require(path.join(SCRIPTS, 'domain/projections/surfaces.cjs'));
@@ -56,7 +56,7 @@ const { announced } = require('./gate-audit.cjs');
 
 // A Claude Code session's id.
 const SESSION = 'c0ffee00-1234-4abc-8def-0123456789ab';
-const ANNOUNCED = { LEEWAY_GATE_SURFACE: '1' };
+const ANNOUNCED = { LEDGER_GATE_SURFACE: '1' };
 const CODE_QUESTION = 'Proceed anyway?';
 
 const config = useTempFolder('gate-config-');
@@ -72,7 +72,7 @@ before(() => {
 after(() => cleanupFixture(dir));
 
 /** The calling conversation's environment, over `env`. @param {Record<string, string|undefined>} [env] */
-const conversation = (env = {}) => ({ CLAUDE_CODE_SESSION_ID: SESSION, LEEWAY_CONFIG_DIR: config(), ...env });
+const conversation = (env = {}) => ({ CLAUDE_CODE_SESSION_ID: SESSION, LEDGER_CONFIG_DIR: config(), ...env });
 
 /** A file in the conversation's folder. @param {string} name */
 const inFolder = (name) => path.join(config(), 'conversations', SESSION, name);
@@ -596,8 +596,8 @@ describe('gate — refusals, logging nothing', () => {
 // Each literal is read off the mod's source — a mod cannot import the engine
 // — and held against a real answer.
 describe('the mod\'s record of a press, as `gate` reads it', () => {
-  const REGISTER = path.join(SKILLS, 'leeway-gates/hooks/register.ts');
-  const LAYOUT = path.join(SKILLS, 'leeway-gates/hooks/layout.ts');
+  const REGISTER = path.join(SKILLS, 'ledger-gates/hooks/register.ts');
+  const LAYOUT = path.join(SKILLS, 'ledger-gates/hooks/layout.ts');
   /** @param {string} file */
   const source = (file) => fs.readFileSync(file, 'utf8');
 

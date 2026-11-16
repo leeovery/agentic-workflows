@@ -62,9 +62,9 @@ a deduplicated fixture library you have to chase across the tree.
 
 **A case starts where a session starts.** `entry` names a skill a
 conversation opens on — one of the engine's `HANDOFF_TARGETS`
-(`domain/handoff.cjs`): `leeway`, or a skill a handoff lands the
+(`domain/handoff.cjs`): `ledger`, or a skill a handoff lands the
 work on in a fresh context. Never a skill only ever opened in place (help
-— a case about help enters at `leeway` and picks
+— a case about help enters at `ledger` and picks
 `h/help`), and never a
 reference: a walk begun mid-session lacks the context the prose was
 written for (`lib/cases.cjs`).

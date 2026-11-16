@@ -23,7 +23,7 @@ const { createManifest, useTempFolder, withEnv } = require('./discovery-test-uti
 const { ledgerReadHelpers } = require('./ledger-world.cjs');
 const { UNIT, PLACE, FLAG, HELP, SET, RECORDS, quickFix, createFix, fixBuilt, recordFile, twoFixesBuilt, fixesRecorded, asGone, entered } = require('./quick-fix-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { storeBrief } = require(path.join(SCRIPTS, 'domain/brief.cjs'));
 const { issuedPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
 const { roundReportPath, recordReviewer } = require(path.join(SCRIPTS, 'domain/round-report.cjs'));
@@ -108,7 +108,7 @@ function quickFixBoard(dir, session = SESSION) {
   const config = useTempFolder('engine-board-quick-fix-config-');
 
   /** The engine as this test's conversation runs it. */
-  const env = () => ({ LEEWAY_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: session, CLAUDE_PID: String(process.pid), TMUX: undefined, TMUX_PANE: undefined });
+  const env = () => ({ LEDGER_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: session, CLAUDE_PID: String(process.pid), TMUX: undefined, TMUX_PANE: undefined });
 
   /** A verb run in the conversation. @param {string[]} args */
   const run = (args) => ok(dir(), args, { env: env() });
@@ -132,8 +132,8 @@ function quickFixBoard(dir, session = SESSION) {
     /** A brief the conversation issued for a fix, by its role, at `at`. @param {string} role @param {string} task @param {string} at */
     issued(role, task, at) {
       const id = `${role}${task.replace('.', '')}${Date.parse(at)}`;
-      withEnv({ LEEWAY_CONFIG_DIR: config() }, () => {
-        storeBrief(SESSION, id, 'a brief', { role, agent: 'leeway-builder', unit: UNIT, task, topic: null });
+      withEnv({ LEDGER_CONFIG_DIR: config() }, () => {
+        storeBrief(SESSION, id, 'a brief', { role, agent: 'ledger-builder', unit: UNIT, task, topic: null });
         fs.utimesSync(issuedPath(SESSION, id), new Date(at), new Date(at));
       });
     },

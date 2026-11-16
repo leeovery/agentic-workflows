@@ -31,7 +31,7 @@ describe('engine knowledge remove, compact and rebuild', () => {
   async function indexed(...rels) {
     for (const rel of rels) {
       createFile(statePath(root), rel, `# Notes\n\nWhat ${rel} settled.\n`);
-      assert.strictEqual((await knowledge('index', `.leeway/${rel}`)).code, 0, rel);
+      assert.strictEqual((await knowledge('index', `.ledger/${rel}`)).code, 0, rel);
     }
   }
   /** Each identity the store holds, `unit/phase/topic`, sorted. */

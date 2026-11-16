@@ -15,7 +15,7 @@
 // marked applied, nothing committed (21.S8's apply). Run again it passes
 // every source by; a run killed at any one of its writes, the file part
 // written or none, is run again to what a whole run leaves; and where the
-// detection found nothing, or there is no `.workflows/`, or `leeway-state`
+// detection found nothing, or there is no `.workflows/`, or `ledger-state`
 // has a commit, there is nothing to apply.
 //
 // Layer: migration. World: codeintel on today's layout (migration-world.cjs,
@@ -33,11 +33,11 @@ const path = require('path');
 const { git, createFile, cleanupFixture } = require('./engine-harness.cjs');
 const { SPLIT_EPIC, SPLIT_SOURCES, SPLIT_OLD, SPLIT_PLANS, themeOf, stagedPlan, splitProject, projectTree } = require('./migration-world.cjs');
 
-const MIGRATION = require('../../skills/leeway-migrate/scripts/migrations/077-split-apply.cjs');
+const MIGRATION = require('../../skills/ledger-migrate/scripts/migrations/077-split-apply.cjs');
 
 const AT = '2026-01-01T00-00-00';
 const EPIC = `.workflows/${SPLIT_EPIC}`;
-const STAGING = `.leeway/.cache/migrate/split/${SPLIT_EPIC}`;
+const STAGING = `.ledger/.cache/migrate/split/${SPLIT_EPIC}`;
 const OLD = JSON.parse(SPLIT_OLD[`${EPIC}/manifest.json`]);
 
 // Each source the plans split, with the themes it splits into.
@@ -65,8 +65,8 @@ afterEach(() => cleanupFixture(world));
  * @param {string} dir @param {Record<string, string>} [plans] by path from the state
  */
 function staged(dir, plans = SPLIT_PLANS) {
-  createFile(dir, '.leeway/.cache/migrate/split/sources.json', `${JSON.stringify({ at: AT, epics: { [SPLIT_EPIC]: SPLIT_SOURCES } }, null, 2)}\n`);
-  for (const [rel, text] of Object.entries(plans)) createFile(dir, path.join('.leeway', rel), text);
+  createFile(dir, '.ledger/.cache/migrate/split/sources.json', `${JSON.stringify({ at: AT, epics: { [SPLIT_EPIC]: SPLIT_SOURCES } }, null, 2)}\n`);
+  for (const [rel, text] of Object.entries(plans)) createFile(dir, path.join('.ledger', rel), text);
   return dir;
 }
 
@@ -162,7 +162,7 @@ describe('077 applies the legacy split', () => {
     };
     const fresh = (/** @type {string} */ name) => {
       const dir = staged(path.join(splitProject(path.join(world, name)), SPLIT_EPIC), plans);
-      fs.writeFileSync(path.join(dir, '.leeway/.cache/migrate/split/sources.json'), JSON.stringify({ at: AT, epics: { [SPLIT_EPIC]: ['cost-economics', 'exploration'] } }));
+      fs.writeFileSync(path.join(dir, '.ledger/.cache/migrate/split/sources.json'), JSON.stringify({ at: AT, epics: { [SPLIT_EPIC]: ['cost-economics', 'exploration'] } }));
       return dir;
     };
     const realFs = { writeFileSync: fs.writeFileSync, renameSync: fs.renameSync, rmSync: fs.rmSync };
@@ -209,12 +209,12 @@ describe('077 applies the legacy split', () => {
     }
   });
 
-  it('has nothing to apply where the detection found nothing, in a project with no .workflows/, or one whose leeway-state has a commit', () => {
+  it('has nothing to apply where the detection found nothing, in a project with no .workflows/, or one whose ledger-state has a commit', () => {
     const none = path.join(splitProject(path.join(world, 'none')), SPLIT_EPIC);
     const old = staged(path.join(splitProject(path.join(world, 'old')), SPLIT_EPIC));
     fs.rmSync(path.join(old, '.workflows'), { recursive: true });
     const born = staged(path.join(splitProject(path.join(world, 'born')), SPLIT_EPIC));
-    git(born, ['branch', 'leeway-state']);
+    git(born, ['branch', 'ledger-state']);
     const before = [none, old, born].map(projectTree);
 
     assert.deepStrictEqual([none, old, born].map(apply), [{ updates: 0, skips: 1 }, { updates: 0, skips: 1 }, { updates: 0, skips: 1 }]);

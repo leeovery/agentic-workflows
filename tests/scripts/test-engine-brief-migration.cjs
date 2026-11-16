@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The migration's briefs (leeway-engine/scripts/domain/brief.cjs, the
+// The migration's briefs (ledger-engine/scripts/domain/brief.cjs, the
 // records domain/brief-records.cjs, the templates content/briefs/; 21.10.5,
 // 21.10.7): `engine brief migration-topic|migration-verifier --topic
 // <unit.phase.topic> --directive <id>`. The per-topic agent's brief — the
@@ -35,12 +35,12 @@ const harness = require('./engine-harness.cjs');
 const { ok, git, statePath, layout, writeState, cleanupFixture } = harness;
 const { recordsMigration, refusedUntouched } = require('./migration-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { ROLES, briefPath, issuedPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
 const { conversationDir } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
 const { composedPath, findingsPath, refusedPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
-const TEMPLATES = path.join(__dirname, '../../skills/leeway-engine/content/briefs');
-const DIRECTIVE = path.join(__dirname, '../../skills/leeway-migrate/scripts/migrations/079-records.md');
+const TEMPLATES = path.join(__dirname, '../../skills/ledger-engine/content/briefs');
+const DIRECTIVE = path.join(__dirname, '../../skills/ledger-migrate/scripts/migrations/079-records.md');
 const AGENTS = path.join(__dirname, '../../agents');
 
 const SESSION_ID = 'migration-brief-session';
@@ -125,11 +125,11 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
 
     const { res, brief } = issued(['migration-topic', ...LICENSING]);
 
-    assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'migration-topic', agent: 'leeway-migration-topic', pointer: `brief:${res.id}` });
+    assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'migration-topic', agent: 'ledger-migration-topic', pointer: `brief:${res.id}` });
     assert.strictEqual(brief, `Brief ${res.id} — the migration's, for one topic\n\n${filledTemplate('migration-topic', {
       'migrated-topic': licensingDrawn(), 'verifier-findings': 'None recorded.', 'carry-refusal': 'None recorded.', directive: directiveDrawn(),
     })}`);
-    assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'migration-topic', agent: 'leeway-migration-topic', unit: null, task: null, topic: null });
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'migration-topic', agent: 'ledger-migration-topic', unit: null, task: null, topic: null });
   });
 
   it('a topic\'s research threads still open and its map\'s undecided subtopics; a building unit\'s spec read under `.workflows/` and cited as its spec.md', () => {
@@ -205,7 +205,7 @@ describe('the verifier\'s brief (21.10.7)', () => {
 
     const { res, brief } = issued(['migration-verifier', ...LICENSING]);
 
-    assert.deepStrictEqual([res.role, res.agent], ['migration-verifier', 'leeway-migration-verifier']);
+    assert.deepStrictEqual([res.role, res.agent], ['migration-verifier', 'ledger-migration-verifier']);
     assert.strictEqual(brief, `Brief ${res.id} — the migration verifier's\n\n${filledTemplate('migration-verifier', {
       'migrated-topic': licensingDrawn(), 'composed-record': `\`\`\`json\n${RECORD}\n\`\`\``, directive: directiveDrawn(),
     })}`);
@@ -231,7 +231,7 @@ describe('the migration\'s agents and the plain search (21.S35, 26.5.1)', () => 
   const CONFINED = '**The shell is for reading and searching alone:** `rg`, `find`, `ls`, `cat`, `head`, `tail`, `wc` and their like. Never run the engine, never run git, and never write, move or delete a file through it.';
 
   it('each searches through a shell confined to reading — Claude Code giving no Glob or Grep tool — and neither its agent file nor its brief names an engine call: only the session writes the ledger and the state', () => {
-    for (const agent of ['leeway-migration-topic', 'leeway-migration-verifier', 'leeway-plain-search']) {
+    for (const agent of ['ledger-migration-topic', 'ledger-migration-verifier', 'ledger-plain-search']) {
       const text = fs.readFileSync(path.join(AGENTS, `${agent}.md`), 'utf8');
       const tools = String(/^tools: (.*)$/m.exec(text)?.[1]).split(', ');
 

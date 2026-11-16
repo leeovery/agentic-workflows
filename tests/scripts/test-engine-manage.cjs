@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Manage and the closed units (leeway-engine/scripts/domain/projections/
+// Manage and the closed units (ledger-engine/scripts/domain/projections/
 // manage.cjs; 18.3): `render manage`, every unit the project holds in the
 // order it lists them, each opening its own; `render manage-unit`, the rows
 // a unit's standing offers — pivot and absorb only to a feature before its
@@ -34,7 +34,7 @@ const path = require('path');
 const { ok, output, refusedPristine, screenOf, sectionOf, commitAll, keywordOnlyKnowledge, cleanupFixture, fixtureFrom } = require('./engine-harness.cjs');
 const { createManifest, writeState, readState, readManifest, layout } = require('./discovery-test-utils.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { SHOWN } = require(path.join(SCRIPTS, 'domain/gate.cjs'));
 
 const SESSION = 'manage-session';
@@ -60,7 +60,7 @@ function discussing(dir, unit, status) {
   return { discussion: { items: { [unit]: { status } } } };
 }
 
-const world = fixtureFrom('leeway-manage-', (dir) => {
+const world = fixtureFrom('ledger-manage-', (dir) => {
   keywordOnlyKnowledge(dir);
   createManifest(dir, FEATURE, { phases: discussing(dir, FEATURE, 'in-progress') });
   createManifest(dir, BUILDING, { phases: discussing(dir, BUILDING, 'completed'), ...BUILT });
@@ -84,7 +84,7 @@ const world = fixtureFrom('leeway-manage-', (dir) => {
  */
 function drawn(dir, args, gate) {
   const out = output(dir, ['render', ...args], { env: ENV });
-  const shown = JSON.parse(fs.readFileSync(path.join(/** @type {string} */ (process.env.LEEWAY_CONFIG_DIR), 'conversations', SESSION, SHOWN), 'utf8'));
+  const shown = JSON.parse(fs.readFileSync(path.join(/** @type {string} */ (process.env.LEDGER_CONFIG_DIR), 'conversations', SESSION, SHOWN), 'utf8'));
   return {
     out,
     screen: screenOf(out, `MENU: ${gate}`),
@@ -104,7 +104,7 @@ const followed = (dir, next) => ok(dir, next.argv, { env: ENV });
 describe('manage and the closed units (18.3)', () => {
   /** @type {string} */
   let dir;
-  beforeEach(() => { dir = world(path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'leeway-manage-')), 'lantern')); });
+  beforeEach(() => { dir = world(path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'ledger-manage-')), 'lantern')); });
   afterEach(() => cleanupFixture(path.dirname(dir)));
 
   it('18.3.4, 22.5.8: manage lists every unit — in progress, then complete, then cancelled, by type within each — each opening its own; then the environment setup, named for the project; then the drivers; and back to the start menu', () => {

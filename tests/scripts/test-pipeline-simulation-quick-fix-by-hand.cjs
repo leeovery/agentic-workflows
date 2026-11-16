@@ -54,7 +54,7 @@ describe('pipeline simulation: quick-fix merged by hand', () => {
     git(sim.dir, ['switch', '-q', branch]);
     const third = built(3, 'Spell the docs --colour', ['docs/flags.md', 'api/flags.md']);
     const recorded = sim.manifest(wu).fixes.repos;
-    sim.write(`.leeway/${wu}/build/log.md`, '# The fixes\n');
+    sim.write(`.ledger/${wu}/build/log.md`, '# The fixes\n');
     finishClosed(sim, wu);
     sim.render(['finish', wu], { expect: 'content' });
     const closing = sim.run(['board', sim.env.CLAUDE_CODE_SESSION_ID]).view;
@@ -64,7 +64,7 @@ describe('pipeline simulation: quick-fix merged by hand', () => {
 
     assert.deepStrictEqual([first.branch, third.branch, third.cut_again?.map((/** @type {any} */ { replayed }) => replayed)], [branch, branch, [[]]]);
     assert.deepStrictEqual([recorded, yes.landed.map((/** @type {{repo: string, merged: string[]}} */ { repo, merged }) => [repo, merged]), yes.next], [
-      ['api'], [['api', ['1.3']], ['.', ['1.3']]], { kind: 'handoff', skill: 'leeway', args: [] },
+      ['api'], [['api', ['1.3']], ['.', ['1.3']]], { kind: 'handoff', skill: 'ledger', args: [] },
     ]);
     assert.deepStrictEqual(git(sim.api, ['log', '-1', '--format=%B', 'main']).match(/^Task: .*$/gm), [`Task: ${wu}-1-3`]);
     assert.strictEqual(sim.manifest(wu).status, 'completed');

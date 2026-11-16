@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The bug-proven run (leeway-engine/scripts/domain/verify.cjs, `verify run
+// The bug-proven run (ledger-engine/scripts/domain/verify.cjs, `verify run
 // <unit> <scenario> --unfixed --test "<command>"`; its rule bug-proven.cjs,
 // its series runs.cjs): a bugfix's reproducing test — task 1.1's, phase 1's
 // lowest-numbered — run on the unfixed code up to five times in a scratch
@@ -97,7 +97,7 @@ describe('verify run --unfixed: the reproducing test on the unfixed code (15.5.2
     ok(dir, unfixedArgs('true'));
     git(dir, ['checkout', '-q', branchOf(1)]);
     createFile(dir, 'test/crash.sh', `${fs.readFileSync(path.join(dir, 'test/crash.sh'), 'utf8')}# reworked\n`);
-    commitCode(dir, `test(${UNIT}): rework the test\n\nLeeway-Task: ${UNIT}-1-1`);
+    commitCode(dir, `test(${UNIT}): rework the test\n\nLedger-Task: ${UNIT}-1-1`);
 
     const res = ok(dir, unfixedArgs());
 
@@ -130,7 +130,7 @@ describe('verify run --unfixed: in the review phase, where the build\'s series r
     const ran = tipOf(dir, branchOf(1));
     git(dir, ['checkout', '-q', branchOf(1)]);
     createFile(dir, 'test/crash.sh', `${fs.readFileSync(path.join(dir, 'test/crash.sh'), 'utf8')}# reworked\n`);
-    commitCode(dir, `test(${UNIT}): rework the test\n\nLeeway-Task: ${UNIT}-1-1`);
+    commitCode(dir, `test(${UNIT}): rework the test\n\nLedger-Task: ${UNIT}-1-1`);
     buildFinished(dir);
 
     const res = ok(dir, unfixedArgs());

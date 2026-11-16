@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // GitHub's landing driver and a quick-fix's branch in a nested clone
-// conflicting with GitHub's copy (R15, N1; leeway-engine/scripts/domain/
+// conflicting with GitHub's copy (R15, N1; ledger-engine/scripts/domain/
 // fix-branch.cjs, over drivers/landing/github/): a review's suggestion on
 // the clone's pull request conflicting with a commit in the clone here
 // refuses the opening while the fix is in flight, naming the merge the
@@ -22,7 +22,7 @@ const { ok, refuses, git, createFile } = require('../../scripts/engine-harness.c
 const { UNIT, BRANCH, quickFixNestedConformance, guardedGit } = require('../../scripts/quick-fix-world.cjs');
 const { NESTED } = require('../../scripts/landing-world.cjs');
 const { bareOf, madeOnGithub } = require('./world.cjs');
-const lg = require('../../../skills/leeway-engine/scripts/domain/landing-git.cjs');
+const lg = require('../../../skills/ledger-engine/scripts/domain/landing-git.cjs');
 
 const { as, project, opened, ended, closed } = quickFixNestedConformance('github', 'github-landing-quick-fix-host-conflict-nested-');
 

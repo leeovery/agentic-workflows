@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The learned process gates (leeway-engine/scripts/domain/learned-gates.cjs):
+// The learned process gates (ledger-engine/scripts/domain/learned-gates.cjs):
 // the list — which gates learn, each by the one name it is keyed by, with
 // the report of each row that may run as an automatic step; whether a gate
 // shows or runs as a step, from its count at the person's threshold, its
@@ -37,7 +37,7 @@ const { filesUnder, withEnv } = require('./discovery-test-utils.cjs');
 const { idOf, PROJECT_ID, MODEL, SESSION, DAY, lines, useTrustWorld, inConversation, history } = require('./trust-world.cjs');
 
 const SKILLS = path.join(__dirname, '../../skills');
-const SCRIPTS = path.join(SKILLS, 'leeway-engine/scripts');
+const SCRIPTS = path.join(SKILLS, 'ledger-engine/scripts');
 const LEARNED_GATES = path.join(SCRIPTS, 'domain/learned-gates.cjs');
 const { LEARNED, BLIND_ASK, learnedGate, showingOf, drawnBlind, shows, stepOf } = require(LEARNED_GATES);
 const { gateStep, learned } = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
@@ -56,7 +56,7 @@ const { experimentSpawnGate } = require(path.join(SCRIPTS, 'domain/projections/e
 const { importReprompt } = require(path.join(SCRIPTS, 'domain/projections/transactions.cjs'));
 
 /** @typedef {ReturnType<typeof history>} History */
-/** @typedef {import('../../skills/leeway-engine/scripts/domain/learned-gates.cjs').GateStep} GateStep */
+/** @typedef {import('../../skills/ledger-engine/scripts/domain/learned-gates.cjs').GateStep} GateStep */
 
 const AT_20 = 0.2;
 // Where gates come: nowhere, pay's investigation, and pay's discussion of cards.
@@ -214,7 +214,7 @@ describe('the decision point\'s step on a learned gate (decision-point.cjs)', ()
   /**
    * `place` of the project at `dir` entered as `enter` enters it, the clock
    * at `ms`: the time it was entered.
-   * @param {import('node:test').TestContext} t @param {string} dir @param {import('../../skills/leeway-engine/scripts/domain/learned-gates.cjs').Place} place @param {number} ms
+   * @param {import('node:test').TestContext} t @param {string} dir @param {import('../../skills/ledger-engine/scripts/domain/learned-gates.cjs').Place} place @param {number} ms
    */
   function entering(t, dir, { unit, phase, topic }, ms) {
     t.mock.timers.enable({ apis: ['Date'], now: ms });
@@ -235,7 +235,7 @@ describe('the decision point\'s step on a learned gate (decision-point.cjs)', ()
   /**
    * The gate `gate` at `at` drawn in the conversation as its surface draws it,
    * stepped by `learned`, and kept as the gate shown: its step.
-   * @param {string} gate @param {import('../../skills/leeway-engine/scripts/domain/decision-point.cjs').GateAt} at
+   * @param {string} gate @param {import('../../skills/ledger-engine/scripts/domain/decision-point.cjs').GateAt} at
    */
   function drawn(gate, at) {
     const step = learned(gate, at);
@@ -374,8 +374,8 @@ describe('the decision point\'s step on a learned gate (decision-point.cjs)', ()
 
   it('in a unit whose build is in step, every gate of its build shows whatever its count, and a gate outside its build follows its count — only the build has a position (3.3.1, 3.3.3)', () => {
     const dir = project('mint');
-    fs.mkdirSync(path.join(dir, '.leeway', 'pay'), { recursive: true });
-    fs.writeFileSync(path.join(dir, '.leeway', 'pay', 'manifest.json'), JSON.stringify({ build: { position: 'step' } }));
+    fs.mkdirSync(path.join(dir, '.ledger', 'pay'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.ledger', 'pay', 'manifest.json'), JSON.stringify({ build: { position: 'step' } }));
     logged(pressed(13, { gate: 'wait for agents', row: 'g' }));
     const building = { ...waiting(dir), place: { unit: 'pay', phase: 'implementation', topic: null } };
 
@@ -479,7 +479,7 @@ describe('the decision point\'s step on a learned gate (decision-point.cjs)', ()
 
   it('a showing held whose subject is gone is ended at the draw, the gate drawn afresh — the reprompt over other paths, the spawn gate for another experiment, the wait once none of the agents it waited on runs — while the wait over an agent it waited on still running, and the investigation\'s gates however their keys change, show on the hold (N1)', () => {
     const LAB = Object.freeze({ unit: 'lab', phase: 'discussion', topic: 'timing' });
-    /** Each gate, its place, the key its showing held was drawn from, and the key it is drawn from next. @type {Array<[string, import('../../skills/leeway-engine/scripts/domain/learned-gates.cjs').Place, unknown, unknown]>} */
+    /** Each gate, its place, the key its showing held was drawn from, and the key it is drawn from next. @type {Array<[string, import('../../skills/ledger-engine/scripts/domain/learned-gates.cjs').Place, unknown, unknown]>} */
     const draws = [
       ['import reprompt', NOWHERE, ['/notes/sketch.png'], ['/screens/tax-form.png']],
       ['experiment spawn gate', LAB, 'E1', 'E2'],
@@ -700,7 +700,7 @@ describe('a learned gate\'s MENU, drawn as its step says (surfaces.cjs)', () => 
       ['plan gate', 'y', continues],
       ['check-in gate', 'y', continues],
       ['conclude gate', 'y', { kind: 'engine', argv: ['investigation', 'conclude', 'crash'] }],
-      ['experiment spawn gate', 'y', { kind: 'handoff', skill: 'leeway-experiment-process', args: ['epic', 'lab', 'timing'] }],
+      ['experiment spawn gate', 'y', { kind: 'handoff', skill: 'ledger-experiment-process', args: ['epic', 'lab', 'timing'] }],
       ['experiment spawn gate', 'l', continues],
     ].map(([gate, row, next]) => ({ gate, row, step: automatic(String(gate), String(row), next), menu: false, shown: null, stepped: true })));
   });

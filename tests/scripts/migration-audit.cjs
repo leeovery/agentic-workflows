@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // The migration audit (21.1.1; 2.8.1): whether a project the migration took
-// into Leeway migrated cleanly, read and never written — it calls one engine
+// into Ledger migrated cleanly, read and never written — it calls one engine
 // verb, boot, which must find nothing left to do, run in no conversation,
 // so it marks none in the system config, and its separate Claude call
 // pinned to the suite's stub with no login, so the late one-decision check
@@ -64,7 +64,7 @@
 // As a command: `node migration-audit.cjs list <project>` prints the
 // listing; `node migration-audit.cjs audit <project> <listing.json>`
 // prints the report and exits 1 on any fault. It runs only with both
-// user-level folders, LEEWAY_CONFIG_DIR and WORKFLOWS_CONFIG_DIR, pinned to
+// user-level folders, LEDGER_CONFIG_DIR and WORKFLOWS_CONFIG_DIR, pinned to
 // folders outside `~/.config`, so boot never meets the person's own.
 // ---------------------------------------------------------------------------
 
@@ -75,16 +75,16 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..', '..');
-const SCRIPTS = path.join(ROOT, 'skills/leeway-engine/scripts');
+const SCRIPTS = path.join(ROOT, 'skills/ledger-engine/scripts');
 const ENGINE = path.join(SCRIPTS, 'engine.cjs');
-const MIGRATIONS = path.join(ROOT, 'skills/leeway-migrate/scripts/migrations');
+const MIGRATIONS = path.join(ROOT, 'skills/ledger-migrate/scripts/migrations');
 const schema = require(path.join(SCRIPTS, 'kernel/manifest-schema.cjs'));
 const { SIDECAR_NAME } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { rehomedPlaces, asRehomed } = require(path.join(SCRIPTS, 'domain/ledger-rehomed.cjs'));
 const { chosenDriver } = require(path.join(SCRIPTS, 'domain/drivers.cjs'));
 
 const OLD = '.workflows';
-const STATE = '.leeway';
+const STATE = '.ledger';
 const LEGACY = /(?:^|\/)assets\/legacy\//;
 const REBUILT = [/^\.cache\/(?!.*\.md$)/, /^\.state\//, /^\.knowledge\/(?!config\.json$)/, /^\.gitignore$/, /^[^/]+\/\.state\//];
 // The old cache's documents, which the move copies into the state's cache.
@@ -105,7 +105,7 @@ const IMPORT_PATH = /(?:\.\.\/)+(?:imports|assets)\//g;
 const CLAUDE_STUB = path.join(__dirname, 'claude-stub.sh');
 const STUB_ARMS = ['CLAUDE_STUB_ANSWERS', 'CLAUDE_STUB_LOG', 'CLAUDE_STUB_MEET'];
 // The user-level folders the command runs only with pinned.
-const CONFIG_DIRS = ['LEEWAY_CONFIG_DIR', 'WORKFLOWS_CONFIG_DIR'];
+const CONFIG_DIRS = ['LEDGER_CONFIG_DIR', 'WORKFLOWS_CONFIG_DIR'];
 
 /** @typedef {{sha: string, text?: string}} OldFile */
 /** @typedef {{files: Record<string, OldFile>}} Listing */
@@ -211,7 +211,7 @@ const gitRead = (dir, args) => (fs.existsSync(dir) ? spawnSync('git', args, { cw
 /** The environment boot runs in: no conversation's, and the separate call's binary the suite's stub, unarmed. */
 function bootEnv() {
   /** @type {Record<string, string|undefined>} */
-  const env = { ...process.env, LEEWAY_CLAUDE: CLAUDE_STUB };
+  const env = { ...process.env, LEDGER_CLAUDE: CLAUDE_STUB };
   for (const name of ['CLAUDE_CODE_SESSION_ID', ...STUB_ARMS]) delete env[name];
   return env;
 }

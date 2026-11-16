@@ -3,8 +3,8 @@
 // The world the boot suites share (test-engine-boot-*.cjs): the project
 // fixture, a git repository with its state worktree and the workflows' own
 // hooks in its settings, made once per process and copied (`bootProject`,
-// `setupProject`); a real project on the layout before Leeway's, with no
-// `.leeway/`, its settings holding the hooks today's product leaves
+// `setupProject`); a real project on the layout before Ledger's, with no
+// `.ledger/`, its settings holding the hooks today's product leaves
 // (`legacyProject`), with labels on or off, and the SessionEnd hooks a
 // checkout's settings hold run as Claude Code runs them
 // (`sessionEndAsInstalled`); the library's stub engine, whose migration runner
@@ -53,7 +53,7 @@ const TODAYS_HOOKS_UNLABELLED = JSON.stringify({ hooks: { SessionEnd: [{ hooks: 
  */
 function sessionEndAsInstalled(checkout, session) {
   const skills = path.join(checkout, '.claude/skills');
-  const link = path.join(skills, 'leeway-engine');
+  const link = path.join(skills, 'ledger-engine');
   fs.mkdirSync(skills, { recursive: true });
   fs.symlinkSync(path.dirname(path.dirname(harness.ENGINE)), link);
   try {
@@ -71,7 +71,7 @@ function sessionEndAsInstalled(checkout, session) {
 const STORE_FILES = ['store.bin', 'metadata.json', 'config.json'].map((name) => layout.knowledge(name));
 
 /**
- * A project fixture: a real git repo with its state worktree at `.leeway/`,
+ * A project fixture: a real git repo with its state worktree at `.ledger/`,
  * its settings already carrying the workflows' own hooks — the state every
  * booted project reaches, so boot's own plumbing commits never join the
  * history a test reads. A test about the install takes the hooks away first.
@@ -101,12 +101,12 @@ function setupProject(root) {
 }
 
 /** The migrations a project at 070 had run, as its old record lists them. */
-const MIGRATED_TO_070 = [...new Set(fs.readdirSync(path.join(path.dirname(harness.ENGINE), '../../leeway-migrate/scripts/migrations'))
+const MIGRATED_TO_070 = [...new Set(fs.readdirSync(path.join(path.dirname(harness.ENGINE), '../../ledger-migrate/scripts/migrations'))
   .filter((name) => /^[0-9]+-/.test(name) && !name.endsWith('.check.cjs'))
   .map((name) => name.slice(0, name.indexOf('-'))))].filter((id) => Number(id) <= 70).sort();
 
 /**
- * A real project on the layout before Leeway's, no `.leeway/` in it: its
+ * A real project on the layout before Ledger's, no `.ledger/` in it: its
  * `.workflows/` committed on `main` as the chain up to 070 left it — its
  * cache ignored there, its old migrations record at 070, labels on, a
  * roadmap item with no kind, and a feature mid-discussion — beside the hooks
@@ -211,7 +211,7 @@ function hookHelpers(fix) {
     const env = {
       ...extra,
       TMUX: tmux ? '/fake/sock,123,7' : undefined,
-      LEEWAY_HOLD_PROJECT_SETTINGS: holdSettings ? '1' : undefined,
+      LEDGER_HOLD_PROJECT_SETTINGS: holdSettings ? '1' : undefined,
     };
     return runEngine(stubbed, fix().project, ['boot'], env);
   }

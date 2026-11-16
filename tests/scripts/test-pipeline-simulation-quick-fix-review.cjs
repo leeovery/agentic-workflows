@@ -36,18 +36,18 @@ describe('pipeline simulation: quick-fix review', () => {
     const [flag] = writeTasks(sim, wu, 1, [{ title: 'Spell the flag --colour', type: 'fix', reference: 'none', scenarios: ['1.S1 Given the flag, when it is passed, then it reads --colour.'] }]);
     sim.run(['task', 'start', wu, flag]);
     fixBuilt(sim, wu, flag, ['src/flag.js'], { record: 'The flag.' });
-    sim.write(`.leeway/${wu}/build/log.md`, '# The fixes\n');
+    sim.write(`.ledger/${wu}/build/log.md`, '# The fixes\n');
     finishClosed(sim, wu);
     sim.render(['finish', wu], { expect: 'content' });
     const asked = sim.run(answerGate(sim, 'finish', '--pick', 'r').next.argv);
-    assert.deepStrictEqual(asked.next, { kind: 'invoke', skill: 'leeway-review-process', args: ['quick-fix', wu] });
+    assert.deepStrictEqual(asked.next, { kind: 'invoke', skill: 'ledger-review-process', args: ['quick-fix', wu] });
     sim.run(['enter', 'review', wu]);
 
     const first = reviewNext(sim, wu);
     areaRead(sim, wu, '## Findings\n\n- bug: the help still says --color\n  Scenario: the help read\n\nVerdict: fail\n');
     testsRead(sim, wu);
     const [fix] = writePhaseTasks(sim, wu, 2, 'The review\'s fixes', [{ title: 'Spell the help --colour', type: 'fix', reference: 'none', scenarios: ['Given the help, when it is read, then it names --colour.'] }]);
-    const failed = sim.run(['review', 'round', wu, '--file', sim.write(`.leeway/.cache/${wu}/review/round.json`, {
+    const failed = sim.run(['review', 'round', wu, '--file', sim.write(`.ledger/.cache/${wu}/review/round.json`, {
       can_now: ['Pass --colour.'], findings: [{ area: '1-the-change', scope: 'in', call: 'bug', text: 'The help still says --color.', from: ['1-the-change-a#1'], fix }],
     })]);
     assert.strictEqual(reviewNext(sim, wu).move, 'fixes');
@@ -59,7 +59,7 @@ describe('pipeline simulation: quick-fix review', () => {
     reviewNext(sim, wu);
     areaRead(sim, wu);
     testsRead(sim, wu);
-    const passed = sim.run(['review', 'round', wu, '--file', sim.write(`.leeway/.cache/${wu}/review/round.json`, { can_now: ['Pass --colour, and read it in the help.'], findings: [] })]);
+    const passed = sim.run(['review', 'round', wu, '--file', sim.write(`.ledger/.cache/${wu}/review/round.json`, { can_now: ['Pass --colour, and read it in the help.'], findings: [] })]);
     sim.render(passed.next.argv.slice(1), { expect: 'content' });
     const unclosed = sim.handoffs.slice(handedOff);
     const yes = sim.run(answerGate(sim, 'finish', '--pick', 'y').next.argv);

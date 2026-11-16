@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The ledger's write verbs (leeway-engine/scripts/domain/ledger-write.cjs)
+// The ledger's write verbs (ledger-engine/scripts/domain/ledger-write.cjs)
 // around what each writes: `engine ledger ask|find|decide|replace|hold|move|
 // merge` tagging each event with its unit, topic, phase and session, and
 // committing the ledger to the state branch; its content as JSON on stdin
@@ -32,7 +32,7 @@ const {
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { LEDGER_VERSION, validEvent } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
 const { newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { withStateLock, commitState } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));

@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // The review's fix phases in the build (P14, 14.3.2): the build's standing
-// (leeway-engine/scripts/domain/build-entry.cjs) lists each fix phase
+// (ledger-engine/scripts/domain/build-entry.cjs) lists each fix phase
 // written past the cut as the review's fixes of its round — relying on
 // nothing, owing no phase review, written, running, closed once every task
 // not closed is done and merged once each landed — none not yet written,
@@ -27,7 +27,7 @@ const {
   ok, okSections, refusedPristine, statePath, readManifest, createManifest, git, assert,
 } = require('./review-world.cjs');
 
-const { buildStanding } = require('../../skills/leeway-engine/scripts/domain/build-entry.cjs');
+const { buildStanding } = require('../../skills/ledger-engine/scripts/domain/build-entry.cjs');
 
 /** @type {string} */
 let dir;

@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// `engine ledger carry` (leeway-engine/scripts/domain/ledger-carry.cjs; 21.6,
+// `engine ledger carry` (ledger-engine/scripts/domain/ledger-carry.cjs; 21.6,
 // 21.10.9): a topic's record carried into the ledger while the migration
 // runs, read where it is composed in the state — the whole record appended
 // as one, each entry its event's content with its links by id, moving no
@@ -32,7 +32,7 @@ const harness = require('./engine-harness.cjs');
 const { ok, refuses, git, statePath, layout, writeState, readState, cleanupFixture, ledgerEntries, killedAt } = harness;
 const { SESSION, recordsMigration, stateUnborn, refusedUntouched, refusedKeeping } = require('./migration-world.cjs');
 
-const SCRIPTS = path.join(__dirname, '../../skills/leeway-engine/scripts');
+const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { carriedPath, composedPath, findingsPath, refusedPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
 
 const LICENSING = 'fumi.discussion.licensing';

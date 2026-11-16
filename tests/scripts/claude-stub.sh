@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# The `claude` binary hermetic-env.cjs pins LEEWAY_CLAUDE to. Armed — a test
+# The `claude` binary hermetic-env.cjs pins LEDGER_CLAUDE to. Armed — a test
 # set CLAUDE_STUB_ANSWERS, CLAUDE_STUB_LOG or CLAUDE_STUB_MEET — it is
 # claude-stub.cjs, which answers by what the test set. Unarmed, it answers as
 # claude-stub.cjs does unarmed, byte for byte — a Claude with no login —

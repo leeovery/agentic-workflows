@@ -31,8 +31,8 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const { git } = require('../../scripts/engine-harness.cjs');
 const { UNIT, setLandingDriver, landedOn, pathsOn } = require('../../scripts/landing-world.cjs');
-const names = require('../../../skills/leeway-engine/scripts/domain/landing-names.cjs');
-const { taskId } = require('../../../skills/leeway-engine/scripts/domain/task-id.cjs');
+const names = require('../../../skills/ledger-engine/scripts/domain/landing-names.cjs');
+const { taskId } = require('../../../skills/ledger-engine/scripts/domain/task-id.cjs');
 const { GH_ENV, githubWorld, github, onGithub, bareOf, squashFromPullRequests, mergeByHand } = require('./world.cjs');
 const stub = require('./gh-stub.cjs');
 

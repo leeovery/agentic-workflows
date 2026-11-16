@@ -16,7 +16,7 @@
 // hooks and `.worktreeinclude` in its code tree, and today's user-level
 // folder holding its config, credentials and a conversation. The move runs
 // once over that project, and each test reads one rule off what it left:
-// the state worktree on an unborn `leeway-state`, locked, with nothing
+// the state worktree on an unborn `ledger-state`, locked, with nothing
 // committed, nothing staged, and `.workflows/` and the store untouched;
 // each
 // unit's files in the layout, each review never folded in folded into its
@@ -45,10 +45,10 @@
 // area of spec.md; and an experiment record's instruments, a folder and a loose
 // file, under its data/, its problem, design and report as they are, and a
 // file of no record kept as legacy. A small project of its own
-// covers the runner's record and journals already in `.leeway/`, the
-// `.leeway/` ignore line written with hooks off and the caller's git
+// covers the runner's record and journals already in `.ledger/`, the
+// `.ledger/` ignore line written with hooks off and the caller's git
 // environment cleared, the move run again over one cut short, over one
-// whose `.leeway/` the person removed and over one killed writing each file
+// whose `.ledger/` the person removed and over one killed writing each file
 // it reads back, a project nested in its repository, the specs past their
 // gate of a unit whose building started joined into its spec, its fences
 // read as the spec's reader reads them, the topics joined named, a spec
@@ -65,7 +65,7 @@
 // settings that do not parse, a user-level folder the engine's holds a
 // different copy of a file in, and one that is a link elsewhere. The
 // tracker's store is where its driver's frozen declaration says a project
-// from before Leeway keeps it, read as the move reads it. The mail holds
+// from before Ledger keeps it, read as the move reads it. The mail holds
 // messages as today's sessions wrote them, the sender's line under the title
 // and under a blank line after it. The linters' carry (reshape/linters.cjs)
 // is driven alone over a state of its own, with the linters' entries of a
@@ -88,33 +88,33 @@ const os = require('os');
 const path = require('path');
 
 const { git, initRepo, cleanupFixture } = require('./engine-harness.cjs');
-const MIGRATION = require('../../skills/leeway-migrate/scripts/migrations/078-reshape-move.cjs');
-const { carryLinters } = require('../../skills/leeway-migrate/scripts/migrations/reshape/linters.cjs');
-const { layoutPlace } = require('../../skills/leeway-engine/scripts/domain/layout.cjs');
-const { huntIn, HUNT_HEADINGS } = require('../../skills/leeway-engine/scripts/domain/investigation-log.cjs');
-const { heardIn } = require('../../skills/leeway-engine/scripts/domain/discovery-log.cjs');
-const { withEntry } = require('../../skills/leeway-engine/scripts/domain/log-lists.cjs');
-const { knowledgeFiles } = require('../../skills/leeway-engine/scripts/kernel/knowledge/files.cjs');
-const { chosenDriver, listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
-const { specReading } = require('../../skills/leeway-engine/scripts/domain/spec-sections.cjs');
+const MIGRATION = require('../../skills/ledger-migrate/scripts/migrations/078-reshape-move.cjs');
+const { carryLinters } = require('../../skills/ledger-migrate/scripts/migrations/reshape/linters.cjs');
+const { layoutPlace } = require('../../skills/ledger-engine/scripts/domain/layout.cjs');
+const { huntIn, HUNT_HEADINGS } = require('../../skills/ledger-engine/scripts/domain/investigation-log.cjs');
+const { heardIn } = require('../../skills/ledger-engine/scripts/domain/discovery-log.cjs');
+const { withEntry } = require('../../skills/ledger-engine/scripts/domain/log-lists.cjs');
+const { knowledgeFiles } = require('../../skills/ledger-engine/scripts/kernel/knowledge/files.cjs');
+const { chosenDriver, listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
+const { specReading } = require('../../skills/ledger-engine/scripts/domain/spec-sections.cjs');
 
 const TODAY = new Date().toISOString().slice(0, 10);
 const json = (/** @type {unknown} */ value) => JSON.stringify(value, null, 2) + '\n';
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0xff]);
 const STATE_GITIGNORE = '/.knowledge/\n/.cache/\n/.lock\n/.lock.*\n.manifest.json.*.tmp\n/.ledger.jsonl.*.tmp\n';
 
-// Where a project from before Leeway keeps the tracker's store, as the task
+// Where a project from before Ledger keeps the tracker's store, as the task
 // driver's folder declares it, read from its declaration as the move reads
 // it; and one file its tool keeps local, named from the first pattern.
-const TASK_DRIVERS = path.join(__dirname, '../../skills/leeway-engine/scripts/drivers/task');
-const [PRE_LEEWAY] = fs.readdirSync(TASK_DRIVERS).map((name) => path.join(TASK_DRIVERS, name, 'pre-leeway-store.json')).filter((file) => fs.existsSync(file))
+const TASK_DRIVERS = path.join(__dirname, '../../skills/ledger-engine/scripts/drivers/task');
+const [PRE_LEDGER] = fs.readdirSync(TASK_DRIVERS).map((name) => path.join(TASK_DRIVERS, name, 'pre-ledger-store.json')).filter((file) => fs.existsSync(file))
   .map((file) => JSON.parse(fs.readFileSync(file, 'utf8')));
-const [STORE] = PRE_LEEWAY.files;
-const LOCAL = PRE_LEEWAY.localFiles[0].replace(/^\//, '').replace(/\*.*$/, '');
+const [STORE] = PRE_LEDGER.files;
+const LOCAL = PRE_LEDGER.localFiles[0].replace(/^\//, '').replace(/\*.*$/, '');
 const STORE_LINES = '{"id":"a1","title":"Ranking"}\n{"id":"a2","title":"Ranking, phase 2"}\n';
 
 const OLD_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs"';
-const NEW_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/leeway-engine/scripts/engine.cjs"';
+const NEW_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/ledger-engine/scripts/engine.cjs"';
 const FOREIGN_HOOK = { type: 'command', command: 'npx prettier --check .' };
 /**
  * The project's settings, its hooks naming the engine at `engine` and its
@@ -143,12 +143,12 @@ process.on('exit', () => fs.rmSync(HOMES, { recursive: true, force: true }));
  */
 function homes(name, files = {}, fresh = {}) {
   const old = path.join(HOMES, name, 'workflows');
-  const leeway = path.join(HOMES, name, 'leeway');
+  const current = path.join(HOMES, name, 'ledger');
   for (const [rel, content] of Object.entries(files)) write(old, rel, content);
-  for (const [rel, content] of Object.entries(fresh)) write(leeway, rel, content);
+  for (const [rel, content] of Object.entries(fresh)) write(current, rel, content);
   process.env.WORKFLOWS_CONFIG_DIR = old;
-  process.env.LEEWAY_CONFIG_DIR = leeway;
-  return { old, leeway };
+  process.env.LEDGER_CONFIG_DIR = current;
+  return { old, current };
 }
 
 // Today's user-level folder: its config, its credentials and a conversation's folder.
@@ -592,7 +592,7 @@ function todaysProject(dir) {
   w('gone/discussion/gone.md', '# Discussion: Gone\n');
 }
 
-describe('migration 078: the move into the layout in .leeway/', () => {
+describe('migration 078: the move into the layout in .ledger/', () => {
   /** @type {string} */
   let dir;
   /** @type {string} */
@@ -612,18 +612,18 @@ describe('migration 078: the move into the layout in .leeway/', () => {
     todaysProject(dir);
     commitAll(dir);
     headBefore = git(dir, ['rev-parse', 'HEAD']).trim();
-    user = homes('today', USER_FOLDER, { 'conversations/s1/position.json': USER_FOLDER['conversations/s1/position.json'], 'conversations/s2/position.json': '{"at":"leeway"}\n', '.DS_Store': 'the engine side\'s own sidecar\n' });
+    user = homes('today', USER_FOLDER, { 'conversations/s1/position.json': USER_FOLDER['conversations/s1/position.json'], 'conversations/s2/position.json': '{"at":"ledger"}\n', '.DS_Store': 'the engine side\'s own sidecar\n' });
     fs.chmodSync(path.join(user.old, 'credentials.json'), 0o600);
     result = run(dir);
-    state = path.join(dir, '.leeway');
+    state = path.join(dir, '.ledger');
   });
   after(() => { cleanupFixture(dir); });
 
   describe('where it writes (E2, 21.9.3)', () => {
-    it('adds the state worktree at .leeway/ on leeway-state, unborn, and locked as the engine locks it', () => {
-      assert.strictEqual(git(state, ['symbolic-ref', 'HEAD']).trim(), 'refs/heads/leeway-state');
-      assert.throws(() => git(dir, ['rev-parse', '--verify', '--quiet', 'refs/heads/leeway-state']), 'the branch has no commit');
-      assert.strictEqual(lockOf(dir, state), 'leeway state, do not remove');
+    it('adds the state worktree at .ledger/ on ledger-state, unborn, and locked as the engine locks it', () => {
+      assert.strictEqual(git(state, ['symbolic-ref', 'HEAD']).trim(), 'refs/heads/ledger-state');
+      assert.throws(() => git(dir, ['rev-parse', '--verify', '--quiet', 'refs/heads/ledger-state']), 'the branch has no commit');
+      assert.strictEqual(lockOf(dir, state), 'Ledger state, do not remove');
     });
 
     it('commits nothing, stages nothing in the state or the code, and leaves the default branch\'s .workflows/ as it was', () => {
@@ -640,29 +640,29 @@ describe('migration 078: the move into the layout in .leeway/', () => {
     it('reports an update for the project and one for each unit, and hands back each file it kept as legacy at its place, and each experiment instrument it moved under its record\'s data/', () => {
       assert.deepStrictEqual({ updates: result.updates, skips: result.skips }, { updates: 13, skips: 0 });
       assert.deepStrictEqual(result.returned, {
-        verify: 'These had no place of their own in .leeway/, so each is kept, as it was, as legacy, under its unit\'s assets/legacy/ or the product\'s, .product/assets/legacy/: '
-          + '.leeway/.product/assets/legacy/.inbox/ideas/rough-notes.md, .leeway/.product/assets/legacy/.roadmap/draft.txt, '
-          + '.leeway/.product/assets/legacy/.roadmap/notes/ideas/2026-01-03--points-expiry.md, .leeway/.product/assets/legacy/.baseline/.state/dossier-auth.md, '
-          + '.leeway/.product/assets/legacy/README.md, .leeway/.product/assets/legacy/scratch/notes.txt, '
-          + '.leeway/core/assets/legacy/discovery/briefs/zeta.md, .leeway/core/assets/legacy/discussion/stray.md, '
-          + '.leeway/core/assets/legacy/experiment/alpha/notes.md, .leeway/core/assets/legacy/experiment/alpha/scratch/try.txt, '
-          + '.leeway/core/assets/legacy/experiment/exploration-superseded-2026-01-01-1200/E3-cache-size/report.md, .leeway/core/assets/legacy/notes.txt, '
-          + '.leeway/core/assets/legacy/research/multi-tenancy/TenantTestCase.php, .leeway/core/assets/legacy/research/multi-tenancy/overview.md, '
-          + '.leeway/core/assets/legacy/specification/search/order-tracking-notes.md, .leeway/core/assets/legacy/specification/search/review-input-tracking-c1.md, '
-          + '.leeway/dropped/assets/legacy/planning/dropped/planning.md, '
-          + '.leeway/shop/assets/legacy/implementation/ranking/analysis-tasks-c1.md, .leeway/shop/assets/legacy/implementation/ranking/fix-tracking-ranking-1-1.md, '
-          + '.leeway/shop/assets/legacy/planning/ranking/review-integrity-tracking-c1.md, .leeway/shop/assets/legacy/specification/ranking/review-input-tracking-c1.md, .leeway/stale/assets/legacy/planning/stale/planning.md, '
-          + '.leeway/stall/assets/legacy/investigation/disk.png, .leeway/tally/assets/legacy/design/flow chart.png, '
-          + '.leeway/tally/assets/legacy/design/sessions-multi-select-active.png, .leeway/tally/assets/legacy/research/counting/plan.md, '
-          + '.leeway/typo/assets/legacy/planning/typo/planning.md. '
+        verify: 'These had no place of their own in .ledger/, so each is kept, as it was, as legacy, under its unit\'s assets/legacy/ or the product\'s, .product/assets/legacy/: '
+          + '.ledger/.product/assets/legacy/.inbox/ideas/rough-notes.md, .ledger/.product/assets/legacy/.roadmap/draft.txt, '
+          + '.ledger/.product/assets/legacy/.roadmap/notes/ideas/2026-01-03--points-expiry.md, .ledger/.product/assets/legacy/.baseline/.state/dossier-auth.md, '
+          + '.ledger/.product/assets/legacy/README.md, .ledger/.product/assets/legacy/scratch/notes.txt, '
+          + '.ledger/core/assets/legacy/discovery/briefs/zeta.md, .ledger/core/assets/legacy/discussion/stray.md, '
+          + '.ledger/core/assets/legacy/experiment/alpha/notes.md, .ledger/core/assets/legacy/experiment/alpha/scratch/try.txt, '
+          + '.ledger/core/assets/legacy/experiment/exploration-superseded-2026-01-01-1200/E3-cache-size/report.md, .ledger/core/assets/legacy/notes.txt, '
+          + '.ledger/core/assets/legacy/research/multi-tenancy/TenantTestCase.php, .ledger/core/assets/legacy/research/multi-tenancy/overview.md, '
+          + '.ledger/core/assets/legacy/specification/search/order-tracking-notes.md, .ledger/core/assets/legacy/specification/search/review-input-tracking-c1.md, '
+          + '.ledger/dropped/assets/legacy/planning/dropped/planning.md, '
+          + '.ledger/shop/assets/legacy/implementation/ranking/analysis-tasks-c1.md, .ledger/shop/assets/legacy/implementation/ranking/fix-tracking-ranking-1-1.md, '
+          + '.ledger/shop/assets/legacy/planning/ranking/review-integrity-tracking-c1.md, .ledger/shop/assets/legacy/specification/ranking/review-input-tracking-c1.md, .ledger/stale/assets/legacy/planning/stale/planning.md, '
+          + '.ledger/stall/assets/legacy/investigation/disk.png, .ledger/tally/assets/legacy/design/flow chart.png, '
+          + '.ledger/tally/assets/legacy/design/sessions-multi-select-active.png, .ledger/tally/assets/legacy/research/counting/plan.md, '
+          + '.ledger/typo/assets/legacy/planning/typo/planning.md. '
           + 'Move any into a better place in its unit\'s assets/, or the product\'s, as wanted. '
           + 'These files of experiment records, neither a record\'s problem, design or report nor in its data/, were moved under its data/, at their paths from the record\'s folder: '
-          + '.leeway/core/topics/alpha/experiments/E1-frame-budget/E1.1-one-monitor/data/sample.tsv, .leeway/core/topics/alpha/experiments/E1-frame-budget/data/harness/run.sh, '
-          + '.leeway/core/topics/alpha/experiments/E1-frame-budget/data/rubric.md. A path a record\'s text or script spells out is left as written. '
+          + '.ledger/core/topics/alpha/experiments/E1-frame-budget/E1.1-one-monitor/data/sample.tsv, .ledger/core/topics/alpha/experiments/E1-frame-budget/data/harness/run.sh, '
+          + '.ledger/core/topics/alpha/experiments/E1-frame-budget/data/rubric.md. A path a record\'s text or script spells out is left as written. '
           + 'The linters were carried into environment.linters as a name and a command, which leaves out swiftformat\'s fix_command ("swiftformat ."). '
           + 'Change a linter\'s command where any is still wanted, when ready to build asks to confirm the project\'s setup, or now: read the linters recorded with '
-          + '`node .claude/skills/leeway-engine/scripts/engine.cjs environment show`, then record the whole list, those changed, with '
-          + '`node .claude/skills/leeway-engine/scripts/engine.cjs environment set linters`, its JSON on stdin.',
+          + '`node .claude/skills/ledger-engine/scripts/engine.cjs environment show`, then record the whole list, those changed, with '
+          + '`node .claude/skills/ledger-engine/scripts/engine.cjs environment set linters`, its JSON on stdin.',
       });
     });
   });
@@ -670,7 +670,7 @@ describe('migration 078: the move into the layout in .leeway/', () => {
   describe('nothing that may hold knowledge lost', () => {
     it('keeps every file it names as legacy byte for byte at its place, a file the state\'s first commit takes — a research folder of its own, as evvi\'s sessions kept one, and a unit\'s design images, as portal\'s, among them — so finish, dropping .workflows/, leaves none of them in git\'s history alone', () => {
       const named = /legacy\/: (.*?)\. Move any/.exec(String(result.returned && result.returned.verify));
-      const legacy = (named === null ? '' : named[1]).split(', ').map((rel) => rel.replace(/^\.leeway\//, ''));
+      const legacy = (named === null ? '' : named[1]).split(', ').map((rel) => rel.replace(/^\.ledger\//, ''));
       const oldOf = (/** @type {string} */ rel) => {
         const [, owner, kept] = /^(.+?)\/assets\/legacy\/(.*)$/.exec(rel) ?? [];
         return owner === '.product' ? kept : `${owner}/${kept}`;
@@ -748,7 +748,7 @@ describe('migration 078: the move into the layout in .leeway/', () => {
       ]);
       assert.strictEqual(read('.inbox/ideas/2026-02-01--dark-mode.md'), '# Dark mode\n');
       assert.strictEqual(read('.state/environment-setup.md'), 'No special setup required.\n');
-      assert.strictEqual(read('.gitignore'), `${STATE_GITIGNORE}${PRE_LEEWAY.localFiles.join('\n')}\n`);
+      assert.strictEqual(read('.gitignore'), `${STATE_GITIGNORE}${PRE_LEDGER.localFiles.join('\n')}\n`);
     });
 
     it('carries the tracker\'s store, found where the task driver says it lives, as it is, and none of its tool\'s local files (21.5.18)', () => {
@@ -810,8 +810,8 @@ describe('migration 078: the move into the layout in .leeway/', () => {
   });
 
   describe('the project\'s own files (21.5.19, 21.S52)', () => {
-    it('names the engine by its new path in each settings hook and the state as .leeway/ in each permission rule, every other hook, rule and key as it was', () => {
-      assert.strictEqual(fs.readFileSync(path.join(dir, '.claude/settings.json'), 'utf8'), json(settings(NEW_ENGINE, '.leeway')));
+    it('names the engine by its new path in each settings hook and the state as .ledger/ in each permission rule, every other hook, rule and key as it was', () => {
+      assert.strictEqual(fs.readFileSync(path.join(dir, '.claude/settings.json'), 'utf8'), json(settings(NEW_ENGINE, '.ledger')));
     });
 
     it('takes the workflows\' lines out of .worktreeinclude, the person\'s kept', () => {
@@ -821,10 +821,10 @@ describe('migration 078: the move into the layout in .leeway/', () => {
 
   describe('the user-level folder (21.5.19, P7, 21.S52)', () => {
     it('moves today\'s folder\'s contents into the engine\'s unchanged, beside what the engine already wrote there — a folder both hold merged where nothing in it differs — and leaves a link to it in its place', () => {
-      assert.deepStrictEqual(tree(user.leeway), ['.DS_Store', 'config.json', 'conversations/s1/position.json', 'conversations/s2/position.json', 'credentials.json']);
-      for (const [rel, content] of Object.entries(USER_FOLDER)) if (rel !== '.DS_Store') assert.strictEqual(fs.readFileSync(path.join(user.leeway, rel), 'utf8'), content, rel);
-      assert.strictEqual(fs.statSync(path.join(user.leeway, 'credentials.json')).mode & 0o777, 0o600, 'the credentials kept private');
-      assert.strictEqual(fs.readlinkSync(user.old), user.leeway);
+      assert.deepStrictEqual(tree(user.current), ['.DS_Store', 'config.json', 'conversations/s1/position.json', 'conversations/s2/position.json', 'credentials.json']);
+      for (const [rel, content] of Object.entries(USER_FOLDER)) if (rel !== '.DS_Store') assert.strictEqual(fs.readFileSync(path.join(user.current, rel), 'utf8'), content, rel);
+      assert.strictEqual(fs.statSync(path.join(user.current, 'credentials.json')).mode & 0o777, 0o600, 'the credentials kept private');
+      assert.strictEqual(fs.readlinkSync(user.old), user.current);
       assert.strictEqual(fs.readFileSync(path.join(user.old, 'credentials.json'), 'utf8'), USER_FOLDER['credentials.json'], 'read through the link as today\'s skills read it');
     });
 
@@ -835,8 +835,8 @@ describe('migration 078: the move into the layout in .leeway/', () => {
         commitAll(next);
         const { returned } = run(next);
         assert.strictEqual(returned, undefined);
-        assert.strictEqual(fs.readlinkSync(user.old), user.leeway);
-        assert.deepStrictEqual(tree(user.leeway), ['.DS_Store', 'config.json', 'conversations/s1/position.json', 'conversations/s2/position.json', 'credentials.json']);
+        assert.strictEqual(fs.readlinkSync(user.old), user.current);
+        assert.deepStrictEqual(tree(user.current), ['.DS_Store', 'config.json', 'conversations/s1/position.json', 'conversations/s2/position.json', 'credentials.json']);
       } finally {
         cleanupFixture(next);
       }
@@ -1195,7 +1195,7 @@ describe('migration 078: a small project', () => {
   before(() => { homes('none'); });
 
   /** The project manifest the move wrote, from the project at `dir`. */
-  const movedProject = () => JSON.parse(fs.readFileSync(path.join(dir, '.leeway/manifest.json'), 'utf8'));
+  const movedProject = () => JSON.parse(fs.readFileSync(path.join(dir, '.ledger/manifest.json'), 'utf8'));
 
   it('21.S50: keeps a native or completed baseline as the brownfield offer\'s answer, in today\'s words, and none for a baseline under way, the status fields gone either way (21.11.2, 8.12.11)', () => {
     const cases = /** @type {const} */ ([['native', { brownfield_offer: 'native' }], ['completed', { brownfield_offer: 'completed' }], ['in-progress', {}]]);
@@ -1236,10 +1236,10 @@ describe('migration 078: a small project', () => {
       feature();
       run(dir);
       assert.ok(!fs.existsSync(path.join(dir, '.worktreeinclude')));
-      assert.strictEqual(fs.readFileSync(path.join(dir, '.claude/settings.json'), 'utf8'), json({ permissions: { allow: ['Edit(.leeway/**)'] } }));
+      assert.strictEqual(fs.readFileSync(path.join(dir, '.claude/settings.json'), 'utf8'), json({ permissions: { allow: ['Edit(.ledger/**)'] } }));
       assert.deepStrictEqual(git(dir, ['status', '--porcelain']).split('\n').filter(Boolean).sort(), [' D .worktreeinclude', ' M .claude/settings.json', '?? .gitignore']);
-      assert.strictEqual(fs.readFileSync(path.join(dir, '.leeway/.gitignore'), 'utf8'), STATE_GITIGNORE);
-      assert.deepStrictEqual([fs.existsSync(user.old), fs.existsSync(user.leeway)], [false, false]);
+      assert.strictEqual(fs.readFileSync(path.join(dir, '.ledger/.gitignore'), 'utf8'), STATE_GITIGNORE);
+      assert.deepStrictEqual([fs.existsSync(user.old), fs.existsSync(user.current)], [false, false]);
     } finally {
       cleanupFixture(dir);
     }
@@ -1302,12 +1302,12 @@ describe('migration 078: a small project', () => {
       buildingSpecs(dir);
       commitAll(dir);
       run(dir);
-      const at = (/** @type {string} */ rel) => fs.readFileSync(path.join(dir, '.leeway/store', rel), 'utf8');
+      const at = (/** @type {string} */ rel) => fs.readFileSync(path.join(dir, '.ledger/store', rel), 'utf8');
       const reading = specReading(at('spec.md'), true);
       assert.deepStrictEqual([at('spec.md'), reading.faults, reading.headings.map(({ kind, title }) => `${kind} ${title}`)], [STORE_SPEC, [], ['area Cart', 'area Pay', 'area Ship']]);
       const { spec, phases } = JSON.parse(at('manifest.json'));
       assert.deepStrictEqual([spec, Object.keys(phases.specification.items).sort(), phases.discussion.items.stock], [{ joined: ['cart', 'pay', 'ship'] }, ['cart', 'dropped', 'later', 'old-cart', 'pay', 'ship'], { status: 'completed' }]);
-      assert.deepStrictEqual(tree(path.join(dir, '.leeway/store'), 'assets'), ['sketch.md', 'specs/dropped.md', 'specs/later.md', 'specs/old-cart.md', 'specs/stock.md']);
+      assert.deepStrictEqual(tree(path.join(dir, '.ledger/store'), 'assets'), ['sketch.md', 'specs/dropped.md', 'specs/later.md', 'specs/old-cart.md', 'specs/stock.md']);
     } finally {
       cleanupFixture(dir);
     }
@@ -1337,13 +1337,13 @@ describe('migration 078: a small project', () => {
       write(dir, '.workflows/done/specification/pay/specification.md', '# Specification: Pay\n\nBy card.\n');
       commitAll(dir);
       run(dir);
-      const at = (/** @type {string} */ rel, of = 'done') => fs.readFileSync(path.join(dir, '.leeway', of, rel), 'utf8');
+      const at = (/** @type {string} */ rel, of = 'done') => fs.readFileSync(path.join(dir, '.ledger', of, rel), 'utf8');
       const { status, phases, spec } = JSON.parse(at('manifest.json'));
       assert.deepStrictEqual([at('spec.md'), spec, status], ['# Done\n\n## 1. Cart\n\nOne tap.\n\n## 2. Pay\n\nBy card.\n', { joined: ['cart', 'pay'] }, 'completed']);
       const gone = JSON.parse(at('manifest.json', 'gone'));
       assert.deepStrictEqual([Object.keys(phases).sort(), Object.keys(gone.phases), gone.spec, gone.status], [['discovery', 'discussion'], ['discussion'], { joined: ['gone'] }, 'cancelled']);
       assert.deepStrictEqual([phases.discussion.items.loyalty, phases.discussion.items.gifts, Object.keys(phases.discovery.items)], [{ status: 'completed' }, { status: 'completed' }, ['cart', 'pay', 'loyalty', 'gifts']]);
-      assert.ok(['loyalty', 'gifts'].every((topic) => fs.existsSync(path.join(dir, '.leeway/done/topics', topic, 'log.md'))));
+      assert.ok(['loyalty', 'gifts'].every((topic) => fs.existsSync(path.join(dir, '.ledger/done/topics', topic, 'log.md'))));
     } finally {
       cleanupFixture(dir);
     }
@@ -1358,7 +1358,7 @@ describe('migration 078: a small project', () => {
       write(dir, '.workflows/husk/notes.md', '# Husk\n');
       commitAll(dir);
       const { returned } = run(dir);
-      const state = path.join(dir, '.leeway');
+      const state = path.join(dir, '.ledger');
       assert.deepStrictEqual([Object.keys(JSON.parse(fs.readFileSync(path.join(state, 'manifest.json'), 'utf8')).work_units), tree(state, '.product')], [['tally'], ['assets/legacy/husk/notes.md']]);
       assert.match(String(returned?.verify), /^The registry named these units, and \.workflows\/ held no folder of theirs with a manifest, so the registry drops their entries: ghost, husk\./);
     } finally {
@@ -1387,7 +1387,7 @@ describe('migration 078: a small project', () => {
       write(dir, '.workflows/Old_Tally/discussion/Old_Tally.md', '# Discussion: Old Tally\n');
       commitAll(dir);
       const { returned } = run(dir);
-      const state = path.join(dir, '.leeway');
+      const state = path.join(dir, '.ledger');
       const read = (/** @type {string} */ rel) => fs.readFileSync(path.join(state, rel), 'utf8');
       const { work_units: units, roadmap } = JSON.parse(read('manifest.json'));
       const fix = JSON.parse(read('drop-a-flag/manifest.json'));
@@ -1401,7 +1401,7 @@ describe('migration 078: a small project', () => {
       assert.deepStrictEqual([tree(state, '.cache'), fs.readdirSync(path.join(state, '.cache'))], [['drop-a-flag/earlier/implementation/drop-a-flag/review-001.md'], ['drop-a-flag']]);
       assert.ok(tree(state).every((rel) => !rel.includes(FIX) && (rel.includes('/assets/legacy/') || !fs.readFileSync(path.join(state, rel)).includes(FIX))), 'no path names the old name, and no word but a legacy file\'s');
       assert.match(String(returned?.verify), /^This unit's name broke the rule a unit's name keeps .* by case alone, so it is carried under its lowercase name.*: drop-A-flag is drop-a-flag\./);
-      assert.match(String(returned?.verify), /\.leeway\/drop-a-flag\/assets\/legacy\/planning\/drop-a-flag\/planning\.md/);
+      assert.match(String(returned?.verify), /\.ledger\/drop-a-flag\/assets\/legacy\/planning\/drop-a-flag\/planning\.md/);
     } finally {
       cleanupFixture(dir);
     }
@@ -1423,7 +1423,7 @@ describe('migration 078: a small project', () => {
         fs.writeFileSync = realWrite;
       }
       run(dir);
-      const at = (/** @type {string} */ rel) => fs.readFileSync(path.join(dir, '.leeway/store', rel), 'utf8');
+      const at = (/** @type {string} */ rel) => fs.readFileSync(path.join(dir, '.ledger/store', rel), 'utf8');
       assert.deepStrictEqual([at('spec.md'), JSON.parse(at('manifest.json')).spec], [STORE_SPEC, { joined: ['cart', 'pay', 'ship'] }]);
     } finally {
       fs.writeFileSync = realWrite;
@@ -1442,7 +1442,7 @@ describe('migration 078: a small project', () => {
       write(dir, '.workflows/blank/manifest.json', json(unit('blank', 'epic', 'in-progress', {})));
       commitAll(dir);
       run(dir);
-      const approved = (/** @type {string} */ name) => JSON.parse(fs.readFileSync(path.join(dir, `.leeway/${name}/manifest.json`), 'utf8')).phases?.discovery?.approved_at ?? null;
+      const approved = (/** @type {string} */ name) => JSON.parse(fs.readFileSync(path.join(dir, `.ledger/${name}/manifest.json`), 'utf8')).phases?.discovery?.approved_at ?? null;
       assert.deepStrictEqual([approved('mapped'), approved('blank')], ['2026-03-04T00:00:00.000Z', null]);
     } finally {
       cleanupFixture(dir);
@@ -1461,7 +1461,7 @@ describe('migration 078: a small project', () => {
       }), created: '2025-07-02' }));
       commitAll(dir);
       run(dir);
-      const discovery = (/** @type {string} */ name) => JSON.parse(fs.readFileSync(path.join(dir, `.leeway/${name}/manifest.json`), 'utf8')).phases.discovery;
+      const discovery = (/** @type {string} */ name) => JSON.parse(fs.readFileSync(path.join(dir, `.ledger/${name}/manifest.json`), 'utf8')).phases.discovery;
       assert.deepStrictEqual([discovery('done'), discovery('dropped')], [
         {
           items: { intake: { source: 'migration-seeded', order: 1 }, billing: { source: 'migration-seeded', order: 2 } },
@@ -1499,7 +1499,7 @@ describe('migration 078: a small project', () => {
       })));
       commitAll(dir);
       run(dir);
-      const { items } = JSON.parse(fs.readFileSync(path.join(dir, '.leeway/mixed/manifest.json'), 'utf8')).phases.discovery;
+      const { items } = JSON.parse(fs.readFileSync(path.join(dir, '.ledger/mixed/manifest.json'), 'utf8')).phases.discovery;
       assert.deepStrictEqual(Object.fromEntries(Object.entries(items).map(([topic, { order, previous_order: stashed }]) => [topic, [order ?? null, stashed ?? null]])), {
         seeded: [5, null], second: [2, null], parked: [null, 6], stashed: [null, 4], first: [1, null], later: [7, null],
       });
@@ -1529,7 +1529,7 @@ describe('migration 078: a small project', () => {
       write(dir, '.workflows/lab/discussion/.mailbox/stalled/001-late-word.md', message('Late word', 'spun'));
       commitAll(dir);
       run(dir);
-      const { phases } = JSON.parse(fs.readFileSync(path.join(dir, '.leeway/lab/manifest.json'), 'utf8'));
+      const { phases } = JSON.parse(fs.readFileSync(path.join(dir, '.ledger/lab/manifest.json'), 'utf8'));
       assert.deepStrictEqual(phases.discovery.items, {
         settled: { source: 'discovery', summary: 'Settled', order: 1 },
         umbrella: { source: 'migration-seeded', summary: 'Umbrella', order: 2 },
@@ -1542,8 +1542,8 @@ describe('migration 078: a small project', () => {
         spun: { status: 'completed' },
         umbrella: { status: 'completed' },
       });
-      assert.strictEqual(fs.readFileSync(path.join(dir, `.leeway/.inbox/ideas/${TODAY}--late-word.md`), 'utf8'), '# Late word\nFrom Spun · 1 Jan\n\nDetails of late word.\n');
-      assert.deepStrictEqual(tree(path.join(dir, '.leeway'), 'lab/topics/stalled'), ['log.md']);
+      assert.strictEqual(fs.readFileSync(path.join(dir, `.ledger/.inbox/ideas/${TODAY}--late-word.md`), 'utf8'), '# Late word\nFrom Spun · 1 Jan\n\nDetails of late word.\n');
+      assert.deepStrictEqual(tree(path.join(dir, '.ledger'), 'lab/topics/stalled'), ['log.md']);
     } finally {
       cleanupFixture(dir);
     }
@@ -1553,16 +1553,16 @@ describe('migration 078: a small project', () => {
     dir = tempProject('migration-078-unread-');
     const skills = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'migration-078-skills-')));
     try {
-      const migrations = path.join(skills, 'leeway-migrate/scripts/migrations');
-      const drivers = path.join(skills, 'leeway-engine/scripts/drivers/task');
-      fs.cpSync(path.join(__dirname, '../../skills/leeway-migrate/scripts/migrations'), migrations, { recursive: true });
+      const migrations = path.join(skills, 'ledger-migrate/scripts/migrations');
+      const drivers = path.join(skills, 'ledger-engine/scripts/drivers/task');
+      fs.cpSync(path.join(__dirname, '../../skills/ledger-migrate/scripts/migrations'), migrations, { recursive: true });
       fs.cpSync(TASK_DRIVERS, drivers, { recursive: true });
-      write(drivers, 'broken/pre-leeway-store.json', '{"files": ".broken/store", "localFiles": []}\n');
+      write(drivers, 'broken/pre-ledger-store.json', '{"files": ".broken/store", "localFiles": []}\n');
       feature();
       const copy = require(path.join(migrations, '078-reshape-move.cjs'));
       const returned = copy.run({ projectDir: dir, reportUpdate: () => {}, reportSkip: () => {} });
       assert.deepStrictEqual(returned, {
-        notice: `The task driver folder ${path.join(drivers, 'broken')} holds no pre-leeway-store.json that reads, so the move carried no store declared there into the state: a store this project kept for such a tracker stays where it is.`,
+        notice: `The task driver folder ${path.join(drivers, 'broken')} holds no pre-ledger-store.json that reads, so the move carried no store declared there into the state: a store this project kept for such a tracker stays where it is.`,
       });
     } finally {
       cleanupFixture(dir);
@@ -1580,7 +1580,7 @@ describe('migration 078: a small project', () => {
       assert.strictEqual(git(dir, ['status', '--porcelain']).trim(), '?? .gitignore');
       assert.deepStrictEqual(returned, {
         verify: `${dir}/.claude/settings.json does not parse, so it was left naming the engine at .claude/skills/workflow-engine/scripts/engine.cjs and the state at .workflows/: `
-          + 'once it parses, name .claude/skills/leeway-engine/scripts/engine.cjs in each hook and .leeway/ in each permission rule.',
+          + 'once it parses, name .claude/skills/ledger-engine/scripts/engine.cjs in each hook and .ledger/ in each permission rule.',
       });
     } finally {
       cleanupFixture(dir);
@@ -1596,9 +1596,9 @@ describe('migration 078: a small project', () => {
       const { returned } = run(dir);
       assert.deepStrictEqual(Object.fromEntries(tree(user.old).map((rel) => [rel, fs.readFileSync(path.join(user.old, rel), 'utf8')])), USER_FOLDER, 'the old folder whole, and readable where it was');
       assert.ok(fs.lstatSync(user.old).isDirectory(), 'a folder still, never a link');
-      assert.deepStrictEqual(Object.fromEntries(tree(user.leeway).map((rel) => [rel, fs.readFileSync(path.join(user.leeway, rel), 'utf8')])), fresh);
+      assert.deepStrictEqual(Object.fromEntries(tree(user.current).map((rel) => [rel, fs.readFileSync(path.join(user.current, rel), 'utf8')])), fresh);
       assert.deepStrictEqual(returned, {
-        verify: `Nothing in ${user.old} was moved: ${user.leeway} already holds a different config.json, conversations/s1/position.json. `
+        verify: `Nothing in ${user.old} was moved: ${user.current} already holds a different config.json, conversations/s1/position.json. `
           + `${user.old} stays as it is, so a project still on today's skills reads it there; once each is settled, the next project's move compares them again.`,
       });
     } finally {
@@ -1616,9 +1616,9 @@ describe('migration 078: a small project', () => {
       fs.symlinkSync(dotfiles, user.old);
       feature();
       const { returned } = run(dir);
-      assert.deepStrictEqual([fs.readlinkSync(user.old), tree(dotfiles), fs.existsSync(user.leeway)], [dotfiles, ['config.json'], false]);
+      assert.deepStrictEqual([fs.readlinkSync(user.old), tree(dotfiles), fs.existsSync(user.current)], [dotfiles, ['config.json'], false]);
       assert.deepStrictEqual(returned, {
-        verify: `${user.old} is a link to ${dotfiles}, not a folder of its own, so nothing in it was moved to ${user.leeway}: move what the workflows keep there into ${user.leeway} yourself.`,
+        verify: `${user.old} is a link to ${dotfiles}, not a folder of its own, so nothing in it was moved to ${user.current}: move what the workflows keep there into ${user.current} yourself.`,
       });
     } finally {
       homes('none');
@@ -1627,23 +1627,23 @@ describe('migration 078: a small project', () => {
   });
 
 
-  it('puts the runner\'s record and journals, written in a plain .leeway/ before the move, inside the state worktree, the journals ignored, and keeps on the project\'s manifest the checklist a directive closed there', () => {
+  it('puts the runner\'s record and journals, written in a plain .ledger/ before the move, inside the state worktree, the journals ignored, and keeps on the project\'s manifest the checklist a directive closed there', () => {
     dir = tempProject('migration-078-record-');
     try {
       feature();
       const checklists = { directive: { '076-legacy-split': { items: {}, closed: '2026-01-01T00:00:00Z' } } };
-      write(dir, '.leeway/.state/migrations', '001\n073\n076\n');
-      write(dir, '.leeway/.cache/migrate/pending-tally.json', '{"ran":["073"]}\n');
-      write(dir, '.leeway/manifest.json', json({ checklists }));
+      write(dir, '.ledger/.state/migrations', '001\n073\n076\n');
+      write(dir, '.ledger/.cache/migrate/pending-tally.json', '{"ran":["073"]}\n');
+      write(dir, '.ledger/manifest.json', json({ checklists }));
       run(dir);
-      const state = path.join(dir, '.leeway');
+      const state = path.join(dir, '.ledger');
       const { project_id: _id, ...project } = movedProject();
       assert.deepStrictEqual(project, { work_units: { tally: { work_type: 'feature' } }, checklists });
       assert.strictEqual(fs.readFileSync(path.join(state, '.state/migrations'), 'utf8'), '001\n073\n076\n');
       assert.strictEqual(fs.readFileSync(path.join(state, '.cache/migrate/pending-tally.json'), 'utf8'), '{"ran":["073"]}\n');
       assert.doesNotThrow(() => git(state, ['check-ignore', '--quiet', '.cache/migrate/pending-tally.json']), 'the journal ignored in the state');
-      assert.strictEqual(git(state, ['symbolic-ref', 'HEAD']).trim(), 'refs/heads/leeway-state');
-      assert.ok(!fs.existsSync(path.join(dir, '.leeway-set-aside')));
+      assert.strictEqual(git(state, ['symbolic-ref', 'HEAD']).trim(), 'refs/heads/ledger-state');
+      assert.ok(!fs.existsSync(path.join(dir, '.ledger-set-aside')));
     } finally {
       cleanupFixture(dir);
     }
@@ -1654,14 +1654,14 @@ describe('migration 078: a small project', () => {
     try {
       write(dir, '.workflows/.knowledge/config.json', KNOWLEDGE_CONFIG);
       feature(dir, 'cancelled');
-      const state = path.join(dir, '.leeway');
-      git(dir, ['worktree', 'add', '--quiet', '--detach', '--no-checkout', '.leeway', 'HEAD']);
-      git(state, ['switch', '--quiet', '--orphan', 'leeway-state']);
+      const state = path.join(dir, '.ledger');
+      git(dir, ['worktree', 'add', '--quiet', '--detach', '--no-checkout', '.ledger', 'HEAD']);
+      git(state, ['switch', '--quiet', '--orphan', 'ledger-state']);
       write(state, 'manifest.json', json({ project_id: 'CutShort0123456789abc', work_units: {} }));
       write(state, `.inbox/ideas/${TODAY}--dropped.md`, DROPPED_IDEA);
       write(state, '.knowledge/config.json', KNOWLEDGE_CONFIG.slice(0, 12));
       write(state, 'tally/topics/tally/log.md', '## Disc');
-      write(dir, '.gitignore', '.leeway/\n');
+      write(dir, '.gitignore', '.ledger/\n');
       run(dir);
       assert.deepStrictEqual(tree(state).filter((rel) => rel !== '.git'), [
         '.gitignore', `.inbox/ideas/${TODAY}--dropped.md`, '.knowledge/config.json', 'manifest.json', 'tally/manifest.json', 'tally/topics/tally/log.md',
@@ -1671,8 +1671,8 @@ describe('migration 078: a small project', () => {
       assert.strictEqual(fs.readFileSync(path.join(state, '.knowledge/config.json'), 'utf8'), KNOWLEDGE_CONFIG);
       assert.strictEqual(fs.readFileSync(path.join(state, 'tally/topics/tally/log.md'), 'utf8'), '## Discussion\n\n## Discussion: Tally\n');
       assert.strictEqual(fs.readFileSync(path.join(state, `.inbox/ideas/${TODAY}--dropped.md`), 'utf8'), DROPPED_IDEA);
-      assert.strictEqual(lockOf(dir, state), 'leeway state, do not remove');
-      assert.strictEqual(fs.readFileSync(path.join(dir, '.gitignore'), 'utf8'), '.leeway/\n', 'the ignore line written once');
+      assert.strictEqual(lockOf(dir, state), 'Ledger state, do not remove');
+      assert.strictEqual(fs.readFileSync(path.join(dir, '.gitignore'), 'utf8'), '.ledger/\n', 'the ignore line written once');
       const whole = Object.fromEntries(tree(state).map((rel) => [rel, fs.readFileSync(path.join(state, rel), 'utf8')]));
       run(dir);
       assert.deepStrictEqual(Object.fromEntries(tree(state).map((rel) => [rel, fs.readFileSync(path.join(state, rel), 'utf8')])), whole, 'run again over a whole move, its worktree locked, the same state');
@@ -1688,29 +1688,29 @@ describe('migration 078: a small project', () => {
       const app = path.join(dir, 'app');
       feature(app);
       const { updates, skips } = run(app);
-      const state = path.join(dir, '.leeway');
+      const state = path.join(dir, '.ledger');
       assert.deepStrictEqual({ updates, skips }, { updates: 2, skips: 0 });
-      assert.strictEqual(git(state, ['symbolic-ref', 'HEAD']).trim(), 'refs/heads/leeway-state');
+      assert.strictEqual(git(state, ['symbolic-ref', 'HEAD']).trim(), 'refs/heads/ledger-state');
       assert.strictEqual(fs.readFileSync(path.join(state, 'tally/topics/tally/log.md'), 'utf8'), '## Discussion\n\n## Discussion: Tally\n');
-      assert.ok(!fs.existsSync(path.join(app, '.leeway')), 'no state in the project folder');
-      assert.strictEqual(fs.readFileSync(path.join(app, '.gitignore'), 'utf8'), '.leeway/\n');
+      assert.ok(!fs.existsSync(path.join(app, '.ledger')), 'no state in the project folder');
+      assert.strictEqual(fs.readFileSync(path.join(app, '.gitignore'), 'utf8'), '.ledger/\n');
       assert.ok(!fs.existsSync(path.join(dir, '.gitignore')), 'the repository\'s top untouched');
     } finally {
       cleanupFixture(dir);
     }
   });
 
-  it('run again after the person removed a cut-short .leeway/, clears the registration it left and adds the worktree again', () => {
+  it('run again after the person removed a cut-short .ledger/, clears the registration it left and adds the worktree again', () => {
     dir = tempProject('migration-078-removed-');
     try {
       feature();
       run(dir);
-      fs.rmSync(path.join(dir, '.leeway'), { recursive: true, force: true });
-      write(dir, '.leeway/.state/migrations', '001\n073\n');
+      fs.rmSync(path.join(dir, '.ledger'), { recursive: true, force: true });
+      write(dir, '.ledger/.state/migrations', '001\n073\n');
       run(dir);
-      const state = path.join(dir, '.leeway');
-      assert.strictEqual(git(state, ['symbolic-ref', 'HEAD']).trim(), 'refs/heads/leeway-state');
-      assert.strictEqual(lockOf(dir, state), 'leeway state, do not remove');
+      const state = path.join(dir, '.ledger');
+      assert.strictEqual(git(state, ['symbolic-ref', 'HEAD']).trim(), 'refs/heads/ledger-state');
+      assert.strictEqual(lockOf(dir, state), 'Ledger state, do not remove');
       assert.strictEqual(fs.readFileSync(path.join(state, '.state/migrations'), 'utf8'), '001\n073\n');
       assert.strictEqual(fs.readFileSync(path.join(state, 'tally/topics/tally/log.md'), 'utf8'), '## Discussion\n\n## Discussion: Tally\n');
     } finally {
@@ -1732,7 +1732,7 @@ describe('migration 078: a small project', () => {
       commitAll(dir);
       for (const { holding, torn } of [
         { holding: 'node_modules/', torn: part },
-        { holding: '.leeway/**', torn: none },
+        { holding: '.ledger/**', torn: none },
         { holding: '.env.local', torn: part },
         { holding: '"defaults"', torn: part },
         { holding: '"environment"', torn: none },
@@ -1748,9 +1748,9 @@ describe('migration 078: a small project', () => {
       run(dir);
       assert.deepStrictEqual(
         ['.gitignore', '.claude/settings.json', '.worktreeinclude'].map((rel) => fs.readFileSync(path.join(dir, rel), 'utf8')),
-        ['node_modules/\n.leeway/\n', json({ permissions: { allow: ['Edit(.leeway/**)'] } }), '.env.local\n'],
+        ['node_modules/\n.ledger/\n', json({ permissions: { allow: ['Edit(.ledger/**)'] } }), '.env.local\n'],
       );
-      const project = JSON.parse(fs.readFileSync(path.join(dir, '.leeway/manifest.json'), 'utf8'));
+      const project = JSON.parse(fs.readFileSync(path.join(dir, '.ledger/manifest.json'), 'utf8'));
       assert.deepStrictEqual([Object.keys(project), project.environment], [['project_id', 'work_units', 'environment'], { linters: [{ name: 'eslint', command: 'eslint' }] }]);
     } finally {
       fs.writeFileSync = realWrite;
@@ -1772,14 +1772,14 @@ describe('migration 078: a small project', () => {
       commitAll(dir);
       assert.throws(() => git(dir, ['merge', '--quiet', 'other']), 'the merge stops on its conflict');
       assert.throws(() => run(dir), /^Error: a merge \(MERGE_HEAD\) is stopped in .* — finish or abort it, then start again$/);
-      assert.ok(!fs.existsSync(path.join(dir, '.leeway')));
+      assert.ok(!fs.existsSync(path.join(dir, '.ledger')));
       assert.ok(!fs.existsSync(path.join(dir, '.gitignore')));
     } finally {
       cleanupFixture(dir);
     }
   });
 
-  it('ignores .leeway/ in the code tree\'s .gitignore, staging nothing, with hooks off and the caller\'s git environment cleared', () => {
+  it('ignores .ledger/ in the code tree\'s .gitignore, staging nothing, with hooks off and the caller\'s git environment cleared', () => {
     dir = tempProject('migration-078-code-');
     const decoy = tempProject('migration-078-decoy-');
     const marker = path.join(decoy, 'hook-ran');
@@ -1802,9 +1802,9 @@ describe('migration 078: a small project', () => {
         else process.env.GIT_DIR = held;
       }
       assert.deepStrictEqual({ updates: counts.updates, skips: counts.skips }, { updates: 2, skips: 0 });
-      assert.strictEqual(git(path.join(dir, '.leeway'), ['symbolic-ref', 'HEAD']).trim(), 'refs/heads/leeway-state');
+      assert.strictEqual(git(path.join(dir, '.ledger'), ['symbolic-ref', 'HEAD']).trim(), 'refs/heads/ledger-state');
       assert.ok(!fs.existsSync(marker), 'no hook ran');
-      assert.strictEqual(fs.readFileSync(path.join(dir, '.gitignore'), 'utf8'), 'node_modules/\n.leeway/\n');
+      assert.strictEqual(fs.readFileSync(path.join(dir, '.gitignore'), 'utf8'), 'node_modules/\n.ledger/\n');
       assert.deepStrictEqual(git(dir, ['status', '--porcelain', '--untracked-files=all']).split('\n').filter(Boolean).sort(), [' M .gitignore', ' M src/app.js']);
     } finally {
       cleanupFixture(dir);
@@ -1812,12 +1812,12 @@ describe('migration 078: a small project', () => {
     }
   });
 
-  it('skips a project whose leeway-state has a commit already, its state written over by nothing', () => {
+  it('skips a project whose ledger-state has a commit already, its state written over by nothing', () => {
     dir = tempProject('migration-078-born-');
     try {
       feature();
       run(dir);
-      const state = path.join(dir, '.leeway');
+      const state = path.join(dir, '.ledger');
       git(state, ['add', '-A']);
       git(state, ['commit', '-q', '-m', 'the migration\'s commit']);
       write(state, 'manifest.json', json({ project_id: 'kept' }));
@@ -1856,7 +1856,7 @@ describe('migration 078: a small project', () => {
 });
 
 describe('migration 078: the linters carried onto the project\'s environment (reshape/linters.cjs)', () => {
-  const help = (/** @type {string} */ those) => `read the linters recorded with \`node .claude/skills/leeway-engine/scripts/engine.cjs environment show\`, then record the whole list, ${those}, with \`node .claude/skills/leeway-engine/scripts/engine.cjs environment set linters\`, its JSON on stdin.`;
+  const help = (/** @type {string} */ those) => `read the linters recorded with \`node .claude/skills/ledger-engine/scripts/engine.cjs environment show\`, then record the whole list, ${those}, with \`node .claude/skills/ledger-engine/scripts/engine.cjs environment set linters\`, its JSON on stdin.`;
   /** @type {string} */
   let state;
   const writeState = (/** @type {string} */ rel, /** @type {object|string} */ value) => write(state, rel, typeof value === 'string' ? value : json(value));

@@ -121,8 +121,8 @@ describe('a project the whole sequence migrated', () => {
     const listing = path.join(root, 'old-state.json');
     fs.writeFileSync(listing, JSON.stringify(world.old));
     const config = path.join(root, 'config');
-    const env = { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}`, LEEWAY_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'the-callers' };
-    delete env.LEEWAY_CLAUDE;
+    const env = { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}`, LEDGER_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'the-callers' };
+    delete env.LEDGER_CLAUDE;
     const head = stateGit(world.dir, ['rev-parse', 'HEAD']);
     const owed = fs.readFileSync(statePath(world.dir, layout.ledger), 'utf8').split('\n').filter((line) => line.includes('"unchecked":true')).length;
 
@@ -140,10 +140,10 @@ describe('a project the whole sequence migrated', () => {
     assert.deepStrictEqual([fs.existsSync(calls), stateGit(world.dir, ['rev-parse', 'HEAD']), fs.existsSync(path.join(config, 'conversations'))], [false, head, false]);
 
     const refused = (/** @type {Record<string, string|undefined>} */ pins) => spawnSync(process.execPath, [AUDIT, 'list', world.dir], { env: { ...process.env, ...pins }, encoding: 'utf8' });
-    const unset = refused({ LEEWAY_CONFIG_DIR: '' });
+    const unset = refused({ LEDGER_CONFIG_DIR: '' });
     const home = refused({ WORKFLOWS_CONFIG_DIR: path.join(os.homedir(), '.config', 'workflows') });
     assert.deepStrictEqual([unset.status, unset.stdout, home.status], [2, '', 2]);
-    assert.match(unset.stderr, /^Refused: pin LEEWAY_CONFIG_DIR to a folder outside ~\/\.config/);
+    assert.match(unset.stderr, /^Refused: pin LEDGER_CONFIG_DIR to a folder outside ~\/\.config/);
     assert.match(home.stderr, /^Refused: pin WORKFLOWS_CONFIG_DIR to a folder outside ~\/\.config/);
   });
 });
