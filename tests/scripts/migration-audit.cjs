@@ -21,6 +21,8 @@
 //     name its folder's, its type and status today's, its type the
 //     registry's, its phases today's, an item's status its phase's, and
 //     items in the topics' phases alone;
+//   - no field of the project's manifest, a unit's, a phase's or an item's
+//     is one no engine module names, read from the engine's code;
 //   - every topic decided in its discussion has a decision in the ledger,
 //     read where every carry took it;
 //   - no unit waits on a cut: none in progress has its specs joined and no
@@ -222,7 +224,7 @@ function bootReady(project, state) {
   const answer = parsed(run.stdout);
   /** @type {Fault[]} */
   const faults = [];
-  if (answer?.state !== 'ready') faults.push({ check: 'boot-ready', found: `boot answered ${answer?.state ?? `nothing: ${run.stderr.trim()}`}` });
+  if (answer?.state !== 'ready') faults.push({ check: 'boot-ready', found: `boot answered ${answer?.state ?? `nothing: ${run.error?.message ?? run.stderr.trim()}`}` });
   if (heads().join() !== before.join()) faults.push({ check: 'boot-ready', found: 'boot committed: the migration left work behind it' });
   return faults;
 }
@@ -230,6 +232,33 @@ function bootReady(project, state) {
 /** The phases past the topics' a unit keeps items in. @param {any} manifest @returns {string[]} */
 const strayItems = (manifest) => Object.entries(manifest?.phases ?? {})
   .filter(([phase, data]) => !schema.isTopicPhase(phase) && Object.keys(data?.items ?? {}).length > 0).map(([phase]) => phase);
+
+/** @param {any} value */
+const isRecord = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
+
+/** @type {string|null} */
+let engineCode = null;
+
+/** Whether any engine module names `key`: as a property, a string or an object key. @param {string} key */
+function engineNames(key) {
+  engineCode ??= fs.readdirSync(SCRIPTS, { recursive: true }).map(String).filter((rel) => rel.endsWith('.cjs'))
+    .map((rel) => fs.readFileSync(path.join(SCRIPTS, rel), 'utf8')).join('\n');
+  const word = key.replace(/[^\w-]/g, '\\$&');
+  return new RegExp(`[.'"\`[]${word}\\b|\\b${word}\\s*:`).test(engineCode);
+}
+
+/** The fields of a unit's manifest no engine module names: its own, each phase's and each item's, each with where it is. @param {any} manifest @returns {string[]} */
+function unnamedFields(manifest) {
+  const phases = Object.entries(isRecord(manifest.phases) ? manifest.phases : {}).filter(([, data]) => isRecord(data));
+  return [
+    ...Object.keys(manifest).map((key) => ({ key, at: 'it holds' })),
+    ...phases.flatMap(([phase, data]) => [
+      ...Object.keys(data).filter((key) => key !== 'items').map((key) => ({ key, at: `its ${phase} phase holds` })),
+      ...Object.entries(isRecord(data.items) ? data.items : {}).filter(([, item]) => isRecord(item))
+        .flatMap(([topic, item]) => Object.keys(item).map((key) => ({ key, at: `its ${phase} item ${topic} holds` }))),
+    ]),
+  ].filter(({ key }) => !engineNames(key)).map(({ key, at }) => `${at} ${key}, which no engine module names`);
+}
 
 /** What a unit's manifest gets wrong. @param {string} name @param {any} manifest @param {any} registered @returns {string[]} */
 function manifestFaults(name, manifest, registered) {
@@ -245,6 +274,7 @@ function manifestFaults(name, manifest, registered) {
     ...Object.entries(phases).filter(([phase]) => schema.VALID_PHASES.includes(phase)).flatMap(([phase, data]) => Object.entries(data?.items ?? {})
       .filter(([, item]) => (phase === 'discovery' ? 'status' in item : !schema.VALID_PHASE_STATUSES[phase].includes(item.status)))
       .map(([topic, item]) => `its ${phase} item ${topic} reads ${JSON.stringify(item.status)}`)),
+    ...unnamedFields(manifest),
   ].filter((fault) => fault !== null);
 }
 
@@ -252,6 +282,7 @@ function manifestFaults(name, manifest, registered) {
 function manifestsValid(state, units) {
   const registry = state.project.work_units ?? {};
   return [
+    ...Object.keys(state.project).filter((key) => !engineNames(key)).map((key) => `the project's manifest holds ${key}, which no engine module names`),
     ...Object.keys(registry).filter((name) => !units.has(name)).map((name) => `${name} is registered and has no manifest`),
     ...[...units].flatMap(([name, manifest]) => manifestFaults(name, manifest, registry[name]).map((fault) => `${name}: ${fault}`)),
   ].map((found) => ({ check: 'manifests-valid', found }));

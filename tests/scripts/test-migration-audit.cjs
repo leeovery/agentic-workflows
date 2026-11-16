@@ -17,9 +17,11 @@
 // of the old plan's phases, old files neither placed nor kept — an old
 // cache's report at another earlier/ place, and one changed — and a link,
 // citation and roadmap source naming nothing; and the rest each have one of
-// their own: a build's fix-tracking report 051 moved out of the old cache
-// placed where the move kept it, and no other report so; a link broken
-// where it was live, its words dead in another document; the links dead
+// their own: a field of a manifest no engine module names, the project's,
+// a unit's, a phase's or an item's; a build's fix-tracking report 051 moved
+// out of the old cache placed where the move kept it, and no other report
+// so; a link broken where it was live, its words dead in another
+// document; the links dead
 // before excused wherever their old documents went, one kept byte for
 // byte in one place and rewritten in another among them, counted over the
 // same documents before and after, those of the legacy files apart; a
@@ -193,6 +195,22 @@ describe('each check refuses a world made to fail it', () => {
       'names-resolve: gateway/topics/errors/log.md links [the spec](../../spec.md), which names nothing',
       `names-resolve: ledger line ${exportsLine} names exports/topics/exports/log.md, which is not there`,
       'names-resolve: roadmap item dark-mode names .product/notes/gone.md, which is not there',
+    ]);
+  });
+
+  it('manifests-valid: a field no engine module names — the project\'s, a unit\'s, a phase\'s or an item\'s, each an old one 078 never knew — a fault of its own where it is', () => {
+    changeManifest(layout.projectManifest, (project) => { project.plan_format = 'markdown'; });
+    changeManifest(layout.manifest('gateway'), (manifest) => {
+      manifest.fix_attempts = 2;
+      manifest.phases.discussion.gap_topics = [];
+      manifest.phases.discussion.items.errors.subtopics = {};
+    });
+
+    assert.deepStrictEqual(faults(), [
+      'manifests-valid: the project\'s manifest holds plan_format, which no engine module names',
+      'manifests-valid: gateway: it holds fix_attempts, which no engine module names',
+      'manifests-valid: gateway: its discussion phase holds gap_topics, which no engine module names',
+      'manifests-valid: gateway: its discussion item errors holds subtopics, which no engine module names',
     ]);
   });
 
