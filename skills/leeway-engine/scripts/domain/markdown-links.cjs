@@ -7,7 +7,8 @@
 // - Inline links and images, `[text](target "title")` and `<target>`, and
 //   reference definitions, `[label]: target`, are rebased; a target naming a
 //   scheme, an absolute path, or only an anchor is left as it is, and a
-//   rebased target keeps its anchor and query.
+//   rebased target keeps its anchor, its query and a folder's trailing
+//   slash.
 // - Where the files it names moved too, each is followed to where it went,
 //   and a link that resolves there already is left as written.
 // - Fenced code blocks are left as they are: what they hold is code.
@@ -36,7 +37,8 @@ function rebaseTarget(target, fromDir, toDir, follow) {
   const file = cut === -1 ? bare : bare.slice(0, cut);
   const named = follow(path.posix.join(fromDir, file));
   if (path.posix.join(toDir, file) === named) return target;
-  const rebased = path.posix.relative(toDir, named) + (cut === -1 ? '' : bare.slice(cut));
+  const relative = path.posix.relative(toDir, named) || '.';
+  const rebased = relative + (named.endsWith('/') ? '/' : '') + (cut === -1 ? '' : bare.slice(cut));
   return angled ? `<${rebased}>` : rebased;
 }
 

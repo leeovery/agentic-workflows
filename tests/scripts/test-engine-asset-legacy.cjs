@@ -3,29 +3,37 @@
 // ---------------------------------------------------------------------------
 // The legacy files (leeway-engine/scripts/domain/legacy-files.cjs, through
 // asset.cjs, following moves through follow-moves.cjs): `engine asset
-// legacy [<place>]`, the files the migration kept below each place's
-// `assets/legacy/`, read from disk, the tools' sidecars left out, each with
-// how many things name it, and where each place's findings go; `engine asset
-// keep`, a file, or every file below a folder, moved to the same path under
-// the place's `assets/`, a name taken there suffixed, and everything naming
-// it following — a ledger line's citation and asset link, a document's link
-// and embed, a roadmap source — the commit taking the move and every file
-// rewritten; `engine asset discard`, the files deleted and nothing
+// legacy`, each place holding files the migration kept below its
+// `assets/legacy/`, read from disk, the tools' sidecars left out, with its
+// folders, each counted and how many of its files something names; `engine
+// asset legacy <place>`, that place's files, each with how many things name
+// it, or a folder above it, each thing counted once, where its findings go
+// and its topics in discussion; `engine asset keep`, a file, or every file
+// below a folder, moved to the same path under the place's `assets/`, a
+// name taken there, or by a file before it, suffixed, and everything naming
+// it or a folder it emptied following — a ledger line's citation and asset
+// link, carried at the place it is read at, a document's link and embed, a
+// folder's keeping its slash, a roadmap source — the commit taking the
+// move, the ledger and every file rewritten; a file answering its move, a
+// folder its count; `engine asset discard`, the files deleted and nothing
 // rewritten; each under the writer lock; every refusal moving and
 // committing nothing. The menus' rows over the read are
 // test-engine-start-menu.cjs's and test-engine-epic-menu-waits.cjs's; a
 // retired unit's legacy files, test-engine-workunit-retire.cjs's.
 //
 // Layer: verb. World: a project with its state worktree from the fixture
-// library — an epic in discussion holding legacy files in a folder and
-// beside it, one named as a file its assets hold already, a sidecar beside
-// them and a file beside its legacy folder; its topic's log embedding one
-// and linking another, which links back to the first; a finding at its
-// level citing one and linking another, and a question on its topic citing
-// one; a roadmap item whose source is one;
-// a completed feature, a cancelled one and the product holding one each —
-// committed as the migration leaves them, built once and copied for each
-// test.
+// library — an epic with one topic in discussion and one decided, holding
+// legacy files in two folders and beside them, one named as a file its
+// assets hold already and one as the name that file's suffix would take, a
+// sidecar beside them and a file beside its legacy folder, which the file
+// its assets hold already links, with its topic's log; that log
+// embedding one, linking another and linking their folder; the one linked
+// linking back to a file and to the other folder; a finding at its
+// discovery citing one twice and linking another, one at its spec citing
+// the same, and a question on its topic citing one; a roadmap item whose
+// source is one; a completed feature, a cancelled one and the product
+// holding one each — committed as the migration leaves them, built once and
+// copied for each test.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -42,35 +50,49 @@ const { carriedTo } = require('../../skills/leeway-engine/scripts/domain/ledger-
 
 const EPIC = 'evvi';
 const LEGACY = `${EPIC}/assets/legacy`;
+const RESEARCH = `${LEGACY}/research`;
+const DRAFTS = `${LEGACY}/drafts`;
 const PLAN = `${LEGACY}/plan.md`;
-const NOTES = `${LEGACY}/research/notes.md`;
-const SKETCH = `${LEGACY}/research/sketch.png`;
-const SIDECAR = `${LEGACY}/research/.DS_Store`;
+const PLAN_2 = `${LEGACY}/plan-2.md`;
+const DRAFT = `${DRAFTS}/draft.md`;
+const NOTES = `${RESEARCH}/notes.md`;
+const SKETCH = `${RESEARCH}/sketch.png`;
+const SIDECAR = `${RESEARCH}/.DS_Store`;
 const BESIDE = `${EPIC}/assets/legacy-notes.md`;
+const SHARED = `${EPIC}/assets/plan.md`;
+const SHARED_TEXT = 'The plan the person shared, for [the sync](../topics/sync/log.md) beside [the notes](legacy-notes.md).\n';
 const LOG = layout.topic(EPIC, 'sync', 'log.md');
 const DONE = 'shipped';
 const GONE = 'gone';
 const SHIPPED = `${DONE}/assets/legacy/plan.md`;
 const LEFT_BEHIND = `${GONE}/assets/legacy/left-behind.md`;
 const VISION = '.product/assets/legacy/vision.md';
-const NOTES_TEXT = '# Notes\n\nThe [sketch](sketch.png) and the [plan](../plan.md).\n';
-const LOG_TEXT = '# Sync\n\n![The sketch](../../assets/legacy/research/sketch.png)\n\nSee [the notes](../../assets/legacy/research/notes.md).\n';
+const NOTES_TEXT = '# Notes\n\nThe [sketch](sketch.png), the [plan](../plan.md) and the [drafts](../drafts/).\n';
+const LOG_TEXT = '# Sync\n\n![The sketch](../../assets/legacy/research/sketch.png)\n\nSee [the notes](../../assets/legacy/research/notes.md), in [the research](../../assets/legacy/research/).\n';
 
 const world = fixtureFrom('asset-legacy-', (template) => {
-  createManifest(template, EPIC, { work_type: 'epic', phases: { discovery: { approved_at: '2026-10-01T09:00:00.000Z', items: { sync: { order: 1, summary: 'Sync', source: 'discovery' } } }, discussion: { items: { sync: { status: 'in-progress' } } } } });
+  createManifest(template, EPIC, {
+    work_type: 'epic',
+    phases: {
+      discovery: { approved_at: '2026-10-01T09:00:00.000Z', items: { sync: { order: 1, summary: 'Sync', source: 'discovery' }, auth: { order: 2, summary: 'Auth', source: 'discovery' } } },
+      discussion: { items: { sync: { status: 'in-progress' }, auth: { status: 'completed' } } },
+    },
+  });
   createManifest(template, 'empty');
   createManifest(template, DONE, { status: 'completed' });
   createManifest(template, GONE, { status: 'cancelled' });
-  for (const rel of [PLAN, SKETCH, SIDECAR, BESIDE, SHIPPED, LEFT_BEHIND, VISION]) writeState(template, rel, `${rel}\n`);
+  for (const rel of [PLAN, PLAN_2, DRAFT, SKETCH, SIDECAR, BESIDE, SHIPPED, LEFT_BEHIND, VISION]) writeState(template, rel, `${rel}\n`);
   writeState(template, NOTES, NOTES_TEXT);
-  writeState(template, `${EPIC}/assets/plan.md`, 'the plan the person shared\n');
+  writeState(template, SHARED, SHARED_TEXT);
   writeState(template, LOG, LOG_TEXT);
   writeState(template, layout.projectManifest, JSON.stringify({
     ...JSON.parse(readState(template, layout.projectManifest)),
     roadmap: { horizons: ['now'], items: { 'old-plan': { horizon: 'now', summary: 'the old plan', origin: 'harvest', sources: [PLAN] } } },
   }, null, 2));
   commitAll(template, 'the migration');
-  const found = ok(template, ['ledger', 'find', `${EPIC}.discovery`], { env: SESSION, stdin: JSON.stringify({ ...MADE, text: 'The plan ships notes first.', how: 'read in the old plan', known: 'documented', cites: [{ path: PLAN, section: 'plan.md' }] }) }).id;
+  const cites = [{ path: PLAN, section: 'Goals' }, { path: PLAN, section: 'Order' }];
+  const found = ok(template, ['ledger', 'find', `${EPIC}.discovery`], { env: SESSION, stdin: JSON.stringify({ ...MADE, text: 'The plan ships notes first.', how: 'read in the old plan', known: 'documented', cites }) }).id;
+  ok(template, ['ledger', 'find', `${EPIC}.specification`], { env: SESSION, stdin: JSON.stringify({ ...MADE, text: 'The plan orders the sync first.', how: 'read in the old plan', known: 'documented', cites: [cites[1]] }) });
   ok(template, ['asset', 'add', EPIC, NOTES, '--entry', found, '--status', 'reference'], { env: SESSION });
   ok(template, ['ledger', 'ask', `${EPIC}.discussion.sync`], { env: SESSION, stdin: JSON.stringify({ ...MADE, text: 'Does the sketch still hold?', cites: [{ path: SKETCH, section: 'sketch.png' }] }) });
 });
@@ -98,65 +120,97 @@ const there = (rel) => fs.existsSync(statePath(dir, rel));
 /** The short sha of the state branch's last commit. */
 const tip = () => stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim();
 
-/** The finding at the epic's level as its record shows it: where it cites, and the files linked from it. */
-function finding() {
-  const [found] = ok(dir, ['ledger', 'record', EPIC]).findings;
-  return { cites: found.cites.map((/** @type {{path: string}} */ cite) => cite.path), assets: found.assets.map((/** @type {{path: string}} */ link) => link.path) };
+/** The epic's findings as its record shows them: where each cites, and the files linked from each. */
+function findings() {
+  return ok(dir, ['ledger', 'record', EPIC]).findings.map((/** @type {{cites: {path: string}[], assets: {path: string}[]}} */ found) => ({
+    cites: found.cites.map((cite) => cite.path),
+    assets: found.assets.map((link) => link.path),
+  }));
 }
 
 /** The roadmap item's sources. */
 const sources = () => JSON.parse(readState(dir, layout.projectManifest)).roadmap.items['old-plan'].sources;
 
+/** Each `rehomed` line of the ledger: the place it carries to, and how many lines. */
+const carries = () => readState(dir, layout.ledger).trim().split('\n').map((line) => JSON.parse(line))
+  .filter((event) => event.event === 'rehomed').map(({ unit, topic, phase, lines }) => ({ unit, topic, phase, lines: lines.length }));
+
 describe('the read', () => {
-  it('answers every place holding legacy files — the units in the project\'s order, then the product — each file with how many things name it, the sidecar and the file beside the folder never among them, and where each place\'s findings go: an epic in progress its own level, a completed unit, a cancelled one and the product the product\'s', () => {
+  it('answers every place holding legacy files — the units in the project\'s order, then the product — with each folder holding files, how many, and how many of them something names, the sidecar and the file beside the folder never among them', () => {
     assert.deepStrictEqual(asset(['legacy']), {
       ok: true,
       places: [
-        { place: EPIC, findings_at: `${EPIC}.discovery`, files: [{ path: PLAN, named: 3 }, { path: NOTES, named: 2 }, { path: SKETCH, named: 3 }] },
-        { place: GONE, findings_at: 'product.discovery', files: [{ path: LEFT_BEHIND, named: 0 }] },
-        { place: DONE, findings_at: 'product.discovery', files: [{ path: SHIPPED, named: 0 }] },
-        { place: 'product', findings_at: 'product.discovery', files: [{ path: VISION, named: 0 }] },
+        { place: EPIC, count: 5, folders: [{ path: LEGACY, count: 2, named: 1 }, { path: DRAFTS, count: 1, named: 1 }, { path: RESEARCH, count: 2, named: 2 }] },
+        { place: GONE, count: 1, folders: [{ path: `${GONE}/assets/legacy`, count: 1, named: 0 }] },
+        { place: DONE, count: 1, folders: [{ path: `${DONE}/assets/legacy`, count: 1, named: 0 }] },
+        { place: 'product', count: 1, folders: [{ path: '.product/assets/legacy', count: 1, named: 0 }] },
       ],
     });
   });
 
-  it('answers the one place named, whatever it holds: an empty legacy folder none', () => {
-    assert.deepStrictEqual(asset(['legacy', 'empty']), { ok: true, places: [{ place: 'empty', findings_at: 'empty.discovery', files: [] }] });
+  it('answers a place\'s files, each with how many things name it or a folder above it, each thing once however many ways it names the file; where its findings go, an epic in progress its own level; and its topics in discussion, never one decided', () => {
+    assert.deepStrictEqual(asset(['legacy', EPIC]), {
+      ok: true,
+      place: EPIC,
+      findings_at: `${EPIC}.discovery`,
+      in_discussion: [{ topic: 'sync', title: 'Sync' }],
+      files: [{ path: DRAFT, named: 1 }, { path: PLAN_2, named: 0 }, { path: PLAN, named: 4 }, { path: NOTES, named: 2 }, { path: SKETCH, named: 3 }],
+    });
+  });
+
+  it('sends a completed unit\'s findings, a cancelled one\'s and the product\'s to the product\'s place, with no topic in discussion; an empty legacy folder holds none', () => {
+    const read = (/** @type {string} */ place) => {
+      const { findings_at: at, in_discussion: topics, files } = asset(['legacy', place]);
+      return { at, topics, files: files.length };
+    };
+    assert.deepStrictEqual([DONE, GONE, 'product', 'empty'].map(read), [
+      { at: 'product.discovery', topics: [], files: 1 },
+      { at: 'product.discovery', topics: [], files: 1 },
+      { at: 'product.discovery', topics: [], files: 1 },
+      { at: 'empty.discovery', topics: [], files: 0 },
+    ]);
   });
 });
 
-describe('keep: everything naming a file follows it', () => {
-  it('a folder kept: each file moved to its path under the assets, a name taken suffixed; the log\'s embed and link, the moved document\'s own link, the finding\'s citation and asset link and the roadmap source all follow; one commit takes the moves and every file rewritten', () => {
+describe('keep: everything naming a file, or a folder it empties, follows it', () => {
+  it('the legacy folder kept whole: each file moved to its path under the assets, a name taken there or by a file before it suffixed; the log\'s embed, link and folder link, the moved document\'s links, the findings\' citations and asset link and the roadmap source all follow; one commit takes the moves, the ledger and every file rewritten, and the answer counts', () => {
     const kept = asset(['keep', EPIC, LEGACY]);
 
-    const moved = { plan: `${EPIC}/assets/plan-2.md`, notes: `${EPIC}/assets/research/notes.md`, sketch: `${EPIC}/assets/research/sketch.png` };
-    assert.deepStrictEqual(kept, {
-      ok: true,
-      moved: [{ from: PLAN, to: moved.plan }, { from: NOTES, to: moved.notes }, { from: SKETCH, to: moved.sketch }],
-      rewritten: [moved.notes, LOG, layout.projectManifest],
-      left: 0,
-      committed: tip(),
-    });
-    assert.deepStrictEqual([readState(dir, LOG), readState(dir, moved.notes)], [
-      '# Sync\n\n![The sketch](../../assets/research/sketch.png)\n\nSee [the notes](../../assets/research/notes.md).\n',
-      '# Notes\n\nThe [sketch](sketch.png) and the [plan](../plan-2.md).\n',
+    const moved = { plan2: `${EPIC}/assets/plan-2.md`, plan: `${EPIC}/assets/plan-3.md`, draft: `${EPIC}/assets/drafts/draft.md`, notes: `${EPIC}/assets/research/notes.md`, sketch: `${EPIC}/assets/research/sketch.png` };
+    assert.deepStrictEqual(kept, { ok: true, kept: 5, to: `${EPIC}/assets`, left: 0, committed: tip() });
+    assert.deepStrictEqual([readState(dir, LOG), readState(dir, moved.notes), readState(dir, moved.plan2)], [
+      '# Sync\n\n![The sketch](../../assets/research/sketch.png)\n\nSee [the notes](../../assets/research/notes.md), in [the research](../../assets/research/).\n',
+      NOTES_TEXT.replace('../plan.md', '../plan-3.md'),
+      `${PLAN_2}\n`,
     ]);
-    assert.deepStrictEqual([finding(), sources()], [{ cites: [moved.plan], assets: [moved.notes] }, [moved.plan]]);
-    assert.deepStrictEqual(touched(statePath(dir), 'HEAD').filter((change) => !change.endsWith(layout.ledger)), [
-      `A\t${moved.plan}`, `A\t${moved.notes}`, `A\t${moved.sketch}`, `D\t${PLAN}`, `D\t${NOTES}`, `D\t${SKETCH}`, `M\t${layout.projectManifest}`, `M\t${LOG}`,
+    assert.deepStrictEqual([findings(), sources()], [[{ cites: [moved.plan, moved.plan], assets: [moved.notes] }, { cites: [moved.plan], assets: [] }], [moved.plan]]);
+    assert.deepStrictEqual(touched(statePath(dir), 'HEAD'), [
+      `A\t${moved.draft}`, `A\t${moved.plan2}`, `A\t${moved.plan}`, `A\t${moved.notes}`, `A\t${moved.sketch}`,
+      `D\t${DRAFT}`, `D\t${PLAN_2}`, `D\t${PLAN}`, `D\t${NOTES}`, `D\t${SKETCH}`,
+      `M\t${layout.ledger}`, `M\t${layout.projectManifest}`, `M\t${LOG}`,
     ].sort());
+    assert.strictEqual(readState(dir, SHARED), SHARED_TEXT, 'a document the assets held already is rebased from nowhere');
     assert.strictEqual(lastMessage(dir), `asset(${EPIC}): keep ${LEGACY}`);
     assert.ok(there(SIDECAR) && !there(`${EPIC}/assets/research/.DS_Store`), 'the sidecar is left where it was');
   });
 
-  it('files kept one at a time: the log\'s embed follows the image, the document left in legacy relinks to it, and the plan\'s citation and roadmap source follow the plan', () => {
-    asset(['keep', EPIC, SKETCH]);
+  it('a folder kept alone: a link to it follows it, its slash kept; its document\'s links to what stays rebased from where it moved; the answer counts, a folder of one file\'s too', () => {
+    assert.deepStrictEqual(asset(['keep', EPIC, RESEARCH]), { ok: true, kept: 2, to: `${EPIC}/assets/research`, left: 3, committed: tip() });
+    assert.deepStrictEqual(asset(['keep', EPIC, DRAFTS]), { ok: true, kept: 1, to: `${EPIC}/assets/drafts`, left: 2, committed: tip() });
+    assert.deepStrictEqual([readState(dir, LOG), readState(dir, `${EPIC}/assets/research/notes.md`)], [
+      '# Sync\n\n![The sketch](../../assets/research/sketch.png)\n\nSee [the notes](../../assets/research/notes.md), in [the research](../../assets/research/).\n',
+      '# Notes\n\nThe [sketch](sketch.png), the [plan](../legacy/plan.md) and the [drafts](../drafts/).\n',
+    ]);
+  });
+
+  it('files kept one at a time, each answering its move and the documents rewritten: the log\'s embed follows the image and its folder link stays while the folder holds a file; the document left in legacy relinks to it; the plan\'s citations and roadmap source follow the plan', () => {
+    assert.deepStrictEqual(asset(['keep', EPIC, SKETCH]), { ok: true, from: SKETCH, to: `${EPIC}/assets/research/sketch.png`, rewritten: [NOTES, LOG], left: 4, committed: tip() });
     asset(['keep', EPIC, PLAN]);
 
-    assert.deepStrictEqual([readState(dir, LOG), readState(dir, NOTES), finding().cites, sources()], [
-      '# Sync\n\n![The sketch](../../assets/research/sketch.png)\n\nSee [the notes](../../assets/legacy/research/notes.md).\n',
-      '# Notes\n\nThe [sketch](../../research/sketch.png) and the [plan](../../plan-2.md).\n',
-      [`${EPIC}/assets/plan-2.md`],
+    assert.deepStrictEqual([readState(dir, LOG), readState(dir, NOTES), findings().map(({ cites }) => cites), sources()], [
+      '# Sync\n\n![The sketch](../../assets/research/sketch.png)\n\nSee [the notes](../../assets/legacy/research/notes.md), in [the research](../../assets/legacy/research/).\n',
+      '# Notes\n\nThe [sketch](../../research/sketch.png), the [plan](../../plan-2.md) and the [drafts](../drafts/).\n',
+      [[`${EPIC}/assets/plan-2.md`, `${EPIC}/assets/plan-2.md`], [`${EPIC}/assets/plan-2.md`]],
       [`${EPIC}/assets/plan-2.md`],
     ]);
   });
@@ -168,11 +222,17 @@ describe('keep: everything naming a file follows it', () => {
     assert.deepStrictEqual(ok(dir, ['ledger', 'record', EPIC]).findings[0].assets, [{ path: `${EPIC}/assets/research/notes.md`, status: 'canonical', into: null }]);
   });
 
-  it('carries the topic\'s question citing a file kept to the place it stands, so its topic\'s opening reads no earlier record: the question cites the file where it moved', () => {
+  it('carries each line citing a file kept to the place it stands — one carry for each place, the unit\'s discovery and its spec apart — so the topic\'s opening reads no earlier record: the question cites the file where it moved', () => {
     asset(['keep', EPIC, SKETCH]);
+    asset(['keep', EPIC, PLAN]);
 
     const [question] = ok(dir, ['ledger', 'record', EPIC, 'sync']).questions;
     assert.deepStrictEqual([question.cites, carriedTo(statePath(dir), EPIC, 'sync', [])], [[{ path: `${EPIC}/assets/research/sketch.png`, section: 'sketch.png' }], false]);
+    assert.deepStrictEqual(carries(), [
+      { unit: EPIC, topic: 'sync', phase: 'discussion', lines: 1 },
+      { unit: EPIC, topic: null, phase: 'discovery', lines: 1 },
+      { unit: EPIC, topic: null, phase: 'specification', lines: 1 },
+    ]);
   });
 
   it('holds the writer lock around the moves: a peer holding it, nothing has moved while the keep waits', (t) => {
@@ -191,13 +251,13 @@ describe('keep: everything naming a file follows it', () => {
 });
 
 describe('discard', () => {
-  it('deletes the files and rewrites nothing that names them, the removal committed, the file kept in the history; the legacy folder goes with its last file', () => {
+  it('deletes the files and rewrites nothing that names them, the removal committed, the file kept in the history, the answer counting; the legacy folder goes with its last file', () => {
     const before = tip();
 
-    assert.deepStrictEqual(asset(['discard', 'product', VISION]), { ok: true, discarded: [VISION], left: 0, committed: tip() });
-    assert.deepStrictEqual(asset(['discard', EPIC, PLAN]).discarded, [PLAN]);
-    assert.deepStrictEqual(touched(statePath(dir), 'HEAD'), [`D\t${PLAN}`]);
-    assert.deepStrictEqual([sources(), finding().cites], [[PLAN], [PLAN]]);
+    assert.deepStrictEqual(asset(['discard', 'product', VISION]), { ok: true, discarded: 1, left: 0, committed: tip() });
+    assert.deepStrictEqual(asset(['discard', EPIC, RESEARCH]).discarded, 2);
+    assert.deepStrictEqual(touched(statePath(dir), 'HEAD'), [`D\t${NOTES}`, `D\t${SKETCH}`]);
+    assert.deepStrictEqual([sources(), readState(dir, LOG)], [[PLAN], LOG_TEXT]);
     assert.ok(!there('.product/assets/legacy') && there('.product/assets'), 'the legacy folder emptied goes, the assets stay');
     assert.strictEqual(stateGit(dir, ['show', `${before}:${VISION}`]), `${VISION}\n`);
   });

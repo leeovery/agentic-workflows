@@ -10,8 +10,10 @@
 //   `.product/assets/{unit}/` — its manifest, the specs the move kept as its
 //   assets, its topics' logs — as reference, nothing of it deleted, but its
 //   legacy files, which move to `.product/assets/legacy/{unit}/`, among the
-//   product's to be sorted (legacy-files.cjs), every document's link to one
-//   following it (follow-moves.cjs); it comes
+//   product's to be sorted (legacy-files.cjs). Every document's link to
+//   anything the moves took follows it, the unit's own documents rebased
+//   from where they sat (follow-moves.cjs): its links out of the folder,
+//   and every other document's into it. It comes
 //   off the registry, its name free for a unit made later; and each map row
 //   and item of a topic an epic promoted to it go from that epic, the
 //   topic's record being the unit's (P4). A source of the roadmap's under
@@ -26,7 +28,8 @@
 //   record or copy shows any of them, and a unit made later under the name
 //   meets none.
 // - Once: each step is one a redo repeats or finds done — the carry, of the
-//   lines the ledger still reads in the unit; the folder's move; each
+//   lines the ledger still reads in the unit; the folder's move, and the
+//   documents' links with it, never rebased again once it is made; each
 //   epic's promoted topic; the registry and the roadmap's sources — so a
 //   session killed part-way finishes on its next run, the unit found at
 //   `.product/assets/{unit}/` once its folder has moved. Every run renders

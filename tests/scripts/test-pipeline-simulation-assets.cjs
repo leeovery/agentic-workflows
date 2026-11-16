@@ -4,7 +4,8 @@
 // The pipeline simulation's assets scenarios: a discussion's spike, and the
 // files its entries link through the asset verbs, each link committing the
 // ledger on the state branch; and the legacy files the migration kept,
-// pointed out on the start menu and sorted by the pass (legacy-files.md).
+// pointed out on the start menu and the epic's menu and sorted by the pass
+// (legacy-files.md).
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -16,7 +17,7 @@ require('./hermetic-env.cjs');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
-const { Sim, mappedEpic, enterEntry, startMenu, startPick } = require('./pipeline-world.cjs');
+const { Sim, mappedEpic, enterEntry, startMenu, startPick, continueEpic, epicMenuAt, answerGate, shownRows } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: assets', () => {
   let sim;
@@ -50,22 +51,38 @@ describe('pipeline simulation: assets', () => {
     assert.match(sim.sections, new RegExp(`^spike: ${spike.folder}$`, 'm'));
   });
 
-  it('legacy files: an epic holding files the migration kept, the start menu\'s row leading to their read; the pass keeps one and records what it holds at the place\'s findings_at, citing it where it moved, read at its topic\'s opening; keeps one whole and discards one', () => {
+  it('legacy files: an epic holding files the migration kept, its topic in discussion; the start menu\'s row leading to each place\'s folders, the epic\'s menu\'s to its files; the pass keeps one, records what it holds at the place\'s findings_at, citing it where it moved, and sends the question it leaves open to the topic in discussion, the send reported; keeps a folder whole and discards one; the finding read at the topic\'s opening, the message raised first', () => {
     const wu = 'fumi';
     const legacy = `${wu}/assets/legacy`;
-    mappedEpic(sim, wu, ['note-window']);
+    mappedEpic(sim, wu, ['note-window', 'spaces']);
+    enterEntry(sim, wu, 'discussion', 'note-window');
+    sim.run(['presence', 'cleanup', sim.env.CLAUDE_CODE_SESSION_ID]);
+    sim.handOver();
     for (const file of ['plan.md', 'research/sketch.png', 'scratch.md']) sim.write(`.leeway/${legacy}/${file}`, `${file}\n`);
     sim.run(['commit', wu, '-m', 'the migration']);
 
     const row = startMenu(sim).find(({ next }) => next?.kind === 'engine' && next.argv.join(' ') === 'asset legacy');
-    const [{ findings_at: findingsAt }] = startPick(sim, row.key).places;
-    const [{ to }] = sim.run(['asset', 'keep', wu, `${legacy}/plan.md`]).moved;
+    assert.deepStrictEqual(startPick(sim, row.key).places, [{ place: wu, count: 3, folders: [{ path: legacy, count: 2, named: 0 }, { path: `${legacy}/research`, count: 1, named: 0 }] }]);
+    continueEpic(sim, wu);
+    epicMenuAt(sim, wu);
+    const { key } = shownRows(sim).find(({ next }) => next?.kind === 'engine' && next.argv.join(' ') === `asset legacy ${wu}`);
+    const { findings_at: findingsAt, in_discussion: discussing } = sim.run(answerGate(sim, 'epic menu', '--pick', key).next.argv);
+    assert.deepStrictEqual(discussing, [{ topic: 'note-window', title: 'Note Window' }]);
+
+    const { to } = sim.run(['asset', 'keep', wu, `${legacy}/plan.md`]);
     const finding = 'The old plan ships notes before spaces.';
     sim.run(['ledger', 'find', findingsAt], null, JSON.stringify({ text: finding, how: 'read in the old plan', known: 'documented', cites: [{ path: to, section: 'plan.md' }], by: 'claude', who_moved_whom: 'none' }));
+    const [{ topic }] = discussing;
+    const message = sim.write(`.leeway/.cache/${wu}/discovery/${wu}/message-old-plan.md`, 'The old plan\n\nIt leaves open whether a note opens in its own window.\n');
+    const sent = sim.run(['topic', 'send', wu, topic, '--from', `${wu}.discovery`, '--content', message, '--slug', 'old-plan']);
+    assert.match(sim.render(['send-report', `${wu}.${topic}`, '--sent', sent.message_path], { expect: 'content' }), /^Sent to Note Window, on Fumi$/m);
     sim.run(['asset', 'keep', wu, `${legacy}/research`]);
     sim.run(['asset', 'discard', wu, `${legacy}/scratch.md`]);
 
-    const { discovery } = JSON.parse(sim.read(['ledger', 'product', wu, 'note-window']));
+    const { discovery } = JSON.parse(sim.read(['ledger', 'product', wu, topic]));
     assert.deepStrictEqual(discovery.map((/** @type {{text: string, cites: unknown}} */ { text, cites }) => [text, cites]), [[finding, [{ path: to, section: 'plan.md' }]]]);
+    sim.handOver();
+    enterEntry(sim, wu, 'discussion', topic);
+    assert.match(sim.sections, /^=== DISPLAY: waiting mail [^\n]*\n1 message waiting — raised before anything else\n\nFrom Discovery · \d{1,2} [A-Z][a-z]{2}\nThe old plan\n/);
   });
 });

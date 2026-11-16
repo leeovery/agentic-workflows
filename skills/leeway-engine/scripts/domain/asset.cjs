@@ -86,7 +86,7 @@ const { withStateLock } = require('./state-worktree.cjs');
 const { HELD_NOTE } = require('./commit.cjs');
 const { PRODUCT_DIR, SPIKE_HOMES, assetHome } = require('./layout.cjs');
 const { planImports, copyImports, assertLandableSources } = require('./import-landing.cjs');
-const { legacyPlaces, readLegacy, sortLegacy } = require('./legacy-files.cjs');
+const { legacyPlaces, surveyLegacy, readLegacy, sortLegacy } = require('./legacy-files.cjs');
 const { loadAllManifests } = require('./reads.cjs');
 
 /** @typedef {import('./ledger-fold.cjs').Folded} Folded */
@@ -543,14 +543,14 @@ function linking(said, reading, unit, rel, prefix) {
 }
 
 /**
- * `asset legacy [<place>]`: the legacy files of every place holding any, or
- * of the one named, a unit's whatever its status.
+ * `asset legacy [<place>]`: every place holding legacy files, with its
+ * folders, or the files of the one named, a unit's whatever its status.
  * @param {string} cwd @param {string[]} positional
  */
 function listLegacy(cwd, [name]) {
-  if (name !== undefined) ownerOf(cwd, 'asset legacy', name);
-  const places = name === undefined ? legacyPlaces(cwd, loadAllManifests(cwd).map((manifest) => manifest.name)).map(({ place }) => place) : [name];
-  return readLegacy(cwd, places);
+  if (name === undefined) return surveyLegacy(cwd, legacyPlaces(cwd, loadAllManifests(cwd).map((manifest) => manifest.name)).map(({ place }) => place));
+  ownerOf(cwd, 'asset legacy', name);
+  return readLegacy(cwd, name);
 }
 
 /**

@@ -15,8 +15,14 @@
 // - the roadmap's sources (roadmap.cjs `carrySources`).
 //
 // Moves are `[from, to]` pairs from the state root, a folder's covering what
-// is below it (`landingOf`). The caller holds the writer lock, makes the
-// moves before following them, and commits what each answers.
+// is below it (`landingOf`), so a link, a citation or a source naming the
+// folder follows it, a folder's trailing slash kept. A folder whose files
+// all moved to one new folder is followed as a move of its own, though it
+// was emptied rather than moved, and only a document that itself moved is
+// rebased from where it was. A thing naming a folder names every file
+// below it, and counts once for each however many ways it names one. The
+// caller holds the writer lock, makes the moves before following them, and
+// commits what each answers.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -64,12 +70,14 @@ function namedBy(event) {
 }
 
 /**
- * Every document's links rebased to follow `moves` (the header's): the
- * documents rewritten, from the state root.
- * @param {string} root @param {Moves} moves @returns {string[]}
+ * Every document's links rebased to follow `moves`, and the folders
+ * `emptied` into new ones (the header's): the documents rewritten, from the
+ * state root.
+ * @param {string} root @param {Moves} moves @param {Moves} [emptied] @returns {string[]}
  */
-function relinkDocuments(root, moves) {
-  const follow = (/** @type {string} */ file) => landingOf(file, moves) ?? file;
+function relinkDocuments(root, moves, emptied = []) {
+  const followed = [...moves, ...emptied];
+  const follow = (/** @type {string} */ file) => landingOf(file, followed) ?? file;
   /** @type {Moves} */
   const back = moves.map(([from, to]) => [to, from]);
   return documents(root).filter((doc) => {
@@ -130,15 +138,18 @@ function followSources(cwd, moves) {
 
 /**
  * How many things name each file (the header's): the ledger lines, the
- * documents and the roadmap items, each once, read in one pass over each.
- * @param {string} cwd @param {string} root @param {string[]} warnings
+ * documents and the roadmap items, read in one pass over each. `reach` maps
+ * each path counted — a file, or a folder above files — to the files it
+ * names.
+ * @param {string} cwd @param {string} root @param {Map<string, string[]>} reach @param {string[]} warnings
  * @returns {Map<string, number>}
  */
-function namings(cwd, root, warnings) {
+function namings(cwd, root, reach, warnings) {
   /** @type {Map<string, number>} */
   const counts = new Map();
-  const count = (/** @type {Iterable<string>} */ files) => {
-    for (const file of new Set(files)) counts.set(file, (counts.get(file) ?? 0) + 1);
+  const count = (/** @type {Iterable<string>} */ named) => {
+    const files = new Set([...named].flatMap((said) => reach.get(said.replace(/\/+$/, '')) ?? []));
+    for (const file of files) counts.set(file, (counts.get(file) ?? 0) + 1);
   };
   foldLedger(root, { start: () => null, step: (_, event) => count(namedBy(event)) }, warnings);
   for (const doc of documents(root)) count(linkedFrom(root, doc));
