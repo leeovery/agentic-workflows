@@ -155,8 +155,12 @@ const METHODS = Object.freeze({
  * every task before it has ended, where it was the tracker that ended the
  * parent. `adopt` gives a plan the tracker held from before Leeway the
  * engine's names for one phase (21.8.8): the parent the migration names, by
- * the tracker's own id, is the phase written, its own tasks the phase's, in
- * the order the tracker made them, and the parent above it the unit, where
+ * the tracker's own id, is the phase written, its own tasks the phase's —
+ * one holding a task's name of the phase already keeping its number, the
+ * rest in the numbers left, in `order`, the tracker's own ids as the old
+ * plan orders them, which the migration's cut gives, then in the order the
+ * tracker made them — and the
+ * parent above it the unit, where
  * the unit has none and that parent no name of the engine's; it adds to what each holds, changing nothing else of
  * it — its status, its history, any name of the person's — and answers the
  * phase's tasks so named. A name a task holds already is left, so a run
@@ -217,8 +221,8 @@ const METHODS = Object.freeze({
  *   createUnit: (root: string, unit: string) => boolean,
  *   createPhase: (root: string, unit: string, phase: number, title: string) => void,
  *   createTask: (root: string, ref: TaskRef, task: {title: string, type: string, text: string}) => void,
- *   adoption: (root: string, unit: string, phases: {phase: number, parent: string}[]) => {phase: number, plan: string|null, tasks: TaskDetail[]}[],
- *   adopt: (root: string, unit: string, phase: number, parent: string) => TaskRef[],
+ *   adoption: (root: string, unit: string, phases: {phase: number, parent: string, order?: string[]}[]) => {phase: number, plan: string|null, tasks: TaskDetail[]}[],
+ *   adopt: (root: string, unit: string, phase: number, parent: string, order?: string[]) => TaskRef[],
  *   closePlan: (root: string, unit: string, parent: string, reason: string) => number,
  *   add: (root: string, ref: TaskRef, addition: TaskAddition) => void,
  *   setType: (root: string, ref: TaskRef, type: string) => void,

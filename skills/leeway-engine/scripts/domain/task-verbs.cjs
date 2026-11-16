@@ -598,7 +598,7 @@ function areaFaults({ phase, built, sections, plan }, topics) {
  * another; answering, too, the tasks of the phases not built that the
  * tracker holds done, and those neither done nor closed with their text. A
  * run again adopts and types only what the last left out.
- * @param {string} cwd @param {string} unit @param {{phase: number, parent: string, built: boolean, sections: string[]}[]} phases
+ * @param {string} cwd @param {string} unit @param {{phase: number, parent: string, order: string[], built: boolean, sections: string[]}[]} phases
  * @param {string} type @param {string[]|null} topics the topics joined, area by area — null for a single-topic unit (`areaFaults`)
  * @returns {{adopted: {phase: number, tasks: string[]}[], typed: string[], done: string[], open: {task: string, text: string}[], committed?: string|null, note?: string, warnings?: string[]}}
  */
@@ -607,7 +607,7 @@ function migratedTracker(cwd, unit, phases, type, topics) {
     const held = driver.adoption(root, unit, phases).map(({ phase, plan, tasks }, at) => ({ phase, plan, built: phases[at].built, sections: phases[at].sections, tasks }));
     const faults = [...held.flatMap(builtFaults), ...held.flatMap((each) => areaFaults(each, topics)), ...linkFaults(driver, root, unit, held.flatMap(({ tasks }) => tasks))];
     if (faults.length > 0) throw new TaskRefusal(faults.join('; '));
-    const adopted = phases.map(({ phase, parent }) => ({ phase, tasks: driver.adopt(root, unit, phase, parent).map(shownTask) }));
+    const adopted = phases.map(({ phase, parent, order }) => ({ phase, tasks: driver.adopt(root, unit, phase, parent, order).map(shownTask) }));
     const typed = held.flatMap(({ tasks }) => tasks
       .filter((task) => !ENDED.includes(task.status) && task.type !== type)
       .map((task) => {
