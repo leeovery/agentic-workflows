@@ -533,7 +533,7 @@ describe('the verb\'s argv', () => {
     const usage = 'Usage: engine asset <spike|import|add|status|lift|legacy|keep|discard> …\nasset spike <work-unit|product> <slug>\nasset import <work-unit|product> <path> …\n'
       + 'asset add <work-unit> <path> --entry <id> [--status <canonical|reference>]\n'
       + 'asset status <work-unit> <path> <canonical|reference> [--entry <id>]\nasset lift <work-unit> <path> --into <path-in-project> --entry <id>\n'
-      + 'asset legacy [<work-unit|product>]\nasset keep <work-unit|product> <path>\nasset discard <work-unit|product> <path>';
+      + 'asset legacy [<work-unit|product>]\nasset keep <work-unit|product> <path> [<work-unit|product> <path> …]\nasset discard <work-unit|product> <path>';
     assert.strictEqual(refused(['move', UNIT, MOCK]), usage);
     assert.strictEqual(refused(['add', UNIT, MOCK, '--entry', made.frameless, '--into', LIFTED]), 'Usage: engine asset add <work-unit> <path> --entry <id> [--status <canonical|reference>]');
     assert.strictEqual(refused(['add', UNIT, MOCK, '--entry', made.frameless, '--entry', made.active]), 'Usage: engine asset add <work-unit> <path> --entry <id> [--status <canonical|reference>]');

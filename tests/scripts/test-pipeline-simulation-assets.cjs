@@ -58,11 +58,17 @@ describe('pipeline simulation: assets', () => {
     enterEntry(sim, wu, 'discussion', 'note-window');
     sim.run(['presence', 'cleanup', sim.env.CLAUDE_CODE_SESSION_ID]);
     sim.handOver();
+    const productNotes = '.product/assets/legacy/notes.md';
     for (const file of ['plan.md', 'research/sketch.png', 'scratch.md']) sim.write(`.leeway/${legacy}/${file}`, `${file}\n`);
-    sim.run(['commit', wu, '-m', 'the migration']);
+    sim.write(`.leeway/${productNotes}`, 'notes\n');
+    sim.run(['commit', '--workflows', '-m', 'the migration']);
 
     const row = startMenu(sim).find(({ next }) => next?.kind === 'engine' && next.argv.join(' ') === 'asset legacy');
-    assert.deepStrictEqual(startPick(sim, row.key).places, [{ place: wu, count: 3, folders: [{ path: legacy, count: 2, named: 0 }, { path: `${legacy}/research`, count: 1, named: 0 }] }]);
+    assert.deepStrictEqual(startPick(sim, row.key).places, [
+      { place: wu, work_type: 'epic', status: 'in-progress', in_discussion: [{ topic: 'note-window', title: 'Note Window' }], count: 3, folders: [{ path: legacy, count: 2, named: 0 }, { path: `${legacy}/research`, count: 1, named: 0 }] },
+      { place: 'product', work_type: null, status: null, in_discussion: [], count: 1, folders: [{ path: '.product/assets/legacy', count: 1, named: 0 }] },
+    ]);
+    assert.strictEqual(sim.run(['asset', 'keep', wu, `${legacy}/research`, 'product', productNotes]).kept, 2);
     continueEpic(sim, wu);
     epicMenuAt(sim, wu);
     const { key } = shownRows(sim).find(({ next }) => next?.kind === 'engine' && next.argv.join(' ') === `asset legacy ${wu}`);
@@ -76,7 +82,8 @@ describe('pipeline simulation: assets', () => {
     const message = sim.write(`.leeway/.cache/${wu}/discovery/${wu}/message-old-plan.md`, 'The old plan\n\nIt leaves open whether a note opens in its own window.\n');
     const sent = sim.run(['topic', 'send', wu, topic, '--from', `${wu}.discovery`, '--content', message, '--slug', 'old-plan']);
     assert.match(sim.render(['send-report', `${wu}.${topic}`, '--sent', sent.message_path], { expect: 'content' }), /^Sent to Note Window, on Fumi$/m);
-    sim.run(['asset', 'keep', wu, `${legacy}/research`]);
+    const { files } = sim.run(['asset', 'legacy', wu]);
+    assert.deepStrictEqual(files, [{ path: `${legacy}/scratch.md`, named: 0, dead: 0 }]);
     sim.run(['asset', 'discard', wu, `${legacy}/scratch.md`]);
 
     const { discovery } = JSON.parse(sim.read(['ledger', 'product', wu, topic]));

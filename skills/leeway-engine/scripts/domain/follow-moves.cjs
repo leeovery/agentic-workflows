@@ -12,17 +12,21 @@
 //   (markdown-links.cjs), a document that moved itself rebased from where it
 //   was: every `.md` file in the state but under `.git`, `.cache` and
 //   `.knowledge`;
-// - the roadmap's sources (roadmap.cjs `carrySources`).
+// - the roadmap's sources.
 //
 // Moves are `[from, to]` pairs from the state root, a folder's covering what
 // is below it (`landingOf`), so a link, a citation or a source naming the
-// folder follows it, a folder's trailing slash kept. A folder whose files
-// all moved to one new folder is followed as a move of its own, though it
-// was emptied rather than moved, and only a document that itself moved is
-// rebased from where it was. A thing naming a folder names every file
-// below it, and counts once for each however many ways it names one. The
-// caller holds the writer lock, makes the moves before following them, and
-// commits what each answers.
+// folder, or anything below it, follows it, a folder's trailing slash kept.
+// An emptied folder — one whose files went to one new folder, though it
+// was emptied rather than moved — is followed by what names it alone, never
+// by what names a path below it the moves did not take, and only a
+// document that itself moved is rebased from where it was. The caller holds
+// the writer lock, makes the moves before following them, and commits what
+// each answers.
+//
+// The namers are each ledger line, document and roadmap item with the
+// paths it names, a folder's without its trailing slash, read in one pass
+// over each, for the caller to count (legacy-files.cjs).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -34,7 +38,7 @@ const { appendEntries } = require('./ledger.cjs');
 const { foldLedger } = require('./ledger-fold.cjs');
 const { newId } = require('./ledger-ids.cjs');
 const { roadmapItems } = require('./derivations.cjs');
-const { carrySources, landingOf } = require('./roadmap.cjs');
+const { landingOf } = require('./roadmap.cjs');
 const { rebaseLinks } = require('./markdown-links.cjs');
 
 /** @typedef {[string, string][]} Moves */
@@ -63,6 +67,17 @@ function linkedFrom(root, doc) {
   return named;
 }
 
+/**
+ * Where `file` went: its move's landing, or an emptied folder's own, its
+ * trailing slash kept; null where nothing took it.
+ * @param {string} file @param {Moves} moves @param {Moves} emptied
+ */
+function landing(file, moves, emptied) {
+  const bare = file.replace(/\/+$/, '');
+  const folder = emptied.find(([from]) => from === bare);
+  return landingOf(file, moves) ?? (folder === undefined ? null : folder[1] + file.slice(bare.length));
+}
+
 /** The files a ledger line names, as every read takes it. @param {Record<string, unknown>} event @returns {string[]} */
 function namedBy(event) {
   const cited = Array.isArray(event.cites) ? event.cites.map((/** @type {{path: string}} */ cite) => cite.path) : [];
@@ -76,8 +91,7 @@ function namedBy(event) {
  * @param {string} root @param {Moves} moves @param {Moves} [emptied] @returns {string[]}
  */
 function relinkDocuments(root, moves, emptied = []) {
-  const followed = [...moves, ...emptied];
-  const follow = (/** @type {string} */ file) => landingOf(file, followed) ?? file;
+  const follow = (/** @type {string} */ file) => landing(file, moves, emptied) ?? file;
   /** @type {Moves} */
   const back = moves.map(([from, to]) => [to, from]);
   return documents(root).filter((doc) => {
@@ -91,18 +105,19 @@ function relinkDocuments(root, moves, emptied = []) {
 }
 
 /**
- * The ledger's lines naming a file `moves` moved, each carried to the place
- * it is read at, the files at their new paths (the header's), in one write:
- * how many lines. Refused, in the words of `said`, where there are any and
- * no session to tag the carries with.
- * @param {string} root @param {string} said @param {Moves} moves @param {string[]} warnings
+ * The ledger's lines naming a file `moves` moved, or a folder `emptied`
+ * emptied, each carried to the place it is read at, the files at their new
+ * paths (the header's), in one write: how many lines. Refused, in the
+ * words of `said`, where there are any and no session to tag the carries
+ * with.
+ * @param {string} root @param {string} said @param {Moves} moves @param {Moves} emptied @param {string[]} warnings
  */
-function carryNamings(root, said, moves, warnings) {
+function carryNamings(root, said, moves, emptied, warnings) {
   const groups = foldLedger(root, {
     start: () => /** @type {Map<string, {unit: string, topic: string|null, phase: string, ids: string[], files: Set<string>}>} */ (new Map()),
     step: (found, event) => {
       if (event.event === 'rehomed') return;
-      const moved = namedBy(event).filter((file) => landingOf(file, moves) !== null);
+      const moved = namedBy(event).filter((file) => landing(file, moves, emptied) !== null);
       if (moved.length === 0) return;
       const topic = typeof event.topic === 'string' ? event.topic : null;
       const key = JSON.stringify([event.unit, topic, event.phase]);
@@ -116,47 +131,56 @@ function carryNamings(root, said, moves, warnings) {
   const session = handedSession();
   if (session === null) throw new Error(`${said}: ledger entries name what moves, and their carry is tagged with this conversation — Claude Code hands every command it runs a session id, and this one has none`);
   appendEntries(root, [...groups.values()].map(({ unit, topic, phase, ids, files }) => ({
-    fields: { event: 'rehomed', unit, topic, phase, session, lines: ids, files: [...files].map((file) => [file, landingOf(file, moves)]) },
+    fields: { event: 'rehomed', unit, topic, phase, session, lines: ids, files: [...files].map((file) => [file, landing(file, moves, emptied)]) },
     id: newId(),
   })), warnings);
   return [...groups.values()].reduce((sum, { ids }) => sum + ids.length, 0);
 }
 
 /**
- * The roadmap's sources following `moves`, written where any did: those
- * rewritten.
- * @param {string} cwd @param {Moves} moves
+ * The roadmap's sources following `moves` and `emptied`, written where any
+ * did: those rewritten.
+ * @param {string} cwd @param {Moves} moves @param {Moves} emptied
  */
-function followSources(cwd, moves) {
+function followSources(cwd, moves, emptied) {
   return withProjectLock(cwd, () => {
     const project = readProjectManifest(cwd);
-    const { rewritten } = carrySources(roadmapItems(project), moves);
+    /** @type {{item: string, from: string, to: string}[]} */
+    const rewritten = [];
+    for (const [name, item] of Object.entries(roadmapItems(project))) {
+      if (!Array.isArray(item?.sources)) continue;
+      item.sources = item.sources.map((/** @type {unknown} */ source) => {
+        const to = typeof source === 'string' ? landing(source, moves, emptied) : null;
+        if (to === null) return source;
+        rewritten.push({ item: name, from: /** @type {string} */ (source), to });
+        return to;
+      });
+    }
     if (rewritten.length > 0) writeProjectManifestAtomic(cwd, project);
     return rewritten;
   });
 }
 
+/** A thing naming paths (the header's): the document it is, where it is one. @typedef {{from: string|null, names: Set<string>}} Namer */
+
 /**
- * How many things name each file (the header's): the ledger lines, the
- * documents and the roadmap items, read in one pass over each. `reach` maps
- * each path counted — a file, or a folder above files — to the files it
- * names.
- * @param {string} cwd @param {string} root @param {Map<string, string[]>} reach @param {string[]} warnings
- * @returns {Map<string, number>}
+ * Every namer in the state (the header's).
+ * @param {string} cwd @param {string} root @param {string[]} warnings
+ * @returns {Namer[]}
  */
-function namings(cwd, root, reach, warnings) {
-  /** @type {Map<string, number>} */
-  const counts = new Map();
-  const count = (/** @type {Iterable<string>} */ named) => {
-    const files = new Set([...named].flatMap((said) => reach.get(said.replace(/\/+$/, '')) ?? []));
-    for (const file of files) counts.set(file, (counts.get(file) ?? 0) + 1);
+function namers(cwd, root, warnings) {
+  /** @type {Namer[]} */
+  const found = [];
+  const add = (/** @type {string|null} */ from, /** @type {Iterable<string>} */ named) => {
+    const names = new Set([...named].map((said) => said.replace(/\/+$/, '')));
+    if (names.size > 0) found.push({ from, names });
   };
-  foldLedger(root, { start: () => null, step: (_, event) => count(namedBy(event)) }, warnings);
-  for (const doc of documents(root)) count(linkedFrom(root, doc));
+  foldLedger(root, { start: () => null, step: (_, event) => add(null, namedBy(event)) }, warnings);
+  for (const doc of documents(root)) add(doc, linkedFrom(root, doc));
   for (const item of Object.values(roadmapItems(readProjectManifest(cwd)))) {
-    if (Array.isArray(item?.sources)) count(item.sources.filter((source) => typeof source === 'string'));
+    if (Array.isArray(item?.sources)) add(null, item.sources.filter((source) => typeof source === 'string'));
   }
-  return counts;
+  return found;
 }
 
-module.exports = { relinkDocuments, carryNamings, followSources, namings };
+module.exports = { relinkDocuments, carryNamings, followSources, namers };

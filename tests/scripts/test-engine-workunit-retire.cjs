@@ -126,7 +126,7 @@ describe('a cross-cutting unit leaves the registry (21.7.3, 21.7.5, 19.6.7)', ()
     run(RETIRE);
 
     const notes = layout.productAssets('legacy', 'caching', 'notes.md');
-    assert.deepStrictEqual(run(['asset', 'legacy', 'product']).files, [{ path: notes, named: 1 }]);
+    assert.deepStrictEqual(run(['asset', 'legacy', 'product']).files, [{ path: notes, named: 1, dead: 1 }]);
     assert.ok(!fs.existsSync(statePath(dir, layout.productAssets('caching', 'assets', 'legacy'))), 'nothing of them left in the kept folder');
     assert.match(fs.readFileSync(statePath(dir, layout.productAssets(log)), 'utf8'), /See \[the notes\]\(\.\.\/\.\.\/\.\.\/legacy\/caching\/notes\.md\), in \[the legacy\]\(\.\.\/\.\.\/\.\.\/legacy\/caching\/\)\.\n$/);
   });

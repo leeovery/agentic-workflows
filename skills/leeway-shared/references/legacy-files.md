@@ -4,12 +4,15 @@
 
 ---
 
-The files are what the migration found no place for, below each place's `assets/legacy/`: a unit's, or the product's. From the start menu, `asset legacy` answered `places`, each with its `folders`, every folder's `count` of files and how many of them something already `named`. From an epic's menu, `asset legacy {place}` answered that one place's `files`, each with its `named`. Show the person each place and what its folders hold, sorted by what the read knows:
+The files are what the migration found no place for, below each place's `assets/legacy/`: a unit's, or the product's. From the start menu, `asset legacy` answered `places`, each with its `work_type`, its `status`, its topics `in_discussion` and its `folders`, every folder's `count` of files and how many of them something already `named`. From an epic's menu, `asset legacy {place}` answered that epic alone, in progress, with its `in_discussion`, its `folders` and its `files`. Show the person each place and what its folders hold, sorted by what the read knows. `{path}` is a file as `files` names it, or a folder as `folders` names it, the files below it sorted together.
 
-- **Finished work, kept whole** — a built unit's implementation and review files, a completed quick-fix's plan, and every file something already names, whose topic took it up. Offer to keep these a folder or a whole place at once.
-- **Read one at a time** — only the files nothing names, outside those folders, and only where the person wants something brought in. `asset legacy {place}` lists a place's files.
+- **Finished work, kept whole** — a completed unit's build reports and the review tracking of its plan and spec, a completed quick-fix's plan, a topic's old reports under `cache/{phase}/{topic}/` where the topic is not `in_discussion`, and every folder whose files something already names. Offer to keep all of it at once, every place's in one call, each `{place} '{path}'` pair a folder or a whole place's `assets/legacy`:
 
-`{path}` is a file as `files` names it, or a folder as `folders` names it, the files below it sorted together.
+  ```bash
+  node .claude/skills/leeway-engine/scripts/engine.cjs asset keep {place} '{path}' {place} '{path}' …
+  ```
+
+- **Read one at a time** — only the rest, and only where the person wants something brought in. `asset legacy {place}` lists a place's files.
 
 - **Keep it** → `asset keep {place} '{path}'`. Everything naming it follows it: a file answers its new path, `to`; a folder, the count it `kept` and `to`, where they went.
 - **Bring it in** — read the file, keep it, then record what it holds that the work will want as findings at the place's `findings_at`, which `asset legacy {place}` answered, each citing the file at its `to`, `{section}` the heading the finding draws on, or the file's name where it has none:
@@ -33,6 +36,6 @@ The files are what the migration found no place for, below each place's `assets/
   ```
 
   A question bearing on no topic in discussion is a finding saying what the file leaves open: ``{file} leaves open whether …``.
-- **Discard it** → `asset discard {place} '{path}'`, once the person has said to; the state's history keeps it. Where something names it, say how many things name it before they say: discarding leaves each pointing at nothing.
+- **Discard it** → `asset discard {place} '{path}'`, once the person has said to; the state's history keeps it. `asset legacy {place}` answers each file's and folder's `dead`: where it is above none, say how many things the discard leaves pointing at nothing before they say.
 
-Each answer's `left` counts what still waits in the place. The pass ends when nothing is left, or where the person stops; what is left waits on the same row.
+Each answer's `left` counts what still waits in the places it sorted. The pass ends when nothing is left, or where the person stops; what is left waits on the same row.
