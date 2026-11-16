@@ -105,7 +105,7 @@ const licensingDrawn = () => [
   '## Where the record goes',
   '',
   '- The record composed: .cache/migrate/records/fumi/licensing.json',
-  '- The verifier\'s findings on it: .cache/migrate/records/fumi/licensing.findings.md',
+  '- The verifier\'s findings on it: .cache/migrate/records/fumi/licensing.findings.txt',
   '- A carry\'s refusal of it: .cache/migrate/records/fumi/licensing.refused.md',
 ].join('\n');
 

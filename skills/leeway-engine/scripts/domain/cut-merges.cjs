@@ -218,7 +218,7 @@ function oldReliances(phases) {
 const staged = (sources, name) => `${sources.staging}/${name}`;
 
 /** Where a phase's piece goes, and the verifier's findings on it, from the state's folder. @param {UnitSources} sources @param {number} number */
-const piecePaths = (sources, number) => ({ piece: staged(sources, `phases/${number}.json`), findings: staged(sources, `phases/${number}.findings.md`) });
+const piecePaths = (sources, number) => ({ piece: staged(sources, `phases/${number}.json`), findings: staged(sources, `phases/${number}.findings.txt`) });
 
 /**
  * The faults of a phase's piece, read from its file.

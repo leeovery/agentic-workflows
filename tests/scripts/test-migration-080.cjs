@@ -365,7 +365,7 @@ describe('the per-phase agents and the join (21.10.5, E7)', () => {
   const briefText = (args) => fs.readFileSync(briefPath(SESSION_ID, run(['brief', ...args]).id), 'utf8');
 
   it('lays the cut out phase by phase, each old plan\'s in its own order, the plans as their dependencies allow; a phase built where the manifest and the tracker agree is the join\'s, any other an agent\'s, its brief drawing its tasks by the cut\'s names, each still to build with its text, what its plan depends on and where the two disagree — the verifier\'s findings on it taken and cleared; the verifier\'s brief, its piece verbatim', () => {
-    writeState(dir, `${STAGING}/phases/4.findings.md`, '- The refund\'s correction names no code.\n');
+    writeState(dir, `${STAGING}/phases/4.findings.txt`, '- The refund\'s correction names no code.\n');
     const issued = run(['brief', 'migration-phase', 'shop', '--directive', DIRECTIVE, '--phase', '4']);
     const brief = fs.readFileSync(briefPath(SESSION_ID, issued.id), 'utf8');
 
@@ -383,10 +383,10 @@ describe('the per-phase agents and the join (21.10.5, E7)', () => {
       `- Phase 4: phase 2 of pay's plan, its tracker parent ${PLANS.pay.phases[1]}\n- Its area: §2 pay of shop/spec.md`,
       '### Its tasks\n\n- 4.1, pay-2-1 — "Charge the card", done; the manifest credits it done\n\n- 4.2, pay-2-2 — "Refund a charge", in progress; the manifest credits it done\n\n```markdown\n**Problem**: A charge is kept for good.',
       `### Where the manifest and the tracker disagree\n\n- ${REFUND_DISAGREES}`,
-      '## Where your piece goes\n\n- The piece composed: .cache/migrate/cut-and-merges/shop/phases/4.json\n- The verifier\'s findings on it: .cache/migrate/cut-and-merges/shop/phases/4.findings.md',
+      '## Where your piece goes\n\n- The piece composed: .cache/migrate/cut-and-merges/shop/phases/4.json\n- The verifier\'s findings on it: .cache/migrate/cut-and-merges/shop/phases/4.findings.txt',
       '# The verifier\'s findings\n\n- The refund\'s correction names no code.\n\n# The directive',
     ]) assert.ok(brief.includes(part), `${part}\n\nin\n\n${brief}`);
-    assert.ok(!fs.existsSync(statePath(dir, STAGING, 'phases/4.findings.md')), 'the findings taken are cleared');
+    assert.ok(!fs.existsSync(statePath(dir, STAGING, 'phases/4.findings.txt')), 'the findings taken are cleared');
     assert.ok(briefText(['migration-phase', 'shop', '--directive', DIRECTIVE, '--phase', '4']).includes('# The verifier\'s findings\n\nNone recorded.'));
 
     assert.deepStrictEqual(['1', '9'].map((phase) => refusedUntouched(dir, ['brief', 'migration-phase', 'shop', '--directive', DIRECTIVE, '--phase', phase], { env: SESSION }, harness)), [
@@ -409,6 +409,17 @@ describe('the per-phase agents and the join (21.10.5, E7)', () => {
       '- phase 2, phase 2 of cart\'s plan: the tracker holds every task of it ended, and the manifest does not count it built\n- cart-2-1, task 2.1, "Save the cart": the tracker holds it done, and the manifest does not credit it',
       `- phase 4, phase 2 of pay's plan: the manifest counts it built, and the tracker holds 1 of its tasks neither done nor closed\n- ${REFUND_DISAGREES}`,
     ]);
+  });
+
+  it('a piece\'s findings, written as text where the verifier\'s brief names, reach the next composer\'s brief and are cleared', () => {
+    compose(5, exported());
+    const verifier = briefText(['migration-phase-verifier', 'shop', '--directive', DIRECTIVE, '--phase', '5']);
+    const where = /^- The verifier's findings on it: (.+)$/m.exec(verifier)?.[1];
+    assert.strictEqual(where, '.cache/migrate/cut-and-merges/shop/phases/5.findings.txt');
+    writeState(dir, String(where), '- The export names no file format.\n');
+
+    assert.ok(briefText(['migration-phase', 'shop', '--directive', DIRECTIVE, '--phase', '5']).includes('# The verifier\'s findings\n\n- The export names no file format.\n\n# The directive'));
+    assert.ok(!fs.existsSync(statePath(dir, String(where))), 'the findings taken are cleared');
   });
 
   it('joins the pieces into the plan the cut takes — the phases the join writes, each naming its tracker parent, each phase\'s scenarios numbered on in its area — the person\'s answers kept, its path from the project\'s folder; the cut applies it', () => {

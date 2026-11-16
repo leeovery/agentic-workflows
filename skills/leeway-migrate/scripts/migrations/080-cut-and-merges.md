@@ -10,7 +10,7 @@
 - Each unit's staging in the state's cache,
   `.cache/migrate/cut-and-merges/{unit}/`: each phase's piece,
   `phases/{N}.json`, and the verifier's findings on it,
-  `phases/{N}.findings.md`; the plan joined from them, `plan.json`; and the
+  `phases/{N}.findings.txt`; the plan joined from them, `plan.json`; and the
   research's placement, `placed.json`.
 
 ## Asks

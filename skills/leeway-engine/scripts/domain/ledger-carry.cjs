@@ -94,7 +94,7 @@ const CARRIED = '.cache/migrate/carried';
 /**
  * Where each topic's record is composed before it is carried, and the
  * verifier's findings on it written, state-relative: `{unit}/{topic}.json`
- * and `{unit}/{topic}.findings.md` beneath it.
+ * and `{unit}/{topic}.findings.txt` beneath it.
  */
 const COMPOSED = '.cache/migrate/records';
 
@@ -135,7 +135,7 @@ const carriedPath = (unit, topic) => path.posix.join(CARRIED, unit, `${topic}.js
 const composedPath = (unit, topic) => path.posix.join(COMPOSED, unit, `${topic}.json`);
 
 /** @param {string} unit @param {string} topic */
-const findingsPath = (unit, topic) => path.posix.join(COMPOSED, unit, `${topic}.findings.md`);
+const findingsPath = (unit, topic) => path.posix.join(COMPOSED, unit, `${topic}.findings.txt`);
 
 /** @param {string} unit @param {string} topic */
 const refusedPath = (unit, topic) => path.posix.join(COMPOSED, unit, `${topic}.refused.md`);
