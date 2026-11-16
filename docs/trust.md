@@ -6,9 +6,9 @@ This page is how that works: the ledger every call lands on, the arithmetic that
 
 ## How much of you a phase needs
 
-The amount of you the work needs is widest on a blank page and narrows as the product takes shape. Early on nearly every turn is yours: [discovery](discovery.md) and [discussion](discussion.md) are conversations, because a wrong turn caught there costs a sentence to put right, and the same wrong turn caught in [review](review.md) costs a rebuild. Each decided topic constrains the next, so the first topics of an epic are the widest, and a new epic's first topic starts narrower once the product's character is known. By the [specification](specification.md) the decisions are on record and your part is approving them; [the build](the-build.md) and the review phase run largely on their own.
+The amount of you the work needs is a cone: widest on a blank page, narrowing as the product takes shape. Early on nearly every turn is yours: [discovery](discovery.md) and [discussion](discussion.md) are conversations, because a wrong turn caught there costs a sentence to put right, and the same wrong turn caught in [review](review.md) costs a rebuild. Each decided topic constrains the next, so the first topics of an epic are the widest, and a new epic's first topic starts narrower once the product's character is known. By the [specification](specification.md) the decisions are on record and your part is approving them; [the build](the-build.md) and the review phase run largely on their own.
 
-Nothing computes where in that cone the work is. The cone comes from the work itself: a decided topic leaves fewer open questions for the next, and the ask rule below learns your taste as you answer, so less needs asking.
+Nothing computes where in the cone the work is. The cone comes from the work itself: a decided topic leaves fewer open questions for the next, and the ask rule below learns your taste as you answer, so less needs asking.
 
 ## The ledger
 
@@ -28,10 +28,10 @@ Only questions of intent and taste are yours, and only those go through the ask 
 
 Whether Claude asks you is arithmetic the engine does over your own answers, never Claude's judgement and never its stated confidence. Claude supplies the question and its own answer, sealed before you answer so it cannot change; the engine decides whether to ask; your answer becomes evidence.
 
-Every question has a **kind**, composed from a separate Claude call's answers to twelve narrow yes-or-no questions about what was asked: process, danger, contract, scope, look, words, behaviour or internals. For each kind the engine keeps a rate of real loss — how often Claude's answer, had it been built, would have cost the product something — and takes the pessimistic end of it: the upper end of a one-sided 95% range. Few answers leave that range wide, so a kind keeps asking until your answers narrow it.
+Every question has a **kind** — process, danger, contract, scope, look, words, behaviour or internals — composed in code from a separate Claude call's answers to twelve narrow yes-or-no questions about what was asked. For each kind the engine keeps a rate of real loss — how often Claude's answer, had it been built, would have cost the product something — and takes the pessimistic end of it: the upper end of a one-sided 95% range. Few answers leave that range wide, so a kind keeps asking until your answers narrow it.
 
 - **The threshold.** A kind asks while its pessimistic rate is above your threshold, 20% unless you pick another. With no losses, 13 answers bring it under 20%. One loss among 20 answers puts it at 21%.
-- **Going quiet, and asking again.** Under the threshold a kind goes quiet: its calls land on the ledger as Claude's. It asks again only once its rate rises a quarter above the threshold, 25% at the default, so one bad call reopens a kind while its evidence is thin and leaves it quiet once its record is long. <!-- 19.12 -->
+- **Going quiet, and asking again.** Under the threshold a kind goes quiet: its calls land on the ledger as Claude's. It asks again only once its rate rises a quarter above the threshold, 25% at the default, so one bad call makes a kind ask again while its evidence is thin and leaves it quiet once its record is long. <!-- 19.12 -->
 - **Hard to undo.** A question whose answer a later change would have to reach beyond the piece to undo halves the threshold, so it needs about 28 clean answers before it goes quiet.
 - **Calls with one sensible answer.** Where Claude judges there is only one defensible answer, the call goes ahead as Claude's, on a count of its own, and asks you only once you have overruled such calls often enough to lift that count's rate past the threshold. <!-- 19.12 -->
 - **Mid-build.** A question that blocks build work takes the same threshold until the build's own answers show by how much to raise it; raising it is your pick, from a replay.
@@ -63,7 +63,7 @@ Questions come one at a time. In a discussion each is slotted into the conversat
 
 A departure is an answer of yours that changes Claude's lean. Each one gets a **verdict**: what the product would have lost had Claude built its own answer — nothing, a fix later, or a real loss. Verdicts are what the ask rule learns from, and they are asked where you already sign off, so none is left to a page you would have to remember to open: a topic's decided screen, ready to build, an investigation's conclusion, finish, and a quick-fix's close. Where you changed nothing, nothing is added.
 
-A verdict you can't call yet can be skipped. It waits in the **verdict queue**, reached from the start menu's Verdicts row while any wait, one at a time, oldest first. Until judged, a departure counts as a real loss, so a backlog only makes Claude ask more. A blind answer that differs from Claude's is a departure too, and so is a later reversal: an "I agree" given in fatigue and overturned later counts as an overturn.
+A verdict you can't call yet can be skipped. It waits in the **verdict queue**, reached from the Verdicts row on the start menu or an epic's menu while any wait, one at a time, oldest first. Until judged, a departure counts as a real loss, so a backlog only makes Claude ask more. A blind answer that differs from Claude's is a departure too, and so is a later reversal: an "I agree" given in fatigue and overturned later counts as an overturn.
 
 ## Routine gates are learned
 

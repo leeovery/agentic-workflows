@@ -13,13 +13,16 @@ Inbox: 2 ideas · 1 bug · 1 quick-fix
 
 1         → Continue feature: Saved Filters — build, phase 1 of 3
 2         → Continue bugfix: Export Timeout — investigation
-3         → Continue epic: Payments Overhaul — discussion, 1 of 3 topics decided
+3         → Continue epic: Payments Overhaul — discussion, 1 of 3
+            topics decided
 p/product → Talk about the product
-s/start   → Start something new — describe it, and we'll find what kind of work it is
+s/start   → Start something new — describe it, and we'll find what
+            kind of work it is
 t/triage  → Triage the inbox
 r/roadmap → Open the product roadmap
 v/view    → View completed & cancelled work units
-m/manage  → Manage work units
+m/manage  → Manage work units, the project's setup and drivers, and
+            the matrix
 h/help    → How Ledger works
 ```
 
@@ -82,7 +85,7 @@ The roadmap's own rows: `w/work` starts on the items you name, `n/new` adds one,
 
 ## Starting work from the roadmap
 
-Work begins when you pick items with `w/work`. They go into discovery together as the seeds of one piece of work, and discovery settles its kind, a quick-fix included; Claude names what stays waiting on the horizon. Discovery reads each picked item's note and the parts of the product's conversation its pointers name, and only those, so the new work opens knowing why it exists without inheriting the whole product. An item can also join an epic in progress as a new topic, through that epic's discovery.
+Work begins when you pick items with `w/work`. They go into discovery together as the seeds of one piece of work, and discovery settles its kind, a quick-fix included; Claude names what stays waiting on the horizon. Discovery reads each picked item's note and the parts of the product's conversation its pointers name, and only those, so the new work opens knowing why it exists without inheriting the whole product. An idea can also join an epic in progress as a new topic, through that epic's discovery.
 
 A started item leaves the roadmap, which shows only what still waits; from then on the work shows its progress. If the work is cancelled, or the topic it became is cancelled, the item returns to waiting. A postponed topic pulled back into its own epic returns exactly as it was; pulled into another epic, it opens as a fresh topic that reads the earlier record and never changes it.
 

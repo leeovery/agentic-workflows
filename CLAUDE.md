@@ -51,7 +51,7 @@ The phases group into three **stages**, the top-level grouping of the epic dashb
 3. **Discussion** (`ledger-discussion-process`) — one conversation per topic, research one of its tools: every question, finding and decision on the ledger, the decided checklist closing it; topics send each other messages through mailboxes.
 4. **Investigation** (`ledger-investigation-process`) — bugfix: symptoms and code analysis to a root cause.
 5. **Specification** (`ledger-specification-process`) — turn a unit's decided topics (a bugfix's investigation) into its one spec, cut into phases and approved at ready to build, where the build's position is chosen.
-6. **Implementation** (`ledger-implementation-process`) — the build: one conversation through every phase of the spec's cut, each task built by TDD; a quick-fix's is its own skill (`ledger-quick-fix-process`), each fix a task, from the first fix to its close in one conversation.
+6. **Implementation** (`ledger-implementation-process`) — the build: one conversation through every phase of the spec's cut, each task built with the tests that prove it, held by the tests the commit door runs and the reviewer pair; a quick-fix's is its own skill (`ledger-quick-fix-process`), each fix a task, from the first fix to its close in one conversation.
 7. **Review** (`ledger-review-process`) — verify the built change against the specification, its findings landing as fix tasks; a quick-fix's only when the person asks for one at its close.
 
 ### Work types and topics

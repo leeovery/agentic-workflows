@@ -33,7 +33,7 @@ That's the whole interface — or skip it and ask Claude for a change in your ow
 
 **A record, not a scratchpad.** Every question, finding and decision lands on the project's ledger as it is made: who made it, why, what it rules out, what it relies on, and what the other side would have said. Nothing on it is edited — a change of mind replaces the old answer and flags everything that relied on it. "What have you decided without me?" is always one question away.
 
-**Claude decides as you would.** Whether a call reaches you is arithmetic over your own answers, never Claude's confidence. Every question of taste asks at first; a kind of question goes quiet only once Claude's calls on it have matched yours, and asks again the moment they stop. Danger, and anything you said you care about, always asks. <!-- 19.12 -->
+**Claude decides as you would.** Whether a call reaches you is arithmetic over your own answers, never Claude's confidence. Every question of taste asks at first; a kind of question goes quiet only once Claude's calls on it have matched yours, and asks again when they stop matching while its record is still short. Danger, and anything you said you care about, always asks. <!-- 19.12 -->
 
 **Proven by running it.** Builders prove each task by driving the running product the way a user would, and a script, never Claude's account, writes the verdict. A scenario nothing could drive is reported not proven.
 
@@ -59,13 +59,16 @@ Inbox: 2 ideas · 1 bug · 1 quick-fix
 
 1         → Continue feature: Saved Filters — build, phase 1 of 3
 2         → Continue bugfix: Export Timeout — investigation
-3         → Continue epic: Payments Overhaul — discussion, 1 of 3 topics decided
+3         → Continue epic: Payments Overhaul — discussion, 1 of 3
+            topics decided
 p/product → Talk about the product
-s/start   → Start something new — describe it, and we'll find what kind of work it is
+s/start   → Start something new — describe it, and we'll find what
+            kind of work it is
 t/triage  → Triage the inbox
 r/roadmap → Open the product roadmap
 v/view    → View completed & cancelled work units
-m/manage  → Manage work units
+m/manage  → Manage work units, the project's setup and drivers, and
+            the matrix
 h/help    → How Ledger works
 ```
 
@@ -73,7 +76,7 @@ Every screen is drawn by the engine from the state on disk and shown exactly as 
 
 ## The build runs on its own
 
-The spec is cut into phases at ready to build, where you pick the build's position: auto, where it runs on its own and only what needs you stops it, or step, where it also stops after each task for you to try it. Each phase's tasks are written as it starts. Builders work them side by side, test first, each in a worktree of its own; a pair of reviewers who didn't write the code checks each task, and each phase's whole change, against the spec. On GitHub every task lands as its own pull request, each phase a stack of them. A question for you parks only the tasks that depend on it; the rest carry on. Front-load your attention on the conversation and the spec; the build handles the rest.
+The spec is cut into phases at ready to build, where you pick the build's position: auto, where it runs on its own and only what needs you stops it, or step, where it also stops after each task for you to try it. Each phase's tasks are written as it starts. Builders work them side by side, each in a worktree of its own, building each task with the tests that prove it; a pair of reviewers who didn't write the code checks each task, and each phase's whole change, against the spec. On GitHub every task lands as its own pull request, each phase a stack of them. A question for you parks only the tasks that depend on it; the rest carry on. Front-load your attention on the conversation and the spec; the build handles the rest.
 
 ## The ledger and the record
 
@@ -103,11 +106,11 @@ A feature that outgrows its scope pivots into an epic. A feature that belongs in
 
 ## More features
 
-- **State on its own branch.** Ledger keeps its records on a branch of their own, `ledger-state`, checked out beside your code, pushed after every commit and protected from deletion. Pull requests never carry it, and a second machine catches up on its own.
+- **State on its own branch.** Ledger keeps its records on a branch of their own, `ledger-state`, checked out beside your code, pushed after every commit, and on GitHub offered a rule against its deletion, set only on your yes. Pull requests never carry it, and a second machine catches up on its own.
 - **Full audit trail.** Every decision, every review finding and every verification run lands in git through engine-owned commits.
 - **Durable by construction.** State changes are transactions: checked first, refused cleanly, committed whole. A crash mid-anything leaves nothing half-written.
 - **Nothing falls on the floor.** A point raised in the wrong topic is sent as mail to the topic it belongs to, and waits there until read.
-- **Many sessions, one checkout.** Talk through as many topics in parallel as you like; every commit takes only what its own action wrote. A build, the review phase and a quick-fix take turns in the checkout.
+- **Many sessions, one checkout.** Talk through as many topics in parallel as you like; a commit takes what its own action wrote and the conversation logs written since, never another session's half-made change. A build, the review phase and a quick-fix take turns in the checkout.
 - **Recovers from anything.** After a compaction, a crash or a new session, the work re-reads its record and carries on where it was, with no recap.
 - **tmux session labels.** Opt in per project and your tmux session renames to show where you're working — `myproject · payments · discussion · auth-flow` — restoring the original name on exit.
 - **Zero-maintenance upgrades.** Updates migrate existing projects in place on the next run, including a project from before Ledger.

@@ -4,9 +4,9 @@ The knowledge base is Ledger's memory across pieces of work, and the first place
 
 ## What it remembers
 
-Every question, finding and decision lands on the [ledger](trust.md#the-ledger) as it is made, and each topic's current decisions are drawn from it into the topic's **record**: each decision with its why and what it rules out, the answers it replaced folded beneath it. The knowledge base indexes those records — each topic's, and each unit's own for the decisions made at the unit's level — through a copy the engine renders for indexing alone, in the ignored `.ledger/.knowledge/`. A bugfix's root cause, findings and fix are entries like any other, so they reach it through its record. A quick-fix's short record after the work, saying what changed and why, is indexed too, each fix under its own heading so a search for one fix finds that fix.
+Every question, finding and decision lands on the [ledger](trust.md#the-ledger) as it is made, and each topic's current decisions are drawn from it into the topic's **record**: each decision with its why and what it rules out, the answers it replaced folded beneath it. The knowledge base indexes those records — each topic's, and each work unit's own for the decisions made at the work unit's level — through a copy the engine renders for indexing alone, in the ignored `.ledger/.knowledge/`. A bugfix's root cause, findings and fix are entries like any other, so they reach it through its record. A quick-fix's short record after the work, saying what changed and why, is indexed too, each fix under its own heading so a search for one fix finds that fix.
 
-It remembers what is current. When a decision is replaced, the topic's record is rendered again and the old answer drops out of search the moment the new one lands, so a search never hands back something you have since changed your mind about. The decisions of a cancelled topic or unit, and of a postponed topic while it waits on the roadmap, are not current, and are not indexed.
+It remembers what is current. When a decision is replaced, the topic's record is rendered again and the old answer drops out of search the moment the new one lands, so a search never hands back something you have since changed your mind about. The decisions of a cancelled topic or work unit, and of a postponed topic while it waits on the roadmap, are not current, and are not indexed.
 
 ## What it never keeps
 
@@ -28,7 +28,7 @@ Each find reaches Claude as the passage closest to what was asked, with the head
 
 ## Why old material fades
 
-Left alone, the memory would grow forever and stale thinking would crowd the results. So material decays, and eventually is pruned, but staleness is not a wall-clock timer. A record fades as later work completes past its unit: a dormant month completes nothing, so the clock stands still. Once a unit's material has sunk out of reach, it can be pruned from the store. The rate and the floor are settings, described under [knowledge configuration](configuration.md#knowledge-configuration).
+Left alone, the memory would grow forever and stale thinking would crowd the results. So material decays, and eventually is pruned, but staleness is not a wall-clock timer. A record fades as later work completes past its work unit: a dormant month completes nothing, so the clock stands still. Once a work unit's material has sunk out of reach, it can be pruned from the store. The rate and the floor are settings, described under [knowledge configuration](configuration.md#knowledge-configuration).
 
 ## Switching it on
 

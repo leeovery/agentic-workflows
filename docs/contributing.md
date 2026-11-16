@@ -20,9 +20,16 @@ npm install
 npm test
 ```
 
-Node 18+. `npm install` pulls dev dependencies only — the product itself
-has no runtime dependencies and nothing to build: it installs as
-committed.
+The product runs on Node 18 or newer; the suites need Node 20.11 or newer,
+since several mock the clock's `Date`. `npm install` pulls dev dependencies
+only — the product itself has no runtime dependencies and nothing to build:
+it installs as committed.
+
+The suites of the task verbs drive the real tracker: install Tick, the task
+driver's tool, before `npm test`. A stand-in first on the harness's `PATH`
+(`tests/drivers/tick/bin/tick`) answers only `tick version`, at the floor
+the driver needs or the one a suite sets, and hands every other command to
+the Tick on your machine.
 
 ## The gates
 
@@ -34,7 +41,7 @@ is to run them before every commit rather than at the end of a branch.
 | `npm test` | Node suites: engine, drivers, knowledge, migrations, pipeline simulation, prose-test perimeter, and the checks on the docs, the glossary and where a tool may be named; ends with the budget report, the run's CPU against its guide (`tests/README.md` §12) | unit, verb, git, process, simulation, migration (047 on), prose |
 | `npm run test:cli` | The shell contract suite of the manifest field surface | shell, closing into verb |
 | `npm run test:migrations` | Every `tests/scripts/test-migration-*.sh` | migration (the frozen fleet) |
-| `npm run typecheck` | JSDoc type contracts (`tsc --noEmit`) | — |
+| `npm run typecheck` | JSDoc type contracts (`tsc -p tsconfig.json`) | — |
 | `npm run test:mod` | Both gate mods' suites (`ledger-gates` and `ledger-gates-rows`) under `claude plugin test` — owed for any change under `skills/ledger-gates*/` | the mods' own |
 
 What each layer holds, and how a test in it is written, is `tests/README.md`.
@@ -80,10 +87,12 @@ verification addendum and notice.
   `skills/ledger-migrate/scripts/migrations/NNN-description.cjs`, the
   next number after the highest. The `*.sh` files are the frozen fleet:
   nothing new is written in bash.
-- Two migrations write outside the project. 066 edits the user's own
-  Claude Code settings, and its verification addendum names the change,
-  since the review diff cannot show it. 078 moves the user-level folder
-  to `~/.config/ledger/`, leaving a link to it in its place.
+- Three migrations write outside the project. 061 moves each tmux
+  label's resume position into its conversation's folder at user level.
+  066 edits the user's own Claude Code settings, and its verification
+  addendum names the change, since the review diff cannot show it. 078
+  moves the user-level folder to `~/.config/ledger/`, leaving a link to it
+  in its place.
 - Its suite is `tests/scripts/test-migration-NNN.cjs`, registered in
   `package.json`'s `test` script. Like its siblings it drives `run()`
   against a temp `projectDir` with counting `reportUpdate`/`reportSkip`
@@ -104,7 +113,7 @@ format and its check's contract.
   `{ counts, done, check({ projectDir, stateDir }) }`: what one of its
   pieces is called and many (`{ one: 'topic', many: 'topics' }`), what
   a piece done has (`'have their records'`), and each piece with what
-  it still lacks. The stop's screen says them as "12 of Fumi's 19
+  it still lacks. The stop's screen says them as "12 of Larkspur's 19
   topics have their records". `engine migrate check` runs it; the
   directive is recorded only when
   `engine checklist close directive NNN-slug` finds it passing, or by
@@ -157,10 +166,10 @@ in the same header:
   and a folder whose declaration is missing or does not read is named in
   their notice.
 - The engine's verbs only the migration's directives call — `ledger
-  carry`, `workunit split` and `workunit retire` — refuse once the state
-  branch has its first commit (`state-worktree.cjs`,
-  `assertMigrationRuns`), and each finishes on a redo of a run killed
-  part-way.
+  carry`, `workunit split`, `workunit retire`, `cut --migrating`, `task
+  adopt` and `task close-plan` — refuse once the state branch has its
+  first commit (`state-worktree.cjs`, `assertMigrationRuns` and
+  `migrationRuns`), and each finishes on a redo of a run killed part-way.
 - The reshape's finish (081) journals the code side's drops —
   `.workflows/` and each declared store — in the state's cache,
   `.ledger/.cache/migrate/finish.json`, `{drops}`, staging nothing, so
@@ -210,8 +219,10 @@ it, so an old checkout will look set up and quietly not be.
   `.claude/agents/*.md` and immediately testing will exercise the old
   definition. Reload plugins, or restart, before trusting a result.
 - **Snapshot drift is expected after an engine change.** A red
-  `prose-test snapshots` suite means a world moved; CLAUDE.md (Prose
-  tests) says how it is regenerated.
+  `prose-test snapshots` suite means a world moved: regenerate it with
+  `node tests/prose/run.cjs snap <case-id>` and land the snapshot's diff in
+  the same commit as the change that moved it (the suite's header,
+  `tests/scripts/test-prose-snapshots.cjs`).
 - **`CHANGELOG.md` is generated** — CLAUDE.md (Changelog).
 - **Released migrations are frozen** — CLAUDE.md (Migrations).
 
@@ -219,20 +230,26 @@ it, so an old checkout will look set up and quietly not be.
 
 `docs/` is the book, and `README.md` its pitch. The book is written from the
 shipped skills and engine, which are the source of truth: a change to what
-Ledger does describes itself in the chapter that covers it. Three suites
+Ledger does describes itself in the chapter that covers it. Four suites
 hold what can be checked:
 
 - `tests/scripts/test-docs.cjs` — the chapters the book is made of, with no
   `planning.md` and no collaboration chapter apart from trust; the main
   session's recommended minimum effort, medium, stated; the README's pipeline
-  table naming no retired phase; none of the author's own products and
-  projects named, only described; and the product called Ledger, never the
-  name it had while it was built, in the docs, help and the glossary.
+  table naming no retired phase; every link going to its file and heading;
+  none of the author's own products and projects named, only described; and
+  the product called Ledger, in the docs, the README, help and the glossary,
+  never by an old name — the one it had while it was built, or the one the
+  glossary's avoid line keeps — which only `history.md` and that line may
+  say.
 - `tests/scripts/test-tool-names.cjs` — a tool a driver wraps named only
   where CLAUDE.md's Tool Names allows: the docs and `README.md` may name
   one, help and the glossary never.
 - `tests/scripts/test-glossary.cjs` — the glossary's terms, the vocabulary
   the docs share with the screens.
+- `tests/scripts/test-git-floor.cjs` — the git the README, the
+  configuration chapter and this page say Ledger needs, held to the
+  engine's own floor.
 
 ## Conventions
 
@@ -253,7 +270,6 @@ re-weighs each item below, each held as it is for today's model:
 - the checklist items held for the model: a topic's close's "every
   decision in the conversation has an entry", and the closing pass's
   second reader;
-- the habit-hook entries;
 - the reviewer count (`kernel/reviewers.cjs` in the engine);
 - the model lines the ask rule's counts pass down
   (`domain/trust-counts.cjs` in the engine): the new model goes last in
@@ -266,7 +282,8 @@ re-weighs each item below, each held as it is for today's model:
   `~/.config/ledger/decision-checks.jsonl`: a line per run, across every
   project, with its outcome (`one`, `several`, or `unchecked` where the
   call could not judge) and how many rules it found;
-- the knowledge eval's index arm.
+- the knowledge eval's hybrid mode (`--hybrid`), the embedding index
+  beside the words.
 
 ## Raising changes
 

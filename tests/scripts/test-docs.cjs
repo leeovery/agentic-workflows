@@ -8,10 +8,11 @@
 // recommended minimum effort, medium, is stated (23.S13). The README's
 // pipeline table is the engine's own pipelines, so it names no retired
 // phase (23.S14). None of the author's own products and projects is named
-// in the docs or the README (23.S12, 23.4.6). The docs, help and the
-// glossary call the product Ledger, and never the name it was built under,
-// but where history tells of it (23.S19, 23.1.4). Every link of the book's
-// and the README's resolves, to its file and the heading it names.
+// in the docs or the README (23.S12, 23.4.6). The docs, the README, help
+// and the glossary call the product Ledger, never the name it was built
+// under or "the workflows", but where history tells of it or the
+// glossary's avoid line names it (23.S19, 23.1.4). Every link of the
+// book's and the README's resolves, to its file and the heading it names.
 //
 // Layer: unit. World: the repository's own files, read.
 
@@ -55,11 +56,21 @@ const CHAPTERS = {
 };
 const INDEX = 'README.md';
 
-/** The author's own products and projects (23.4.6): the distinctive names in any case, those that are also words capitalised. */
-const OWN_NAMES = [/\b(?:SitRep|Switchboard|Turnstile|DocMan|Folio|Portal|rootshell)\b/i, /\b(?:Harness|Fabric|Kit|Stitch|Mint)\b/];
-/** The name the product was built under (23.1.4). */
-const BUILT_AS = /\bLeeway\b/i;
+/**
+ * The author's own products and projects (23.4.6, O9), those on his board and
+ * those the design record's rehearsal names: the distinctive names in any
+ * case, those that are also words capitalised. Tick and agntc, which the docs
+ * present, are not among them.
+ */
+const OWN_NAMES = [
+  /\b(?:SitRep|Switchboard|Turnstile|DocMan|Folio|Portal|rootshell|Fumi|Evvi|Codeintel|quiz-biz|Goosemates)\b/i,
+  /\b(?:Harness|Fabric|Kit|Stitch|Mint|Pigeon|Galley|Nod)\b/,
+];
+/** The names the product had before (23.1.4): the one it was built under, and the workflows, as the glossary's avoid line keeps it. */
+const OLD_NAMES = /\bLeeway\b|\bthe workflows\b/i;
 const PRODUCT = /\bLedger\b/;
+/** Where an old name may stand: history, telling of it, and the glossary's avoid lines, naming it. */
+const TELLS_OF_IT = (/** @type {string} */ rel, /** @type {string} */ line) => rel === path.join('docs', 'history.md') || line.startsWith('_Avoid_:');
 
 /** @param {string} rel from the repository's root */
 const read = (rel) => fs.readFileSync(path.join(REPO, rel), 'utf8');
@@ -67,12 +78,25 @@ const read = (rel) => fs.readFileSync(path.join(REPO, rel), 'utf8');
 /** Every markdown file the book holds, from the repository's root. */
 const bookFiles = () => fs.readdirSync(DOCS).filter((name) => name.endsWith('.md')).map((name) => path.join('docs', name));
 
-/** Each line of `files` that `pattern` finds, as `{file}:{line}: {match}`. @param {string[]} files @param {RegExp} pattern */
-function linesNaming(files, pattern) {
+/**
+ * Each line of `files` that `pattern` finds, as `{file}:{line}: {match}`, but
+ * those `passes` lets stand.
+ * @param {string[]} files @param {RegExp} pattern @param {(rel: string, line: string) => boolean} [passes]
+ */
+function linesNaming(files, pattern, passes = () => false) {
   return files.flatMap((rel) => read(rel).split('\n').flatMap((line, i) => {
     const found = pattern.exec(line);
-    return found ? [`${rel}:${i + 1}: ${found[0]}`] : [];
+    return found && !passes(rel, line) ? [`${rel}:${i + 1}: ${found[0]}`] : [];
   }));
+}
+
+/** A chapter's section under `heading`, to the next heading of its level. @param {string} text @param {string} heading */
+function sectionOf(text, heading) {
+  const start = text.indexOf(`\n${heading}\n`);
+  assert.ok(start >= 0, `the chapter has ${heading}`);
+  const level = /^#+ /.exec(heading)?.[0] ?? '## ';
+  const end = text.indexOf(`\n${level}`, start + heading.length + 1);
+  return text.slice(start, end < 0 ? undefined : end);
 }
 
 /**
@@ -97,7 +121,9 @@ const anchorOf = (heading) => heading.toLowerCase().replace(/[^\w\s-]/g, '').tri
  * @param {string} rel from the repository's root
  */
 function brokenLinks(rel) {
-  return [...read(rel).matchAll(/\]\(([^)\s]+)\)/g)].map(([, target]) => target).filter((target) => !/^[a-z]+:/.test(target)).filter((target) => {
+  const text = read(rel);
+  const targets = [...text.matchAll(/\]\(([^)\s]+)\)/g), ...text.matchAll(/<a href="([^"]+)"/g)].map(([, target]) => target);
+  return targets.filter((target) => !/^[a-z]+:/.test(target)).filter((target) => {
     const [file, anchor] = target.split('#');
     const linked = file === '' ? rel : path.join(path.dirname(rel), file);
     if (!fs.existsSync(path.join(REPO, linked))) return true;
@@ -119,12 +145,13 @@ describe('the user docs (23.4)', () => {
     assert.deepStrictEqual(Object.entries(CHAPTERS).filter(([, file]) => !index.includes(`](${file})`)).map(([chapter]) => chapter), []);
   });
 
-  it('23.S11: history covers the reshape', () => {
-    assert.match(read('docs/history.md'), /^## The reshape$/m);
+  it('23.S11: history covers the reshape: its three strands, the state branch, the release, and the name it was built under', () => {
+    const reshape = sectionOf(read('docs/history.md'), '## The reshape');
+    for (const told of [/\bcontracts\b/, /\btrust\b/, /\bverification\b/, /\bbranch of its own\b/, /\bone release\b/, /\bLeeway\b/]) assert.match(reshape, told);
   });
 
-  it('23.S11: the tracker is met in the configuration and the build chapters', () => {
-    for (const file of ['configuration.md', 'the-build.md']) assert.match(read(path.join('docs', file)), /\btracker\b/, `${file} covers the tracker`);
+  it('23.S11: the tracker is met in the configuration and the build chapters, where the task driver keeps the build\'s tasks in it', () => {
+    for (const file of ['configuration.md', 'the-build.md']) assert.match(read(path.join('docs', file)), /\btask driver\b[^.\n]*\bkeeps the build's tasks in your tracker\b/, `${file} covers the tracker`);
   });
 
   it('23.S13: the docs state the main session\'s recommended minimum effort, medium', () => {
@@ -135,10 +162,10 @@ describe('the user docs (23.4)', () => {
     assert.deepStrictEqual(OWN_NAMES.flatMap((names) => linesNaming([...bookFiles(), 'README.md'], names)), []);
   });
 
-  it('23.S19: the docs, help and the glossary call the product Ledger, never the name it was built under but where history tells of it', () => {
-    const surfaces = { docs: bookFiles(), help: helpFiles().filter((rel) => rel !== GLOSSARY), glossary: [GLOSSARY] };
+  it('23.S19: the docs, the README, help and the glossary call the product Ledger, never an old name but where history tells of it or the glossary\'s avoid line names it', () => {
+    const surfaces = { docs: bookFiles(), readme: ['README.md'], help: helpFiles().filter((rel) => rel !== GLOSSARY), glossary: [GLOSSARY] };
     for (const [surface, files] of Object.entries(surfaces)) assert.ok(files.some((rel) => PRODUCT.test(read(rel))), `${surface} names Ledger`);
-    assert.deepStrictEqual(linesNaming(Object.values(surfaces).flat().filter((rel) => rel !== path.join('docs', 'history.md')), BUILT_AS), []);
+    assert.deepStrictEqual(linesNaming(Object.values(surfaces).flat(), OLD_NAMES, TELLS_OF_IT), []);
   });
 });
 

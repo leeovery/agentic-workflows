@@ -68,7 +68,7 @@ Settings that belong to the project live on the state branch, on the project man
 - `person.md` — the record of you, your preferences in words and your care entries;
 - `conversations/` — each Claude Code conversation's own folder: where it is working, the buttons it was showing, the briefs it issued, its boot stamp.
 
-A conversation's folder is found wherever the conversation runs. It lasts as long as Claude Code keeps that conversation to resume, and goes at the next `/ledger` in any project once Claude Code has deleted it, unless a trust log event still waits in it.
+A conversation's folder is found wherever the conversation runs. It lasts as long as Claude Code keeps that conversation to resume, and goes at the next `/ledger` in any project once Claude Code has deleted it, unless a trust log event still waits in it. A conversation whose end the session-end hook never saw — the one whose `/ledger` first installed the hook, since Claude Code picks hooks up only as a session starts, or one that crashed — names no transcript, and its folder stays, a few bytes.
 
 ## Session labels
 
@@ -76,11 +76,11 @@ If you work inside tmux, your first session in a project asks once whether Ledge
 
 ## Buttons above the prompt
 
-Ledger comes with a Claude Code mod that shows its menus as buttons above the prompt, instead of printing each menu into the transcript. The buttons stay put while the transcript scrolls. A click on a row picks it, putting its answer in the prompt box; a second click on that row, or Enter, sends it, and Claude Code shows the sent answer as the plugin's message. You can always type an answer instead. While any screen but the terminal or the Desktop app is attached beside it, such as Remote Control, menus stay text so every screen shows them. Esc before Claude has run a tool in reply to your answer brings its menu back. While Claude works on something you didn't ask for, such as a background agent's report, the buttons stay; a second click then waits for Claude to finish, marked as queued, and sends only if the same menu is still on screen. Leave a conversation with a menu on screen and resume it later, and its buttons come back.
+Ledger comes with a Claude Code mod that shows its menus as buttons above the prompt, instead of printing each menu into the transcript. The buttons stay put while the transcript scrolls. A click on a row picks it, putting its answer in the prompt box; a second click on that row, or Enter, sends it, and the transcript shows it as the question and your answer, `question → answer`. You can always type an answer instead. While any screen but the terminal or the Desktop app is attached beside it, such as Remote Control, menus stay text so every screen shows them. Esc before Claude has run a tool in reply to your answer brings its menu back. While Claude works on something you didn't ask for, such as a background agent's report, the buttons stay; a second click then waits for Claude to finish, marked as queued, and sends only if the same menu is still on screen. Leave a conversation with a menu on screen and resume it later, and its buttons come back.
 
 Beside the conversation the mod draws **the board**, a pane showing what is happening now — the build's tasks and their evidence, a topic's map, the questions waiting — without reprinting it into the transcript. It adds to the conversation and never replaces it.
 
-The mod also carries the work from one step to the next. When you pick work from a menu, when a phase concludes, or when the review sends work back to the build, the next step starts in a fresh conversation: as the turn ends, the mod clears the conversation and sends the next step's instruction into the new one, where it shows as a line naming where the work went. Should the send not go through, the instruction waits in the prompt box for you to press Enter. Only the step travels: words you type beside a menu pick stay behind, so say them where the next step asks. Without the mod, the next step runs on in the same conversation.
+The mod also carries the work from one step to the next. When you pick work from a menu, or a phase concludes and the work moves on to its next phase, the next step starts in a fresh conversation: as the turn ends, the mod clears the conversation and sends the next step's instruction into the new one, where it shows as a line naming where the work went. Should the send not go through, the instruction waits in the prompt box for you to press Enter. Only the step travels: words you type beside a menu pick stay behind, so say them where the next step asks. Without the mod, the next step runs on in the same conversation. The build is one conversation from its first phase to its last, and runs straight on into the review phase in that same conversation; the review's fix tasks run in the same task loop as the build's.
 
 When a Ledger conversation is compacted — by `/compact`, or by Claude Code as the conversation fills — the mod adds one note at the end: where the work stands, and that Claude re-read the skill and the record the work runs from. In the build the note also names each task in flight with its builder and its reviewers, so each task's next round goes back to the agents that still hold what they learned. Claude then carries on as if nothing had happened, with no recap. After a `/compact` the mod also sends a short message telling Claude to carry on, so the work picks back up without your typing anything. The note shows in the transcript as one dim line, such as `⟳ Compacted · carrying on in payments › discussion › auth-flow`.
 
@@ -93,6 +93,21 @@ Anywhere else — Claude Code on the web, the VS Code extension, a Desktop app s
 ## Knowledge configuration
 
 The [knowledge base](knowledge-base.md) reads its settings from three layers. Built-in defaults sit at the bottom. Your machine's `~/.config/ledger/config.json` applies across every project. A project config at `.ledger/.knowledge/config.json` applies to one copy of a project — written by setup, never committed — and wins over both. A key in a file overrides the layers beneath it, and a key set to `null` unsets it, which is how a project switches off a machine-level embedding provider and runs keyword-only on its own.
+
+In both files every knowledge setting sits inside one top-level `"knowledge"` object:
+
+```json
+{
+  "knowledge": {
+    "provider": "openai",
+    "model": "text-embedding-3-small",
+    "dimensions": 1536,
+    "similarity_threshold": 0.35
+  }
+}
+```
+
+Only that object is read for the knowledge base. Your machine's file holds other settings beside it — the trust settings sit under their own `"trust"` key — so a knowledge key written at its top level, outside `"knowledge"`, is not read and nothing says so: put it inside the object. A project file with no `"knowledge"` object is an error the knowledge base names, with the file and the shape it expects.
 
 Setup writes provider identity only: which embedding provider, which model, its dimensions, and an endpoint for a compatible service. It changes those and nothing else, so a change of provider keeps your tuning, and a default that improves in a later version reaches you without anything to redo.
 

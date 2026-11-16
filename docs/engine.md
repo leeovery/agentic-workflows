@@ -21,12 +21,12 @@ Everything Claude records goes through one of the engine's verbs, and each verb 
 Behind the verbs, what Claude could do around them is closed off:
 
 - **The layout hook.** A Claude Code hook before every file write refuses any path under `.ledger/` the layout has no place for, and any file only the engine writes: the manifests, the ledger, a verification run.
-- **The shell hook.** Before every shell command, a hook refuses what would lose the state or go round a door: removing or unlocking the state worktree, deleting or force-pushing the state branch, writing an engine-only file by shell, and a raw `git commit` while a task is in flight. [State and git](state-and-git.md) has the full list.
+- **The shell hook.** Before every shell command, a hook refuses what would lose the state or go round a door: removing or unlocking the state worktree, deleting or force-pushing the state branch, writing an engine-only file by shell, and committing in the state worktree by hand. While a task is in flight, it also refuses a raw `git commit` anywhere, and any other git command that would land a commit on a task's branch past the commit door. [State and git](state-and-git.md#what-protects-it) has the state's side.
 - **The commit door.** Every commit is the engine's. A state commit holds each path against the layout, and refuses a file the hooks missed. A code commit names its task, runs the project's tests and linters first, and is refused without a task, or, in a bugfix, before the bug is proven.
 - **The checklists.** A required procedure — a topic's close, ready to build, a build phase's start and close, finish — is a checklist the engine holds. Claude works its items in any order, each ending done or skipped with a recorded reason, and the closing verb refuses while any is open. A skipped item shows, with its reason, on the next screen you sign off.
 - **The briefs.** Every brief Ledger gives its own agents comes from a template the engine fills from the records, and a hook before every dispatch refuses a Ledger agent sent anything but the pointer to a brief issued in this conversation. A refusal is recorded, so a template that keeps getting in the way is improved rather than worked around.
 
-All of these hooks are installed in the project's Claude Code settings by boot, so they hold whether or not Ledger's Claude Code mod runs. What a door cannot refuse — a question asked in plain prose in the build, an extra review round — Ledger's own walks of its prose catch, since they check outcomes rather than steps.
+All of these hooks are installed in the project's Claude Code settings by boot, so they hold whether or not Ledger's Claude Code mod runs. What a door cannot refuse — a question asked in plain prose in the build, an extra review round — Ledger's own tests catch: they run the skills' instructions end to end with real agents and check what happened, not which steps were taken.
 
 ## Boot
 
@@ -34,7 +34,7 @@ Boot runs first on every entry into Ledger, your command and Claude's alike. It 
 
 ## Every surface is the engine's
 
-The screens you see — the menus, the gates, a raised question, the matrix, the board's views — are drawn by the engine and relayed exactly as drawn, never written afresh by Claude from a template it was trying to follow. Each menu has its help beside it. Where Ledger's Claude Code mod runs, it draws the same menus as buttons; without it, the engine's text is the menu. When something you already approved is proposed to change, the engine shows a true diff, so what you approve is precisely what will be written.
+The screens you see — the menus, the gates, a raised question, the matrix, the board's views — are drawn by the engine and relayed exactly as drawn, never written afresh by Claude from a template it was trying to follow. Each menu has its help beside it. Where Ledger's Claude Code mod runs, it draws the same menus as buttons; without it, the engine's text is the menu.
 
 ## What it changed
 
