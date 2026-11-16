@@ -54,7 +54,7 @@ const { conversationDir } = require(path.join(SCRIPTS, 'domain/conversation.cjs'
 
 const engine = directiveEngine();
 const RECORDS = '079-records';
-const LOGS = '080-logs';
+const LOGS = '085-logs';
 const FAILING = '092-failing';
 const TOPICS = { one: 'topic', many: 'topics' };
 
@@ -162,8 +162,8 @@ describe('engine migrate check (21.10.7)', () => {
       'migrate check: 091-shapeless\'s check exports no check() beside what it counts — it exports { counts: { one, many }, done, check({ projectDir, stateDir }) }',
       'migrate check: 092-failing\'s check failed: the old manifests could not be read',
       'migrate check: 093-unanswered\'s check answered no list of { name, problems }',
-      'Usage: engine migrate check <id> | engine migrate checked | engine migrate review',
-      'Usage: engine migrate check <id> | engine migrate checked | engine migrate review',
+      'Usage: engine migrate check <id> | engine migrate checked | engine migrate review | engine migrate join <work-unit> --directive <id>',
+      'Usage: engine migrate check <id> | engine migrate checked | engine migrate review | engine migrate join <work-unit> --directive <id>',
     ]);
   });
 });
@@ -255,7 +255,7 @@ describe('boot at a directive (21.10.4, 21.10.9, 21.10.10)', () => {
     ok(['checklist', 'close', 'directive', LOGS]);
     const finished = ok(['boot']);
 
-    assert.deepStrictEqual([finished.state, finished.migrations.ran, recorded(dir)], ['finish', 0, [...RECORDED, '079', '080']]);
+    assert.deepStrictEqual([finished.state, finished.migrations.ran, recorded(dir)], ['finish', 0, [...RECORDED, '079', '085']]);
     assert.deepStrictEqual([stateUnborn(dir), codeHead(dir)], [true, code], 'nothing was committed before the migration\'s commit');
   });
 
@@ -275,7 +275,7 @@ describe('boot at a directive (21.10.4, 21.10.9, 21.10.10)', () => {
 
     const finished = ok(['boot']);
 
-    assert.deepStrictEqual([finished.state, recorded(dir)], ['finish', ['079', ...RECORDED, '080', '080 unrun']]);
+    assert.deepStrictEqual([finished.state, recorded(dir)], ['finish', ['079', ...RECORDED, '085', '085 unrun']]);
   });
 
   it('stops at a directive whose every piece is done all the same, for the session to close', () => {
@@ -287,7 +287,7 @@ describe('boot at a directive (21.10.4, 21.10.9, 21.10.10)', () => {
   });
 
   it('stops at a directive whose check fails on what a session left, saying nothing of what is done — the check names why', () => {
-    writeState(dir, layout.migrations, ['079', '080', '090', '091', '093'].map((id) => `${id}\n`).join(''));
+    writeState(dir, layout.migrations, ['079', '085', '090', '091', '093'].map((id) => `${id}\n`).join(''));
 
     assert.deepStrictEqual(ok(['boot']), atDirective(FAILING));
     assert.deepStrictEqual(engine.output(dir, ['render', 'directive-stop', '--directive', FAILING]).split('\n').filter((line) => line.startsWith('>')), [

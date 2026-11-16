@@ -52,7 +52,9 @@
 // read as the spec's reader reads them, the topics joined named, a spec
 // still being written left out with its item — a completed one's too, it
 // and a cancelled one keeping no item of the old plan and waiting on no
-// cut — and the join killed at each write and run again,
+// cut — and the join killed at each write and run again, a unit whose
+// name breaks the kebab-case rule by its case alone carried under its
+// lowercase name, as portal's quick-fix was, every reference following,
 // a merge stopped in the main checkout, the
 // projects with nothing to move, a native baseline, a completed one and
 // one under way, defaults of the plan's format and the project skills alone,
@@ -1334,6 +1336,45 @@ describe('migration 078: a small project', () => {
       assert.deepStrictEqual([awaitsCut({ status, phases, spec }), awaitsCut(gone)], [false, false], 'history waits on no cut');
       assert.deepStrictEqual([phases.discussion.items.loyalty, phases.discussion.items.gifts, Object.keys(phases.discovery.items)], [{ status: 'completed' }, { status: 'completed' }, ['cart', 'pay', 'loyalty', 'gifts']]);
       assert.ok(['loyalty', 'gifts'].every((topic) => fs.existsSync(path.join(dir, '.leeway/done/topics', topic, 'log.md'))));
+    } finally {
+      cleanupFixture(dir);
+    }
+  });
+
+  it('carries a unit whose name breaks the kebab-case rule by its case alone under its lowercase name — its folder, its registry entry, its items and every reference the move wrote to it following, its legacy files kept byte for byte at their renamed paths, its archived inbox item in the archive under the new name — and names the rename for the review; a name breaking the rule otherwise carried as it stands', () => {
+    dir = tempProject('migration-078-case-');
+    const FIX = 'drop-A-flag';
+    const LEGACY_ANALYSIS = `# Analysis: ${FIX}\n`;
+    try {
+      write(dir, '.workflows/manifest.json', json({
+        work_units: { [FIX]: { work_type: 'quick-fix' }, tally: { work_type: 'feature' }, Old_Tally: { work_type: 'feature' } },
+        roadmap: { horizons: ['v1'], items: { 'flag-docs': { horizon: 'v1', summary: 'docs', kind: 'idea', origin: `park:${FIX}`, sources: [`${FIX}/specification/${FIX}/specification.md`] } } },
+      }));
+      write(dir, `.workflows/${FIX}/manifest.json`, json(unit(FIX, 'quick-fix', 'completed', quickFixPhases(FIX, 'completed'))));
+      write(dir, `.workflows/${FIX}/specification/${FIX}/specification.md`, '# Drop the flag\n\nAttach without -A.\n');
+      write(dir, `.workflows/${FIX}/planning/${FIX}/planning.md`, `# Plan: ${FIX}\n`);
+      write(dir, `.workflows/${FIX}/implementation/${FIX}/analysis-tasks-c1.md`, LEGACY_ANALYSIS);
+      write(dir, '.workflows/tally/manifest.json', json(unit('tally', 'feature', 'in-progress', { discussion: { items: { tally: { status: 'in-progress' } } } })));
+      write(dir, '.workflows/tally/discussion/tally.md', `# Discussion: Tally\n\nCorrected by \`${FIX}\`: [its spec](../../${FIX}/specification/${FIX}/specification.md).\n`);
+      write(dir, `.workflows/.inbox/.archived/quickfixes/2026-01-01--${FIX}.md`, `# Drop the -A flag\n\nPromoted to ${FIX}.\n`);
+      write(dir, '.workflows/Old_Tally/manifest.json', json(unit('Old_Tally', 'feature', 'in-progress', { discussion: { items: { Old_Tally: { status: 'in-progress' } } } })));
+      write(dir, '.workflows/Old_Tally/discussion/Old_Tally.md', '# Discussion: Old Tally\n');
+      commitAll(dir);
+      const { returned } = run(dir);
+      const state = path.join(dir, '.leeway');
+      const read = (/** @type {string} */ rel) => fs.readFileSync(path.join(state, rel), 'utf8');
+      const { work_units: units, roadmap } = JSON.parse(read('manifest.json'));
+      const fix = JSON.parse(read('drop-a-flag/manifest.json'));
+      assert.deepStrictEqual([Object.keys(units).sort(), roadmap.items['flag-docs'].origin, roadmap.items['flag-docs'].sources], [['Old_Tally', 'drop-a-flag', 'tally'], 'park:drop-a-flag', ['drop-a-flag/summary.md']]);
+      assert.deepStrictEqual([tree(state, '.inbox'), read('.inbox/.archived/quickfixes/2026-01-01--drop-a-flag.md')], [['.archived/quickfixes/2026-01-01--drop-a-flag.md'], '# Drop the -A flag\n\nPromoted to drop-a-flag.\n']);
+      assert.deepStrictEqual(fs.readdirSync(state).filter((name) => name.toLowerCase() === 'old_tally'), ['Old_Tally']);
+      assert.deepStrictEqual([fix.name, Object.keys(fix.phases).flatMap((phase) => Object.keys(fix.phases[phase].items))], ['drop-a-flag', ['drop-a-flag']]);
+      assert.strictEqual(read('tally/topics/tally/log.md').split('\n\n').slice(-1)[0], 'Corrected by `drop-a-flag`: [its spec](../../../drop-a-flag/summary.md).\n');
+      assert.deepStrictEqual(tree(state, 'drop-a-flag'), ['assets/legacy/implementation/drop-a-flag/analysis-tasks-c1.md', 'assets/legacy/planning/drop-a-flag/planning.md', 'manifest.json', 'summary.md']);
+      assert.deepStrictEqual([read('drop-a-flag/assets/legacy/implementation/drop-a-flag/analysis-tasks-c1.md'), fs.readdirSync(state).filter((name) => name.toLowerCase() === 'drop-a-flag')], [LEGACY_ANALYSIS, ['drop-a-flag']]);
+      assert.ok(tree(state).every((rel) => !rel.includes(FIX) && (rel.includes('/assets/legacy/') || !fs.readFileSync(path.join(state, rel)).includes(FIX))), 'no path names the old name, and no word but a legacy file\'s');
+      assert.match(String(returned?.verify), /^This unit's name broke the rule a unit's name keeps .* by case alone, so it is carried under its lowercase name.*: drop-A-flag is drop-a-flag\./);
+      assert.match(String(returned?.verify), /\.leeway\/drop-a-flag\/assets\/legacy\/planning\/drop-a-flag\/planning\.md/);
     } finally {
       cleanupFixture(dir);
     }

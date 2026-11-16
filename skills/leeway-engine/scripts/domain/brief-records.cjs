@@ -430,17 +430,19 @@
 //                  and what it returned, or that it failed and why, or that
 //                  it never finished
 //
-// The migration's records, for the agents of its records directive, each of
-// a topic `--topic` names, `<unit>.<phase>.<topic>`, as the migration moved
-// it — a topic of a unit cancelled among them (21.6.2):
+// The migration's records, for the agents of a directive carrying topics —
+// the records directive — each of a topic `--topic` names,
+// `<unit>.<phase>.<topic>`, as the migration moved it, a topic of a unit
+// cancelled among them (21.6.2), read by the check of the directive
+// `--directive` names and refused for one whose check carries no topic's work:
 //
 //   directive      the migration's directive `--directive` names, verbatim,
 //                  each of its headings a level down (21.10.2)
 //   migrated-topic the topic: the unit, its work type and status, the
-//                  phases the records directive carries a topic of that
-//                  the topic is in, the state's place and the project's in
-//                  the main checkout, each file of the topic's folder but
-//                  its mail, and as the records directive's check reads
+//                  phases the directive carries a topic of that the topic
+//                  is in, the state's place and the project's in the main
+//                  checkout, each file of the topic's folder but its mail,
+//                  and as the directive's check reads
 //                  them its specs — each where it is read and how it is
 //                  cited — its old map and its research's threads still
 //                  open; the unit's assets with where each came in from,
@@ -454,6 +456,26 @@
 //
 // The brief takes the findings and the refusal: drawn, each file is cleared,
 // so neither reaches a later brief.
+//
+// And for the agents of a directive carrying units — the cut and the
+// merges — each of one phase, `--phase`, of the cut of the unit the brief
+// is for, a unit whose building started, as cut-merges.cjs lays the cut
+// out from the directive's check (`unitSourcesOf`); refused for a check
+// carrying no unit's work, a phase the cut lacks, and one the join writes
+// itself (21.10.5, E7):
+//
+//   migrated-phase the unit: its work type and status, the state's place
+//                  and the project's, its joined spec's areas, and every
+//                  phase of its cut; what its plan depends on; and the
+//                  phase — its old plan's phase or its area, its files, its
+//                  tasks as the cut's adoption names them, each still to
+//                  build with its text as the tracker holds it, read writing
+//                  nothing (task-verbs.cjs), where the manifest and the
+//                  tracker disagree over it — the folder kept as legacy, and
+//                  where its piece goes
+//   composed-piece that phase's piece as composed, fenced as JSON
+//   piece-findings the verifier's findings on that piece, verbatim, the
+//                  file cleared once drawn
 //
 // A record taking a flag names it, and its role takes every flag its records
 // name, once, and no other — every one but a flag a record holds optional;
@@ -544,13 +566,14 @@ const { repoNamed, phaseStack, tipCommits } = require('./phase-stack.cjs');
 const { readWorkUnitManifest } = require('../kernel/manifest-io.cjs');
 const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
 const { ENDED, STATUS_WORDS } = require('./task-verbs.cjs');
+const { unitSources, unitPhases, oldReliances, piecePaths } = require('./cut-merges.cjs');
 const { notesToTake, notesHeldFor, consolidationPath } = require('./notes.cjs');
 const { runsOf } = require('./runs.cjs');
 const { cachedSurvivors } = require('./verify.cjs');
 const { REPRODUCING, isBugfix } = require('./bug-proven.cjs');
 const { scratchName } = require('./scratch.cjs');
 const { accountPath, accountOwed, landingStage, reviewOverWay } = require('./task-account.cjs');
-const { directiveOf } = require('./directives.cjs');
+const { directiveOf, loadCheck } = require('./directives.cjs');
 const {
   TESTS, TESTS_LETTER, roundRefusal, readsWords, areaReportPath, unitCalls, fixPhase, filesUnder,
 } = require('./review-phase.cjs');
@@ -559,7 +582,7 @@ const { reading, reposOf } = require('./phase-checks.cjs');
 const { changeOf, changeTips, workBelow } = require('./review-change.cjs');
 const { fixAcceptance, fixScenarios, fixNamed } = require('./fix-acceptance.cjs');
 const { summaryFile } = require('./knowledge/artifacts.cjs');
-const { topicPlace, recordsRules, composedPath, findingsPath, refusedPath } = require('./ledger-carry.cjs');
+const { topicPlace, composedPath, findingsPath, refusedPath } = require('./ledger-carry.cjs');
 
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
 /** @typedef {import('./drivers.cjs').TaskRow} TaskRow */
@@ -1079,19 +1102,35 @@ function drawKnowledgeQuery({ session }) {
 /** The flag naming a migrated topic, by its place. @type {BriefFlag} */
 const MIGRATED = Object.freeze({ name: 'topic', value: 'unit.phase.topic' });
 
+/** The flag naming the migration's directive a record draws for. @type {BriefFlag} */
+const DIRECTIVE = Object.freeze({ name: 'directive', value: 'id' });
+
 /** @param {Filling} filling */
 function drawDirective({ given }) {
   return headingsDown(fs.readFileSync(directiveOf(given.directive).file, 'utf8').trimEnd());
 }
 
+/**
+ * The check of the directive a migrated topic's record draws for, refused
+ * where it carries no topic's sources (`sourcesOf`, the records
+ * directive's).
+ * @param {Filling} filling
+ * @returns {any}
+ */
+function topicRules({ given }) {
+  const rules = /** @type {Record<string, unknown>} */ (loadCheck(given.directive));
+  if (typeof rules.sourcesOf !== 'function') throw new Error(`brief: ${given.directive} carries no topic's work — its pieces are not topics`);
+  return rules;
+}
+
 /** @param {Filling} filling */
-const migratedTopic = ({ cwd, given }) => topicPlace(cwd, given.topic, 'brief');
+const migratedTopic = (filling) => topicPlace(filling.cwd, filling.given.topic, 'brief', topicRules(filling));
 
 /** @param {Filling} filling */
 function drawMigratedTopic(filling) {
   const { root, unit, topic } = migratedTopic(filling);
   const manifest = readWorkUnitManifest(root, unit);
-  const rules = recordsRules();
+  const rules = topicRules(filling);
   const phases = rules.phases.filter((phase) => rules.holds(manifest, phase, topic)).map((phase) => {
     const { status } = manifest.phases[phase].items[topic];
     return typeof status === 'string' ? `${phase}, ${status}` : phase;
@@ -1145,6 +1184,137 @@ function drawComposedRecord(filling) {
   if (text === null) throw new Error(`${unit}'s ${topic} has no record composed — ${file} is no file`);
   if (text.trim() === '') throw new Error(`${unit}'s ${topic} has no record composed — ${file} is empty`);
   return fenced('json', text.trimEnd());
+}
+
+// The phase of a building unit's cut `--phase` names (cut-merges.cjs).
+const PHASE = Object.freeze({ name: 'phase', value: 'N' });
+
+/**
+ * @typedef {{unit: string, sources: import('./cut-merges.cjs').UnitSources, phases: import('./cut-merges.cjs').CutPhase[], refused: string|null, phase: import('./cut-merges.cjs').CutPhase}} MigratedPhase
+ */
+
+/** @type {WeakMap<Filling, MigratedPhase>} */
+const phasesRead = new WeakMap();
+
+/**
+ * The building unit's sources, its cut laid out, and the phase `--phase`
+ * names, read once a brief — refused for a unit that is no building unit,
+ * for a phase its cut lacks, and for one the join writes itself.
+ * @param {Filling} filling @returns {MigratedPhase}
+ */
+function migratedPhase(filling) {
+  const read = phasesRead.get(filling);
+  if (read !== undefined) return read;
+  const unit = unitOf(filling);
+  const sources = unitSources(filling.cwd, unit, filling.given.directive, 'brief');
+  const { phases, refused } = unitPhases(filling.cwd, unit, sources);
+  const phase = phases.find(({ number }) => String(number) === filling.given.phase);
+  if (phase === undefined) throw new Error(`brief: ${unit}'s cut has no phase ${filling.given.phase} — its phases are numbered 1 to ${phases.length}`);
+  if (!phase.composed) throw new Error(`brief: phase ${phase.number} of ${unit}'s cut is built, and the manifest and the tracker agree — the join writes it`);
+  const migrated = { unit, sources, phases, refused, phase };
+  phasesRead.set(filling, migrated);
+  return migrated;
+}
+
+/** A phase of the cut, as the record lists it. @param {import('./cut-merges.cjs').CutPhase} phase */
+function cutPhaseLine({ number, topic, area, old, composed }) {
+  if (old === null) return `- Phase ${number}: §${area} ${topic}, which no plan put in the tracker`;
+  return `- Phase ${number}: phase ${old.number} of ${topic}'s plan, ${composed ? (old.built ? 'the manifest counting it built' : 'still to build') : 'built — the join writes it'}`;
+}
+
+/**
+ * A task of the phase, as the record draws it: its name in the cut, the old
+ * plan's id, its title and where it stands, and the text of one still to
+ * build, as the tracker holds it.
+ * @param {number} number @param {TaskDetail} task @param {{id: string, credited: boolean}|undefined} old
+ */
+function phaseTask(number, task, old) {
+  const head = `- ${number}.${task.ref.n}, ${old === undefined ? 'no task of the old plan\'s map' : old.id} — "${task.title}", ${STATUS_WORDS[task.status]}${old?.credited ? '; the manifest credits it done' : ''}`;
+  return ENDED.includes(task.status) ? head : `${head}\n\n${fenced('markdown', task.text.trimEnd())}`;
+}
+
+/** @param {Filling} filling */
+function drawMigratedPhase(filling) {
+  const { unit, sources, phases, refused, phase } = migratedPhase(filling);
+  const root = stateRoot(filling.cwd);
+  const manifest = readWorkUnitManifest(root, unit);
+  const reliances = oldReliances(phases).filter(({ phase: of }) => of.topic === phase.topic);
+  const own = phase.old === null
+    ? [`- Phase ${phase.number}: §${phase.area} ${phase.topic} of ${unit}/${SPEC_FILE}, which no plan put in the tracker — compose it from the area`]
+    : [
+      `- Phase ${phase.number}: phase ${phase.old.number} of ${phase.topic}'s plan, its tracker parent ${phase.old.parent}${phase.old.built ? ', the manifest counting it built' : ''}`,
+      `- Its area: §${phase.area} ${phase.topic} of ${unit}/${SPEC_FILE}`,
+      `- Its plan's files: ${phase.plan === null || phase.plan.files.length === 0 ? 'none kept' : phase.plan.files.join(', ')}`,
+    ];
+  const tasks = phase.old === null ? NONE
+    : refused !== null ? `The tracker could not be read as the cut adopts it: ${refused}`
+      : blocks(phase.tasks.map((task) => phaseTask(phase.number, task, phase.old?.tasks[task.ref.n - 1])));
+  const { piece, findings } = piecePaths(sources, phase.number);
+  return [
+    `- **Unit:** ${unit}, ${manifest.work_type}, ${manifest.status}`,
+    `- **The state:** ${root} — each path below is from there, but one under \`.workflows/\``,
+    `- **The project:** ${sources.project} — each path under \`.workflows/\` is from there, and the code`,
+    '',
+    '## Its joined spec',
+    '',
+    `${unit}/${SPEC_FILE}, an area for each spec joined, in build order:`,
+    '',
+    listed(sources.areas.map(({ topic, spec }, at) => `- §${at + 1} ${topic}, joined from ${spec}`)),
+    '',
+    '## Its cut',
+    '',
+    `Each phase of the unit's cut, numbered as the cut numbers it; an agent composes each but those the join writes. Yours is phase ${phase.number}.`,
+    '',
+    listed(phases.map(cutPhaseLine)),
+    '',
+    '## What its plan depends on',
+    '',
+    listed([...new Set(reliances.map(({ on, by }) => `- ${by}, which phase ${on.number}, phase ${on.old?.number} of ${on.topic}'s plan, builds`))]),
+    '',
+    '## Your phase',
+    '',
+    own.join('\n'),
+    '',
+    '### Its tasks',
+    '',
+    tasks,
+    '',
+    '### Where the manifest and the tracker disagree',
+    '',
+    listed(phase.disagreements.map((line) => `- ${line}`)),
+    '',
+    '## Kept as legacy',
+    '',
+    sources.legacy === null ? NONE : `- ${sources.legacy}`,
+    '',
+    '## Where your piece goes',
+    '',
+    `- The piece composed: ${piece}`,
+    `- The verifier's findings on it: ${findings}`,
+  ].join('\n');
+}
+
+/** A file of the phase's in the unit's staging, absolute. @param {Filling} filling @param {'piece'|'findings'} which */
+function phaseFile(filling, which) {
+  const { sources, phase } = migratedPhase(filling);
+  return path.join(stateRoot(filling.cwd), piecePaths(sources, phase.number)[which]);
+}
+
+/** @param {Filling} filling */
+function drawComposedPiece(filling) {
+  const file = phaseFile(filling, 'piece');
+  const text = fs.existsSync(file) && fs.statSync(file).isFile() ? fs.readFileSync(file, 'utf8') : null;
+  const which = `phase ${migratedPhase(filling).phase.number} of ${unitOf(filling)}'s cut`;
+  if (text === null) throw new Error(`${which} has no piece composed — ${file} is no file`);
+  if (text.trim() === '') throw new Error(`${which} has no piece composed — ${file} is empty`);
+  return fenced('json', text.trimEnd());
+}
+
+/** @param {Filling} filling */
+function drawPieceFindings(filling) {
+  const file = phaseFile(filling, 'findings');
+  const text = fs.existsSync(file) ? fs.readFileSync(file, 'utf8').trim() : '';
+  return text === '' ? NONE : text;
 }
 
 /** What the topic's record has beside it at `rel`, verbatim, or none recorded. @param {Filling} filling @param {(unit: string, topic: string) => string} rel */
@@ -2264,11 +2434,14 @@ const RECORDS = Object.freeze({
   lens: { of: 'topic', flags: [AGENT], draw: drawLens },
   perspectives: { of: 'topic', flags: [AGENT], draw: drawPerspectives },
   'knowledge-query': { of: null, draw: drawKnowledgeQuery },
-  directive: { of: null, flags: [{ name: 'directive', value: 'id' }], draw: drawDirective },
-  'migrated-topic': { of: null, flags: [MIGRATED], draw: drawMigratedTopic },
-  'composed-record': { of: null, flags: [MIGRATED], draw: drawComposedRecord },
-  'verifier-findings': { of: null, flags: [MIGRATED], draw: (filling) => besideRecord(filling, findingsPath), bind: (filling) => clearBeside(filling, findingsPath) },
-  'carry-refusal': { of: null, flags: [MIGRATED], draw: (filling) => besideRecord(filling, refusedPath), bind: (filling) => clearBeside(filling, refusedPath) },
+  directive: { of: null, flags: [DIRECTIVE], draw: drawDirective },
+  'migrated-topic': { of: null, flags: [MIGRATED, DIRECTIVE], draw: drawMigratedTopic },
+  'composed-record': { of: null, flags: [MIGRATED, DIRECTIVE], draw: drawComposedRecord },
+  'verifier-findings': { of: null, flags: [MIGRATED, DIRECTIVE], draw: (filling) => besideRecord(filling, findingsPath), bind: (filling) => clearBeside(filling, findingsPath) },
+  'carry-refusal': { of: null, flags: [MIGRATED, DIRECTIVE], draw: (filling) => besideRecord(filling, refusedPath), bind: (filling) => clearBeside(filling, refusedPath) },
+  'migrated-phase': { of: 'unit', flags: [DIRECTIVE, PHASE], draw: drawMigratedPhase },
+  'composed-piece': { of: 'unit', flags: [DIRECTIVE, PHASE], draw: drawComposedPiece },
+  'piece-findings': { of: 'unit', flags: [DIRECTIVE, PHASE], draw: drawPieceFindings, bind: (filling) => fs.rmSync(phaseFile(filling, 'findings'), { force: true }) },
   'spec-outline': { of: 'unit', draw: drawSpecOutline },
   'spec-scenarios': { of: 'unit', draw: drawSpecScenarios },
   'relies-on-graph': { of: 'unit', draw: drawReliesOnGraph },

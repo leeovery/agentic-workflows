@@ -57,6 +57,7 @@ const made = {};
 const world = fixtureFrom('asset-', (template) => {
   createManifest(template, UNIT, { work_type: 'epic', phases: PHASES });
   createManifest(template, 'mint', { work_type: 'feature', phases: { discussion: { items: { mint: { status: 'in-progress' } } } } });
+  createManifest(template, 'shipped', { work_type: 'feature', status: 'completed', phases: { discussion: { items: { shipped: { status: 'completed' } } } } });
   const { write } = ledgerHelpers(() => template);
   made.look = write('ask', NOTE, [], { ...MADE, text: 'What does a note look like?' }).id;
   made.frameless = write('decide', NOTE, ['--answers', made.look], { ...MADE, text: 'A frameless panel.', why: 'Lighter on the desk.' }).id;
@@ -141,7 +142,7 @@ describe('a spike (9.10.10, 4.11.13)', () => {
     assert.strictEqual(asset(['spike', UNIT, 'sheet']).spike, '005-sheet');
   });
 
-  it('refuses a slug one of the unit\'s spikes has, a slug that is none, a unit the project lacks and a unit set aside, making nothing', () => {
+  it('refuses a slug one of the unit\'s spikes has, a slug that is none, a unit the project lacks, a unit set aside and a unit completed, making nothing', () => {
     ok(dir, ['workunit', 'cancel', 'mint']);
     const spikes = () => fs.readdirSync(statePath(dir, UNIT, 'spikes'));
     const before = spikes();
@@ -150,6 +151,7 @@ describe('a spike (9.10.10, 4.11.13)', () => {
     assert.strictEqual(refused(['spike', UNIT, 'Scroll Feel']), 'asset spike: "Scroll Feel" is no slug — lowercase letters and digits, joined by single hyphens');
     assert.strictEqual(refused(['spike', 'dock', 'frame']), 'asset spike: there is no work unit "dock"');
     assert.match(refused(['spike', 'mint', 'frame']), /^asset spike: mint takes no spike — .*cancelled/);
+    assert.strictEqual(refused(['spike', 'shipped', 'frame']), 'asset spike: shipped takes no spike — shipped is completed');
     assert.deepStrictEqual(spikes(), before);
     assert.strictEqual(fs.existsSync(statePath(dir, 'mint', 'spikes')), false);
   });
@@ -218,12 +220,13 @@ describe('an import (9.10.5, 9.10.11)', () => {
     assert.strictEqual(refused(['import', UNIT, hidden]), `asset import: nothing to land — the filename rules skip every file given (${hidden})`);
   });
 
-  it('refuses a unit the project lacks and a unit set aside', () => {
+  it('refuses a unit the project lacks, a unit set aside and a unit completed', () => {
     ok(dir, ['workunit', 'cancel', 'mint']);
     const real = sharing('real.md');
 
     assert.strictEqual(refused(['import', 'dock', real]), 'asset import: there is no work unit "dock"');
     assert.match(refused(['import', 'mint', real]), /^asset import: mint takes no file — .*cancelled/);
+    assert.strictEqual(refused(['import', 'shipped', real]), 'asset import: shipped takes no file — shipped is completed');
   });
 });
 

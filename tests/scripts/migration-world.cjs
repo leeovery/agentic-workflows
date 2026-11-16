@@ -482,7 +482,7 @@ const [OLD_STORE] = PRE_LEEWAY.files;
 const OLD_LOCAL = PRE_LEEWAY.localFiles[0].replace(/^\//, '').replace(/\*.*$/, '');
 
 // Every fixture migration, recorded: the runner has nothing left to run.
-const ALL_RECORDED = ['079', '080', ...RECORDED];
+const ALL_RECORDED = ['079', '085', ...RECORDED];
 
 /** @param {string} dir */
 function buildFinished(dir) {

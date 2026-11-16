@@ -185,6 +185,17 @@
 //     rest of the engine's list) are neither carried nor named;
 //   - a cancelled unit moves as any other (21.5.14).
 //
+// A unit whose name breaks the kebab-case rule by its case alone, as one
+// of portal's quick-fixes did before the engine refused such a name, is
+// carried under its lowercase name, the one every verb takes: each file the
+// move wrote at its renamed path — the unit's folder, a topic's folder, a
+// file named for it — and its name in the words of each document and
+// manifest the move wrote following it, the registry's entry, a cite, a
+// seed, a roadmap item's source and origin, an inbox idea and a mail's
+// origin among them; a legacy file keeps its words byte for byte, and the
+// tracker's store is carried as it is. The verification addendum names the
+// rename. A name breaking the rule otherwise is carried as it stands.
+//
 // The unit's manifest is today's shape, less research and the retired state
 // (21.5.8): the research phase goes, a topic whose research joined its log
 // and that has no discussion yet taking a discussion item of the research's
@@ -275,7 +286,10 @@
 //   - a project still on today's skills rewrites the shared `config.json`
 //     through the link, as it would have its own.
 //   - a dead-ended topic the move cancels keeps any experiment still running
-//     on it, and the wait its discussion holds on one.
+//     on it, and the wait its discussion holds on one;
+//   - a unit renamed to its lowercase name where another unit holds that
+//     name already is moved onto it — a folder a case-insensitive disk, as
+//     a Mac's is, never holds beside the other.
 //
 
 const fs = require('fs');
@@ -1457,27 +1471,30 @@ function moveStores(project, state, stores) {
   }))];
 }
 
-/** The inbox's files named as no item is, `.workflows/`-relative. @param {string} from @returns {string[]} */
-const strayInbox = (from) => filesUnder(path.join(from, '.inbox')).filter((f) => !INBOX_ITEM.test(f)).map((f) => `.inbox/${f}`);
+/** Whether an inbox file is named as an item is, by the name it is carried under. @param {string} rel @param {Map<string, string>} renames */
+const isInboxItem = (rel, renames) => INBOX_ITEM.test(renamedPath(rel, renames));
+
+/** The inbox's files named as no item is, `.workflows/`-relative. @param {string} from @param {Map<string, string>} renames @returns {string[]} */
+const strayInbox = (from, renames) => filesUnder(path.join(from, '.inbox')).filter((f) => !isInboxItem(f, renames)).map((f) => `.inbox/${f}`);
 
 /**
  * The project's files carried into the state at their own paths,
  * `.workflows/`-relative: the inbox's items, the environment setup and the
  * checkout's knowledge config.
- * @param {string} from @returns {string[]}
+ * @param {string} from @param {Map<string, string>} renames @returns {string[]}
  */
-const carriedFiles = (from) => [
-  ...filesUnder(path.join(from, '.inbox')).filter((f) => INBOX_ITEM.test(f)).map((f) => `.inbox/${f}`),
+const carriedFiles = (from, renames) => [
+  ...filesUnder(path.join(from, '.inbox')).filter((f) => isInboxItem(f, renames)).map((f) => `.inbox/${f}`),
   ...CARRIED_AS_IS.filter((rel) => fs.existsSync(path.join(from, rel))),
 ];
 
 /**
  * The project's carried files, and the state's own ignore file, with
  * `ignored` added to it.
- * @param {string} from @param {string} state @param {string[]} ignored
+ * @param {string} from @param {string} state @param {string[]} ignored @param {Map<string, string>} renames
  */
-function moveProjectFiles(from, state, ignored) {
-  for (const rel of carriedFiles(from)) {
+function moveProjectFiles(from, state, ignored, renames) {
+  for (const rel of carriedFiles(from, renames)) {
     const file = path.join(from, rel);
     writeFile(path.join(state, rel), fs.readFileSync(file), modeOf(file));
   }
@@ -1641,6 +1658,74 @@ function writeProjectManifest(state, project, relocations) {
   }));
 }
 
+/** A file the rename's words follow in: a document or a manifest. */
+const RENAMED_TEXT = /\.(?:md|json)$/;
+
+/** A path under a legacy folder, whose files are kept byte for byte. */
+const UNDER_LEGACY = new RegExp(`(?:^|/)${LEGACY}/`);
+
+/** A name every verb takes: lowercase letters and digits, joined by single hyphens. */
+const KEBAB_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+/**
+ * Each unit whose name breaks the kebab-case rule by its case alone, to its
+ * lowercase name.
+ * @param {Iterable<string>} names @returns {Map<string, string>}
+ */
+const caseRenames = (names) => new Map([...names].filter((name) => !KEBAB_SLUG.test(name) && KEBAB_SLUG.test(name.toLowerCase()))
+  .map((name) => [name, name.toLowerCase()]));
+
+// An inbox item's name: its day, then the name it was captured under.
+const DATED = /^([0-9]{4}-[0-9]{2}-[0-9]{2}--)(.*)$/;
+
+/**
+ * A path with each part named for a renamed unit — its folder, a topic's,
+ * a file named for it, an inbox item captured under its name — under the
+ * new name.
+ * @param {string} rel @param {Map<string, string>} renames
+ */
+const renamedPath = (rel, renames) => rel.split('/').map((part) => {
+  const [, day = '', named = part] = DATED.exec(part) ?? [];
+  const [stem] = named.split('.');
+  const name = renames.get(stem);
+  return name === undefined ? part : `${day}${name}${named.slice(stem.length)}`;
+}).join('/');
+
+/**
+ * Each entry under `folder` named for a renamed unit given its new name in
+ * place, its own entries first: a rename of the entry, not of its files, so
+ * a case-insensitive disk, as a Mac's is, takes a change of case alone.
+ * @param {string} folder @param {Map<string, string>} renames @param {string[]} [skipped] the entries left as they are
+ */
+function renameEntries(folder, renames, skipped = []) {
+  for (const entry of fs.readdirSync(folder, { withFileTypes: true }).filter(({ name }) => !skipped.includes(name))) {
+    const at = path.join(folder, entry.name);
+    if (entry.isDirectory()) renameEntries(at, renames);
+    const name = renamedPath(entry.name, renames);
+    if (name !== entry.name) fs.renameSync(at, path.join(folder, name));
+  }
+}
+
+/**
+ * Each unit `renames` names carried under its new name: the words of each
+ * document and manifest the move wrote but a legacy one, kept byte for
+ * byte, naming it by the new, and every entry of the state named for it
+ * renamed; the tracker's store, carried as it is, and the state's cache
+ * untouched. A run again over one cut short renames what it wrote again.
+ * @param {string} state @param {Map<string, string>} renames @param {Set<string>} stores the store's files, state-relative
+ */
+function renameUnits(state, renames, stores) {
+  if (renames.size === 0) return;
+  const documents = filesUnder(state).filter((rel) => RENAMED_TEXT.test(rel) && !UNDER_LEGACY.test(rel) && !rel.startsWith(`${OLD_CACHE}/`) && !stores.has(rel));
+  for (const rel of documents) {
+    const file = path.join(state, rel);
+    const held = fs.readFileSync(file, 'utf8');
+    const text = [...renames].reduce((words, [from, to]) => words.split(from).join(to), held);
+    if (text !== held) writeWhole(scratchOf(state), file, text, modeOf(file));
+  }
+  renameEntries(state, renames, ['.git', OLD_CACHE]);
+}
+
 /** The user-level folder today's skills read. */
 const oldUserFolder = () => process.env.WORKFLOWS_CONFIG_DIR || path.join(os.homedir(), '.config', 'workflows');
 
@@ -1774,6 +1859,7 @@ function move(projectDir, reportUpdate, reportSkip) {
   const folders = entries.filter((name) => !name.startsWith('.') && name !== 'manifest.json');
   const manifests = new Map(folders.filter((name) => fs.existsSync(path.join(from, name, 'manifest.json')))
     .map((name) => [name, readManifest(path.join(from, name, 'manifest.json'))]));
+  const renames = caseRenames(manifests.keys());
   const promoted = promotions(manifests);
   const moves = [...manifests].map(([name, manifest]) => unitMove(from, state, name, manifest, promoted, relocations));
   const product = productPlan(from);
@@ -1781,7 +1867,7 @@ function move(projectDir, reportUpdate, reportSkip) {
   /** @type {Legacy} */
   const legacy = new Map([
     ...[
-      ...strayInbox(from),
+      ...strayInbox(from, renames),
       ...product.filter(({ at }) => at === null).map(({ source }) => source),
       ...entries.filter((name) => !READ_OR_REBUILT.includes(name) && !manifests.has(name)).flatMap((name) => filesOf(from, name)),
     ].map((rel) => /** @type {[string, string]} */ ([rel, `${PRODUCT}/${LEGACY}/${rel}`])),
@@ -1794,7 +1880,7 @@ function move(projectDir, reportUpdate, reportSkip) {
   /** @type {[string, string][]} */
   const whole = [
     ...legacy,
-    ...carriedFiles(from).map((rel) => /** @type {[string, string]} */ ([rel, rel])),
+    ...carriedFiles(from, renames).map((rel) => /** @type {[string, string]} */ ([rel, rel])),
     ...product.flatMap(({ source, at }) => (at === null ? [] : [/** @type {[string, string]} */ ([source, `${PRODUCT}/${at}`])])),
   ];
   const places = withFolders(new Map([
@@ -1805,7 +1891,7 @@ function move(projectDir, reportUpdate, reportSkip) {
     const at = placeOf(unit, rel);
     return typeof at === 'string' && intoData(rel, at) ? [`${STATE_DIR}/${unit.unit}/${at}`] : [];
   }));
-  moveProjectFiles(from, state, moveStores(project, state, stores));
+  moveProjectFiles(from, state, moveStores(project, state, stores), renames);
   moveProduct(from, state, product, relocations, places);
   reportUpdate();
   for (const unit of moves) {
@@ -1815,11 +1901,14 @@ function move(projectDir, reportUpdate, reportSkip) {
   }
   keepLegacy(from, state, legacy, relocations);
   writeProjectManifest(state, projectManifest, relocations);
+  renameUnits(state, renames, new Set(stores.flatMap(({ files }) => files)));
+  const placed = (/** @type {string} */ rel) => renamedPath(rel, renames);
   const userNote = moveUserFolder();
   const lintersNote = carryLinters(state);
   const notes = [
-    legacy.size === 0 ? null : `These had no place of their own in ${STATE_DIR}/, so each is kept, as it was, as legacy, under its unit's ${LEGACY}/ or the product's, ${PRODUCT}/${LEGACY}/, the old cache's reports under ${OLD_CACHE_LEGACY}/ there: ${[...legacy.values()].map((to) => `${STATE_DIR}/${to}`).join(', ')}. Move any into a better place in its unit's assets/, or the product's, as wanted.`,
-    instruments.length === 0 ? null : `These files of experiment records, neither a record's problem, design or report nor in its data/, were moved under its data/, at their paths from the record's folder: ${instruments.join(', ')}. A path a record's text or script spells out is left as written.`,
+    renames.size === 0 ? null : `${renames.size === 1 ? 'This unit\'s name' : 'These units\' names'} broke the rule a unit's name keeps — lowercase letters and digits, joined by single hyphens — by case alone, so ${renames.size === 1 ? 'it is' : 'each is'} carried under its lowercase name, its folder, its registry entry and every reference the move wrote to it following, its legacy files' words kept as they were: ${[...renames].map(([from, to]) => `${from} is ${to}`).join(', ')}.`,
+    legacy.size === 0 ? null : `These had no place of their own in ${STATE_DIR}/, so each is kept, as it was, as legacy, under its unit's ${LEGACY}/ or the product's, ${PRODUCT}/${LEGACY}/, the old cache's reports under ${OLD_CACHE_LEGACY}/ there: ${[...legacy.values()].map((to) => `${STATE_DIR}/${placed(to)}`).join(', ')}. Move any into a better place in its unit's assets/, or the product's, as wanted.`,
+    instruments.length === 0 ? null : `These files of experiment records, neither a record's problem, design or report nor in its data/, were moved under its data/, at their paths from the record's folder: ${instruments.map(placed).join(', ')}. A path a record's text or script spells out is left as written.`,
     settingsNote,
     userNote,
     lintersNote,
@@ -1832,7 +1921,7 @@ function move(projectDir, reportUpdate, reportSkip) {
 module.exports = {
   id: '078',
   description: 'move the project from .workflows/ into the layout in .leeway/, the state worktree on an unborn leeway-state — each topic\'s log, mail, brief and experiments in its own folder, imports as assets, plans, specs and reviews as reference, the retired state dropped; the roadmap as the product, the baseline docs as its assets, the tracker\'s store and the knowledge config in the state, the user-level folder to ~/.config/leeway/, and the project\'s files to the new names',
-  info: 'The reshape moves the project\'s state out of .workflows/ into .leeway/, a worktree of its own unborn branch, leeway-state, committing nothing. Each topic\'s research, discussion and investigation become its log, its mail one sequence in its own folder, a cancelled topic\'s mail ideas in the inbox; research feeding several topics goes to a discovery session of the migration\'s; imports become assets; every moved document\'s links follow the files they name; plans, reviews and specs not yet built become reference assets, a completed quick-fix\'s spec its summary, a quick-fix whose scoping, implementation and review all completed counting as completed; the old engine\'s caches and the retired manifest state go, and every file with no place of its own, implementation folders and the reviews\' tracking files among them, is kept as it was under its unit\'s assets/legacy/, or the product\'s. The roadmap becomes .product/, its imports its assets and its items\' sources following their files; the baseline docs become reference in .product/assets/baseline/, a native, skipped or completed baseline remembered as the brownfield offer\'s answer; the plan format and project skills defaults go, and no driver is set, so the defaults serve; the tracker\'s store and the checkout\'s knowledge config are carried into the state, the knowledge store left for the next boot to build. The user-level folder moves to ~/.config/leeway/, a link to it left in its place for projects still on today\'s skills. The code tree\'s .gitignore gains .leeway/, the settings hooks name the engine\'s new path, and .worktreeinclude loses the workflows\' lines, none of it staged. .workflows/ and the tracker\'s store are left as they are until the migration\'s commit.',
+  info: 'The reshape moves the project\'s state out of .workflows/ into .leeway/, a worktree of its own unborn branch, leeway-state, committing nothing. Each topic\'s research, discussion and investigation become its log, its mail one sequence in its own folder, a cancelled topic\'s mail ideas in the inbox; research feeding several topics goes to a discovery session of the migration\'s; imports become assets; every moved document\'s links follow the files they name; plans, reviews and specs not yet built become reference assets, a completed quick-fix\'s spec its summary, a quick-fix whose scoping, implementation and review all completed counting as completed; a unit whose name breaks the kebab-case rule by its case alone is carried under its lowercase name, every reference the move writes following; the old engine\'s caches and the retired manifest state go, and every file with no place of its own, implementation folders and the reviews\' tracking files among them, is kept as it was under its unit\'s assets/legacy/, or the product\'s. The roadmap becomes .product/, its imports its assets and its items\' sources following their files; the baseline docs become reference in .product/assets/baseline/, a native, skipped or completed baseline remembered as the brownfield offer\'s answer; the plan format and project skills defaults go, and no driver is set, so the defaults serve; the tracker\'s store and the checkout\'s knowledge config are carried into the state, the knowledge store left for the next boot to build. The user-level folder moves to ~/.config/leeway/, a link to it left in its place for projects still on today\'s skills. The code tree\'s .gitignore gains .leeway/, the settings hooks name the engine\'s new path, and .worktreeinclude loses the workflows\' lines, none of it staged. .workflows/ and the tracker\'s store are left as they are until the migration\'s commit.',
   run({ projectDir, reportUpdate, reportSkip }) {
     return move(projectDir, reportUpdate, reportSkip);
   },

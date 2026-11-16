@@ -80,6 +80,8 @@ const ROLES = Object.freeze({
   'plain-search': { agent: 'leeway-plain-search', whose: 'the plain search\'s', records: ['knowledge-query'] },
   'migration-topic': { agent: 'leeway-migration-topic', whose: 'the migration\'s, for one topic', records: ['migrated-topic', 'verifier-findings', 'carry-refusal', 'directive'] },
   'migration-verifier': { agent: 'leeway-migration-verifier', whose: 'the migration verifier\'s', records: ['migrated-topic', 'composed-record', 'directive'] },
+  'migration-phase': { agent: 'leeway-migration-topic', whose: 'the migration\'s, for one phase', records: ['migrated-phase', 'piece-findings', 'directive'] },
+  'migration-phase-verifier': { agent: 'leeway-migration-verifier', whose: 'the migration verifier\'s, for one phase', records: ['migrated-phase', 'composed-piece', 'directive'] },
   'phase-cut': { agent: 'leeway-phase-cut', whose: 'the phase cut\'s', records: ['spec-outline', 'spec-scenarios', 'relies-on-graph', 'cut-requests', 'cut-refusal', 'cut-to'] },
   sweep: { agent: 'leeway-sweep', whose: 'the sweep\'s', records: ['unit-records', 'product-record', 'dismissed', 'sweep-refusal', 'sweep-to'] },
   'spec-writer': {

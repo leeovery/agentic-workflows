@@ -30,6 +30,12 @@
 //   of them, which `render directive-stop` draws (21.10.11). A session that
 //   died part-way may leave what the check trips on (21.10.9): the stop then
 //   answers without the counts, and `migrate check` names what failed.
+// - `render migration-leaving <unit> --directive <id>` draws the mixed
+//   unit's question (21.8.10) from what the directive's check answers
+//   leaves a building unit (`leavingOf`, 080's): how many of its topics its
+//   joined specs cover, and those that leave it, each by its title, grouped
+//   by where it stands. Refused for a directive whose check answers no such
+//   thing, and for a unit with no topic leaving it.
 // - Boot's `taken` stop, where another live session carries the migration
 //   on (P7), answers the step it carries on from — a directive, or the
 //   checks before the reshape's move — and the whole seconds since it was
@@ -49,8 +55,13 @@
 //   from any checkout; and, while the reshape finishes, what its summary is
 //   written from, since the state branch's first commit takes the whole
 //   state (21.9.4) — the commits the yes still makes, the units moved, the
-//   topics carried, the directives a session carried out, and the code
-//   files the commit takes.
+//   topics carried, the directives a session carried out, the code files
+//   the commit takes, and each correction the cut and the merges made where
+//   a unit's manifest and its tracker disagreed, as each unit's cut marked
+//   it (cut-migrating.cjs).
+// - `migrate join <unit> --directive <id>` joins the pieces a building
+//   unit's phases were composed in into the plan its cut takes
+//   (cut-merges.cjs).
 // - Known edges: held commits and the trust log's silence key on the state
 //   branch having no commit yet (state-worktree.cjs, trust-log.cjs), which
 //   only the reshape's migration leaves; a directive met later, on a branch
@@ -61,9 +72,10 @@ const fs = require('fs');
 const path = require('path');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
-const { isObject } = require('../kernel/manifest-io.cjs');
+const { isObject, readWorkUnitManifest } = require('../kernel/manifest-io.cjs');
 const { messageOf } = require('../kernel/call.cjs');
-const { directiveStop, migrationChecksStop } = require('./projections/boot.cjs');
+const { directiveStop, migrationChecksStop, leavingQuestion } = require('./projections/boot.cjs');
+const { topicTitle } = require('./derivations.cjs');
 const { projectName } = require('./state-checks.cjs');
 const { unraised } = require('./raise.cjs');
 const { listWorkUnitManifests } = require('../kernel/manifest.cjs');
@@ -71,6 +83,7 @@ const { topicsOf } = require('./ledger-units.cjs');
 const { MIGRATION_JOURNALS, finishing, codeFiles } = require('./migration-commit.cjs');
 const { refreshMigrationQuietly } = require('./presence.cjs');
 const { CHECKS_DONE } = require('../../../leeway-migrate/scripts/old-layout.cjs');
+const { markPath } = require('./cut-migrating.cjs');
 
 // Resolved against this file, so it works wherever the skill tree is installed.
 const MIGRATE_SCRIPTS = path.resolve(__dirname, '..', '..', '..', 'leeway-migrate', 'scripts');
@@ -86,7 +99,7 @@ const DIRECTIVE_ID = /^([0-9]+)-[a-z0-9]+(?:-[a-z0-9]+)*$/;
 /** The line the runner records beside a directive it recorded unrun. @param {string} number */
 const unrunLine = (number) => `${number} unrun`;
 
-const MIGRATE_USAGE = ['migrate check <id>', 'migrate checked', 'migrate review'].join('\n');
+const MIGRATE_USAGE = ['migrate check <id>', 'migrate checked', 'migrate review', 'migrate join <work-unit> --directive <id>'].join('\n');
 
 /** A directive the migrations hold: its id, the number its record line is, and its two files. @typedef {{id: string, number: string, file: string, check: string}} Directive */
 
@@ -316,6 +329,22 @@ function takenStopSurface(cwd, args) {
 }
 
 /**
+ * `render migration-leaving <unit> --directive <id>`: the mixed unit's
+ * question (the header's).
+ * @param {string} cwd @param {Record<string, string|undefined>} args
+ * @returns {string}
+ */
+function leavingSurface(cwd, { dotpath: unit, directive }) {
+  if (unit === undefined || directive === undefined) throw new Error('render migration-leaving: <unit> --directive <id> — the building unit, and the directive asking where its leaving topics go');
+  const { leavingOf } = /** @type {Check & {leavingOf?: (at: {projectDir: string, stateDir: string, unit: string}) => unknown}} */ (loadCheck(directive));
+  if (typeof leavingOf !== 'function') throw new Error(`render migration-leaving: ${directive}'s check answers no unit's leaving topics`);
+  const mixed = /** @type {{covered: number, leaving: {topic: string, standing: string}[]}|null} */ (leavingOf({ ...checkDirs(cwd), unit }));
+  if (mixed === null || mixed.leaving.length === 0) throw new Error(`render migration-leaving: no topic leaves ${unit} — the question is asked of a building unit with topics its specs do not cover`);
+  const manifest = readWorkUnitManifest(stateRoot(cwd), unit);
+  return leavingQuestion({ unit, covered: mixed.covered, leaving: mixed.leaving.map(({ topic, standing }) => ({ title: topicTitle(manifest, topic), standing })) });
+}
+
+/**
  * The directives a session carried out, by id, in their order: each the
  * migrations record holds, but those the runner recorded unrun.
  * @param {string} cwd @returns {string[]}
@@ -332,10 +361,25 @@ function directivesDone(cwd) {
 /**
  * What the reshape's summary is written from while its commit is owed:
  * the commits the yes still makes, the units moved, the topics they
- * carry, the directives done, and the code files the commit takes, named
- * from the project's folder.
- * @typedef {{commits: import('./migration-commit.cjs').CommitsOwed, units: number, topics: number, directives: string[], files: string[]}} ReshapeReview
+ * carry, the directives done, the code files the commit takes, named
+ * from the project's folder, and the corrections the cut made, each by its
+ * unit, in the units' order.
+ * @typedef {{commits: import('./migration-commit.cjs').CommitsOwed, units: number, topics: number, directives: string[], files: string[], corrections: ({unit: string} & Record<string, unknown>)[]}} ReshapeReview
  */
+
+/**
+ * Each correction the migration's cut recorded in its marks, by its unit,
+ * in the units' order.
+ * @param {string} cwd @returns {({unit: string} & Record<string, unknown>)[]}
+ */
+function cutCorrections(cwd) {
+  const marks = path.dirname(markPath(cwd, '_'));
+  const units = fs.existsSync(marks) ? fs.readdirSync(marks).filter((name) => name.endsWith('.json')).map((name) => name.slice(0, -'.json'.length)).sort() : [];
+  return units.flatMap((unit) => {
+    const mark = JSON.parse(fs.readFileSync(markPath(cwd, unit), 'utf8'));
+    return (Array.isArray(mark.corrections) ? mark.corrections : []).filter(isObject).map((correction) => ({ unit, ...correction }));
+  });
+}
 
 /**
  * `migrate review`: the state's folder and the folder the code side's
@@ -358,6 +402,7 @@ function reviewMigration(cwd) {
       topics: units.reduce((sum, manifest) => sum + topicsOf(manifest).length, 0),
       directives: directivesDone(cwd),
       files: codeFiles(finish),
+      corrections: cutCorrections(cwd),
     },
   };
 }
@@ -372,6 +417,8 @@ function reviewMigration(cwd) {
 function runMigrateVerb(cwd, argv) {
   const [verb, id, ...rest] = argv;
   if (verb === 'review' && argv.length === 1) return reviewMigration(cwd);
+  // Loaded at its call: the join reads the directive's check through this module.
+  if (verb === 'join') return require('./cut-merges.cjs').joinPlan(cwd, argv.slice(1));
   if (verb === 'checked' && argv.length === 1) {
     recordLine(cwd, CHECKS_DONE);
     refreshMigrationQuietly(cwd);
@@ -389,4 +436,4 @@ function runMigrateVerb(cwd, argv) {
   return checked;
 }
 
-module.exports = { MIGRATE_CJS, MIGRATIONS_RECORD, MIGRATION_JOURNALS, MIGRATE_USAGE, unrunLine, directiveOf, isCheck, piecesOf, checkDirective, recordDirective, directiveStopped, directiveStopSurface, takenStopSurface, runMigrateVerb };
+module.exports = { MIGRATE_CJS, MIGRATIONS_RECORD, MIGRATION_JOURNALS, MIGRATE_USAGE, unrunLine, directiveOf, isCheck, loadCheck, checkDirs, piecesOf, checkDirective, recordDirective, directiveStopped, directiveStopSurface, takenStopSurface, leavingSurface, runMigrateVerb };

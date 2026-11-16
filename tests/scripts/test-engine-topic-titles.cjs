@@ -332,6 +332,7 @@ describe('every screen names a topic through one helper', () => {
       'topic-map.cjs › goneTo › where.unit',
       'verdict.cjs › placeName › unit',
       'projections/boot.cjs › migrationGuardStop › unit',
+      'projections/boot.cjs › leavingQuestion › unit',
     ],
     'a phase, or a work type': [
       'handoff.cjs › phaseTarget › phase',
