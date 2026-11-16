@@ -33,7 +33,7 @@ That's the whole interface — or skip it and ask Claude for a change in your ow
 
 **A record, not a scratchpad.** Every question, finding and decision lands on the project's ledger as it is made: who made it, why, what it rules out, what it relies on, and what the other side would have said. Nothing on it is edited — a change of mind replaces the old answer and flags everything that relied on it. "What have you decided without me?" is always one question away.
 
-**Claude decides as you would.** Whether a call reaches you is arithmetic over your own answers, never Claude's confidence. Every question of taste asks at first; a kind of question goes quiet only once Claude's calls on it have matched yours, and asks again the moment they stop. Danger, and anything you said you care about, always asks.
+**Claude decides as you would.** Whether a call reaches you is arithmetic over your own answers, never Claude's confidence. Every question of taste asks at first; a kind of question goes quiet only once Claude's calls on it have matched yours, and asks again the moment they stop. Danger, and anything you said you care about, always asks. <!-- 19.12 -->
 
 **Proven by running it.** Builders prove each task by driving the running product the way a user would, and a script, never Claude's account, writes the verdict. A scenario nothing could drive is reported not proven.
 

@@ -36,7 +36,7 @@ The knowledge base is switched on once in each copy of the project, and this is 
 
 Keyword-only is a fully supported mode, not a broken one. You lose search by meaning — it won't know that "sign-in" and "authentication" are related — but search by words still works, a word finding its other forms, and everything else behaves the same. Add a provider later by running setup again: everything already remembered gains search by meaning, and nothing is rebuilt. With an embedding service configured, each record's text and each search are sent to that service to be embedded; keyword-only, or a model on your own machine, keeps everything local.
 
-None of it enters git — not the store, which is built from the committed records, and not the choice you made at setup. A fresh clone asks once, like any new copy, while a worktree Claude creates for you starts with a copy of the memory and its setup. A copy that is set up but has lost its store rebuilds it at the next start without asking, as long as your machine's configuration says how. It never quietly falls back to keyword-only on a machine that has made no choice.
+None of it enters git — not the store, which is built from the committed records, and not the choice you made at setup. A fresh clone asks once, like any new copy, while a worktree Claude creates for you shares the main checkout's, where Ledger's state lives. A copy that is set up but has lost its store rebuilds it at the next start without asking, as long as your machine's configuration says how. It never quietly falls back to keyword-only on a machine that has made no choice.
 
 ## Kept in step
 
