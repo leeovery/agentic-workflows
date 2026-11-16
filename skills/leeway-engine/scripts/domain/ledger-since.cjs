@@ -22,8 +22,8 @@
 // - The mark is the machine's own: the ids of the calls a screen has shown
 //   on this machine, each topic's map and the spec's list alike, kept in the
 //   cache at `.cache/.marks/{unit}.json`. It sits outside the unit's own
-//   cache, which a cancel or a completion clears, so a unit reactivated or
-//   reopened keeps what was shown. When the unit is absorbed, what it holds
+//   cache, which a cancel or a completion clears, so a unit reactivated
+//   keeps what was shown. When the unit is absorbed, what it holds
 //   joins the epic's mark and it goes, so a call seen in the feature stays
 //   seen where its line was carried (5.8.15, 5.8.18). A call
 //   is new until a look here has covered it, wherever it sits in the ledger:

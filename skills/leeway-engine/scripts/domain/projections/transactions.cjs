@@ -70,21 +70,39 @@ function stayedLines(stayed) {
 }
 
 /**
+ * The pull requests a cancel closed as its receipt names them: the
+ * project's own first, then each nested repository's, named, each
+ * repository's in their order on the host.
+ * @param {Record<string, string[]>} closed by the repository's folder, `.` the project's own
+ */
+function closedNames(closed) {
+  const repos = Object.keys(closed).sort((a, b) => Number(b === '.') - Number(a === '.') || a.localeCompare(b));
+  const named = (/** @type {string[]} */ names) => [...names].sort((a, b) => a.localeCompare(b, 'en', { numeric: true })).map((name) => `#${name}`).join(', ');
+  return repos.map((repo) => `${named(closed[repo])}${repo === '.' ? '' : ` in ${repo}`}`).join('; ');
+}
+
+/**
  * workunit cancel / reactivate / pivot receipts, each confirming the unit
- * by name: the pivot saying it is an epic now, its discussion the first
- * topic on its map, and the reactivate each roadmap item its cancel put
- * back that it left where it is.
+ * by name: the cancel naming the pull requests it closed (18.3.9), where a
+ * quick-fix's commits stay and each fix's work it kept (19.5.29), the pivot saying it is an epic now, its
+ * discussion the first topic on its map, and the reactivate each roadmap
+ * item its cancel put back that it left where it is.
  * @param {'cancel'|'reactivate'|'pivot'} verb
  * @param {string} workUnit
- * @param {{warn?: boolean, inbox?: number, kept?: string[], stayed?: Stayed[]}} [opts]  `inbox`: cancel — how many waiting messages it moved to the inbox; `kept`: cancel — the words for each fix's work it kept set aside; `stayed`: reactivate — the items it left
+ * @param {{warn?: boolean, inbox?: number, closed?: Record<string, string[]>, branches?: string[], kept?: string[], stayed?: Stayed[]}} [opts]  `inbox`: cancel — how many waiting messages it moved to the inbox; `closed`: cancel — the host's names for the pull requests it closed, by the repository's folder, `.` the project's own; `branches`: cancel — the names a quick-fix's branch is kept under, each with its repository where it is nested; `kept`: cancel — the words for each fix's work it kept set aside; `stayed`: reactivate — the items it left
  * @returns {string}
  */
-function workunitReceipt(verb, workUnit, { warn = false, inbox = 0, kept = [], stayed = [] } = {}) {
+function workunitReceipt(verb, workUnit, { warn = false, inbox = 0, closed = {}, branches = [], kept = [], stayed = [] } = {}) {
   const name = titlecase(workUnit);
   if (verb === 'cancel') {
+    const alerts = [
+      ...(Object.keys(closed).length > 0 ? [`Its open pull requests were closed, each branch kept: ${closedNames(closed)}`] : []),
+      ...(branches.length > 0 ? [`Its commits stay on ${branches.join(', ')}, kept for a reactivate to carry on from`] : []),
+      ...kept,
+    ];
     return joined([
       warn ? warningBlock('Knowledge removal warning', 'The work unit is cancelled. The next start removes its chunks from the knowledge base.') : null,
-      confirmation([[`"${name}" marked as cancelled.`, ...inboxLine(inbox)].join(' '), ...kept.flatMap((words) => wrapWithPrefix(`⚑ ${words}`, { width: TREE_WIDTH, hang: 2 }))].join('\n')),
+      confirmation([[`"${name}" marked as cancelled.`, ...inboxLine(inbox)].join(' '), ...alerts.flatMap((words) => wrapWithPrefix(`⚑ ${words}`, { width: TREE_WIDTH, hang: 2 }))].join('\n')),
     ]);
   }
   if (verb === 'reactivate') {

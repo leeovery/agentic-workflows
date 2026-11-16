@@ -20,7 +20,8 @@
 //   spec can take it in — the same rules the verbs refuse by (spec-standing.cjs,
 //   workunit-absorb.cjs) — then c/cancel for any unit in progress, through
 //   its confirm (8.8.8); a cancelled unit, r/reactivate; a completed one,
-//   nothing yet. b/back draws the screen it was opened from — manage, with
+//   nothing — a finished unit stays finished, and a later change to it is
+//   new work. b/back draws the screen it was opened from — manage, with
 //   `--from closed` the closed units, or with `--from pick` the start's
 //   pick over the same matches (boot-route.cjs) — and Ask leads into the
 //   conversation.

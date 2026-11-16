@@ -45,7 +45,7 @@
 //   feat/{unit}` (landing-names.cjs), made with no checkout and signed as
 //   the person signs, its first parent the unit's branch, so the line the
 //   landing record names is kept — a merge even where the default branch
-//   holds the branch's tip, as after a reopen; nothing where the branch
+//   holds the branch's tip; nothing where the branch
 //   holds the default branch already. The merge is pushed to the host, leased
 //   on its copy there, then the branch moved here, nothing moving where a
 //   checkout that has it out holds changes the move would touch (7.2.20).

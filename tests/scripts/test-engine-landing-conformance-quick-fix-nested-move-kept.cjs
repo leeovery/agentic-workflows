@@ -38,8 +38,8 @@ const ASIDE = `refs/leeway/aside/${UNIT}/${UNIT}-1-1`;
 /** What fix 1.1 had not committed when its question parked it, by its path in the project, one in each repository. */
 const UNCOMMITTED = Object.freeze({ 'src/alias.js': 'module.exports = \'color\';\n', 'ext/ext.txt': 'ext --colour\n', 'lib/alias.txt': 'lib --color\n' });
 
-/** Fix 1.1's work kept in a repository, as the person reads it: `where` it is, and the git call `gitIn` it. @param {string} where @param {string} gitIn */
-const keptWords = (where, gitIn) => `Task 1.1's work, set aside when a question parked it, is kept in ${where} at ${ASIDE} — see it with ${gitIn} diff ${ASIDE}^ ${ASIDE}; bring it into the checkout with ${gitIn} cherry-pick --no-commit ${ASIDE}, settling any conflict`;
+/** Fix 1.1's work kept in a repository, as the person reads it: `where` it is, and the git call `gitIn` it, its see, recover and drop. @param {string} where @param {string} gitIn */
+const keptWords = (where, gitIn) => `Task 1.1's work, set aside when a question parked it, is kept in ${where} at ${ASIDE} — see it with ${gitIn} diff ${ASIDE}^ ${ASIDE}; bring it into the checkout with ${gitIn} cherry-pick --no-commit ${ASIDE}, settling any conflict; drop it with ${gitIn} update-ref -d ${ASIDE}`;
 
 for (const { name } of listDrivers('landing')) {
   const { as, project } = quickFixNestedConformance(name, `engine-landing-quick-fix-nested-move-kept-${name}-`);

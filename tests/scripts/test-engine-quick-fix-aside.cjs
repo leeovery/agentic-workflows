@@ -12,8 +12,10 @@
 // set-aside that fails part-way undone, all or nothing: the raise refused,
 // saying so, no question parked, no ref left, and the checkout holding the
 // work as before; and a cancel keeping what the park set aside, its receipt
-// naming it with the calls that show it and bring it into the checkout
-// (R26). The set-aside's own rules: test-engine-quick-fix-checkout.cjs.
+// naming the branch its commits stay on and the work with the calls that
+// show it, bring it into the checkout and drop it, and one during the first
+// fix, nothing committed, naming no branch (R26, 19.5.29). The
+// set-aside's own rules: test-engine-quick-fix-checkout.cjs.
 //
 // Layer: git. World: a repository holding the project in its folder `app`,
 // beside the quick-fix world's own `src/flag.js` at its top, a path the
@@ -59,6 +61,16 @@ const world = fixtureFrom('quick-fix-aside-', (dir) => {
     ok(app, ['commit', '--paths', 'src/flag.js', '--task', UNIT, '1.1', '-m', `fix(${UNIT}): spell the flag --colour`], as);
   });
   asked.id = ledgerHelpers(() => dir).write('ask', PLACE, [], { ...MADE, text: 'Does --color still work?' }).id;
+});
+
+/** A quick-fix whose fix 1.1 is started, nothing of it committed, in a repository of its own. */
+const started = fixtureFrom('quick-fix-aside-started-', (at) => {
+  quickFix(at);
+  asGone((as) => {
+    entered(at, as);
+    createFix(at, 1, FLAG, as);
+    ok(at, ['task', 'start', UNIT, '1.1'], as);
+  });
 });
 
 let dir = ''; // the larger repository
@@ -152,7 +164,7 @@ describe('a quick-fix\'s set-aside at its edges (19.5.23)', () => {
     assert.match(refuses(app(), ['task', 'start', UNIT, '1.1'], as()).error, / — it conflicts at src\/flag\.js — so nothing moved/);
   });
 
-  it('R26: a cancel keeps what the park set aside, its receipt naming it with the calls that show it and bring it into the checkout', async () => {
+  it('R26, 19.5.29: a cancel keeps what the park set aside, its receipt naming the branch its commits stay on and the work with the calls that show it, bring it into the checkout and drop it', async () => {
     dir = world();
     run(['task', 'start', UNIT, '1.1']);
     changed();
@@ -161,7 +173,19 @@ describe('a quick-fix\'s set-aside at its edges (19.5.23)', () => {
     run(['workunit', 'cancel', UNIT]);
     const receipt = sectionOf(output(app(), ['render', 'workunit-receipt', UNIT, '--verb', 'cancel'], as()), 'DISPLAY: confirmation');
 
-    assert.strictEqual(receipt.replace(/\n {2}/g, ' '), `"Typo" marked as cancelled.\n⚑ Task 1.1's work, set aside when a question parked it, is kept in the project's repository at ${ASIDE} — see it with git diff ${ASIDE}^ ${ASIDE}; bring it into the checkout with git cherry-pick --no-commit ${ASIDE}, settling any conflict\n`);
+    assert.strictEqual(receipt.replace(/\n {2}/g, ' '), [
+      '"Typo" marked as cancelled.',
+      '⚑ Its commits stay on fix/typo, kept for a reactivate to carry on from',
+      `⚑ Task 1.1's work, set aside when a question parked it, is kept in the project's repository at ${ASIDE} — see it with git diff ${ASIDE}^ ${ASIDE}; bring it into the checkout with git cherry-pick --no-commit ${ASIDE}, settling any conflict; drop it with git update-ref -d ${ASIDE}`,
+      '',
+    ].join('\n'));
     assert.deepStrictEqual([kept === null, at(ASIDE)], [false, kept]);
+  });
+
+  it('a cancel during the first fix, nothing of it committed, names no branch on its receipt: the branch holds no commit of its own', () => {
+    dir = started();
+    ok(dir, ['workunit', 'cancel', UNIT], as());
+
+    assert.strictEqual(sectionOf(output(dir, ['render', 'workunit-receipt', UNIT, '--verb', 'cancel'], as()), 'DISPLAY: confirmation'), '"Typo" marked as cancelled.\n');
   });
 });

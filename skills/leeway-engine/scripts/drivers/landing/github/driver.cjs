@@ -182,6 +182,18 @@
 //   before it merges there, and once more as a merge of its own moves it
 //   (`defaultFetched`). A move closes the one
 //   open unmerged, its branch on GitHub left as it stands.
+// - A cancel (18.3.9, landing.cjs): every pull request open on a branch of
+//   the unit's closed unmerged — each task's (`closeTasks`), the quick-fix's
+//   and the unit's own — its branch on GitHub left as it stands, each
+//   number told to the seam as it closes. The numbers the seam recorded
+//   come back on every later context (`cancelClosed`), and every read of
+//   the pull requests passes over each while it stays closed, a task's,
+//   the quick-fix's and the unit's alike, so a landing after a reactivate
+//   opens what it needs anew rather than refusing one closed by hand, and
+//   one the person reopens is read as open. A task whose pull request the
+//   cancel closed onto the head of the one below it, merged by hand since,
+//   opens onto the default branch, its change laid from that head
+//   (`overShut`), as the stack's finish would have read it.
 // - Nested repositories: each repository a task touches lands on its own
 //   repository on GitHub, named by its own remote, with a stack of its own
 //   per phase; one whose remote is not on GitHub is refused before anything
@@ -271,25 +283,37 @@ const ghAt = (ctx, host, args, what) => gh(args, what, { cwd: ctx.root, repo: ho
 /** How a pull request outranks another of its task's: any not closed above a closed one, then the latest. @param {Pull} pull */
 const rank = (pull) => (pull.state === 'CLOSED' ? 0 : Number.MAX_SAFE_INTEGER / 2) + pull.number;
 
+/** Whether the unit's cancel closed a pull request GitHub still holds closed (see the header). @param {LandingContext} ctx @param {{number: number, state: Pull['state']}} pr */
+const cancelledShut = (ctx, pr) => pr.state === 'CLOSED' && ctx.cancelClosed.has(String(pr.number));
+
 /**
- * Each of the unit's tasks' pull request, as GitHub holds it (see the header).
+ * Each of the unit's tasks' pull request, as GitHub holds it (see the
+ * header), none its cancel closed that stays closed (`cancelledShut`).
  * @param {LandingContext} ctx @param {Host} host
  * @returns {Pull[]}
  */
 function pullsOf(ctx, host) {
-  /** @type {{number: number, state: Pull['state'], headRefName: string, baseRefName: string, headRefOid: string, title: string, body: string}[]} */
-  const listed = JSON.parse(ghAt(ctx, host, ['pr', 'list', '--state', 'all', '--limit', PULL_LIMIT, '--json', PULL_FIELDS], `read ${host.repo}'s pull requests`));
   /** @type {Map<string, Pull>} */
   const byTask = new Map();
-  for (const pr of listed) {
+  for (const pr of listedRead(ctx, host)) {
     const ref = names.taskOfBranch(ctx.unit, pr.headRefName);
-    if (ref === null) continue;
+    if (ref === null || cancelledShut(ctx, pr)) continue;
     const pull = { number: pr.number, state: pr.state, head: pr.headRefName, base: pr.baseRefName, oid: pr.headRefOid, title: pr.title, body: pr.body, ref };
     const held = byTask.get(taskId(ref));
     if (held === undefined || rank(pull) > rank(held)) byTask.set(taskId(ref), pull);
   }
   return [...byTask.values()];
 }
+
+/** A pull request as gh lists it. @typedef {{number: number, state: Pull['state'], headRefName: string, baseRefName: string, headRefOid: string, title: string, body: string}} Listed */
+
+/**
+ * Every pull request of the repository's, as gh lists it, read once on a
+ * context that keeps its reads (landing-git.cjs, `readOnce`).
+ * @param {LandingContext} ctx @param {Host} host
+ * @returns {Listed[]}
+ */
+const listedRead = (ctx, host) => lg.readOnce(ctx, 'pulls listed', () => JSON.parse(ghAt(ctx, host, ['pr', 'list', '--state', 'all', '--limit', PULL_LIMIT, '--json', PULL_FIELDS], `read ${host.repo}'s pull requests`)));
 
 /**
  * The unit's pull requests (`pullsOf`), read once on a context that keeps
@@ -447,9 +471,34 @@ function chainTip(ctx, task) {
   refuseUnpushed(ctx, host, shownTask(task.ref));
   const top = openTop(own) ?? openTop(builtOn(ctx, stacks, phase, task.branch));
   const refs = lg.branches(ctx.root);
-  if (top === undefined) return { name: ctx.into, commit: /** @type {string} */ (refs.get(ctx.into)), host };
+  if (top === undefined) {
+    const commit = /** @type {string} */ (refs.get(ctx.into));
+    return { name: ctx.into, commit, host, ...overShut(ctx, host, own, task, commit) };
+  }
   const moved = movedOn(ctx, refs, top);
   return { name: top.head, commit: moved === 'changed' ? /** @type {string} */ (refs.get(top.head)) : top.oid, host };
+}
+
+/**
+ * Where a task's change is laid onto the default branch, at `commit`, from
+ * (the header's): where the unit's cancel closed its latest pull request,
+ * based on the head of the one below it in its stack that has merged into
+ * the default branch by hand since, that head, which its branch holds — as
+ * the stack's finish would read it over that one's head (`finishStack`),
+ * had the cancel not closed it. Nothing where its branch descends from
+ * `commit`, or the cancel closed none of it so.
+ * @param {LandingContext} ctx @param {Host} host @param {Stack|undefined} own its phase's stack @param {LandingTask} task @param {string} commit
+ * @returns {{over?: string}}
+ */
+function overShut(ctx, host, own, task, commit) {
+  if (ctx.cancelClosed.size === 0 || lg.isAncestor(ctx.root, commit, task.branch)) return {};
+  const ofTask = (/** @type {Listed} */ pr) => {
+    const ref = names.taskOfBranch(ctx.unit, pr.headRefName);
+    return ref !== null && sameTask(ref, task.ref);
+  };
+  const base = listedRead(ctx, host).filter((pr) => cancelledShut(ctx, pr) && ofTask(pr)).sort((a, b) => b.number - a.number)[0]?.baseRefName;
+  const under = own?.pulls.find((pull) => pull.state === 'MERGED' && pull.head === base && pull.base === ctx.into);
+  return under === undefined || !lg.isAncestor(ctx.root, under.oid, task.branch) ? {} : { over: under.oid };
 }
 
 /**
@@ -1301,6 +1350,7 @@ function nextMerge(ctx) {
 
 /** The quick-fix's landing as the seam gives it (landing.cjs). @typedef {import('../../../domain/landing.cjs').QuickFixTask} QuickFixTask */
 /** The quick-fix's pull request as the seam reads it (landing.cjs). @typedef {import('../../../domain/landing.cjs').QuickFixPull} QuickFixPull */
+/** What a close answers, and what it tells of each pull request it closes (drivers.cjs). @typedef {import('../../../domain/drivers.cjs').PullsClosed} PullsClosed @typedef {import('../../../domain/drivers.cjs').Closing} Closing */
 
 /** What a quick-fix's pull requests are read with beside a phase's: whether each is a fork's, and when it was opened. */
 const QUICK_FIX_FIELDS = `${PULL_FIELDS},isCrossRepository,createdAt`;
@@ -1309,7 +1359,8 @@ const QUICK_FIX_FIELDS = `${PULL_FIELDS},isCrossRepository,createdAt`;
  * The pull requests whose head is the quick-fix's branch, onto the default
  * branch, as GitHub holds them, latest first: those opened from the
  * repository itself, never a fork, at or after the time `since` names,
- * where it names one.
+ * where it names one, and none the unit's cancel closed that stays
+ * closed (`cancelledShut`).
  * @param {LandingContext} ctx @param {Host} host @param {string} branch @param {string|null} since
  * @returns {BranchPull[]}
  */
@@ -1317,7 +1368,7 @@ function listedPulls(ctx, host, branch, since) {
   /** @type {{number: number, state: Pull['state'], headRefName: string, baseRefName: string, headRefOid: string, title: string, body: string, isCrossRepository: boolean, createdAt: string}[]} */
   const listed = JSON.parse(ghAt(ctx, host, ['pr', 'list', '--state', 'all', '--head', branch, '--limit', PULL_LIMIT, '--json', QUICK_FIX_FIELDS], `read ${branch}'s pull requests`));
   const from = since === null ? -Infinity : Date.parse(since);
-  return listed.filter((pr) => pr.headRefName === branch && pr.baseRefName === ctx.into && !pr.isCrossRepository && Date.parse(pr.createdAt) >= from)
+  return listed.filter((pr) => pr.headRefName === branch && pr.baseRefName === ctx.into && !pr.isCrossRepository && Date.parse(pr.createdAt) >= from && !cancelledShut(ctx, pr))
     .map((pr) => ({ number: pr.number, state: pr.state, head: pr.headRefName, base: pr.baseRefName, oid: pr.headRefOid, title: pr.title, body: pr.body }))
     .sort((a, b) => b.number - a.number);
 }
@@ -1392,17 +1443,31 @@ function openQuickFix(ctx, landing) {
 }
 
 /**
- * The quick-fix's pull request closed unmerged for its move (see the
- * header), where the read `pull` found one open: whether this call closed
- * one.
- * @param {LandingContext} ctx @param {QuickFixPull} pull
- * @returns {{closed: boolean}}
+ * Pull requests closed unmerged on GitHub, as a move or a cancel closes
+ * them, each number told to `closed` as it closes: whether any was.
+ * @param {LandingContext} ctx @param {number[]} numbers @param {Closing} closed
+ * @returns {PullsClosed}
  */
-function closeQuickFix(ctx, pull) {
-  const open = openedIn(pull);
-  if (open === null) return { closed: false };
-  ghAt(ctx, hostOf(ctx), ['pr', 'close', String(open.number)], `close ${ctx.unit}'s pull request`);
+function closedPulls(ctx, numbers, closed) {
+  if (numbers.length === 0) return { closed: false };
+  const host = hostOf(ctx);
+  for (const number of numbers) {
+    ghAt(ctx, host, ['pr', 'close', String(number)], `close ${ctx.unit}'s pull request #${number}`);
+    closed(String(number));
+  }
   return { closed: true };
+}
+
+/**
+ * The quick-fix's pull request closed unmerged for its move or its cancel
+ * (see the header), where the read `pull` found one open: whether this
+ * call closed one, its number told to `closed`.
+ * @param {LandingContext} ctx @param {QuickFixPull} pull @param {Closing} closed
+ * @returns {PullsClosed}
+ */
+function closeQuickFix(ctx, pull, closed) {
+  const open = openedIn(pull);
+  return closedPulls(ctx, open === null ? [] : [open.number], closed);
 }
 
 /**
@@ -1517,15 +1582,25 @@ function landUnit(ctx, landing) {
 }
 
 /**
- * The unit's own pull request closed unmerged, where the read given found
- * one open: whether this call closed it.
- * @param {LandingContext} ctx @param {UnitPull|null} pull
- * @returns {{closed: boolean}}
+ * The unit's own pull request closed unmerged for its cancel, where the
+ * read given found one open: whether this call closed it, its number told
+ * to `closed`.
+ * @param {LandingContext} ctx @param {UnitPull|null} pull @param {Closing} closed
+ * @returns {PullsClosed}
  */
-function closeUnit(ctx, pull) {
-  if (pull === null || pull.open === null) return { closed: false };
-  ghAt(ctx, hostOf(ctx), ['pr', 'close', String(pull.open)], `close ${ctx.unit}'s pull request`);
-  return { closed: true };
+function closeUnit(ctx, pull, closed) {
+  return closedPulls(ctx, pull === null || pull.open === null ? [] : [pull.open], closed);
+}
+
+/**
+ * Each of the unit's tasks' pull requests open closed unmerged for its
+ * cancel (see the header), their branches on GitHub left as they stand:
+ * whether this call closed any, each number told to `closed`.
+ * @param {LandingContext} ctx @param {Closing} closed
+ * @returns {PullsClosed}
+ */
+function closeTasks(ctx, closed) {
+  return closedPulls(ctx, pullsRead(ctx).filter((pull) => pull.state === 'OPEN').map((pull) => pull.number), closed);
 }
 
 /**
@@ -1604,6 +1679,7 @@ module.exports = {
   openUnit,
   landUnit,
   closeUnit,
+  closeTasks,
   protectBranch,
   setSquashDefault,
   repositoryOf,

@@ -33,6 +33,7 @@ const {
   EXPERIMENT_ID_PATTERN,
   isParentExperimentId,
   LANDINGS,
+  CLOSED_BY_CANCEL,
 } = require('../kernel/manifest-schema.cjs');
 
 /**
@@ -90,14 +91,18 @@ function refuseProjectId(fieldSegments) {
 
 /**
  * Refuse a write or delete of the unit's records the engine keeps alone:
- * its landing record (landing-record.cjs), and its own branch, `build.branch`
- * — `build` whole with it (unit-branch.cjs).
+ * its landing record (landing-record.cjs), the pull requests its cancel
+ * closed (landing.cjs), and its own branch, `build.branch` — `build` whole
+ * with it (unit-branch.cjs).
  * @param {string|null} phase @param {string[]} fieldSegments
  */
 function refuseEngineRecords(phase, fieldSegments) {
   if (phase !== null) return;
   if (fieldSegments[0] === LANDINGS) {
     fail(`"${LANDINGS}" is the engine's own landing record: a land verb writes it as it lands a task, and a verb acting on a landing as it reads one made by hand`);
+  }
+  if (fieldSegments[0] === CLOSED_BY_CANCEL) {
+    fail(`"${CLOSED_BY_CANCEL}" is the engine's own: the unit's cancel writes it as it closes the unit's pull requests, and every landing after reads them as none while they stay closed`);
   }
   if (fieldSegments[0] === 'build' && (fieldSegments.length === 1 || fieldSegments[1] === 'branch')) {
     fail('"build.branch" is the engine\'s own: the first phase start\'s close of the build writes it as it makes the unit\'s branch, and it never changes');

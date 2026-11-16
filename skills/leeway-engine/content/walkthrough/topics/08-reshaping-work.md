@@ -11,11 +11,9 @@ Work does not always run cleanly from start to finish in the shape it began. Lee
                 work; its record stays
    reactivate   a cancelled piece of work or topic comes back
    postpone     a topic goes to the roadmap, for later
-   reopen       a finished feature's, bugfix's or quick-fix's
-                decision is opened again
 ```
 
-Every piece of work is in progress, completed or cancelled. Completed and cancelled work sits behind the start menu's `v/view` row so it doesn't clutter the day-to-day. A finished feature, bugfix or quick-fix is brought back by reopening its decision, which takes it back into its build with the change; a finished epic is not reopened, and a later change to it is new work.
+Every piece of work is in progress, completed or cancelled. Completed and cancelled work sits behind the start menu's `v/view` row so it doesn't clutter the day-to-day. A finished piece of work — an epic, a feature, a bugfix or a quick-fix — stays finished: nothing reopens it, and a later change to it is new work.
 
 Inside an epic, topics have their own lifecycle. A topic can be cancelled without touching the rest, and stays listed as the record that it was raised and declined; one that belongs to a later release is postponed to the roadmap instead, and comes back when it is pulled forward into an epic whose map is still open: its own, where it returns as it was, or another, where it opens as a fresh topic that reads the earlier record and never changes it. Once the epic's specification is written its map is closed: no topic is added, cancelled or reopened, and a decision that must change is settled in the phase the epic is in.
 

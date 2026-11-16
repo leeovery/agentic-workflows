@@ -182,6 +182,11 @@ module.exports = {
     const ref = names.taskOfBranch(UNIT, pull.head);
     return ref === null ? [] : [taskId(ref)];
   }))].sort(),
+  /** The unit's tasks a pull request is open for on GitHub, by id. @param {string} dir */
+  tasksOpen: (dir) => github(dir).pulls.flatMap((pull) => {
+    const ref = pull.state === 'OPEN' ? names.taskOfBranch(UNIT, pull.head) : null;
+    return ref === null ? [] : [taskId(ref)];
+  }).sort(),
   /** Whether the quick-fix `unit` is open in the repository at `dir`: a pull request of its branch open on GitHub. @param {string} dir @param {string} unit */
   quickFixOpen: (dir, unit) => github(dir).pulls.some((pull) => pull.state === 'OPEN' && pull.head === names.quickFixBranch(unit)),
   /** The unit's own pull request open in the repository at `dir`, by its base, title and description, null where none is. @param {string} dir */

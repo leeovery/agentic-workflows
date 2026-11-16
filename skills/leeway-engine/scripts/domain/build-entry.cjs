@@ -470,8 +470,9 @@ const READER_WORDS = Object.freeze({
 function afreshWords(cwd, session, unit, task) {
   const ref = parseShownTask(unit, task);
   const goes = roundWords(cwd, session, ref);
-  if (!ofQuickFix(cwd, unit) || heldAside(cwd, ref).length === 0) return goes;
-  return `its work, set aside when a question parked it, is not back in the checkout — start it again, engine task start ${unit} ${task}, which puts it back, then ${goes}`;
+  const held = ofQuickFix(cwd, unit) ? heldAside(cwd, ref) : [];
+  if (held.length === 0) return goes;
+  return `its work, set aside ${held[0].why}, is not back in the checkout — start it again, engine task start ${unit} ${task}, which puts it back, then ${goes}`;
 }
 
 /**

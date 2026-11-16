@@ -36,8 +36,8 @@ const ASIDE = `refs/leeway/aside/${UNIT}/${UNIT}-1-1`;
 /** What fix 1.1 holds not committed as the quick-fix moves: a change to a tracked file, and a file of its own. */
 const UNCOMMITTED = Object.freeze({ 'README.md': '# The project, its flag spelt --colour\n', 'src/alias.js': 'module.exports = \'color\';\n' });
 
-/** The calls a piece of the work kept at ASIDE is shown and brought back by. */
-const CALLS = `see it with git diff ${ASIDE}^ ${ASIDE}; bring it into the checkout with git cherry-pick --no-commit ${ASIDE}, settling any conflict`;
+/** The calls a piece of the work kept at ASIDE is shown, brought back and dropped by. */
+const CALLS = `see it with git diff ${ASIDE}^ ${ASIDE}; bring it into the checkout with git cherry-pick --no-commit ${ASIDE}, settling any conflict; drop it with git update-ref -d ${ASIDE}`;
 
 for (const { name } of listDrivers('landing')) {
   const { as, project } = quickFixConformance(name, `engine-landing-quick-fix-move-holder-${name}-`);
@@ -59,10 +59,10 @@ for (const { name } of listDrivers('landing')) {
       const brought = Object.keys(UNCOMMITTED).map((file) => fs.readFileSync(path.join(at, file), 'utf8'));
 
       assert.deepStrictEqual(screen.replace(/\n {2}/g, ' ').split('\n').filter((line) => line.startsWith('⚑ Task')), [
-        `⚑ Task 1.1's work not committed — README.md, src/alias.js — is set aside as the quick-fix moves and kept in the project's repository at ${ASIDE} — ${CALLS.replace('see it with', 'see it then with')}`,
+        `⚑ Task 1.1's work not committed — README.md, src/alias.js — is set aside as the quick-fix moves and kept in the project's repository at ${ASIDE} — ${CALLS.replace('see it with', 'see it then with').replace('drop it with', 'drop it then with')}`,
       ]);
       assert.deepStrictEqual([moved.fixes_closed, moved.checkout, left], [['1.1'], 'main', '']);
-      assert.deepStrictEqual(moved.kept_aside, [{ task: '1.1', repo: '.', ref: ASIDE, why: 'as the quick-fix moved', see: `git diff ${ASIDE}^ ${ASIDE}`, recover: `git cherry-pick --no-commit ${ASIDE}` }]);
+      assert.deepStrictEqual(moved.kept_aside, [{ task: '1.1', repo: '.', ref: ASIDE, why: 'as the quick-fix moved', see: `git diff ${ASIDE}^ ${ASIDE}`, recover: `git cherry-pick --no-commit ${ASIDE}`, drop: `git update-ref -d ${ASIDE}` }]);
       assert.deepStrictEqual(opening, [`kept work: Task 1.1's work, set aside as the quick-fix moved, is kept in the project's repository at ${ASIDE} — ${CALLS}`]);
       assert.deepStrictEqual(brought, Object.values(UNCOMMITTED));
     });

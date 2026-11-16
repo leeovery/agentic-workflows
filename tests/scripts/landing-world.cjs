@@ -500,7 +500,9 @@ function useNestedWorld(prefix, ready = () => {}) {
  * `byHandKeeping`, the ways that keep the branch's own commits on the
  * default branch here; `deleted`, a branch deleted, here and on any host,
  * a checkout that has it out put on the default branch; `quickFixOpen`,
- * whether a quick-fix is open in a repository, as the driver opens one; and
+ * whether a quick-fix is open in a repository, as the driver opens one;
+ * `tasksOpen`, the unit's tasks a pull request is open for on a host,
+ * none for a driver that opens none there; and
  * `phaseByHand`, the ways a person lands a phase whole onto main outside
  * the engine, main here then holding it, each by what it does, told the
  * phase; `pushed`, the default branch here pushed where the driver lands
@@ -512,7 +514,7 @@ function useNestedWorld(prefix, ready = () => {}) {
  *   landed: (dir: string, into?: string) => {subject: string, task: string|null}[], holds: (dir: string, into?: string) => string[],
  *   defaultTip: (dir: string, into?: string) => string, opened: (dir: string) => string[], refuseMerge: (dir: string) => {env: Record<string, string>, undo: () => void},
  *   byHand: Record<string, (dir: string, branch: string, into?: string) => void>, byHandKeeping: Record<string, (dir: string, branch: string, into?: string) => void>,
- *   deleted: (dir: string, branch: string, into?: string) => void, quickFixOpen: (dir: string, unit: string) => boolean,
+ *   deleted: (dir: string, branch: string, into?: string) => void, quickFixOpen: (dir: string, unit: string) => boolean, tasksOpen: (dir: string) => string[],
  *   phaseByHand: Record<string, (dir: string, phase: number) => void>, pushed: (dir: string, into?: string) => void,
  *   squashedHere: (dir: string, branch: string, into?: string) => void, mergedOnHost: ((dir: string, branch: string, method: 'merge'|'squash'|'rebase', pulled: boolean, into?: string) => boolean)|null,
  * }} DriverSide

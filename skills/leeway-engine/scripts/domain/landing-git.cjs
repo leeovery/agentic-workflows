@@ -1780,6 +1780,9 @@ function remoteHeads(root, remote, branches) {
   }));
 }
 
+/** The branches a remote holds as last fetched, by their names, fetching nothing. @param {string} root @param {string} remote @returns {string[]} */
+const trackedBranches = (root, remote) => git(root, ['for-each-ref', '--format=%(refname:lstrip=3)', `refs/remotes/${remote}/`]).split('\n').filter((name) => name !== '' && name !== 'HEAD');
+
 /** A remote's branch's commit as last fetched, fetching nothing; null where it never has been. @param {string} root @param {string} remote @param {string} branch @returns {string|null} */
 const trackedTip = (root, remote, branch) => tryGit(root, ['rev-parse', '--verify', '--quiet', `refs/remotes/${remote}/${branch}^{commit}`])?.trim() ?? null;
 
@@ -1936,6 +1939,6 @@ function landingMade(repo, unit, branch) {
 module.exports = {
   short, readOnce, readAgain, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranches, holdingBranch, refsUnder, updateRefs, isAncestor, mergeOf, commitsIn, latestOf, mergeBase, treesOf, firstParentLine, commitAt, lineSince, commitPaths, taskLine, heldIn, commitGraph, stampedPast, committerTime, holdsChange, holdsTaskChange, holdsCopy, holdChanges, mergeTrees, heldMerges, pathsApart, belowOwn, copiesOf, standings, standingsOn, lastStamped, stampedAnywhere, timedOf, committedAt, stampsUnit, tasksMarkedOn, commitsNamed, namedPast, commitWithTree, treesPast,
   changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, rebasedSince, rebasedPast, laidOn, madeAgainOn, ownLinePast, forcePushed, inRepoWords, saidIn, branchOut, remedy, moveTo, movedSinceOpened, rewrite, mergeContinued, scratchBlock, rebaseBlock, checkoutBlock, changesAt, pathsChanged, dirtBlock, moveBranch,
-  defaultBranch, repoDefault, remoteOf, recordedBranch, unitBranchIn, landingBranch, landingRev, landingMade, remoteUrlOf, pushBranch, pushBranches, gitSaid, fetchBranch, remoteHeads, trackedTip, fetchedCommit, nothingPast,
+  defaultBranch, repoDefault, remoteOf, recordedBranch, unitBranchIn, landingBranch, landingRev, landingMade, remoteUrlOf, pushBranch, pushBranches, gitSaid, fetchBranch, remoteHeads, trackedTip, trackedBranches, fetchedCommit, nothingPast,
   worktrees, taskWorktree, mainCheckoutOf, projectCheckout, holderOf, samePlace, removing, branchInPlace, addWorktree, switchTo, removeWorktree, detach, scratchRoot, scratchTree, mergeHeld, mergeBegun, mergeDone,
 };

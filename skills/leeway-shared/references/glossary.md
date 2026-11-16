@@ -282,7 +282,7 @@ Something a session found that belongs to another discussion or investigation �
 _Avoid_: concern, reroute, spawn
 
 **manage**:
-The start menu's row for changing a piece of work's shape or standing — reopen, pivot, absorb, cancel, or bring cancelled work back — and the project's own settings: its environment setup, its drivers and the matrix.
+The start menu's row for changing a piece of work's shape or standing — pivot, absorb, cancel, or bring cancelled work back — and the project's own settings: its environment setup, its drivers and the matrix.
 
 **pivot**:
 Converting a feature into an epic in place, when it turns out to be several things, before its specification is written.
@@ -304,7 +304,7 @@ _Avoid_: defer
 Bringing a postponed topic back from the roadmap, through an epic's discovery row while that epic's map is open. Into its own epic, the topic returns as it was; into another epic, it opens as a fresh topic that reads the earlier record and never changes it.
 
 **reopen**:
-Opening a finished feature's, bugfix's or quick-fix's decision again, which takes it back into its build with the change; a finished epic is not reopened, and a later change to it is new work. An epic's decided topic is reopened from its discovery row until the spec is first written.
+Opening an epic's decided topic again, from its discovery row until the spec is first written. A finished piece of work, of any type, is never reopened: it stays finished, and a later change to it is new work.
 
 **in session**:
 The cue on a topic another conversation is working right now, with how long ago it was last active; its row is struck through, and entering it asks first. Awareness only: it never locks anyone out. Code phases are different: a build, the review phase and a quick-fix run one at a time in the project's checkout, and entering one while another session is building there names that session and asks before going on.
