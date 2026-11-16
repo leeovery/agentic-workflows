@@ -188,7 +188,7 @@ function noteFaults(notes) {
 /**
  * The faults in a plan's corrections, against its phases: a correction of
  * another shape, or ending a task of a phase naming no tracker parent.
- * @param {unknown} corrections @param {Phase[]} phases
+ * @param {unknown} corrections @param {{tracker?: string}[]} phases
  */
 function correctionFaults(corrections, phases) {
   if (!Array.isArray(corrections)) return ['the plan\'s corrections are not a list'];
@@ -442,4 +442,4 @@ function cutMigrating(cwd, unit, file) {
   return result;
 }
 
-module.exports = { MIGRATING_USAGE, cutMigrating, markPath, migratedType, oldPlanOrder };
+module.exports = { MIGRATING_USAGE, cutMigrating, markPath, migratedType, oldPlanOrder, correctionFaults };

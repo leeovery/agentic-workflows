@@ -467,15 +467,19 @@
 //   migrated-phase the unit: its work type and status, the state's place
 //                  and the project's, its joined spec's areas, and every
 //                  phase of its cut; what its plan depends on; and the
-//                  phase — its old plan's phase or its area, its files, its
-//                  tasks as the cut's adoption names them, each still to
+//                  phase — its old plan's phase or its area, the sections
+//                  the spec numbers in that area, its plan's tasks' file and
+//                  its own section of the plan by heading, its tasks as the
+//                  cut's adoption names them, each still to
 //                  build with its text as the tracker holds it, read writing
 //                  nothing (task-verbs.cjs), where the manifest and the
 //                  tracker disagree over it — the folder kept as legacy, and
 //                  where its piece goes
-//   composed-piece that phase's piece as composed, fenced as JSON
-//   piece-findings the verifier's findings on that piece, verbatim, the
-//                  file cleared once drawn
+//   composed-piece that phase's piece as composed, fenced as JSON, the
+//                  verifier's findings on it cleared once drawn, for the
+//                  verifier to write afresh: no file is no verdict yet
+//   piece-findings the verifier's findings on that piece, verbatim — kept
+//                  until the verifier reads the piece composed again
 //
 // A record taking a flag names it, and its role takes every flag its records
 // name, once, and no other — every one but a flag a record holds optional;
@@ -534,7 +538,7 @@ const {
 const { lastQuery } = require('./knowledge/last-query.cjs');
 const { ROLES } = require('./brief-names.cjs');
 const {
-  SPEC_FILE, readCitedSections, headingLevels, readSpec, specPath, specSections, specStatements,
+  SPEC_FILE, readCitedSections, headingLevels, readSpec, specPath, specSections, specStatements, fencedLines,
 } = require('./spec-sections.cjs');
 const { withUnitEntries, unitEntries } = require('./unit-entries.cjs');
 const { huntOf, huntLog, huntEntries, openInvestigation } = require('./investigation-log.cjs');
@@ -566,7 +570,7 @@ const { repoNamed, phaseStack, tipCommits } = require('./phase-stack.cjs');
 const { readWorkUnitManifest } = require('../kernel/manifest-io.cjs');
 const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
 const { ENDED, STATUS_WORDS } = require('./task-verbs.cjs');
-const { unitSources, unitPhases, oldReliances, piecePaths } = require('./cut-merges.cjs');
+const { unitSources, unitPhases, oldReliances, piecePaths, specAddresses } = require('./cut-merges.cjs');
 const { notesToTake, notesHeldFor, consolidationPath } = require('./notes.cjs');
 const { runsOf } = require('./runs.cjs');
 const { cachedSurvivors } = require('./verify.cjs');
@@ -1105,9 +1109,31 @@ const MIGRATED = Object.freeze({ name: 'topic', value: 'unit.phase.topic' });
 /** The flag naming the migration's directive a record draws for. @type {BriefFlag} */
 const DIRECTIVE = Object.freeze({ name: 'directive', value: 'id' });
 
-/** @param {Filling} filling */
+/** How a directive's command calls the engine. */
+const ENGINE_CALL = 'leeway-engine/scripts/engine.cjs';
+
+/**
+ * The directive as a migration agent's brief draws it: each heading a level
+ * down, and each fenced block holding an engine call left out, with the
+ * blank line after it — those calls are the session's, and no migration
+ * agent runs the engine (21.S35).
+ * @param {Filling} filling
+ */
 function drawDirective({ given }) {
-  return headingsDown(fs.readFileSync(directiveOf(given.directive).file, 'utf8').trimEnd());
+  const lines = fs.readFileSync(directiveOf(given.directive).file, 'utf8').trimEnd().split('\n');
+  const fenced = fencedLines(lines);
+  /** @type {boolean[]} */
+  const dropped = lines.map(() => false);
+  for (let at = 0; at < lines.length; at += 1) {
+    if (!fenced[at]) continue;
+    const end = fenced.indexOf(false, at) === -1 ? lines.length : fenced.indexOf(false, at);
+    if (lines.slice(at, end).some((line) => line.includes(ENGINE_CALL))) {
+      for (let line = at; line < end; line += 1) dropped[line] = true;
+      if (lines[end] === '') dropped[end] = true;
+    }
+    at = end;
+  }
+  return headingsDown(lines.filter((_, at) => !dropped[at]).join('\n').trimEnd());
 }
 
 /**
@@ -1233,18 +1259,40 @@ function phaseTask(number, task, old) {
   return ENDED.includes(task.status) ? head : `${head}\n\n${fenced('markdown', task.text.trimEnd())}`;
 }
 
+/**
+ * The old plan's sources for one phase, by their state paths: its tasks'
+ * file and its own section of the plan, named by its heading.
+ * @param {string} root @param {import('./cut-merges.cjs').CutPhase} phase @param {number} number the phase's number in its plan
+ * @returns {string[]}
+ */
+function phasePlanLines(root, phase, number) {
+  const files = phase.plan?.files ?? [];
+  const named = (/** @type {string} */ name) => files.find((file) => path.posix.basename(file) === name);
+  const tasks = named(`phase-${number}-tasks.md`);
+  const planning = named('planning.md');
+  const heading = planning === undefined ? undefined
+    : fs.readFileSync(path.join(root, planning), 'utf8').split('\n').find((line) => new RegExp(`^#{1,6} Phase ${number}(?![0-9])`).test(line));
+  const section = planning === undefined ? 'none kept'
+    : heading === undefined ? `${planning}, which heads no section for phase ${number}` : `${planning}, under "${heading}"`;
+  return [`- Its tasks' file: ${tasks ?? 'none kept'}`, `- Its section of the plan: ${section}`];
+}
+
 /** @param {Filling} filling */
 function drawMigratedPhase(filling) {
   const { unit, sources, phases, refused, phase } = migratedPhase(filling);
   const root = stateRoot(filling.cwd);
   const manifest = readWorkUnitManifest(root, unit);
   const reliances = oldReliances(phases).filter(({ phase: of }) => of.topic === phase.topic);
+  const area = String(phase.area);
+  const numbered = [...specAddresses(filling.cwd, unit)].filter((address) => address === area || address.startsWith(`${area}.`));
+  const sections = `- The sections ${unit}/${SPEC_FILE} numbers in its area, the only ones a piece names: ${numbered.join(', ')}`;
   const own = phase.old === null
-    ? [`- Phase ${phase.number}: §${phase.area} ${phase.topic} of ${unit}/${SPEC_FILE}, which no plan put in the tracker — compose it from the area`]
+    ? [`- Phase ${phase.number}: §${phase.area} ${phase.topic} of ${unit}/${SPEC_FILE}, which no plan put in the tracker — compose it from the area`, sections]
     : [
       `- Phase ${phase.number}: phase ${phase.old.number} of ${phase.topic}'s plan, its tracker parent ${phase.old.parent}${phase.old.built ? ', the manifest counting it built' : ''}`,
       `- Its area: §${phase.area} ${phase.topic} of ${unit}/${SPEC_FILE}`,
-      `- Its plan's files: ${phase.plan === null || phase.plan.files.length === 0 ? 'none kept' : phase.plan.files.join(', ')}`,
+      sections,
+      ...phasePlanLines(root, phase, phase.old.number),
     ];
   const tasks = phase.old === null ? NONE
     : refused !== null ? `The tracker could not be read as the cut adopts it: ${refused}`
@@ -2440,8 +2488,8 @@ const RECORDS = Object.freeze({
   'verifier-findings': { of: null, flags: [MIGRATED, DIRECTIVE], draw: (filling) => besideRecord(filling, findingsPath), bind: (filling) => clearBeside(filling, findingsPath) },
   'carry-refusal': { of: null, flags: [MIGRATED, DIRECTIVE], draw: (filling) => besideRecord(filling, refusedPath), bind: (filling) => clearBeside(filling, refusedPath) },
   'migrated-phase': { of: 'unit', flags: [DIRECTIVE, PHASE], draw: drawMigratedPhase },
-  'composed-piece': { of: 'unit', flags: [DIRECTIVE, PHASE], draw: drawComposedPiece },
-  'piece-findings': { of: 'unit', flags: [DIRECTIVE, PHASE], draw: drawPieceFindings, bind: (filling) => fs.rmSync(phaseFile(filling, 'findings'), { force: true }) },
+  'composed-piece': { of: 'unit', flags: [DIRECTIVE, PHASE], draw: drawComposedPiece, bind: (filling) => fs.rmSync(phaseFile(filling, 'findings'), { force: true }) },
+  'piece-findings': { of: 'unit', flags: [DIRECTIVE, PHASE], draw: drawPieceFindings },
   'spec-outline': { of: 'unit', draw: drawSpecOutline },
   'spec-scenarios': { of: 'unit', draw: drawSpecScenarios },
   'relies-on-graph': { of: 'unit', draw: drawReliesOnGraph },

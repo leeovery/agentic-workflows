@@ -144,7 +144,7 @@ function buildCommitting(subcommand, way, tasks) {
 }
 
 /** What a refusal of a file at user level says beyond the layout hook's reason. */
-const NAMED = 'a shell command naming it is refused, and the Read and Grep tools read it';
+const NAMED = 'a shell command naming it is refused, and the Read tool reads it';
 
 /** git's global options that take the next word as their value, where it carries none after `=`. */
 const VALUED = new Set(['-C', '-c', '--git-dir', '--work-tree', '--namespace', '--config-env', '--super-prefix']);

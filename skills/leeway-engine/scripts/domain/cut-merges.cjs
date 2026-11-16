@@ -20,7 +20,10 @@
 // "scenarios": ["<text>", …], "notes": ["<text>", …], "corrections": […]}`
 // — every phase but one the manifest counts built, whose every task the
 // tracker holds ended, where the two agree: the join writes that one
-// itself, named for its plan's topic and number.
+// itself, named for its plan's topic and number. A verifier reads each
+// piece and writes its findings beside it, `phases/{N}.findings.txt`: an
+// empty file is the pass, one holding findings sends the piece back to be
+// composed again, and no file means the piece was never verified.
 //
 // `migrate join <unit> --directive <id>` joins the pieces into the unit's
 // plan, `plan.json`, as the cut takes it (cut-migrating.cjs): the phases in
@@ -30,10 +33,13 @@
 // refuses, naming every fault and writing nothing: a unit no building
 // unit; a phase whose piece is missing, will not read or is of another
 // shape — a phase still to build with no `relies_on` or no scenario, a
-// built one with either; and a phase still to build of a plan that depends
-// on another plan's phase still to build, relying on nothing that names it
-// — the old dependency named, and both phases. It answers the plan's path
-// from the project's folder, as `cut --migrating --file` reads it.
+// built one with either, a section `spec.md` lacks, a correction the cut
+// would refuse (cut-migrating.cjs, `correctionFaults`), each named by its
+// phase; a piece its verifier has not passed, or whose findings stand; and
+// a phase still to build of a plan that depends on another plan's phase
+// still to build, relying on nothing that names it — the old dependency
+// named, and both phases. It answers the plan's path from the project's
+// folder, as `cut --migrating --file` reads it.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -44,6 +50,8 @@ const { codeRoot } = require('../kernel/code-root.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { ENDED, STATUS_WORDS, adoptionRead } = require('./task-verbs.cjs');
 const { loadCheck } = require('./directives.cjs');
+const { correctionFaults } = require('./cut-migrating.cjs');
+const { SPEC_FILE, readSpec, specSections } = require('./spec-sections.cjs');
 
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
 
@@ -221,36 +229,56 @@ const staged = (sources, name) => `${sources.staging}/${name}`;
 const piecePaths = (sources, number) => ({ piece: staged(sources, `phases/${number}.json`), findings: staged(sources, `phases/${number}.findings.txt`) });
 
 /**
- * The faults of a phase's piece, read from its file.
- * @param {CutPhase} phase @param {unknown} piece
+ * The faults of a phase's piece, read from its file, against the spec's
+ * sections and the cut's phases; each correction's as the cut would find
+ * it, named by the phase.
+ * @param {CutPhase} phase @param {unknown} piece @param {Set<string>} sections @param {CutPhase[]} phases
  * @returns {string[]}
  */
-function pieceFaults(phase, piece) {
+function pieceFaults(phase, piece, sections, phases) {
   const which = `phase ${phase.number}'s piece`;
   if (!isObject(piece) || !isObject(piece.phase) || Object.keys(piece).some((key) => !PIECE_KEYS.includes(key)) || Object.keys(piece.phase).some((key) => !ENTRY_KEYS.includes(key))) {
     return [`${which} is not ${PIECE_SHAPE}`];
   }
   const { phase: entry, scenarios = [], notes = [], corrections = [] } = piece;
   const built = entry.built === true;
+  const tracked = phases.map(({ old }) => (old?.parent ? { tracker: old.parent } : {}));
   return [
     ...(isLine(entry.name) && isLine(entry.goal) ? [] : [`${which} gives no name or goal of one line`]),
     ...(isLines(entry.sections) && entry.sections.length > 0 ? [] : [`${which} names no section`]),
+    ...(isLines(entry.sections) ? entry.sections.filter((address) => !sections.has(address)).map((address) => `${which} draws on section "${address}", which ${SPEC_FILE} lacks`) : []),
     ...('built' in entry && !built ? [`${which} marks it "built": ${JSON.stringify(entry.built)} — a phase found built is "built": true, and one still to build names no "built"`] : []),
     ...(built && ('relies_on' in entry || (Array.isArray(scenarios) && scenarios.length > 0)) ? [`${which} marks it built and gives it ${'relies_on' in entry ? '"relies_on"' : 'scenarios'} — a phase found built places no scenario and relies on nothing`] : []),
     ...(!built && !Array.isArray(entry.relies_on) ? [`${which} gives no "relies_on" — a phase still to build names what it relies on, [] for nothing`] : []),
     ...(!built && (!isLines(scenarios) || scenarios.length === 0) ? [`${which} gives no scenario of one line — a phase still to build places its scenarios`] : []),
     ...(isLines(notes) ? [] : [`${which}'s notes are not lines of text`]),
-    ...(Array.isArray(corrections) ? [] : [`${which}'s corrections are not a list`]),
+    ...(Array.isArray(corrections) ? correctionFaults(corrections, tracked).map((fault) => `${which}: ${fault}`) : [`${which}'s corrections are not a list`]),
   ];
 }
 
 /**
+ * Whether the verifier passed a phase's piece: its findings file empty —
+ * standing findings or none written refuse the join.
+ * @param {string} root @param {UnitSources} sources @param {CutPhase} phase
+ * @returns {string[]}
+ */
+function verifiedFaults(root, sources, phase) {
+  const { findings } = piecePaths(sources, phase.number);
+  const file = path.join(root, findings);
+  if (!fs.existsSync(file)) return [`phase ${phase.number}'s piece is not verified — ${findings} is no file`];
+  return fs.readFileSync(file, 'utf8').trim() === '' ? [] : [`phase ${phase.number}'s piece has its verifier's findings standing — ${findings}`];
+}
+
+/** The sections the unit's spec numbers. @param {string} cwd @param {string} unit @returns {Set<string>} */
+const specAddresses = (cwd, unit) => new Set(specSections(readSpec(cwd, unit)).keys());
+
+/**
  * The plan the cut takes, joined from the pieces (the header's), or every
  * fault that refuses the join.
- * @param {string} root the state's folder @param {UnitSources} sources @param {CutPhase[]} phases
+ * @param {string} root the state's folder @param {UnitSources} sources @param {CutPhase[]} phases @param {Set<string>} sections the spec's
  * @returns {{plan: Record<string, any>|null, faults: string[]}}
  */
-function joined(root, sources, phases) {
+function joined(root, sources, phases, sections) {
   const read = phases.map((phase) => {
     if (!phase.composed) return { phase, piece: null, faults: [] };
     const file = path.join(root, piecePaths(sources, phase.number).piece);
@@ -260,7 +288,7 @@ function joined(root, sources, phases) {
     } catch (err) {
       return { phase, piece: null, faults: [`phase ${phase.number} has no piece that reads — ${piecePaths(sources, phase.number).piece}: ${messageOf(err)}`] };
     }
-    return { phase, piece, faults: pieceFaults(phase, piece) };
+    return { phase, piece, faults: [...pieceFaults(phase, piece, sections, phases), ...verifiedFaults(root, sources, phase)] };
   });
   const faults = read.flatMap((each) => each.faults);
   const stillToBuild = new Set(read.filter(({ phase, piece }) => phase.composed && piece?.phase?.built !== true).map(({ phase }) => phase.number));
@@ -296,7 +324,14 @@ function joinPlan(cwd, argv) {
   const root = stateRoot(cwd);
   const { phases, refused } = unitPhases(cwd, unit, sources);
   if (refused !== null) throw new Error(`${said}: the tracker could not be read as the cut adopts ${unit}'s plans — ${refused}`);
-  const { plan, faults } = joined(root, sources, phases);
+  /** @type {Set<string>} */
+  let sections;
+  try {
+    sections = specAddresses(cwd, unit);
+  } catch (err) {
+    throw new Error(`${said}: ${messageOf(err)}`);
+  }
+  const { plan, faults } = joined(root, sources, phases, sections);
   if (plan === null) throw new Error(`${said}: ${faults.join('; ')}`);
   const file = path.join(root, staged(sources, 'plan.json'));
   let held = {};
@@ -316,4 +351,4 @@ function joinPlan(cwd, argv) {
   };
 }
 
-module.exports = { JOIN_USAGE: USAGE, cutOrder, disagreementsOf, unitSources, unitPhases, oldReliances, piecePaths, joinPlan };
+module.exports = { JOIN_USAGE: USAGE, cutOrder, disagreementsOf, unitSources, unitPhases, oldReliances, piecePaths, specAddresses, joinPlan };

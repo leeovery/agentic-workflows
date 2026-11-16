@@ -10,8 +10,8 @@
 - Each unit's staging in the state's cache,
   `.cache/migrate/cut-and-merges/{unit}/`: each phase's piece,
   `phases/{N}.json`, and the verifier's findings on it,
-  `phases/{N}.findings.txt`; the plan joined from them, `plan.json`; and the
-  research's placement, `placed.json`.
+  `phases/{N}.findings.txt`, empty where it passed; the plan joined from
+  them, `plan.json`; and the research's placement, `placed.json`.
 
 ## Asks
 
@@ -85,13 +85,15 @@ node .claude/skills/leeway-engine/scripts/engine.cjs topic postpone {unit} {topi
 
 The unit's cut is laid out phase by phase: each old plan's phase with a tracker parent, and each area of the spec no plan put in the tracker, numbered as the cut numbers them, the plans in the order their dependencies allow. An agent composes each phase's piece from that phase alone, but a phase the manifest counts built whose every task the tracker holds ended, where the two agree: the join writes that one itself. Each phase's brief lists the whole cut and which phases the join writes.
 
-For each phase whose piece is not written, or whose verifier has findings, give it to the migration's per-phase agent, `{N}` the phase's number:
+A verifier reads each piece and writes its findings beside it, `phases/{N}.findings.txt`. An empty file is the pass. A file holding findings sends the piece back to be composed again. No file means the piece was never verified: the verifier's brief clears the findings it reads the piece for, so a session that ends between composing and verifying leaves none.
+
+For each phase whose piece is not written, or whose findings file holds findings, give it to the migration's per-phase agent, `{N}` the phase's number:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs brief migration-phase {unit} --directive 080-cut-and-merges --phase {N}
 ```
 
-Then the verifier reads the piece against the phase's sources and writes its findings beside it:
+Once it has returned, and for each piece with no findings file, the verifier reads the piece against the phase's sources and writes its findings:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs brief migration-phase-verifier {unit} --directive 080-cut-and-merges --phase {N}
@@ -105,7 +107,7 @@ A piece, `phases/{N}.json`, is one JSON object. A phase still to build:
 
 ```json
 {
-  "phase": {"name": "{name}", "goal": "{goal}", "sections": ["{A}", "{A}.{M}"], "relies_on": [2]},
+  "phase": {"name": "{name}", "goal": "{goal}", "sections": ["{A}"], "relies_on": [2]},
   "scenarios": ["Given {context}, when {action}, then {outcome}.", "…"],
   "notes": ["{text}"],
   "corrections": [
@@ -116,12 +118,13 @@ A piece, `phases/{N}.json`, is one JSON object. A phase still to build:
 
 A phase found built is `{"phase": {"name": "{name}", "goal": "{goal}", "sections": ["{A}"], "built": true}, "scenarios": [], "notes": [], "corrections": [ … ]}`.
 
-- **The phase** is the old plan's phase its brief names, or the area it names where no plan put one in the tracker. `{A}` is the phase's area of the spec, as its brief names it.
-- **A phase built** is its name, its goal, `"built": true`, and the sections its old plan built: its area, `{A}`, or its parts, `{A}.{M}`. A phase is built where the tracker holds every task of it done or closed, once the corrections are made.
-- **A phase still to build** names the sections of its area it draws on, and its scenarios, written from the phase and each acceptance criterion of its tasks still to build, as the brief draws each task's text and the old plan's files hold it. Each scenario is one line, `Given …, when …, then …`, of one behaviour; criteria that prove the same behaviour make one scenario, and no scenario says again what another does. The join numbers them in the area, `{A}.S1` on, in the cut's order.
+- **The phase** is the old plan's phase its brief names, or the area it names where no plan put one in the tracker. Its sources are the brief's: its tasks as the tracker holds them, its tasks' file and its own section of the plan, under the heading the brief names. Where the tracker's text and the plan's differ, the tracker's stands: the build reads it.
+- **Its sections** are those the brief names its area numbering, and no other: the area, `{A}`, or a part of it, `{A}.{M}`, where the spec numbers one. The join refuses a section `spec.md` lacks.
+- **A phase built** is its name, its goal, `"built": true`, and the sections its old plan built. A phase is built where the tracker holds every task of it done or closed, once the corrections are made.
+- **A phase still to build** has its scenarios, at least one, written from the phase and each acceptance criterion of its tasks still to build. Each scenario is one line, `Given …, when …, then …`, of one behaviour; criteria that prove the same behaviour make one scenario, and no scenario says again what another does. A criterion about structure — a file's path, a class of its own — is carried as a scenario like any other. The join numbers them in the area, `{A}.S1` on, in the cut's order.
 - **An area with no plan** is a phase still to build, its scenarios written from the area.
 - **What it relies on, `relies_on`,** is required of a phase still to build: each earlier phase of this cut, by its number, or another unit, by its name, that builds what it depends on. Each dependency the brief names, on a phase still to build, is among them; `[]` where it relies on nothing.
-- **The notes** are what the corrections leave for the build to settle.
+- **The notes** are what the build must know that no scenario says, with corrections or without: what a correction leaves to settle, a spike's question, where the tracker's text and the plan's differ, and each task still to build that the code already holds — the build reads the code before building it.
 - **The corrections** settle where the manifest and the tracker disagree, each disagreement the phase's brief names, from both and the code. Read the code for what the task or the phase was to build, and say what was found:
   - The code holds it, and the tracker holds the task neither done nor closed: the tracker is wrong. The correction ends the task, named as the brief names it, `"task": "{N}.{n}"`, with its title as the tracker holds it, `"to": "done"`.
   - The code holds it in another way than the task asked, or the work it asked for is no longer wanted: `"to": "closed"`, what was found its reason.
@@ -129,7 +132,11 @@ A phase found built is `{"phase": {"name": "{name}", "goal": "{goal}", "sections
   - The tracker holds the phase's every task ended, and the manifest does not count it built: the phase is built.
   - A task the tracker holds done that the code does not hold stays done; a note for later says what is missing.
 
-  Each correction says, one line each, what disagreed, `was`, what the code shows, `found`, and what was changed, `changed`: the task ended, the phase's mark, or nothing.
+  Each correction says, one line each, what disagreed, `was`, what the code shows, `found`, and what was changed, `changed`: the task ended, the phase's mark, or nothing. One that ends a task names it too, `task`, `title` and `to`, all three; one that changes nothing in the tracker names none of them:
+
+  ```json
+  {"was": "{what disagreed}", "found": "{what the code shows}", "changed": "Nothing in the tracker: the task stands, and the phase is cut still to build."}
+  ```
 
 ### Its Cut
 
@@ -139,7 +146,7 @@ Once every phase's piece has passed its verifier, join them into the unit's plan
 node .claude/skills/leeway-engine/scripts/engine.cjs migrate join {unit} --directive 080-cut-and-merges
 ```
 
-Where the join refuses, write its refusal, as it reads, into the findings of each phase it names, and compose those again. Once it is joined, the cut applies the plan whole, `{plan}` the path the join answers:
+The join refuses a piece no verifier has passed. Where it refuses, write its refusal, as it reads, into the findings of each phase it names, and compose those again. Once it is joined, the cut applies the plan whole, `{plan}` the path the join answers:
 
 ```bash
 node .claude/skills/leeway-engine/scripts/engine.cjs cut {unit} --migrating --file {plan}

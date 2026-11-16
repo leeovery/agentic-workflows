@@ -5,7 +5,7 @@
 // cut and the merges' verbs have run over today's layout: the cross-cutting
 // unit retired, two topics of the building epic split into a new one and a
 // third postponed to the roadmap, the epic then cut by the migration — its
-// phase's piece joined into the plan the cut takes — and the
+// phase's piece, its verifier passing it, joined into the plan the cut takes — and the
 // directive's check passing, then the reshape's finish (081) and the
 // migration's commit. The retired unit's product-wide entries the product
 // record's and no unit's, its questions the product's, which the product's
@@ -68,6 +68,7 @@ async function buildMigrated(folder) {
     notes: [],
     corrections: [],
   }));
+  writeState(dir, layout.cache('migrate', 'cut-and-merges', 'shop', 'phases', '1.findings.txt'), '');
   const { plan } = harness.ok(dir, ['migrate', 'join', 'shop', '--directive', '080-cut-and-merges'], { env: SESSION });
   harness.ok(dir, ['cut', 'shop', '--migrating', '--file', plan], { env: SESSION });
   assert.strictEqual(harness.ok(dir, ['migrate', 'check', '080-cut-and-merges'], { env: SESSION }).passed, true, 'the cut and the merges\' check passes');

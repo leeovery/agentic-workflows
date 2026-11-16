@@ -435,13 +435,13 @@ module.exports = {
     return isBuilding(project, unit, now) ? leavingTopics(/** @type {Record<string, any>} */ (now), project.before(unit)) : null;
   },
   /**
-   * A building unit's sources as the cut reads them (the header's): the
-   * project's folder they are read in, the topics joined into its spec.md
-   * area by area, each with its old spec under `.workflows/`, its old
-   * plans, its leaving topics, the answers staged with its plan, the folder
-   * of the files the move kept as legacy, where it has one, and where its
-   * staging is. Null for a unit that is no building
-   * unit's.
+   * A building unit's sources as the cut reads them (the header's):
+   * `project`, the project's folder they are read in; `areas`, the topics
+   * joined into its spec.md, area by area, each with its old spec under
+   * `.workflows/`; `plans`, its old plans as `plansOf` reads them; `legacy`,
+   * the folder of the files the move kept as legacy, null where it has
+   * none; and `staging`, its staging in the state's cache. Null for a unit
+   * that is no building unit.
    * @param {{projectDir: string, stateDir: string, unit: string}} at
    */
   unitSourcesOf({ projectDir, stateDir, unit }) {

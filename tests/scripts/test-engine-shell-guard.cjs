@@ -82,7 +82,7 @@ const REFUSED = Object.freeze({
   stateCommit: 'a raw git commit in the state worktree (.leeway) is refused — every state commit is the engine\'s, made by the verb that changes the state',
 });
 const BUILD_COMMIT = `a raw git commit is refused while task 1.1 of ${UNIT} is in flight — the build commits through the commit door: \`engine commit --paths <file>… --task ${UNIT} 1.1 -m "<message>"\``;
-const NAMED = 'a shell command naming it is refused, and the Read and Grep tools read it';
+const NAMED = 'a shell command naming it is refused, and the Read tool reads it';
 
 /** The engine's modules a pass of the shell guard loads, by their paths in the scripts folder. */
 const SHELL_GUARD_LOADS = [
