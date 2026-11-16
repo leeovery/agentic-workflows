@@ -16,8 +16,7 @@
 //   another phase's work not landed; a fix phase's on the cut's and the
 //   fixes before it with its own chain, so the fixes make one stack
 //   (7.2.6) — in each repository holding that work, at its tip
-//   (review-change.cjs, `belowTips`); and in the project's own repository
-//   and each clone, where it holds none,
+//   (review-change.cjs, `belowTips`); and in each repository holding none,
 //   at the tip of the branch it lands on, as the landing driver reads it
 //   (project-layout.cjs, `startsAt`). The branch is checked out there, the
 //   worktree's files moving to it where it is clean, the branch the
@@ -27,27 +26,24 @@
 //   onto the chain's tip as it lands (12.7.1). The commit each repository's
 //   branch is made at is recorded in the checkout's cache (round-report.cjs,
 //   `recordLaidOut`), where its pair's range starts (brief-records.cjs).
-// - Each child repository — a clone or a submodule nested in the project's
-//   folder at any depth, as the project's own checkout has them
-//   (kernel/repos.cjs) — gets a worktree of that repository at its folder
-//   there, on a branch of the same name, each laid out before the
-//   repositories nested in it: a submodule's branch made at the commit its
-//   holder's laid-out commit points it at, as a checkout of that commit lays
-//   it out — at the submodule's own checkout's commit where that commit
-//   points it nowhere — and a clone's at the tip of the branch it lands on,
-//   as the project's own repository's is, never its checkout, which may be
-//   on the person's own work; where the repository holds the unit's work
-//   not landed below the task, at that work's tip; or, where the branch is
-//   made already and no worktree has it out, checked out as it stands. A
-//   worktree of that repository already at the folder, on another branch,
-//   takes the branch as the project's own repository does. A child
-//   repository the task never changes holds the branch with nothing on it,
-//   which the landing passes over (landing.cjs); merging a parallel task back is Claude's (12.7.1),
+// - Each child repository — a clone nested in the project's folder at any
+//   depth, as the project's own checkout has them (kernel/repos.cjs) — gets
+//   a worktree of that repository at its folder there, on a branch of the
+//   same name, each laid out before the repositories nested in it, the
+//   branch made at the tip of the branch it lands on, as the project's own
+//   repository's is, never its checkout, which may be on the person's own
+//   work; where the repository holds the unit's work not landed below the
+//   task, at that work's tip; or, where the branch is made already and no
+//   worktree has it out, checked out as it stands. A worktree of that
+//   repository already at the folder, on another branch, takes the branch as
+//   the project's own repository does. A child repository the task never
+//   changes holds the branch with nothing on it, which the landing passes
+//   over (landing.cjs); merging a parallel task back is Claude's (12.7.1),
 //   and the landing's chain lands it, so nothing here merges. Each child
 //   repository's worktree added is prepared as Claude Code prepares the
 //   root, the files its `.worktreeinclude` names copied and the directories
-//   the project's settings name linked (worktree-prep.cjs), so its tools
-//   run with their dependencies.
+//   the project's settings name linked (worktree-prep.cjs), so its tools run
+//   with their dependencies.
 // - Once the worktree is laid out, the steps the environment setup runs in
 //   each worktree are run in the project's folder there (worktree-prep.cjs,
 //   environment.cjs; 22.5.1) — after the include is copied, at the root by
@@ -72,14 +68,12 @@
 //   first: each with the task's branch out — never a repository's own
 //   checkout — and each in the worktree recorded for it, so a conversation
 //   that lost its record leaves none behind. The registration of one whose
-//   folder is gone goes with them, and a submodule's folder is left empty,
-//   as a checkout of its holder leaves it, so no child repository holds the
-//   branch out, and the worktree itself is left for Claude Code or plain git
-//   to remove; the branches are the landing's, and stay. One holding changes
-//   not committed refuses the verb before anything moves: its own files, and
-//   a nested submodule's pointer moved, staged or not; what a nested
-//   repository holds is that repository's to answer for, and a nested
-//   clone's folder, which it never tracks, is no change. Removal failing
+//   folder is gone goes with them, so no child repository holds the branch
+//   out, and the worktree itself is left for Claude Code or plain git to
+//   remove; the branches are the landing's, and stay. One holding changes
+//   not committed refuses the verb before anything moves: its own files;
+//   what a nested repository holds is that repository's to answer for, and
+//   a nested clone's folder, which it never tracks, is no change. Removal failing
 //   partway leaves the task in flight, so the verb run again finishes it.
 //
 // A task started again — after a `/clear`, in a new conversation and a new
@@ -115,14 +109,14 @@
 const fs = require('fs');
 const path = require('path');
 const { handedSession } = require('../kernel/process.cjs');
-const { tryGit, dirtyEntries } = require('../kernel/git.cjs');
+const { dirtyEntries } = require('../kernel/git.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { realpathOrSelf, within } = require('../kernel/isolated-git.cjs');
-const { projectRepos, repoOf, repoPath, repoName, mappedSubmodules, placeOf, folderUnder } = require('../kernel/repos.cjs');
+const { projectRepos, repoName, placeOf, folderUnder } = require('../kernel/repos.cjs');
 const { tasksInFlight, taskAt } = require('./conversation.cjs');
 const { recordWorktree } = require('./position.cjs');
 const { recordLaidOut } = require('./round-report.cjs');
-const { commitOf, heldIn, startsAt, startOf, layOut } = require('./project-layout.cjs');
+const { commitOf, heldIn, startsAt, layOut } = require('./project-layout.cjs');
 const { preparedLinkOf, removePreparedLinks, prepareWorktreeSteps } = require('./worktree-prep.cjs');
 const { refusing } = require('./staged-payload.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
@@ -241,15 +235,13 @@ function dirtIn(repos, trees) {
 
 /**
  * Child repositories' worktrees removed, deepest first, each with the links
- * its preparation made, a submodule's folder left empty as a checkout of
- * its holder leaves it: where each was.
+ * its preparation made: where each was.
  * @param {Repo[]} repos the project's, in its own checkout @param {ChildTree[]} trees
  */
 function removeChildTrees(repos, trees) {
   return trees.map(({ repo, tree }) => {
     removePreparedLinks(repo, folderIn(repo, tree), () => repos[0].path);
     lg.removeWorktree(repo.path, tree.path);
-    if (gitlinkAt(tree.path)) fs.mkdirSync(tree.path);
     return tree.path;
   });
 }
@@ -298,18 +290,17 @@ function heldElsewhere(ref, repos, repo, branch, trees, session) {
 
 /**
  * What `repo`'s folder at `at`, in a worktree of it, holds not committed,
- * named from there: its own files, and a nested submodule's pointer moved,
- * staged or not — never what a nested repository holds, its own to answer
- * for, the folder of a clone nested in it, which it never tracks, nor a
- * link the worktree's preparation made (worktree-prep.cjs).
+ * named from there: its own files — never what a nested repository holds,
+ * its own to answer for, the folder of a clone nested in it, which it never
+ * tracks, nor a link the worktree's preparation made (worktree-prep.cjs).
  * @param {Repo[]} repos the project's, in its own checkout @param {Repo} repo @param {string} at
  * @returns {string[]}
  */
 function uncommitted(repos, repo, at) {
   const clones = repos.slice(1).map((other) => heldIn(repos, other))
-    .filter(({ holder, submodule }) => holder === repo && !submodule).map(({ folder }) => `${folder}/`);
+    .filter(({ holder }) => holder === repo).map(({ folder }) => `${folder}/`);
   const prepared = preparedLinkOf(() => repos[0].path);
-  return dirtyEntries(at, repo.prefix, [], true).filter((entry) => !(entry.status === '??' && clones.includes(entry.path)) && !prepared(at, entry)).map((entry) => lg.plain(entry.path));
+  return dirtyEntries(at, repo.prefix).filter((entry) => !(entry.status === '??' && clones.includes(entry.path)) && !prepared(at, entry)).map((entry) => lg.plain(entry.path));
 }
 
 /**
@@ -339,10 +330,10 @@ function inPlace(ref, repos, repo, at, branch, trees, session, start) {
   if (made === undefined) {
     const commit = start ?? commitOf(at, 'HEAD');
     if (commit !== commitOf(at, 'HEAD')) refuseUncommitted(repos, repo, at, `${branch} is made at ${lg.short(commit)}, where the task is built on`);
-    return { repo, at, commit, make: { inPlace: true, start: commit } };
+    return { repo, at, make: { inPlace: true, start: commit } };
   }
   refuseUncommitted(repos, repo, at, `${branch} is made already`);
-  return { repo, at, commit: made, make: { inPlace: true, start: null }, ...(taken === null ? {} : { taken }) };
+  return { repo, at, make: { inPlace: true, start: null }, ...(taken === null ? {} : { taken }) };
 }
 
 /**
@@ -352,7 +343,7 @@ function inPlace(ref, repos, repo, at, branch, trees, session, start) {
  */
 function ownPart(ref, repos, { top, root, trees }, branch, session, base) {
   const [own] = repos;
-  if (trees.find((tree) => lg.samePlace(tree.path, top))?.branch === branch) return { repo: own, at: root, commit: commitOf(root, 'HEAD'), make: null };
+  if (trees.find((tree) => lg.samePlace(tree.path, top))?.branch === branch) return { repo: own, at: root, make: null };
   return inPlace(ref, repos, own, root, branch, trees, session, base.get(own.dir));
 }
 
@@ -364,26 +355,25 @@ function occupied(at) {
 
 /**
  * A child repository's part: its worktree there already, on the branch or
- * taking it in place, or one to add, made at what the task is built on
- * there, else where `startOf` says — refused where its folder holds
- * anything else, or the branch is out in another worktree than those the
- * layout removes as it takes the branch over.
- * @param {TaskRef} ref @param {Repo[]} repos @param {Repo} repo @param {string} root @param {string} branch @param {Map<string, Part>} parts @param {string} session @param {Set<string>} removing the worktrees' paths @param {Map<string, string>} base
+ * taking it in place, or one to add, made where it starts (`startsAt`) —
+ * refused where its folder holds anything else, or the branch is out in
+ * another worktree than those the layout removes as it takes the branch
+ * over.
+ * @param {TaskRef} ref @param {Repo[]} repos @param {Repo} repo @param {string} root @param {string} branch @param {string} session @param {Set<string>} removing the worktrees' paths @param {Map<string, string>} base
  * @returns {Part}
  */
-function childPart(ref, repos, repo, root, branch, parts, session, removing, base) {
+function childPart(ref, repos, repo, root, branch, session, removing, base) {
   const at = path.join(root, repo.dir);
   const trees = lg.worktrees(repo.path).filter((tree) => !removing.has(tree.path));
   const there = trees.find((tree) => lg.samePlace(tree.path, at));
   if (there !== undefined && !fs.existsSync(there.path)) throw goneRefusal(repo, there, `${repo.dir} in this worktree is a worktree of ${repo.dir}, at ${there.path}`);
-  if (there?.branch === branch) return { repo, at, commit: commitOf(at, 'HEAD'), make: null };
+  if (there?.branch === branch) return { repo, at, make: null };
   if (there !== undefined) return inPlace(ref, repos, repo, at, branch, trees, session, base.get(repo.dir));
   if (occupied(at)) throw refusal(`${repo.dir} in this worktree holds something other than a worktree of ${repo.dir} — move it out of the way, then run it again`);
   heldElsewhere(ref, repos, repo, branch, trees, session);
   const made = lg.branches(repo.path).get(branch);
-  if (made !== undefined) return { repo, at, commit: made, make: { inPlace: false, start: null } };
-  const start = base.get(repo.dir) ?? startOf(repos, repo, parts);
-  return { repo, at, commit: start, make: { inPlace: false, start } };
+  if (made !== undefined) return { repo, at, make: { inPlace: false, start: null } };
+  return { repo, at, make: { inPlace: false, start: /** @type {string} */ (base.get(repo.dir)) } };
 }
 
 /**
@@ -417,38 +407,23 @@ function laidOut(cwd, ref, read) {
   const base = startsAt(project, ref.unit, repos, below().belowTips(project, ref.unit, ref.phase, repos));
   const own = ownPart(ref, repos, here, branch, session, base);
   const removing = new Set(own.taken?.children.map(({ tree }) => tree.path));
-  /** @type {Map<string, Part>} */
-  const parts = new Map([['', own]]);
-  for (const repo of repos.slice(1)) parts.set(repo.dir, childPart(ref, repos, repo, here.root, branch, parts, session, removing, base));
+  const parts = [own, ...repos.slice(1).map((repo) => childPart(ref, repos, repo, here.root, branch, session, removing, base))];
   const removed = own.taken === undefined ? [] : removeChildTrees(repos, own.taken.children);
   if (own.taken !== undefined) lg.detach(own.taken.tree.path);
-  layOut([...parts.values()], branch, project);
-  recordLaidOut(cwd, ref, Object.fromEntries([...parts.values()].flatMap(({ repo, make }) => (make === null || make.start === null ? [] : [[repo.dir, make.start]]))));
+  layOut(parts, branch, project);
+  recordLaidOut(cwd, ref, Object.fromEntries(parts.flatMap(({ repo, make }) => (make === null || make.start === null ? [] : [[repo.dir, make.start]]))));
   const { recorded } = recordWorktree(session, ref.unit, shownTask(ref), here.top);
   return {
     task: shownTask(ref),
     id: taskId(ref),
     branch,
     worktree: here.top,
-    repos: [...parts.values()].map(({ repo, at, make }) => ({ repo: repoName(repo), path: at, ...(make === null ? { already: true } : {}) })),
+    repos: parts.map(({ repo, at, make }) => ({ repo: repoName(repo), path: at, ...(make === null ? { already: true } : {}) })),
     ...(own.taken === undefined ? {} : { taken_over: { worktree: own.taken.tree.path, removed } }),
     recorded,
     ...(committed === undefined ? {} : { committed }),
     ...(warnings === undefined ? {} : { warnings }),
   };
-}
-
-/**
- * Whether a checkout of a submodule's holder tracks it at `at` — a gitlink
- * its `.gitmodules` maps, never a nested clone `git add` staged there
- * (kernel/repos.cjs): emptied as its worktree goes, the folder is made
- * again, as that checkout leaves it.
- * @param {string} at
- */
-function gitlinkAt(at) {
-  const parent = path.dirname(at);
-  if (!fs.existsSync(parent) || !(tryGit(parent, ['ls-files', '--stage', '--', path.basename(at)]) ?? '').startsWith('160000 ')) return false;
-  return mappedSubmodules(placeOf(parent)).includes(path.basename(at));
 }
 
 /**

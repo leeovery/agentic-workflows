@@ -9,8 +9,7 @@
 // own phase's chain alone, at its tip in each repository holding it, else
 // at the tip of the branch it lands on —
 // the isolation's own branch left as it stands, and lays each child
-// repository out at its folder on the same branch — a submodule at the
-// commit the laid-out commit points it at, a clone at the branch it lands
+// repository out at its folder on the same branch — at the branch it lands
 // on, whatever its checkout is on, a branch made already checked out as it
 // stands, a worktree already there on another branch taking it in place as
 // the project's own does, switched to where clean — recording the worktree
@@ -48,7 +47,7 @@ const fs = require('fs');
 const path = require('path');
 
 const {
-  ok, refuses, git, tip, createFile, initRepo, addSubmodule, statePath, commitAll, confirmEnvironment, holdLock, lockAttempts, layout, FROZEN_AT,
+  ok, refuses, git, tip, createFile, initRepo, statePath, commitAll, confirmEnvironment, holdLock, lockAttempts, layout, FROZEN_AT,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { NESTED, NESTED_TASKS, TRACKER, commitFiles, followRemedy } = require('./landing-world.cjs');
@@ -84,7 +83,7 @@ function followingRemedies(dir, tree, session) {
 }
 
 describe('task worktree: every repository laid out (12.7.10, 7.2.21)', () => {
-  it('makes the task\'s branch in place and lays each child repository out on it — a submodule at the commit the worktree\'s commit points it at, a clone at the branch it lands on, its checkout on a branch of its own — recording the worktree against the task and the commit each repository was laid out at, the isolation\'s branch left as it stands', () => {
+  it('makes the task\'s branch in place and lays each child repository out on it — at the branch it lands on, its checkout on a branch of its own — recording the worktree against the task and the commit each repository was laid out at, the isolation\'s branch left as it stands', () => {
     const at = project();
     git(at.ext, ['checkout', '-q', rates.branch]);
     git(at.lib, ['checkout', '-q', cache.branch]);
@@ -99,12 +98,11 @@ describe('task worktree: every repository laid out (12.7.10, 7.2.21)', () => {
       repos: [{ repo: '.', path: tree }, { repo: 'ext', path: path.join(tree, 'ext') }, { repo: 'lib', path: path.join(tree, 'lib') }],
       recorded: true,
     });
-    assert.deepStrictEqual(checkoutsOf(tree), [[FEES, was.head], [FEES, tip(at.dir, 'HEAD:ext')], [FEES, tip(at.lib, NESTED.lib.into)]]);
-    assert.notStrictEqual(tip(at.dir, 'HEAD:ext'), tip(at.ext, 'HEAD'), 'the submodule\'s own checkout is elsewhere');
-    assert.notStrictEqual(tip(at.lib, NESTED.lib.into), tip(at.lib, 'HEAD'), 'the clone\'s own checkout is elsewhere');
+    assert.deepStrictEqual(checkoutsOf(tree), [[FEES, was.head], [FEES, tip(at.ext, NESTED.ext.into)], [FEES, tip(at.lib, NESTED.lib.into)]]);
+    for (const [clone, { into }] of [[at.ext, NESTED.ext], [at.lib, NESTED.lib]]) assert.notStrictEqual(tip(clone, into), tip(clone, 'HEAD'), 'the clone\'s own checkout is elsewhere');
     assert.deepStrictEqual([tip(at.dir, 'worktree-agent-a'), git(tree, ['status', '--porcelain'])], [was.head, was.status]);
     assert.deepStrictEqual(readPosition(session)?.tasks, [{ task: '3.1', builder: null, reviewers: [], worktree: tree }]);
-    assert.deepStrictEqual(laidOutOf(at.dir, { unit: UNIT, phase: 3, n: 1 }), { '': was.head, ext: tip(at.dir, 'HEAD:ext'), lib: tip(at.lib, NESTED.lib.into) });
+    assert.deepStrictEqual(laidOutOf(at.dir, { unit: UNIT, phase: 3, n: 1 }), { '': was.head, ext: tip(at.ext, NESTED.ext.into), lib: tip(at.lib, NESTED.lib.into) });
   });
 
   it('12.7.10: lays a task of the cut out on its own phase\'s chain alone, never where the isolation started nor on another phase\'s work not landed — with nothing of its phase chained, at the tip of the branch each repository lands on; then at its chain\'s tip, so a phase relying on nothing unfinished, started beside one still open whose review\'s fix then moves its chain, lays its next task out with no refusal', () => {
@@ -129,8 +127,8 @@ describe('task worktree: every repository laid out (12.7.10, 7.2.21)', () => {
     ok(b, layOut('3.2'), as(session));
 
     assert.notStrictEqual(started, tip(at.dir, 'main'), 'the isolation started behind the branch the project lands on');
-    assert.deepStrictEqual(first, [[FEES, tip(at.dir, 'main')], [FEES, tip(at.dir, 'main:ext')], [FEES, tip(at.lib, NESTED.lib.into)]]);
-    assert.deepStrictEqual(checkoutsOf(b), [[SHOW, tip(at.dir, FEES)], [SHOW, tip(at.dir, `${FEES}:ext`)], [SHOW, tip(at.lib, NESTED.lib.into)]]);
+    assert.deepStrictEqual(first, [[FEES, tip(at.dir, 'main')], [FEES, tip(at.ext, NESTED.ext.into)], [FEES, tip(at.lib, NESTED.lib.into)]]);
+    assert.deepStrictEqual(checkoutsOf(b), [[SHOW, tip(at.dir, FEES)], [SHOW, tip(at.ext, NESTED.ext.into)], [SHOW, tip(at.lib, NESTED.lib.into)]]);
   });
 
   it('makes a task of one of the review\'s fix phases on the unit\'s work not landed below it, at that work\'s tip in each repository holding it — refused, making nothing, where the worktree has changes not committed (7.2.6)', () => {
@@ -192,12 +190,14 @@ describe('task worktree: every repository laid out (12.7.10, 7.2.21)', () => {
     assert.deepStrictEqual(checkoutsOf(tree)[2], [FEES, tip(at.lib, cache.branch)]);
   });
 
-  it('lays out only the folder of a larger repository the project is, a submodule there at the commit its path from the repository\'s top points it at (7.2.17)', () => {
+  it('lays out only the folder of a larger repository the project is, a clone in it at the branch it lands on (7.2.17)', () => {
     const at = project();
-    const upstream = initRepo(path.join(path.dirname(at.dir), 'deep'));
-    git(upstream, ['commit', '-q', '--allow-empty', '-m', 'deep']);
-    const deep = addSubmodule(at.dir, 'app/deep', upstream);
-    git(deep, ['commit', '-q', '--allow-empty', '-m', 'past the pointer']);
+    createFile(at.dir, 'app/app.txt', 'app\n');
+    commitAll(at.dir, 'the app');
+    const deep = initRepo(path.join(at.dir, 'app', 'deep'));
+    git(deep, ['commit', '-q', '--allow-empty', '-m', 'deep']);
+    git(deep, ['checkout', '-q', '-b', 'mine']);
+    git(deep, ['commit', '-q', '--allow-empty', '-m', 'past the branch it lands on']);
     const session = building(at.dir, ['3.1']);
     const tree = isolation(at.dir, 'a');
     const app = path.join(tree, 'app');
@@ -205,8 +205,7 @@ describe('task worktree: every repository laid out (12.7.10, 7.2.21)', () => {
     const answer = ok(app, layOut('3.1'), as(session));
 
     assert.deepStrictEqual([answer.worktree, answer.repos], [tree, [{ repo: '.', path: app }, { repo: 'deep', path: path.join(app, 'deep') }]]);
-    assert.deepStrictEqual(checkoutsOf(app, ['.', 'deep'])[1], [FEES, tip(at.dir, 'HEAD:app/deep')]);
-    assert.notStrictEqual(tip(at.dir, 'HEAD:app/deep'), tip(deep, 'HEAD'), 'the submodule\'s own checkout is elsewhere');
+    assert.deepStrictEqual(checkoutsOf(app, ['.', 'deep'])[1], [FEES, tip(deep, 'main')]);
   });
 
   it('refuses, making nothing: no conversation, the task not in flight, the project\'s own checkout, another task\'s worktree, a task with no type, its branch made already where this worktree has changes not committed or out in another worktree, a child\'s folder holding something else', () => {
@@ -268,7 +267,7 @@ describe('task worktree: every repository laid out (12.7.10, 7.2.21)', () => {
     git(path.join(b, NESTED.lib.folder), ['checkout', '--', 'lib.txt']);
     ok(b, layOut('3.2'), as(session));
 
-    assert.deepStrictEqual(checkoutsOf(a), [[FEES, tip(at.dir, rates.branch)], [FEES, tip(at.dir, `${rates.branch}:ext`)], [FEES, tip(at.lib, NESTED.lib.into)]]);
+    assert.deepStrictEqual(checkoutsOf(a), [[FEES, tip(at.dir, rates.branch)], [FEES, tip(at.ext, NESTED.ext.into)], [FEES, tip(at.lib, NESTED.lib.into)]]);
     assert.strictEqual(dirty, `task worktree: ${SHOW} is made already, and ${path.join(b, 'lib')} has changes not committed: lib.txt, so nothing was laid out — commit them, or move them out of the way, then run it again`);
     assert.deepStrictEqual(checkoutsOf(b)[2], [SHOW, tip(at.lib, cache.branch)]);
   });
@@ -298,9 +297,9 @@ describe('task worktree: every repository laid out (12.7.10, 7.2.21)', () => {
     assert.deepStrictEqual(refused, before);
 
     assert.deepStrictEqual(answer.taken_over, { worktree: a, removed: [path.join(a, 'ext'), path.join(a, 'lib')] });
-    assert.deepStrictEqual(checkoutsOf(b), [[FEES, built.project], [FEES, tip(at.dir, `${FEES}:ext`)], [FEES, built.lib]]);
+    assert.deepStrictEqual(checkoutsOf(b), [[FEES, built.project], [FEES, tip(at.ext, FEES)], [FEES, built.lib]]);
     assert.deepStrictEqual([git(a, ['rev-parse', '--abbrev-ref', 'HEAD']).trim(), tip(a, 'HEAD'), git(a, ['status', '--porcelain'])], ['HEAD', built.project, '']);
-    assert.deepStrictEqual([fs.readdirSync(path.join(a, 'ext')), fs.existsSync(path.join(a, 'lib'))], [[], false]);
+    assert.deepStrictEqual(['ext', 'lib'].map((folder) => fs.existsSync(path.join(a, folder))), [false, false]);
     assert.deepStrictEqual(readPosition(session)?.tasks, [{ task: '3.1', builder: null, reviewers: [], worktree: b }]);
   });
 

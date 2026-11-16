@@ -72,34 +72,11 @@
 //   stands, onto the default branch over their merge base, as a pull request
 //   squash-merges — over where its own work starts, where the default branch
 //   lacks that commit — under the message the seam gives it (the context's
-//   `message`), each submodule's pointer settled as a phase's first landing
-//   settles it — refused where that conflicts, the way on to merge the
+//   `message`) — refused where that conflicts, the way on to merge the
 //   default branch into its branch, and where its branch holds another
 //   task's work not landed, as the seam refuses it (`refuseHeld`). It moves
 //   the default branch alone: the phase's branch stays at its landing, so a
 //   later change of any task it landed is read off it again.
-// - A submodule's pointer: decided as its repository's phase merges, after
-//   the submodule's own (landing.cjs merges children first). A landing moves
-//   it where its commit points it other than the commit below it does
-//   (`stackMoves`), so a pointer inherited from a phase below is no move of
-//   it. Each that moves it is pointed at the submodule's landing, past the
-//   default branch's pointer, of the work it carries — the newest task whose
-//   work its commits the submodule lacks are — as the one read of what
-//   has landed reads it, or kept as it is where none is, or the submodule has
-//   not landed that task past that pointer, a pin kept — and each that does
-//   not keeps the pointer of the landing below it, the default branch's for
-//   the first, so every landing the default branch gains names a commit on
-//   the submodule's, or the task's own pin. The engine's own move never
-//   moves it back: a landing the pointer before it holds moves nothing
-//   (landing-git.cjs, `pointerFrom`); a pin, at a commit the submodule
-//   landed none of its task's work for, lands as the task wrote it, forward
-//   or back, as GitHub's squash lands it. Git never merges such a pointer:
-//   the phase is replayed onto the default branch wherever one changes. It
-//   waits for the merge, not the open: until then each landing keeps its
-//   task's own tree, which every check above reads, and a submodule's phase
-//   replayed onto a default branch that moved on makes commits no open could
-//   have named. A default branch the seam re-points (landing.cjs) gains one
-//   commit onto it, the branch moved to it, as a quick-fix's squash moves it.
 // - Finish: the phase merged next, the lowest with something to land — a
 //   stack not merged, or a phase merged with a task waiting — that stacks on
 //   no phase not merged; the seam makes each merge in turn (landing.cjs),
@@ -117,9 +94,7 @@
 //   which the seam takes where the branch here is gone — opening it again
 //   moving the ref to the branch as it stands, `already` where it stands
 //   there. Its merge squashes the branch onto the default branch as one
-//   commit under its landing's message, as GitHub squashes a pull request —
-//   each submodule the branch moves pointed at its landing, every other as
-//   the default branch points it, so git never merges two moves of one —
+//   commit under its landing's message, as GitHub squashes a pull request,
 //   and moves the default branch to it, refused,
 //   nothing moved, where the squash conflicts, naming the way on, or the
 //   default branch is out with changes in the way; the opening is then
@@ -145,7 +120,6 @@ const { messageOf } = require('../../../kernel/call.cjs');
 /** @typedef {import('../../../domain/task-id.cjs').TaskRef} TaskRef */
 /** @typedef {import('../../../domain/landing.cjs').LandingContext} LandingContext */
 /** @typedef {import('../../../domain/landing.cjs').LandingTask} LandingTask */
-/** @typedef {import('../../../domain/landing-git.cjs').Pointers} Pointers */
 
 /** A commit as git gives it. @typedef {{sha: string, tree: string, message: string}} Commit */
 /** A commit on a phase's branch, and the unit's tasks it lands. @typedef {Commit & {refs: TaskRef[]}} Line */
@@ -657,32 +631,15 @@ function replayed(stack) {
 }
 
 /**
- * The pointers the stack's commits record of each of the repository's
- * submodules (see the header) — null where it holds none — and whether each
- * records its own, so the stack lands as it stands.
- * @param {LandingContext} ctx @param {Replayed[]} commits @param {string} intoTip
- * @returns {(Pointers & {kept: boolean})|null}
- */
-function pointersOf(ctx, commits, intoTip) {
-  const paths = ctx.gitlinks;
-  if (paths.length === 0) return null;
-  const moves = lg.stackMoves(ctx, commits.map(({ sha }) => ({ sha, parents: [`${sha}^`] })), intoTip, (sub) => sub.into);
-  const held = lg.pointersAt(ctx.root, commits.map(({ sha }) => sha), paths);
-  const kept = moves.every((moved, i) => [...moved].every(([at, sha]) => sha === (held[i].get(at) ?? null)));
-  return { paths, moves, kept };
-}
-
-/**
  * The stack's commits replayed onto the default branch, as its pull
- * requests squash onto it, each submodule's pointer as `pointers` records
- * it — refused, naming the conflict and the way on, where one of them
- * conflicts there.
- * @param {LandingContext} ctx @param {Stack} stack @param {Replayed[]} commits @param {string} intoTip @param {Pointers|null} pointers
+ * requests squash onto it — refused, naming the conflict and the way on,
+ * where one of them conflicts there.
+ * @param {LandingContext} ctx @param {Stack} stack @param {Replayed[]} commits @param {string} intoTip
  */
-function replayOnto(ctx, stack, commits, intoTip, pointers) {
+function replayOnto(ctx, stack, commits, intoTip) {
   const { root, into } = ctx;
   try {
-    return lg.replay(root, commits, intoTip, into, pointers ?? undefined);
+    return lg.replay(root, commits, intoTip, into);
   } catch (err) {
     if (!(err instanceof lg.Conflict)) throw err;
     const way = lg.remedy(root, stack.branch, lg.rewrite(stack.branch, lg.quoted(into), `bring ${stack.branch} up to date with ${into}`));
@@ -722,11 +679,10 @@ const landedEmpty = (ctx, tasks) => (tasks.length === 0 ? {} : { landed_empty: t
 
 /**
  * Merge a stack into the default branch. Where the stack lands as its
- * branch stands — the default branch where it was cut, every submodule's
- * pointer its own (`pointersOf`), and no task of it changed after its
- * landing, whose change lands alone — the default branch fast-forwards to
- * it. Else the commits of its tasks never landed are
- * replayed onto the default branch, both branches moved to them
+ * branch stands — the default branch where it was cut, and no task of it
+ * changed after its landing, whose change lands alone — the default
+ * branch fast-forwards to it. Else the commits of its tasks never landed
+ * are replayed onto the default branch, both branches moved to them
  * (`moveBoth`) — a task landed by hand never lands again, nor is it
  * answered merged. A task whose change the default branch held already
  * lands as a commit that changes nothing, which the answer names. A task
@@ -749,14 +705,13 @@ function mergeStack(ctx, refs, stacks, stack) {
   refuseMoved(ctx, refs, stack.tasks.map(({ ref }) => ref));
   const merged = { into, merged: stack.tasks.map((landed) => shownTask(landed.ref)).filter((shown) => stands.get(shown) !== 'landed') };
   const commits = replayed(stack).filter((commit) => commit.tasks.some((shown) => stands.get(shown) === 'unlanded'));
-  const pointers = pointersOf(ctx, commits, intoTip);
   /** @type {{commit: string, empty: string[]}} */
   let landed;
-  if (changed.length === 0 && lg.isAncestor(root, intoTip, stack.tip) && (pointers === null || pointers.kept)) {
+  if (changed.length === 0 && lg.isAncestor(root, intoTip, stack.tip)) {
     movedDefault(ctx, intoTip, stack.tip);
     landed = { commit: stack.tip, empty: [] };
   } else {
-    const { tip, empty } = replayOnto(ctx, stack, commits, intoTip, pointers);
+    const { tip, empty } = replayOnto(ctx, stack, commits, intoTip);
     moveBoth(ctx, stack.branch, stack.tip, intoTip, tip, 'the replay');
     landed = { commit: tip, empty: empty.flatMap(({ tasks }) => tasks) };
   }
@@ -767,44 +722,29 @@ function mergeStack(ctx, refs, stacks, stack) {
 }
 
 /**
- * The pointers a task's branch at `head` moves its repository's submodules
- * to as its change lands alone onto `onto`, as a phase's first landing
- * moves them (`stackMoves`): each the branch's commits past `onto` move,
- * the last of each — null where the repository holds none.
- * @param {LandingContext} ctx @param {string} onto @param {string} head
- * @returns {Map<string, string|null>|null}
- */
-function pointersAgain(ctx, onto, head) {
-  if (ctx.gitlinks.length === 0) return null;
-  return new Map(lg.stackMoves(ctx, lg.commitsPast(ctx.root, head, [onto]), onto, (sub) => sub.into).flatMap((moved) => [...moved]));
-}
-
-/**
  * Land each task of a phase merged that waits for its next merge
  * (`stacksOf`) — changed after its landing, or opened since — as GitHub's
  * driver lands each pull request of a stack merged in part (7.2.23, R30):
- * its branch as it stands merged onto the default branch — one changed
- * after its landing over its tip at that landing, the base its change was
- * read over (the context's `landedOn`, `landedTip`), so just that change
- * lands, what it takes back of its own work among it; one opened
- * since over where its own work starts, where the default branch lacks that
- * commit — a task below it landed by a squash (`startOff`); else over
- * their merge base, as a pull request squash-merges — each submodule's
- * pointer as a phase's first landing settles it (`pointersAgain`) — so git
- * never merges two moves of one — one commit a task under the message the
- * seam gives it (the context's `message`), oldest first, the default
- * branch alone moved to the last: the phase's branch stays at its landing,
- * so a later change of any task it landed is read off it again. Refused,
- * nothing moved, where a task never landed is not where it opened
- * (`refuseMoved`), a task's branch holds another task's work not landed
- * (the context's `refuseHeld`), a task's branch is gone, naming where to
- * make it again, its change conflicts there, naming the paths and the way
- * on — for one read over its tip at its landing, its commits since rebased
- * onto the default branch (`lg.rebasedSince`); for one changed since
- * brought onto it, its commits past their merge base rebased onto it, as a
- * merge of the default branch into a landed task's branch is refused
- * (`lg.rebasedPast`); else the default branch merged in — or the default
- * branch is out with changes in the way.
+ * its branch as it stands merged onto the default branch — one changed after
+ * its landing over its tip at that landing, the base its change was read
+ * over (the context's `landedOn`, `landedTip`), so just that change lands,
+ * what it takes back of its own work among it; one opened since over where
+ * its own work starts, where the default branch lacks that commit — a task
+ * below it landed by a squash (`startOff`); else over their merge base, as a
+ * pull request squash-merges — one commit a task under the message the seam
+ * gives it (the context's `message`), oldest first, the default branch alone
+ * moved to the last: the phase's branch stays at its landing, so a later
+ * change of any task it landed is read off it again. Refused, nothing moved,
+ * where a task never landed is not where it opened (`refuseMoved`), a task's
+ * branch holds another task's work not landed (the context's `refuseHeld`),
+ * a task's branch is gone, naming where to make it again, its change
+ * conflicts there, naming the paths and the way on — for one read over its
+ * tip at its landing, its commits since rebased onto the default branch
+ * (`lg.rebasedSince`); for one changed since brought onto it, its commits
+ * past their merge base rebased onto it, as a merge of the default branch
+ * into a landed task's branch is refused (`lg.rebasedPast`); else the
+ * default branch merged in — or the default branch is out with changes in
+ * the way.
  * @param {LandingContext} ctx @param {Map<string, string>} refs @param {number} phase @param {Waiting[]} waiting
  */
 function landAlone(ctx, refs, phase, waiting) {
@@ -825,13 +765,12 @@ function landAlone(ctx, refs, phase, waiting) {
     ctx.refuseHeld({ ref, branch: own }, head, intoTip);
     const landedAt = changed ? read.landedTip(ref) : null;
     const base = landedAt ?? (changed ? null : startOff(ctx, read, ref, at)) ?? lg.mergeBase(root, at, head);
-    const pointers = pointersAgain(ctx, at, head);
-    const merged = lg.mergeTree(root, pointers === null ? base : lg.pointedLike(root, base, head, ctx.gitlinks), at, head);
+    const merged = lg.mergeTree(root, base, at, head);
     if ('conflicts' in merged) {
       const wayOn = landedAt !== null ? lg.rebasedSince(own, into, landedAt) : changed ? lg.rebasedPast(own, into, base) : `merge ${into} into ${own}, settling the conflict`;
       throw new Error(`land: ${since} change conflicts with ${into} at ${merged.conflicts.map(lg.plain).join(', ')}, so nothing moved — ${wayOn}, and land again`);
     }
-    const tree = pointers === null || pointers.size === 0 ? merged.tree : lg.treeWithPointers(root, merged.tree, pointers);
+    const { tree } = merged;
     if (tree === lg.treesOf(root, [at])[0]) empty.push(shown);
     at = lg.commitTree(root, { tree, parent: at, message: ctx.message(ref), signed }, `task ${shown}'s landing on ${into}`, 'land again');
   }
@@ -942,12 +881,10 @@ function closeQuickFix(ctx, pull) {
 
 /**
  * The quick-fix merged (the header's): its branch squashed onto the default
- * branch as one commit under its landing's message — each submodule it
- * moves pointed at its landing, every other as the default branch points
- * it — the default branch moved to it, then its opening dropped and the
- * head it merged kept; refused, nothing moved, where the squash conflicts
- * or the default branch cannot move. With nothing to land, its opening is
- * dropped alone.
+ * branch as one commit under its landing's message, the default branch moved
+ * to it, then its opening dropped and the head it merged kept; refused,
+ * nothing moved, where the squash conflicts or the default branch cannot
+ * move. With nothing to land, its opening is dropped alone.
  * @param {LandingContext} ctx @param {QuickFixTask|null} landing
  */
 function mergeQuickFix(ctx, landing) {
@@ -961,13 +898,11 @@ function mergeQuickFix(ctx, landing) {
   const refs = lg.branches(root);
   const intoTip = /** @type {string} */ (refs.get(into));
   const at = /** @type {string} */ (refs.get(landing.branch));
-  const base = lg.mergeBase(root, intoTip, at);
-  const merged = lg.mergeTree(root, ctx.gitlinks.length === 0 ? base : lg.pointedLike(root, base, at, ctx.gitlinks), intoTip, at);
+  const merged = lg.mergeTree(root, lg.mergeBase(root, intoTip, at), intoTip, at);
   if ('conflicts' in merged) {
     throw new Error(`land: ${landing.branch} conflicts with ${into} at ${merged.conflicts.map(lg.plain).join(', ')}, so nothing moved — merge ${into} into ${landing.branch}, settling the conflict, and land again`);
   }
-  const tree = landing.pointers.size === 0 ? merged.tree : lg.treeWithPointers(root, merged.tree, landing.pointers);
-  const commit = lg.commitTree(root, { tree, parent: intoTip, message: landing.message, signed: lg.signs(root) }, `${ctx.unit}'s squash onto ${into}`, 'land again');
+  const commit = lg.commitTree(root, { tree: merged.tree, parent: intoTip, message: landing.message, signed: lg.signs(root) }, `${ctx.unit}'s squash onto ${into}`, 'land again');
   movedDefault(ctx, intoTip, commit);
   forget([[`${quickFixUnder(ctx.unit)}merged/${commit}`, at]]);
   return { into, merged: landing.tasks, commit };
@@ -1010,22 +945,6 @@ function finished(ctx) {
   lg.updateRefs(ctx.root, { drop });
 }
 
-/**
- * The default branch's submodules pointed at their landings (the header's):
- * one commit onto it, the default branch moved to it — refused, nothing
- * moved, where it cannot move.
- * @param {LandingContext} ctx @param {Map<string, string>} pointers by path from the repository's top
- */
-function repoint(ctx, pointers) {
-  const { root, into } = ctx;
-  const intoTip = /** @type {string} */ (lg.branches(root).get(into));
-  const listed = [...pointers.keys()].map(lg.plain);
-  const message = names.pointedMessage(ctx.unit, listed);
-  const commit = lg.commitTree(root, { tree: lg.treeWithPointers(root, intoTip, pointers), parent: intoTip, message, signed: lg.signs(root) }, `${listed.join(', ')}'s pointer on ${into}`, 'land again');
-  movedDefault(ctx, intoTip, commit);
-  return { commit };
-}
-
 module.exports = {
   kind: 'landing',
   name: 'local',
@@ -1044,7 +963,6 @@ module.exports = {
   openQuickFix,
   mergeQuickFix,
   closeQuickFix,
-  repoint,
   landUnit,
   closeUnit,
   finished,

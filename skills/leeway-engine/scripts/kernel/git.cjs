@@ -167,15 +167,13 @@ function literally(paths) {
 }
 
 /**
- * Whether the given pathspecs differ from HEAD (worktree or index). A
- * submodule differs only where its pointer has moved: work uncommitted
- * inside it is no change a commit here can record.
+ * Whether the given pathspecs differ from HEAD (worktree or index).
  * @param {string} cwd
  * @param {string[]} specs
  * @returns {boolean}
  */
 function hasChangesInPaths(cwd, specs) {
-  return git(cwd, ['status', '--porcelain', '--ignore-submodules=dirty', '--', ...specs]).trim() !== '';
+  return git(cwd, ['status', '--porcelain', '--', ...specs]).trim() !== '';
 }
 
 /**
@@ -268,9 +266,9 @@ function liesInside(folder, spec) {
 
 /**
  * The pathspecs holding out each nested repo's folder one of the paths
- * reaches inside, where `add` would take in an untracked repo as a gitlink
- * or a submodule's moved pointer. Only those: `add` refuses an ignored
- * folder an exclude names once its walk meets it.
+ * reaches inside, where `add` would take in an untracked repo as a
+ * gitlink. Only those: `add` refuses an ignored folder an exclude names
+ * once its walk meets it.
  * @param {string[]} nested @param {string[]} specs
  * @returns {string[]}
  */
@@ -280,19 +278,16 @@ function heldOutOf(nested, specs) {
 
 /**
  * How the commit door stages the paths it is named, one way for an
- * ordinary commit and a merge's (`commitPathspec`, `commitMerge`): `files`,
- * those not a nested repo's folder named itself, which is a submodule's
- * `pointers`; `held`, the pathspecs holding each other nested folder out of
- * a file path that reaches inside it (`heldOutOf`), a link the worktree's
- * preparation made among them where the caller names it nested; and
- * `addable`, the files git can stage.
+ * ordinary commit and a merge's (`commitPathspec`, `commitMerge`): `held`,
+ * the pathspecs holding each nested folder out of a path that reaches
+ * inside it (`heldOutOf`), a link the worktree's preparation made among
+ * them where the caller names it nested; and `addable`, the paths git can
+ * stage.
  * @param {string} cwd the repo's root @param {string[]} specs as the repo names them @param {string[]} nested
- * @returns {{files: string[], pointers: string[], held: string[], addable: string[]}}
+ * @returns {{held: string[], addable: string[]}}
  */
 function stagingOf(cwd, specs, nested) {
-  const pointers = specs.filter((spec) => nested.includes(spec));
-  const files = specs.filter((spec) => !nested.includes(spec));
-  return { files, pointers, held: heldOutOf(nested.filter((folder) => !pointers.includes(folder)), files), addable: stageableSpecs(cwd, files) };
+  return { held: heldOutOf(nested, specs), addable: stageableSpecs(cwd, specs) };
 }
 
 /**
@@ -325,9 +320,7 @@ function stageFiles(cwd, { addable, held }) {
  * mailbox, a work unit with no seeds).
  *
  * `nested` names the folders of the repos nested in this one, held out of
- * the paths that reach inside them (`heldOutOf`). A nested folder named
- * itself is a submodule's pointer: tracked, so committed as the folder
- * stands, never added, and never held out of a path that holds it.
+ * the paths that reach inside them (`heldOutOf`).
  *
  * Refuses while a merge, cherry-pick, revert, rebase or bisect is in
  * progress, touching nothing. Where no commit lands — git refuses it, a hook
@@ -341,11 +334,12 @@ function stageFiles(cwd, { addable, held }) {
  */
 function commitPathspec(cwd, pathspec, message, nested = []) {
   refuseMidOperation(cwd);
-  const staging = stagingOf(cwd, Array.isArray(pathspec) ? pathspec : [pathspec], nested);
-  const { files, pointers, held, addable } = staging;
+  const specs = Array.isArray(pathspec) ? pathspec : [pathspec];
+  const staging = stagingOf(cwd, specs, nested);
+  const { held, addable } = staging;
   return stagedAside(cwd, addable, () => {
     stageFiles(cwd, staging);
-    const known = [...files.filter((p) => addable.includes(p) || hasStagedDeletions(cwd, p)), ...pointers];
+    const known = specs.filter((p) => addable.includes(p) || hasStagedDeletions(cwd, p));
     if (known.length === 0) return null;
     const scope = [...literally(known), ...held];
     if (!hasChangesInPaths(cwd, scope)) return null;
@@ -466,20 +460,16 @@ function unmergedPast(cwd, specs) {
 /**
  * Finish the merge in progress: `specs`, the resolution, staged as an
  * ordinary commit stages them (`stagingOf`), the nested folders `nested`
- * names held out, and a submodule's pointer named staged as its folder
- * stands; then the merge committed whole — everything the merge staged with
- * them, as a merge commit is. A path left unmerged under `cwd` that `specs`
- * does not stage is the caller's to refuse first (`unmergedPast`), and so is
- * an index holding what the door never commits; one outside `cwd`, git's
- * own commit refuses.
+ * names held out; then the merge committed whole — everything the merge
+ * staged with them, as a merge commit is. A path left unmerged under `cwd`
+ * that `specs` does not stage is the caller's to refuse first
+ * (`unmergedPast`), and so is an index holding what the door never commits;
+ * one outside `cwd`, git's own commit refuses.
  * @param {string} cwd the repo's root @param {string[]} specs as the repo names them @param {string} message @param {string[]} [nested]
  * @returns {string} the short commit sha
  */
 function commitMerge(cwd, specs, message, nested = []) {
-  const staging = stagingOf(cwd, specs, nested);
-  stageFiles(cwd, staging);
-  const pointers = staging.pointers.filter((folder) => indexEntries(cwd, [folder]).length > 0);
-  if (pointers.length > 0) gitIndexed(cwd, ['add', '--', ...literally(pointers)]);
+  stageFiles(cwd, stagingOf(cwd, specs, nested));
   gitIndexed(cwd, ['commit', '-q', '-m', message]);
   return shortHead(cwd);
 }
@@ -588,20 +578,17 @@ function commitIndexEntries(cwd, specs, message, removed = []) {
  * cwd's folder from there (kernel/repos, `placeOf`), is taken off.
  * NUL-separated so paths with spaces or non-ASCII bytes survive; a rename
  * record's second field (the source path) is consumed with it. With
- * `pointersOnly`, a submodule differs only where its pointer moved, staged
- * or not, never for what it holds itself. With `renames` off, a rename reads
- * as its two paths, the source deleted and the target added.
+ * `renames` off, a rename reads as its two paths, the source deleted and the
+ * target added.
  * @param {string} cwd
  * @param {string} prefix
  * @param {string[]} [exclude]
- * @param {boolean} [pointersOnly]
  * @param {boolean} [renames]
  * @returns {{path: string, status: string}[]}
  */
-function dirtyEntries(cwd, prefix, exclude = [], pointersOnly = false, renames = true) {
-  const submodules = pointersOnly ? ['--ignore-submodules=dirty'] : [];
+function dirtyEntries(cwd, prefix, exclude = [], renames = true) {
   const pairs = renames ? [] : ['--no-renames'];
-  const fields = git(cwd, ['status', '--porcelain', '-z', '--untracked-files=all', ...pairs, ...submodules, '--', '.', ...excluding(exclude)]).split('\0');
+  const fields = git(cwd, ['status', '--porcelain', '-z', '--untracked-files=all', ...pairs, '--', '.', ...excluding(exclude)]).split('\0');
   /** @type {{path: string, status: string}[]} */
   const entries = [];
   for (let i = 0; i < fields.length; i++) {
@@ -624,19 +611,18 @@ function hasCommits(cwd) {
 
 /**
  * Every commit whose subject `selects`, oldest first, with the paths under
- * `cwd`, named from it, that it touched, `exclude` left out — a commit that
- * touched none of the rest is not one of `cwd`'s. A move names both its
- * paths. `grep` narrows the walk as a fixed string; `selects` tests the
- * whole subject. NUL-separated names, so no path is quoted, and no
+ * `cwd`, named from it, that it touched — a commit that touched none is
+ * not one of `cwd`'s. A move names both its paths. `grep` narrows the walk
+ * as a fixed string; `selects` tests the whole subject. NUL-separated
+ * names, so no path is quoted, and no
  * signature is read among them whatever the user's `log.showSignature`. A
  * repo with no commits yet has none.
  * @param {string} cwd
  * @param {string} grep
  * @param {(subject: string) => boolean} selects
- * @param {string[]} [exclude]
  * @returns {{sha: string, subject: string, paths: string[]}[]}
  */
-function commitsBySubject(cwd, grep, selects, exclude = []) {
+function commitsBySubject(cwd, grep, selects) {
   if (!hasCommits(cwd)) return [];
   const out = git(cwd, ['log', '--reverse', '--relative', '--no-renames', '--no-show-signature', '--fixed-strings', `--grep=${grep}`,
     '--format=%x1e%H%x09%s', '--name-only', '-z']);
@@ -645,8 +631,7 @@ function commitsBySubject(cwd, grep, selects, exclude = []) {
     const head = end < 0 ? record : record.slice(0, end);
     const tab = head.indexOf('\t');
     const subject = head.slice(tab + 1);
-    const paths = end < 0 ? [] : record.slice(end).split('\0').map((name) => name.replace(/^\n+/, ''))
-      .filter((p) => p !== '' && !exclude.includes(p));
+    const paths = end < 0 ? [] : record.slice(end).split('\0').map((name) => name.replace(/^\n+/, '')).filter((p) => p !== '');
     return selects(subject) && paths.length > 0 ? [{ sha: head.slice(0, tab), subject, paths }] : [];
   });
 }

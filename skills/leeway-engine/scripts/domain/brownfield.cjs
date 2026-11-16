@@ -303,11 +303,10 @@ function treeShape(paths) {
  * commit, the commits before that arrival (as commits, not a count alone)
  * and the project tree they arrived into. A project inside a larger
  * repository reads the commits that touched its folder. A repo with no
- * commits yet adds nothing, a shallow nested clone its tree alone, and a
- * submodule's pointer is never one of the root's files. Null when there is
- * no honest history to read — not a git repository, no commits, a shallow
- * root, or a git read that failed — leaving the judgment to the tree. Any
- * other failure is a bug, and throws.
+ * commits yet adds nothing, and a shallow nested clone its tree alone.
+ * Null when there is no honest history to read — not a git repository, no
+ * commits, a shallow root, or a git read that failed — leaving the
+ * judgment to the tree. Any other failure is a bug, and throws.
  * @param {string} cwd
  * @returns {BrownfieldSignal|null}
  */
@@ -322,14 +321,13 @@ function brownfieldSignal(cwd) {
     ];
     const commitsTotal = sum(accounts.map((a) => a.commits));
     if (commitsTotal === 0) return null;
-    const repoDirs = new Set(nested.map((repo) => repo.dir));
     return {
       root_date: accounts.flatMap((a) => (a.rootDate === null ? [] : [a.rootDate])).sort()[0],
       workflows_date: arrival && arrival.date,
       commits_total: commitsTotal,
       commits_before: sum(accounts.map((a) => a.history.length)),
       history_before: elided(mergedByTime(accounts.map((a) => a.history))),
-      ...treeShape(accounts.flatMap((a) => a.files).filter((p) => !repoDirs.has(p))),
+      ...treeShape(accounts.flatMap((a) => a.files)),
     };
   } catch (err) {
     if (err instanceof GitError) return null;

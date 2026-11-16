@@ -8,13 +8,9 @@
 //
 // - Where each repository starts, where no commit is given for it as a
 //   reviewer's brief gives each (`layOutCommits`): at the tip of the
-//   branch given for it, where one is (`startsAt`); else the project's own
-//   repository and each clone at the tip of the branch it lands on, as the
-//   landing driver reads it (landing.cjs, `landingTips`); and a submodule
-//   at the commit its
-//   holder, as laid out, points it at — its own checkout's where that
-//   points it nowhere, as a checkout of that commit lays it out
-//   (`startOf`).
+//   branch given for it, where one is; else at the tip of the branch it
+//   lands on, as the landing driver reads it (landing.cjs, `landingTips`)
+//   (`startsAt`).
 // - Where each sits: the project's folder in the worktree — a project
 //   nested in a larger repository is that folder of it, never the
 //   repository's top (kernel/code-root.cjs) — and each child repository at
@@ -38,7 +34,7 @@
 const fs = require('fs');
 const path = require('path');
 const { git, tryGit } = require('../kernel/git.cjs');
-const { repoOf, repoPath, topPath, checkoutTop, folderUnder } = require('../kernel/repos.cjs');
+const { repoOf, repoPath, checkoutTop, folderUnder } = require('../kernel/repos.cjs');
 const lg = require('./landing-git.cjs');
 const { prepareWorktree, prepareWorktreeSteps, LAYOUTS, LAYOUT } = require('./worktree-prep.cjs');
 
@@ -58,64 +54,39 @@ const landing = () => require('./landing.cjs');
 
 /**
  * One repository's part of the layout: the repository, as the project's own
- * checkout has it; its folder in the worktree; the commit its checkout
- * there is at once laid out; and how it takes its place, or null where it
- * has it already.
- * @typedef {{repo: Repo, at: string, commit: string, make: Make|null}} Part
+ * checkout has it; its folder in the worktree; and how it takes its place,
+ * or null where it has it already.
+ * @typedef {{repo: Repo, at: string, make: Make|null}} Part
  */
 
 /** A commit a repository names, in full. @param {string} root @param {string} rev */
 const commitOf = (root, rev) => git(root, ['rev-parse', '--verify', `${rev}^{commit}`]).trim();
 
 /**
- * The repository a child repository is nested in, its folder from there,
- * and whether that repository holds it as a submodule.
+ * The repository a child repository is nested in, and its folder from
+ * there.
  * @param {Repo[]} repos @param {Repo} repo
  */
 function heldIn(repos, repo) {
   const holder = repoOf(repos.filter((other) => other !== repo), repo.dir);
-  const folder = repoPath(holder, repo.dir);
-  return { holder, folder, submodule: holder.submodules.includes(folder) };
+  return { holder, folder: repoPath(holder, repo.dir) };
 }
 
 /**
- * The commit a submodule's holder, laid out at `commit`, points it at — its
- * own checkout's where that points it nowhere, as a checkout of that commit
- * lays it out.
- * @param {Repo[]} repos @param {Repo} repo @param {string} commit
- * @returns {string}
- */
-function pointedAt(repos, repo, commit) {
-  const { holder, folder } = heldIn(repos, repo);
-  const [pointers] = lg.pointersAt(holder.path, [commit], [topPath(holder, folder)]);
-  return [...pointers.values()][0] ?? commitOf(repo.path, 'HEAD');
-}
-
-/**
- * Where each repository but a submodule starts, by folder (the header's):
+ * Where each repository starts, by folder (the header's):
  * at the tip of the branch `tips` names for it, else at the tip of the
  * branch it lands on.
  * @param {string} project the project's folder in its own checkout @param {string} unit @param {Repo[]} repos @param {Map<string, string>} tips branches, by folder
  * @returns {Map<string, string>}
  */
 function startsAt(project, unit, repos, tips) {
-  const landsOn = repos.filter((repo) => !tips.has(repo.dir) && (repo.dir === '' || !heldIn(repos, repo).submodule));
+  const landsOn = repos.filter((repo) => !tips.has(repo.dir));
   const landed = landing().landingTips(project, unit, repos, landsOn);
   return new Map(repos.flatMap((repo) => {
     const tip = tips.get(repo.dir);
     if (tip !== undefined) return [[repo.dir, commitOf(repo.path, `refs/heads/${tip}`)]];
     return landed.has(repo.dir) ? [[repo.dir, /** @type {string} */ (landed.get(repo.dir))]] : [];
   }));
-}
-
-/**
- * Where a submodule starts that `startsAt` leaves out: the commit its
- * holder's part points it at.
- * @param {Repo[]} repos @param {Repo} repo @param {Map<string, Part>} parts each laid out before it, by folder
- * @returns {string}
- */
-function startOf(repos, repo, parts) {
-  return pointedAt(repos, repo, /** @type {Part} */ (parts.get(heldIn(repos, repo).holder.dir)).commit);
 }
 
 /** A part laid out as its plan says. @param {Part} part @param {string|null} branch */
@@ -146,14 +117,7 @@ function layOut(parts, branch, project) {
  * @returns {Repo[]}
  */
 function layOutAt(project, unit, repos, tips, top) {
-  const starts = startsAt(project, unit, repos, tips);
-  /** @type {Map<string, Part>} */
-  const parts = new Map();
-  for (const repo of repos) {
-    const commit = starts.get(repo.dir) ?? startOf(repos, repo, parts);
-    parts.set(repo.dir, { repo, at: '', commit, make: null });
-  }
-  return layOutCommits(project, repos, new Map([...parts].map(([dir, { commit }]) => [dir, commit])), top);
+  return layOutCommits(project, repos, startsAt(project, unit, repos, tips), top);
 }
 
 /**
@@ -166,10 +130,7 @@ function layOutAt(project, unit, repos, tips, top) {
  */
 function layOutCommits(project, repos, commits, top) {
   const folder = folderUnder(repos[0], top);
-  const parts = repos.map((repo) => {
-    const commit = /** @type {string} */ (commits.get(repo.dir));
-    return { repo, at: path.join(folder, repo.dir), commit, make: { inPlace: false, start: commit } };
-  });
+  const parts = repos.map((repo) => ({ repo, at: path.join(folder, repo.dir), make: { inPlace: false, start: /** @type {string} */ (commits.get(repo.dir)) } }));
   layOut(parts, null, project);
   prepareWorktreeSteps(project, parts[0].at, top, 'the worktree laid out to run the tests in is not ready');
   return parts.map(({ repo, at }) => ({ ...repo, path: at }));
@@ -205,4 +166,4 @@ function takeApart(repos, top) {
   }
 }
 
-module.exports = { commitOf, heldIn, pointedAt, startsAt, startOf, layOut, layOutAt, layOutCommits, layoutsFolder, layoutFolderName, scratchTop, takeApart };
+module.exports = { commitOf, heldIn, startsAt, layOut, layOutAt, layOutCommits, layoutsFolder, layoutFolderName, scratchTop, takeApart };

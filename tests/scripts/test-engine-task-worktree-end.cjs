@@ -8,14 +8,13 @@
 // task has apart before the tracker moves — each with its branch out, never
 // a repository's own checkout, and each in the worktree recorded for it —
 // deepest first, refused, nothing moved, where one holds changes not
-// committed, a nested submodule's pointer among them though never what the
-// submodule or a nested clone holds; a removal failing leaves the task in
+// committed, a nested clone's gitlink staged among them though never what
+// the nested clone holds; a removal failing leaves the task in
 // flight for the verb run again; so the isolation's worktree is removed
 // plainly and the task laid out again in another. Two tasks side by side,
 // each in its own worktree and branch, commit through the door there — the
 // project's checks reading every repository — and both land, chained, each
-// in the repositories it touched, a submodule's pointer recorded in the
-// repository holding it (12.S15, 12.S53, 7.S19); a commit naming another
+// in the repositories it touched (12.S15, 12.S53, 7.S19); a commit naming another
 // task from a task's worktree, or a laid-out task from outside its own, is
 // refused. Git layer: the task worktree world (task-worktree-world.cjs),
 // built once and copied for each test. Laying the worktree out:
@@ -30,7 +29,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { ok, refuses, refusedPristine, git, tip, createFile, initRepo, addSubmodule, statePath, accountTaken, confirmEnvironment } = require('./engine-harness.cjs');
+const { ok, refuses, refusedPristine, git, tip, createFile, initRepo, statePath, accountTaken, confirmEnvironment } = require('./engine-harness.cjs');
 const { NESTED, landedOn } = require('./landing-world.cjs');
 const { readPosition } = require('../../skills/leeway-engine/scripts/domain/conversation.cjs');
 const { SIDE, UNIT, FEES, SHOW, taskWorktreeWorld, as, building, isolation, layOut, checkoutsOf, statusOf } = require('./task-worktree-world.cjs');
@@ -43,13 +42,11 @@ const registered = (repo) => git(repo, ['worktree', 'list', '--porcelain']).spli
 /** The tasks a default branch gained past the base, oldest first. @param {string} dir @param {string} into */
 const tasksOn = (dir, into) => landedOn(dir, into).map(({ task }) => task);
 
-/** A submodule `inner` and a clone `vendor` nested in the project's clone, each with a commit. @param {string} lib */
+/** The clones `inner` and `vendor` nested in the project's clone, each with a commit. @param {string} lib */
 function nestInLib(lib) {
-  const upstream = initRepo(path.join(path.dirname(path.dirname(lib)), 'inner'));
-  git(upstream, ['commit', '-q', '--allow-empty', '-m', 'inner']);
-  const vendor = initRepo(path.join(lib, 'vendor'));
-  git(vendor, ['commit', '-q', '--allow-empty', '-m', 'vendor']);
-  return { inner: addSubmodule(lib, 'inner', upstream), vendor };
+  const [inner, vendor] = ['inner', 'vendor'].map((folder) => initRepo(path.join(lib, folder)));
+  for (const clone of [inner, vendor]) git(clone, ['commit', '-q', '--allow-empty', '-m', path.basename(clone)]);
+  return { inner, vendor };
 }
 
 describe('task done and task close: the task\'s worktree taken apart', () => {
@@ -81,10 +78,10 @@ describe('task done and task close: the task\'s worktree taken apart', () => {
     assert.deepStrictEqual(kept, { tasks: ['3.1'], trees: laidOut, status: 'in-progress' });
     assert.deepStrictEqual(done, { ok: true, task: '3.1', id: 'pay-3-1', committed: done.committed, removed: [path.join(a, 'ext'), path.join(a, 'lib')] });
     assert.ok(!registered(at.lib).includes(path.join(a, 'lib')), 'lib keeps a registration in the removed worktree');
-    assert.deepStrictEqual(checkoutsOf(b), [[FEES, tip(at.dir, FEES)], [FEES, tip(at.dir, `${FEES}:ext`)], [FEES, tip(at.lib, FEES)]]);
+    assert.deepStrictEqual(checkoutsOf(b), [[FEES, tip(at.dir, FEES)], [FEES, tip(at.ext, NESTED.ext.into)], [FEES, tip(at.lib, FEES)]]);
   });
 
-  it('removes them as a task is closed too, deepest first — a submodule of a clone before the clone — a registration whose folder is gone with them, and one in the worktree recorded for the task though off its branch', () => {
+  it('removes them as a task is closed too, deepest first — the clones in a clone before the clone — a registration whose folder is gone with them, and one in the worktree recorded for the task though off its branch', () => {
     const at = project();
     const { inner } = nestInLib(at.lib);
     const session = building(at.dir, ['3.1']);
@@ -116,27 +113,22 @@ describe('task done and task close: the task\'s worktree taken apart', () => {
     assert.deepStrictEqual([git(at.lib, ['symbolic-ref', '--short', 'HEAD']).trim(), registered(at.lib).includes(detached)], [SHOW, true]);
   });
 
-  it('holds a nested submodule\'s pointer moved, staged or not, as a change its holder has not committed — never what the submodule holds, through the door, nor a nested clone\'s folder', () => {
+  it('holds a nested clone\'s gitlink staged in its holder as a change the holder has not committed — never what the nested clone holds, its own commit made raw', () => {
     const at = project();
     nestInLib(at.lib);
-    const session = building(at.dir, ['3.1', '3.2']);
-    const [a, b] = ['a', 'b'].map((name) => isolation(at.dir, name));
-    ok(a, layOut('3.1'), as(session));
+    const session = building(at.dir, ['3.2']);
+    const b = isolation(at.dir, 'b');
     ok(b, layOut('3.2'), as(session));
-    createFile(a, 'lib/inner/fees.txt', 'fees\n');
-    ok(a, ['commit', '--paths', 'lib/inner/fees.txt', '--task', UNIT, '3.1', '-m', 'feat(pay): add fees'], as(session));
-    const raw = path.join(b, 'lib', 'inner');
-    git(raw, ['commit', '-q', '--allow-empty', '-m', 'raw']);
+    git(path.join(b, 'lib', 'inner'), ['commit', '-q', '--allow-empty', '-m', 'raw']);
+    accountTaken(at.dir, UNIT, '3.2');
 
-    const refusals = [refuses(at.dir, ['task', 'done', UNIT, '3.2'], as(session)).error];
     git(path.join(b, 'lib'), ['add', 'inner']);
-    refusals.push(refuses(at.dir, ['task', 'done', UNIT, '3.2'], as(session)).error);
-    accountTaken(at.dir, UNIT, '3.1');
-    const done = ok(at.dir, ['task', 'done', UNIT, '3.1'], as(session));
+    const refused = refuses(at.dir, ['task', 'done', UNIT, '3.2'], as(session)).error;
+    git(path.join(b, 'lib'), ['reset', '-q', '--', 'inner']);
+    const done = ok(at.dir, ['task', 'done', UNIT, '3.2'], as(session));
 
-    const unpointed = `task done: ${SHOW} is checked out at ${path.join(b, 'lib')}, with changes not committed: inner, so nothing moved — commit them, or move them out of the way, then run it again`;
-    assert.deepStrictEqual(refusals, [unpointed, unpointed]);
-    assert.deepStrictEqual(done.removed, [path.join(a, 'lib', 'vendor'), path.join(a, 'lib', 'inner'), path.join(a, 'ext'), path.join(a, 'lib')]);
+    assert.strictEqual(refused, `task done: ${SHOW} is checked out at ${path.join(b, 'lib')}, with changes not committed: inner, so nothing moved — commit them, or move them out of the way, then run it again`);
+    assert.deepStrictEqual(done.removed, [path.join(b, 'lib', 'vendor'), path.join(b, 'lib', 'inner'), path.join(b, 'ext'), path.join(b, 'lib')]);
   });
 
   it('leaves the task in flight where a removal fails, and the verb run again finishes what is left', () => {
@@ -159,7 +151,7 @@ describe('task done and task close: the task\'s worktree taken apart', () => {
 });
 
 describe('task worktree: tasks side by side (12.S15, 12.S53, 7.S19)', () => {
-  it('two tasks, each in its own worktree and branch, commit through the door there — the project\'s checks reading every repository — and land chained, each in the repositories it touched, the submodule\'s pointer recorded in the project', () => {
+  it('two tasks, each in its own worktree and branch, commit through the door there — the project\'s checks reading every repository — and land chained, each in the repositories it touched', () => {
     const at = project();
     confirmEnvironment(at.dir, { run: { tests: `test -f ${NESTED.lib.folder}/lib.txt && test -f ${NESTED.ext.folder}/ext.txt` } });
     const session = building(at.dir, ['3.1', '3.2']);
@@ -187,7 +179,6 @@ describe('task worktree: tasks side by side (12.S15, 12.S53, 7.S19)', () => {
     ]);
     assert.deepStrictEqual(chained.repos.map(({ repo, stack }) => [repo, stack]), [['ext', ['3.2']], ['.', ['3.1', '3.2']]]);
     assert.deepStrictEqual([tasksOn(at.dir, 'main'), tasksOn(at.lib, NESTED.lib.into), tasksOn(at.ext, NESTED.ext.into)], [['pay-3-1', 'pay-3-2'], ['pay-3-1'], ['pay-3-2']]);
-    assert.strictEqual(tip(at.dir, `main:${NESTED.ext.folder}`), tip(at.ext, NESTED.ext.into));
   });
 
   it('refuses a commit naming another task in flight from a task\'s worktree, and one for a task laid out from outside its worktree, naming the worktree — nothing committed', () => {

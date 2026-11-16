@@ -194,7 +194,7 @@ describe('commit door: never a code commit on the state branch', () => {
 
     assert.throws(() => withCommitLock(state, () => { ran = true; }),
       new RegExp(`^Error: refusing a code commit in ${state}: it has the state branch leeway-state checked out`));
-    assert.throws(() => commitAcrossRepos([{ repo: { dir: '', path: state, heldOut: [], submodules: [] }, paths: ['stray.md'] }], 'stray'),
+    assert.throws(() => commitAcrossRepos([{ repo: { dir: '', path: state, prefix: '', heldOut: [] }, paths: ['stray.md'] }], 'stray'),
       /leeway-state checked out/);
 
     assert.strictEqual(ran, false);

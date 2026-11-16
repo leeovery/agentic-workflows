@@ -7,12 +7,8 @@
 // GitHub's driver does not serve — none chosen, or one not on GitHub —
 // refused before anything moves, at the open or the merge, naming it, with
 // the way on, and one the unit lands nothing in passed over, whatever its
-// remote; the submodule's pointer recorded at its merged tip in one commit
-// on the project's top task branch — a task merged back onto the one below
-// moving nothing — pushed before the project's stack merges, which squashes
-// it into the top task's landing under that task's own subject (7.2.17,
-// 7.2.18); and the pointer's commit refused before it is pushed where the
-// branch is checked out with changes. What is asked of each repository in
+// remote; and the project's stack, a task merged back onto the one below,
+// landed under each task's own subject (7.2.17, 7.2.18). What is asked of each repository in
 // turn is test-landing-nested-each.cjs's; a stack brought up to date with
 // the default branch, test-landing-nested-merge-up.cjs's. Git layer: the
 // nested world (landing-world.cjs), each repository on a fake GitHub of its
@@ -26,7 +22,7 @@ const assert = require('node:assert');
 const path = require('path');
 
 const harness = require('../../scripts/engine-harness.cjs');
-const { NESTED, NESTED_TASKS, openArgs, cutTask, commitFiles, mergeBack, useNestedWorld, finishReady } = require('../../scripts/landing-world.cjs');
+const { NESTED, NESTED_TASKS, openArgs, commitFiles, mergeBack, useNestedWorld, finishReady } = require('../../scripts/landing-world.cjs');
 const side = require('./landing.cjs');
 const { github, bareOf, tipOnGithub, ok, refused } = require('./world.cjs');
 
@@ -64,7 +60,7 @@ describe('GitHub\'s landing driver across nested repositories (7.2.17)', () => {
     assert.deepStrictEqual(pullStates([at.dir, at.ext]), [['OPEN', 'OPEN'], ['OPEN']]);
   });
 
-  it('records the submodule\'s pointer at its merged tip in one commit on the project\'s top task branch, pushed before the project\'s stack merges — a task merged back onto the one below moving nothing — squashed into the top task\'s landing under that task\'s subject; and passes over, in every verb, a clone the unit never touched, with no remote or one not on GitHub, though it holds the unit\'s branches', () => {
+  it('lands the project\'s stack, a task merged back onto the one below, under each task\'s subject; and passes over, in every verb, a clone the unit never touched, with no remote or one not on GitHub, though it holds the unit\'s branches', () => {
     const at = project();
     commitFiles(at.dir, show.branch, 'main', { 'show.txt': 'show\n' });
     mergeBack(at.dir, show.branch, rates.branch);
@@ -80,39 +76,12 @@ describe('GitHub\'s landing driver across nested repositories (7.2.17)', () => {
     assert.deepStrictEqual(repos(ok(at.dir, ['land', 'chain', 'pay', '1.2'])), ['.']);
     assert.deepStrictEqual(repos(ok(at.dir, ['land', 'phase', 'pay', '1'])), ['ext', 'lib', '.']);
 
-    const merged = tipOnGithub(at.ext, NESTED.ext.into);
-    const top = bareOf(at.dir);
-    assert.deepStrictEqual(git(top, ['log', '--first-parent', '--format=%s', `${rates.branch}..${show.branch}`]).split('\n').filter(Boolean), [
-      'chore(pay): point ext at its landing', `merge ${rates.branch} into ${show.branch}`, `work on ${show.branch}`,
+    assert.deepStrictEqual(git(bareOf(at.dir), ['log', '--first-parent', '--format=%s', `${rates.branch}..${show.branch}`]).split('\n').filter(Boolean), [
+      `merge ${rates.branch} into ${show.branch}`, `work on ${show.branch}`,
     ]);
-    assert.strictEqual(git(top, ['rev-parse', `${show.branch}:${NESTED.ext.folder}`]).trim(), merged);
     assert.strictEqual(tip(at.dir, show.branch), tipOnGithub(at.dir, show.branch), 'the branch here is not at the commit pushed');
     assert.deepStrictEqual(side.landed(at.dir).map(({ subject }) => subject), ['feat(pay): Add rates', 'feat(pay): Show rates']);
-    assert.strictEqual(git(top, ['rev-parse', `main:${NESTED.ext.folder}`]).trim(), merged);
     finishReady(at.dir);
     assert.deepStrictEqual(repos(ok(at.dir, ['land', 'finish', 'pay'])), []);
-  });
-
-  it('passes over a submodule the phase lands nothing in — its remote not on GitHub, and a task pinning it off its default branch keeping its pin', () => {
-    const at = project();
-    const release = commitFiles(at.ext, 'release', NESTED.ext.into, { 'release.txt': 'release\n' });
-    git(at.ext, ['remote', 'set-url', 'origin', 'https://git.example.org/acme/ext.git']);
-    const pin = cutTask(at.dir, '4.1', 'chore', 'Pin ext to its release', 'main', {}, { gitlinks: { [NESTED.ext.folder]: release } });
-    ok(at.dir, openArgs(pin));
-    ok(at.dir, ['land', 'phase', 'pay', '4']);
-    assert.strictEqual(git(bareOf(at.dir), ['rev-parse', `main:${NESTED.ext.folder}`]).trim(), release);
-  });
-
-  it('refuses, before the pointer is pushed, a top task branch checked out with changes not committed to the pointer — nothing pushed, the stack left open', () => {
-    const at = project();
-    ok(at.dir, openArgs(rates));
-    ok(at.dir, openArgs(show));
-    const held = path.join(path.dirname(at.dir), 'held');
-    git(at.dir, ['worktree', 'add', '-q', held, show.branch]);
-    git(held, ['update-index', '--cacheinfo', `160000,${tip(at.ext, NESTED.ext.into)},${NESTED.ext.folder}`]);
-    const pushed = tipOnGithub(at.dir, show.branch);
-
-    assert.match(refused(at.dir, ['land', 'phase', 'pay', '1']), new RegExp(`^land: ${show.branch} is checked out at ${held}, with changes not committed: ext, so nothing moved — .+ \\(phase 1 merged in ext, lib before it\\)$`));
-    assert.deepStrictEqual([tipOnGithub(at.dir, show.branch), tip(at.dir, show.branch), pullStates([at.dir])], [pushed, pushed, [['OPEN', 'OPEN']]]);
   });
 });

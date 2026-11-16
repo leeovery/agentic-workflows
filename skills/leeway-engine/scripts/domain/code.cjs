@@ -10,14 +10,14 @@
 //
 // A selector picks commits by subject, those opening with a prefix. Each
 // repo holding one has a base — the parent of its earliest, the empty tree
-// where that is the repo's first commit — and the change since is the range from the base to the repo's HEAD, confined to
-// the files those commits touched, a submodule's pointer never among them.
-// The uncommitted change is each repo's change against HEAD (the empty tree
-// before its first commit), its untracked files read as additions, held out
-// as the dirt is — a link the worktree's preparation made among what is held
-// out (worktree-prep.cjs). A diff names every path from the project, a move as a
-// deletion and an addition, one patch per repo in repo order. Nothing is
-// written.
+// where that is the repo's first commit — and the change since is the range
+// from the base to the repo's HEAD, confined to the files those commits
+// touched. The uncommitted change is each repo's change against HEAD (the
+// empty tree before its first commit), its untracked files read as additions,
+// held out as the dirt is — a link the worktree's preparation made among what
+// is held out (worktree-prep.cjs). A diff names every path from the project,
+// a move as a deletion and an addition, one patch per repo in repo order.
+// Nothing is written.
 // ---------------------------------------------------------------------------
 
 const {
@@ -46,14 +46,13 @@ function subjectSelector(prefix) {
 
 /**
  * Each repo's selected commits, oldest first, and its base. A repo with none
- * is left out. A submodule's pointer is the submodule's change, never its
- * parent's: a commit that recorded nothing else is not one of the parent's.
+ * is left out.
  * @param {Repo[]} repos @param {Selector} selector
  * @returns {{repo: Repo, commits: Commit[], base: string}[]}
  */
 function matchedByRepo(repos, selector) {
   return repos.flatMap((repo) => {
-    const commits = commitsBySubject(repo.path, selector.grep, selector.selects, repo.submodules);
+    const commits = commitsBySubject(repo.path, selector.grep, selector.selects);
     return commits.length === 0 ? [] : [{ repo, commits, base: parentOrEmptyTree(repo.path, commits[0].sha) }];
   });
 }

@@ -37,8 +37,7 @@
 // task's own work starts there (task-base.cjs) to its tip, so neither the
 // tasks a stack holds below it nor the chain it merged back count; a
 // quick-fix's task's the net change of its own commits, the other fixes'
-// left out — renames found, and a submodule's pointer never a file of it, as
-// `verify mutants` leaves it out; the acceptance criteria the task holds
+// left out — renames found; the acceptance criteria the task holds
 // (task-file.cjs), none where its text writes its criteria in the form from
 // before Leeway; how many additions the task holds, whoever made them
 // (13.11.3) — one made after the account means the task changed under it,
@@ -74,7 +73,7 @@
 const fs = require('fs');
 const path = require('path');
 const { statePath } = require('../kernel/state-root.cjs');
-const { git, excluding } = require('../kernel/git.cjs');
+const { git } = require('../kernel/git.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { projectRepos } = require('../kernel/repos.cjs');
 const { writeJsonAtomic, writeTextAtomic } = require('../kernel/manifest-io.cjs');
@@ -228,12 +227,11 @@ function readAccount(text, rounds, settled = []) {
 /** A file a diff changes, by its path after it and, renamed, the one before; its lines added and removed. @typedef {{path: string, from: string|null, added: number, removed: number}} Changed */
 
 /**
- * Each file a diff changes in one repository, renames found, its
- * submodules' pointers left out.
+ * Each file a diff changes in one repository, renames found.
  * @param {Repo} repo @param {string[]} range the diff's revisions @returns {Changed[]}
  */
 function changedOver(repo, range) {
-  const fields = git(repo.path, ['diff', '--numstat', '-z', '--find-renames', ...range, '--', ':(top)', ...excluding(repo.submodules)]).split('\0');
+  const fields = git(repo.path, ['diff', '--numstat', '-z', '--find-renames', ...range, '--', ':(top)']).split('\0');
   /** @type {Changed[]} */
   const rows = [];
   for (let at = 0; fields[at]; at += 1) {

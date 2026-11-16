@@ -5,8 +5,8 @@
 // project with nested repositories (19.5.23, R20): the contract every
 // landing driver meets, run through the engine's verbs against each shipped
 // driver in turn. A park setting aside what the fix had not committed in
-// each repository holding any — the project's, its submodule's and its
-// nested clone's — and its next start putting each back
+// each repository holding any — the project's and each nested clone's — and
+// its next start putting each back
 // (leeway-engine/scripts/domain/fix-aside.cjs); the fix's own commits read
 // in each repository, the other fix's between them left out, by its pair
 // and by its figures, which count their net change: a line changed twice
@@ -63,7 +63,7 @@ for (const { name } of listDrivers('landing')) {
   }
 
   /** What each repository's checkout holds not committed, as git lists it. @param {import('./quick-fix-world.cjs').NestedQuickFix} at */
-  const statuses = (at) => [at.dir, at.ext, at.lib].map((dir) => git(dir, ['status', '--porcelain', '--untracked-files=all', '--ignore-submodules=all']).trim());
+  const statuses = (at) => [at.dir, at.ext, at.lib].map((dir) => git(dir, ['status', '--porcelain', '--untracked-files=all']).trim());
 
   describe(`the ${name} landing driver's quick-fix whose fix a question parks, in nested repositories (19.5.23, R20)`, () => {
     it('a park sets aside the fix\'s work not committed in each repository holding any, the next fix built between, and its next start puts each back; its pair reads its own commits in each repository and its figures count their net change, the other fix\'s left out', async () => {

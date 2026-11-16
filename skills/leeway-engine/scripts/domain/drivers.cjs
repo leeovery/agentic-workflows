@@ -60,7 +60,7 @@ const METHODS = Object.freeze({
     optional: /** @type {const} */ ([]),
   },
   landing: {
-    required: /** @type {const} */ (['serves', 'taken', 'chainTip', 'holds', 'open', 'chain', 'mergePhase', 'nextMerge', 'quickFixPull', 'openQuickFix', 'mergeQuickFix', 'closeQuickFix', 'repoint', 'landUnit', 'closeUnit']),
+    required: /** @type {const} */ (['serves', 'taken', 'chainTip', 'holds', 'open', 'chain', 'mergePhase', 'nextMerge', 'quickFixPull', 'openQuickFix', 'mergeQuickFix', 'closeQuickFix', 'landUnit', 'closeUnit']),
     optional: /** @type {const} */ (['assertServes', 'landsOn', 'landsOnAsFetched', 'pushedOver', 'finished', 'protectBranch', 'setSquashDefault', 'unitPull', 'openUnit']),
   },
 });
@@ -294,34 +294,29 @@ const METHODS = Object.freeze({
  * where the landing read it, `already` where it is; `mergeQuickFix` merges
  * the one that opening answered, given with the landing, the branch
  * squashed onto the branch it lands on as one commit under that message,
- * each submodule the landing names pointed as it names it, or, given no
- * landing, brings that branch here to the host's, answering `already`; and
- * `closeQuickFix` closes the one open unmerged the read given found, as a
- * move closes it, answering whether it did. A unit with a branch of its
- * own lands it on the default branch at finish (landing.cjs), its context's
- * branch the default branch: `unitPull`, where the driver lands through a
- * host, reads the unit's pull request from that branch, the one open and
- * why the host would refuse a merge commit, writing nothing; `openUnit`,
- * there too, opens the unit's pull request from that branch, given its
- * landing, as its review phase begins, where none is open, answering its
- * number and whether it opened it; `landUnit`
+ * or, given no landing, brings that branch here to the host's, answering
+ * `already`; and `closeQuickFix` closes the one open unmerged the read given
+ * found, as a move closes it, answering whether it did. A unit with a branch
+ * of its own lands it on the default branch at finish (landing.cjs), its
+ * context's branch the default branch: `unitPull`, where the driver lands
+ * through a host, reads the unit's pull request from that branch, the one
+ * open and why the host would refuse a merge commit, writing nothing;
+ * `openUnit`, there too, opens the unit's pull request from that branch,
+ * given its landing, as its review phase begins, where none is open,
+ * answering its number and whether it opened it; `landUnit`
  * lands the branch, given its landing, by a merge commit whose first parent
  * is the default branch, under the landing's subject and description — a
  * host's through the unit's pull request, the one open else one opened —
  * the default branch here brought to it, or, given none, that branch here
  * brought to the host's alone, answering `already`; and `closeUnit` closes
  * the open pull request a read given found, answering whether it did.
- * `repoint` points the default branch's
- * submodules, by their paths from the repository's top, at the commits
- * given — one commit onto the branch it lands on, landed as the driver
- * lands a change, a host's through a pull request of its own — answering
- * what it was warned of. Where the host can, run
- * from a repository's checkout against its remote's repository:
+ * Where the host can, run from a repository's checkout against its remote's
+ * repository:
  * `protectBranch` sets a rule refusing a branch's deletion and any push to
  * it that is not a fast-forward (4.4.6), and `setSquashDefault` makes a
  * squash merge's commit the pull request's title and description (7.2.18),
- * left as it is where it does — each answering the repository as its host names it, and
- * why the setting is not made, null where it is.
+ * left as it is where it does — each answering the repository as its host
+ * names it, and why the setting is not made, null where it is.
  * @typedef {(root: string, url: string) => {repository: string, unset: string|null}} HostSetting
  * @typedef {{
  *   serves: (url: string) => boolean,
@@ -342,7 +337,6 @@ const METHODS = Object.freeze({
  *   openQuickFix: (ctx: LandingContext, landing: QuickFixTask) => {already?: true, warnings?: string[]},
  *   mergeQuickFix: (ctx: LandingContext, landing: QuickFixTask|null, opened?: Record<string, any>) => {into: string, merged: string[], warnings?: string[]}|{into: string, already: true, warnings?: string[]},
  *   closeQuickFix: (ctx: LandingContext, pull: QuickFixPull) => {closed: boolean},
- *   repoint: (ctx: LandingContext, pointers: Map<string, string>) => {commit?: string, pull_request?: number, warnings?: string[]},
  *   unitPull?: (ctx: LandingContext, branch: string) => UnitPull,
  *   openUnit?: (ctx: LandingContext, landing: UnitLanding) => {into: string, pull_request: number, opened?: true},
  *   landUnit: (ctx: LandingContext, landing: UnitLanding|null) => {into: string, landed: string, commit?: string, pull_requests?: number[], warnings?: string[]}|{into: string, already: true, warnings?: string[]},

@@ -4,16 +4,15 @@
 // The builder's and the reviewer's briefs beside the rounds (leeway-engine/
 // scripts/domain/brief-records.cjs): the reviewer's scratch worktree laid
 // out as the builder's worktree held each repository, and the calls laying
-// it out at those commits (13.2.2); where the
-// verify setup goes (15.2.11); the builder's own call among the decided
-// calls its reviewers read (13.S17); and the builder's branch against its
-// phase's chain, the merge back it owes where the chain moved past it —
-// each repository's merged and committed through the door, children first,
-// a child's pointer staged at its merged tip — then the task, its account
-// or the report that it merged, by how far the task stands; and the
-// mutation run named once for the phase, by whatever ends its last task
-// once its notes are consolidated, else by the phase review's brief
-// (12.7.10, 15.6.3).
+// it out at those commits (13.2.2); where the verify setup goes (15.2.11);
+// the builder's own call among the decided calls its reviewers read
+// (13.S17); and the builder's branch against its phase's chain, the merge
+// back it owes where the chain moved past it — each repository's merged and
+// committed through the door, children first — then the task, its account or
+// the report that it merged, by how far the task stands; and the mutation
+// run named once for the phase, by whatever ends its last task once its
+// notes are consolidated, else by the phase review's brief (12.7.10,
+// 15.6.3).
 //
 // Layer: verb. World: brief-build-world.cjs's, copied for each test.
 // ---------------------------------------------------------------------------
@@ -22,9 +21,8 @@ require('./hermetic-env.cjs');
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
-const fs = require('fs');
 const path = require('path');
-const { initRepo, commitCode, addSubmodule, accountTaken } = require('./engine-harness.cjs');
+const { initRepo, accountTaken } = require('./engine-harness.cjs');
 const {
   UNIT,
   NESTED,
@@ -53,29 +51,16 @@ describe('the reviewer\'s scratch worktree (13.2.2)', () => {
   /** The scratch worktree's layout task 1.2's reviewer is briefed with: its list, and the calls laying it out. */
   const laidOut = () => /# Laying out your scratch worktree\n\n([^#]*?)\n\n(Lay it out[^#]*)\n\n#/.exec(issued(['reviewer', UNIT, '1.2', '--base', 'main', '--letter', 'a']).brief)?.slice(1);
 
-  it('a task touching the project\'s repository alone lays out every repository, as the builder\'s worktree held them: the project\'s at the range\'s tip, a submodule at the commit that tip points it at, a clone on the task\'s branch, or the branch it lands on where that is not made there', () => {
-    const source = initRepo(path.join(dir, '..', 'ext-source'));
-    fs.writeFileSync(path.join(source, 'one.txt'), 'one\n');
-    commitCode(source, 'one');
-    const first = git(source, ['rev-parse', 'HEAD']).trim();
-    fs.writeFileSync(path.join(source, 'two.txt'), 'two\n');
-    commitCode(source, 'two');
-    addSubmodule(dir, 'ext', source);
-    const pinning = path.join(dir, '..', 'pinning');
-    git(dir, ['worktree', 'add', '-q', pinning, branchOf(1, 2)]);
-    git(pinning, ['update-index', '--add', '--cacheinfo', `160000,${first},ext`]);
-    git(pinning, ['commit', '-q', '-m', 'ext pinned']);
-    git(dir, ['worktree', 'remove', '--force', pinning]);
+  it('a task touching the project\'s repository alone lays out every repository, as the builder\'s worktree held them: the project\'s at the range\'s tip, a clone on the task\'s branch, or the branch it lands on where that is not made there', () => {
     const nested = path.join(dir, NESTED);
     git(nested, ['branch', branchOf(1, 2), 'main']);
 
     const own = `- the project's repository: \`${branchOf(1, 2)}\` — the range's tip there`;
-    const ext = `- \`ext\`: \`${first}\` — a submodule, at the commit the project's repository points it at as laid out`;
     const commitOf = (/** @type {string} */ at, /** @type {string} */ rev) => git(at, ['rev-parse', rev]).trim();
-    const calls = (/** @type {string} */ held) => scratchCalls(`${UNIT}-1.2-a`, commitOf(dir, branchOf(1, 2)), [`ext=${first}`, `${NESTED}=${commitOf(nested, held)}`]);
-    assert.deepStrictEqual(laidOut(), [[own, ext, `- \`${NESTED}\`: \`${branchOf(1, 2)}\` — the task's branch`].join('\n'), calls(branchOf(1, 2))]);
+    const calls = (/** @type {string} */ held) => scratchCalls(`${UNIT}-1.2-a`, commitOf(dir, branchOf(1, 2)), [`${NESTED}=${commitOf(nested, held)}`]);
+    assert.deepStrictEqual(laidOut(), [[own, `- \`${NESTED}\`: \`${branchOf(1, 2)}\` — the task's branch`].join('\n'), calls(branchOf(1, 2))]);
     git(nested, ['branch', '-D', branchOf(1, 2)]);
-    assert.deepStrictEqual(laidOut(), [[own, ext, `- \`${NESTED}\`: \`main\` — the branch it lands on, the task's branch not made there`].join('\n'), calls('main')]);
+    assert.deepStrictEqual(laidOut(), [[own, `- \`${NESTED}\`: \`main\` — the branch it lands on, the task's branch not made there`].join('\n'), calls('main')]);
   });
 });
 
@@ -115,13 +100,14 @@ describe('the builder\'s branch and its phase\'s chain (12.7.10, 15.6.3)', () =>
   });
 
   /**
-   * What the chain slot asks of task `task`: the merges listed, the pointers staged, the door's call, then what comes after.
-   * @param {string} task @param {string[]} merges @param {{pointers?: string[], then?: string}} [options]
+   * What the chain slot asks of task `task`: the merges listed, the door's
+   * call, then what comes after.
+   * @param {string} task @param {string[]} merges @param {{then?: string}} [options]
    */
-  const mergedBack = (task, merges, { pointers = [], then = THEN.building } = {}) => [
+  const mergedBack = (task, merges, { then = THEN.building } = {}) => [
     'Your phase\'s chain has moved on past your branch. Merge its tip back before anything else, from your task\'s worktree, one repository at a time in this order, each merge committed before the next starts:',
     merges.map((merge) => `- \`${merge}\``).join('\n'),
-    `Resolve what conflicts as your task and the chained work both need${pointers.length === 0 ? '' : ` — a child repository's pointer at that repository's merged tip, ${pointers.map((pointer) => `\`${pointer}\``).join(', ')}`}, then commit the merge through the door, naming each file you resolved — or, where nothing conflicted, any file the merge changed: the engine's \`commit --paths {file}… --task pay ${task} -m "{message}"\`, which finishes it.`,
+    `Resolve what conflicts as your task and the chained work both need, then commit the merge through the door, naming each file you resolved — or, where nothing conflicted, any file the merge changed: the engine's \`commit --paths {file}… --task pay ${task} -m "{message}"\`, which finishes it.`,
     then,
   ].join('\n\n');
 
@@ -152,18 +138,16 @@ describe('the builder\'s branch and its phase\'s chain (12.7.10, 15.6.3)', () =>
     assert.deepStrictEqual([building, owed, taken], [mergedBack('1.2', merges), mergedBack('1.2', merges, { then: THEN.owed }), mergedBack('1.2', merges, { then: THEN.taken })]);
   });
 
-  it('a child repository and the project\'s both moved past: the child merged first, with -C, then the project\'s, its pointer at the child\'s merged tip staged', () => {
-    const source = initRepo(path.join(dir, '..', 'ext-source'));
-    fs.writeFileSync(path.join(source, 'one.txt'), 'one\n');
-    commitCode(source, 'one');
-    const ext = addSubmodule(dir, 'ext', source);
+  it('a child repository and the project\'s both moved past: the child merged first, with -C, then the project\'s', () => {
+    const ext = initRepo(path.join(dir, 'ext'));
+    commitFile(ext, 'one.js');
     for (const n of [1, 2]) git(ext, ['branch', branchOf(1, n), 'HEAD']);
     git(ext, ['checkout', '-q', branchOf(1, 1)]);
     commitFile(ext, 'nit.js', `${UNIT}-1-1`);
     git(ext, ['checkout', '-q', '--detach']);
     nitBelow();
 
-    assert.strictEqual(standsAt('1.2'), mergedBack('1.2', [`git -C ext merge --no-ff --no-commit ${branchOf(1, 1)}`, `git merge --no-ff --no-commit ${branchOf(1, 1)}`], { pointers: ['git add ext'] }));
+    assert.strictEqual(standsAt('1.2'), mergedBack('1.2', [`git -C ext merge --no-ff --no-commit ${branchOf(1, 1)}`, `git merge --no-ff --no-commit ${branchOf(1, 1)}`]));
   });
 
   it('two tasks below it moved past it, one stacked on the other: only the chain\'s tip is merged back', () => {

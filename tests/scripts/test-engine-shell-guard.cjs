@@ -356,7 +356,7 @@ describe('raw commits (6.3.7, 6.3.12, 12.9.8)', () => {
     for (const [command] of cases) assertPassed(guard(worktree, command, { session: IDLE }), `out of a build: ${command}`);
   });
 
-  it('N1 (12.7.5, 6.3.7): during a build, a git command but a raw commit that makes a commit passes where it lands on no task\'s branch — the engine\'s own landing remedies as printed, on a phase\'s branch, a submodule\'s or the branch the project lands on — and is refused on a task\'s branch, or where the text cannot say where it runs; a raw commit is refused wherever it runs', () => {
+  it('N1 (12.7.5, 6.3.7): during a build, a git command but a raw commit that makes a commit passes where it lands on no task\'s branch — the engine\'s own landing remedies as printed, on a phase\'s branch or the branch the project lands on — and is refused on a task\'s branch, or where the text cannot say where it runs; a raw commit is refused wherever it runs', () => {
     const phase = 'feat/pay-phase-1';
     git(dir, ['branch', phase]);
     const scratch = path.join(lg.scratchRoot(dir), 'feat-pay-phase-1');
@@ -364,7 +364,7 @@ describe('raw commits (6.3.7, 6.3.12, 12.9.8)', () => {
     git(dir, ['worktree', 'add', '-q', scratch, phase]);
     try {
       const printed = [...rewrite.matchAll(/`([^`]+)`/g)].map(([, command]) => command).filter((command) => / rebase /.test(command));
-      const remedies = [...printed, 'git merge --ff-only origin/main', 'git -C . pull'];
+      const remedies = [...printed, 'git merge --ff-only origin/main'];
       /** A command run on task 1.1's branch: its `-C` the task's worktree, or, with none, run there. @param {string} command @returns {[string, string]} */
       const onTask = (command) => (command.startsWith('git -C ') ? [dir, command.replace(/^git -C (?:'[^']*'|\S+)/, `git -C ${worktree}`)] : [worktree, command]);
       const door = `\`engine commit --paths <file>… --task ${UNIT} 1.1 -m "<message>"\``;

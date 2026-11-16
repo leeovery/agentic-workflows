@@ -206,7 +206,7 @@ function readLimit(ctx, rule) {
 
 /**
  * A file's text, or null where it is not text the merge can take whole: a
- * link or a submodule, over the read budget, a NUL in it, or bytes that do
+ * link or a gitlink, over the read budget, a NUL in it, or bytes that do
  * not come back the same when read as UTF-8.
  * @param {MergeContext} ctx @param {Entry|undefined} entry @returns {string|null}
  */

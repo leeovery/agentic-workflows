@@ -26,8 +26,8 @@
 // made is test-engine-unit-branch.cjs's; the review's reading of the
 // change, test-engine-brief-review.cjs's; a phase's stack still merging
 // over a bring-up, test-engine-landing-conformance-unit.cjs's; finish's
-// conflict, test-engine-landing-conformance-unit-finish.cjs's; a submodule's
-// pointer, test-engine-landing-conformance-nested.cjs's.
+// conflict, test-engine-landing-conformance-unit-finish.cjs's; nested
+// repositories, test-engine-landing-conformance-nested.cjs's.
 // Conformance layer: the landing world (landing-world.cjs,
 // `unitBranchLanded`), its unit's build begun through a cut of five phases
 // and its first phase's start closed, `feat/pay` made, phase 1's task 1.1

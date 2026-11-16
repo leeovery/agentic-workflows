@@ -16,8 +16,8 @@
 // world's identity — so the main checkout stays as the test left it. What
 // landed is read off the default branch past the base, as no config of the
 // person's changes it. The nested world (`buildNested`) is the project with
-// a repository of its own nested in its folder twice — a submodule and a
-// clone — and tasks touching one, some or all of them (`NESTED`). A suite
+// two clones nested in its folder, each a repository of its own the project
+// ignores, and tasks touching one, some or all of them (`NESTED`). A suite
 // takes a copy of a world per call (`useLandingWorld`, `useNestedWorld`) —
 // a nested conformance suite through its driver's side (`nestedConformance`)
 // — readies the unit for finish's landing, its build through a cut of every
@@ -48,7 +48,7 @@ const os = require('os');
 const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 const {
-  ok, git, withEnv, statePath, layout, readState, writeState, commitAll, commitOnState, refuses, fixtureFrom, folderFrom, setupFixtureAt, cleanupFixture, initRepo, addSubmodule, accountFiles, readManifest, FROZEN_AT,
+  ok, git, withEnv, statePath, layout, readState, writeState, commitAll, commitOnState, refuses, fixtureFrom, folderFrom, setupFixtureAt, cleanupFixture, initRepo, accountFiles, readManifest, FROZEN_AT,
 } = require('./engine-harness.cjs');
 const { createManifest, datedAt } = require('./discovery-test-utils.cjs');
 const { listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
@@ -207,24 +207,22 @@ function pinnedSecond() {
 }
 
 /**
- * `files` committed over `from`, less the paths `removed`, and each of
- * `gitlinks` as a nested repository's pointer at its commit, made the tip
+ * `files` committed over `from`, less the paths `removed`, made the tip
  * of `branch` under `message` (`workOn` where none is given), committed at
  * `at`, in seconds, where given, else at the date pinned, else the spaced
  * clock's next second where the world keeps one, else now, no checkout
  * touched.
  * @param {string} dir @param {string} branch @param {string} from @param {Record<string, string>} files
- * @param {{gitlinks?: Record<string, string>, removed?: string[], message?: string, at?: number}} [opts]
+ * @param {{removed?: string[], message?: string, at?: number}} [opts]
  * @returns {string} the commit
  */
-function commitFiles(dir, branch, from, files, { gitlinks = {}, removed = [], message = workOn(branch), at: given } = {}) {
+function commitFiles(dir, branch, from, files, { removed = [], message = workOn(branch), at: given } = {}) {
   const at = given ?? pinnedSecond() ?? (spacing === null ? undefined : nextSecond(spacing));
   const data = (/** @type {string} */ text) => `data ${Buffer.byteLength(text)}\n${text}`;
   const stream = [
     `commit refs/heads/${branch}`, 'mark :1', `committer ${IDENTITY} ${at === undefined ? 'now' : `${at} +0000`}`, data(message), `from ${from}^0`,
     ...removed.map((file) => `D ${file}`),
     ...Object.entries(files).map(([file, text]) => `M 100644 inline ${file}\n${data(text)}`),
-    ...Object.entries(gitlinks).map(([folder, commit]) => `M 160000 ${commit} ${folder}`),
     '', 'get-mark :1', 'done', '',
   ].join('\n');
   return execFileSync('git', ['-c', 'core.ignoreCase=false', 'fast-import', '--quiet', '--force', `--date-format=${at === undefined ? 'now' : 'raw'}`, '--done'], { cwd: dir, encoding: 'utf8', input: stream }).trim();
@@ -379,18 +377,17 @@ function buildLanding(dir) {
 }
 
 /**
- * The repositories the nested world nests in the project's folder: a
- * submodule, and a clone the project ignores, whose default branch is
- * `trunk` — each by its folder and its default branch.
+ * The clones the nested world nests in the project's folder, each one
+ * the project ignores — `lib`'s default branch `trunk` — each by its
+ * folder and its default branch.
  */
 const NESTED = Object.freeze({ ext: { folder: 'ext', into: 'main' }, lib: { folder: 'lib', into: 'trunk' } });
 
 /**
- * The nested world's tasks: 1.1 touches all three repositories, moving the
- * submodule's pointer; 1.2, cut from 1.1, the project's alone; 2.1 the
- * clone's alone. Each has its branch in every repository, as a task's
- * worktree makes it there (12.7.10) — at its default branch where it
- * touches nothing.
+ * The nested world's tasks: 1.1 touches all three repositories; 1.2, cut
+ * from 1.1, the project's alone; 2.1 `lib`'s alone. Each has its branch in
+ * every repository, as a task's worktree makes it there (12.7.10) — at its
+ * default branch where it touches nothing.
  */
 const NESTED_TASKS = Object.freeze({
   rates: { shown: '1.1', type: 'feat', title: 'Add rates', branch: 'feat/pay-1.1-add-rates' },
@@ -398,16 +395,15 @@ const NESTED_TASKS = Object.freeze({
   cache: { shown: '2.1', type: 'fix', title: 'Cache rates', branch: 'fix/pay-2.1-cache-rates' },
 });
 
-/** The nested world's project, by its folder in the world, beside its submodule's upstream. */
+/** The nested world's project, by its folder in the world. */
 const NESTED_PROJECT = 'project';
 
 /**
  * The nested world built in `folder`: the project world, its code on
- * `main` with the submodule `ext` — cloned from its upstream beside the
- * project, its clone keeping no remote, so a copy's names only the copy —
- * and the clone `lib` in its folder (`NESTED`), each repository's base
- * tagged; the branches of `NESTED_TASKS`; and the unit in the tracker
- * (`trackUnit`) with each of them.
+ * `main`, with the clones `ext` and `lib` in its folder (`NESTED`), each
+ * on its own default branch and ignored by the project, each repository's
+ * base tagged; the branches of `NESTED_TASKS`; and the unit in the
+ * tracker (`trackUnit`) with each of them.
  * @param {string} folder
  * @returns {string} the project
  */
@@ -415,20 +411,20 @@ function buildNested(folder) {
   const { rates, show, cache } = NESTED_TASKS;
   const dir = setupFixtureAt(path.join(folder, NESTED_PROJECT));
   seed(dir, 'app.txt');
-  const upstream = initRepo(path.join(folder, NESTED.ext.folder));
-  seed(upstream, 'ext.txt');
-  const ext = addSubmodule(dir, NESTED.ext.folder, upstream);
-  git(ext, ['remote', 'remove', 'origin']);
-  const lib = initRepo(path.join(dir, NESTED.lib.folder));
-  git(lib, ['symbolic-ref', 'HEAD', `refs/heads/${NESTED.lib.into}`]);
-  git(lib, ['config', 'init.defaultBranch', NESTED.lib.into]);
+  const [ext, lib] = [NESTED.ext, NESTED.lib].map(({ folder: at, into }) => {
+    const clone = initRepo(path.join(dir, at));
+    git(clone, ['symbolic-ref', 'HEAD', `refs/heads/${into}`]);
+    git(clone, ['config', 'init.defaultBranch', into]);
+    return clone;
+  });
+  seed(ext, 'ext.txt');
   seed(lib, 'lib.txt');
   fs.mkdirSync(path.join(dir, '.git', 'info'), { recursive: true });
-  fs.appendFileSync(path.join(dir, '.git', 'info', 'exclude'), `/${NESTED.lib.folder}/\n`);
+  fs.appendFileSync(path.join(dir, '.git', 'info', 'exclude'), `/${NESTED.ext.folder}/\n/${NESTED.lib.folder}/\n`);
   for (const repo of [dir, ext, lib]) git(repo, ['tag', BASE]);
-  const pointer = commitFiles(ext, rates.branch, 'main', { 'ext-rates.txt': 'rates\n' });
+  commitFiles(ext, rates.branch, NESTED.ext.into, { 'ext-rates.txt': 'rates\n' });
   commitFiles(lib, rates.branch, NESTED.lib.into, { 'lib-rates.txt': 'rates\n' });
-  commitFiles(dir, rates.branch, 'main', { 'rates.txt': 'rates\n' }, { gitlinks: { [NESTED.ext.folder]: pointer } });
+  commitFiles(dir, rates.branch, 'main', { 'rates.txt': 'rates\n' });
   commitFiles(dir, show.branch, rates.branch, { 'show.txt': 'show\n' });
   commitFiles(lib, cache.branch, NESTED.lib.into, { 'cache.txt': 'cache\n' });
   for (const [repo, task] of [[ext, show], [lib, show], [ext, cache], [dir, cache]]) git(repo, ['branch', task.branch, repo === lib ? NESTED.lib.into : 'main']);
@@ -465,12 +461,6 @@ function landedOn(dir, branch) {
 const landingCommits = (dir, into = 'main') => git(dir, ['log', '--reverse', '--first-parent', '--format=%(trailers:key=Task,valueonly,separator=%x2C)%x1f%H', `${BASE}..${into}`])
   .split('\n').filter(Boolean).map((line) => line.split('\x1f'));
 
-/** Each landing on the project's default branch, oldest first: the task it lands and where it points the submodule at `folder`. @param {string} dir @param {string} [folder] */
-const pointersOn = (dir, folder = NESTED.ext.folder) => landingCommits(dir).map(([task, sha]) => [task, git(dir, ['rev-parse', `${sha}:${folder}`]).trim()]);
-
-/** The nested world's submodule's upstream, beside the project, its commits the submodule's checkout lacks until fetched. @param {Nested} at */
-const extUpstream = (at) => path.join(path.dirname(at.dir), NESTED.ext.folder);
-
 /**
  * A copy of the landing world at each call in a test of the calling file,
  * every copy removed after the test; the world built once per process, and
@@ -486,7 +476,7 @@ function useLandingWorld(prefix, ready = () => {}) {
   }));
 }
 
-/** A copy of the nested world: the project, and its submodule's and clone's checkouts. @typedef {{dir: string, ext: string, lib: string}} Nested */
+/** A copy of the nested world: the project, and its clones' checkouts. @typedef {{dir: string, ext: string, lib: string}} Nested */
 
 /**
  * A copy of the nested world at each call, as `useLandingWorld` copies the
@@ -533,8 +523,7 @@ function useNestedWorld(prefix, ready = () => {}) {
  * under the side's environment; a copy of the nested world readied for it
  * at each call, built once per process (`useNestedWorld`); each
  * repository's checkout and default branch, by the name an answer gives it;
- * the tasks each default branch gained; and where the project's default
- * branch points the submodule.
+ * and the tasks each default branch gained.
  * @param {string} name the driver's
  * @param {string} prefix the copies' temp-directory prefix
  */
@@ -548,21 +537,16 @@ function nestedConformance(name, prefix) {
   });
   /** @param {Nested} at @returns {Record<string, [string, string]>} */
   const repos = (at) => ({ '.': [at.dir, 'main'], ext: [at.ext, NESTED.ext.into], lib: [at.lib, NESTED.lib.into] });
-  /** @param {Nested} at */
-  const pointer = (at) => git(side.on(at.dir), ['rev-parse', `main:${NESTED.ext.folder}`]).trim();
   return {
     side,
     project,
     repos,
-    pointer,
     /** A verb that must go through. @param {string} at @param {string[]} args */
     ok: (at, args) => ok(at, args, env({})),
     /** A verb that must refuse, its refusal. @param {string} at @param {string[]} args @param {Record<string, string>} [more] */
     refuses: (at, args, more = {}) => refuses(at, args, env(more)).error,
     /** The tasks each repository's default branch gained, oldest first. @param {Nested} at */
     tasksLanded: (at) => Object.fromEntries(Object.entries(repos(at)).map(([repo, [dir, into]]) => [repo, side.landed(dir, into).map(({ task }) => task)])),
-    /** Whether the project's default branch points the submodule at its default branch's tip. @param {Nested} at */
-    pointsAtSubmodule: (at) => pointer(at) === side.defaultTip(at.ext, NESTED.ext.into),
   };
 }
 
@@ -791,11 +775,11 @@ const HOSTILE = (dir) => [
   ['merge.default', 'union'], ['pull.twohead', 'ours'],
   ['merge.verifySignatures', 'true'], ['branch.main.mergeOptions', '--squash'], ['rebase.updateRefs', 'true'], ['rebase.backend', 'apply'],
   ['gpg.format', 'ssh'], ['user.signingKey', signingKeyOf(dir)], ['commit.gpgSign', 'yes'],
-  ['color.ui', 'always'], ['diff.noprefix', 'true'], ['diff.relative', 'true'], ['diff.external', 'false'], ['diff.ignoreSubmodules', 'all'],
+  ['color.ui', 'always'], ['diff.noprefix', 'true'], ['diff.relative', 'true'], ['diff.external', 'false'],
   ['status.showUntrackedFiles', 'no'], ['status.branch', 'true'], ['status.short', 'true'], ['format.pretty', 'oneline'], ['log.decorate', 'full'],
   ['rebase.autoSquash', 'true'], ['rebase.autoStash', 'true'], ['rebase.rebaseMerges', 'true'], ['merge.autoStash', 'true'], ['merge.ff', 'false'],
   ['merge.conflictStyle', 'diff3'], ['rerere.enabled', 'true'], ['branch.autoSetupMerge', 'always'], ['push.autoSetupRemote', 'true'],
-  ['worktree.guessRemote', 'true'], ['submodule.recurse', 'true'],
+  ['worktree.guessRemote', 'true'],
 ];
 
 /**
@@ -1090,7 +1074,7 @@ function mergedInto(dir, branch, from = 'main', settled = 'ours', forward = true
 }
 
 module.exports = {
-  UNIT, BASE, TASKS, NESTED, NESTED_TASKS, TRACKER, openArgs, own, track, cutTask, commitFiles, minuteBefore, mergeBack, buildLanding, buildNested, setLandingDriver, landedOn, landingCommits, pointersOn, extUpstream, pathsOn, useLandingWorld, useNestedWorld, nestedConformance, reviewReady, finishReady, phaseReviewed,
+  UNIT, BASE, TASKS, NESTED, NESTED_TASKS, TRACKER, openArgs, own, track, cutTask, commitFiles, minuteBefore, mergeBack, buildLanding, buildNested, setLandingDriver, landedOn, landingCommits, pathsOn, useLandingWorld, useNestedWorld, nestedConformance, reviewReady, finishReady, phaseReviewed,
   cutOf, buildBegun, startClosed, unitBranchLanded, landedHere, tasksLandedHere, heldOn, mergedInto, spaceCommits, stepped,
   refusedMoving, alreadyMoving, wordsOf, commandsOf, rebaseStopped, followRemedy, followedOn,
   personState, followed, signatures, short, shellWord, scratchOf, way, moveStep, rebasingIn, rebaseSteps, checkoutOf, heldRefusal, strayRefusal, rebasingRefusal, stops, stoppedRebase,

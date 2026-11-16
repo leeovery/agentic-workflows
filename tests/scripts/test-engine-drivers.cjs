@@ -70,9 +70,9 @@ describe('loadDriver and listDrivers', () => {
     }
   });
 
-  it('refuses a landing driver lacking the methods a quick-fix\'s one pull request is read, opened, merged and closed through, a default branch\'s submodules pointed at their landings, and a unit\'s own branch landed and its pull request closed', () => {
+  it('refuses a landing driver lacking the methods a quick-fix\'s one pull request is read, opened, merged and closed through, and a unit\'s own branch landed and its pull request closed', () => {
     const root = landingRoot();
-    const lacking = ['quickFixPull', 'openQuickFix', 'mergeQuickFix', 'closeQuickFix', 'repoint', 'landUnit', 'closeUnit'];
+    const lacking = ['quickFixPull', 'openQuickFix', 'mergeQuickFix', 'closeQuickFix', 'landUnit', 'closeUnit'];
     fs.mkdirSync(path.join(root, 'landing', 'lacking'), { recursive: true });
     fs.writeFileSync(path.join(root, 'landing', 'lacking', 'driver.cjs'),
       `module.exports = require(${JSON.stringify(path.join(FIXTURES, 'fixture-driver.cjs'))})({ kind: 'landing', name: 'lacking', isDefault: false }, { lacking: ${JSON.stringify(lacking)} });\n`);

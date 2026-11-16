@@ -193,13 +193,11 @@ function commitPathspecScoped(cwd, pathspec, message) {
  * The code commit across the project's repos: each repo's share of the paths
  * — its `commitGroups` group, in their order, deepest first — committed
  * under that repo's own commit lock, with the same message, its `heldOut`
- * folders held out — a parent never commits a nested repo's folder, and
- * records a submodule's new pointer only where the call reached into that
- * submodule. A repo whose commit fails fails the call, naming itself and the
+ * folders held out — a parent never commits a nested repo's folder. A repo
+ * whose commit fails fails the call, naming itself and the
  * commits already made; re-running it is the retry, as those repos have
- * nothing left in the paths and a moved pointer is recorded whatever moved
- * it. A repo with a merge in progress finishes it, its paths the
- * resolution (`commitMerge`).
+ * nothing left in the paths. A repo with a merge in progress finishes it,
+ * its paths the resolution (`commitMerge`).
  * @param {{repo: import('../kernel/repos.cjs').Repo, paths: string[]}[]} groups
  * @param {string} message
  * @returns {{repo: string, sha: string}[]} the commits made, `.` naming the root

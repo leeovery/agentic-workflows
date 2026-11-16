@@ -243,7 +243,8 @@ describe('land: the default branch everything lands on', () => {
 describe('land open: a task judged by its own change', () => {
   it('takes nothing the default branch gained since the task was cut for the task\'s own change', () => {
     const dir = project();
-    git(dir, ['update-index', '--add', '--cacheinfo', `160000,${tip(dir, 'main')},vendor/lib`]);
+    fs.writeFileSync(path.join(dir, 'vendor.txt'), 'vendored\n');
+    git(dir, ['add', 'vendor.txt']);
     git(dir, ['commit', '-q', '-m', 'vendor the lib']);
     assert.strictEqual(
       refuses(dir, openArgs(card)).error,
@@ -270,11 +271,11 @@ describe('land open: a task judged by its own change', () => {
       );
     });
 
-    it('opens a task that changes a folder outside the project, a nested repository\'s pointer there among it, read from its own folder alone — the change landing as the branch holds it', () => {
+    it('opens a task that changes a folder outside the project, read from its own folder alone — the change landing as the branch holds it', () => {
       const [dir, app] = nested();
-      const shared = cutTask(dir, '1.4', 'feat', 'Share it', 'main', { 'app/app.txt': 'app\n', 'other/o.txt': 'o\n' }, { gitlinks: { 'other/lib': tip(dir, 'main') } });
+      const shared = cutTask(dir, '1.4', 'feat', 'Share it', 'main', { 'app/app.txt': 'app\n', 'other/o.txt': 'o\n' });
       ok(app, openArgs(shared));
-      assert.deepStrictEqual(landedOn(dir, 'feat/pay-phase-1').map(({ paths }) => paths), [['app/app.txt', 'other/lib', 'other/o.txt']]);
+      assert.deepStrictEqual(landedOn(dir, 'feat/pay-phase-1').map(({ paths }) => paths), [['app/app.txt', 'other/o.txt']]);
     });
 
     it('names a nested repository holding work on the task\'s branch from the project\'s folder, its refusal given there', () => {

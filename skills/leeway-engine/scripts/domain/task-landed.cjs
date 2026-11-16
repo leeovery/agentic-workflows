@@ -91,75 +91,64 @@
 // commits among them, are never on it — committed since its unit's work
 // began: on its work branch past the revision, where the caller names one —
 // a quick-fix's one branch; else on its work branch as it stands here
-// (`lg.lastStamped`) — where that line holds none, the newest its tip
-// holds, as its branch fast-forwarded onto a default branch a merge commit
-// landed it on leaves it; else, its branch gone, the newest anywhere the
-// repository holds it, on any ref or reflog, so a branch deleted loses none
-// — never on a branch the engine kept a moved branch's work aside on, a
-// task of its own, nor a commit dropped from a branch that stands. Only
-// content decides a landing (R28), and never when a commit was made: two
-// made in one second read as they do a second apart, or a clock set wrong.
-// The one name of one read is a `Task:` line, which the engine's squash
-// writes, and the door's stamp, which every commit of a task and every copy
-// of one carries, never names one. Where it has a last commit, the task has
-// landed where the revision holds that commit; or where a commit on the
-// revision's first-parent line past where that commit was cut, changing a
-// path its work changes, held its change — merging its last commit there,
-// over the commit below its own work, would have changed nothing, so a
-// task undoing work below it, landed or not, is change still to land (S3);
-// a submodule's pointer held where the submodule holds it
-// (`lg.holdChanges`); and the line held the change its work is laid on
-// there (`holdsTaskChange`) — or a copy of each of its own
-// commits was there (`holdsCopy`) — as the engine's squash, its
-// pointers moved to the submodules' landings, a rebase's copies, git's own
-// squash, a squash under the person's own message, the person's duplicate
-// work by hand, and a cherry-pick of every commit of it land it, a
-// cherry-pick of some of them never; or where its work changes nothing
-// past the revision; or, its change gone from the line, as a later fix
-// reverting it in a pull request leaves it, where a pull request the host
-// merged holds that commit, landed as one whose work changes nothing
-// (`pulledAt`). One laid on the revision, changing something there, has
-// not landed. Where it has none, it has landed where a commit on the
-// revision names it by its `Task:` line. A task holds work in a
-// repository where it has such a commit there, or has landed there; across
-// the project's repositories, it has landed where it has in every one holding
-// its work, one at least (`landedAcross`). A commit alone — one of a
-// quick-fix's on its branch, stamped or the person's own — has landed where
-// the revision holds it, its change, or a copy of it, or a pull request the
-// host merged there holds it; one stamped with a task, where that task has
-// landed and its last commit holds it, as a fix of two commits squashed by
-// hand lands its first. Whose work a commit since the unit's work began
-// is, past the revision or on it, has one answer (`ownersOf`, R32): the
-// tasks it is stamped with; else those a commit on the revision names by
-// its `Task:` lines, a landing's copy of its tasks' work, never another's;
-// else, the person's own or the engine's — its commit pointing a
-// submodule at its landing, or bringing a branch up to date — the task
-// whose branch's tip holds it on its line past the oldest commit there
-// stamped with that task — a copy, where the branch holds the task's
-// commits copied — never one a merge brought in, the default branch merged
-// back or another task's; the lowest such tip, holding the fewest commits
-// since the unit's work began, the earlier task where two hold as many;
-// else no task's. So the person's own commit between a task's own on its
-// branch, or past its last, is its work, a copy of it among those a
-// landing by copies needs — one the default branch gained, fast-forwarded
+// (`lg.lastStamped`) — where that line holds none, the newest its tip holds,
+// as its branch fast-forwarded onto a default branch a merge commit landed
+// it on leaves it; else, its branch gone, the newest anywhere the repository
+// holds it, on any ref or reflog, so a branch deleted loses none — never on
+// a branch the engine kept a moved branch's work aside on, a task of its
+// own, nor a commit dropped from a branch that stands. Only content decides
+// a landing (R28), and never when a commit was made: two made in one second
+// read as they do a second apart, or a clock set wrong. The one name of one
+// read is a `Task:` line, which the engine's squash writes, and the door's
+// stamp, which every commit of a task and every copy of one carries, never
+// names one. Where it has a last commit, the task has landed where the
+// revision holds that commit; or where a commit on the revision's
+// first-parent line past where that commit was cut, changing a path its work
+// changes, held its change — merging its last commit there, over the commit
+// below its own work, would have changed nothing, so a task undoing work
+// below it, landed or not, is change still to land (S3) (`lg.holdChanges`);
+// and the line held the change its work is laid on there (`holdsTaskChange`)
+// — or a copy of each of its own commits was there (`holdsCopy`) — as the
+// engine's squash, a rebase's copies, git's own squash, a squash under the
+// person's own message, the person's duplicate work by hand, and a
+// cherry-pick of every commit of it land it, a cherry-pick of some of them
+// never; or where its work changes nothing past the revision; or, its change
+// gone from the line, as a later fix reverting it in a pull request leaves
+// it, where a pull request the host merged holds that commit, landed as one
+// whose work changes nothing (`pulledAt`). One laid on the revision,
+// changing something there, has not landed. Where it has none, it has landed
+// where a commit on the revision names it by its `Task:` line. A task holds
+// work in a repository where it has such a commit there, or has landed
+// there; across the project's repositories, it has landed where it has in
+// every one holding its work, one at least (`landedAcross`). A commit alone
+// — one of a quick-fix's on its branch, stamped or the person's own — has
+// landed where the revision holds it, its change, or a copy of it, or a pull
+// request the host merged there holds it; one stamped with a task, where
+// that task has landed and its last commit holds it, as a fix of two commits
+// squashed by hand lands its first. Whose work a commit since the unit's
+// work began is, past the revision or on it, has one answer (`ownersOf`,
+// R32): the tasks it is stamped with; else those a commit on the revision
+// names by its `Task:` lines, a landing's copy of its tasks' work, never
+// another's; else, the person's own or the engine's — its commit bringing a
+// branch up to date — the task whose branch's tip holds it on its line past
+// the oldest commit there stamped with that task — a copy, where the branch
+// holds the task's commits copied — never one a merge brought in, the
+// default branch merged back or another task's; the lowest such tip, holding
+// the fewest commits since the unit's work began, the earlier task where two
+// hold as many; else no task's. So the person's own commit between a task's
+// own on its branch, or past its last, is its work, a copy of it among those
+// a landing by copies needs — one the default branch gained, fast-forwarded
 // into a task's branch past its first commit, among them; one on the
 // revision a task's branch does not hold so, or on a task's branch below
 // that task's first commit, is no task's, landing with the branch it is on
-// all the same; and the change a task's branch is laid on lies below its
-// own commits and no task's. A
-// task's work on the revision — fast-forwarded there, or copied, as a
-// rebase merged by a host lays it — marks the task beside the commits
-// naming or stamped with it, so the review's change draws it (`marking`);
-// and a commit of its past the revision, read whole, landed at its task's
-// landing where it holds the task's last commit and past that merges
-// alone, else at the oldest commit on the line past where it was cut
-// holding its change — its copy, the copies of its work, or their squash —
-// none where its change has not landed, as for one past its task's landing
-// (`landedCopy`), a submodule's pointer at it moving there. A commit
-// standing for a task whole — its pull request's head — is never read as a
-// commit alone: it has landed where the task has a landing point holding it
-// or past which it holds no change (`landedAs`), so later work rewriting a
-// line of it never takes it back.
+// all the same; and the change a task's branch is laid on lies below its own
+// commits and no task's. A task's work on the revision — fast-forwarded
+// there, or copied, as a rebase merged by a host lays it — marks the task
+// beside the commits naming or stamped with it, so the review's change draws
+// it (`marking`). A commit standing for a task whole — its pull request's
+// head — is never read as a commit alone: it has landed where the task has a
+// landing point holding it or past which it holds no change (`landedAs`), so
+// later work rewriting a line of it never takes it back.
 //
 // Every reader of a task's landing — the build's checks, the close, a
 // commit's read and the drivers alike — reads it from its landing point,
@@ -183,11 +172,7 @@
 // oldest commit stamped with it that its branch's tip holds landed, read
 // so from that commit (`landings`): a task landed, changed and landed
 // again has both, but one whose oldest such commit is its last — a task of
-// one commit made again over its landing by hand — its later alone. A
-// submodule's pointer the
-// engine moves to a commit's landing (`landedCopy`) never moves back: a
-// landing the pointer holds moves nothing (landing-git.cjs,
-// `pointerFrom`), and a commit with no landing of its own keeps its pin.
+// one commit made again over its landing by hand — its later alone.
 //
 // A feature's, an epic's or a bugfix's tasks are read on the branch each
 // repository lands the unit's work on — the unit's own, where it has one
@@ -608,7 +593,7 @@ function repoLanded(root, unit, tip, { since, own = () => null, merged = () => [
       return [...(base === undefined ? [] : [{ ...pair, kind: /** @type {const} */ ('copy'), base }]), ...whole, ...own];
     }));
     const merges = lg.mergeTrees(root, pairs);
-    const held = lg.heldMerges(root, merges);
+    const held = lg.heldMerges(merges);
     const given = new Set(pairs.filter(({ kind }, n) => kind === 'whole' && held[n]).map(({ of, at }) => `${of} ${at}`));
     const near = pairs.flatMap(({ kind, of, at }, n) => (kind === 'whole' && !held[n] && merges[n].clean && !given.has(`${of} ${at}`) ? [n] : []));
     const apart = lg.pathsApart(root, near.map((n) => merges[n]));
@@ -1375,8 +1360,6 @@ function repoLanded(root, unit, tip, { since, own = () => null, merged = () => [
    * @param {string} rev @returns {{sha: string, owners: string[]}[]}
    */
   const ownedSince = (rev) => lg.stampedPast(root, rev, [], key, since).map(owning);
-  /** The unit's tasks whose work the commits `rev` holds past the tip are (`ownersOf`), oldest first, each once. @param {string} rev @returns {TaskRef[]} */
-  const ownersPast = (rev) => [...new Set(ownedPast(rev, []).flatMap(({ owners }) => owners))].flatMap(unitTask);
   /**
    * The unit's tasks whose work the commit `rev` holds past the tip and each
    * of `past` that has not landed (the header's, R31): each whose work a
@@ -1477,24 +1460,6 @@ function repoLanded(root, unit, tip, { since, own = () => null, merged = () => [
     if (record !== null) return [...new Set([record.first, record.commit])];
     const at = landingOf(id);
     return at === null ? [] : [...new Set([firstLanding(id) ?? at, at])];
-  };
-  /**
-   * Where the commit `sha` past the tip, the task's, landed (the header's),
-   * read whole: the task's landing, where `sha` holds its last commit and
-   * past that no commit but merges; else the oldest commit on the line made
-   * since it that holds its change — its copy, a copy of each commit of its
-   * work, or a squash of them (`scan`) — its work every commit it holds
-   * past the tip of the task's or of no task's; null where none does, as
-   * for a commit of its task's work past its landing point (`byPoint`).
-   * @param {TaskRef} ref @param {string} sha @returns {string|null}
-   */
-  const landedCopy = (ref, sha) => {
-    const id = taskId(ref);
-    const listed = pastOf([sha]);
-    if (!listed.has(sha) || byPoint(sha, id) === false) return null;
-    const own = [...lg.heldIn(listed, sha)].map((at) => /** @type {PathsCommit} */ (listed.get(at))).filter(wholeWorkOf(id));
-    if (standsAsLast(id, sha, listed, own)) return landingOf(id);
-    return scan([{ id, last: { sha } }], new Map([[id, workOf(own)]])).get(id)?.at ?? null;
   };
   /**
    * Whether the commit `sha` past the tip stands for the task `id` as its
@@ -1752,9 +1717,7 @@ function repoLanded(root, unit, tip, { since, own = () => null, merged = () => [
     line: () => lineOf().line,
     landing,
     landings,
-    landedCopy,
     ownedSince,
-    ownersPast,
     ownStart,
     apart,
     mergedPast,

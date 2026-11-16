@@ -2149,15 +2149,13 @@ function assertCommittable(repos, spec, given) {
 }
 
 /**
- * Check a repo the code commit would commit in — a reached submodule's
- * parent among them, for its pointer. No merge, cherry-pick, revert or
- * rebase may be in progress there: the commit would take on its state. And
- * it must be on a branch: a commit on a detached HEAD (a submodule after
- * `git submodule update`) is orphaned by the next checkout there. The
- * operation is asked first, as a rebase detaches HEAD while it runs. Nor
- * may it have the state branch checked out (4.9.3). A merge in progress is
- * the one the commit finishes, its group's paths staging what still
- * conflicts.
+ * Check a repo the code commit would commit in. No merge, cherry-pick,
+ * revert or rebase may be in progress there: the commit would take on its
+ * state. And it must be on a branch: a commit on a detached HEAD is orphaned
+ * by the next checkout there. The operation is asked first, as a rebase
+ * detaches HEAD while it runs. Nor may it have the state branch checked out
+ * (4.9.3). A merge in progress is the one the commit finishes, its group's
+ * paths staging what still conflicts.
  * @param {import('./kernel/repos.cjs').Repo} repo @param {string[]} paths as the repo names them
  */
 function assertCommitsHere(repo, paths) {

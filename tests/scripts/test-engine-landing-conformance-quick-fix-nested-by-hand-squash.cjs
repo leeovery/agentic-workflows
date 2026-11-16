@@ -8,10 +8,10 @@
 // in turn, the day quick-fix-nested-by-hand.cjs's `mergedInClone` runs. The
 // ways that keep the branch's own commits are
 // test-engine-landing-conformance-quick-fix-nested-by-hand.cjs's and
-// -nested-by-hand-ways's; a squash in the submodule,
-// -submodule-by-hand's. A driver's side (tests/drivers/{name}/landing.cjs)
-// readies each repository, merges by hand and reads what landed where;
-// this file names no driver and no tool. Conformance layer:
+// -nested-by-hand-ways's. A driver's side
+// (tests/drivers/{name}/landing.cjs) readies each repository, merges by
+// hand and reads what landed where; this file names no driver and no tool.
+// Conformance layer:
 // quick-fix-world.cjs's `quickFixNestedConformance`, built once per driver
 // and copied for each test.
 // ---------------------------------------------------------------------------
