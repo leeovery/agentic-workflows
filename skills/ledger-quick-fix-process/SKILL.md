@@ -1,6 +1,6 @@
 ---
 name: ledger-quick-fix-process
-description: Ledger's quick-fix work, from its first fix to its close. Reached only through a Ledger handoff, never invoked directly; work comes into Ledger through the ledger skill.
+description: Ledger's quick-fix work, from its first fix to its close. Reached only through a Ledger handoff, never invoked directly; work comes into Ledger through /ledger.
 user-invocable: false
 allowed-tools: Bash(node .claude/skills/ledger-engine/scripts/engine.cjs *)
 ---

@@ -24,7 +24,7 @@ Ledger's memory across pieces of work: each topic's current decisions, a bug's c
 _Avoid_: the memory (fine as a description, never as the name), the KB, the store
 
 **research owed**:
-The note on the start menu's product row while the one-time research of an existing codebase is still to run. The first time the product's conversation opens on code that predates Ledger, a researcher reads the code and its findings land on the ledger; until they have, the note stays and the research resumes the next time that conversation opens.
+The note on the start menu's product row while the one-time research of an existing codebase is still to run. The first time the product's conversation opens on that code, a researcher reads it and its findings land on the ledger; until they have, the note stays and the research resumes the next time that conversation opens.
 
 ## Kinds of work
 

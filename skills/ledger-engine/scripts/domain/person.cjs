@@ -11,7 +11,7 @@
 // writes to it (user-files.cjs).
 //
 // - Its layout (P5): the version line,
-//   `<!-- ledger: the record of you, version N -->`; the title; a section a
+//   `<!-- Ledger: the record of you, version N -->`; the title; a section a
 //   preference, headed by its words, holding its `Why:` and its `Examples:`
 //   list; and a `Care entries` section, a line an entry,
 //   `- {project}: {kind} · {project id} · {added}`. The id keys the entry,
@@ -73,7 +73,7 @@ const DONT_CARES = 3;
 
 const TITLE = '# The record of you';
 const CARE = 'Care entries';
-const VERSION_LINE = /^<!-- ledger: the record of you, version (\d+) -->$/;
+const VERSION_LINE = /^<!-- Ledger: the record of you, version (\d+) -->$/;
 const HEADING = /^## +(\S.*?)\s*$/;
 const CARE_LINE = /^- (.+): ([a-z]+) · (\S+) · (\S+)$/;
 const CARE_SHAPE = '"- {project}: {kind} · {project id} · {when added}"';
@@ -85,7 +85,7 @@ function personPath() {
 }
 
 /** The version line of the layout `version`. @param {number} version */
-const versionLine = (version) => `<!-- ledger: the record of you, version ${version} -->`;
+const versionLine = (version) => `<!-- Ledger: the record of you, version ${version} -->`;
 
 /** The record as it ships: no entry, the title alone. @returns {PersonRecord} */
 const shipped = () => ({ version: VERSION, head: [TITLE], sections: [] });

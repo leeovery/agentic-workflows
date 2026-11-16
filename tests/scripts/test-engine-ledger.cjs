@@ -431,12 +431,12 @@ describe('the streamed reader', () => {
     const read = [];
     assert.throws(() => withLedger(root, [], (ledger) => { for (const { event } of ledger.entries()) read.push(event); }),
       (err) => err instanceof LedgerNewer && !(err instanceof LedgerLineError) && err.payload.stop === 'ledger'
-        && new RegExp(`holds entries a newer Ledger wrote, at schema version ${LEDGER_VERSION + 1}, and the workflows here read up to version ${LEDGER_VERSION} — update the workflows on this machine \\(pull the project's code\\) and start again`).test(err.message));
+        && new RegExp(`holds entries a newer release wrote, at schema version ${LEDGER_VERSION + 1}, and the workflows here read up to version ${LEDGER_VERSION} — update the workflows on this machine \\(pull the project's code\\) and start again`).test(err.message));
     assert.deepStrictEqual(read, [q]);
     assert.deepStrictEqual(keptStop(gitDir), { stop: 'newer', version: LEDGER_VERSION + 1, reads: LEDGER_VERSION });
     assert.strictEqual(ledgerStopSurface(main, {}), [
       '=== DISPLAY: ledger stop (emit verbatim as a properties code block (```properties fence)) ===',
-      '⚑ The engine stopped: the ledger holds entries a newer Ledger wrote',
+      '⚑ The engine stopped: the ledger holds entries a newer release wrote',
       '',
       '=== DISPLAY: ledger account (emit verbatim as markdown (not a code block)) ===',
       `> Fumi's ledger holds entries at schema version ${LEDGER_VERSION + 1}, and the workflows on this machine read up to version ${LEDGER_VERSION}, so the engine reads none of it.`,
@@ -747,13 +747,13 @@ describe('the append-only check on a read', () => {
     const gone = spawnSync('node', ['-e', '0']).pid;
     const running = spawn('sleep', ['30']);
     try {
-      fs.writeFileSync(path.join(gitDir, `ledger-ledger.${gone}.abc`), 'x'.repeat(4096));
-      fs.writeFileSync(path.join(gitDir, `ledger-ledger.${running.pid}.abc`), 'x');
+      fs.writeFileSync(path.join(gitDir, `ledger.${gone}.abc`), 'x'.repeat(4096));
+      fs.writeFileSync(path.join(gitDir, `ledger.${running.pid}.abc`), 'x');
       writeLedger(root, `${b}\n${a}\n`);
 
       assert.throws(() => checkLedger(root, []), LedgerChanged);
 
-      assert.deepStrictEqual(fs.readdirSync(gitDir).filter((name) => name.startsWith('ledger-ledger.')), [`ledger-ledger.${running.pid}.abc`]);
+      assert.deepStrictEqual(fs.readdirSync(gitDir).filter((name) => name.startsWith('ledger.')), [`ledger.${running.pid}.abc`]);
     } finally {
       running.kill();
     }
@@ -929,7 +929,7 @@ function oldShapeCommitted(root) {
 
 /** Where the conversion's pass stands. @param {string} root */
 function passFile(root) {
-  return path.resolve(root, git(root, ['rev-parse', '--git-path', 'ledger-ledger-conversion.json']).trim());
+  return path.resolve(root, git(root, ['rev-parse', '--git-path', 'ledger-conversion.json']).trim());
 }
 
 describe('the conversion door (5.S25)', () => {

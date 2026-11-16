@@ -464,7 +464,7 @@ class LedgerLineError extends Error {}
 class LedgerNewer extends Error {
   /** @param {number} version the line's @param {number} reads the schema's */
   constructor(version, reads) {
-    super(`${LEDGER} holds entries a newer Ledger wrote, at schema version ${version}, and the workflows here read up to version ${reads} — `
+    super(`${LEDGER} holds entries a newer release wrote, at schema version ${version}, and the workflows here read up to version ${reads} — `
       + 'update the workflows on this machine (pull the project\'s code) and start again');
     this.version = version;
     this.reads = reads;

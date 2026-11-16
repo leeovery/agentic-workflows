@@ -8,7 +8,7 @@
 // {work-unit} · {phase} · {topic}`, the topic left out where it is the
 // work unit, the product's conversation's entry `{original} · product`, the
 // epic's menu, as its render draws it (menus.cjs), `{original} ·
-// {work-unit}`, the roadmap `{original} · roadmap`, and ledger puts the
+// {work-unit}`, the roadmap `{original} · roadmap`, and the start skill puts the
 // original back through boot's `repair`. Leaving a place is never an event: the name changes on arrival,
 // and at session end, where `session cleanup` restores it. A resumed
 // session gets its label back: `session resume`, a SessionStart hook fired
@@ -686,7 +686,7 @@ function restoreSessionLabel(cwd, sessionId) {
 }
 
 /**
- * Boot's pass over the current terminal — ledger is the place
+ * Boot's pass over the current terminal — the start skill is the place
  * whose label is the original name, and no position: the calling
  * conversation's own position comes off first, labels on or off — its tasks
  * in flight kept at the place left (position.cjs) — while a dead owner's

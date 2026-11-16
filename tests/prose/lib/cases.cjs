@@ -42,7 +42,7 @@
 // on in a fresh context — a phase's skill, the epic menu, discovery, the
 // roadmap. Nothing else is a legitimate opening — help is only ever
 // opened in place, mid-session, and a reference is never
-// entered directly. A case about help enters at ledger and picks the
+// entered directly. A case about help enters at the start skill and picks the
 // start menu's `h/help` row.
 //
 // This matters because a walk carries only the context it accumulates.
@@ -187,7 +187,7 @@ function headingExists(absPath, anchor) {
 }
 
 /**
- * Where a walk may begin: a skill a conversation opens on — ledger or
+ * Where a walk may begin: a skill a conversation opens on — the start skill or
  * wherever a handoff lands the work — never anywhere else.
  */
 function entryErrors(entry) {

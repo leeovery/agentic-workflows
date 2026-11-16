@@ -134,7 +134,7 @@ describe('engine harness — the git fixture', () => {
   it('holds its state worktree, locked on the state branch, and the code tree ignores it', () => {
     assert.strictEqual(stateGit(dir, ['symbolic-ref', '--short', 'HEAD']).trim(), 'ledger-state');
     assert.match(git(dir, ['worktree', 'list', '--porcelain']),
-      new RegExp(`worktree ${statePath(dir)}\nHEAD [0-9a-f]+\nbranch refs/heads/ledger-state\nlocked ledger state, do not remove`));
+      new RegExp(`worktree ${statePath(dir)}\nHEAD [0-9a-f]+\nbranch refs/heads/ledger-state\nlocked Ledger state, do not remove`));
     assert.strictEqual(fs.readFileSync(path.join(dir, '.gitignore'), 'utf8'), '.ledger/\n');
     seed(dir);
     assert.deepStrictEqual(git(dir, ['ls-files']).trim().split('\n'), ['.gitignore']);

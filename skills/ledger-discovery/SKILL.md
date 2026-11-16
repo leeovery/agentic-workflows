@@ -1,6 +1,6 @@
 ---
 name: ledger-discovery
-description: Ledger's discovery phase, the product's conversation and an epic's. Reached only through a Ledger handoff, never invoked directly; work comes into Ledger through the ledger skill.
+description: Ledger's discovery phase, the product's conversation and an epic's. Reached only through a Ledger handoff, never invoked directly; work comes into Ledger through /ledger.
 user-invocable: false
 allowed-tools: Bash(node .claude/skills/ledger-engine/scripts/engine.cjs *)
 ---

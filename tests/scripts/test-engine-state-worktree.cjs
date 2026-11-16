@@ -298,8 +298,8 @@ describe('creating the state', () => {
     assert.strictEqual(git(root, ['symbolic-ref', 'HEAD']).trim(), `refs/heads/${STATE_BRANCH}`);
     const record = worktreeRecord(main, root);
     assert.ok(record, `no worktree listed at ${root}`);
-    assert.match(record, /^locked ledger state, do not remove$/m);
-    assert.strictEqual(STATE_LOCK_REASON, 'ledger state, do not remove');
+    assert.match(record, /^locked Ledger state, do not remove$/m);
+    assert.strictEqual(STATE_LOCK_REASON, 'Ledger state, do not remove');
   });
 
   it('puts .ledger/ in the main checkout when made from a code worktree, never in the worktree (4.1.4)', () => {
@@ -516,7 +516,7 @@ describe('the repairs, each on its own', () => {
 
     lockStateWorktree(root);
 
-    assert.match(worktreeRecord(main, root) || '', /^locked ledger state, do not remove$/m);
+    assert.match(worktreeRecord(main, root) || '', /^locked Ledger state, do not remove$/m);
   });
 
   it('relinks the state worktree after the project folder moved, keeping what it holds, and commits again', () => {

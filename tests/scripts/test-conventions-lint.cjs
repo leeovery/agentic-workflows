@@ -433,10 +433,10 @@ function checkLoadLines(files) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 8 — H1 category rule (scoped to the ledger and ledger-* SKILL.md backbones).
+// Check 8 — H1 category rule (scoped to the `ledger` and `ledger-*` SKILL.md backbones).
 // Processing backbones (ledger-*-process, plus discovery — a phase that
 // talks — the engine and the project-level skills — roadmap, help) open with
-// a title H1; every other workflow backbone — ledger and the epic's menu —
+// a title H1; every other workflow backbone — the start skill and the epic's menu —
 // carries none.
 // ---------------------------------------------------------------------------
 
@@ -1117,7 +1117,7 @@ function checkInstalledDispatchPaths(files) {
 // ---------------------------------------------------------------------------
 // Check 27 — the framework loads once per conversation, at the head of the
 // skill the conversation opens on (CONVENTIONS' The Framework Load): each of
-// the engine's HANDOFF_TARGETS — every skill a handoff lands on, ledger,
+// the engine's HANDOFF_TARGETS — every skill a handoff lands on, the start skill,
 // the user's way in, among them — opens its `## Instructions` section on the
 // framework load. Every other workflow backbone carries neither the section
 // nor the load: a skill only ever opened in place runs in a conversation that
@@ -2928,7 +2928,7 @@ test('check 35 (boot\'s stops as data) — catches a start skill that fetches no
 test('check 37 (descriptions) — 18.S73: catches a start skill whose description opens on anything but its trigger or that has none, and a skill a handoff lands on whose description does not say it is reached only through one; passes every other skill by', () => {
   withTemp((dir) => {
     const skill = (name, description) => write(dir, `skills/${name}/SKILL.md`, ['---', `name: ${name}`, ...(description === null ? [] : [`description: ${description}`]), 'user-invocable: false', '---', '', 'Body.', ''].join('\n'));
-    const HANDED = 'Ledger\'s review phase. Reached only through a Ledger handoff, never invoked directly; work comes into Ledger through the ledger skill.';
+    const HANDED = 'Ledger\'s review phase. Reached only through a Ledger handoff, never invoked directly; work comes into Ledger through /ledger.';
     const targets = ['ledger', 'ledger-review-process', 'ledger-roadmap'];
     const clean = [skill('ledger', 'Use for any change to what this project\'s code does.'), skill('ledger-review-process', HANDED), skill('ledger-roadmap', HANDED), skill('ledger-log-idea', 'Capture an idea in the inbox.')];
     assert.deepStrictEqual(checkDescriptions(clean, targets), [], `got ${report(checkDescriptions(clean, targets))}`);

@@ -1643,7 +1643,7 @@ function runInbox(call, argv) {
 // ---------------------------------------------------------------------------
 // brownfield, walkthrough — the project's two one-time records
 // (domain/brownfield.cjs, domain/walkthrough.cjs). Each answers a question
-// ledger asks once, writes one field on the project manifest, and
+// the start skill asks once, writes one field on the project manifest, and
 // commits it confined in the same call.
 // ---------------------------------------------------------------------------
 

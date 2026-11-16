@@ -37,9 +37,9 @@ const { blobIds, blobToFile, fileLineBytes, fileLines } = require('../kernel/fil
 const { LEDGER } = require('./ledger-events.cjs');
 const { readRecord } = require('./state-merge-landing.cjs');
 
-const PASS = 'ledger-ledger-conversion.json';
-const KEPT_STOP = 'ledger-ledger-stop.json';
-const SCRATCH = /^ledger-ledger\.(\d+)\./;
+const PASS = 'ledger-conversion.json';
+const KEPT_STOP = 'ledger-stop.json';
+const SCRATCH = /^ledger\.(\d+)\./;
 
 /** A committed ledger: its blob's id and size. @typedef {{oid: string, size: number}} LedgerBlob */
 
@@ -140,7 +140,7 @@ function sweepScratch(gitDir) {
  */
 function withBlobFile({ git, gitDir }, oid, fn) {
   sweepScratch(gitDir);
-  const file = path.join(gitDir, `ledger-ledger.${process.pid}.${oid}`);
+  const file = path.join(gitDir, `ledger.${process.pid}.${oid}`);
   blobToFile(git, oid, file);
   try {
     return fn(file);

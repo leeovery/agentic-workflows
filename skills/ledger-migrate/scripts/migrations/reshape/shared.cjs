@@ -47,7 +47,7 @@ const OLD_STATE = '.workflows';
 const STATE_DIR = '.ledger';
 const SET_ASIDE = '.ledger-set-aside';
 const STATE_BRANCH = 'ledger-state';
-const STATE_LOCK_REASON = 'ledger state, do not remove';
+const STATE_LOCK_REASON = 'Ledger state, do not remove';
 const STATE_GITIGNORE = ['/.knowledge/', '/.cache/', '/.lock', '/.lock.*', '.manifest.json.*.tmp', '/.ledger.jsonl.*.tmp', ''].join('\n');
 
 const REPOSITORY_ENV = [

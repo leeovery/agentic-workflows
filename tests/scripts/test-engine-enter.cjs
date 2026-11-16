@@ -441,7 +441,7 @@ describe('the answer', () => {
     const records = [
       `# The record of you\n\n## Care entries\n\n- Fumi: look · ${'Fumi'.padEnd(21, '0')} · 2026-01-01T00:00:00.000Z\n`,
       '# The record of you\n\n## Care entries\n\n- Fumi: look\n',
-      '<!-- ledger: the record of you, version 9 -->\n\nAnything at all\n',
+      '<!-- Ledger: the record of you, version 9 -->\n\nAnything at all\n',
     ];
 
     for (const text of records) {

@@ -49,7 +49,7 @@ const { folder, logPath, project } = useTrustWorld('engine-person-');
 const ENV = Object.freeze({ CLAUDE_CODE_SESSION_ID: SESSION });
 const OTHER = Object.freeze({ CLAUDE_CODE_SESSION_ID: 'deadbeef-1234-4abc-8def-0123456789ab' });
 const AIRCON = idOf('Aircon');
-const VERSION_LINE = '<!-- ledger: the record of you, version 1 -->';
+const VERSION_LINE = '<!-- Ledger: the record of you, version 1 -->';
 const UTC = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/;
 
 // When a care entry written for a test was added: before any history's
@@ -339,7 +339,7 @@ describe('the record\'s file (P5, 16.18.8, 4.S27)', () => {
   it('a record a newer release wrote is never written: its care entries read where their lines parse as this version\'s, the rest skipped, and a change refuses, telling the person to update Ledger', () => {
     const fumi = project('fumi');
     const newer = [
-      '<!-- ledger: the record of you, version 2 -->',
+      '<!-- Ledger: the record of you, version 2 -->',
       '',
       '# The record of you',
       '',

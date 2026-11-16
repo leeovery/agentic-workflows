@@ -143,12 +143,12 @@ process.on('exit', () => fs.rmSync(HOMES, { recursive: true, force: true }));
  */
 function homes(name, files = {}, fresh = {}) {
   const old = path.join(HOMES, name, 'workflows');
-  const ledger = path.join(HOMES, name, 'ledger');
+  const current = path.join(HOMES, name, 'ledger');
   for (const [rel, content] of Object.entries(files)) write(old, rel, content);
-  for (const [rel, content] of Object.entries(fresh)) write(ledger, rel, content);
+  for (const [rel, content] of Object.entries(fresh)) write(current, rel, content);
   process.env.WORKFLOWS_CONFIG_DIR = old;
-  process.env.LEDGER_CONFIG_DIR = ledger;
-  return { old, ledger };
+  process.env.LEDGER_CONFIG_DIR = current;
+  return { old, current };
 }
 
 // Today's user-level folder: its config, its credentials and a conversation's folder.
@@ -623,7 +623,7 @@ describe('migration 078: the move into the layout in .ledger/', () => {
     it('adds the state worktree at .ledger/ on ledger-state, unborn, and locked as the engine locks it', () => {
       assert.strictEqual(git(state, ['symbolic-ref', 'HEAD']).trim(), 'refs/heads/ledger-state');
       assert.throws(() => git(dir, ['rev-parse', '--verify', '--quiet', 'refs/heads/ledger-state']), 'the branch has no commit');
-      assert.strictEqual(lockOf(dir, state), 'ledger state, do not remove');
+      assert.strictEqual(lockOf(dir, state), 'Ledger state, do not remove');
     });
 
     it('commits nothing, stages nothing in the state or the code, and leaves the default branch\'s .workflows/ as it was', () => {
@@ -821,10 +821,10 @@ describe('migration 078: the move into the layout in .ledger/', () => {
 
   describe('the user-level folder (21.5.19, P7, 21.S52)', () => {
     it('moves today\'s folder\'s contents into the engine\'s unchanged, beside what the engine already wrote there — a folder both hold merged where nothing in it differs — and leaves a link to it in its place', () => {
-      assert.deepStrictEqual(tree(user.ledger), ['.DS_Store', 'config.json', 'conversations/s1/position.json', 'conversations/s2/position.json', 'credentials.json']);
-      for (const [rel, content] of Object.entries(USER_FOLDER)) if (rel !== '.DS_Store') assert.strictEqual(fs.readFileSync(path.join(user.ledger, rel), 'utf8'), content, rel);
-      assert.strictEqual(fs.statSync(path.join(user.ledger, 'credentials.json')).mode & 0o777, 0o600, 'the credentials kept private');
-      assert.strictEqual(fs.readlinkSync(user.old), user.ledger);
+      assert.deepStrictEqual(tree(user.current), ['.DS_Store', 'config.json', 'conversations/s1/position.json', 'conversations/s2/position.json', 'credentials.json']);
+      for (const [rel, content] of Object.entries(USER_FOLDER)) if (rel !== '.DS_Store') assert.strictEqual(fs.readFileSync(path.join(user.current, rel), 'utf8'), content, rel);
+      assert.strictEqual(fs.statSync(path.join(user.current, 'credentials.json')).mode & 0o777, 0o600, 'the credentials kept private');
+      assert.strictEqual(fs.readlinkSync(user.old), user.current);
       assert.strictEqual(fs.readFileSync(path.join(user.old, 'credentials.json'), 'utf8'), USER_FOLDER['credentials.json'], 'read through the link as today\'s skills read it');
     });
 
@@ -835,8 +835,8 @@ describe('migration 078: the move into the layout in .ledger/', () => {
         commitAll(next);
         const { returned } = run(next);
         assert.strictEqual(returned, undefined);
-        assert.strictEqual(fs.readlinkSync(user.old), user.ledger);
-        assert.deepStrictEqual(tree(user.ledger), ['.DS_Store', 'config.json', 'conversations/s1/position.json', 'conversations/s2/position.json', 'credentials.json']);
+        assert.strictEqual(fs.readlinkSync(user.old), user.current);
+        assert.deepStrictEqual(tree(user.current), ['.DS_Store', 'config.json', 'conversations/s1/position.json', 'conversations/s2/position.json', 'credentials.json']);
       } finally {
         cleanupFixture(next);
       }
@@ -1239,7 +1239,7 @@ describe('migration 078: a small project', () => {
       assert.strictEqual(fs.readFileSync(path.join(dir, '.claude/settings.json'), 'utf8'), json({ permissions: { allow: ['Edit(.ledger/**)'] } }));
       assert.deepStrictEqual(git(dir, ['status', '--porcelain']).split('\n').filter(Boolean).sort(), [' D .worktreeinclude', ' M .claude/settings.json', '?? .gitignore']);
       assert.strictEqual(fs.readFileSync(path.join(dir, '.ledger/.gitignore'), 'utf8'), STATE_GITIGNORE);
-      assert.deepStrictEqual([fs.existsSync(user.old), fs.existsSync(user.ledger)], [false, false]);
+      assert.deepStrictEqual([fs.existsSync(user.old), fs.existsSync(user.current)], [false, false]);
     } finally {
       cleanupFixture(dir);
     }
@@ -1596,9 +1596,9 @@ describe('migration 078: a small project', () => {
       const { returned } = run(dir);
       assert.deepStrictEqual(Object.fromEntries(tree(user.old).map((rel) => [rel, fs.readFileSync(path.join(user.old, rel), 'utf8')])), USER_FOLDER, 'the old folder whole, and readable where it was');
       assert.ok(fs.lstatSync(user.old).isDirectory(), 'a folder still, never a link');
-      assert.deepStrictEqual(Object.fromEntries(tree(user.ledger).map((rel) => [rel, fs.readFileSync(path.join(user.ledger, rel), 'utf8')])), fresh);
+      assert.deepStrictEqual(Object.fromEntries(tree(user.current).map((rel) => [rel, fs.readFileSync(path.join(user.current, rel), 'utf8')])), fresh);
       assert.deepStrictEqual(returned, {
-        verify: `Nothing in ${user.old} was moved: ${user.ledger} already holds a different config.json, conversations/s1/position.json. `
+        verify: `Nothing in ${user.old} was moved: ${user.current} already holds a different config.json, conversations/s1/position.json. `
           + `${user.old} stays as it is, so a project still on today's skills reads it there; once each is settled, the next project's move compares them again.`,
       });
     } finally {
@@ -1616,9 +1616,9 @@ describe('migration 078: a small project', () => {
       fs.symlinkSync(dotfiles, user.old);
       feature();
       const { returned } = run(dir);
-      assert.deepStrictEqual([fs.readlinkSync(user.old), tree(dotfiles), fs.existsSync(user.ledger)], [dotfiles, ['config.json'], false]);
+      assert.deepStrictEqual([fs.readlinkSync(user.old), tree(dotfiles), fs.existsSync(user.current)], [dotfiles, ['config.json'], false]);
       assert.deepStrictEqual(returned, {
-        verify: `${user.old} is a link to ${dotfiles}, not a folder of its own, so nothing in it was moved to ${user.ledger}: move what the workflows keep there into ${user.ledger} yourself.`,
+        verify: `${user.old} is a link to ${dotfiles}, not a folder of its own, so nothing in it was moved to ${user.current}: move what the workflows keep there into ${user.current} yourself.`,
       });
     } finally {
       homes('none');
@@ -1671,7 +1671,7 @@ describe('migration 078: a small project', () => {
       assert.strictEqual(fs.readFileSync(path.join(state, '.knowledge/config.json'), 'utf8'), KNOWLEDGE_CONFIG);
       assert.strictEqual(fs.readFileSync(path.join(state, 'tally/topics/tally/log.md'), 'utf8'), '## Discussion\n\n## Discussion: Tally\n');
       assert.strictEqual(fs.readFileSync(path.join(state, `.inbox/ideas/${TODAY}--dropped.md`), 'utf8'), DROPPED_IDEA);
-      assert.strictEqual(lockOf(dir, state), 'ledger state, do not remove');
+      assert.strictEqual(lockOf(dir, state), 'Ledger state, do not remove');
       assert.strictEqual(fs.readFileSync(path.join(dir, '.gitignore'), 'utf8'), '.ledger/\n', 'the ignore line written once');
       const whole = Object.fromEntries(tree(state).map((rel) => [rel, fs.readFileSync(path.join(state, rel), 'utf8')]));
       run(dir);
@@ -1710,7 +1710,7 @@ describe('migration 078: a small project', () => {
       run(dir);
       const state = path.join(dir, '.ledger');
       assert.strictEqual(git(state, ['symbolic-ref', 'HEAD']).trim(), 'refs/heads/ledger-state');
-      assert.strictEqual(lockOf(dir, state), 'ledger state, do not remove');
+      assert.strictEqual(lockOf(dir, state), 'Ledger state, do not remove');
       assert.strictEqual(fs.readFileSync(path.join(state, '.state/migrations'), 'utf8'), '001\n073\n');
       assert.strictEqual(fs.readFileSync(path.join(state, 'tally/topics/tally/log.md'), 'utf8'), '## Discussion\n\n## Discussion: Tally\n');
     } finally {

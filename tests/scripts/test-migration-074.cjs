@@ -45,7 +45,7 @@ const { migrationRuns } = require('../../skills/ledger-engine/scripts/domain/sta
 
 const STATE = '.ledger';
 const SET_ASIDE = '.ledger-set-aside';
-const LOCK_REASON = 'ledger state, do not remove';
+const LOCK_REASON = 'Ledger state, do not remove';
 const STATE_GITIGNORE = '/.knowledge/\n/.cache/\n/.lock\n/.lock.*\n.manifest.json.*.tmp\n/.ledger.jsonl.*.tmp\n';
 const NOW = Date.parse('2026-11-13T12:00:00Z');
 

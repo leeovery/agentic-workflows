@@ -383,7 +383,7 @@ describe('the offer (16.8.2)', () => {
 
   it('16.8.5: the forecast reads the person\'s care entries — a quiet kind under one in this project comes to them', () => {
     logOf((h) => h.agree(30, 'behaviour'));
-    fs.writeFileSync(path.join(config(), 'person.md'), `<!-- ledger: the record of you, version 1 -->\n\n# The record of you\n\n## Care entries\n\n- Fumi: behaviour · ${project()} · 2026-01-01T00:00:00.000Z\n`);
+    fs.writeFileSync(path.join(config(), 'person.md'), `<!-- Ledger: the record of you, version 1 -->\n\n# The record of you\n\n## Care entries\n\n- Fumi: behaviour · ${project()} · 2026-01-01T00:00:00.000Z\n`);
 
     const out = offer(['--asked'], { CLAUDE_STUB_ANSWERS: LABELS });
 
