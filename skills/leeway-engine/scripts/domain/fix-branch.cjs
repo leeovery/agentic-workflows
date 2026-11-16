@@ -76,7 +76,9 @@
 //   `moved/fix/{unit}`, a name no landing reads as the unit's
 //   (landing-names.cjs), so the new type's build never meets it; holding
 //   none, it is deleted. The kept names are what the topic's first opening
-//   names (`keptBranches`).
+//   names (`keptBranches`). A cancel takes each checkout back as the move
+//   does, and keeps each branch under its own name, which a reactivate
+//   carries on from and the cancel's receipt names.
 // ---------------------------------------------------------------------------
 
 const { codeRoot } = require('../kernel/code-root.cjs');
@@ -473,8 +475,17 @@ const MOVED = 'moved/';
 /** The name a move keeps the quick-fix's branch under (the header's). @param {string} unit */
 const movedBranch = (unit) => `${MOVED}${quickFixBranch(unit)}`;
 
-/** A kept branch as the move and the first opening name it: with its repository, where it is nested. @param {Repo} repo @param {string} unit */
-const keptName = (repo, unit) => `${movedBranch(unit)}${repo.dir === '' ? '' : ` in ${lg.plain(repo.dir)}`}`;
+/**
+ * The name the quick-fix's branch is kept under by each way it leaves
+ * other than its close: a move's, out of every landing's reading; a
+ * cancel's, its own, which a reactivate carries on from.
+ */
+const KEPT_UNDER = Object.freeze({ move: movedBranch, cancel: quickFixBranch });
+
+/** @typedef {keyof typeof KEPT_UNDER} KeptBy */
+
+/** A kept branch as a move, a cancel and the first opening name it: with its repository, where it is nested. @param {Repo} repo @param {string} branch */
+const keptName = (repo, branch) => `${branch}${repo.dir === '' ? '' : ` in ${lg.plain(repo.dir)}`}`;
 
 /** Whether a repository's quick-fix branch holds commits past the branch it lands on. @param {string} cwd @param {Repo} repo @param {string} unit */
 const branchHolds = (cwd, repo, unit) => lg.holdsBeyond(repo.path, [quickFixBranch(unit)], [lg.landingBranch(cwd, repo, unit)]);
@@ -490,7 +501,7 @@ function keptUnder(cwd, unit) {
   return childrenFirst(projectRepos(codeRoot(cwd))).filter((repo) => {
     const held = lg.branches(repo.path);
     return held.has(movedBranch(unit)) || (held.has(quickFixBranch(unit)) && branchHolds(cwd, repo, unit));
-  }).map((repo) => keptName(repo, unit));
+  }).map((repo) => keptName(repo, movedBranch(unit)));
 }
 
 /**
@@ -505,18 +516,20 @@ function setBranchAside(cwd, unit) {
   return holding(cwd, branch).flatMap((repo) => {
     const holds = branchHolds(cwd, repo, unit);
     git(repo.path, holds ? ['branch', '-m', branch, movedBranch(unit)] : ['branch', '-D', branch]);
-    return holds ? [keptName(repo, unit)] : [];
+    return holds ? [keptName(repo, movedBranch(unit))] : [];
   });
 }
 
 /**
- * The names the quick-fix's branches a move kept are under, where it kept
- * them: what its topic's first opening names (enter.cjs).
- * @param {string} cwd @param {string} unit
+ * The names the quick-fix's branches are kept under, where they are kept,
+ * by the way it left (`KEPT_UNDER`): a move's, as its topic's first opening
+ * names them (enter.cjs); a cancel's, as its receipt does (render.cjs).
+ * @param {string} cwd @param {string} unit @param {KeptBy} by
  * @returns {string[]}
  */
-function keptBranches(cwd, unit) {
-  return holding(cwd, movedBranch(unit)).map((repo) => keptName(repo, unit));
+function keptBranches(cwd, unit, by) {
+  const branch = KEPT_UNDER[by](unit);
+  return holding(cwd, branch).map((repo) => keptName(repo, branch));
 }
 
 /**

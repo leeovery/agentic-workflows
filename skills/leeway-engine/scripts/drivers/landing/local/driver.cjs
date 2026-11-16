@@ -105,7 +105,10 @@
 //   every ref of the unit's is dropped (`finished`). Each is read as the
 //   seam names its unit's time, those committed before it an earlier
 //   unit's of the same name. A merge by hand is the seam's to read off the
-//   default branch. A move closes it, its opening dropped.
+//   default branch. A move closes it, its opening dropped, and so does a
+//   cancel, which a reactivate's next opening opens again.
+// - A cancel (landing.cjs) closes nothing else: nothing is open on a host,
+//   and each phase's stack is its branch, which the cancel keeps.
 //
 // Every refusal says the way on, its commands fitted to the repository as
 // it stands (landing-git.cjs).
@@ -836,6 +839,7 @@ function nextMerge(ctx) {
 
 /** The quick-fix's landing as the seam gives it (landing.cjs). @typedef {import('../../../domain/landing.cjs').QuickFixTask} QuickFixTask */
 /** The quick-fix's pull request as the seam reads it (landing.cjs). @typedef {import('../../../domain/landing.cjs').QuickFixPull} QuickFixPull */
+/** What a close answers (drivers.cjs). @typedef {import('../../../domain/drivers.cjs').PullsClosed} PullsClosed */
 
 /** Where the unit's quick-fix refs live: `open`, and `merged/{landing}` for each merge (the header's). @param {string} unit */
 const quickFixUnder = (unit) => `${QUICK_FIX}${unit}/`;
@@ -868,15 +872,19 @@ function openQuickFix(ctx, landing) {
   return {};
 }
 
+/** What a close answers where it closed nothing. @returns {PullsClosed} */
+const noneClosed = () => ({ closed: false, pulls: [] });
+
 /**
- * The quick-fix closed for its move (the header's), its opening dropped
- * where the read `pull` found it open: whether this call closed it.
- * @param {LandingContext} ctx @param {QuickFixPull} pull @returns {{closed: boolean}}
+ * The quick-fix closed for its move or its cancel (the header's), its
+ * opening dropped where the read `pull` found it open: whether this call
+ * closed it, which no host names.
+ * @param {LandingContext} ctx @param {QuickFixPull} pull @returns {PullsClosed}
  */
 function closeQuickFix(ctx, pull) {
-  if (pull.open === null) return { closed: false };
+  if (pull.open === null) return noneClosed();
   lg.updateRefs(ctx.root, { drop: [`${quickFixUnder(ctx.unit)}open`] });
-  return { closed: true };
+  return { closed: true, pulls: [] };
 }
 
 /**
@@ -929,8 +937,11 @@ function landUnit(ctx, landing) {
   return { into, landed: landing.branch, commit };
 }
 
-/** The unit's own pull request closed: the local driver opens none. @returns {{closed: boolean}} */
-const closeUnit = () => ({ closed: false });
+/** The unit's own pull request closed: the local driver opens none. @returns {PullsClosed} */
+const closeUnit = () => noneClosed();
+
+/** The tasks' pull requests closed for a cancel: a phase's stack is its branch, which the cancel keeps. @returns {PullsClosed} */
+const closeTasks = () => noneClosed();
 
 /**
  * Every ref the driver keeps of the unit here dropped, once finish has
@@ -965,5 +976,6 @@ module.exports = {
   closeQuickFix,
   landUnit,
   closeUnit,
+  closeTasks,
   finished,
 };

@@ -373,6 +373,21 @@ describe('engine manifest apply — the batch form of set/delete (D7)', () => {
     assert.strictEqual(fs.readFileSync(file, 'utf8'), before);
   });
 
+  it('refuses set, push, pull, delete and apply on the pull requests the unit\'s cancel closed, or under them, the manifest byte-unchanged: the cancel writes them (18.3.9)', () => {
+    const file = path.join(dir, '.leeway', 'payments', 'manifest.json');
+    const before = fs.readFileSync(file, 'utf8');
+    const refusal = '"closed_by_cancel" is the engine\'s own: the unit\'s cancel writes it as it closes the unit\'s pull requests, and every landing after reads them as none';
+    for (const args of [
+      ['set', 'payments', 'closed_by_cancel.lib', '[]'],
+      ['push', 'payments', 'closed_by_cancel', 'x'],
+      ['delete', 'payments', 'closed_by_cancel'],
+      ['apply', 'payments', '--file', payload([{ op: 'set', path: 'payments', fields: { 'closed_by_cancel.ext': '["1"]' } }])],
+    ]) {
+      assert.strictEqual(runFails(dir, args).error, refusal, args.join(' '));
+    }
+    assert.strictEqual(fs.readFileSync(file, 'utf8'), before);
+  });
+
   it('refuses set, push, pull, delete and apply on the unit\'s own branch, build.branch, or on build whole, the manifest byte-unchanged: the first phase start\'s close writes it (7.2.35)', () => {
     const file = path.join(dir, '.leeway', 'payments', 'manifest.json');
     const before = fs.readFileSync(file, 'utf8');

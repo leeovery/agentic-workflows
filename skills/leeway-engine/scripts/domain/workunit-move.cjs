@@ -55,22 +55,22 @@
 //   conversation naming its session. Then, the writer lock held, each step
 //   one a second yes repeats or finds done: for a quick-fix, what the fix
 //   holding the checkout has not committed set aside, as a park sets it
-//   aside (fix-aside.cjs); each checkout taken back to the branch its
-//   repository lands on where it has the quick-fix's one branch out —
-//   refused first, nothing moved, while one still holds changes not
-//   committed, the person's own — and each of its tasks not yet ended, its
-//   fixes and its review's fix tasks, closed, as the
-//   verb closes it but for the refusal of a fix holding work, which the
-//   move lands nothing of, and the drop of what a fix's park set aside,
-//   which it keeps (`closeForMove`, task-verbs.cjs; R26), each close
-//   committing the tracker as the verb does; the carry appended, the lines
-//   read once the fixes have closed; then nothing left that the new type's
-//   build, numbering its own phase 1 and tasks 1.n, can meet — the
-//   quick-fix's branch in each repository set aside, kept under
-//   `moved/fix/{unit}` where it holds commits of its own, out of every
-//   landing's reading, else deleted (fix-branch.cjs), every phase it wrote,
-//   its fixes' and its review's fix phases, taken out of the tracker for
-//   good, their tasks with them (`removeBuild`),
+//   aside, and each checkout taken back to the branch its repository lands
+//   on where it has the quick-fix's one branch out — refused first,
+//   nothing moved, while one still holds changes not committed, the
+//   person's own — as its cancel leaves it too (fix-leave.cjs); and each
+//   of its tasks not yet ended, its fixes and its review's fix tasks,
+//   closed, as the verb closes it but for the refusal of a fix holding
+//   work, which the move lands nothing of, and the drop of what a fix's
+//   park set aside, which it keeps (`closeForMove`, task-verbs.cjs; R26),
+//   each close committing the tracker as the verb does; the carry
+//   appended, the lines read once the fixes have closed; then nothing
+//   left that the new type's build, numbering its own phase 1 and tasks
+//   1.n, can meet — the quick-fix's branch in each repository set aside,
+//   kept under `moved/fix/{unit}` where it holds commits of its own, out of
+//   every landing's reading, else deleted (fix-branch.cjs), every phase it
+//   wrote, its fixes' and its review's fix phases, taken out of the
+//   tracker for good, their tasks with them (`removeBuild`),
 //   and each of its pull requests, where one is open, closed unmerged
 //   (`quickFixClose`, landing.cjs), one the person closed by hand read as
 //   none open — after the phase, so a yes run again reads no landing of
@@ -121,14 +121,15 @@ const { assertBeforeSpec } = require('./spec-standing.cjs');
 const { assertMovable } = require('./investigation-conclude.cjs');
 const { draftIn, writeBrief } = require('./discovery-map.cjs');
 const { filled, shaped, readPayload, stage } = require('./staged-payload.cjs');
-const { trackedBuild, removeBuild, closeForMove, stepTurn, ENDED } = require('./task-verbs.cjs');
+const { trackedBuild, removeBuild, closeForMove, ENDED } = require('./task-verbs.cjs');
 const { quickFixLanding, quickFixClose } = require('./landing.cjs');
-const { keptUnder, setBranchAside, checkOutLanding } = require('./fix-branch.cjs');
-const { keptAside, keptWords, asideWords, setAside } = require('./fix-aside.cjs');
+const { keptUnder, setBranchAside } = require('./fix-branch.cjs');
+const { keptAside, keptWords, asideWords } = require('./fix-aside.cjs');
+const { holderOf, leaveCheckout } = require('./fix-leave.cjs');
 const { linesOf, movedFiles } = require('./workunit-absorb.cjs');
 const { reindexWorkUnit } = require('./workunit-lifecycle.cjs');
 const { topicLog } = require('./topic-log.cjs');
-const { shownTask, parseShownTask, taskId } = require('./task-id.cjs');
+const { shownTask, taskId } = require('./task-id.cjs');
 const { stagedFile, nextAfter, OPENS_IN } = require('./start-this-work.cjs');
 const { startThisWorkScreen, aType } = require('./projections/discovery-gates.cjs');
 
@@ -245,19 +246,6 @@ function movePayload(cwd, given) {
 }
 
 /**
- * The fix holding a quick-fix's one checkout, read as any read of the
- * tracker is, or null where none does or no fix has begun: what it has not
- * committed is the yes's to set aside (fix-aside.cjs).
- * @param {string} cwd @param {Record<string, any>} manifest
- * @returns {import('./task-id.cjs').TaskRef|null}
- */
-function holderOf(cwd, manifest) {
-  if (!fixesBegun(manifest)) return null;
-  const turn = withStateLock(stateRoot(cwd), () => stepTurn(cwd, manifest.name, manifest));
-  return turn?.checkout ? parseShownTask(manifest.name, turn.inFlight) : null;
-}
-
-/**
  * The quick-fix's work its move keeps, as start this work's screen names
  * it before the yes: each fix's work set aside, then what the fix holding
  * the checkout has not committed, which the yes sets aside (R26).
@@ -357,19 +345,17 @@ function carriedLines(root, unit, warnings) {
 const NO_FIXES = Object.freeze({ checkout: null, closed: [] });
 
 /**
- * A quick-fix's fixes closed for its move (the header's): what the fix
- * holding the checkout has not committed set aside, as a park sets it
- * aside (fix-aside.cjs), the checkout taken back to the branch they land
- * on, then each not yet ended closed.
+ * A quick-fix's fixes closed for its move (the header's): its checkout
+ * left, what the fix holding it has not committed set aside as a park sets
+ * it aside and the checkout taken back to the branch they land on
+ * (fix-leave.cjs), then each not yet ended closed.
  * @param {string} cwd @param {Record<string, any>} manifest @param {TaskRow[]} fixes the tracker's
  * @param {string} to @param {string[]} warnings
  * @returns {ClosedFixes}
  */
 function closeFixes(cwd, manifest, fixes, to, warnings) {
   const unit = manifest.name;
-  const holder = holderOf(cwd, manifest);
-  if (holder !== null) setAside(cwd, holder, 'the move', 'move');
-  const checkout = checkOutLanding(cwd, unit);
+  const checkout = leaveCheckout(cwd, manifest, 'the move', 'move');
   const closed = fixes.filter(({ status }) => !ENDED.includes(status)).map(({ ref }) => {
     const { warnings: said = [] } = /** @type {{warnings?: string[]}} */ (closeForMove(cwd, unit, shownTask(ref), `${unit} moved to ${aType(to)}`));
     warnings.push(...said);

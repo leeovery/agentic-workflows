@@ -4,6 +4,10 @@
 // Domain ring: work-unit lifecycle transitions — complete (finish's, run in
 // process), cancel, reactivate, and pivot, each a single transaction from the
 // caller's perspective: manifest write, knowledge-base sync, scoped commit.
+// A cancel leaves the unit's code first (18.3.9): a quick-fix's checkout
+// taken back as its move takes it (fix-leave.cjs), and every pull request
+// open on the unit's branches closed, the branches kept under their own
+// names, so a reactivate finds them there (landing.cjs, `cancelClose`).
 //
 // The status vocabulary comes from the shared schema
 // (kernel/manifest-schema.cjs) — the same table the manifest
@@ -33,11 +37,13 @@ const { revertJoins, recordPutBack, retakeJoins } = require('./roadmap.cjs');
 const { moveUnitMailToInbox } = require('./mail.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 const { todayStamp } = require('./dates.cjs');
-const { computeNextPhase, unitOpenRecords } = require('./derivations.cjs');
+const { computeNextPhase, unitOpenRecords, quickFixBuild, fixesBegun } = require('./derivations.cjs');
 const { assertBeforeSpec } = require('./spec-standing.cjs');
 const { abandonExperiments } = require('./transitions.cjs');
+const { cancelClose } = require('./landing.cjs');
+const { leaveCheckout } = require('./fix-leave.cjs');
 
-const { VALID_WORK_UNIT_STATUSES } = require('../kernel/manifest-schema.cjs');
+const { VALID_WORK_UNIT_STATUSES, CLOSED_BY_CANCEL } = require('../kernel/manifest-schema.cjs');
 
 // Refuse any status write the field surface would refuse — the two enforcers
 // share one schema table.
@@ -62,6 +68,8 @@ function assertLegalStatus(status) {
  * @property {import('./roadmap.cjs').HorizonGone[]} [roadmap_horizon_gone] cancel: those of them whose horizon was removed meanwhile, now on none
  * @property {string[]} [inbox] cancel: each waiting message's idea in the inbox, absolute
  * @property {{topic: string, ids: string[]}[]} [abandoned] cancel: each topic's experiment records it ended abandoned
+ * @property {boolean} [pull_requests_closed] cancel: whether it closed any pull request open on the unit's branches
+ * @property {string} [checkout] cancel: the branch it took a quick-fix's checkout back to, where it had the quick-fix's out
  * @property {string[]} [roadmap_rejoined] reactivate: the roadmap items its cancel put back, taken back
  * @property {string[]} [roadmap_stayed] reactivate: those other work took meanwhile, or archived, left where they are
  */
@@ -125,8 +133,38 @@ function abandonUnitExperiments(manifest) {
 }
 
 /**
- * Cancel a work unit: `status: cancelled`, its open experiments ended
- * abandoned, every roadmap item joined to it put back with the joins
+ * The unit's code left as its cancel leaves it (18.3.9): a quick-fix's
+ * checkout left as its move leaves it, the holder's work not committed set
+ * aside and each checkout taken back (fix-leave.cjs); then every pull
+ * request open on the unit's branches closed, in each repository it
+ * touched, the branches kept under their own names (`cancelClose`,
+ * landing.cjs). Each step is one a cancel run again finds done.
+ * @param {string} cwd @param {Record<string, any>} manifest
+ */
+function leaveCode(cwd, manifest) {
+  const checkout = quickFixBuild(manifest) && fixesBegun(manifest) ? leaveCheckout(cwd, manifest, 'workunit cancel', 'cancel') : null;
+  return { checkout, ...cancelClose(cwd, manifest.name) };
+}
+
+/**
+ * The pull requests a cancel closed recorded on the unit, by repository,
+ * beside any an earlier cancel recorded (`closed_by_cancel`). Mutates the
+ * loaded manifest.
+ * @param {Record<string, any>} manifest @param {Record<string, string[]>} pulls
+ */
+function recordClosed(manifest, pulls) {
+  if (Object.keys(pulls).length === 0) return;
+  const held = { ...manifest[CLOSED_BY_CANCEL] };
+  for (const [repo, named] of Object.entries(pulls)) held[repo] = [...new Set([...(held[repo] ?? []), ...named])];
+  manifest[CLOSED_BY_CANCEL] = held;
+}
+
+/**
+ * Cancel a work unit: its code left first — a quick-fix's checkout taken
+ * back, the holder's work set aside, and every pull request open on its
+ * branches closed, the branches kept, those the host names recorded
+ * (`leaveCode`, 18.3.9) — then `status: cancelled`, its open experiments
+ * ended abandoned, every roadmap item joined to it put back with the joins
  * recorded on it, and each of its topics' waiting mail moved to the inbox
  * as ideas under the same lock (18.4.22, 18.8.20, 10.1.6), remove its
  * knowledge-base chunks (warn-don't-block), commit scoped to the work unit
@@ -138,7 +176,7 @@ function abandonUnitExperiments(manifest) {
  */
 function cancelWorkUnit(cwd, workUnit) {
   assertLegalStatus('cancelled');
-  const { mail, abandoned, reverted, gone } = withWorkUnitLock(cwd, workUnit, () => {
+  const { mail, abandoned, reverted, gone, left } = withWorkUnitLock(cwd, workUnit, () => {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     if (manifest.status === 'cancelled') {
       throw new Error(`work unit "${workUnit}" is already cancelled`);
@@ -146,6 +184,8 @@ function cancelWorkUnit(cwd, workUnit) {
     if (manifest.status === 'completed') {
       throw new Error(`work unit "${workUnit}" is completed — reactivate it first`);
     }
+    const code = leaveCode(cwd, manifest);
+    recordClosed(manifest, code.pulls);
     manifest.status = 'cancelled';
     const ended = abandonUnitExperiments(manifest);
     // The cancel-revert hop, whole-unit form: every roadmap item joined to
@@ -155,11 +195,11 @@ function cancelWorkUnit(cwd, workUnit) {
     recordPutBack(manifest, hop.joins);
 
     saveWorkUnitManifest(cwd, workUnit, manifest);
-    return { mail: moveUnitMailToInbox(cwd, manifest), abandoned: ended, reverted: hop.reverted, gone: hop.horizon_gone };
+    return { mail: moveUnitMailToInbox(cwd, manifest), abandoned: ended, reverted: hop.reverted, gone: hop.horizon_gone, left: code };
   });
 
   /** @type {string[]} */
-  const warnings = [];
+  const warnings = [...(left.warnings ?? [])];
   syncKnowledge(cwd, [{ remove: { workUnit } }], warnings);
 
   purgeWorkUnitCache(cwd, workUnit);
@@ -167,7 +207,8 @@ function cancelWorkUnit(cwd, workUnit) {
   if (reverted.length > 0) specs.push('manifest.json');
   const outcome = commitStateTail(cwd, specs, `workflow(${workUnit}): mark as cancelled`, warnings);
   /** @type {WorkUnitLifecycleResult} */
-  const result = { work_unit: workUnit, status: 'cancelled', inbox: mail.map(({ idea }) => statePath(cwd, idea)), committed: outcome.committed, warnings };
+  const result = { work_unit: workUnit, status: 'cancelled', inbox: mail.map(({ idea }) => statePath(cwd, idea)), pull_requests_closed: left.closed, committed: outcome.committed, warnings };
+  if (left.checkout !== null) result.checkout = left.checkout;
   if (reverted.length > 0) result.roadmap_reverted = reverted;
   if (gone.length > 0) result.roadmap_horizon_gone = gone;
   if (abandoned.length > 0) result.abandoned = abandoned;

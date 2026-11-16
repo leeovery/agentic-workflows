@@ -24,6 +24,7 @@ const { loadManifest, loadProjectManifest } = require('./reads.cjs');
 const { titlecase } = require('./conventions.cjs');
 const { section, dataSection, CONTINUE_INSTRUCTION, menu, cmdOption, promptOption, MENU_INSTRUCTION } = require('./projections/surfaces.cjs');
 const { keptAside, keptWords } = require('./fix-aside.cjs');
+const { keptBranches } = require('./fix-branch.cjs');
 const { workunitReceipt, topicReceipt, ABSORB_MOVED, absorbReceipt, importReprompt, inboxRestoreReceipt, inboxDeleteReceipt } = require('./projections/transactions.cjs');
 const { liveItem, deletedItemTitle } = require('./inbox-set.cjs');
 const { logClaims } = require('./inbox.cjs');
@@ -50,7 +51,7 @@ const {
   computeTopicLifecycle, awaitedExperiments, itemOf,
   UNIT_PHASES, liveUnitItems, discoveryUnitExists, cancelPlan, unitOpenRecords,
   postponePlan, postponeTarget, postponedItem, openExperiments,
-  topicTitle, topicTitles, itemTitle, goesBy, dismissedNames, topicKey, noTopicRefusal, briefFile, buildDiscoveryMap,
+  topicTitle, topicTitles, itemTitle, goesBy, dismissedNames, topicKey, noTopicRefusal, briefFile, buildDiscoveryMap, quickFixBuild,
 } = require('./derivations.cjs');
 const { sendReportOf } = require('./mail.cjs');
 const { mapSurface } = require('./topic-map.cjs');
@@ -613,6 +614,7 @@ function workunitReceiptSurface(cwd, args) {
   return workunitReceipt(verb, workUnit, {
     warn: args.warn === '1',
     inbox,
+    branches: verb === 'cancel' && quickFixBuild(manifest) ? keptBranches(cwd, workUnit, 'cancel') : [],
     kept: verb === 'cancel' ? keptAside(cwd, workUnit).map(keptWords) : [],
     stayed,
   });

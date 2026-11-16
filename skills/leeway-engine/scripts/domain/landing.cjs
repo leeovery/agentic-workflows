@@ -126,6 +126,17 @@
 // pull request open unmerged (`quickFixClose`), one closed by hand read as
 // none open.
 //
+// A unit's cancel (18.3.9, workunit-lifecycle.cjs) closes every pull
+// request open on a branch of the unit's, in each repository it touched,
+// and keeps the branches under their own names (`cancelClose`): a
+// quick-fix's as its move closes them, any other unit's each of its tasks'
+// and its own, in each repository holding a branch of the unit's. The
+// pull requests the host names are recorded on the unit's manifest
+// (`closed_by_cancel`), and every context made after carries its
+// repository's (`cancelClosed`), which the driver's reads take as none,
+// so after a reactivate the landing opens what it needs anew, never
+// refusing one of them as closed by hand.
+//
 // A unit with a branch of its own (7.2.34, unit-branch.cjs) lands its tasks
 // and phases on it: each repository's context lands on the unit's landing
 // branch (landing-git.cjs, `landingBranch`) — the unit's own where the
@@ -217,7 +228,7 @@ const { trackedTask, trackedPhase, trackedBuild, phaseWritten, ENDED } = require
 const { taskRounds, pairPassed, changedUnder, changedRefusal, phaseReviewBegun } = require('./round-report.cjs');
 const { verifySetup } = require('./environment.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
-const { cutLength, cutPhases, buildLength, quickFixBuild, isFixPhase, builtSince } = require('./derivations.cjs');
+const { cutLength, cutPhases, buildLength, quickFixBuild, fixesBegun, isFixPhase, builtSince } = require('./derivations.cjs');
 const { dayBefore } = require('./dates.cjs');
 const { reproducingHold } = require('./bug-proven.cjs');
 const { repoLanded, landedIn, landedAcross, foundIn, workIn } = require('./task-landed.cjs');
@@ -231,6 +242,7 @@ const { loadWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { withWriterLock } = require('../kernel/manifest-io.cjs');
 const { projectRepos, childrenFirst, repoName } = require('../kernel/repos.cjs');
 const { STATE_DIR_NAME, stateRoot } = require('../kernel/state-root.cjs');
+const { CLOSED_BY_CANCEL } = require('../kernel/manifest-schema.cjs');
 
 // A phase's checks, and what a fix phase is built on, loaded at their call:
 // they read what landed through this module.
@@ -267,9 +279,12 @@ const stamp = () => require('./commit-task.cjs').TRAILER;
  * it — or past the chain's tip given (`refuseHeld`); and the refusal of a
  * task whose branch did what no verb reads after its landing on the
  * default branch at a commit (`refuseLanded`), so a driver landing on the
- * host's copy refuses there what the default branch here has not seen.
+ * host's copy refuses there what the default branch here has not seen;
+ * and the pull requests the unit's cancel closed there, by the host's own
+ * names (`closed_by_cancel`), which every read of the driver's takes as
+ * none (`cancelClosed`).
  * @typedef {{
- *   root: string, repo: string, unit: string, into: string, remote: string|null,
+ *   root: string, repo: string, unit: string, into: string, remote: string|null, cancelClosed: Set<string>,
  *   reads: Map<string, unknown>, landedOn: (tip: string) => RepoLanded, merged: (shown: string[]) => void, message: (ref: TaskRef) => string,
  *   refuseHeld: (task: {ref: TaskRef, branch: string}, head: string, into: string, from?: {name: string, commit: string}) => void,
  *   refuseLanded: (into: string, refs: TaskRef[]) => void,
@@ -448,6 +463,7 @@ function repoContext(project, repo, remote) {
       unit: project.unit,
       into,
       remote,
+      cancelClosed: new Set(project.manifest?.[CLOSED_BY_CANCEL]?.[named] ?? []),
       reads: new Map(),
       landedOn,
       merged: (shown) => noteMerged(project, repo.path, shown),
@@ -1697,15 +1713,66 @@ function quickFixLand(cwd, unit, closes = false) {
 }
 
 /**
+ * What a move's or a cancel's close did: whether it closed any pull
+ * request, and each the host names, by the repository it was in, as the
+ * cancel records them (`closed_by_cancel`); and what settling the landing
+ * driver warned of, where it did.
+ * @typedef {{closed: boolean, pulls: Record<string, string[]>, warnings?: string[]}} Closed
+ */
+
+/** A close with nothing to close. @returns {Closed} */
+const nothingClosed = () => ({ closed: false, pulls: {} });
+
+/**
+ * Each repository's closes made in turn, children first, a refusal in a
+ * nested one naming it: what they did, together (`Closed`).
+ * @param {{ctx: LandingContext, closes: (() => import('./drivers.cjs').PullsClosed)[]}[]} steps
+ * @returns {Closed}
+ */
+function closedIn(steps) {
+  const done = steps.map(({ ctx, closes }) => ({ repo: ctx.repo, made: closes.map((close) => inRepo(ctx.repo, close)) }));
+  const pulls = done.map(({ repo, made }) => [repo, made.flatMap((answer) => answer.pulls)]).filter(([, named]) => named.length > 0);
+  return { closed: done.some(({ made }) => made.some((answer) => answer.closed)), pulls: Object.fromEntries(pulls) };
+}
+
+/**
  * A quick-fix's pull request closed unmerged in each repository its
- * landing `read` walks, where that read found one open — as its move closes
- * it (workunit-move.cjs) — through the driver the project names, its
- * setting left as it stands: whether this call closed one.
- * @param {QuickFixLanding} read @returns {{closed: boolean}}
+ * landing `read` walks, where that read found one open — as its move and
+ * its cancel close it (workunit-move.cjs, `cancelClose`) — through the
+ * driver the project names, its setting left as it stands.
+ * @param {QuickFixLanding} read @returns {Closed}
  */
 function quickFixClose(read) {
-  const closed = read.repos.map((held) => inRepo(held.ctx.repo, () => read.driver.closeQuickFix(held.ctx, held.pull()).closed));
-  return { closed: closed.some(Boolean) };
+  return closedIn(read.repos.map((held) => ({ ctx: held.ctx, closes: [() => read.driver.closeQuickFix(held.ctx, held.pull())] })));
+}
+
+/**
+ * The cancel's close (18.3.9): every pull request open on a branch of the
+ * unit's closed unmerged, in each repository it touched, the branches left
+ * as they stand. A quick-fix's, once its fixes have begun, as its move
+ * closes it (`quickFixClose`); any other unit's, in each repository holding
+ * a branch of the unit's, walked as every verb walks them, children first,
+ * on contexts landing on the default branches — each of its tasks' open
+ * there (`closeTasks`) and, where the repository holds the unit's own
+ * branch, its own (`closeUnit`) — the landing driver settled where it is
+ * not (`withDriver`); nothing, and no host asked, where no repository
+ * holds a branch of the unit's.
+ * @param {string} cwd @param {string} unit
+ * @returns {Closed}
+ */
+function cancelClose(cwd, unit) {
+  const manifest = manifestOf(stateRoot(cwd), unit);
+  if (manifest !== null && quickFixBuild(manifest)) return fixesBegun(manifest) ? quickFixClose(quickFixLanding(cwd, unit)) : nothingClosed();
+  const project = projectOf(cwd, unit, undefined, { onDefault: true, recorded: false });
+  const holds = (/** @type {Repo} */ repo) => [...lg.branches(repo.path).keys()].some((branch) => names.isUnitBranch(unit, branch));
+  if (!project.repos.some(holds)) return nothingClosed();
+  const own = lg.recordedBranch(cwd, unit);
+  const { closed, pulls, warnings } = withDriver(cwd, (driver) => closedIn(walked(project, driver, holds).map((repo) => {
+    const ctx = contextOf(project, repo);
+    const holdsOwn = own !== null && lg.unitBranchIn(cwd, repo, unit) !== null;
+    return { ctx, closes: [() => driver.closeTasks(ctx), ...(holdsOwn ? [() => driver.closeUnit(ctx, driver.unitPull?.(ctx, own) ?? null)] : [])] };
+  })));
+  return { closed, pulls, ...(warnings === undefined ? {} : { warnings }) };
 }
 
 /**
@@ -1847,5 +1914,5 @@ module.exports = {
   landFinish: (cwd, unit) => recording(cwd, unit, () => landFinish(cwd, unit)),
   /** `land finish` past its refusals, its landings written for finish's yes's commit of the unit to carry, `then` the step a refusal's way on runs again. @param {string} cwd @param {string} unit @param {string} then */
   finishMerge: (cwd, unit, then) => recording(cwd, unit, () => finishMerge(cwd, unit, then), true),
-  allChained, landingTips, mutationRun, quickFixLanding, quickFixClose, workFrom, unendedRefusal, reviewOpened,
+  allChained, landingTips, mutationRun, quickFixLanding, quickFixClose, cancelClose, workFrom, unendedRefusal, reviewOpened,
 };

@@ -71,20 +71,22 @@ function stayedLines(stayed) {
 
 /**
  * workunit cancel / reactivate / pivot receipts, each confirming the unit
- * by name: the pivot saying it is an epic now, its discussion the first
- * topic on its map, and the reactivate each roadmap item its cancel put
- * back that it left where it is.
+ * by name: the cancel naming where a quick-fix's commits stay and each
+ * fix's work it kept (19.5.29), the pivot saying it is an epic now, its
+ * discussion the first topic on its map, and the reactivate each roadmap
+ * item its cancel put back that it left where it is.
  * @param {'cancel'|'reactivate'|'pivot'} verb
  * @param {string} workUnit
- * @param {{warn?: boolean, inbox?: number, kept?: string[], stayed?: Stayed[]}} [opts]  `inbox`: cancel — how many waiting messages it moved to the inbox; `kept`: cancel — the words for each fix's work it kept set aside; `stayed`: reactivate — the items it left
+ * @param {{warn?: boolean, inbox?: number, branches?: string[], kept?: string[], stayed?: Stayed[]}} [opts]  `inbox`: cancel — how many waiting messages it moved to the inbox; `branches`: cancel — the names a quick-fix's branch is kept under, each with its repository where it is nested; `kept`: cancel — the words for each fix's work it kept set aside; `stayed`: reactivate — the items it left
  * @returns {string}
  */
-function workunitReceipt(verb, workUnit, { warn = false, inbox = 0, kept = [], stayed = [] } = {}) {
+function workunitReceipt(verb, workUnit, { warn = false, inbox = 0, branches = [], kept = [], stayed = [] } = {}) {
   const name = titlecase(workUnit);
   if (verb === 'cancel') {
+    const alerts = [...(branches.length > 0 ? [`Its commits stay on ${branches.join(', ')}, kept for a reactivate to carry on from`] : []), ...kept];
     return joined([
       warn ? warningBlock('Knowledge removal warning', 'The work unit is cancelled. The next start removes its chunks from the knowledge base.') : null,
-      confirmation([[`"${name}" marked as cancelled.`, ...inboxLine(inbox)].join(' '), ...kept.flatMap((words) => wrapWithPrefix(`⚑ ${words}`, { width: TREE_WIDTH, hang: 2 }))].join('\n')),
+      confirmation([[`"${name}" marked as cancelled.`, ...inboxLine(inbox)].join(' '), ...alerts.flatMap((words) => wrapWithPrefix(`⚑ ${words}`, { width: TREE_WIDTH, hang: 2 }))].join('\n')),
     ]);
   }
   if (verb === 'reactivate') {

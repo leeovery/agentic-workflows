@@ -4,7 +4,7 @@
 // The driver seam (leeway-engine/scripts/domain/drivers.cjs, with the task
 // id's shape in domain/task-id.cjs): the loader reading a drivers' folder and
 // refusing a driver whose folder or declaration is amiss, a landing driver
-// lacking a quick-fix's methods among them; each kind's
+// lacking a quick-fix's or a cancel's methods among them; each kind's
 // default among its drivers, landing's turning on the remote a driver
 // serves; the project manifest's `drivers` setting, honoured, refused where
 // it names no shipped driver, and written where absent; each tool a driver
@@ -70,9 +70,9 @@ describe('loadDriver and listDrivers', () => {
     }
   });
 
-  it('refuses a landing driver lacking the methods a quick-fix\'s one pull request is read, opened, merged and closed through, and a unit\'s own branch landed and its pull request closed', () => {
+  it('refuses a landing driver lacking the methods a quick-fix\'s one pull request is read, opened, merged and closed through, a unit\'s own branch landed and its pull request closed, and its tasks\' pull requests closed', () => {
     const root = landingRoot();
-    const lacking = ['quickFixPull', 'openQuickFix', 'mergeQuickFix', 'closeQuickFix', 'landUnit', 'closeUnit'];
+    const lacking = ['quickFixPull', 'openQuickFix', 'mergeQuickFix', 'closeQuickFix', 'landUnit', 'closeUnit', 'closeTasks'];
     fs.mkdirSync(path.join(root, 'landing', 'lacking'), { recursive: true });
     fs.writeFileSync(path.join(root, 'landing', 'lacking', 'driver.cjs'),
       `module.exports = require(${JSON.stringify(path.join(FIXTURES, 'fixture-driver.cjs'))})({ kind: 'landing', name: 'lacking', isDefault: false }, { lacking: ${JSON.stringify(lacking)} });\n`);

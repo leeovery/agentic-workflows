@@ -78,6 +78,8 @@ module.exports = {
   quickFixOpen: (dir, unit) => git(dir, ['for-each-ref', '--format=%(refname)', `refs/leeway/quick-fix/${unit}/open`]).trim() !== '',
   /** The unit's own pull request open in a repository: none, there being no host to open one on. */
   unitPullOpen: () => null,
+  /** The unit's tasks a pull request is open for in a repository, by id: none, there being no host to open one on. @returns {string[]} */
+  tasksOpen: () => [],
   /** A repository made to allow no merge commits: none, there being no host to say so. */
   noMergeCommits: null,
   /** A merge in the repository at `dir` refused until `undo`: its checkout in the middle of a merge, as a merge stopped there leaves it. @param {string} dir */
