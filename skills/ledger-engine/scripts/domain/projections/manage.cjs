@@ -11,8 +11,8 @@
 //   opens the unit's own; s/setup draws the project's environment setup as
 //   recorded, for the person to change (22.5.5, environment-verbs.cjs);
 //   d/drivers draws the drivers, for the person to change either (22.4.4,
-//   drivers-verbs.cjs); and b/back draws the start menu (18.3.4). The matrix
-//   joins it with its phase.
+//   drivers-verbs.cjs); m/matrix draws the matrix (16.15.1); and b/back
+//   draws the start menu (18.3.4).
 // - `render manage-unit <unit> [--from closed | --from pick --matches
 //   <matches>]`: the unit under the rule, "{Unit} ({type})",
 //   and what can be done to it as it stands (18.3.4–18.3.6): a feature in
@@ -118,9 +118,12 @@ const setupRow = (project) => ({
 /** Manage's row changing the project's drivers. @type {MenuRow} */
 const DRIVERS_ROW = Object.freeze({ key: 'd', word: 'drivers', label: 'Change the task driver or the landing driver', next: engine('render', 'drivers') });
 
+/** Manage's row opening the matrix. @type {MenuRow} */
+const MATRIX_ROW = Object.freeze({ key: 'm', word: 'matrix', label: 'See the matrix — how often Claude\'s calls miss, by kind', next: engine('render', 'matrix') });
+
 /** Manage's screen over the project's units (the header's). @param {Record<string, any>[]} manifests @param {string} project @returns {MenuScreen} */
 function manageScreen(manifests, project) {
-  return { shows: [], question: 'What would you like to manage?', rows: [...listed(manifests).map(unitRowOn('manage')), setupRow(project), DRIVERS_ROW], back: BACK_TO_START };
+  return { shows: [], question: 'What would you like to manage?', rows: [...listed(manifests).map(unitRowOn('manage')), setupRow(project), DRIVERS_ROW, MATRIX_ROW], back: BACK_TO_START };
 }
 
 /** The closed units' screen (the header's). @param {Record<string, any>[]} manifests @returns {MenuScreen} */
