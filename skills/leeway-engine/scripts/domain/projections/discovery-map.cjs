@@ -22,7 +22,6 @@ const { section, dataSection, CONTINUE_INSTRUCTION } = require('./surfaces.cjs')
  * @property {string} lifecycle   fresh|discussing|decided|cancelled|postponed
  * @property {string} [title]      how screens title the topic, its name titlecased where none is given
  * @property {string|null} [discussion_state]  the discussion item's raw status, null when none exists
- * @property {string|null} [promoted_to]  the cross-cutting unit a promoted discussion moved to, null otherwise
  * @property {boolean} [mail_waiting]  messages wait in the topic's mailbox, whatever its items' status
  * @property {import('../derivations.cjs').Wait[]} [waits]  the live waits of the topic's in-progress phase items
  * @property {string|null} [summary]
@@ -67,7 +66,7 @@ function breakdown(summary) {
 function mapNodes(rows) {
   return rows.map((row) => ({
     title: title({ glyph: discoveryGlyph(row.lifecycle), label: row.title }),
-    body: [stateNote(discoveryLifecycleLabel(row.lifecycle, row.mail_waiting ?? false, row.waits, row.promoted_to ?? null))],
+    body: [stateNote(discoveryLifecycleLabel(row.lifecycle, row.mail_waiting ?? false, row.waits))],
   }));
 }
 

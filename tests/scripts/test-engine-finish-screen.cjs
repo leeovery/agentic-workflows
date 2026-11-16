@@ -97,7 +97,7 @@ describe('render finish (14.5.1)', () => {
     assert.match(screen(), /=== MENU: finish /);
   });
 
-  it('refuses a unit the project lacks, one not in progress, one built under the old plan, a build not begun, its review phase not over, a checklist open, and an engine item failing since its close, writing nothing — land finish refusing each as it does', () => {
+  it('refuses a unit the project lacks, one not in progress, a build not begun, its review phase not over, a checklist open, and an engine item failing since its close, writing nothing — land finish refusing each as it does', () => {
     /** Its refusal of the unit, and land finish's. @param {string} unit */
     const both = (unit) => [refused(['render', 'finish', unit]), refused(['land', 'finish', unit])];
     const reviewing = both(UNIT);
@@ -109,10 +109,9 @@ describe('render finish (14.5.1)', () => {
     writeState(dir, layout.manifest('half'), JSON.stringify({ ...readManifest(dir, 'half'), status: 'completed' }, null, 2));
     commitAll(dir, 'half completed');
 
-    assert.deepStrictEqual([both('nope'), both('half'), both('old'), both('fresh'), reviewing, open, stale], [
+    assert.deepStrictEqual([both('nope'), both('half'), both('fresh'), reviewing, open, stale], [
       'there is no work unit "nope" — the start menu lists the work in progress',
       'half is completed — new work starts from the start menu',
-      'old was built under the old plan, and its build is entered once the reshape\'s 29.17 migration has cut it',
       'fresh\'s build has not begun — ready to build\'s yes begins it: render ready-to-build fresh',
       `${UNIT} finishes once its review phase is over — ${UNIT}'s review phase is in round 1 — enter review ${UNIT}`,
       `finish is open — its items are worked, then it is closed: checklist close finish ${UNIT}`,

@@ -22,6 +22,6 @@ Nothing to read here.
 
 #### Otherwise
 
-Read each `seeds/{filename}.md` (paths are relative to `.workflows/{work_unit}/`) in full and use it to seed this phase. Don't dump it back to the user verbatim.
+Read each `seeds/{filename}.md` (paths are relative to `.leeway/{work_unit}/`) in full and use it to seed this phase. Don't dump it back to the user verbatim.
 
 → Return to caller.

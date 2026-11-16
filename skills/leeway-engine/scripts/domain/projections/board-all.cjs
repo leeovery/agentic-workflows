@@ -13,18 +13,15 @@
 // - How far a unit has come, by the phase it is in: the gate ending it
 //   waiting on the person, by its name — finish, a quick-fix's close, or an
 //   investigation's conclude; an epic's discovery its topics on the map,
-//   its discussion its topics decided of all, and a unit of a type the
-//   reshape retires waiting on the migration's cut, as its menu row says
-//   them (progress.cjs); a bug's investigation how far its hunt has come;
-//   the specification where it stands, as its banner says it; the build its
+//   and its discussion its topics decided of all, as its menu row says them
+//   (progress.cjs); a bug's investigation how far its hunt has come; the
+//   specification where it stands, as its banner says it; the build its
 //   tasks done of all, or as its menu row says it while the tracker holds
 //   none of them yet, a quick-fix its fixes done of all, the review its
 //   round, as its banner says it — a quick-fix's too — each stopped where
-//   nothing can go on; nothing for a linear unit's discussion, nor a build
-//   or review not run by its cut — under the old plan, its tracker not the
-//   cut's until 29.17. A unit's tracker is read
-//   once its build runs by its cut, or a quick-fix's fixes have begun, one
-//   copy of its store a call.
+//   nothing can go on; nothing for a linear unit's discussion. A unit's
+//   tracker is read once its build has begun, or a quick-fix's fixes have,
+//   one copy of its store a call.
 // - A session is in a unit where this one is, or another holds a presence
 //   in it.
 // - The roadmap is its waiting items, those no unit has pulled and none
@@ -40,7 +37,7 @@ const { scanProject } = require('../presence.cjs');
 const { discoverInbox } = require('../start.cjs');
 const { projectName } = require('../state-checks.cjs');
 const { titlecase } = require('../conventions.cjs');
-const { roadmapItems, itemWaiting, itemPostponedFrom, topicTitle, buildByCut, quickFixBuild, tasksBegun } = require('../derivations.cjs');
+const { roadmapItems, itemWaiting, itemPostponedFrom, topicTitle, quickFixBuild, tasksBegun } = require('../derivations.cjs');
 const { counts } = require('../start-menu.cjs');
 const { buildWords } = require('./board-build.cjs');
 const { roundWords } = require('./board-review.cjs');
@@ -50,7 +47,7 @@ const { waitingOn, standingOf } = require('./board-standing.cjs');
 const { nowOf } = require('../unit-phases.cjs');
 const { investigationHowFar } = require('./board-investigation.cjs');
 const { quickFixWords } = require('./board-quick-fix.cjs');
-const { AT_THE_CUT, epicMeasure } = require('../progress.cjs');
+const { epicMeasure } = require('../progress.cjs');
 
 /** @typedef {import('../board.cjs').BoardAt} BoardAt */
 /** @typedef {import('../board-model.cjs').AllView} AllView */
@@ -58,9 +55,6 @@ const { AT_THE_CUT, epicMeasure } = require('../progress.cjs');
 
 /** Where a unit's build or review has stopped, as its row leads with it. @param {BoardAt} at */
 const stoppedWords = (at) => (standingOf(at) === 'stopped' ? 'stopped · ' : '');
-
-/** Whether a unit's tasks are its own, read by the cut or a quick-fix's: none under the old plan. @param {Record<string, any>} manifest */
-const ownTasks = (manifest) => buildByCut(manifest) || quickFixBuild(manifest);
 
 /** The gates that end a phase, each waiting on the person by its name: finish, a quick-fix's close, an investigation's conclude. */
 const GATES = Object.freeze(['finish', 'conclude']);
@@ -71,14 +65,12 @@ const HOW_FAR = Object.freeze({
   discussion: (at) => epicMeasure(at.cwd, at.manifest, 'discussion') ?? '',
   investigation: investigationHowFar,
   specification: (at) => specDoing(at, waitingOn(at)),
-  build: (at) => (buildByCut(at.manifest) ? `${stoppedWords(at)}${buildWords(at)}` : ''),
+  build: (at) => `${stoppedWords(at)}${buildWords(at)}`,
   implementation: (at) => (quickFixBuild(at.manifest) && tasksBegun(at.manifest) ? `${stoppedWords(at)}${quickFixWords(at)}` : ''),
   review: (at) => {
-    if (!ownTasks(at.manifest)) return '';
     const { round, words } = roundWords(at);
     return `${stoppedWords(at)}${words ?? `round ${round} reading`}`;
   },
-  cut: () => AT_THE_CUT,
 });
 
 /** What waits on the person in a unit, counted (the header's). @param {BoardAt} at */

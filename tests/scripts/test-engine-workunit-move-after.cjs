@@ -11,8 +11,7 @@
 // rewritten, its lines carried to the discussion and its log set aside, the
 // finding citing it following (19.S30); every refusal, writing nothing — a
 // type that does not move, a move its type does not take, a unit not in
-// progress or of a retired type, a quick-fix its old scoping made, a unit
-// past its spec, a bugfix away from its investigation or with its root
+// progress, a unit past its spec, a bugfix away from its investigation or with its root
 // cause's validation not taken in since it was logged (19.4.7) — and the yes's
 // checks made again against the unit as it stands; and the yes stopped
 // before its save run again whole, answering what the second call did. A
@@ -109,7 +108,7 @@ describe('the yes: a bugfix moved to a feature (19.S30, 19.4.22)', () => {
 });
 
 describe('what the move refuses (19.5.9, 19.4.22, P7)', () => {
-  it('refuses a type that does not move, a move its type does not take, a unit not in progress or of a type the reshape retires, a quick-fix its old scoping made, a unit past its spec, and a bugfix away from its investigation — each at the stage, nothing written', () => {
+  it('refuses a type that does not move, a move its type does not take, a unit not in progress, a unit past its spec, and a bugfix away from its investigation — each at the stage, nothing written', () => {
     dir = world();
     assert.deepStrictEqual([
       refusedStage(EPIC, 'feature'),
@@ -117,8 +116,6 @@ describe('what the move refuses (19.5.9, 19.4.22, P7)', () => {
       refusedStage(BUG, 'bugfix'),
       refusedStage(QF, 'epic'),
       refusedStage('parked', 'feature'),
-      refusedStage('concern', 'feature'),
-      refusedStage('scoped', 'feature'),
       refusedStage('specced', 'feature'),
       refusedStage('fixed', 'feature'),
       refusedStage('fresh', 'feature'),
@@ -128,8 +125,6 @@ describe('what the move refuses (19.5.9, 19.4.22, P7)', () => {
       `${BUG} is a bugfix, which moves to a feature — not to "bugfix"`,
       `${QF} is a quick-fix, which moves to a feature or a bugfix — not to "epic"`,
       'parked is cancelled — only work in progress moves',
-      'concern is a cross-cutting unit, a type the reshape retires — it waits on the reshape\'s 29.17 migration, and nothing is done in it until then',
-      'scoped was scoped under the old plan, and moves once the reshape\'s 29.17 migration has cut it',
       'specced has its spec — it carries on as work of its own',
       'a bugfix moves to a feature from its investigation, and fixed\'s has concluded — the work carries on in its spec',
       'a bugfix moves to a feature from its investigation, and fresh\'s has not begun',

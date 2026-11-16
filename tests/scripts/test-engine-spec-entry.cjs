@@ -10,8 +10,7 @@
 // live topic, its map unshaped or every topic set aside; a feature's topic
 // not yet closed into its spec — its decided checklist closed, nothing
 // delivered to it since (11.2.1, 9.7.9) — a bugfix's investigation not yet
-// concluded; a quick-fix (11.1.6) and a migrated cross-cutting unit, a type
-// the reshape retires (19.6.1); a topic named; and, for
+// concluded; a quick-fix (11.1.6); a topic named; and, for
 // every verb that holds the spec to its refusal, a unit not in progress.
 // What it writes: nothing but where the conversation is working (4.11.2),
 // starting nothing and committing nothing. What it reads: each live topic's
@@ -35,8 +34,7 @@
 // cancelled with a decision linking a file canonical, `widgets` postponed;
 // an epic with no topic, and one whose topics are all set aside; a feature
 // under discussion and one decided; a bugfix under investigation and one
-// concluded, its investigation written; a quick-fix; and a migrated
-// cross-cutting unit. Each test's conversation has its own system config.
+// concluded, its investigation written; and a quick-fix. Each test's conversation has its own system config.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -119,7 +117,6 @@ const world = fixtureFrom('engine-spec-entry-', (dir) => {
     },
   });
   createManifest(dir, 'tweak', { work_type: 'quick-fix' });
-  createManifest(dir, 'tracing', { work_type: 'cross-cutting', phases: { discussion: { items: { tracing: { status: 'completed' } } } } });
 });
 
 let dir; // the project
@@ -198,10 +195,9 @@ describe('what cannot enter the spec is refused, naming the way on, and nothing 
     assert.strictEqual(readManifest(dir, 'solo').phases.discussion.items.solo.status, 'in-progress', 'the one screen marks it decided');
   });
 
-  it('a quick-fix, which has no spec (11.1.6), a migrated cross-cutting unit, whose type goes (19.6.1), and a topic named', () => {
-    assert.deepStrictEqual([refused(['tweak']), refused(['tracing']), refused(['ready', 'alpha'])], [
+  it('a quick-fix, which has no spec (11.1.6), and a topic named', () => {
+    assert.deepStrictEqual([refused(['tweak']), refused(['ready', 'alpha'])], [
       'a quick-fix has no specification — its phases are implementation, review',
-      'tracing is a cross-cutting unit, a type the reshape retires — it waits on the reshape\'s 29.17 migration, and nothing is done in it until then',
       'specification is entered at the work unit — name no topic: engine enter specification ready',
     ]);
   });

@@ -674,10 +674,10 @@ describe('conversation position', () => {
     ]);
   });
 
-  it('a build not to be entered carries nothing on, at either of its places — a unit built under the old plan, and a quick-fix\'s review, which the person has not asked for (P12, 19.5.14)', () => {
+  it('a build not to be entered carries nothing on, at either of its places — a build not begun, and a quick-fix\'s review, which the person has not asked for (11.8.3, 19.5.14)', () => {
     install('leeway-implementation-process');
     install('leeway-review-process');
-    workUnit('pay', 'epic', { implementation: { items: { ledger: { status: 'in-progress' } } } }, { build: { position: 'auto' } });
+    workUnit('pay', 'epic');
     workUnit('fix', 'quick-fix');
     const notes = [['pay', 'implementation'], ['pay', 'review'], ['fix', 'review']].map(([unit, phase]) => {
       writePosition({ name: unit, phase, topic: unit });
@@ -686,8 +686,8 @@ describe('conversation position', () => {
     });
 
     assert.deepStrictEqual(notes, [
-      [null, [], 'This conversation was working in the implementation of the epic "pay", but pay was built under the old plan, and its build is entered once the reshape\'s 29.17 migration has cut it, so there is nothing to carry on from.'],
-      [null, [], 'This conversation was working in the review of the epic "pay", but pay was built under the old plan, and its build is entered once the reshape\'s 29.17 migration has cut it, so there is nothing to carry on from.'],
+      [null, [], 'This conversation was working in the implementation of the epic "pay", but pay\'s build has not begun — ready to build\'s yes begins it: render ready-to-build pay, so there is nothing to carry on from.'],
+      [null, [], 'This conversation was working in the review of the epic "pay", but pay\'s build has not begun — ready to build\'s yes begins it: render ready-to-build pay, so there is nothing to carry on from.'],
       [null, [], 'This conversation was working in the review of the quick-fix "fix", but fix is a quick-fix, whose review runs only once the person asks for one at its close — render finish fix draws it, so there is nothing to carry on from.'],
     ]);
   });
@@ -829,7 +829,7 @@ describe('conversation position', () => {
       files: [],
       text,
     });
-    for (const status of ['cancelled', 'postponed', 'superseded', 'promoted']) {
+    for (const status of ['cancelled', 'postponed', 'superseded']) {
       workUnit('pay', 'epic', { discussion: { items: { ledger: { status } } } });
       closed(`This conversation was working in the discussion of "ledger" in the epic "pay", but the discussion is ${status}, so there is nothing to carry on from.`);
     }

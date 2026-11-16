@@ -9,10 +9,9 @@
 // but a unit whose topic has an experiment out, spawned from its discussion
 // and not yet concluded or abandoned, into the laboratory (24.1.2, P8).
 //
-// It refuses a unit the project lacks, one not in progress — a closed unit
-// is seen through the start menu's view and brought back through manage —
-// and a feature, bugfix or quick-fix waiting on the migration's cut (P12),
-// in its line. The move itself is the handoff table's (handoff.cjs), checked
+// It refuses a unit the project lacks, and one not in progress — a closed
+// unit is seen through the start menu's view and brought back through
+// manage. The move itself is the handoff table's (handoff.cjs), checked
 // and composed as any other.
 //
 // Where the unit stands also says where a decided topic's entry relying on
@@ -26,7 +25,7 @@
 const { resolveHandoff, phaseSkill } = require('./handoff.cjs');
 const { knownUnit, noUnit } = require('./topic-standing.cjs');
 const { nowOf, unitRead } = require('./unit-phases.cjs');
-const { awaitsCut, buildRefusal, mailPhase, openRecords } = require('./derivations.cjs');
+const { mailPhase, openRecords } = require('./derivations.cjs');
 
 /** @typedef {import('./handoff.cjs').Handoff} Handoff */
 
@@ -81,7 +80,6 @@ function unitHandoff(cwd, args) {
   const manifest = openUnit(cwd, unit);
   const type = manifest.work_type;
   if (type === 'epic') return resolveHandoff(cwd, 'leeway-continue-epic', [unit]);
-  if (awaitsCut(manifest)) throw new Error(/** @type {string} */ (buildRefusal(manifest)));
   if (openRecords(manifest, unit).length > 0) return resolveHandoff(cwd, phaseSkill('experiment', type), [type, unit, unit]);
   return resolveHandoff(cwd, phaseSkill(phaseNow(cwd, manifest), type), [type, unit]);
 }

@@ -189,15 +189,6 @@ describe('engine handoff — the composed answer for every target', () => {
     }
   });
 
-  it('a unit built under the old plan is handed into its build at the unit as any other is, never at a topic — its entry says it waits on the cut (P12)', () => {
-    createManifest(dir, 'kept', { work_type: 'epic', build: { position: 'auto' }, phases: { specification: { items: { kept: { status: 'completed' } } } } });
-    for (const [phase, skill] of [['implementation', 'leeway-implementation-process'], ['review', 'leeway-review-process']]) {
-      const name = phase.charAt(0).toUpperCase() + phase.slice(1);
-      assert.strictEqual(inline(dir, [skill, 'epic', 'kept']), inlineAnswer(skill, 'epic kept', `→ ${name} · kept`), skill);
-      refused(dir, [skill, 'epic', 'kept', 'checkout'], new RegExp(`^Usage: engine handoff ${skill} <[^>]+> <work-unit>$`));
-    }
-  });
-
   it('a topic the work unit does not hold yet is named all the same — the phase starts it', () => {
     assert.strictEqual(payloadOf(carried(dir, ['leeway-discussion-process', 'epic', 'fumi', 'payments'])).line,
       '→ Discussion · payments');
@@ -287,7 +278,7 @@ describe('engine handoff topic — a topic opened by its unit and name, as /leew
             widgets: row(5, { postponed: true }),
           },
         },
-        discussion: { items: { sync: { status: 'completed' }, export: { status: 'promoted', promoted_to: 'portability' }, removal: { status: 'cancelled' }, widgets: { status: 'postponed' } } },
+        discussion: { items: { sync: { status: 'completed' }, removal: { status: 'cancelled' }, widgets: { status: 'postponed' } } },
       },
     });
   });
@@ -306,7 +297,7 @@ describe('engine handoff topic — a topic opened by its unit and name, as /leew
     refused(dir, ['topic', 'typo', 'typo'], /^typo is a quick-fix, with no topics to open by name — it carries on from the start menu$/);
   });
 
-  it('refuses, before anything travels, what the topic\'s entry refuses, by its rule: a unit the project lacks, one cancelled or completed, one past its spec, a topic the unit lacks, and one cancelled, postponed, promoted or decided', () => {
+  it('refuses, before anything travels, what the topic\'s entry refuses, by its rule: a unit the project lacks, one cancelled or completed, one past its spec, a topic the unit lacks, and one cancelled, postponed or decided', () => {
     createManifest(dir, 'retired', { status: 'cancelled' });
     createManifest(dir, 'shipped', { status: 'completed' });
     createManifest(dir, 'specced');
@@ -319,21 +310,14 @@ describe('engine handoff topic — a topic opened by its unit and name, as /leew
       [['fumi', 'comercialization'], 'fumi has no topic "comercialization" — the epic\'s map holds its topics, and a new one comes through its discovery'],
       [['fumi', 'removal'], 'the topic "removal" is cancelled — reactivating it goes through the epic menu\'s discovery row'],
       [['fumi', 'widgets'], 'the topic "widgets" is postponed, and its roadmap item has gone to another epic — it stays postponed here, with no way back'],
-      [['fumi', 'export'], 'the topic "export" was promoted to "portability" — it carries on there'],
       [['fumi', 'sync'], 'the topic "sync" is decided — it reopens through a message sent to it, or through the epic menu\'s discovery row'],
     ];
     assert.deepStrictEqual(cases.map(([args]) => refuses(dir, ['handoff', 'topic', ...args]).error), cases.map(([, error]) => error));
   });
 
-  it('refuses a bugfix\'s topic once its investigation is concluded, the way its menu goes — or saying its work is done — and hands off into it again once a message reopens it', () => {
+  it('refuses a bugfix\'s topic once its investigation is concluded, the way its menu goes, and hands off into it again once a message reopens it', () => {
     createManifest(dir, 'crash', { work_type: 'bugfix', phases: { investigation: { items: { crash: { status: 'completed' } } } } });
     refused(dir, ['topic', 'crash', 'crash'], /^the topic "crash" is concluded — its work goes on in specification, from the start menu, and a message sent to it reopens it$/);
-    const done = { status: 'completed' };
-    createManifest(dir, 'crash', {
-      work_type: 'bugfix',
-      phases: Object.fromEntries(['investigation', 'specification', 'planning', 'implementation', 'review'].map((phase) => [phase, { items: { crash: done } }])),
-    });
-    refused(dir, ['topic', 'crash', 'crash'], /^the topic "crash" is concluded — its work is done, and a message sent to it reopens it$/);
     createManifest(dir, 'crash', { work_type: 'bugfix', phases: { investigation: { items: { crash: { status: 'in-progress' } } } } });
     assert.strictEqual(inline(dir, ['topic', 'crash', 'crash']), inlineAnswer('leeway-investigation-process', 'bugfix crash crash', '→ Investigation · crash'));
   });

@@ -60,8 +60,8 @@ describe('the build\'s questions and finish (18.2.3, D18)', () => {
     ]);
   });
 
-  it('N3: what waits in one unit and in every unit of the project — in its build, at its review, at its spec, a quick-fix and one under the old plan among them — is read from one read of the ledger, checked once: the ledger opened twice either way; and handed a caller\'s read, it reads none of its own', (t) => {
-    const units = [review.UNIT, 'half', 'open', 'solo', 'five', 'fresh', 'tweak', 'old'];
+  it('N3: what waits in one unit and in every unit of the project — in its build, at its review, at its spec, a quick-fix among them — is read from one read of the ledger, checked once: the ledger opened twice either way; and handed a caller\'s read, it reads none of its own', (t) => {
+    const units = [review.UNIT, 'half', 'open', 'solo', 'five', 'fresh', 'tweak'];
     const real = fs.openSync;
     let opened = 0;
     t.mock.method(fs, 'openSync', (/** @type {Parameters<typeof fs.openSync>} */ ...args) => {
@@ -80,11 +80,10 @@ describe('the build\'s questions and finish (18.2.3, D18)', () => {
     assert.deepStrictEqual([opens(() => waitsIn(dir, [review.UNIT])), opens(() => waitsIn(dir, units)), opens(handed)], [2, 2, 2]);
   });
 
-  it('7.4.2, 28.2.1: a build says the phase it is at, the first of its cut not closed, of every phase the cut holds, one whose start has not closed not yet written; a review its name; a unit of a type the reshape retires that it waits on the migration\'s cut', () => {
+  it('7.4.2, 28.2.1: a build says the phase it is at, the first of its cut not closed, of every phase the cut holds, one whose start has not closed not yet written; a review its name', () => {
     for (const unit of ['open', 'half']) createManifest(dir, unit, { ...readManifest(dir, unit), phases: { discussion: { items: { [unit]: { status: 'completed' } } } } });
-    createManifest(dir, 'mixed', { work_type: 'cross-cutting' });
 
-    assert.deepStrictEqual(['open', 'half', review.UNIT, 'mixed'].map((unit) => progress(dir, unit)), ['build, phase 1 of 2, not yet written', 'build, phase 2 of 2, not yet written', 'review', 'waiting on the migration\'s cut']);
+    assert.deepStrictEqual(['open', 'half', review.UNIT].map((unit) => progress(dir, unit)), ['build, phase 1 of 2, not yet written', 'build, phase 2 of 2, not yet written', 'review']);
   });
 
   it('7.S16: a cut of five phases, two written — the build at the second says how far it is; the second closed, the third says it is not yet written', () => {

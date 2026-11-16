@@ -720,7 +720,7 @@ describe('the templates and the store', () => {
     for (const [role, { agent }] of Object.entries(ROLES)) assert.ok(agent.startsWith(OURS) && agent.length > OURS.length, `${role}: ${agent}`);
   });
 
-  it('26.S10: every role\'s agent is a definition on the roster fixing Opus at medium, the root cause\'s validator at extra-high, as a role naming its effort for the board names it (26.4.1, 26.4.7–26.4.10, 26.5.3, 20.12.1)', () => {
+  it('26.S1, 26.S10, 26.S14: every role\'s agent is a definition on the roster fixing Opus at medium, the root cause\'s validator at extra-high, as a role naming its effort for the board names it (26.4.1, 26.4.7–26.4.10, 26.5.3, 20.12.1)', () => {
     for (const [role, { agent, effort: named }] of Object.entries(ROLES)) {
       assert.ok(fs.existsSync(path.join(AGENTS, `${agent}.md`)), `${role}: ${agent}`);
       const frontmatter = /^---\n([\s\S]*?)\n---\n/.exec(fs.readFileSync(path.join(AGENTS, `${agent}.md`), 'utf8'))?.[1] ?? '';

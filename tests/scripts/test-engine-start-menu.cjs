@@ -34,7 +34,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { ok, okSectionsAsync, output, sectionOf, writeState, statePath, layout, commitAll } = require('./engine-harness.cjs');
+const { ok, okSectionsAsync, output, sectionOf, writeState, statePath, commitAll } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT: FUMI, MADE, leaningCall } = require('./ledger-world.cjs');
 const { SOLO, SOLO_AT, NO_PAYLOAD, NOTE_MAP, writeIn, answeredIn, useDecidedWorld, decidedHelpers } = require('./decided-world.cjs');
@@ -316,23 +316,21 @@ describe('the start menu (18.2.12)', () => {
     assert.strictEqual(lettered(startMenu().menu)[0], 'p/product → Talk about the product — 2 sessions');
   });
 
-  it('18.2.3, 18.2.12: the rows in their order — the units with something waiting first, then features, a retired type\'s unit among them, bugfixes, quick-fixes and epics, each type in the project\'s order; then product, start, triage, roadmap, verdicts, view, manage and help', () => {
+  it('18.2.3, 18.2.12: the rows in their order — the units with something waiting first, then features, bugfixes, quick-fixes and epics, each type in the project\'s order; then product, start, triage, roadmap, verdicts, view, manage and help', () => {
     close();
     staged(NO_PAYLOAD);
     reverse(NOTE_MAP.sync.answer, 'Off until you turn it on.');
     createManifest(dir(), 'atlas', { work_type: 'epic' });
     createManifest(dir(), 'crash', { work_type: 'bugfix' });
     createManifest(dir(), 'typo', { work_type: 'quick-fix' });
-    createManifest(dir(), 'zeta-concern', { work_type: 'cross-cutting', phases: { discussion: { items: { 'zeta-concern': { status: 'in-progress' } } } } });
     createManifest(dir(), 'shipped', { work_type: 'feature', status: 'completed' });
 
     assert.deepStrictEqual(startMenu().menu, [
       '1 → Continue epic: Fumi — discussion, 0 of 2 topics decided · 1 gate waiting for you',
       '2 → Continue feature: Solo — discussion',
-      '3 → Continue cross-cutting: Zeta Concern — waiting on the migration\'s cut',
-      '4 → Continue bugfix: Crash — investigation',
-      '5 → Continue quick-fix: Typo — implementation',
-      '6 → Continue epic: Atlas — discovery, 0 topics on the map',
+      '3 → Continue bugfix: Crash — investigation',
+      '4 → Continue quick-fix: Typo — implementation',
+      '5 → Continue epic: Atlas — discovery, 0 topics on the map',
       'p/product → Talk about the product',
       's/start → Start something new — describe it, and we\'ll find what kind of work it is',
       't/triage → Triage the inbox',

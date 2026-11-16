@@ -53,7 +53,7 @@ const {
   loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, readProjectManifest, writeProjectManifestAtomic, withProjectLock, listWorkUnitManifests,
 } = require('../kernel/manifest.cjs');
 const { isObject } = require('../kernel/manifest-io.cjs');
-const { LEGACY_WORK_TYPES, TOPIC_PHASES, workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
+const { TOPIC_PHASES, workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { withStateLock, assertMigrationRuns } = require('./state-worktree.cjs');
@@ -69,6 +69,9 @@ const { refreshLedgerCopies } = require('./ledger-copies.cjs');
 const { purgeWorkUnitCache } = require('./cache.cjs');
 
 const SAID = 'workunit retire';
+
+/** The work types the reshape retires, whose units alone leave the registry: the shapes before it, frozen here as the migration's own. */
+const RETIRED_TYPES = Object.freeze(['cross-cutting']);
 
 /**
  * @typedef {object} WorkUnitRetireResult
@@ -111,7 +114,7 @@ function unitToRetire(root, unit) {
   }
   const manifest = here ?? manifestIn(root, keptAt(unit));
   if (manifest === null) throw new Error(`${SAID}: there is no work unit "${unit}"`);
-  if (!Object.hasOwn(LEGACY_WORK_TYPES, manifest.work_type)) {
+  if (!RETIRED_TYPES.includes(manifest.work_type)) {
     throw new Error(`${SAID}: ${unit}'s type, ${manifest.work_type}, is one the reshape keeps — only a unit of a type it retires leaves the registry`);
   }
   return manifest;

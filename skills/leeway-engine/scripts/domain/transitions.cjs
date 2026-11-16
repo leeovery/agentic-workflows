@@ -24,7 +24,7 @@ const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('.
 const {
   phaseItems, itemOf, computeTopicLifecycle, computeNextAction, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES, lifecyclePhrase, mapWayOn, topicTitle,
   awaitedExperiments, waits, settleItemStatus,
-  UNIT_PHASES, unitItems, discoveryUnitExists, promotedRefusal,
+  UNIT_PHASES, unitItems, discoveryUnitExists,
   cancelPlan, postponePlan, briefFile, topicDir, topicKey, noTopicRefusal, topicTitles, goesBy,
 } = require('./derivations.cjs');
 const { revertJoins, recordPutBack, retakeJoins, postponeToRoadmap } = require('./roadmap.cjs');
@@ -201,8 +201,6 @@ function startTopic(cwd, workUnit, phase, topic) {
       throw new Error(`${phase} item "${topic}" is cancelled — reactivate it instead`);
     } else if (existing && existing.status === 'postponed') {
       throw new Error(postponedRefusal(phase, topic));
-    } else if (existing && existing.status === 'promoted') {
-      throw new Error(promotedRefusal(phase, topic, existing));
     }
     assertMapAllowsStart(manifest, phase, topic, existing);
 
@@ -271,9 +269,8 @@ function releaseExperimentWaits(manifest, topic, opts = {}) {
  * work — heal a status-less item to `unstarted`, leave an `unstarted` or
  * `in-progress` item untouched, and set a `completed` item back to
  * `in-progress` (a landed message reopens the conversation).
- * A cancelled item refuses as start refuses it; a promoted one never reaches
- * here, refused with its topic first (topic-standing.cjs), and a phase a
- * message waits in has no superseding. Mutates `items`; the caller saves
+ * A cancelled item refuses as start refuses it, and a phase a message waits
+ * in has no superseding. Mutates `items`; the caller saves
  * when `dirty`.
  * @param {Record<string, any>} items the phase's items container
  * @param {string} phase

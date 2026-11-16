@@ -34,9 +34,7 @@
 // the verb reaches no host — in flight or done. It
 // refuses, writing and committing nothing,
 // every refusal opening `quick-fix record: `: a unit the project lacks or
-// holds not in progress; one that is no quick-fix built by its own arm
-// (`quickFixBuild`, derivations.cjs) — a quick-fix the old scoping made
-// among them; a task that is none of its fixes, phase 1's, or one the
+// holds not in progress; one that is no quick-fix; a task that is none of its fixes, phase 1's, or one the
 // tracker lacks; a fix closed; a fix recorded already; a fix holding no
 // commit of its own; and a file that does not read as a record, every fault
 // named.
@@ -60,7 +58,7 @@ const { withWorkUnitLock, loadWorkUnitManifest, saveWorkUnitManifest } = require
 const { knowledgeFiles } = require('../kernel/knowledge/files.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { unitInProgress } = require('./topic-standing.cjs');
-const { quickFixBuild, buildRefusal, FIXES_PHASE } = require('./derivations.cjs');
+const { quickFixBuild, FIXES_PHASE } = require('./derivations.cjs');
 const { parseShownTask, shownTask, taskId, taskName } = require('./task-id.cjs');
 const { trackedPhase, copiedTasks, givenText, ENDED, STATUS_WORDS } = require('./task-verbs.cjs');
 const { headingLevels, fencedLines, unclosedFence } = require('./spec-sections.cjs');
@@ -190,14 +188,13 @@ const summaryOf = (blocks) => `${blocks.join('\n\n')}\n`;
 const placed = (text, block) => summaryOf([...recordBlocks(text), block]);
 
 /**
- * The unit's manifest, refused where it is no quick-fix built by its own
- * arm.
+ * The unit's manifest, refused where it is no quick-fix.
  * @param {string} cwd @param {string} unit
  */
 function quickFixOf(cwd, unit) {
   const manifest = unitInProgress(cwd, unit);
   if (quickFixBuild(manifest)) return manifest;
-  throw new Error(manifest.work_type === 'quick-fix' ? /** @type {string} */ (buildRefusal(manifest)) : `${unit} is a ${manifest.work_type}, and only a quick-fix keeps a short record of each fix`);
+  throw new Error(`${unit} is a ${manifest.work_type}, and only a quick-fix keeps a short record of each fix`);
 }
 
 /**

@@ -99,6 +99,7 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 - `.leeway/.state/` — the migrations ledger, `environment-setup.md`
 - `.leeway/.cache/{work_unit}/{phase}/{topic}/` — gitignored session state, scratch, presence and `entered.json`, when the place was last entered, and in `.showings/` the learned gates' showings held there; `.cache/.session-labels/` the tmux label store
 - `.leeway/.cache/.showings/` — the import reprompt's showing held, at no place
+- `.leeway/.cache/migrate/` — the migration's staging: the split's plans (`split/`), each topic's record as composed (`records/`) and as carried (`carried/`), each building unit's pieces and plan (`cut-and-merges/{unit}/`), the cut's and the closed plans' marks (`cut/`, `closed/`), and the finish's drops (`finish.json`)
 - `.leeway/.cache/.set-aside/{work_unit}/round-{N}/put-{k}/` — what the review's put back set aside; outlives the unit
 - `.leeway/.inbox/{ideas,bugs,quickfixes}/` — undecided captures; `.archived/` the declined ones
 - `.leeway/.product/` — the product's conversation: `sessions/session-NNN.md` its logs, `notes/{YYYY-MM-DD}--{slug}.md` the roadmap items' notes, `assets/` the files shared and, as `assets/{unit}/`, each retired unit's folder kept whole as reference, `assets/legacy/` the files from before Leeway of no unit's the migration had no other place for, each at its path from `.workflows/`, and in `assets/legacy/cache/` the old cache's reports of no unit's, each at its path below the old cache, and in `assets/legacy/{unit}/` a retired unit's legacy files, `spikes/{NNN}-{slug}/` its spikes
@@ -123,6 +124,8 @@ Everything else reaches a tool through the driver the project manifest's `driver
 ## Migrations
 
 Migrations keep existing projects' `.leeway/` in step with the current design, run by `engine boot` at `/leeway`. Writing one: `docs/contributing.md`; the module contract: the header of `skills/leeway-migrate/scripts/migrate.cjs`.
+
+The migration into Leeway runs from a project's `.workflows/` at 072: the guard (074) first, then what the chain still owes (073), the split (075–077, its directive 076), the move (078), the records (directive 079), the cut and the merges (directive 080), and the finish (081). Boot stops at each directive for the session to carry it out, then at the finish for the review, whose yes makes the migration's commit. `tests/scripts/migration-audit.cjs` checks a migrated project migrated cleanly.
 
 - **Upgrades live in migrations, never in code.** Converting, renaming, deleting or tolerating a shape an older version left behind is a migration. Runtime code may keep the current version's own requirements in place, but never recognises what an earlier version did — runtime code handling old leftovers can never be deleted.
 - **A released migration is never touched** — not edited, not deleted; a correction is a new migration.

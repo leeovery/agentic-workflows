@@ -587,6 +587,7 @@ const { changeOf, changeTips, workBelow } = require('./review-change.cjs');
 const { fixAcceptance, fixScenarios, fixNamed } = require('./fix-acceptance.cjs');
 const { summaryFile } = require('./knowledge/artifacts.cjs');
 const { topicPlace, composedPath, findingsPath, refusedPath } = require('./ledger-carry.cjs');
+const { OLD_STATE, OLD_PLAN_FILE } = require('../../../leeway-migrate/scripts/old-layout.cjs');
 
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
 /** @typedef {import('./drivers.cjs').TaskRow} TaskRow */
@@ -1171,8 +1172,8 @@ function drawMigratedTopic(filling) {
   return [
     `- **Unit:** ${unit}, ${manifest.work_type}, ${manifest.status}`,
     `- **Topic:** ${topic}, in ${phases.join('; ')}`,
-    `- **The state:** ${root} — each path below is from there, as an entry cites it, but one under \`.workflows/\``,
-    `- **The project:** ${sources.project} — each path under \`.workflows/\` is from there`,
+    `- **The state:** ${root} — each path below is from there, as an entry cites it, but one under \`${OLD_STATE}/\``,
+    `- **The project:** ${sources.project} — each path under \`${OLD_STATE}/\` is from there`,
     '',
     '## Its files',
     '',
@@ -1182,7 +1183,7 @@ function drawMigratedTopic(filling) {
     '',
     listed(sources.specs.map((spec) => (spec.read === spec.cite ? `- ${spec.read}` : `- ${spec.read}, cited as ${spec.cite}`))),
     '',
-    '## Its old map, as `.workflows/` holds it',
+    `## Its old map, as \`${OLD_STATE}/\` holds it`,
     '',
     listed(sources.map.map(({ item, status }) => `- ${item}: ${status}`)),
     '',
@@ -1269,11 +1270,11 @@ function phasePlanLines(root, phase, number) {
   const files = phase.plan?.files ?? [];
   const named = (/** @type {string} */ name) => files.find((file) => path.posix.basename(file) === name);
   const tasks = named(`phase-${number}-tasks.md`);
-  const planning = named('planning.md');
-  const heading = planning === undefined ? undefined
-    : fs.readFileSync(path.join(root, planning), 'utf8').split('\n').find((line) => new RegExp(`^#{1,6} Phase ${number}(?![0-9])`).test(line));
-  const section = planning === undefined ? 'none kept'
-    : heading === undefined ? `${planning}, which heads no section for phase ${number}` : `${planning}, under "${heading}"`;
+  const plan = named(OLD_PLAN_FILE);
+  const heading = plan === undefined ? undefined
+    : fs.readFileSync(path.join(root, plan), 'utf8').split('\n').find((line) => new RegExp(`^#{1,6} Phase ${number}(?![0-9])`).test(line));
+  const section = plan === undefined ? 'none kept'
+    : heading === undefined ? `${plan}, which heads no section for phase ${number}` : `${plan}, under "${heading}"`;
   return [`- Its tasks' file: ${tasks ?? 'none kept'}`, `- Its section of the plan: ${section}`];
 }
 
@@ -1300,8 +1301,8 @@ function drawMigratedPhase(filling) {
   const { piece, findings } = piecePaths(sources, phase.number);
   return [
     `- **Unit:** ${unit}, ${manifest.work_type}, ${manifest.status}`,
-    `- **The state:** ${root} — each path below is from there, but one under \`.workflows/\``,
-    `- **The project:** ${sources.project} — each path under \`.workflows/\` is from there, and the code`,
+    `- **The state:** ${root} — each path below is from there, but one under \`${OLD_STATE}/\``,
+    `- **The project:** ${sources.project} — each path under \`${OLD_STATE}/\` is from there, and the code`,
     '',
     '## Its joined spec',
     '',

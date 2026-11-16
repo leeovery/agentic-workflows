@@ -333,7 +333,7 @@ function planned(page, store, { at, why, from }) {
   };
 }
 
-/** Refuse a write over the store's limit, planning nothing. @param {Write[]} writes */
+/** Refuse a write over the store's limit, writing nothing. @param {Write[]} writes */
 function checkSizes(writes) {
   const over = writes.filter(({ body }) => docSize(body) > DOC_LIMIT).map(({ collection, doc, body }) => `${collection}/${doc} (${docSize(body).toLocaleString('en')} bytes)`);
   if (over.length > 0) throw new Error(`documents over the store's limit of ${DOC_LIMIT.toLocaleString('en')} bytes, nothing planned: ${over.join(', ')} — split the section`);

@@ -21,7 +21,7 @@ const fs = require('fs');
 const path = require('path');
 const io = require('../kernel/manifest-io.cjs');
 const { listWorkUnitManifests } = require('../kernel/manifest.cjs');
-const { UNIT_PHASES, promotedRefusal } = require('./derivations.cjs');
+const { UNIT_PHASES } = require('./derivations.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const {
   VALID_WORK_TYPES,
@@ -445,10 +445,9 @@ function assertExperimentTargets(manifest, segments, value) {
 }
 
 // The states a unit verb leaves a phase item in — the cancel's and the
-// postpone's holds, and the promotion that moved it to a cross-cutting unit:
-// the field surface must never be the permissive path around them, so a
+// postpone's holds: the field surface must never be the permissive path around them, so a
 // write onto one is refused with the way out its verb names.
-const HELD_STATUSES = ['cancelled', 'postponed', 'promoted'];
+const HELD_STATUSES = ['cancelled', 'postponed'];
 
 /**
  * The held phase item a dot-path lands on or inside —
@@ -466,22 +465,20 @@ function heldItemAt(manifest, segments) {
 /**
  * The refusal every write onto a held item makes, naming the way out: the
  * reactivate for a cancelled item, addressed by its topic for a discussion
- * item and naming the verb alone for any other phase; the roadmap for a
- * postponed one, whose way back is the pull; and for a promoted one the
- * transitions' own refusal, naming the unit it moved to.
+ * item and naming the verb alone for any other phase; and the roadmap for a
+ * postponed one, whose way back is the pull.
  * @param {string} workUnit @param {{phase: string, topic: string, item: Record<string, any>}} target
  */
 function refuseHeld(workUnit, { phase, topic, item }) {
   if (item.status === 'postponed') {
     fail(`${phase} item "${topic}" is postponed — pull it forward from the roadmap instead`);
   }
-  if (item.status === 'promoted') fail(promotedRefusal(phase, topic, item));
   const verb = UNIT_PHASES.discovery.includes(phase) ? `engine topic reactivate ${workUnit} discovery ${topic}` : 'engine topic reactivate';
   fail(`${phase} item "${topic}" is cancelled — reactivate it instead (${verb})`);
 }
 
 /**
- * A held phase item — cancelled, postponed or promoted — takes no status
+ * A held phase item — cancelled or postponed — takes no status
  * write: every transition already refuses one, and the field surface must not
  * be the permissive path around them — a status landing there would merge
  * onto its stash. Read inside the lock, like the experiment targets.

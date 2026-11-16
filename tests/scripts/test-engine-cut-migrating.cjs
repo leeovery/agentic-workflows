@@ -320,7 +320,7 @@ describe('the migration\'s cut of a unit whose building started (21.7.1, 21.8.6�
       'phase: phase 5 of 5, "Export": written — tasks 5.1 not started, 5.2 closed',
     ]);
     const menu = harness.output(dir, ['render', 'start-menu'], { env: SESSION }).replace(/\*\n\s+\*/g, ' ');
-    assert.deepStrictEqual(['Tally', 'Shop'].map((title) => new RegExp(`${title} — \\*([^*]+)\\*`).exec(menu)?.[1]), ['waiting on the migration\'s cut', 'build, phase 4 of 5'],
+    assert.strictEqual(/Shop — \*([^*]+)\*/.exec(menu)?.[1], 'build, phase 4 of 5',
       'the phase the build goes on in written, its tasks the old plan\'s');
     for (const end of ['start', 'close']) {
       assert.strictEqual(refuses(dir, ['checklist', 'show', `phase-${end}`, 'shop', '2'], { env: SESSION }).error,

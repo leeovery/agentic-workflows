@@ -9,13 +9,8 @@
 //
 // A quick-fix is built by its own arm of the row (below), wherever
 // `quickFixBuild` says it is one (derivations.cjs). The entry refuses,
-// before anything else: a unit built under the old plan, its old spec's,
-// planning's or implementation's items standing until the reshape's 29.17
-// migration cuts it (`legacyBuild`, P12), which the menus show waiting on
-// that cut with no route — a quick-fix the old scoping made
-// among them; and a unit whose build has not begun, ready to build's yes
-// beginning it (11.8.3).
-// Another
+// before anything else, a unit whose build has not begun, ready to build's
+// yes beginning it (11.8.3). Another
 // session holding the checkout's code stops it with the code gate alone,
 // nothing written, and `--take` enters all the same (12.7.8) — the refusals
 // and the gate the review phase's entry makes too (review-entry.cjs). It starts

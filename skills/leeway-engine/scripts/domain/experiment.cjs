@@ -29,9 +29,7 @@
 // that question closed reaches the topic as a message, through `topic send`,
 // which reopens a decided topic and commits its own delivery. A report owed
 // past the unit's spec is refused before the conclusion writes anything, as
-// is a spawn from a discussion past it (4.11.2). Known edge: a report
-// owed to a promoted topic is refused by the send after the conclusion has
-// committed, and never arrives.
+// is a spawn from a discussion past it (4.11.2).
 //
 // While it runs, `runs` records the tally of its runs from Claude's payload,
 // each condition with the runs its design gives it, those done and their

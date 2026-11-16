@@ -11,8 +11,7 @@
 //   and progress, and where something waits on the person in it, the count
 //   (18.2.2, 18.2.3, 18.2.6), mail waiting for its topic beside it (10.4.3):
 //   no topic on any row, the units with something waiting first, else by
-//   type — features, bugfixes, quick-fixes, epics — a migrated unit of a
-//   type the reshape retires with the features. Its next is Continue,
+//   type — features, bugfixes, quick-fixes, epics. Its next is Continue,
 //   `handoff unit` (19.1.3).
 // - Then one row while any place holds legacy files from the migration,
 //   "Sort the legacy files from the migration — 41 in 12 places", the one
@@ -47,7 +46,7 @@ const { startMenuRead } = require('../start-menu.cjs');
 /** The product row's note while the brownfield research is owed. */
 const RESEARCH_OWED = 'research owed';
 
-/** The order units are listed in, by type, within those waiting and those not; a type not here, with the features. */
+/** The order units are listed in, by type, within those waiting and those not. */
 const TYPE_ORDER = Object.freeze(['feature', 'bugfix', 'quick-fix', 'epic']);
 
 /** A unit's row's note while mail waits for its topic. */
@@ -60,7 +59,7 @@ const handoff = (skill, ...args) => ({ kind: 'handoff', skill, args });
 const drawing = (surface) => ({ kind: 'engine', argv: ['render', surface] });
 
 /** Where a unit's type lists it (the header's). @param {string} type */
-const typeRank = (type) => Math.max(0, TYPE_ORDER.indexOf(type));
+const typeRank = (type) => TYPE_ORDER.indexOf(type);
 
 /** How much waits in a unit. @param {Waiting} waiting */
 const waitingCount = ({ gates, questions, topics }) => gates + questions + topics;

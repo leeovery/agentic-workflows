@@ -95,7 +95,6 @@ const { withEntry } = require('../../skills/leeway-engine/scripts/domain/log-lis
 const { knowledgeFiles } = require('../../skills/leeway-engine/scripts/kernel/knowledge/files.cjs');
 const { chosenDriver, listDrivers } = require('../../skills/leeway-engine/scripts/domain/drivers.cjs');
 const { specReading } = require('../../skills/leeway-engine/scripts/domain/spec-sections.cjs');
-const { awaitsCut } = require('../../skills/leeway-engine/scripts/domain/derivations.cjs');
 
 const TODAY = new Date().toISOString().slice(0, 10);
 const json = (/** @type {unknown} */ value) => JSON.stringify(value, null, 2) + '\n';
@@ -1333,7 +1332,6 @@ describe('migration 078: a small project', () => {
       assert.deepStrictEqual([at('spec.md'), spec, status], ['# Done\n\n## 1. Cart\n\nOne tap.\n\n## 2. Pay\n\nBy card.\n', { joined: ['cart', 'pay'] }, 'completed']);
       const gone = JSON.parse(at('manifest.json', 'gone'));
       assert.deepStrictEqual([Object.keys(phases).sort(), Object.keys(gone.phases), gone.spec, gone.status], [['discovery', 'discussion'], ['discussion'], { joined: ['gone'] }, 'cancelled']);
-      assert.deepStrictEqual([awaitsCut({ status, phases, spec }), awaitsCut(gone)], [false, false], 'history waits on no cut');
       assert.deepStrictEqual([phases.discussion.items.loyalty, phases.discussion.items.gifts, Object.keys(phases.discovery.items)], [{ status: 'completed' }, { status: 'completed' }, ['cart', 'pay', 'loyalty', 'gifts']]);
       assert.ok(['loyalty', 'gifts'].every((topic) => fs.existsSync(path.join(dir, '.leeway/done/topics', topic, 'log.md'))));
     } finally {

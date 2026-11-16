@@ -12,13 +12,6 @@
 
 const VALID_WORK_TYPES = ['epic', 'feature', 'bugfix', 'quick-fix'];
 
-// The types the reshape retires, each with the phases its units' items were
-// written in: a migrated unit of one is read, never created, until the
-// reshape's 29.17 cut takes it (19.6.7).
-const LEGACY_WORK_TYPES = Object.freeze({
-  'cross-cutting': ['experiment', 'discussion', 'specification'],
-});
-
 // The engine's phase table: each phase, in pipeline order, with the stage
 // it sits in (3.1.1–3.1.4).
 const PHASE_STAGES = Object.freeze({
@@ -32,12 +25,6 @@ const PHASE_STAGES = Object.freeze({
 });
 
 const VALID_PHASES = Object.keys(PHASE_STAGES);
-
-// The item names older units carry that no phase table holds: a unit built
-// under the old plan keeps its planning items, read and never written, until
-// the reshape's 29.17 cut takes it (P12).
-const LEGACY_PLANNING = 'planning';
-const LEGACY_PHASES = Object.freeze([LEGACY_PLANNING]);
 
 // Per-work-type pipeline order — the phases a unit of that type moves through
 // after discovery (the universal first phase; a map, not a pipeline phase, so
@@ -83,8 +70,7 @@ const VALID_PHASE_STATUSES = {
   // specification is past "not yet".
   discussion:     ['unstarted', 'in-progress', 'completed', 'cancelled', 'postponed'],
   investigation:  ['unstarted', 'in-progress', 'completed', 'cancelled'],
-  // The one spec keeps no items (P7): a unit built under the old plan keeps
-  // its spec's.
+  // The one spec keeps no items (P7).
   specification:  ['in-progress', 'completed', 'cancelled'],
   implementation: ['in-progress', 'completed', 'cancelled'],
   review:         ['in-progress', 'completed', 'cancelled'],
@@ -199,7 +185,7 @@ const CLOSED_BY_CANCEL = 'closed_by_cancel';
 // Phase-item statuses that end a topic's life in its phase — excluded from
 // aggregation. One vocabulary for every consumer (derivations, the position,
 // the engine's topic reads).
-const TERMINAL_STATUSES = ['cancelled', 'superseded', 'promoted', 'postponed'];
+const TERMINAL_STATUSES = ['cancelled', 'superseded', 'postponed'];
 
 // The product as a whole: its conversation, the project-level discovery
 // place (8.2.7), its logs in `.product/sessions/` and its session marker on
@@ -265,11 +251,8 @@ const ENVIRONMENT_SETS = Object.freeze({ prepare: 'name', concurrency: 'what', l
 
 module.exports = {
   VALID_WORK_TYPES,
-  LEGACY_WORK_TYPES,
   PHASE_STAGES,
   VALID_PHASES,
-  LEGACY_PHASES,
-  LEGACY_PLANNING,
   WORK_TYPE_PIPELINES,
   EPIC_PHASES,
   DERIVED_PHASES,

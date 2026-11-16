@@ -40,7 +40,7 @@ const { revertJoins, recordPutBack, retakeJoins } = require('./roadmap.cjs');
 const { moveUnitMailToInbox } = require('./mail.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 const { todayStamp } = require('./dates.cjs');
-const { computeNextPhase, unitOpenRecords, quickFixBuild, fixesBegun } = require('./derivations.cjs');
+const { unitOpenRecords, quickFixBuild, fixesBegun } = require('./derivations.cjs');
 const { assertBeforeSpec } = require('./spec-standing.cjs');
 const { abandonExperiments } = require('./transitions.cjs');
 const { cancelClose } = require('./landing.cjs');
@@ -86,11 +86,8 @@ function assertLegalStatus(status) {
  * Complete a work unit: `status: completed`, `completed_at` stamped today
  * (engine-stamped, UTC), commit scoped to the work unit with the caller's
  * message. No knowledge-base action — completed units retain their chunks.
- * Refuses an already-completed unit. A cancelled unit must go through
- * reactivate first — unless its pipeline is finished (derived next phase
- * `done`): that state completes directly (reactivate remains open too), and
- * cancellation removed the unit's chunks, so this path re-indexes them
- * (warn-don't-block).
+ * Refuses an already-completed unit, and a cancelled one, which goes
+ * through reactivate first.
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {{message: string}} opts  the commit message, finish's
@@ -98,29 +95,24 @@ function assertLegalStatus(status) {
  */
 function completeWorkUnit(cwd, workUnit, { message }) {
   assertLegalStatus('completed');
-  const { completedAt, previous, workType } = withWorkUnitLock(cwd, workUnit, () => {
+  const { completedAt, workType } = withWorkUnitLock(cwd, workUnit, () => {
     const loaded = loadWorkUnitManifest(cwd, workUnit);
     if (loaded.status === 'completed') {
       throw new Error(`work unit "${workUnit}" is already completed`);
     }
-    if (loaded.status === 'cancelled' && computeNextPhase(loaded).next_phase !== 'done') {
+    if (loaded.status === 'cancelled') {
       throw new Error(`work unit "${workUnit}" is cancelled — reactivate it first`);
     }
-    const from = loaded.status;
     loaded.status = 'completed';
     const stamped = todayStamp();
     loaded.completed_at = stamped;
 
     saveWorkUnitManifest(cwd, workUnit, loaded);
-    return { completedAt: stamped, previous: from, workType: loaded.work_type };
+    return { completedAt: stamped, workType: loaded.work_type };
   });
 
   /** @type {string[]} */
   const warnings = [];
-  if (previous === 'cancelled') {
-    reindexWorkUnit(cwd, workUnit, warnings);
-  }
-
   purgeWorkUnitCache(cwd, workUnit);
   const outcome = commitStateTail(cwd, workUnit, message, warnings);
   /** @type {WorkUnitLifecycleResult} */

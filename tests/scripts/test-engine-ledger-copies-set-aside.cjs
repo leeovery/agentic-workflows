@@ -20,7 +20,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const { UNIT, SESSION, NOTE, NOTE_COPY, MINT_COPY, copiesHelpers, useCopiesWorld } = require('./ledger-world.cjs');
-const { ok, indexedFiles, statePath, layout, completeUnit } = require('./engine-harness.cjs');
+const { ok, indexedFiles, statePath, layout } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 
 const dir = useCopiesWorld();
@@ -68,19 +68,14 @@ describe('a place set aside (5.8.17)', () => {
     assert.match(await byArea('floating'), /\[0 results\]/);
   });
 
-  it('loses a unit\'s copies while it is cancelled, and has them back when it is completed from there', () => {
+  it('loses a unit\'s copies while it is cancelled, and has them back once it is reactivated', () => {
     createManifest(dir(), 'mint', { work_type: 'feature', phases: { discussion: { items: { mint: { status: 'in-progress' } } } } });
     ask('mint.discussion.mint', 'Does Mint float its notes?');
-    const finished = { items: { mint: { status: 'completed' } } };
-    createManifest(dir(), 'mint', {
-      work_type: 'feature',
-      phases: { discussion: finished, specification: finished, planning: finished, implementation: finished, review: finished },
-    });
 
     ok(dir(), ['workunit', 'cancel', 'mint']);
     assert.strictEqual(copy(MINT_COPY), null);
     assert.deepStrictEqual(indexedFiles(dir()), []);
-    completeUnit(dir(), 'mint');
+    ok(dir(), ['workunit', 'reactivate', 'mint']);
     assert.match(/** @type {string} */ (copy(MINT_COPY)), /^## Does Mint float its notes\?$/m);
     assert.deepStrictEqual(indexedFiles(dir()), [MINT_COPY]);
   });

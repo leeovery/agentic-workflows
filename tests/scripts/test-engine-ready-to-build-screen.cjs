@@ -11,9 +11,8 @@
 // counting the review by the marks last stored (11.11.7); a verdict asked
 // of each call the person changed among the spec's gap answers before the
 // gate (16.10.11); no construction, finding, re-loop or sign-off gate left
-// to raise before it (11.S12); and the units that never come to it — an
-// old spec's items, a unit the spec's entry refuses. Every refusal writes
-// and commits nothing.
+// to raise before it (11.S12); and the units that never come to it, those
+// the spec's entry refuses. Every refusal writes and commits nothing.
 //
 // Layer: verb. World: the ready to build world closed
 // (ready-to-build-world.cjs), copied for each test.
@@ -181,13 +180,6 @@ describe('nothing raised before it (11.8.4, 11.S12)', () => {
 });
 
 describe('what never comes to ready to build (11.8.1)', () => {
-  it('refuses a unit keeping the old spec\'s items, naming the migration\'s cut', () => {
-    createManifest(dir(), UNIT, { ...readManifest(dir(), UNIT), phases: { ...readManifest(dir(), UNIT).phases, specification: { items: { cards: { status: 'completed' } } } } });
-    commitAll(dir(), 'an old spec item');
-
-    assert.strictEqual(refused(['render', 'ready-to-build', UNIT]), `render ready-to-build: ${UNIT} keeps its spec in the old form, which never comes to ready to build — the migration's cut for built units carries it across (29.17)`);
-  });
-
   it('refuses a unit the spec\'s entry refuses: one the project lacks, and a quick-fix, whose pipeline holds no spec', () => {
     createManifest(dir(), 'tidy', { work_type: 'quick-fix' });
     commitAll(dir(), 'a quick-fix');

@@ -16,7 +16,7 @@ const {
   loadProjectManifest,
 } = require('../../skills/leeway-engine/scripts/domain/reads.cjs');
 const {
-  phaseStatus, phaseItems, phaseData, computeNextPhase, lastCompletedPhase,
+  phaseStatus, phaseItems, phaseData, computeNextPhase,
   computeTopicLifecycle, computeNextAction, computeMapSummary,
   compareMapRows, buildDiscoveryMap,
   mailboxDir, mailboxFiles, mailboxDepth, mailPhase, mailPhases,
@@ -253,13 +253,6 @@ describe('reads + derivations', () => {
       }, 'discussion'), 'in-progress');
     });
 
-    it('a promoted discussion drops out of the aggregate — it continues in its cross-cutting unit', () => {
-      assert.strictEqual(phaseStatus({
-        phases: { discussion: { items: { a: { status: 'promoted', promoted_to: 'cc' }, b: { status: 'in-progress' } } } },
-      }, 'discussion'), 'in-progress');
-      assert.strictEqual(phaseStatus({ phases: { discussion: { items: { a: { status: 'promoted', promoted_to: 'cc' } } } } }, 'discussion'), null);
-    });
-
     it('aggregates multiple items — no statuses returns null', () => {
       assert.strictEqual(phaseStatus({
         phases: { discussion: { items: { a: {}, b: {} } } },
@@ -268,30 +261,6 @@ describe('reads + derivations', () => {
 
     it('returns null for empty items', () => {
       assert.strictEqual(phaseStatus({ phases: { discussion: { items: {} } } }, 'discussion'), null);
-    });
-
-    it('returns null for a single proposed spec item', () => {
-      assert.strictEqual(phaseStatus({
-        phases: { specification: { items: { auth: { status: 'proposed' } } } },
-      }, 'specification'), null);
-    });
-
-    it('returns null when every spec item is proposed', () => {
-      assert.strictEqual(phaseStatus({
-        phases: { specification: { items: { a: { status: 'proposed' }, b: { status: 'proposed' } } } },
-      }, 'specification'), null);
-    });
-
-    it('ignores proposed when aggregating — proposed + completed → completed', () => {
-      assert.strictEqual(phaseStatus({
-        phases: { specification: { items: { a: { status: 'proposed' }, b: { status: 'completed' } } } },
-      }, 'specification'), 'completed');
-    });
-
-    it('ignores proposed when aggregating — proposed + in-progress → in-progress', () => {
-      assert.strictEqual(phaseStatus({
-        phases: { specification: { items: { a: { status: 'proposed' }, b: { status: 'in-progress' } } } },
-      }, 'specification'), 'in-progress');
     });
 
     it('returns null for a single unstarted item — a stub is pre-live, not a reached phase', () => {
@@ -340,25 +309,17 @@ describe('reads + derivations', () => {
       ], [['in-progress', null], ['completed', 'in-progress'], ['completed', 'completed']]);
     });
 
-    it('reads the one spec a unit writes, which keeps no items, completed once its build has begun and none before (P7); a unit with the old spec\'s items reads them', () => {
+    it('reads the one spec a unit writes off its records, completed once its build has begun, in progress while it is written, and none before (P7) — and the items of a topic\'s phases alone, never another phase\'s (2.8.3)', () => {
       const built = { build: { position: 'auto' } };
+      const OTHERS = ['specification', 'implementation', 'review', 'planning'];
+      const items = { phases: Object.fromEntries([...OTHERS, 'discussion'].map((phase) => [phase, { items: { a: { status: 'in-progress' } } }])) };
       assert.deepStrictEqual([
         phaseStatus({ phases: {} }, 'specification'),
+        phaseStatus({ phases: {} }, 'specification', true),
         phaseStatus({ phases: {}, ...built }, 'specification'),
-        phaseStatus({ phases: { specification: { items: {} } }, ...built }, 'specification'),
-        phaseStatus({ phases: {}, ...built }, 'planning'),
-        phaseStatus({ phases: { specification: { items: { a: { status: 'in-progress' } } } } }, 'specification'),
-      ], [null, 'completed', 'completed', null, 'in-progress']);
-    });
-  });
-
-  describe('lastCompletedPhase', () => {
-    it('reads the one spec completed once its build has begun, the unit cancelled after ready to build\'s yes past its discussion', () => {
-      const decided = { discussion: { items: { pay: { status: 'completed' } } } };
-      assert.deepStrictEqual([
-        lastCompletedPhase({ phases: decided }, ['discussion', 'specification', 'implementation']),
-        lastCompletedPhase({ phases: decided, build: { position: 'auto' } }, ['discussion', 'specification', 'implementation']),
-      ], ['discussion', 'specification']);
+        ...OTHERS.map((phase) => phaseStatus(items, phase)),
+        phaseStatus(items, 'discussion'),
+      ], [null, 'in-progress', 'completed', null, null, null, null, 'in-progress']);
     });
   });
 
@@ -404,50 +365,6 @@ describe('reads + derivations', () => {
   });
 
   describe('computeNextPhase', () => {
-    it('returns done when an old unit\'s review completed', () => {
-      const r = computeNextPhase({ name: 'test', work_type: 'feature', phases: { implementation: { items: { test: { status: 'completed' } } }, review: { items: { test: { status: 'completed' } } } } });
-      assert.strictEqual(r.next_phase, 'done');
-    });
-
-    it('epic: not done when one topic completes review with others mid-pipeline', () => {
-      const r = computeNextPhase({
-        work_type: 'epic',
-        phases: {
-          planning: { items: { 'cli-presentation': { status: 'completed' }, 'mint-release-tool': { status: 'completed' } } },
-          implementation: { items: { 'cli-presentation': { status: 'completed' } } },
-          review: { items: { 'cli-presentation': { status: 'completed' } } },
-        },
-      });
-      assert.strictEqual(r.next_phase, 'review');
-      assert.strictEqual(r.phase_label, 'review completed for current topics');
-    });
-
-    it('epic: never phase-derives done — completion is the explicit status flip', () => {
-      const r = computeNextPhase({
-        work_type: 'epic',
-        phases: {
-          implementation: { items: { a: { status: 'completed' }, b: { status: 'completed' } } },
-          review: { items: { a: { status: 'completed' }, b: { status: 'completed' } } },
-        },
-      });
-      assert.notStrictEqual(r.next_phase, 'done');
-    });
-
-    it('returns review when implementation completed', () => {
-      const r = computeNextPhase({ name: 'test', work_type: 'feature', phases: { implementation: { items: { test: { status: 'completed' } } } } });
-      assert.strictEqual(r.next_phase, 'review');
-    });
-
-    it('returns implementation when planning completed', () => {
-      const r = computeNextPhase({ name: 'test', work_type: 'feature', phases: { planning: { items: { test: { status: 'completed' } } } } });
-      assert.strictEqual(r.next_phase, 'implementation');
-    });
-
-    it('returns planning when the old spec\'s item completed — a unit whose building began under it keeps its plan, a build begun on it never read by the cut (P12)', () => {
-      const kept = (/** @type {Record<string, unknown>} */ more) => computeNextPhase({ name: 'test', work_type: 'feature', phases: { specification: { items: { test: { status: 'completed' } } } }, ...more }).next_phase;
-      assert.deepStrictEqual([kept({}), kept({ build: { position: 'step' } })], ['planning', 'planning']);
-    });
-
     it('returns implementation in progress once ready to build\'s yes began the build, whatever the work type that writes a spec, until every phase of the cut has closed, then the review phase under way; once finish completed the unit, an epic to its menu, its review completed, and every other type done (E6, 12.6.7, 14.6.1, 24.1.2)', () => {
       const types = ['feature', 'epic', 'bugfix'];
       const at = (/** @type {number[]} */ phases, /** @type {string} */ status = 'in-progress') => types.map((type) => computeNextPhase(byCut(type, phases, status)));
@@ -494,35 +411,16 @@ describe('reads + derivations', () => {
       assert.strictEqual(r.next_phase, 'specification');
     });
 
-    it('returns in-progress planning', () => {
-      const r = computeNextPhase({ name: 'test', work_type: 'feature', phases: { planning: { items: { test: { status: 'in-progress' } } } } });
-      assert.strictEqual(r.next_phase, 'planning');
-      assert.ok(r.phase_label.includes('in-progress'));
-    });
-
     it('an upstream phase in flight owns the next action — the walk routes to it, never past it', () => {
       const r = computeNextPhase({ name: 'test', work_type: 'feature', phases: {
         discussion: { items: { test: { status: 'in-progress' } } },
-        specification: { items: { test: { status: 'completed' } } },
-      } });
+      } }, true);
       assert.strictEqual(r.next_phase, 'discussion');
       assert.strictEqual(r.phase_label, 'discussion (in-progress)');
     });
 
-    it('returns in-progress review', () => {
-      const r = computeNextPhase({ name: 'test', work_type: 'feature', phases: { review: { items: { test: { status: 'in-progress' } } } } });
-      assert.strictEqual(r.next_phase, 'review');
-      assert.strictEqual(r.phase_label, 'review (in-progress)');
-    });
-
-    it('returns in-progress implementation', () => {
-      const r = computeNextPhase({ name: 'test', work_type: 'feature', phases: { implementation: { items: { test: { status: 'in-progress' } } } } });
-      assert.strictEqual(r.next_phase, 'implementation');
-      assert.strictEqual(r.phase_label, 'implementation (in-progress)');
-    });
-
     it('returns in-progress specification', () => {
-      const r = computeNextPhase({ name: 'test', work_type: 'feature', phases: { specification: { items: { test: { status: 'in-progress' } } } } });
+      const r = computeNextPhase({ name: 'test', work_type: 'feature', phases: {} }, true);
       assert.strictEqual(r.next_phase, 'specification');
       assert.strictEqual(r.phase_label, 'specification (in-progress)');
     });
@@ -537,18 +435,6 @@ describe('reads + derivations', () => {
       const r = computeNextPhase({ name: 'test', work_type: 'bugfix', phases: { investigation: { items: { test: { status: 'in-progress' } } } } });
       assert.strictEqual(r.next_phase, 'investigation');
       assert.strictEqual(r.phase_label, 'investigation (in-progress)');
-    });
-
-    it('higher priority phase takes precedence', () => {
-      const r = computeNextPhase({
-        name: 'test',
-        work_type: 'feature',
-        phases: {
-          implementation: { items: { test: { status: 'completed' } } },
-          review: { items: { test: { status: 'completed' } } },
-        },
-      });
-      assert.strictEqual(r.next_phase, 'done');
     });
 
     it('epic: returns specification when all discussion items completed', () => {
@@ -583,25 +469,13 @@ describe('reads + derivations', () => {
       assert.strictEqual(r.phase_label, 'discussion (in-progress)');
     });
 
-    it('epic: returns planning when all spec items completed', () => {
-      const r = computeNextPhase({
-        work_type: 'epic',
-        phases: {
-          discussion: { items: { 'auth': { status: 'completed' } } },
-          specification: { items: { 'auth-spec': { status: 'completed' } } },
-        },
-      });
-      assert.strictEqual(r.next_phase, 'planning');
-    });
-
     it('epic: most advanced phase wins', () => {
       const r = computeNextPhase({
         work_type: 'epic',
         phases: {
           discussion: { items: { 'auth': { status: 'completed' }, 'billing': { status: 'in-progress' } } },
-          specification: { items: { 'auth-spec': { status: 'in-progress' } } },
         },
-      });
+      }, true);
       // specification in-progress is checked before discussion
       assert.strictEqual(r.next_phase, 'specification');
       assert.strictEqual(r.phase_label, 'specification (in-progress)');
@@ -623,21 +497,6 @@ describe('reads + derivations', () => {
       assert.strictEqual(r.next_phase, 'specification');
     });
 
-    it('epic: mixed completed and completed items returns first status', () => {
-      const r = computeNextPhase({
-        work_type: 'epic',
-        phases: {
-          implementation: {
-            items: {
-              'auth': { status: 'completed' },
-              'billing': { status: 'completed' },
-            },
-          },
-        },
-      });
-      assert.strictEqual(r.next_phase, 'review');
-    });
-
     it('19.5.14: a quick-fix goes from discovery straight into its fixes, its implementation — ready before they begin, in progress once begun', () => {
       const fresh = computeNextPhase({ work_type: 'quick-fix', status: 'in-progress', phases: {} });
       const begun = computeNextPhase({ work_type: 'quick-fix', status: 'in-progress', fixes: { began: '2026-06-03T09:00:00Z' }, phases: {} });
@@ -656,14 +515,6 @@ describe('reads + derivations', () => {
         { next_phase: 'review', phase_label: 'review (in-progress)' },
         { next_phase: 'done', phase_label: 'pipeline complete' },
       ]);
-    });
-
-    it('P12: a quick-fix built under the old plan, its scoping\'s spec and plan items standing, waits on the migration\'s cut', () => {
-      const r = computeNextPhase({ work_type: 'quick-fix', status: 'in-progress', phases: {
-        specification: { items: { test: { status: 'completed' } } },
-        planning: { items: { test: { status: 'in-progress' } } },
-      } });
-      assert.deepStrictEqual(r, { next_phase: 'done', phase_label: 'waiting on the migration\'s cut' });
     });
 
     it('quick-fix: does not fall through to discussion/spec phases', () => {
@@ -906,12 +757,6 @@ describe('reads + derivations', () => {
       assert.deepStrictEqual(computeTopicLifecycle(m, 'auth'), { lifecycle: 'decided', tier: '✓', current_phase: 'discussion', discussion_state: 'completed' });
     });
 
-    it('returns decided when the discussion was promoted with its specification — concluded and moved on', () => {
-      const m = loadWithPhases('auth', { discussion: 'promoted' });
-      assert.deepStrictEqual(computeTopicLifecycle(m, 'auth'), { lifecycle: 'decided', tier: '✓', current_phase: 'discussion', discussion_state: 'promoted' });
-      assert.strictEqual(computeNextAction('decided'), null, 'nothing left to start on it');
-    });
-
     it('the map marker reads cancelled first, over a live item', () => {
       createManifest(dir, 'alpha', { phases: {
         discovery: { items: { auth: { source: 'discovery', cancelled: true }, fresh: { source: 'discovery' } } },
@@ -1103,17 +948,6 @@ describe('reads + derivations', () => {
       ], 'the discussion\'s waits in the derivation\'s order');
     });
 
-    it('the map row names the unit a promoted discussion moved to, and no unit otherwise', () => {
-      const m = {
-        name: 'pay', work_type: 'epic',
-        phases: {
-          discovery: { items: { fees: {}, refunds: {} } },
-          discussion: { items: { fees: { status: 'promoted', promoted_to: 'fees-cc' }, refunds: { status: 'completed' } } },
-        },
-      };
-      const rows = buildDiscoveryMap(m, path.join(__dirname, '.no-such-workflows')).map;
-      assert.deepStrictEqual(rows.map((r) => [r.name, r.lifecycle, r.promoted_to]), [['fees', 'decided', 'fees-cc'], ['refunds', 'decided', null]]);
-    });
   });
 
   describe('the mailbox — one per topic, one reader, one meaning of mail waiting', () => {

@@ -1,21 +1,25 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// What the reshape retired (1.S9, 3.S1, 6.S3): the release ships no research,
-// planning, scoping or baseline skill, no plan format, no skill calling a
-// quick-fix small (8.4.6), and no cross-cutting type a unit can be made as;
-// the engine's phase tables hold discovery, discussion, experiment and
-// investigation in Discovery, specification in Definition, implementation
-// and review in Delivery, with the item names older units carry in a list
-// outside the tables; and the command catalogue has the new families with
+// What the reshape retired (1.S9, 3.S1, 6.S3, 2.S10): the release ships no
+// research, planning, scoping or baseline skill, no plan format, no skill
+// calling a quick-fix small (8.4.6), and no cross-cutting type a unit can be
+// made as; the engine's phase tables hold discovery, discussion, experiment
+// and investigation in Discovery, specification in Definition,
+// implementation and review in Delivery; no engine module recognises a
+// shape an earlier version left — names the layout before Leeway, its
+// planning phase, the retired type, the promoted status or a reader retired
+// with them — but the migration's own verbs, each refusing outside the
+// migration — and none reads the items of a phase but a topic's; and the
+// command catalogue has the new families with
 // their verbs and the kept ones, and no verb for what the release removes;
 // each verb it says one the engine dispatches, and each a family's own
 // refusal names said, its surfaces SURFACES's own; and a verb a family does
 // not know refused in one shape, a retired name recognised by none.
 //
 // Layer: verb. World: the project, copied once, where each verb the usage
-// names is called; the rest reads the shipped skills folder, the schema
-// module and the engine's usage.
+// names is called; the rest reads the shipped skills folder, the engine's
+// modules, the schema module and the engine's usage.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -66,10 +70,9 @@ describe('the release ships none of the retired skills, formats or types (1.S9)'
     assert.deepStrictEqual(walk(SKILLS).filter((file) => path.basename(file).startsWith('output-formats')), []);
   });
 
-  it('lists no cross-cutting type: a unit is made only as one of the four, a migrated one read under the legacy name', () => {
+  it('lists no cross-cutting type: a unit is made only as one of the four', () => {
     assert.deepStrictEqual(schema.VALID_WORK_TYPES, ['epic', 'feature', 'bugfix', 'quick-fix']);
     assert.deepStrictEqual(Object.keys(schema.WORK_TYPE_PIPELINES), schema.VALID_WORK_TYPES);
-    assert.deepStrictEqual(Object.keys(schema.LEGACY_WORK_TYPES), ['cross-cutting']);
   });
 });
 
@@ -104,12 +107,32 @@ describe('the engine\'s phase tables (3.S1)', () => {
     }
     assert.deepStrictEqual(Object.keys(schema.VALID_PHASE_STATUSES), phases, 'a status vocabulary for every phase, and for nothing else');
   });
+});
 
-  it('keeps the item names older units carry in a list outside the tables', () => {
-    assert.deepStrictEqual(schema.LEGACY_PHASES, ['planning']);
-    for (const [table, names] of Object.entries(TABLES)) {
-      assert.deepStrictEqual(names.filter((name) => schema.LEGACY_PHASES.includes(name)), [], table);
+describe('2.S10: no runtime code handles the old shape (2.8.3)', () => {
+  const SCRIPTS = path.join(SKILLS, 'leeway-engine/scripts');
+  /** Every engine module, by its path in the scripts folder, with its text. */
+  const modules = walk(SCRIPTS).filter((file) => file.endsWith('.cjs')).map((file) => ({ module: path.relative(SCRIPTS, file), text: fs.readFileSync(file, 'utf8') }));
+  /** The migration's own verbs, which read the old shapes as they carry a unit across. */
+  const MIGRATION_VERBS = ['domain/ledger-carry.cjs', 'domain/workunit-retire.cjs'];
+  /** What an earlier version left, by name, and each reader retired with it. */
+  const OLD_SHAPES = /\.workflows\b|\bplanning\b|\bcross-cutting\b|\bpromoted|\b(?:legacyBuild|legacyNext|retiredRefusal|awaitsCut|buildByCut|promotedRefusal|ownNamedItems|closedStanding|lastCompletedPhase|LEGACY_[A-Z_]+|AT_THE_CUT)\b/g;
+  /** The old shapes a module names. @param {string} text */
+  const named = (text) => [...new Set([...text.matchAll(OLD_SHAPES)].map(([name]) => name))];
+
+  it('no engine module names the layout before Leeway, its planning phase, the retired type, the promoted status or a reader retired with them, but the migration\'s own verbs, each refusing outside the migration', () => {
+    assert.deepStrictEqual(modules.filter(({ module, text }) => !MIGRATION_VERBS.includes(module) && named(text).length > 0).map(({ module, text }) => `${module}: ${named(text).join(', ')}`), []);
+    for (const verb of MIGRATION_VERBS) {
+      const { text } = /** @type {{text: string}} */ (modules.find(({ module }) => module === verb));
+      assert.ok(named(text).length > 0, `${verb} names an old shape, so the scan reads it`);
+      assert.match(text, /assertMigrationRuns\(/, `${verb} refuses outside the migration`);
     }
+  });
+
+  it('no engine module reads the items of a phase but a topic\'s — those before the spec, the only phases that keep items (4.11.2)', () => {
+    const READS = /\bphases\??\.([a-z]+)\??\.items\b|\b(?:phaseItems|itemOf|phaseStatus|itemsIn|phaseData|unitItems)\([^,()]+, '([a-z-]+)'/g;
+    const read = modules.flatMap(({ module, text }) => [...text.matchAll(READS)].map((m) => ({ module, phase: m[1] ?? m[2] })));
+    assert.deepStrictEqual([...new Set(read.map(({ phase }) => phase))].sort(), [...schema.TOPIC_PHASES].sort(), 'the scan reads each topic phase\'s items');
   });
 });
 

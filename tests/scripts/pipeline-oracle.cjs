@@ -63,7 +63,6 @@ const { roadmapSurface } = require(path.join(ROOT, 'skills/leeway-engine/scripts
 const { unitHandoff } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/unit-handoff.cjs'));
 const { entryOf, pickRows } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/boot-route.cjs'));
 const { workPick } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/projections/boot.cjs'));
-const { awaitsCut, buildRefusal } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/derivations.cjs'));
 const {
   resolveHandoff, HANDOFF_TARGETS, topicHandoff,
 } = require(path.join(ROOT, 'skills/leeway-engine/scripts/domain/handoff.cjs'));
@@ -1251,11 +1250,6 @@ function auditStartRoute(dir, label) {
 /** A unit's Continue, `handoff unit`, as the start menu's row leads to it. @param {string} dir @param {string[]} argv @param {string} label */
 function auditContinue(dir, argv, label) {
   assert.strictEqual(argv[1], 'unit', `[${label}] the start menu's one handoff is a unit's Continue`);
-  const manifest = JSON.parse(fs.readFileSync(path.join(dir, '.leeway', argv[2], 'manifest.json'), 'utf8'));
-  if (manifest.work_type !== 'epic' && awaitsCut(manifest)) {
-    assert.throws(() => unitHandoff(dir, argv.slice(2)), { message: buildRefusal(manifest) }, `[${label}] Continue on a unit that waits on the cut gives its line`);
-    return;
-  }
   try {
     unitHandoff(dir, argv.slice(2));
   } catch (err) {

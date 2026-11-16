@@ -12,17 +12,14 @@
 // - The horizon each postponed topic waits under, read from the roadmap
 //   item it waits as, while that item still waits; none where it does not.
 // - The spec the menu offers (18.4.6): none while a topic is open, nor once
-//   ready to build's yes has begun the build, nor on a unit whose building
-//   began under the old spec, which keeps its items (29.17); else to start,
-//   or to carry on once `spec.md` is written. And whether the map is closed,
-//   the unit past its spec (18.4.19).
-// - For an epic built under the old plan, the line it shows in place of its
-//   build's row while it waits on the migration's cut (P12).
+//   ready to build's yes has begun the build; else to start, or to carry on
+//   once `spec.md` is written. And whether the map is closed, the unit past
+//   its spec (18.4.19).
 // ---------------------------------------------------------------------------
 
 const { EXPERIMENT_TERMINAL_STATUSES, isParentExperimentId } = require('../kernel/manifest-schema.cjs');
 const { loadProjectManifest } = require('./reads.cjs');
-const { phaseItems, buildDiscoveryMap, postponedItem, buildBegun, legacyBuild, buildRefusal } = require('./derivations.cjs');
+const { phaseItems, buildDiscoveryMap, postponedItem, buildBegun } = require('./derivations.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { entryRefusal, pastItsSpec } = require('./spec-standing.cjs');
 
@@ -48,7 +45,6 @@ const { entryRefusal, pastItsSpec } = require('./spec-standing.cjs');
  * @property {Record<string, string|null>} horizons the horizon each postponed topic waits under, by topic
  * @property {'start'|'continue'|null} spec  the spec the menu offers
  * @property {boolean} map_closed      the unit is past its spec
- * @property {string|null} old        the line an epic built under the old plan shows
  */
 
 /** The experiments waiting for each topic with any (the header's). @param {Record<string, any>} manifest @returns {Record<string, number>} */
@@ -75,7 +71,7 @@ function horizonsOf(cwd, epic, map) {
 
 /** The spec the menu offers (the header's). @param {string} cwd @param {Record<string, any>} manifest @returns {'start'|'continue'|null} */
 function specRow(cwd, manifest) {
-  if (phaseItems(manifest, 'specification').length > 0 || buildBegun(manifest) || entryRefusal(manifest) !== null) return null;
+  if (buildBegun(manifest) || entryRefusal(manifest) !== null) return null;
   return pastItsSpec(cwd, manifest) ? 'continue' : 'start';
 }
 
@@ -93,7 +89,6 @@ function epicDetail(cwd, manifest) {
     horizons: horizonsOf(cwd, manifest.name, map),
     spec: specRow(cwd, manifest),
     map_closed: pastItsSpec(cwd, manifest),
-    old: legacyBuild(manifest) ? buildRefusal(manifest) : null,
   };
 }
 

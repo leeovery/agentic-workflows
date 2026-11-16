@@ -131,7 +131,7 @@
 //   a quick-fix's, to a feature or a bugfix, a bugfix's, to a feature — at
 //   the one topic it now has and the new type's first phase (19.5.9,
 //   19.4.22); the migration's — a split's topics, at the new epic's topic,
-//   each at its own phase, and a retired cross-cutting unit's lines, at the
+//   each at its own phase, and a retired unit's lines, at the
 //   product's place, each at its own phase; a legacy file kept, the lines
 //   naming it at the place each is read at (follow-moves.cjs); and `files`,
 //   each file those lines name that the move took elsewhere, `[from, to]`.

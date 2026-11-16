@@ -16,8 +16,8 @@
 //
 // Layer: verb. Worlds: the epic `payments` twice — with plural phase items
 // and a map carrying its order, and with a map holding every shape the
-// cancel meets — a feature, and a quick-fix finished, each built once
-// (`fixtureFrom`) and copied for each test.
+// cancel meets — a feature, and a quick-fix over a store that cannot load,
+// each built once (`fixtureFrom`) and copied for each test.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -454,17 +454,13 @@ const setupFeatureFixture = harness.fixtureFrom('engine-tx-', (dir) => {
   commitAll(dir, 'init');
 });
 
-/** A quick-fix whose pipeline is finished (derived next phase `done`), over a knowledge store that cannot be loaded. */
-const setupFinishedQuickFixFixture = harness.fixtureFrom('engine-tx-', (dir) => {
+/** A quick-fix, over a knowledge store that cannot be loaded. */
+const setupBrokenStoreQuickFixFixture = harness.fixtureFrom('engine-tx-', (dir) => {
   writeFile(dir, '.leeway/caching/manifest.json', JSON.stringify({
     name: 'caching',
     work_type: 'quick-fix',
     status: 'in-progress',
-    phases: {
-      planning: { items: { caching: { status: 'completed' } } },
-      implementation: { items: { caching: { status: 'completed' } } },
-      review: { items: { caching: { status: 'completed' } } },
-    },
+    phases: {},
   }, null, 2) + '\n');
   // Deterministic KB failure: a store that cannot be loaded.
   writeFile(dir, '.leeway/.gitignore', '.knowledge/\n');
@@ -540,28 +536,6 @@ describe('work-unit completion — finish\'s, in process', () => {
     assert.throws(() => completeUnit(dir, 'ghost', 'msg'), /manifest not found/);
   });
 
-  it('completes a cancelled unit with a finished pipeline directly, restoring its chunks', () => {
-    // A cancelled finished pipeline completes directly (reactivate stays open
-    // as the other path) — and cancellation removed the unit's chunks, so
-    // the transition re-indexes them (warn-don't-block).
-    const finishedDir = setupFinishedQuickFixFixture();
-    engine(finishedDir, ['workunit', 'cancel', 'caching']);
-    const res = completeUnit(finishedDir, 'caching', 'workflow(caching): complete quick-fix pipeline');
-
-    assert.strictEqual(res.status, 'completed');
-    assert.strictEqual(res.committed, shortHead(finishedDir));
-    // Cancellation removed the unit's chunks; completion runs ONE scoped bulk
-    // re-index of the unit. The store cannot be loaded, so that pass fails → a
-    // single warn-don't-block warning, the completion standing.
-    assert.strictEqual(res.warnings.length, 1, res.warnings.join('\n'));
-    assert.match(res.warnings[0], /^knowledge index failed: loadStore: corrupted store file at /);
-
-    const m = readManifest(finishedDir, 'caching');
-    assert.strictEqual(m.status, 'completed');
-    assert.strictEqual(m.completed_at, new Date().toISOString().slice(0, 10));
-    assert.strictEqual(lastMessage(finishedDir), 'workflow(caching): complete quick-fix pipeline');
-    cleanupFixture(finishedDir);
-  });
 });
 
 describe('engine workunit cancel', () => {
@@ -675,8 +649,8 @@ describe('engine workunit reactivate', () => {
     cleanupFixture(epicDir);
   });
 
-  it('reactivates a cancelled unit whose pipeline is finished — completion stays open as the other path', () => {
-    const finishedDir = setupFinishedQuickFixFixture();
+  it('reactivates a cancelled quick-fix, re-indexing it', () => {
+    const finishedDir = setupBrokenStoreQuickFixFixture();
     engine(finishedDir, ['workunit', 'cancel', 'caching']);
     const res = engine(finishedDir, ['workunit', 'reactivate', 'caching']);
 

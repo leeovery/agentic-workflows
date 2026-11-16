@@ -33,6 +33,11 @@
 // where git reads the paths it is handed, and a read git fails is an error,
 // never a file that differs.
 //
+// What a unit built under the old plan keeps, which the migration's cut
+// reads and drops: the phases whose items stand on its manifest
+// (`OLD_PLAN_PHASES`), its planning phase among them (`OLD_PLANNING`), and
+// the file each plan was written in (`OLD_PLAN_FILE`).
+//
 // Every git call runs with hooks off and the caller's repository
 // environment cleared, so it names its repository by its folder alone.
 //
@@ -44,6 +49,9 @@ const { spawnSync } = require('child_process');
 const OLD_STATE = '.workflows';
 const STATE_DIR = '.leeway';
 const CHECKS_DONE = 'old-chain-checks';
+const OLD_PLANNING = 'planning';
+const OLD_PLAN_PHASES = Object.freeze(['specification', OLD_PLANNING, 'implementation']);
+const OLD_PLAN_FILE = 'planning.md';
 const STATE_BRANCH = 'leeway-state';
 
 const REPOSITORY_ENV = [
@@ -168,4 +176,4 @@ function unmoved(here) {
   return [...new Set([...ours.keys(), ...theirs.keys()])].sort().filter((rel) => ours.get(rel) !== theirs.get(rel));
 }
 
-module.exports = { OLD_STATE, CHECKS_DONE, owed, reshaping, unmoved };
+module.exports = { OLD_STATE, CHECKS_DONE, OLD_PLANNING, OLD_PLAN_PHASES, OLD_PLAN_FILE, owed, reshaping, unmoved };

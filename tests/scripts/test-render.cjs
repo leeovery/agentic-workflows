@@ -375,8 +375,6 @@ describe('conventions (domain composition layer)', () => {
     assert.strictEqual(discoveryLifecycleLabel('fresh', true), 'fresh · mail waiting');
     // The cue survives on non-fresh rows — a parked stub stays visible.
     assert.strictEqual(discoveryLifecycleLabel('discussing', true), 'discussing · mail waiting');
-    // A composite label keeps its own tail before the cue.
-    assert.strictEqual(discoveryLifecycleLabel('decided', true, [], 'auth-platform'), 'decided · promoted to auth-platform · mail waiting');
   });
 
   it('discoveryLifecycleLabel appends the awaited experiment ids directly after the lifecycle', () => {

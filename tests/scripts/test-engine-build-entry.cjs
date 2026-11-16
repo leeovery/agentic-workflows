@@ -3,9 +3,8 @@
 // ---------------------------------------------------------------------------
 // The build's entry and its standing (leeway-engine/scripts/domain/
 // build-entry.cjs): `engine enter implementation <unit>`. What it refuses,
-// naming the way on and writing nothing — a unit built under the old plan
-// (P12), a quick-fix the old scoping made among them, a build not begun
-// (11.8.3), a work type with no build, and a topic named; another session
+// naming the way on and writing nothing — a build not begun (11.8.3) and a
+// topic named; another session
 // holding the checkout's code stopped at the code gate alone, nothing
 // written, `--take` entering and back leaving it to that session (12.7.8);
 // the tasks another conversation left in flight taken onto this
@@ -15,7 +14,7 @@
 // parked one waiting on its question with no builder until the answer
 // (12.13.2); and the answer,
 // which is the recovery note too (12.1.6, 12.2.2, 24.2.2, 24.2.5, 12.S4,
-// 24.S13), none for a unit built under the old plan: where each phase of the
+// 24.S13): where each phase of the
 // cut stands with its tasks, its review's fixes owed until it is settled
 // (13.10.1), the tasks in flight with their builders, one whose builder
 // stopped with the way on (20.4.9) — the entry's of its own unit alone, the
@@ -42,9 +41,8 @@
 // progress, started by another conversation, and 1.3 not started; Refunds
 // written, 2.1 not started; Reports not yet written; a question asked in its
 // build. Beside it a feature, `solo`, its build begun; another feature whose
-// code a peer may hold; a feature cut and not yet built; a quick-fix
-// the old scoping planned; an epic built under the old plan, and a feature whose old spec
-// stands; a migrated cross-cutting unit; and the build's skill installed. Each
+// code a peer may hold; a feature cut and not yet built; and the build's
+// skill installed. Each
 // test's conversations keep their records in a config folder of their own.
 // ---------------------------------------------------------------------------
 
@@ -122,10 +120,6 @@ const world = fixtureFrom('engine-build-entry-', (dir) => {
   createManifest(dir, 'solo', { build: { position: 'step' }, cut: { phases: [CUT.phases[0]] } });
   createManifest(dir, 'other', {});
   createManifest(dir, 'fresh', { cut: { phases: [CUT.phases[0]] } });
-  createManifest(dir, 'tweak', { work_type: 'quick-fix', phases: { planning: { items: { tweak: { status: 'in-progress' } } } } });
-  createManifest(dir, 'old', { work_type: 'epic', phases: { planning: { items: { old: { status: 'completed' } } } }, build: { position: 'auto' } });
-  createManifest(dir, 'kept', { phases: { specification: { items: { kept: { status: 'completed' } } } }, build: { position: 'auto' } });
-  createManifest(dir, 'concern', { work_type: 'cross-cutting' });
   createFile(dir, '.claude/skills/leeway-implementation-process/SKILL.md', '# The build\n');
   commitAll(dir, 'the world');
   ok(dir, ['task', 'phase', UNIT, '1', '--title', 'Cards']);
@@ -212,15 +206,11 @@ const PHASE_LINES = Object.freeze([
 ]);
 
 describe('enter implementation: what cannot be entered is refused, naming the way on, and nothing is written', () => {
-  it('a unit built under the old plan (P12) — a quick-fix the old scoping planned among them — a build not begun (11.8.3), a migrated unit of a retired type, and a topic named', () => {
-    assert.deepStrictEqual([refused(['tweak']), refused(['old']), refused(['kept']), refused(['fresh']), refused([UNIT, 'note-window'])], [
-      'tweak was built under the old plan, and its build is entered once the reshape\'s 29.17 migration has cut it',
-      'old was built under the old plan, and its build is entered once the reshape\'s 29.17 migration has cut it',
-      'kept was built under the old plan, and its build is entered once the reshape\'s 29.17 migration has cut it',
+  it('a build not begun (11.8.3), and a topic named', () => {
+    assert.deepStrictEqual([refused(['fresh']), refused([UNIT, 'note-window'])], [
       'fresh\'s build has not begun — ready to build\'s yes begins it: render ready-to-build fresh',
       `implementation is entered at the work unit — name no topic: engine enter implementation ${UNIT}`,
     ]);
-    assert.strictEqual(refused(['concern']), 'concern is a cross-cutting unit, a type the reshape retires — it waits on the reshape\'s 29.17 migration, and nothing is done in it until then');
   });
 });
 
@@ -463,15 +453,6 @@ describe('the answer: where the build stands, and what to read beside the ledger
 
       assert.deepStrictEqual(asked('other'), OWN);
     });
-  });
-
-  it('gives a unit built under the old plan no way into its build in its recovery note — no skill to read, no build\'s standing — its build begun all the same (P12)', () => {
-    fs.mkdirSync(path.join(config, 'conversations', 'sess-1'), { recursive: true });
-    fs.writeFileSync(path.join(config, 'conversations', 'sess-1', 'position.json'), JSON.stringify({ name: 'kept', phase: 'implementation', topic: 'kept' }));
-    const note = output(dir, ['conversation', 'position'], { env: env() });
-
-    assert.doesNotMatch(note, /leeway-implementation-process|position: auto|build log:/);
-    assert.match(note, /kept/, note);
   });
 });
 

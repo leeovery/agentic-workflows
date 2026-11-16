@@ -6,7 +6,7 @@
 // lines made at the places a unit gives up — an absorbed feature's, a moved
 // quick-fix's or bugfix's (workunit-move.cjs), and the migration's: the
 // topics a split takes from a building unit to a new epic
-// (workunit-split.cjs), a retired cross-cutting unit's, to the product's
+// (workunit-split.cjs), and a retired unit's, to the product's
 // place (workunit-retire.cjs); and a legacy file's move, the lines naming
 // it at the place each is read at (follow-moves.cjs) — and each file they
 // name that the move took elsewhere. Every read takes a line a carry lists
