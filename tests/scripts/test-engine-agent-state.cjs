@@ -496,6 +496,12 @@ describe('engine agent — discussion review arming (9.8.14)', () => {
     assert.deepStrictEqual([first.id, markOf(first.id)], ['review-001', last()]);
   });
 
+  it('a review report the store holds no row of is no cycle: the first review stays free', () => {
+    writeContent(dir, `.leeway/.cache/${UNIT}/discussion/${TOPIC}/review-001.md`, 'a report with no row');
+
+    assert.deepStrictEqual([arming().cycles, arming().armed], [0, true]);
+  });
+
   it('a second review refuses with no move since the last, naming the bypass, and arms on the person\'s question opened', () => {
     reviewed([last()]);
     assert.match(refusedReview(), /^review dispatch blocked: quiet — 0 of 1 moves since review-001 — .*--final/);

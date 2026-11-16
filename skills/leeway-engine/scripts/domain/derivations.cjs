@@ -15,7 +15,7 @@ const { isObject } = require('../kernel/manifest-io.cjs');
 const { shownTask } = require('./task-id.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
-const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TOPIC_PHASES, TERMINAL_STATUSES, BUILD_PHASES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES, illegalNameReason, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
+const { WORK_TYPE_PIPELINES, DERIVED_PHASES, TOPIC_PHASES, isTopicPhase, TERMINAL_STATUSES, BUILD_PHASES, EXPERIMENT_SPAWN_PHASES, EXPERIMENT_TERMINAL_STATUSES, illegalNameReason, isParentExperimentId, compareExperimentIds } = require('../kernel/manifest-schema.cjs');
 
 /**
  * Whether the unit's build has begun: ready to build's yes recorded on its
@@ -369,13 +369,12 @@ function phaseStatus(manifest, phase, specWritten = false) {
   const p = (manifest.phases || {})[phase] || {};
   const keys = p.items && typeof p.items === 'object' ? Object.keys(p.items) : [];
   if (keys.length > 0) {
-    // Non-live statuses drop out of aggregation: cancelled/superseded/proposed
-    // and postponed alike — a postponed topic waits on the roadmap, and must
-    // not mask the siblings' state (unfiltered, the label went
-    // insertion-order-dependent). `unstarted` is pre-live: a stub holding
-    // messages for a topic no session has started — it must not flip the
-    // phase's aggregate label.
-    const NON_LIVE = ['cancelled', 'superseded', 'proposed', 'unstarted', 'postponed'];
+    // Non-live statuses drop out of aggregation: the terminal ones — a
+    // postponed topic waits on the roadmap, and must not mask the siblings'
+    // state (unfiltered, the label went insertion-order-dependent) — and
+    // `unstarted`, pre-live: a stub holding messages for a topic no session
+    // has started — it must not flip the phase's aggregate label.
+    const NON_LIVE = [...TERMINAL_STATUSES, 'unstarted'];
     if (keys.length === 1) {
       const status = (p.items[keys[0]] || {}).status || null;
       return NON_LIVE.includes(status) ? null : status;
@@ -389,6 +388,11 @@ function phaseStatus(manifest, phase, specWritten = false) {
   return null;
 }
 
+/**
+ * A topic phase's items, each with its name.
+ * @param {Record<string, any>} manifest @param {import('../kernel/manifest-schema.cjs').TopicPhase} phase
+ * @returns {Record<string, any>[]}
+ */
 function phaseItems(manifest, phase) {
   const p = (manifest.phases || {})[phase] || {};
   if (!p.items || typeof p.items !== 'object') return [];
@@ -399,7 +403,7 @@ function phaseData(manifest, phase) {
   return (manifest.phases || {})[phase] || {};
 }
 
-/** @param {object} manifest @param {string} phase @param {string} topic @returns {Record<string, any>|undefined} */
+/** @param {object} manifest @param {import('../kernel/manifest-schema.cjs').TopicPhase} phase @param {string} topic @returns {Record<string, any>|undefined} */
 function itemOf(manifest, phase, topic) {
   const item = (phaseData(manifest, phase).items || {})[topic];
   return item && typeof item === 'object' ? item : undefined;
@@ -421,7 +425,7 @@ const UNIT_PHASES = {
  */
 function unitItems(manifest, stage, name) {
   return UNIT_PHASES[stage].flatMap((phase) => {
-    const item = itemOf(manifest, phase, name);
+    const item = isTopicPhase(phase) ? itemOf(manifest, phase, name) : undefined;
     return item ? [{ phase, item }] : [];
   });
 }
@@ -778,7 +782,7 @@ function postponePlan(manifest, name, project, horizon) {
  * @returns {string[]}
  */
 function awaitedExperiments(manifest, phase, topic) {
-  const item = itemOf(manifest, phase, topic);
+  const item = isTopicPhase(phase) ? itemOf(manifest, phase, topic) : undefined;
   return item && Array.isArray(item.awaiting_experiments) ? item.awaiting_experiments : [];
 }
 
@@ -790,7 +794,7 @@ function awaitedExperiments(manifest, phase, topic) {
  * Every wait holding one item's conclusion shut: one `experiment` wait per
  * live awaited id. Derived from the item's own state alone — never stored —
  * and work-type agnostic; an absent item holds nothing.
- * @param {object} manifest @param {string} phase @param {string} topic
+ * @param {object} manifest @param {import('../kernel/manifest-schema.cjs').TopicPhase} phase @param {string} topic
  * @returns {Wait[]}
  */
 function waits(manifest, phase, topic) {
@@ -835,6 +839,7 @@ function settleItemStatus(item) {
 // state that blocks their conclusion and routes the linear pipeline to the
 // experiment. A decided one waits on nothing: the experiment it spawned
 // runs on, and its report reaches the topic as mail.
+/** @param {Record<string, any>} manifest @param {import('../kernel/manifest-schema.cjs').TopicPhase} phase */
 function waitingItems(manifest, phase) {
   return phaseItems(manifest, phase)
     .filter((i) => i.status === 'in-progress'
@@ -896,7 +901,7 @@ function computeNextPhase(manifest, specWritten = false) {
       if (ps(phase) === 'in-progress' && !(phase === 'discussion' && closedIntoSpec(manifest))) {
         const awaiting = DERIVED_PHASES.includes(phase)
           ? EXPERIMENT_SPAWN_PHASES.some((p) => waitingItems(manifest, p).length > 0)
-          : EXPERIMENT_SPAWN_PHASES.includes(phase) && waitingItems(manifest, phase).length > 0;
+          : isTopicPhase(phase) && EXPERIMENT_SPAWN_PHASES.includes(phase) && waitingItems(manifest, phase).length > 0;
         if (awaiting) {
           return { next_phase: 'experiment', phase_label: 'experiment (awaiting evidence)' };
         }
@@ -1066,13 +1071,13 @@ function computeMapSummary(items) {
 
 // The conversations a topic's mail waits for, in the order a pipeline is
 // searched: discussion, or a bugfix's investigation.
-const MAIL_PHASES = ['discussion', 'investigation'];
+const MAIL_PHASES = /** @type {const} */ (['discussion', 'investigation']);
 
 /**
  * The phase a unit's topics are talked through, where their mail is raised
  * (10.1.3): the first of `MAIL_PHASES` its work type's pipeline holds, null
  * for a quick-fix, which talks through none.
- * @param {string} workType @returns {string|null}
+ * @param {string} workType @returns {typeof MAIL_PHASES[number]|null}
  */
 function mailPhase(workType) {
   const pipeline = WORK_TYPE_PIPELINES[/** @type {keyof typeof WORK_TYPE_PIPELINES} */ (workType)] ?? [];

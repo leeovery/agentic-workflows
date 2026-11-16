@@ -68,8 +68,9 @@
 // phases not built that the tracker holds done, `done_before`, each built
 // and landed before Leeway (derivations.cjs, `landedBefore`), and the areas
 // each task of them neither done nor closed cites, `cites: {"N.n": ["<area>",
-// …]}`, a task citing none left out (`citedAreas`), and the old plan's items
-// dropped (P12, old-layout.cjs's `OLD_PLAN_PHASES`) — committed to the state
+// …]}`, a task citing none left out (`citedAreas`), and every item past the
+// topics', the old plan's and its review's, dropped (P12, old-layout.cjs's
+// `PAST_THE_TOPICS`) — committed to the state
 // branch, the commit held for the migration's (21.9.3). Last, the mark,
 // `.cache/migrate/cut/{unit}.json` in the state, `{at, corrections}`: every
 // correction the plan records, as given, which the migration review lists
@@ -95,7 +96,7 @@ const { messageOf } = require('../kernel/call.cjs');
 const { migrationRuns } = require('./state-worktree.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { specJoined, joinedTopics, areaOfAddress } = require('./derivations.cjs');
-const { OLD_STATE, OLD_PLANNING, OLD_PLAN_PHASES } = require('../../../leeway-migrate/scripts/old-layout.cjs');
+const { OLD_STATE, OLD_PLANNING, PAST_THE_TOPICS } = require('../../../leeway-migrate/scripts/old-layout.cjs');
 const { readSpec, specPath, specReading, rowsOf, fencedLines, SPEC_FILE } = require('./spec-sections.cjs');
 const { phasesOf, placing, specIn, againstSpec, refuse } = require('./cut.cjs');
 const { notesPath, notesAppended, topHeading } = require('./notes.cjs');
@@ -364,7 +365,7 @@ function writeManifest(cwd, unit, phases, done, cites) {
   const manifest = loadWorkUnitManifest(cwd, unit);
   manifest.cut = { phases };
   manifest.build = { position: 'step', ...(done.length === 0 ? {} : { done_before: done }), ...(Object.keys(cites).length === 0 ? {} : { cites }) };
-  if (isObject(manifest.phases)) for (const phase of OLD_PLAN_PHASES) delete manifest.phases[phase];
+  if (isObject(manifest.phases)) for (const phase of PAST_THE_TOPICS) delete manifest.phases[phase];
   saveWorkUnitManifest(cwd, unit, manifest);
 }
 

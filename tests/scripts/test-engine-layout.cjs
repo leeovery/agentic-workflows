@@ -10,7 +10,7 @@
 // area's report the area's number and slug, so none is named as another's;
 // names are compared as the fold spells them; the tracker's store is each
 // shipped task driver's; each of today's places holds its sample, is no
-// log, and names the phase from 29.11 to 29.17 that retires it (E4); the
+// log, and names the phase from 29.11 to 29.18 that retires it (E4); the
 // product's conversation keeps one folder of logs; the asset homes, and the
 // spike folders among them; and the suites' layout helper names only places
 // the table holds.
@@ -210,8 +210,8 @@ describe('the asset homes (4.11.5, 4.11.12)', () => {
 });
 
 describe('today\'s places (E4)', () => {
-  it('every one names the phase from 29.11 to 29.17 that retires it', () => {
-    assert.deepStrictEqual(TODAY.filter((at) => !/^29\.1[1-7]$/.test(at.retires ?? '')).map((at) => at.path), []);
+  it('every one names the phase from 29.11 to 29.18 that retires it', () => {
+    assert.deepStrictEqual(TODAY.filter((at) => !/^29\.1[1-8]$/.test(at.retires ?? '')).map((at) => at.path), []);
   });
 
   it('every one holds its sample, and none is a log or the engine\'s alone', () => {

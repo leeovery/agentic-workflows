@@ -295,7 +295,7 @@ function experimentNextGateSurface(cwd, { dotpath }) {
 /**
  * Resolve an address restricted to a set of phases. Loud on any other.
  * @param {string} cwd @param {string} dotpath @param {string} surface
- * @param {string[]} phases  the phases the surface serves
+ * @param {readonly string[]} phases  the phases the surface serves
  * @param {string} noun      what the address names, for the refusal
  * @returns {{workUnit: string, phase: string, topic: string, manifest: object}}
  */

@@ -829,7 +829,7 @@ describe('conversation position', () => {
       files: [],
       text,
     });
-    for (const status of ['cancelled', 'postponed', 'superseded']) {
+    for (const status of ['cancelled', 'postponed']) {
       workUnit('pay', 'epic', { discussion: { items: { ledger: { status } } } });
       closed(`This conversation was working in the discussion of "ledger" in the epic "pay", but the discussion is ${status}, so there is nothing to carry on from.`);
     }

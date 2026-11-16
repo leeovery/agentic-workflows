@@ -3,12 +3,15 @@
 // The whole migration's world (21.S1, 21.S3): a project on today's shape,
 // its `.workflows/` committed on its code branch as the chain up to 072 left
 // it, so the bash fleet before it never runs — an epic in discussion, its
-// topic promoted to a cross-cutting unit, a cancelled topic holding mail and
-// a link already dead; a feature being built, its plan in the tracker, its
+// topic promoted to a cross-cutting unit, a cancelled topic holding mail, a
+// decided topic whose old map decided nine subtopics, with a link already
+// dead and an import its words name outside a link; a feature being built, its plan in the tracker, its
 // first phase built and its second still to build; a completed epic of two
 // specs, its build's report with no place; the cross-cutting unit; a
-// cancelled feature; a completed quick-fix; and the roadmap with a note and
-// a session — beside the hooks today's product leaves. `oldProject` makes
+// cancelled feature; a completed quick-fix; the roadmap with a note and a
+// session; and in the old cache, ignored, a report of the epic's, one of the
+// cross-cutting unit's and a draft of no unit's — beside the hooks today's
+// product leaves. `oldProject` makes
 // it; `migrateWhole` takes it through the whole sequence as the start skill
 // runs it, boot by boot: the guard and the chain to the records directive,
 // whose work is scripted — each topic's record the fixture's, carried —
@@ -19,7 +22,8 @@
 // nothing from the machine. `migratedProject` is the project so migrated,
 // made once per run (run-worlds.cjs) and copied, with the old state's
 // listing the migration audit reads, taken before it (migration-audit.cjs),
-// and the state each boot answered.
+// the state each boot answered, and the system config folder the migration
+// ran under.
 
 require('./hermetic-env.cjs');
 
@@ -41,6 +45,7 @@ const { composedPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
 const PROJECT = 'fumi';
 const LISTING = 'old-state.json';
 const STATES = 'boots.json';
+const CONFIG = 'leeway-config';
 const RECORDS = '079-records';
 const CUT_AND_MERGES = '080-cut-and-merges';
 const DONE = Object.freeze({ status: 'completed' });
@@ -48,6 +53,9 @@ const TALKING = Object.freeze({ status: 'in-progress' });
 
 /** @param {string} title @param {Record<string, string>} sections */
 const doc = (title, sections) => `# ${title}\n\n${Object.entries(sections).map(([heading, body]) => `## ${heading}\n\n${body}\n`).join('\n')}`;
+
+// The auth topic's old map, each of its subtopics decided.
+const AUTH_MAP = Object.freeze(['tokens', 'expiry', 'refresh', 'scopes', 'revocation', 'rotation', 'storage', 'transport', 'lockout']);
 
 // The feature's old plan, its phases' titles and tasks, and the first phase's tasks done.
 const MEMO_PLAN = Object.freeze([{ title: 'Memos', tasks: ['Write a memo', 'Pin a memo'] }, { title: 'Sharing', tasks: ['Share a memo'] }]);
@@ -64,6 +72,9 @@ function oldFiles(plan, idOf) {
     'README.md': '# Fumi\n',
     '.claude/settings.json': TODAYS_HOOKS,
     '.workflows/.gitignore': '.cache/\n',
+    '.workflows/.cache/gateway/discussion/errors/review-001.md': '### F1: Error codes\n\nTwo errors share a code.\n',
+    '.workflows/.cache/caching/discussion/invalidation/review-001.md': '### F1: Stale reads\n\nA read races its purge.\n',
+    '.workflows/.cache/spec-draft.md': '# Draft\n\nA section never joined.\n',
     '.workflows/.state/migrations': [...MIGRATED_TO_070, '071', '072'].map((id) => `${id}\n`).join(''),
     '.workflows/manifest.json': jsonText({
       work_units: { gateway: { work_type: 'epic' }, caching: { work_type: 'cross-cutting' }, memo: { work_type: 'feature' }, shop: { work_type: 'epic' }, exports: { work_type: 'feature' }, typo: { work_type: 'quick-fix' } },
@@ -75,10 +86,11 @@ function oldFiles(plan, idOf) {
       name: 'gateway', work_type: 'epic', status: 'in-progress', description: 'The public API', created: '2026-01-01',
       phases: {
         discovery: { items: { auth: { source: 'discovery', summary: 'Auth', order: 1 }, errors: { source: 'discovery', summary: 'Errors', order: 2 }, limits: { source: 'discovery', summary: 'Limits', order: 3, cancelled: true } } },
-        discussion: { items: { auth: DONE, errors: TALKING, limits: { status: 'cancelled' }, invalidation: { status: 'promoted', promoted_to: 'caching' } } },
+        discussion: { items: { auth: { ...DONE, subtopics: Object.fromEntries(AUTH_MAP.map((item) => [item, { status: 'decided' }])) }, errors: TALKING, limits: { status: 'cancelled' }, invalidation: { status: 'promoted', promoted_to: 'caching' } } },
       },
     }),
-    '.workflows/gateway/discussion/auth.md': doc('Discussion: Auth', { Tokens: 'Bearer tokens, as the [old RFC](../research/rfc.md) had it.' }),
+    '.workflows/gateway/discussion/auth.md': doc('Discussion: Auth', { Tokens: 'Bearer tokens, as the [old RFC](../research/rfc.md) had it. The flow is drawn at ../imports/flow.png.' }),
+    '.workflows/gateway/imports/flow.png': 'PNG the token flow',
     '.workflows/gateway/discussion/errors.md': doc('Discussion: Errors', { Shape: 'Still open.' }),
     '.workflows/gateway/discussion/limits.md': doc('Discussion: Limits', { Burst: 'Cancelled: the gateway sets no limits.' }),
     '.workflows/gateway/discussion/.mailbox/limits/001-burst.md': 'Burst\n\n*From: errors · discussion · 2026-01-05*\n\nMay a client burst past the limit?\n',
@@ -148,10 +160,10 @@ const logCite = (unit, topic, section) => ({ path: layout.topic(unit, topic, 'lo
 
 // Each topic's record, as the records directive's agents would compose it.
 const RECORDS_COMPOSED = Object.freeze({
-  'gateway.discussion.auth': [
-    { ref: 'q1', event: 'asked', text: 'How do clients authenticate?', by: 'claude', cites: [logCite('gateway', 'auth', 'Tokens')] },
-    { ref: 'd1', event: 'decided', answers: 'q1', text: 'Bearer tokens.', why: 'The log settles it.', by: 'claude', given: 'carried', cites: [logCite('gateway', 'auth', 'Tokens')] },
-  ],
+  'gateway.discussion.auth': AUTH_MAP.flatMap((item, at) => [
+    { ref: `q${at + 1}`, event: 'asked', text: `How does the gateway settle ${item}?`, by: 'claude', map_item: item, cites: [logCite('gateway', 'auth', 'Tokens')] },
+    { ref: `d${at + 1}`, event: 'decided', answers: `q${at + 1}`, text: `Bearer tokens settle ${item}.`, why: 'The log settles it.', by: 'claude', given: 'carried', map_item: item, cites: [logCite('gateway', 'auth', 'Tokens')] },
+  ]),
   'gateway.discussion.errors': [{ ref: 'q1', event: 'asked', text: 'What shape is an error?', by: 'claude', cites: [logCite('gateway', 'errors', 'Shape')] }],
   'gateway.discussion.limits': [{ ref: 'q1', event: 'asked', text: 'Does the gateway limit calls?', by: 'claude', cites: [logCite('gateway', 'limits', 'Burst')] }],
   'caching.discussion.invalidation': [
@@ -247,19 +259,21 @@ function migrateWhole(dir, extra = {}) {
 function buildMigrated(folder) {
   const dir = oldProject(folder);
   fs.writeFileSync(path.join(folder, LISTING), JSON.stringify(listOld(dir)));
-  fs.writeFileSync(path.join(folder, STATES), JSON.stringify(migrateWhole(dir)));
+  fs.mkdirSync(path.join(folder, CONFIG));
+  fs.writeFileSync(path.join(folder, STATES), JSON.stringify(migrateWhole(dir, { LEEWAY_CONFIG_DIR: path.join(folder, CONFIG) })));
 }
 
 /**
  * The project migrated whole at `{root}/fumi` (the header's): its folder,
- * the old state's listing and the boots' states.
+ * the old state's listing, the boots' states and the system config folder
+ * the migration ran under.
  * @param {string} root
- * @returns {{dir: string, old: import('./migration-audit.cjs').Listing, boots: string[]}}
+ * @returns {{dir: string, old: import('./migration-audit.cjs').Listing, boots: string[], configDir: string}}
  */
 function migratedProject(root) {
   const folder = copyFolder(worldOfTheRun('migrated-whole', buildMigrated).dir, root);
   const read = (/** @type {string} */ name) => JSON.parse(fs.readFileSync(path.join(folder, name), 'utf8'));
-  return { dir: path.join(folder, PROJECT), old: read(LISTING), boots: read(STATES) };
+  return { dir: path.join(folder, PROJECT), old: read(LISTING), boots: read(STATES), configDir: path.join(folder, CONFIG) };
 }
 
-module.exports = { PROJECT, SIDE, oldProject, migrateWhole, migratedProject };
+module.exports = { PROJECT, SIDE, AUTH_MAP, oldProject, migrateWhole, migratedProject };

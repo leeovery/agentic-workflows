@@ -8,9 +8,12 @@
 // and investigation in Discovery, specification in Definition,
 // implementation and review in Delivery; no engine module recognises a
 // shape an earlier version left — names the layout before Leeway, its
-// planning phase, the retired type, the promoted status or a reader retired
-// with them — but the migration's own verbs, each refusing outside the
-// migration — and none reads the items of a phase but a topic's; and the
+// planning phase, the retired type, the promoted status, the old spec's
+// statuses or a reader retired with them — but the migration's own verbs,
+// each refusing outside the migration; none reaches the old layout's
+// module but the migration's own, each named; and none reads the items of
+// a phase but a topic's, which the typecheck holds too, the readers taking
+// a topic phase alone; and the
 // command catalogue has the new families with
 // their verbs and the kept ones, and no verb for what the release removes;
 // each verb it says one the engine dispatches, and each a family's own
@@ -116,17 +119,31 @@ describe('2.S10: no runtime code handles the old shape (2.8.3)', () => {
   /** The migration's own verbs, which read the old shapes as they carry a unit across. */
   const MIGRATION_VERBS = ['domain/ledger-carry.cjs', 'domain/workunit-retire.cjs'];
   /** What an earlier version left, by name, and each reader retired with it. */
-  const OLD_SHAPES = /\.workflows\b|\bplanning\b|\bcross-cutting\b|\bpromoted|\b(?:legacyBuild|legacyNext|retiredRefusal|awaitsCut|buildByCut|promotedRefusal|ownNamedItems|closedStanding|lastCompletedPhase|LEGACY_[A-Z_]+|AT_THE_CUT)\b/g;
+  const OLD_SHAPES = /\.workflows\b|\bplanning\b|\bcross-cutting\b|\bpromoted|'(?:superseded|proposed)'|\b(?:legacyBuild|legacyNext|retiredRefusal|awaitsCut|buildByCut|promotedRefusal|ownNamedItems|closedStanding|lastCompletedPhase|LEGACY_[A-Z_]+|AT_THE_CUT)\b/g;
   /** The old shapes a module names. @param {string} text */
   const named = (text) => [...new Set([...text.matchAll(OLD_SHAPES)].map(([name]) => name))];
 
-  it('no engine module names the layout before Leeway, its planning phase, the retired type, the promoted status or a reader retired with them, but the migration\'s own verbs, each refusing outside the migration', () => {
+  /** The modules that reach the old layout's module, each for the migration: what each takes it for. */
+  const OLD_LAYOUT_READERS = {
+    'domain/boot.cjs': 'the guard, which stops a start on a project the move has not taken',
+    'domain/state-checks.cjs': 'the old chain\'s checks a migration still owes',
+    'domain/directives.cjs': 'the mark of those checks done',
+    'domain/render.cjs': 'the guard\'s stop, naming the old folder',
+    'domain/brief-records.cjs': 'the records directive\'s briefs, citing the old plans',
+    'domain/cut-migrating.cjs': 'the migration\'s cut, reading the old plan and dropping its items',
+  };
+
+  it('no engine module names the layout before Leeway, its planning phase, the retired type, the promoted status, the old spec\'s statuses or a reader retired with them, but the migration\'s own verbs, each refusing outside the migration', () => {
     assert.deepStrictEqual(modules.filter(({ module, text }) => !MIGRATION_VERBS.includes(module) && named(text).length > 0).map(({ module, text }) => `${module}: ${named(text).join(', ')}`), []);
     for (const verb of MIGRATION_VERBS) {
       const { text } = /** @type {{text: string}} */ (modules.find(({ module }) => module === verb));
       assert.ok(named(text).length > 0, `${verb} names an old shape, so the scan reads it`);
       assert.match(text, /assertMigrationRuns\(/, `${verb} refuses outside the migration`);
     }
+  });
+
+  it('no engine module reaches the old layout\'s module but those the migration runs, each named for what it takes', () => {
+    assert.deepStrictEqual(modules.filter(({ text }) => text.includes('leeway-migrate/scripts/old-layout.cjs')).map(({ module }) => module).sort(), Object.keys(OLD_LAYOUT_READERS).sort());
   });
 
   it('no engine module reads the items of a phase but a topic\'s — those before the spec, the only phases that keep items (4.11.2)', () => {

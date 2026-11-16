@@ -1,14 +1,17 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The migration audit (21.1.1, 21.1.4, 21.1.5; 2.8.1): whether a project the
-// migration took into Leeway migrated cleanly, read and never written — it
-// calls one engine verb, boot, which must find nothing left to do, and
-// writes nothing to git or the state itself. The old state's files are
-// read from a listing taken before the migration (`listOld`): each file
-// under `.workflows/`, by its path there, its content's hash, and the text
-// of each document and manifest outside the old cache, the old engine's
-// record and the knowledge store.
+// The migration audit (21.1.1; 2.8.1): whether a project the migration took
+// into Leeway migrated cleanly, read and never written — it calls one engine
+// verb, boot, which must find nothing left to do, run in no conversation,
+// so it marks none in the system config, and its separate Claude call
+// pinned to the suite's stub with no login, so the late one-decision check
+// boot launches makes no call and writes nothing; and it writes nothing to
+// git or the state itself. The old state's files are read from a listing
+// taken before the migration (`listOld`): each file under `.workflows/`, by
+// its path there, its content's hash, and the text of each document and
+// manifest outside the old cache, the old engine's record and the knowledge
+// store.
 //
 // A project migrated cleanly where:
 //   - no `.workflows/` is left in its folder;
@@ -17,44 +20,55 @@
 //   - every unit the registry names has a manifest of today's shape: its
 //     name its folder's, its type and status today's, its type the
 //     registry's, its phases today's, an item's status its phase's, and
-//     items in the topics' phases alone — but a quick-fix's building, its
-//     own; a unit the old registry already named with no manifest is listed
-//     apart, never a fault;
+//     items in the topics' phases alone;
 //   - every topic decided in its discussion has a decision in the ledger,
 //     read where every carry took it;
 //   - no unit waits on a cut: none in progress has its specs joined and no
 //     cut;
 //   - each phase of a cut adopted from the tracker holds every task the
 //     tracker holds under its parent, open or done, and each phase of the
-//     old plan in the tracker is one of the cut's;
-//   - every file the old state held is placed — byte for byte anywhere in
-//     the state, a manifest where its unit or the project is, or a
-//     document whose every line is kept, its headings, link targets and
-//     case aside — or is one the migration rebuilds, never kept: the old
-//     cache's other files, the old engine's record, the knowledge store but
-//     its config, a unit's `.state/`, the old state's own ignore file, and
-//     the tools' sidecars;
+//     old plan in the tracker is one of the cut's; a tracker that cannot be
+//     read for a cut, its parent or its store gone, is a fault of its own;
+//   - every file the old state held is placed — a document of the old
+//     cache byte for byte in the state's ignored cache, at its path below
+//     its unit's folder there under the unit's `earlier/`, or at its path
+//     below the old cache under the cache's own, its case aside, unless its
+//     unit was retired, its cache purged, or it is a build's fix-tracking
+//     report, which 051 moved into the unit's implementation folder, byte
+//     for byte anywhere in the state; any other byte for byte anywhere
+//     in the state, a manifest where its unit or the project is, or a
+//     document one file of the state holds every line of, its headings,
+//     link targets, numbering and case aside, and the runs of `../` before
+//     an import or an asset, which the move rewrites wherever they stand —
+//     or is one the migration rebuilds, never kept: the old cache's other
+//     files, the old engine's record, the knowledge store but its config, a
+//     unit's `.state/`, the old state's own ignore file, and the tools'
+//     sidecars;
 //   - every link or embed in a document the migration wrote — no legacy
 //     file, kept as it was — and every citation and asset a ledger line
 //     names, where its carries moved it, and every roadmap source names a
-//     file; a link already dead in the old state, by its words and target,
-//     is listed apart, never a fault.
+//     file; a link that names nothing is old only as often as the old
+//     documents the file holds held it dead, by its words and target, each
+//     occurrence excusing one, and is listed apart, never a fault.
 //
 // The report, as JSON: `ok`, the `faults`, each its check and what it
 // found, and the counts a rehearsal reports — units by type and status,
-// decisions, legacy files, and dead links before the migration and after,
-// those after split into the old ones and the migration's — with the dead
-// links and the units registered with no manifest the old state already
-// held, each listed.
+// decisions, legacy files, the old cache's documents in the cache's
+// `earlier/` folders, and the dead links: those of the documents
+// outside legacy before the migration and after, those after that are old,
+// and those of the legacy files as they stand — with the dead links found
+// old listed, each once.
 //
 // As a command: `node migration-audit.cjs list <project>` prints the
 // listing; `node migration-audit.cjs audit <project> <listing.json>`
-// prints the report and exits 1 on any fault. The caller pins the
-// environment boot runs in.
+// prints the report and exits 1 on any fault. It runs only with both
+// user-level folders, LEEWAY_CONFIG_DIR and WORKFLOWS_CONFIG_DIR, pinned to
+// folders outside `~/.config`, so boot never meets the person's own.
 // ---------------------------------------------------------------------------
 
 const crypto = require('crypto');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
@@ -71,14 +85,30 @@ const OLD = '.workflows';
 const STATE = '.leeway';
 const LEGACY = /(?:^|\/)assets\/legacy\//;
 const REBUILT = [/^\.cache\/(?!.*\.md$)/, /^\.state\//, /^\.knowledge\/(?!config\.json$)/, /^\.gitignore$/, /^[^/]+\/\.state\//];
+// The old cache's documents, which the move copies into the state's cache.
+const CACHE_REPORT = /^\.cache\/(.+\.md)$/;
+// Where the state's cache holds them: a unit's `earlier/`, or the cache's own.
+const EARLIER = /^\.cache\/(?:[^/]+\/)?earlier\//;
+// A build's fix-tracking report, which 051 moved out of the old cache into
+// the unit's committed implementation folder, a project behind it among the
+// chain the migration runs.
+const FIX_TRACKING = /^[^/]+\/implementation\/[^/]+\/fix-tracking-[^/]*\.md$/;
 const TEXT = /\.(?:md|json)$/;
 const UNREAD = /^(?:\.cache|\.state|\.knowledge)\//;
 const LINK = /(!?)\[([^\]]*)\]\(([^)\s]+)\)/g;
 const SCHEME = /^[a-z][a-z0-9+.-]*:/i;
+// The runs of `../` before an import or an asset, which the move rewrites wherever they stand.
+const IMPORT_PATH = /(?:\.\.\/)+(?:imports|assets)\//g;
+// The separate call's binary boot runs: the suite's stub, which, unarmed, has no login.
+const CLAUDE_STUB = path.join(__dirname, 'claude-stub.sh');
+const STUB_ARMS = ['CLAUDE_STUB_ANSWERS', 'CLAUDE_STUB_LOG', 'CLAUDE_STUB_MEET'];
+// The user-level folders the command runs only with pinned.
+const CONFIG_DIRS = ['LEEWAY_CONFIG_DIR', 'WORKFLOWS_CONFIG_DIR'];
 
 /** @typedef {{sha: string, text?: string}} OldFile */
 /** @typedef {{files: Record<string, OldFile>}} Listing */
 /** @typedef {{check: string, found: string}} Fault */
+/** A text file, of the old state or the state: its path, its hash, its text and the lines placement compares. @typedef {{rel: string, sha: string, text: string, lines: string[]}} Doc */
 
 /** @param {Buffer|string} bytes */
 const sha = (bytes) => crypto.createHash('sha256').update(bytes).digest('hex');
@@ -118,16 +148,31 @@ function listOld(project) {
   };
 }
 
-/** The state as the audit reads it: its files, its manifests and its ledger. @param {string} project */
+/** A line as placement compares it: its heading marks, link targets, import paths, numbering and case aside. @param {string} line */
+const comparable = (line) => line.trim().replace(/^#+\s*/, '').replace(/\]\([^)]*\)/g, ']').replace(IMPORT_PATH, 'assets/').replace(/^\d+\.\s+/, '')
+  .replace(/^(?:specification|discussion|research|investigation|plan):\s*/i, '').toLowerCase();
+
+/** The lines of a document placement asks to be kept: none blank, no fence, no sender's line. @param {string} text */
+const keptLines = (text) => text.split('\n').map(comparable).filter((line) => line !== '' && !/^(?:`{3,}|~{3,})/.test(line) && !/^\*from: /.test(line));
+
+/** @param {string} rel @param {Buffer} bytes @returns {Doc} */
+const docOf = (rel, bytes) => ({ rel, sha: sha(bytes), text: bytes.toString('utf8'), lines: keptLines(bytes.toString('utf8')) });
+
+/** The state as the audit reads it: its files, its documents, its manifests and its ledger. @param {string} project */
 function readState(project) {
   const root = path.join(project, STATE);
   const files = filesBelow(root).filter((rel) => !rel.startsWith('.cache/') && !/^\.knowledge\/(?!config\.json$)/.test(rel));
   const ledgerFile = path.join(root, '.ledger.jsonl');
   const lines = fs.existsSync(ledgerFile) ? fs.readFileSync(ledgerFile, 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line)) : [];
   const places = rehomedPlaces(lines.filter(({ event }) => event === 'rehomed'));
+  const bytes = new Map(files.map((rel) => [rel, fs.readFileSync(path.join(root, rel))]));
+  const earlier = filesBelow(path.join(root, '.cache')).map((rel) => `.cache/${rel}`).filter((rel) => EARLIER.test(rel));
   return {
     root,
     files,
+    earlier: new Map(earlier.map((rel) => [rel.toLowerCase(), sha(fs.readFileSync(path.join(root, rel)))])),
+    shas: new Set([...bytes.values()].map(sha)),
+    docs: files.filter((rel) => TEXT.test(rel)).map((rel) => docOf(rel, /** @type {Buffer} */ (bytes.get(rel)))),
     project: readJson(path.join(root, 'manifest.json')) ?? {},
     ledger: lines.filter(({ event }) => event !== 'rehomed').map((line) => asRehomed(places, line)),
   };
@@ -161,11 +206,19 @@ function migrationsRecorded(state) {
 /** @param {string} dir @param {string[]} args */
 const gitRead = (dir, args) => (fs.existsSync(dir) ? spawnSync('git', args, { cwd: dir, encoding: 'utf8' }).stdout.trim() : '');
 
+/** The environment boot runs in: no conversation's, and the separate call's binary the suite's stub, unarmed. */
+function bootEnv() {
+  /** @type {Record<string, string|undefined>} */
+  const env = { ...process.env, LEEWAY_CLAUDE: CLAUDE_STUB };
+  for (const name of ['CLAUDE_CODE_SESSION_ID', ...STUB_ARMS]) delete env[name];
+  return env;
+}
+
 /** @param {string} project @param {State} state @returns {Fault[]} */
 function bootReady(project, state) {
   const heads = () => [gitRead(project, ['rev-parse', 'HEAD']), gitRead(state.root, ['rev-parse', 'HEAD'])];
   const before = heads();
-  const run = spawnSync(process.execPath, [ENGINE, 'boot'], { cwd: project, encoding: 'utf8', input: '\n' });
+  const run = spawnSync(process.execPath, [ENGINE, 'boot'], { cwd: project, encoding: 'utf8', input: '\n', env: bootEnv() });
   const answer = parsed(run.stdout);
   /** @type {Fault[]} */
   const faults = [];
@@ -174,12 +227,9 @@ function bootReady(project, state) {
   return faults;
 }
 
-/** The phases whose items a unit keeps: the topics', and a quick-fix's building besides. @param {any} manifest */
-const keepsItems = (manifest) => [...schema.TOPIC_PHASES, ...(manifest.work_type === 'quick-fix' ? schema.BUILD_PHASES : [])];
-
 /** The phases past the topics' a unit keeps items in. @param {any} manifest @returns {string[]} */
 const strayItems = (manifest) => Object.entries(manifest?.phases ?? {})
-  .filter(([phase, data]) => !keepsItems(manifest).includes(phase) && Object.keys(data?.items ?? {}).length > 0).map(([phase]) => phase);
+  .filter(([phase, data]) => !schema.isTopicPhase(phase) && Object.keys(data?.items ?? {}).length > 0).map(([phase]) => phase);
 
 /** What a unit's manifest gets wrong. @param {string} name @param {any} manifest @param {any} registered @returns {string[]} */
 function manifestFaults(name, manifest, registered) {
@@ -198,23 +248,13 @@ function manifestFaults(name, manifest, registered) {
   ].filter((fault) => fault !== null);
 }
 
-/** The units the old registry named with no manifest. @param {Listing} old @returns {Set<string>} */
-function unregisteredBefore(old) {
-  const registry = parsed(old.files['manifest.json']?.text ?? '')?.work_units ?? {};
-  return new Set(Object.keys(registry).filter((name) => !(`${name}/manifest.json` in old.files)));
-}
-
-/** @param {State} state @param {Map<string, any>} units @param {Set<string>} before @returns {{faults: Fault[], old: string[]}} */
-function manifestsValid(state, units, before) {
+/** @param {State} state @param {Map<string, any>} units @returns {Fault[]} */
+function manifestsValid(state, units) {
   const registry = state.project.work_units ?? {};
-  const missing = Object.keys(registry).filter((name) => !units.has(name));
-  return {
-    faults: [
-      ...missing.filter((name) => !before.has(name)).map((name) => `${name} is registered and has no manifest`),
-      ...[...units].flatMap(([name, manifest]) => manifestFaults(name, manifest, registry[name]).map((fault) => `${name}: ${fault}`)),
-    ].map((found) => ({ check: 'manifests-valid', found })),
-    old: missing.filter((name) => before.has(name)),
-  };
+  return [
+    ...Object.keys(registry).filter((name) => !units.has(name)).map((name) => `${name} is registered and has no manifest`),
+    ...[...units].flatMap(([name, manifest]) => manifestFaults(name, manifest, registry[name]).map((fault) => `${name}: ${fault}`)),
+  ].map((found) => ({ check: 'manifests-valid', found }));
 }
 
 /** @param {State} state @param {Map<string, any>} units @returns {Fault[]} */
@@ -238,48 +278,91 @@ function oldPlanPhases(old, unit) {
     .filter(([id]) => new RegExp(`^${topic}-\\d+$`).test(id)).map(([, parent]) => /** @type {string} */ (parent)));
 }
 
-/** @param {State} state @param {Map<string, any>} units @param {Listing} old @returns {Fault[]} */
-function cutsHoldTracker(state, units, old) {
-  const built = [...units].filter(([, manifest]) => Array.isArray(manifest?.cut?.phases));
-  if (built.length === 0) return [];
-  const { driver } = chosenDriver(path.dirname(state.root), 'task');
-  return built.flatMap(([name, manifest]) => {
-    /** @type {{tracker?: string}[]} */
-    const phases = manifest.cut.phases;
-    const adopted = phases.flatMap(({ tracker }, at) => (tracker === undefined ? [] : [{ phase: at + 1, parent: tracker }]));
-    const held = driver.adoption(state.root, name, adopted);
-    const lost = held.flatMap(({ phase, tasks }) => {
+/**
+ * What a cut lacks of the tracker: each task the tracker holds under an
+ * adopted phase's parent, and each old plan's phase the cut adopted none
+ * of; or why the tracker could not be read for it.
+ * @param {State} state @param {string} name @param {any} manifest @param {Listing} old @returns {string[]}
+ */
+function cutShortOf(state, name, manifest, old) {
+  /** @type {{tracker?: string}[]} */
+  const phases = manifest.cut.phases;
+  const adopted = phases.flatMap(({ tracker }, at) => (tracker === undefined ? [] : [{ phase: at + 1, parent: tracker }]));
+  try {
+    const { driver } = chosenDriver(path.dirname(state.root), 'task');
+    const lost = driver.adoption(state.root, name, adopted).flatMap(({ phase, tasks }) => {
       const cut = new Set((driver.tasks(state.root, name, phase) ?? []).map(({ ref }) => `${ref.phase}.${ref.n}`));
       return tasks.filter(({ ref }) => !cut.has(`${ref.phase}.${ref.n}`)).map(({ title, status }) => `${name}'s phase ${phase} lacks "${title}", ${status} in the tracker`);
     });
     const trackers = new Set(adopted.map(({ parent }) => parent));
-    const uncut = oldPlanPhases(old, name).filter((parent) => !trackers.has(parent)).map((parent) => `${name}'s cut lacks the old plan's phase ${parent}`);
-    return [...lost, ...uncut].map((found) => ({ check: 'cut-holds-tracker', found }));
-  });
+    return [...lost, ...oldPlanPhases(old, name).filter((parent) => !trackers.has(parent)).map((parent) => `${name}'s cut lacks the old plan's phase ${parent}`)];
+  } catch (err) {
+    return [`${name}'s cut cannot be read against the tracker: ${err instanceof Error ? err.message : String(err)}`];
+  }
 }
 
-/** A line as placement compares it: its heading marks, link targets, numbering and case aside. @param {string} line */
-const comparable = (line) => line.trim().replace(/^#+\s*/, '').replace(/\]\([^)]*\)/g, ']').replace(/^\d+\.\s+/, '').replace(/^(?:specification|discussion|research|investigation|plan):\s*/i, '').toLowerCase();
+/** @param {State} state @param {Map<string, any>} units @param {Listing} old @returns {Fault[]} */
+function cutsHoldTracker(state, units, old) {
+  return [...units].filter(([, manifest]) => Array.isArray(manifest?.cut?.phases))
+    .flatMap(([name, manifest]) => cutShortOf(state, name, manifest, old).map((found) => ({ check: 'cut-holds-tracker', found })));
+}
 
-/** The lines of a document placement asks to be kept: none blank, no fence, no sender's line. @param {string} text */
-const keptLines = (text) => text.split('\n').map(comparable).filter((line) => line !== '' && !/^(?:`{3,}|~{3,})/.test(line) && !/^\*from: /.test(line));
+/** The old state's text files as documents, by their paths in `.workflows/`. @param {Listing} old @returns {Doc[]} */
+const oldDocs = (old) => Object.entries(old.files).flatMap(([rel, { sha: hash, text }]) => (text === undefined ? [] : [{ rel, sha: hash, text, lines: keptLines(text) }]));
 
-/** @param {State} state @param {Map<string, any>} units @param {Listing} old */
-function filesPlaced(state, units, old) {
-  const shas = new Set(state.files.map((rel) => sha(fs.readFileSync(path.join(state.root, rel)))));
-  const lines = new Set(state.files.filter((rel) => TEXT.test(rel)).flatMap((rel) => keptLines(fs.readFileSync(path.join(state.root, rel), 'utf8'))));
-  const retired = (/** @type {string} */ unit) => state.files.includes(`.product/assets/${unit}/manifest.json`);
+/**
+ * Where each old document is held in the state: each document holding
+ * every one of its lines, read through its rarest line — a copy byte for
+ * byte among them — or, for one with no line to keep, each copy.
+ * @param {State} state @returns {(doc: Doc) => Doc[]}
+ */
+function holdersIn(state) {
+  /** @type {Map<string, Doc[]>} */
+  const bySha = new Map();
+  /** @type {Map<string, Set<Doc>>} */
+  const byLine = new Map();
+  const linesOf = new Map(state.docs.map((doc) => [doc, new Set(doc.lines)]));
+  for (const doc of state.docs) {
+    bySha.set(doc.sha, [...(bySha.get(doc.sha) ?? []), doc]);
+    for (const line of doc.lines) byLine.set(line, (byLine.get(line) ?? new Set()).add(doc));
+  }
+  return (doc) => {
+    if (doc.lines.length === 0) return bySha.get(doc.sha) ?? [];
+    const seeds = doc.lines.map((line) => byLine.get(line) ?? new Set()).reduce((rarest, held) => (held.size < rarest.size ? held : rarest));
+    return [...seeds].filter((held) => doc.lines.every((line) => /** @type {Set<string>} */ (linesOf.get(held)).has(line)));
+  };
+}
+
+/**
+ * Whether the state's cache holds a document of the old cache byte for
+ * byte where the move copies it, its case aside: a unit's in the unit's
+ * `earlier/`, any other in the cache's own.
+ * @param {State} state @param {Listing} old @param {string} report its path below the old cache @param {OldFile} file
+ */
+function earlierHeld(state, old, report, file) {
+  const [unit, ...below] = report.split('/');
+  const at = `${unit}/manifest.json` in old.files ? `.cache/${unit}/earlier/${below.join('/')}` : `.cache/earlier/${report}`;
+  return state.earlier.get(at.toLowerCase()) === file.sha;
+}
+
+/** @param {State} state @param {Map<string, any>} units @param {Listing} old @param {Doc[]} olds @param {(doc: Doc) => Doc[]} holders */
+function filesPlaced(state, units, old, olds, holders) {
+  const docs = new Map(olds.map((doc) => [doc.rel, doc]));
+  const retired = (/** @type {string} */ unit) => state.files.includes(`.product/assets/${unit.toLowerCase()}/manifest.json`);
   /** @param {string} rel @param {OldFile} file */
   const placed = (rel, file) => {
-    if (shas.has(file.sha)) return true;
+    const report = CACHE_REPORT.exec(rel)?.[1];
+    if (report !== undefined) return earlierHeld(state, old, report, file) || retired(report.split('/')[0]) || (FIX_TRACKING.test(report) && state.shas.has(file.sha));
+    if (state.shas.has(file.sha)) return true;
     if (rel === 'manifest.json') return state.files.includes('manifest.json');
     const unit = /^([^/]+)\/manifest\.json$/.exec(rel)?.[1];
     if (unit !== undefined) return units.has(unit.toLowerCase()) || retired(unit);
-    return file.text !== undefined && keptLines(file.text).every((line) => lines.has(line));
+    const doc = docs.get(rel);
+    return doc !== undefined && (doc.lines.length === 0 || holders(doc).length > 0);
   };
   const rebuilt = (/** @type {string} */ rel) => REBUILT.some((rule) => rule.test(rel)) || SIDECAR_NAME.test(path.basename(rel));
-  return Object.entries(old.files).filter(([rel, file]) => !rebuilt(rel) && !placed(rel, file))
-    .map(([rel]) => ({ check: 'files-placed', found: `${OLD}/${rel} is neither placed nor kept as legacy` }));
+  return Object.entries(old.files).sort(([a], [b]) => a.localeCompare(b)).filter(([rel, file]) => !rebuilt(rel) && !placed(rel, file))
+    .map(([rel]) => ({ check: 'files-placed', found: `${OLD}/${rel} is ${CACHE_REPORT.test(rel) ? 'not in the cache\'s earlier/ as it was' : 'neither placed nor kept as legacy'}` }));
 }
 
 /** Each relative link and embed of a document, `[words](target)` as written, with its target. @param {string} text */
@@ -291,33 +374,85 @@ function linksIn(text) {
 /** @param {string} target */
 const fileOf = (target) => decodeURIComponent(target.replace(/[#?].*$/, ''));
 
-/** The links already dead in the old state, as written. @param {string} project @param {Listing} old @returns {Set<string>} */
-function deadBefore(project, old) {
-  return new Set(Object.entries(old.files).filter(([rel, { text }]) => text !== undefined && rel.endsWith('.md')).flatMap(([rel, { text }]) => linksIn(/** @type {string} */ (text))
-    .filter(({ target }) => {
-      const at = path.posix.normalize(path.posix.join(OLD, path.posix.dirname(rel), fileOf(target)));
-      return at.startsWith(`${OLD}/`) ? !(at.slice(OLD.length + 1) in old.files) : !fs.existsSync(path.join(project, at));
-    })
-    .map(({ written }) => written)));
+/** Each link of the old document at `rel` naming nothing there, as written, once for each time it is. @param {string} project @param {Listing} old @param {Doc} doc */
+function deadInOld(project, old, doc) {
+  return linksIn(doc.text).filter(({ target }) => {
+    const at = path.posix.normalize(path.posix.join(OLD, path.posix.dirname(doc.rel), fileOf(target)));
+    return at.startsWith(`${OLD}/`) ? !(at.slice(OLD.length + 1) in old.files) : !fs.existsSync(path.join(project, at));
+  }).map(({ written }) => written);
 }
 
-/** @param {State} state @param {Set<string>} before */
-function namesResolve(state, before) {
+/** Each link of the state's document naming nothing, as written, once for each time it is. @param {State} state @param {Doc} doc */
+const deadInState = (state, doc) => linksIn(doc.text).filter(({ target }) => !fs.existsSync(path.resolve(state.root, path.dirname(doc.rel), fileOf(target)))).map(({ written }) => written);
+
+/** @param {string[]} words */
+function tally(words) {
+  /** @type {Map<string, number>} */
+  const counts = new Map();
+  for (const word of words) counts.set(word, (counts.get(word) ?? 0) + 1);
+  return counts;
+}
+
+/**
+ * The links of the state's documents that name nothing, each old as often
+ * as the old documents its file holds held it dead: the new ones faults,
+ * the old ones listed, each once; and the counts, the documents outside
+ * legacy before and after, and the legacy files as they stand.
+ * @param {string} project @param {State} state @param {Listing} old @param {Doc[]} olds @param {(doc: Doc) => Doc[]} holders
+ */
+function deadLinks(project, state, old, olds, holders) {
+  const isDocument = (/** @type {Doc} */ doc) => doc.rel.endsWith('.md');
+  /** The links each of the state's documents' old documents held dead. @type {Map<Doc, string[]>} */
+  const deadBefore = new Map();
+  let before = 0;
+  for (const doc of olds.filter(isDocument)) {
+    const dead = deadInOld(project, old, doc);
+    const held = holders(doc).filter(isDocument);
+    for (const holder of held) deadBefore.set(holder, [...(deadBefore.get(holder) ?? []), ...dead]);
+    if (held.some(({ rel }) => !LEGACY.test(rel))) before += dead.length;
+  }
+  /** @type {Set<string>} */
+  const found = new Set();
+  /** @type {Set<string>} */
+  const already = new Set();
+  let after = 0;
+  let oldAfter = 0;
+  let legacy = 0;
+  for (const doc of state.docs.filter(isDocument)) {
+    const dead = deadInState(state, doc);
+    if (LEGACY.test(doc.rel)) {
+      legacy += dead.length;
+      continue;
+    }
+    after += dead.length;
+    const excused = tally(deadBefore.get(doc) ?? []);
+    for (const written of dead) {
+      const left = excused.get(written) ?? 0;
+      if (left === 0) {
+        found.add(`${doc.rel} links ${written}, which names nothing`);
+        continue;
+      }
+      excused.set(written, left - 1);
+      oldAfter += 1;
+      already.add(`${doc.rel}: ${written}`);
+    }
+  }
+  return { faults: [...found].sort(), counts: { before, after, after_already_dead: oldAfter, legacy }, already: [...already].sort() };
+}
+
+/** @param {string} project @param {State} state @param {Listing} old @param {Doc[]} olds @param {(doc: Doc) => Doc[]} holders */
+function namesResolve(project, state, old, olds, holders) {
   const exists = (/** @type {string} */ rel) => fs.existsSync(path.join(state.root, rel));
-  const documents = state.files.filter((rel) => rel.endsWith('.md') && !LEGACY.test(rel));
-  const dead = documents.flatMap((rel) => linksIn(fs.readFileSync(path.join(state.root, rel), 'utf8'))
-    .filter(({ target }) => !fs.existsSync(path.resolve(state.root, path.dirname(rel), fileOf(target))))
-    .map(({ written }) => ({ rel, written })));
-  const old = dead.filter(({ written }) => before.has(written));
+  const dead = deadLinks(project, state, old, olds, holders);
   /** @type {Fault[]} */
   const faults = [
-    ...dead.filter(({ written }) => !before.has(written)).map(({ rel, written }) => ({ check: 'names-resolve', found: `${rel} links ${written}, which names nothing` })),
+    ...dead.faults.map((found) => ({ check: 'names-resolve', found })),
     ...state.ledger.flatMap((line) => [...(line.cites ?? []).map(({ path: cited }) => cited), ...(line.event === 'asset' ? [line.path] : [])]
       .filter((cited) => !exists(cited)).map((cited) => ({ check: 'names-resolve', found: `ledger line ${line.id} names ${cited}, which is not there` }))),
     ...Object.entries(state.project.roadmap?.items ?? {}).flatMap(([item, { sources = [] }]) => sources
       .filter((/** @type {string} */ source) => !exists(source)).map((/** @type {string} */ source) => ({ check: 'names-resolve', found: `roadmap item ${item} names ${source}, which is not there` }))),
   ];
-  return { faults, dead: dead.length, old: old.map(({ rel, written }) => `${rel}: ${written}`) };
+  return { faults, counts: dead.counts, already: dead.already };
 }
 
 /** Units by type and by status. @param {Map<string, any>} units */
@@ -339,18 +474,18 @@ function unitCounts(units) {
 function audit(project, old) {
   const state = readState(project);
   const units = unitsOf(state);
-  const before = deadBefore(project, old);
-  const names = namesResolve(state, before);
-  const manifests = manifestsValid(state, units, unregisteredBefore(old));
+  const olds = oldDocs(old);
+  const holders = holdersIn(state);
+  const names = namesResolve(project, state, old, olds, holders);
   const faults = [
     ...oldStateGone(project),
     ...migrationsRecorded(state),
     ...bootReady(project, state),
-    ...manifests.faults,
+    ...manifestsValid(state, units),
     ...decisionsCarried(state, units),
     ...noCutWaiting(units),
     ...cutsHoldTracker(state, units, old),
-    ...filesPlaced(state, units, old),
+    ...filesPlaced(state, units, old, olds, holders),
     ...names.faults,
   ];
   return {
@@ -360,18 +495,37 @@ function audit(project, old) {
       units: unitCounts(units),
       decisions: state.ledger.filter(({ event }) => event === 'decided').length,
       legacy_files: state.files.filter((rel) => LEGACY.test(rel)).length,
-      dead_links: { before: before.size, after: names.dead, after_already_dead: names.old.length },
+      earlier: state.earlier.size,
+      dead_links: names.counts,
     },
-    already_dead: names.old,
-    already_unregistered: manifests.old,
+    already_dead: names.already,
   };
+}
+
+/**
+ * The user-level folders the command would run with unpinned: unset, or
+ * inside `~/.config`, where the person's own live.
+ * @param {Record<string, string|undefined>} env @returns {string[]}
+ */
+function unpinned(env) {
+  const config = path.join(os.homedir(), '.config');
+  return CONFIG_DIRS.filter((name) => {
+    const dir = env[name];
+    if (dir === undefined || dir === '') return true;
+    const rel = path.relative(config, path.resolve(dir));
+    return rel === '' || !(rel.startsWith('..') || path.isAbsolute(rel));
+  });
 }
 
 module.exports = { listOld, audit };
 
 if (require.main === module) {
   const [verb, project, listing] = process.argv.slice(2);
-  if (verb === 'list' && project !== undefined) {
+  const loose = unpinned(process.env);
+  if (loose.length > 0) {
+    process.stderr.write(`Refused: pin ${loose.join(' and ')} to a folder outside ~/.config, so boot never meets the person's own.\n`);
+    process.exitCode = 2;
+  } else if (verb === 'list' && project !== undefined) {
     process.stdout.write(`${JSON.stringify(listOld(path.resolve(project)))}\n`);
   } else if (verb === 'audit' && project !== undefined && listing !== undefined) {
     const report = audit(path.resolve(project), JSON.parse(fs.readFileSync(listing, 'utf8')));

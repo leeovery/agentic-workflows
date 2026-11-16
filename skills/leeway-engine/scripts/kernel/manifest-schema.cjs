@@ -47,8 +47,15 @@ const EPIC_PHASES = Object.freeze(['discovery', ...WORK_TYPE_PIPELINES.epic]);
 // item. Every generic surface keys on this list, never on a phase name.
 const DERIVED_PHASES = ['experiment'];
 
+const TOPIC_PHASE_NAMES = /** @type {const} */ (['discovery', 'experiment', 'discussion', 'investigation']);
+
+/** A phase a topic exists in, the only kind whose items a manifest keeps. @typedef {typeof TOPIC_PHASE_NAMES[number]} TopicPhase */
+
 /** The phases a topic exists in: those before the spec (4.11.2). */
-const TOPIC_PHASES = Object.freeze(['discovery', 'experiment', 'discussion', 'investigation']);
+const TOPIC_PHASES = /** @type {readonly string[]} */ (Object.freeze(TOPIC_PHASE_NAMES));
+
+/** Whether `phase` is a topic's. @param {unknown} phase @returns {phase is TopicPhase} */
+const isTopicPhase = (phase) => TOPIC_PHASES.includes(/** @type {string} */ (phase));
 
 /** The build's places: its phases, where a question parks its task (12.13.2). */
 const BUILD_PHASES = Object.freeze(['implementation', 'review']);
@@ -151,7 +158,7 @@ function assertLegalName(kind, name) {
 
 // The phase whose sessions spawn experiments (9.1.4): each spawn locks the
 // spawning discussion's own item, `awaiting_experiments`.
-const EXPERIMENT_SPAWN_PHASES = ['discussion'];
+const EXPERIMENT_SPAWN_PHASES = /** @type {readonly TopicPhase[]} */ (['discussion']);
 
 const VALID_WORK_UNIT_STATUSES = ['in-progress', 'completed', 'cancelled'];
 
@@ -185,7 +192,7 @@ const CLOSED_BY_CANCEL = 'closed_by_cancel';
 // Phase-item statuses that end a topic's life in its phase — excluded from
 // aggregation. One vocabulary for every consumer (derivations, the position,
 // the engine's topic reads).
-const TERMINAL_STATUSES = ['cancelled', 'superseded', 'postponed'];
+const TERMINAL_STATUSES = ['cancelled', 'postponed'];
 
 // The product as a whole: its conversation, the project-level discovery
 // place (8.2.7), its logs in `.product/sessions/` and its session marker on
@@ -257,6 +264,7 @@ module.exports = {
   EPIC_PHASES,
   DERIVED_PHASES,
   TOPIC_PHASES,
+  isTopicPhase,
   VALID_PHASE_STATUSES,
   VALID_EXPERIMENT_STATUSES,
   EXPERIMENT_TERMINAL_STATUSES,

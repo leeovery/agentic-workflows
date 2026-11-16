@@ -496,8 +496,9 @@ describe('work-unit completion — finish\'s, in process', () => {
       /--verb must be cancel, reactivate, or pivot, got "complete"/, 'finish draws its own close');
   });
 
-  it('purges the work unit\'s scratch cache on complete — untracked scratch leaves no dirt', () => {
+  it('purges the work unit\'s scratch cache on complete, the old cache\'s reports the migration copied into its earlier/ with it — untracked scratch leaves no dirt', () => {
     writeFile(dir, '.leeway/.cache/auth-flow/discussion/auth-flow/review-1.md', 'scratch\n');
+    writeFile(dir, '.leeway/.cache/auth-flow/earlier/discussion/auth-flow/review-001.md', 'an old report\n');
     completeUnit(dir, 'auth-flow', 'workflow(auth-flow): complete feature pipeline');
     assert.strictEqual(fs.existsSync(path.join(dir, '.leeway/.cache/auth-flow')), false, 'cache dir removed');
     assert.strictEqual(git(dir, ['status', '--porcelain']).trim() + stateGit(dir, ['status', '--porcelain']).trim(), '', 'no stray dirt');
@@ -543,8 +544,9 @@ describe('engine workunit cancel', () => {
   beforeEach(() => { dir = setupFeatureFixture(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  it('purges the work unit\'s scratch cache on cancel', () => {
+  it('purges the work unit\'s scratch cache on cancel, the old cache\'s reports the migration copied into its earlier/ with it', () => {
     writeFile(dir, '.leeway/.cache/auth-flow/discussion/auth-flow/deep-dive-1.md', 'scratch\n');
+    writeFile(dir, '.leeway/.cache/auth-flow/earlier/discussion/auth-flow/review-001.md', 'an old report\n');
     engine(dir, ['workunit', 'cancel', 'auth-flow']);
     assert.strictEqual(fs.existsSync(path.join(dir, '.leeway/.cache/auth-flow')), false, 'cache dir removed');
     assert.strictEqual(git(dir, ['status', '--porcelain']).trim() + stateGit(dir, ['status', '--porcelain']).trim(), '', 'no stray dirt');

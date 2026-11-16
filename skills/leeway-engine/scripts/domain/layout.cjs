@@ -49,7 +49,7 @@
 //
 // Today's places (`TODAY`) are the paths today's engine and prose still
 // write, until step 2 moves each writer into 4.11's layout. Each names the
-// phase whose rewrite retires it; 29.17 empties the list. None is a log:
+// phase whose rewrite retires it; 29.18 empties the list. None is a log:
 // today's session logs keep their own commits.
 // ---------------------------------------------------------------------------
 
@@ -153,7 +153,7 @@ const LAYOUT = Object.freeze([
 
 /** Today's places, each with the phase that retires it. @type {readonly Place[]} */
 const TODAY = Object.freeze([
-  todays('29.17', 'file', '.state/environment-setup.md'),
+  todays('29.18', 'file', '.state/environment-setup.md'),
 ]);
 
 /** The product's folder, its conversation's session logs, and the roadmap's notes (4.11.16). */

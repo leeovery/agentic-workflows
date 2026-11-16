@@ -229,35 +229,24 @@ function reportBacked(row, dir) {
  * Completed review cycles for a discussion topic. The agent store is authoritative:
  * review rows past `in-flight` are cycles that happened, counted only when
  * a real report backs them; a finished-but-unscanned row counts — the
- * report landed, no scan has moved it on yet. Legacy review-*.md files with
- * no store row (pre-programme caches) count by existence alone. Tolerant
- * throughout — a derivation read must never brick a display.
+ * report landed, no scan has moved it on yet. Tolerant throughout — a
+ * derivation read must never brick a display.
  * @param {string} cwd @param {string} workUnit @param {string} topic
  */
 function completedReviewCycles(cwd, workUnit, topic) {
   const dir = agentDir(cwd, workUnit, 'discussion', topic);
-  const rowIds = new Set();
-  let fromRows = 0;
+  let cycles = 0;
   for (const row of derivationRows(dir)) {
     if (row.kind !== 'review') continue;
-    rowIds.add(`${row.id}.md`);
     if (row.status !== 'in-flight') {
-      if (reportBacked(row, dir)) fromRows += 1;
+      if (reportBacked(row, dir)) cycles += 1;
     } else {
       try {
-        if (fs.statSync(path.join(dir, `${row.id}.md`)).size > 0) fromRows += 1;
+        if (fs.statSync(path.join(dir, `${row.id}.md`)).size > 0) cycles += 1;
       } catch { /* still running */ }
     }
   }
-  try {
-    const legacy = fs.readdirSync(dir)
-      .filter((f) => /^review-.*\.md$/.test(f))
-      .filter((f) => !rowIds.has(f))
-      .length;
-    return fromRows + legacy;
-  } catch {
-    return fromRows;
-  }
+  return cycles;
 }
 
 /**

@@ -55,7 +55,9 @@
 // (22.4.3, 7.1.11); each roadmap item's sources follow their files, once
 // each, the roadmap's `imports` index is dropped — its files are the
 // product's assets, which nothing indexes — and its open session is marked
-// as the product's conversation's (`product_session`). The inbox, the
+// as the product's conversation's (`product_session`); and a registry
+// entry naming no unit — `.workflows/` holding no folder of its name with a
+// manifest — is dropped, the verification addendum naming it. The inbox, the
 // environment setup file and the checkout's knowledge config are carried as
 // they are, but for an inbox file whose name is no item's
 // (`{ideas,bugs,quickfixes}/{YYYY-MM-DD}--{slug}.md`, archived or not), kept
@@ -173,7 +175,8 @@
 //     once the quick-fix is completed — its status says so, or every phase
 //     of its old pipeline, scoping, implementation and review, completed,
 //     whatever its status reads — its spec is its `summary.md` and its plan
-//     is kept as legacy, its spec and plan items going (21.5.15, 21.5.16),
+//     is kept as legacy, its spec, plan, implementation and review items
+//     going (21.5.15, 21.5.16),
 //     its status completed but where it was cancelled (21.5.14);
 //   - the unit's `.state/` goes whole, holding the old engine's analysis
 //     caches only (21.5.17); implementation folders, holding the build's
@@ -204,9 +207,10 @@
 // topic's brief has one place), a discussion's subtopics, staging, the
 // spec's build order (a cancelled spec's stashed one too), its review
 // cycles and baseline and its gate modes, the plan's review tracking and
-// dependencies, and the
-// caches of the discovery gap analysis and the discussion analysis, whose
-// files go with them (21.5.17), and every item's reconcile flag, whatever
+// dependencies, the caches of the discovery gap analysis and the
+// discussion analysis, whose files go with them (21.5.17), and the topic
+// names the discussion's gap analysis left (`gap_topics`, which 038 left
+// behind), and every item's reconcile flag, whatever
 // it holds. The dead end goes too (21.5.22): a topic marked
 // `handled` whose work had concluded — its discussion decided, or, with no
 // discussion of its own, its research done, as 043's umbrellas were — keeps
@@ -216,8 +220,10 @@
 // A unit whose building has not started keeps no spec or planning items:
 // its specs and plans are reference assets now, and its one spec is written
 // fresh once its topics are decided (21.8.2, 21.8.3); a unit completed or
-// cancelled keeps no spec, planning or implementation items either, history
-// that waits on no cut (21.8.11); a unit whose building started keeps them
+// cancelled keeps no spec, planning, implementation or review items either,
+// history that waits on no cut (21.8.11), nor does a completed quick-fix,
+// whose standing today's engine reads off its own record (derivations.cjs,
+// `fixesStatus`); a unit whose building started keeps them
 // for the cut and the merges, but the item of a spec still being written,
 // and a quick-fix's scoping keeps its own. An epic's topics are on its map — one that was not in
 // progress when 038 seeded the maps gains them from its discussions — each
@@ -241,12 +247,15 @@
 // folder kept, and one of no unit's — a folder under `.workflows/` holding
 // no manifest, an entry the move does not read, a roadmap, baseline or inbox
 // file of no place — under `.product/assets/legacy/`, its path from
-// `.workflows/` kept. The old cache's documents, its agents' reports, which
-// nothing rebuilds, are kept so too, under `cache/`: a unit's at its path
-// below the unit's folder in the cache, any other at its path below the
-// cache. Each is named at its place in the verification addendum, and a
-// roadmap source naming one follows it; so is each experiment instrument
-// moved under its record's `data/`.
+// `.workflows/` kept. Each is named at its place in the verification
+// addendum, and a roadmap source naming one follows it; so is each
+// experiment instrument moved under its record's `data/`. The old cache's
+// documents, its agents' reports, which nothing rebuilds, are copied byte
+// for byte into the state's ignored cache, never committed and never
+// legacy: a unit's into `.cache/{unit}/earlier/` at its path below the
+// unit's folder in the old cache, each unit's name in it as it is carried, where
+// the unit's ending purges them as it purges the rest of its cache; any
+// other into `.cache/earlier/` at its path below the old cache.
 //
 // Every moved document's links and embeds, resolved from where the document
 // was, follow what they name — a file the move places or keeps, a folder
@@ -343,7 +352,7 @@ const RETIRED_ON_EVERY_ITEM = ['reconcile_needed'];
 const RETIRED_PHASES = ['research', 'scoping'];
 const RETIRED_PHASE_FIELDS = {
   discovery: ['gap_analysis_cache'],
-  discussion: ['analysis_cache'],
+  discussion: ['analysis_cache', 'gap_topics'],
   specification: ['build_order_stale'],
 };
 const RETIRED_ITEM_FIELDS = {
@@ -356,10 +365,9 @@ const RESEARCH_STANDING = { unstarted: 'unstarted', cancelled: 'cancelled', post
 // A research item's wait on its experiments, carried to its topic's discussion.
 const RESEARCH_WAITS = ['awaiting_experiments'];
 
-// A completed quick-fix's spec and plan, gone with their files.
-const QUICK_FIX_SPENT = ['specification', 'planning'];
-// The old plan's phases, which a unit that is history keeps no items of.
-const OLD_PLAN = ['specification', 'planning', 'implementation'];
+// The phases past the topics', the old plan's and its review's, which a unit
+// that is history, or a completed quick-fix, keeps no items of.
+const PAST_THE_TOPICS = ['specification', 'planning', 'implementation', 'review'];
 // A quick-fix's pipeline as today's engine runs it.
 const QUICK_FIX_PIPELINE = ['scoping', 'implementation', 'review'];
 
@@ -388,9 +396,11 @@ const SPEC_FENCE = /^[ \t]*(`{3,}|~{3,})/;
 // Where a file the layout has no other place for is kept, byte for byte, its
 // path from its old folder kept: under its unit, or under the product.
 const LEGACY = 'assets/legacy';
-// The old cache, and the folder its documents are kept under as legacy.
+// The old cache; the state's ignored cache; and the folder in a unit's
+// cache, or in the cache itself, the old cache's documents are copied into.
 const OLD_CACHE = '.cache';
-const OLD_CACHE_LEGACY = 'cache';
+const CACHE = '.cache';
+const EARLIER = 'earlier';
 // The entries of `.workflows/` the move reads, or which hold only what is
 // rebuilt — the cache, the old engine's record, the knowledge store, the
 // engine's own ignore file — beside the units; any other is kept as legacy.
@@ -486,7 +496,7 @@ function writeFile(file, content, mode) {
 }
 
 /** The state's ignored cache, where a file a move run again reads back is written before it is renamed into place. @param {string} state */
-const scratchOf = (state) => path.join(state, '.cache');
+const scratchOf = (state) => path.join(state, CACHE);
 
 /** @param {string} file */
 const modeOf = (file) => fs.statSync(file).mode & 0o7777;
@@ -706,7 +716,7 @@ const quickFixDone = (manifest) => isQuickFix(manifest) && (manifest.status === 
 /** Whether the unit keeps no spec or planning items: nothing built, and not a quick-fix. @param {Record<string, any>} manifest */
 const writtenFresh = (manifest) => !isQuickFix(manifest) && !buildingStarted(manifest);
 
-/** Whether the unit is history, keeping no item of its old plan: completed or cancelled, and not a quick-fix (21.8.11). @param {Record<string, any>} manifest */
+/** Whether the unit is history, keeping no item past the topics': completed or cancelled, and not a quick-fix (21.8.11). @param {Record<string, any>} manifest */
 const history = (manifest) => !isQuickFix(manifest) && ['completed', 'cancelled'].includes(manifest.status);
 
 /** When the unit was made, in full. @param {Record<string, any>} manifest */
@@ -714,10 +724,10 @@ const createdAt = ({ created }) => new Date(created).toISOString();
 
 /**
  * The unit's manifest less research and the retired state: the experiments
- * of names no topic holds going with their records' place, a completed
- * quick-fix's spec and plan with their files, the spec and planning
- * items of a unit that writes its spec fresh, and the old plan's items of a
- * unit that is history; an epic's topics on its map,
+ * of names no topic holds going with their records' place, the spec and
+ * planning items of a unit that writes its spec fresh, and every item past
+ * the topics' of a unit that is history or a completed quick-fix, its spec
+ * and plan going with their files; an epic's topics on its map,
  * every one in the order, and an epic with topics past its map, approved
  * when it was made; each import's path following its file; and a quick-fix
  * whose old pipeline completed, completed, unless it was cancelled.
@@ -732,10 +742,9 @@ function reshapedManifest(manifest, topics) {
     dropRetired(out.phases);
     const experiments = itemsOf(out, 'experiment');
     for (const name of Object.keys(experiments)) if (!topics.has(name)) delete experiments[name];
-    if (quickFixDone(manifest)) for (const phase of QUICK_FIX_SPENT) delete out.phases[phase];
     if (writtenFresh(manifest)) for (const phase of ['specification', 'planning']) delete out.phases[phase];
     else if (!isQuickFix(manifest)) dropWrittenSpecs(out);
-    if (history(manifest)) for (const phase of OLD_PLAN) delete out.phases[phase];
+    if (history(manifest) || quickFixDone(manifest)) for (const phase of PAST_THE_TOPICS) delete out.phases[phase];
     if (out.work_type === 'epic') mapTopics(out);
     if (out.work_type === 'epic' && Object.keys(itemsOf(out, 'discovery')).length > 0) out.phases.discovery.approved_at = createdAt(manifest);
   }
@@ -1349,7 +1358,7 @@ const intoData = (rel, at) => rel.startsWith('experiment/') && !at.endsWith(rel.
 
 /**
  * Move one unit into the layout — every file placed, its place recorded in
- * `relocations`, or dropped, its legacy kept by `keepLegacy` — then its
+ * `relocations`, or dropped, its legacy kept by `keepAsItWas` — then its
  * manifest.
  * @param {UnitMove} move
  */
@@ -1585,12 +1594,14 @@ function moveProduct(from, state, plan, relocations, places) {
  * resolves to its default at first need (22.4.3, 7.1.11); each roadmap
  * item's sources following their files, once each; the roadmap's `imports`
  * index dropped, its files the product's assets (21.5.7); the roadmap's open
- * session the product's conversation's, `product_session`.
- * @param {Record<string, any>} project @param {Relocations} relocations
+ * session the product's conversation's, `product_session`; and each
+ * registry entry naming no unit's folder dropped.
+ * @param {Record<string, any>} project @param {Relocations} relocations @param {string[]} unfoldered
  * @returns {Record<string, any>}
  */
-function reshapedProject(project, relocations) {
+function reshapedProject(project, relocations, unfoldered) {
   const { baseline, ...out } = structuredClone(project);
+  if (isObject(out.work_units)) for (const name of unfoldered) delete out.work_units[name];
   const answer = isObject(baseline) ? baseline.status : undefined;
   if (BROWNFIELD_ANSWERS.includes(answer)) out.brownfield_offer = answer;
   if (isObject(out.defaults)) {
@@ -1616,26 +1627,27 @@ function filesOf(from, name) {
 
 /**
  * The old cache's documents, its agents' reports, which nothing rebuilds,
- * each to its place as legacy: a unit's under the unit's, at its path below
- * the unit's folder there, and one of no unit's under the product's, at its
- * path below the cache, `cache/` heading either.
- * @param {string} from @param {Set<string>} units @returns {[string, string][]}
+ * each to its place in the state's cache: a unit's in the unit's
+ * `earlier/`, at its path below the unit's folder there, every name of a
+ * unit in either as it is carried, and one of no unit's in the cache's own,
+ * at its path below the old cache.
+ * @param {string} from @param {Set<string>} units @param {Map<string, string>} renames @returns {[string, string][]}
  */
-function cacheReports(from, units) {
+function cacheReports(from, units, renames) {
   return filesUnder(path.join(from, OLD_CACHE)).filter((rel) => rel.endsWith('.md')).map((rel) => {
     const [unit, ...below] = rel.split('/');
-    const to = units.has(unit) ? `${unit}/${LEGACY}/${OLD_CACHE_LEGACY}/${below.join('/')}` : `${PRODUCT}/${LEGACY}/${OLD_CACHE_LEGACY}/${rel}`;
+    const to = units.has(unit) ? `${CACHE}/${renamedPath(unit, renames)}/${EARLIER}/${renamedPath(below.join('/'), renames)}` : `${CACHE}/${EARLIER}/${rel}`;
     return [`${OLD_CACHE}/${rel}`, to];
   });
 }
 
 /**
- * Every file kept as legacy written byte for byte at its place, its place
+ * Every file kept as it was written byte for byte at its place, its place
  * recorded in `relocations`.
- * @param {string} from @param {string} state @param {Legacy} legacy @param {Relocations} relocations
+ * @param {string} from @param {string} state @param {Iterable<[string, string]>} kept @param {Relocations} relocations
  */
-function keepLegacy(from, state, legacy, relocations) {
-  for (const [rel, to] of legacy) {
+function keepAsItWas(from, state, kept, relocations) {
+  for (const [rel, to] of kept) {
     const file = path.join(from, rel);
     writeFile(path.join(state, to), fs.readFileSync(file), modeOf(file));
     relocations.set(rel, to);
@@ -1646,14 +1658,14 @@ function keepLegacy(from, state, legacy, relocations) {
  * The project's manifest reshaped, with its id minted first — kept where a
  * move cut short already minted one — and the checklists a directive closed
  * before the move kept.
- * @param {string} state @param {Record<string, any>} project @param {Relocations} relocations
+ * @param {string} state @param {Record<string, any>} project @param {Relocations} relocations @param {string[]} unfoldered
  */
-function writeProjectManifest(state, project, relocations) {
+function writeProjectManifest(state, project, relocations, unfoldered) {
   const moved = path.join(state, 'manifest.json');
   const { project_id: minted, checklists } = fs.existsSync(moved) ? readManifest(moved) : {};
   writeWhole(scratchOf(state), moved, jsonText({
     project_id: typeof minted === 'string' ? minted : newId(),
-    ...reshapedProject(project, relocations),
+    ...reshapedProject(project, relocations, unfoldered),
     ...(isObject(checklists) ? { checklists } : {}),
   }));
 }
@@ -1860,10 +1872,11 @@ function move(projectDir, reportUpdate, reportSkip) {
   const manifests = new Map(folders.filter((name) => fs.existsSync(path.join(from, name, 'manifest.json')))
     .map((name) => [name, readManifest(path.join(from, name, 'manifest.json'))]));
   const renames = caseRenames(manifests.keys());
+  const unfoldered = Object.keys(isObject(projectManifest.work_units) ? projectManifest.work_units : {}).filter((name) => !manifests.has(name));
   const promoted = promotions(manifests);
   const moves = [...manifests].map(([name, manifest]) => unitMove(from, state, name, manifest, promoted, relocations));
   const product = productPlan(from);
-  const reports = cacheReports(from, new Set(manifests.keys()));
+  const reports = cacheReports(from, new Set(manifests.keys()), renames);
   /** @type {Legacy} */
   const legacy = new Map([
     ...[
@@ -1871,15 +1884,12 @@ function move(projectDir, reportUpdate, reportSkip) {
       ...product.filter(({ at }) => at === null).map(({ source }) => source),
       ...entries.filter((name) => !READ_OR_REBUILT.includes(name) && !manifests.has(name)).flatMap((name) => filesOf(from, name)),
     ].map((rel) => /** @type {[string, string]} */ ([rel, `${PRODUCT}/${LEGACY}/${rel}`])),
-    ...reports.filter(([, to]) => to.startsWith(`${PRODUCT}/`)),
-    ...moves.flatMap((unit) => [
-      ...legacyFiles(unit).map((rel) => /** @type {[string, string]} */ ([`${unit.unit}/${rel}`, `${unit.unit}/${LEGACY}/${rel}`])),
-      ...reports.filter(([, to]) => to.startsWith(`${unit.unit}/`)),
-    ]),
+    ...moves.flatMap((unit) => legacyFiles(unit).map((rel) => /** @type {[string, string]} */ ([`${unit.unit}/${rel}`, `${unit.unit}/${LEGACY}/${rel}`]))),
   ]);
   /** @type {[string, string][]} */
   const whole = [
     ...legacy,
+    ...reports,
     ...carriedFiles(from, renames).map((rel) => /** @type {[string, string]} */ ([rel, rel])),
     ...product.flatMap(({ source, at }) => (at === null ? [] : [/** @type {[string, string]} */ ([source, `${PRODUCT}/${at}`])])),
   ];
@@ -1899,15 +1909,16 @@ function move(projectDir, reportUpdate, reportSkip) {
     moveUnit(unit);
     reportUpdate();
   }
-  keepLegacy(from, state, legacy, relocations);
-  writeProjectManifest(state, projectManifest, relocations);
+  keepAsItWas(from, state, [...legacy, ...reports], relocations);
+  writeProjectManifest(state, projectManifest, relocations, unfoldered);
   renameUnits(state, renames, new Set(stores.flatMap(({ files }) => files)));
   const placed = (/** @type {string} */ rel) => renamedPath(rel, renames);
   const userNote = moveUserFolder();
   const lintersNote = carryLinters(state);
   const notes = [
     renames.size === 0 ? null : `${renames.size === 1 ? 'This unit\'s name' : 'These units\' names'} broke the rule a unit's name keeps — lowercase letters and digits, joined by single hyphens — by case alone, so ${renames.size === 1 ? 'it is' : 'each is'} carried under its lowercase name, its folder, its registry entry and every reference the move wrote to it following, its legacy files' words kept as they were: ${[...renames].map(([from, to]) => `${from} is ${to}`).join(', ')}.`,
-    legacy.size === 0 ? null : `These had no place of their own in ${STATE_DIR}/, so each is kept, as it was, as legacy, under its unit's ${LEGACY}/ or the product's, ${PRODUCT}/${LEGACY}/, the old cache's reports under ${OLD_CACHE_LEGACY}/ there: ${[...legacy.values()].map((to) => `${STATE_DIR}/${placed(to)}`).join(', ')}. Move any into a better place in its unit's assets/, or the product's, as wanted.`,
+    unfoldered.length === 0 ? null : `The registry named ${unfoldered.length === 1 ? 'this unit' : 'these units'}, and ${CODE_TREE_STATE}/ held no folder of ${unfoldered.length === 1 ? 'it' : 'theirs'} with a manifest, so the registry drops ${unfoldered.length === 1 ? 'its entry' : 'their entries'}: ${unfoldered.join(', ')}.`,
+    legacy.size === 0 ? null : `These had no place of their own in ${STATE_DIR}/, so each is kept, as it was, as legacy, under its unit's ${LEGACY}/ or the product's, ${PRODUCT}/${LEGACY}/: ${[...legacy.values()].map((to) => `${STATE_DIR}/${placed(to)}`).join(', ')}. Move any into a better place in its unit's assets/, or the product's, as wanted.`,
     instruments.length === 0 ? null : `These files of experiment records, neither a record's problem, design or report nor in its data/, were moved under its data/, at their paths from the record's folder: ${instruments.map(placed).join(', ')}. A path a record's text or script spells out is left as written.`,
     settingsNote,
     userNote,
