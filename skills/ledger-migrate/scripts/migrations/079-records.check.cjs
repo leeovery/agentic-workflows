@@ -37,9 +37,11 @@
 //     are. A cite names the headings whose path ends with it, at a
 //     heading's start, or the one whose whole path it is, and names one
 //     alone — a heading held more than once by the path that tells it
-//     apart — in each part its topic draws on of a joined spec, every
-//     part where it draws on none: a bare heading each part holds once
-//     names one in each;
+//     apart, and headings sharing their whole path, siblings of one
+//     heading, by that path and the place among them, `{path} [2]` — among
+//     the headings of the parts its topic draws on of a joined spec, where
+//     any of them holds one it names, else among all the file's: a bare
+//     heading two parts hold names neither;
 //   - every subtopic its old discussion map holds — in the unit's manifest
 //     under `.workflows/`, which the move dropped the map from (21.5.8) —
 //     named by an entry's map item, a subtopic's name or a list of them
@@ -72,9 +74,10 @@
 // belongs to, one of those it is named on. A section is its heading's path
 // within its part — a kept spec's, within the file — named by the shortest
 // path naming it alone there, its heading or with as many of those over it
-// as tell it apart; a cite or a mark counts for the sections it names
-// alone, so a bare heading its part holds more than once counts for none
-// of its copies; and a cite counts only where its topic draws on the spec,
+// as tell it apart, and its place among those sharing its path; a cite or
+// a mark counts for the section it names alone, as the carry reads it, so
+// a bare heading held more than once counts for none of its copies; and a
+// cite counts only where its topic draws on the spec,
 // never of a spec it draws no part of, its later answer, which it cites
 // for that answer alone (21.6.3). In a joined spec a section is its part's:
 // a cite counts in the parts of its topic's specs, a mark is its part's,
@@ -292,31 +295,93 @@ function outlineOf(text, joined) {
 const endsWith = ({ path: at }, name) => at === name || at.endsWith(`${PATH_JOIN}${name}`);
 
 /**
- * The headings among `headings` a name names alone: each whose whole path
- * it is — a heading at the top of a file with no one root among them —
- * else each whose path ends with it, where all of them share one path;
- * none where it names headings of several, so a heading held more than
- * once is named by its bare heading in none of its copies, and by the path
- * that tells it apart.
+ * The headings among `headings` a name names: each whose whole path it is
+ * — a heading at the top of a file with no one root among them — else each
+ * whose path ends with it, where all of them share one path; none where it
+ * names headings of several paths. Headings sharing their whole path,
+ * siblings of one heading, are named together.
  * @param {Heading[]} headings @param {string} name @returns {Heading[]}
  */
-function namedAlone(headings, name) {
+function namedBy(headings, name) {
   const whole = headings.filter(({ path: at }) => at === name);
   if (whole.length > 0) return whole;
   const named = headings.filter((heading) => endsWith(heading, name));
   return new Set(named.map(({ path: at }) => at)).size === 1 ? named : [];
 }
 
+/** A name telling apart headings that share their whole path: their name, and which of them, from one, in order. */
+const ORDINAL = /^(.*) \[([1-9][0-9]*)\]$/;
+
 /**
- * The shortest path naming a heading alone among `headings`: its own
- * heading, or with as many of those over it as tell it apart.
+ * The heading among `headings` a name names alone, or none: one it names
+ * by itself (`namedBy`), or, of the headings sharing a whole path, the one
+ * a name of them followed by its place among them names, `{name} [{n}]`.
+ * @param {Heading[]} headings @param {string} name @returns {Heading[]}
+ */
+function namedAlone(headings, name) {
+  const named = namedBy(headings, name);
+  if (named.length > 0) return named.length === 1 ? named : [];
+  const [, shared, nth] = ORDINAL.exec(name) ?? [];
+  const copies = shared === undefined ? [] : namedBy(headings, shared);
+  return copies.length > 1 && Number(nth) <= copies.length ? [copies[Number(nth) - 1]] : [];
+}
+
+/**
+ * The headings among `headings` a name reaches, alone or not: each whose
+ * path ends with it, or with what a name of headings sharing their path
+ * names before their place among them.
+ * @param {Heading[]} headings @param {string} name @returns {Heading[]}
+ */
+function reachedBy(headings, name) {
+  const reached = headings.filter((heading) => endsWith(heading, name));
+  const shared = ORDINAL.exec(name)?.[1];
+  return reached.length > 0 || shared === undefined ? reached : headings.filter((heading) => endsWith(heading, shared));
+}
+
+/**
+ * The shortest name naming a heading alone among `headings`: its own
+ * heading, or with as many of those over it as tell it apart; where others
+ * share its whole path, the shortest naming them, and its place among them.
  * @param {Heading[]} headings @param {Heading} heading
  */
 function nameOf(headings, heading) {
   const { trail } = heading;
-  const from = [...trail.keys()].reverse().find((at) => namedAlone(headings, trail.slice(at).join(PATH_JOIN)).includes(heading)) ?? 0;
-  return trail.slice(from).join(PATH_JOIN);
+  const names = [...trail.keys()].reverse().map((at) => trail.slice(at).join(PATH_JOIN));
+  const alone = names.find((name) => namedAlone(headings, name).includes(heading));
+  if (alone !== undefined) return alone;
+  const shared = /** @type {string} */ (names.find((name) => namedBy(headings, name).includes(heading)));
+  return `${shared} [${namedBy(headings, shared).indexOf(heading) + 1}]`;
 }
+
+/**
+ * A heading's path as a walk sheet shows it: where others share it, with
+ * its place among them, as a cite names it.
+ * @param {Heading[]} headings @param {Heading} heading
+ */
+function shownPath(headings, heading) {
+  const copies = headings.filter(({ path: at }) => at === heading.path);
+  return copies.length > 1 ? `${heading.path} [${copies.indexOf(heading) + 1}]` : heading.path;
+}
+
+/**
+ * The headings of a file a cite of `name` counts among: those of the parts
+ * its topic draws on of a joined spec where any of them holds a heading it
+ * reaches, else all of them.
+ * @param {Heading[]} headings @param {string} name @param {(string|null)[]|null} parts its topic's, null where it draws on none
+ * @returns {Heading[]}
+ */
+function countedAmong(headings, name, parts) {
+  const drawn = parts === null ? [] : headings.filter((heading) => parts.includes(heading.part));
+  return reachedBy(drawn, name).length > 0 ? drawn : headings;
+}
+
+/**
+ * The section a cite names, as the carry reads it: the one heading it names
+ * alone among those it counts among (`countedAmong`), or none.
+ * @param {Heading[]} headings @param {string} name @param {(string|null)[]|null} parts
+ * @returns {Heading[]}
+ */
+const citedBy = (headings, name, parts) => namedAlone(countedAmong(headings, name, parts), name);
 
 /** Headings by the part each is in, in their order. @param {Heading[]} headings @returns {Map<string|null, Heading[]>} */
 function byPartOf(headings) {
@@ -567,23 +632,16 @@ function ownFilesOf(project, unit, topic) {
 function sheetSections(project, unit, { specs, later }, entries, at) {
   const parts = partsDrawn(specs, at);
   const headings = outlineOf(readText(path.join(project.stateDir, at)) ?? '', at === `${unit.name}/${JOINED_SPEC}`);
-  const counted = (/** @type {string|null} */ part) => parts === null || parts.includes(part);
-  const byPart = [...byPartOf(headings)];
-  const namedIn = (/** @type {string} */ name, /** @type {(part: string|null) => boolean} */ kept) => byPart.filter(([part]) => kept(part)).flatMap(([, held]) => namedAlone(held, name));
-  const resolved = (/** @type {string} */ name) => {
-    const own = namedIn(name, counted);
-    return own.length > 0 ? own : namedIn(name, () => true);
-  };
   /** @type {Map<Heading, Record<string, any>[]>} */
   const citing = new Map();
   for (const entry of entries) {
     const names = (Array.isArray(entry.cites) ? entry.cites.filter(isObject) : []).filter((cite) => cite.path === at).map(({ section }) => String(section));
-    const named = new Set(names.flatMap(resolved));
+    const named = new Set(names.flatMap((name) => citedBy(headings, name, parts)));
     for (const heading of named) citing.set(heading, [...(citing.get(heading) ?? []), entry]);
   }
-  const drawn = (/** @type {Heading} */ heading) => !later.has(at) && counted(heading.part);
+  const drawn = (/** @type {Heading} */ heading) => !later.has(at) && (parts === null || parts.includes(heading.part));
   return headings.filter((heading) => (heading.text && drawn(heading)) || citing.has(heading)).map((heading) => ({
-    section: heading.path, line: heading.line, end: heading.end,
+    section: shownPath(headings, heading), line: heading.line, end: heading.end,
     entries: (citing.get(heading) ?? []).map(({ ref, event, text }) => ({ ref: String(ref), event: String(event), text: String(text ?? '') })),
   }));
 }
@@ -656,9 +714,9 @@ function partsDrawn(specs, at) {
 
 /**
  * What a cited section lacks: a file that stays with its entry, which the
- * state holds, holding a heading the cite names; and in each part the
- * topic draws on — every part where it draws on none — one heading alone
- * so named, else the paths that tell those it names apart.
+ * state holds, holding a heading the cite names; and one heading alone so
+ * named among those it counts among (`citedBy`), else the names that tell
+ * those it reaches apart.
  * @param {Project} project @param {Unit} unit @param {string|null} topic @param {{path: string, part: string|null}[]} specs the topic's
  * @param {Record<string, unknown>} cite @returns {string[]}
  */
@@ -670,14 +728,13 @@ function citeProblems(project, unit, topic, specs, { path: cited, section }) {
   if (text === null) return [`cites ${cited}, which the state does not hold`];
   const name = String(section);
   const headings = outlineOf(text, cited === `${unit.name}/${JOINED_SPEC}`);
-  if (!headings.some((heading) => endsWith(heading, name))) return [`cites "${name}" in ${cited}, which has no such heading${name.includes(PATH_JOIN) ? ' path' : ''}`];
   const parts = partsDrawn(specs, cited);
-  return [...byPartOf(headings)].filter(([part]) => parts === null || parts.includes(part)).flatMap(([part, held]) => {
-    const named = held.filter((heading) => endsWith(heading, name));
-    if (named.length === 0 || namedAlone(held, name).length > 0) return [];
-    const told = [...new Set(named.map((heading) => nameOf(held, heading)))].map((each) => `"${each}"`);
-    return [`cites "${name}" in ${cited}, which holds ${told.length} headings so named${part === null ? '' : ` in part "${part}"`} — a cite names one, by the path that tells it apart: ${told.join(', ')}`];
-  });
+  if (citedBy(headings, name, parts).length === 1) return [];
+  const among = countedAmong(headings, name, parts);
+  const reached = reachedBy(among, name);
+  if (reached.length === 0) return [`cites "${name}" in ${cited}, which has no such heading${name.includes(PATH_JOIN) ? ' path' : ''}`];
+  const told = [...new Set(reached.map((heading) => nameOf(among, heading)))].map((each) => `"${each}"`);
+  return [`cites "${name}" in ${cited}, which holds ${told.length} headings so named — a cite names one, by the path that tells it apart, or, of headings sharing their path, by its place among them: ${told.join(', ')}`];
 }
 
 /**
@@ -925,12 +982,11 @@ function uncitedOf(project, unit) {
   const uncited = new Map();
   for (const [at, drawn] of bySpec) {
     const joined = at === `${unit.name}/${JOINED_SPEC}`;
-    for (const [part, held] of byPartOf(outlineOf(readText(path.join(project.stateDir, at)) ?? '', joined))) {
-      const named = [
-        ...cites.filter((cite) => cite.path === at && (cite.parts === null || cite.parts.includes(part))).map(({ name }) => name),
-        ...markedIn(marked, at, part),
-      ];
-      const settled = new Set(named.flatMap((name) => namedAlone(held, name)));
+    const headings = outlineOf(readText(path.join(project.stateDir, at)) ?? '', joined);
+    const cited = new Set(cites.filter((cite) => cite.path === at && (cite.parts === null || cite.parts.length > 0))
+      .flatMap(({ name, parts }) => citedBy(headings, name, parts).filter((heading) => parts === null || parts.includes(heading.part))));
+    for (const [part, held] of byPartOf(headings)) {
+      const settled = new Set([...held.filter((heading) => cited.has(heading)), ...markedIn(marked, at, part).flatMap((name) => namedAlone(held, name))]);
       for (const heading of held.filter((each) => each.text && !settled.has(each))) {
         drawnBy(uncited, sectionKey(at, part, nameOf(held, heading)), byPart.get(specKey(at, part)) ?? drawn);
       }

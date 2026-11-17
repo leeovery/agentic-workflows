@@ -114,8 +114,8 @@ const GOOD = Object.freeze({
   'shop.discussion.weights': [
     { ref: 'q1', event: 'asked', text: 'How do ties break?', by: 'claude', map_item: 'tie-break', cites: [logCite('shop', 'weights', 'Tie Break')] },
     { ref: 'd1', event: 'decided', answers: 'q1', text: 'By price.', why: 'The spec\'s corrigendum replaced by name.', by: 'claude', given: 'carried', map_item: 'tie-break', cites: ['Corrigenda', 'Corrigenda > Detail'].map((section) => ({ path: 'shop/spec.md', section })) },
-    { ref: 'q2', event: 'asked', text: 'How are items ranked?', by: 'claude', cites: [{ path: 'shop/spec.md', section: 'Ranking' }] },
-    { ref: 'd2', event: 'decided', answers: 'q2', text: 'Newest first, by day; a wishlist newest saved first.', why: 'The spec settles it.', by: 'claude', given: 'carried', cites: ['Ranking', 'Ranking > Detail'].map((section) => ({ path: 'shop/spec.md', section })) },
+    { ref: 'q2', event: 'asked', text: 'How are items ranked?', by: 'claude', cites: [{ path: 'shop/spec.md', section: '1. Weights > Ranking' }] },
+    { ref: 'd2', event: 'decided', answers: 'q2', text: 'Newest first, by day; a wishlist newest saved first.', why: 'The spec settles it.', by: 'claude', given: 'carried', cites: ['1. Weights > Ranking', '2. Wishlist > Ranking', 'Ranking > Detail'].map((section) => ({ path: 'shop/spec.md', section })) },
     { ref: 'q3', event: 'asked', text: 'How is an item saved to a wishlist?', by: 'claude', cites: [{ path: 'shop/spec.md', section: 'Saving' }] },
     { ref: 'd3', event: 'decided', answers: 'q3', text: 'One tap.', why: 'The spec settles it.', by: 'claude', given: 'carried', cites: [{ path: 'shop/spec.md', section: 'Saving' }] },
   ],
@@ -203,6 +203,9 @@ function approvedCommerce(made) {
 
 /** What each section of shop's joined spec no record cites breaks, by its part. @param {'1. Weights'|'2. Wishlist'} part @param {string[]} sections */
 const shopUncited = (part, sections) => sections.map((section) => uncited('shop', 'shop/spec.md', section, part));
+
+/** What a cite naming several headings breaks, naming each it reaches as one cite would name it alone. @param {string} name @param {string} at @param {string[]} names */
+const tellApart = (name, at, names) => `cites "${name}" in ${at}, which holds ${names.length} headings so named — a cite names one, by the path that tells it apart, or, of headings sharing their path, by its place among them: ${names.map((each) => `"${each}"`).join(', ')}`;
 
 /** What an old map's subtopic no entry names breaks. @param {string} item @param {string} status */
 const unnamed = (item, status) => `${item} is on its old map, ${status}, and no entry names it as its map_item`;
@@ -403,7 +406,7 @@ describe('a record breaking a rule is refused at the carry, its refusal kept bes
     assert.strictEqual(refused('fumi.discussion.search', []), breaks('fumi', 'search', SEARCH_UNCARRIED));
   });
 
-  it('the unit\'s spec.md where its building never started; where it started, a heading the spec the move joined lacks — whatever its specs under `.workflows/` hold now — and one two of its specs share citing either; a heading\'s path the spec\'s headings lack refused, and one they hold, a part\'s heading over it among them, taken', () => {
+  it('the unit\'s spec.md where its building never started; where it started, a heading the spec the move joined lacks — whatever its specs under `.workflows/` hold now; a heading\'s path the spec\'s headings lack refused, and one they hold, a part\'s heading over it among them, taken', () => {
     fs.appendFileSync(path.join(dir, '.workflows/shop/specification/weights/specification.md'), '\n## Pricing\n\nBy price.\n');
     const licensing = GOOD['fumi.discussion.licensing'];
     const [question, decision] = GOOD['shop.discussion.weights'];
@@ -413,30 +416,62 @@ describe('a record breaking a rule is refused at the carry, its refusal kept bes
       breaks('shop', 'weights', ['entry q1 cites "Pricing" in shop/spec.md, which has no such heading']));
     assert.strictEqual(refused('shop.discussion.weights', [{ ...question, cites: ['Saving > Detail', 'Corrigenda > Detail'].map((section) => ({ path: 'shop/spec.md', section })) }, decision]),
       breaks('shop', 'weights', ['entry q1 cites "Saving > Detail" in shop/spec.md, which has no such heading path']));
-    carryArgs(dir, 'shop.discussion.weights', [{ ...question, cites: ['Ranking', '1. Weights > Ranking > Detail'].map((section) => ({ path: 'shop/spec.md', section })) }, decision]);
+    carryArgs(dir, 'shop.discussion.weights', [{ ...question, cites: ['2. Wishlist > Ranking', '1. Weights > Ranking > Detail'].map((section) => ({ path: 'shop/spec.md', section })) }, decision]);
     assert.deepStrictEqual(ok(dir, ['ledger', 'carry', 'shop.discussion.weights', '--dry-run'], { env: SESSION }).faults, []);
   });
 
-  it('a cite naming several headings refused, naming the paths that tell them apart — a log\'s, and a spec\'s within the parts its topic draws on — a bare heading each part holds once taken; a heading whose text holds the joint, and one atop a file of no one root, each named by its own text', () => {
+  it('a cite naming several headings refused, naming the paths that tell them apart — a log\'s, and a spec\'s among the parts its topic draws on, a bare heading two of them hold once each among them; a heading whose text holds the joint, and one atop a file of no one root, each named by its own text', () => {
     const log = layout.topic('fumi', 'licensing', 'log.md');
     fs.appendFileSync(statePath(dir, log), '\n### Seats\n\n#### Decision\n\nFive seats.\n\n### Cache > Disk\n\nOn disk.\n');
     const licensing = (/** @type {string[]} */ sections) => GOOD['fumi.discussion.licensing'].map((entry) => (entry.ref === 'd1' ? { ...entry, cites: [...sections.map((section) => logCite('fumi', 'licensing', section)), entry.cites[1]] } : entry));
     const [question, decision] = GOOD['shop.discussion.weights'];
     const weights = (/** @type {string[]} */ sections) => [{ ...question, cites: sections.map((section) => ({ path: 'shop/spec.md', section })) }, decision];
     const faults = (/** @type {string} */ dotpath, /** @type {unknown[]} */ entries) => ok(dir, [...carryArgs(dir, dotpath, entries), '--dry-run'], { env: SESSION }).faults;
-    const tellApart = (/** @type {string} */ at, /** @type {string} */ part, /** @type {string[]} */ paths) => `cites "${paths[0].split(' > ').at(-1)}" in ${at}, which holds ${paths.length} headings so named${part} — a cite names one, by the path that tells it apart: ${paths.map((each) => `"${each}"`).join(', ')}`;
 
     const logBare = refused('fumi.discussion.licensing', licensing(['Decision']));
     const specBare = refused('shop.discussion.weights', weights(['Detail', 'Ranking']));
-    const told = [faults('fumi.discussion.licensing', licensing(['Trial Length > Decision', 'Seats > Decision', 'Cache > Disk'])), faults('shop.discussion.weights', weights(['Ranking', 'Corrigenda > Detail']))];
+    const told = [faults('fumi.discussion.licensing', licensing(['Trial Length > Decision', 'Seats > Decision', 'Cache > Disk'])), faults('shop.discussion.weights', weights(['1. Weights > Ranking', 'Corrigenda > Detail']))];
     fs.appendFileSync(statePath(dir, log), '\n## Decision\n\nKept.\n');
     const atop = faults('fumi.discussion.licensing', licensing(['Decision', 'Trial Length > Decision']));
 
     assert.deepStrictEqual([logBare, specBare, told, atop], [
-      breaks('fumi', 'licensing', [`entry d1 ${tellApart(log, '', ['Trial Length > Decision', 'Seats > Decision'])}`]),
-      breaks('shop', 'weights', [`entry q1 ${tellApart('shop/spec.md', ' in part "1. Weights"', ['Ranking > Detail', 'Corrigenda > Detail'])}`]),
+      breaks('fumi', 'licensing', [`entry d1 ${tellApart('Decision', log, ['Trial Length > Decision', 'Seats > Decision'])}`]),
+      breaks('shop', 'weights', [`entry q1 ${tellApart('Detail', 'shop/spec.md', ['Ranking > Detail', 'Corrigenda > Detail'])}`, `entry q1 ${tellApart('Ranking', 'shop/spec.md', ['1. Weights > Ranking', '2. Wishlist > Ranking'])}`]),
       [[], []],
       [],
+    ]);
+  });
+
+  it('headings sharing their whole path, siblings of one heading, each cited by that path and its place among them, from one, as the walk sheet shows it — the path alone, or a place none holds, refused, naming each by its place', () => {
+    const log = layout.topic('fumi', 'licensing', 'log.md');
+    fs.appendFileSync(statePath(dir, log), '\n### Seats\n\n#### Decision\n\nFive seats.\n\n#### Decision\n\nSix seats.\n');
+    const licensing = (/** @type {string} */ section) => GOOD['fumi.discussion.licensing'].map((entry) => (entry.ref === 'd1' ? { ...entry, cites: [logCite('fumi', 'licensing', section), entry.cites[1]] } : entry));
+    const refusal = breaks('fumi', 'licensing', [`entry d1 ${tellApart('Seats > Decision', log, ['Seats > Decision [1]', 'Seats > Decision [2]'])}`]);
+
+    assert.deepStrictEqual(['Seats > Decision', 'Seats > Decision [3]'].map((section) => refused('fumi.discussion.licensing', licensing(section))), [refusal, refusal.replace('cites "Seats > Decision"', 'cites "Seats > Decision [3]"')]);
+    carry('fumi.discussion.licensing', licensing('Seats > Decision [2]'));
+  });
+
+  it('a spec\'s heading its topic\'s parts lack, cited, is named alone among every part\'s — two copies another part holds refused, one each of two parts too, where the topic draws on none of them — and taken by the path, or the place, that tells it apart', () => {
+    const old = path.join(dir, '.workflows/shop/manifest.json');
+    const manifest = JSON.parse(fs.readFileSync(old, 'utf8'));
+    manifest.phases.specification.items.wishlist.sources = {};
+    fs.writeFileSync(old, JSON.stringify(manifest));
+    fs.appendFileSync(statePath(dir, 'shop/spec.md'), '\n### Notes\n\nOne.\n\n### Notes\n\nTwo.\n');
+    const [question, decision] = GOOD['shop.discussion.weights'];
+    const weights = (/** @type {string} */ section) => [{ ...question, cites: [{ path: 'shop/spec.md', section }] }, decision];
+    /** @param {string} section */
+    const faults = (section) => ok(dir, [...carryArgs(dir, 'shop.discussion.weights', weights(section)), '--dry-run'], { env: SESSION }).faults;
+
+    const otherPart = [faults('Notes'), faults('Notes [2]')];
+    const { weights: drawn, ...others } = manifest.phases.specification.items;
+    manifest.phases.specification.items = { ...others, pricing: drawn };
+    fs.writeFileSync(old, JSON.stringify(manifest));
+    const noPart = [faults('Ranking'), faults('2. Wishlist > Ranking')];
+
+    assert.deepStrictEqual([otherPart, noPart], [
+      [[`entry q1 ${tellApart('Notes', 'shop/spec.md', ['Notes [1]', 'Notes [2]'])}`], []],
+      [[`entry q1 ${tellApart('Ranking', 'shop/spec.md', ['1. Weights > Ranking', '2. Wishlist > Ranking'])}`], []],
     ]);
   });
 });
