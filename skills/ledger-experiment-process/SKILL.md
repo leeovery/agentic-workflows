@@ -32,7 +32,7 @@ Every engine call is `node .claude/skills/ledger-engine/scripts/engine.cjs {verb
 node .claude/skills/ledger-engine/scripts/engine.cjs enter experiment {work_unit} {topic} [--record {record}]
 ```
 
-A refusal names the way on: say it in a line. Where another session holds the laboratory, or the series holds several live experiments, the entry asks first: emit its sections verbatim per their markers and follow the answer's `next`; where that `next` is `continue`, end the turn there.
+A refusal names the way on: say it in a line. Where another session holds the laboratory, or the series holds several live experiments, the entry asks first; carrying on from it ends the turn.
 
 Then read what the DATA names. Its `experiment`, `status` and `folder` are the experiment this conversation works, `{id}` and `{folder}` below. Read its `problem`, its `design` and its `report` where written, and the documents in each `split`'s folder. Until the design is approved, the design is built on the spawning topic: read its `topic record`, its `topic log`, its `brief`, and for a unit's one topic each `discovery log` and `seed`. They are inherited ground, never a list of questions to ask again. From the approval, the record's own documents are the ground, never the conversation's memory.
 
@@ -58,7 +58,7 @@ Once `{folder}/design.md` is written, `experiment advance` records it designed.
 
 ### The Briefing
 
-Present the design in plain terms, in paragraphs and never as a file dump: what will be done, what is expected and why, and what each outcome triggers. Say what the approval means: from then, a change before any result is visible is a dated amendment confirmed again, and once results are visible the design is frozen for good. The person's challenges are part of the method: fold each into the design and present it again. Then fetch the gate and emit its MENU section verbatim per its marker:
+Present the design in plain terms, in paragraphs and never as a file dump: what will be done, what is expected and why, and what each outcome triggers. Say what the approval means: from then, a change before any result is visible is a dated amendment confirmed again, and once results are visible the design is frozen for good. The person's challenges are part of the method: fold each into the design and present it again. Then fetch the gate:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render experiment-approval-gate {work_unit}.experiment.{topic} --id {id}
@@ -89,7 +89,7 @@ Once results are visible, the design is frozen for good. A flaw found then goes 
 
 Complete the report: the reading, kept apart from the results it reads; the conclusion, applying the pre-registered rule, which branch fired and what it triggers, never a fresh judgment; and how to reproduce the run. A measure thought of after seeing the data is labelled exploratory: it can motivate the next experiment, never settle this one. A disproven hypothesis is examined run first, since only a clean run indicts the belief. A parent's conclusion brings its splits' verdicts together.
 
-Walk the person through what was measured and what the rule says it means, then record the verdict, the conclusion's one line, with `experiment conclude`. Say in a line where the result goes: a split's to its parent, whose conclusion brings it in; the series' own back to the spawning conversation, which takes it in when it next opens, or, where the response's `report_sent` names a topic, into that topic's mail, reopening it where `reopened` says so. Then follow its `next`: where it draws the next experiment's gate, emit its sections verbatim per their markers, and the answer goes to `gate`, whose `next` you follow.
+Walk the person through what was measured and what the rule says it means, then record the verdict, the conclusion's one line, with `experiment conclude`. Say in a line where the result goes: a split's to its parent, whose conclusion brings it in; the series' own back to the spawning conversation, which takes it in when it next opens, or, where the response's `report_sent` names a topic, into that topic's mail, reopening it where `reopened` says so. Then follow its `next`; where it draws the next experiment's gate, the answer goes to `gate`, whose `next` you follow.
 
 ## Doors
 
