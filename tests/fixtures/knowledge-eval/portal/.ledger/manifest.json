@@ -221,7 +221,7 @@
         "command": "golangci-lint run ./..."
       }
     ],
-    "tmux_labels": true
+    "session_labels": true
   },
   "baseline": {
     "status": "native"

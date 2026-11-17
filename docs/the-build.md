@@ -88,8 +88,10 @@ The default task driver keeps the tasks in [Tick](https://github.com/leeovery/ti
 
 ### Landing
 
-- **On GitHub**, each task is a pull request and each phase a stack of them, each based on the one before, merged whole once the phase review passes. Every pull request is squashed, so the default branch gains one commit per task, under the task's own subject and id. It needs GitHub's CLI and its stack extension, at the versions ready to build names; setup offers to make squash merges the repository's default, which landing needs.
-- **Locally**, for a project with no remote or one on another host, the same shape lands with no pull request and no push: each phase's stack is a branch, each task squashed onto it as one commit in the order the tasks merged back, and merging the phase moves the default branch to it.
+- **On GitHub**, each task is a pull request and each phase a stack of them, each based on the one before, merged whole once the phase review passes. Every task's pull request is squashed, so the branch the work lands on gains one commit per task, under the task's own subject and id. It needs GitHub's CLI and its stack extension, at the versions ready to build names; setup offers to make squash merges the repository's default, which landing needs, and its yes also allows merge commits.
+- **Locally**, for a project with no remote or one on another host, the same shape lands with no pull request and no push: each phase's stack is a branch, each task squashed onto it as one commit in the order the tasks merged back, and merging the phase moves the branch the work lands on to it.
+
+The branch the work lands on is the default branch, or the work's own branch where it has one. That branch lands on the default branch at finish by one merge commit: on GitHub its own pull request, which finish refuses to merge on a repository that allows no merge commits, and locally a merge commit made in place.
 
 Where the project's folder holds other git repositories, clones nested inside it, a task's commit lands in each one it touches, and every read of the change spans them all.
 
@@ -113,6 +115,6 @@ The differences come from size:
 - **One pull request.** Every commit goes to the quick-fix's one pull request as it is made, or under the local driver its one branch. There is no stack, no stop after a fix, and no position to choose.
 - **A question parks its fix.** A question a builder asks parks its fix and sets aside the work it had not committed, leaving the checkout clean for the next fix. Once you answer, the work is put back and the fix carries on.
 - **A short record for each fix**: what changed, why, and what it leaves out, in the product's terms. It is what the [knowledge base](knowledge-base.md) keeps of a quick-fix.
-- **The close is its one gate.** Once every fix is done, the notes for later its builders and reviewers left are each filed to the inbox or dropped, and the close asks a verdict on each call you changed. Its yes lands the pull request whole and completes the work. It also offers a review: ask for one, and the [review phase](review.md) holds the whole change against the fixes' acceptance, then hands back to the close.
+- **The close is its one gate.** Once every fix is done, the notes for later its builders and reviewers left are each filed to the inbox or dropped, and the close asks a verdict on each call you changed. Its yes lands the pull request whole, or under the local driver the branch's commits, and completes the work. It also offers a review: ask for one, and the [review phase](review.md) holds the whole change against the fixes' acceptance, then hands back to the close.
 
 A quick-fix that turns out to need a decision beyond a quick call moves to a feature, or to a bugfix where a cause is still to find, on your word, before any of its fixes has landed. The work it had not committed is set aside and kept for you, its pull request closed and its branch kept, and the new piece of work's first conversation names what was kept.

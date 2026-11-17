@@ -193,7 +193,7 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
       '· · · · · · · · · · · ·',
       '**`◆ Close it?`**',
       '',
-      '**`y/yes`**    → Close it — merge its pull request and mark it complete',
+      '**`y/yes`**    → Close it — land its commits and mark it complete',
       '**`r/review`** → Have the whole change reviewed before it closes',
       '**Ask**      → Ask about the change before it closes',
       '',
@@ -202,7 +202,7 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
   });
 
   it('offers a yes that merges nothing, where no fix is done', () => {
-    const view = { unit: UNIT, title: 'Typo', closed: [], skips: [], verdict: null, warnings: [], aside: null, product: 'app', proven: null, fixes: 0, pair: [], kept: [] };
+    const view = { unit: UNIT, title: 'Typo', closed: [], skips: [], verdict: null, warnings: [], aside: null, product: 'app', proven: null, fixes: 0, landing: null, pair: [], kept: [] };
     const out = closeScreen(view);
 
     assert.match(sectionOf(out, 'MENU: finish'), /\*\*`y\/yes`\*\* {4}→ Close it — mark it complete\n/);

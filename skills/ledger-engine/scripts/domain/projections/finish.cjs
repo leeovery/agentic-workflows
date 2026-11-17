@@ -28,8 +28,8 @@
 // none put back, a ⚑ line naming where it is kept and the calls that show
 // it and bring it into the checkout (R26); each departure asked its verdict at the verdict
 // point `close` (16.10.4); and its gate, `Close it?`: the yes, merging its
-// pull request where a fix done is still to land, or saying its fixes have
-// landed; a review asked for, `review ask`, until one has been; and
+// pull request where a fix done is still to land — landing its commits
+// where the driver opens none — or saying its fixes have landed; a review asked for, `review ask`, until one has been; and
 // questions about the change. Its rows and words are Claude's in the spec
 // (18.10.8).
 // ---------------------------------------------------------------------------
@@ -121,10 +121,16 @@ function finishScreen(view) {
  * A quick-fix's close as it is drawn: finish's, with each fix done and its
  * pair's verdict, the product's name, what running it proved of each fix's
  * scenarios — null where the project has no way to run it — how many fixes
- * are done, whether its pull request still holds one to land, whether
- * its review was asked for, and each fix's work kept set aside, in its words.
- * @typedef {FinishView & {pair: PairVerdict[], product: string, proven: import('./build.cjs').Ran[]|null, fixes: number, landing: boolean, reviewed: boolean, kept: string[]}} CloseView
+ * are done, what the yes still lands — null where every fix done has
+ * landed — whether its review was asked for, and each fix's work kept set
+ * aside, in its words.
+ * @typedef {FinishView & {pair: PairVerdict[], product: string, proven: import('./build.cjs').Ran[]|null, fixes: number, landing: Lands|null, reviewed: boolean, kept: string[]}} CloseView
  */
+
+/** What a quick-fix's yes lands: its pull request, or its commits where the driver opens none. @typedef {'pull request'|'commits'} Lands */
+
+/** The yes's words for what it lands. @type {Readonly<Record<Lands, string>>} */
+const LANDS = Object.freeze({ 'pull request': 'merge its pull request', commits: 'land its commits' });
 
 /** A fix's line under its pair's verdicts. @param {PairVerdict} verdict */
 const pairLine = ({ task, title, round, settled }) => `✓ ${task} ${title} · ${settled ? 'settled' : 'passed'} in round ${round}`;
@@ -152,12 +158,12 @@ const keptBlock = ({ kept }) => (kept.length === 0 ? [] : [kept.map((words) => c
 const closeDisplay = (view) => [`${view.title} — ready to close`, pairBlock(view), provenBlock(view), ...keptBlock(view), ...finishBlocks(view)].join('\n\n');
 
 /**
- * What the yes does: merge its pull request, where a fix done is still to
- * land, or, where every one has landed, say so — and mark it complete.
+ * What the yes does: land what a fix done still holds, or, where every one
+ * has landed, say so — and mark it complete.
  * @param {CloseView} view
  */
 function closeWords({ fixes, landing }) {
-  if (landing) return 'Close it — merge its pull request and mark it complete';
+  if (landing !== null) return `Close it — ${LANDS[landing]} and mark it complete`;
   if (fixes === 0) return 'Close it — mark it complete';
   return `Close it — ${fixes === 1 ? 'its fix has' : 'its fixes have'} landed, so mark it complete`;
 }

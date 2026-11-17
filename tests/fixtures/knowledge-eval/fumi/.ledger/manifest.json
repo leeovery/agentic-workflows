@@ -8,7 +8,7 @@
     "status": "native"
   },
   "defaults": {
-    "tmux_labels": true
+    "session_labels": true
   },
   "roadmap": {
     "horizons": [

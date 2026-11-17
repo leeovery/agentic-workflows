@@ -187,13 +187,15 @@ describe('a task\'s account, printed when asked (12.14.1, 12.14.2)', () => {
     ]);
   });
 
-  it('a task closed keeps its place among every task of its phase, and with no account says it closed without one', () => {
+  it('a task\'s place counts its phase\'s tasks not closed, a closed task\'s own among them, and one closed with no account says it closed without one', () => {
     ok(dir, ['task', 'close', UNIT, '1.2', '--reason', 'Folded into 1.1.'], { env: env() });
     ok(dir, ['task', 'close', UNIT, '1.3', '--reason', 'Mailing waits for later.'], { env: env() });
-    const [receipt, mail] = ['1.2', '1.3'].map((task) => sectionOf(screen(['task-account', UNIT, task]), 'DISPLAY: task account').split('\n'));
+    const [card, receipt, mail] = ['1.1', '1.2', '1.3'].map((task) => sectionOf(screen(['task-account', UNIT, task]), 'DISPLAY: task account').split('\n'));
     const place = (/** @type {string[]} */ lines) => lines.find((line) => line.startsWith('- Position'));
 
-    assert.deepStrictEqual([place(receipt), place(mail), mail.at(-2)], ['- Position: 2 of 3 in phase', '- Position: 3 of 3 in phase', '  No account was written: it closed without one.']);
+    assert.deepStrictEqual([place(card), place(receipt), place(mail), mail.at(-2)], [
+      '- Position: 1 of 1 in phase', '- Position: 2 of 2 in phase', '- Position: 2 of 2 in phase', '  No account was written: it closed without one.',
+    ]);
   });
 });
 

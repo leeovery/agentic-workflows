@@ -71,7 +71,7 @@ describe('19.S23: the review asked for runs over the quick-fix\'s record and its
     assert.deepStrictEqual([passed.ends, passed.next, review.state], [true, { kind: 'engine', argv: ['render', 'finish', UNIT] }, 'done']);
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(statePath(dir, layout.unit(UNIT, 'review', 'round-1.json')), 'utf8')).scenarios.map((/** @type {{scenario: string}} */ { scenario }) => scenario), ['1.S1', '2.S1']);
     assert.deepStrictEqual(menu.split('\n').filter((line) => line.startsWith('**')).slice(1), [
-      '**`y/yes`** → Close it — merge its pull request and mark it complete',
+      '**`y/yes`** → Close it — land its commits and mark it complete',
       '**Ask**   → Ask about the change before it closes',
     ]);
     assert.deepStrictEqual([closed.landed.map((/** @type {{merged: string[]}} */ { merged }) => merged), git(dir, ['log', '-1', '--format=%B', 'main']).match(/^Task: .*$/gm), git(dir, ['rev-list', '--count', `${main}..main`]).trim()], [
@@ -135,6 +135,6 @@ describe('19.S23: the review asked for runs over the quick-fix\'s record and its
     fixTaskBuilt();
     secondRoundPassed();
 
-    assert.strictEqual(closeMenu().split('\n').find((line) => line.startsWith('**`y/yes`**')), '**`y/yes`** → Close it — merge its pull request and mark it complete');
+    assert.strictEqual(closeMenu().split('\n').find((line) => line.startsWith('**`y/yes`**')), '**`y/yes`** → Close it — land its commits and mark it complete');
   });
 });

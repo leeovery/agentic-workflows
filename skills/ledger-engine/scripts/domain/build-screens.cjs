@@ -141,12 +141,18 @@ function requiredAccount(cwd, ref) {
   return account;
 }
 
-/** A task's account as a screen draws it, with its place among its phase's tasks and whether it landed before the migration cut the unit. @param {string} cwd @param {Record<string, any>} manifest @param {TaskRef} ref @param {TaskDetail} task @param {AccountView['account']} account @returns {AccountView} */
+/**
+ * A task's account as a screen draws it, with its place among its phase's
+ * tasks not closed — a closed task's own among them — and whether it landed
+ * before the migration cut the unit.
+ * @param {string} cwd @param {Record<string, any>} manifest @param {TaskRef} ref @param {TaskDetail} task @param {AccountView['account']} account @returns {AccountView}
+ */
 function accountView(cwd, manifest, ref, task, account) {
   const { phases: [rows] } = withStateLock(stateRoot(cwd), () => trackedLists(cwd, ref.unit, [ref.phase]));
-  const tasks = (rows ?? []).map((row) => shownTask(row.ref));
+  const shown = shownTask(ref);
+  const tasks = (rows ?? []).filter((row) => row.status !== 'closed' || shownTask(row.ref) === shown).map((row) => shownTask(row.ref));
   return {
-    head: headOf(manifest, ref, task), at: tasks.indexOf(shownTask(ref)) + 1, of: tasks.length, does: outcomeOf(task.text), closed: task.status === 'closed', before: landedBefore(manifest)(ref), account,
+    head: headOf(manifest, ref, task), at: tasks.indexOf(shown) + 1, of: tasks.length, does: outcomeOf(task.text), closed: task.status === 'closed', before: landedBefore(manifest)(ref), account,
   };
 }
 

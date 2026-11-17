@@ -27,8 +27,11 @@
 //   by hand on the host, by any method, leaves them (landing.cjs,
 //   `quickFixLanding`) — a fix task of a review asked for at the close
 //   among them — the yes then merging them, else saying its fixes have
-//   landed; and each fix done with its pair's verdict, the round its pair
-//   passed it in or the orchestrator settled it (`pairVerdict`).
+//   landed, its words those of a pull request where the driver lands
+//   through the host, its commits where it doesn't (unit-branch.cjs,
+//   `landsThroughHost`); and each fix done with its pair's verdict, the
+//   round its pair passed it in or the orchestrator settled it
+//   (`pairVerdict`).
 // - It lists every inbox item the unit closed, read from the record
 //   `inbox close` keeps (18.6.7, inbox.cjs, `closedBy`); it shows every
 //   checklist item skipped on the way, with its reason,
@@ -109,6 +112,7 @@ const { projectName } = require('./state-checks.cjs');
 const { criteriaTexts } = require('./task-file.cjs');
 const { ontoMenu } = require('./topic-leave.cjs');
 const { recordedBranch } = require('./landing-git.cjs');
+const { landsThroughHost } = require('./unit-branch.cjs');
 const { projectDefault } = require('./task-base.cjs');
 
 /** @typedef {import('./projections/surfaces.cjs').Next} Next */
@@ -156,18 +160,22 @@ function refuseNotesStanding(unit, notes) {
 const finishDraws = (cwd, unit) => stands(() => finishStanding(cwd, unit, false));
 
 /**
- * Whether a quick-fix's pull requests still hold a task done not landed,
- * as its close's screen says it (`quickFixLanding`): a fix, or a fix task
- * of the review asked for at its close, which lands with them in its one
- * pull request (19.5.15) — so a merge by hand of the fixes alone leaves
- * the yes merging that pull request still; false for any other unit.
+ * What a quick-fix's yes still lands, as its close's screen says it
+ * (`quickFixLanding`) — its pull request where the driver lands through
+ * the host, its commits where it doesn't — while it holds a task done not
+ * landed: a fix, or a fix task of the review asked for at its close, which
+ * lands with them in its one pull request (19.5.15), so a merge by hand of
+ * the fixes alone leaves the yes merging that pull request still; null
+ * where none is, and for any other unit.
  * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest
+ * @returns {import('./projections/finish.cjs').Lands|null}
  */
 function stillToLand(cwd, unit, manifest) {
   const done = trackedBuild(cwd, unit, buildLength(manifest)).tasks.filter(({ status }) => status === 'done');
-  if (done.length === 0) return false;
+  if (done.length === 0) return null;
   const read = quickFixLanding(cwd, unit);
-  return done.some(({ ref }) => !read.task(ref).landed);
+  if (done.every(({ ref }) => read.task(ref).landed)) return null;
+  return landsThroughHost(read.driver, read.own.ctx.remote) ? 'pull request' : 'commits';
 }
 
 /**

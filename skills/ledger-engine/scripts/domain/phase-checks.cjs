@@ -16,6 +16,8 @@
 //   not closed in the tracker (12.4.3); `task link` keeps each link where
 //   it may run (12.6.4). A phase whose parent the migration adopted, its
 //   tasks the old plan's, has its tasks written (21.8.8, `phaseAdopted`).
+//   Open, it names its way on: each scenario held by no task, or by
+//   several, naming them.
 // - What it relies on done: an earlier phase closed and its stack merged,
 //   since in step a phase closes with its stack waiting at its gate
 //   (7.2.5); another unit completed (12.6.2). A phase relying on nothing
@@ -79,6 +81,7 @@ const { allChained, landingTips } = require('./landing.cjs');
 const { unitLanded } = require('./task-landed.cjs');
 const { dayBefore } = require('./dates.cjs');
 const { phaseName, shownTask } = require('./task-id.cjs');
+const { inWords } = require('./cut.cjs');
 
 /** @typedef {import('./drivers.cjs').TaskRow} TaskRow */
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
@@ -197,12 +200,22 @@ function mergeWaiting(at, last) {
   return phases.find((phase) => (phase > cut || phaseClosed(at.manifest, phase)) && unmerged(phase)) ?? null;
 }
 
-/** The phase's tasks written: each phase scenario held by exactly one task not closed (12.4.3), or the phase's parent adopted by the migration. @param {Reading} at @param {number} phase */
-function tasksWritten(at, phase) {
-  if (phaseAdopted(at.manifest, phase)) return true;
-  const { scenarios } = cutPhases(at.manifest)[phase - 1];
+/** Each phase scenario not held by exactly one task not closed (12.4.3), with the tasks that hold it. @param {Reading} at @param {number} phase */
+function misheld(at, phase) {
   const tasks = live(phaseTasks(at, phase));
-  return scenarios.every((scenario) => tasks.filter(({ text }) => holdsScenario(text, scenario)).length === 1);
+  return cutPhases(at.manifest)[phase - 1].scenarios
+    .map((scenario) => ({ scenario, holders: tasks.filter(({ text }) => holdsScenario(text, scenario)) }))
+    .filter(({ holders }) => holders.length !== 1);
+}
+
+/** The phase's tasks written: each phase scenario held by exactly one task not closed (12.4.3), or the phase's parent adopted by the migration. @param {Reading} at @param {number} phase */
+const tasksWritten = (at, phase) => phaseAdopted(at.manifest, phase) || misheld(at, phase).length === 0;
+
+/** What stands between the phase and its tasks written: each scenario held by no task, or by several, with the way on. @param {Reading} at @param {number} phase */
+function tasksWrittenWay(at, phase) {
+  return misheld(at, phase).map(({ scenario, holders }) => (holders.length === 0
+    ? `${scenario} is held by no task — write the one that holds it, task create ${at.unit} ${phase} --file <path>`
+    : `${scenario} is held by tasks ${inWords(holders.map(({ ref }) => shownTask(ref)))} — close all but one of them, task close ${at.unit} <task> --reason <reason>`)).join('; ');
 }
 
 /** What the phase relies on done: an earlier phase closed and its stack merged, another unit completed (6.4.8). @param {Reading} at @param {number} phase */
@@ -425,5 +438,5 @@ function reviewRefusalOf(at, phase) {
 
 module.exports = {
   reading, trackerGiven, once, reposOf, landedOf, phaseLists, phaseTasks, phaseLanded, mergeWaiting, fixesOwed, passed,
-  tasksWritten, reliedOnDone, tasksPassed, phaseReviewFaults, scenariosReported, scenariosWay, notesConsolidated, stackMerged, closeRefusal, phaseReviewRefusal, reviewRefusalOf, landedPhase,
+  tasksWritten, tasksWrittenWay, reliedOnDone, tasksPassed, phaseReviewFaults, scenariosReported, scenariosWay, notesConsolidated, stackMerged, closeRefusal, phaseReviewRefusal, reviewRefusalOf, landedPhase,
 };
