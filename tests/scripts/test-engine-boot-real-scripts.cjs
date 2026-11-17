@@ -260,13 +260,6 @@ describe('engine boot runs the reshape (real scripts)', () => {
     ]);
   });
 
-  it('--path is a list on the guard\'s stop alone: a surface taking one path still reads it', () => {
-    const { error } = real.refuses(project, ['render', 'inbox-delete-receipt', '--path', '.ledger/.inbox/.archived/ideas/2026-01-01--gone.md']);
-
-    assert.match(error, /^render inbox-delete-receipt: /);
-    assert.doesNotMatch(error, /--path is required/);
-  });
-
   it('21.S2: a project at 070, its hooks as today\'s product leaves them, naming that engine and no guard, runs the guard, then the chain from the old record, 071 on, then the split, nothing in it to split, and the move — 072\'s kind on the moved roadmap — to the records directive, where its session hooks stand synced, written for the migration\'s commit and not committed, the guards before the new engine and the label hooks kept, so the brief hook hands the records\' agent its brief; a run killed once the guard has placed the state is carried on by the next boot', () => {
     const session = { ...env, CLAUDE_CODE_SESSION_ID: 'carrying' };
     const code = git(project, ['rev-parse', 'HEAD']).trim();

@@ -29,9 +29,9 @@
 //     stands on disk, carrying an untracked file as any other, so each is
 //     named, an untracked folder's by each file in it and a rename by both
 //     its paths, so a rename to a sidecar's name is named by its source —
-//     but for the files
-//     the person's tools leave beside theirs, a `.DS_Store` among them
-//     (reshape/shared.cjs, `SIDECAR_NAME`), which the move never carries.
+//     but for the files the person's tools leave beside theirs, a
+//     `.DS_Store` among them (reshape/shared.cjs, `SIDECAR_NAME`), which the
+//     move never carries.
 // A refusal throws an error carrying `refused`, the facts its screen states
 // — `{cause: 'live'|'dirty', unit, phase, topic, active, paths}`: for a
 // live session its row's place and age, `paths` null; for uncommitted

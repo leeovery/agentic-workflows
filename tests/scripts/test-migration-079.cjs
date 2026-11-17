@@ -725,9 +725,10 @@ describe('the directive\'s example record, frozen with 079', () => {
     assert.deepStrictEqual(['Where it holds a decision, a finding or an open question of a topic\'s, write it into the findings of the topic its subject belongs to, one of those the check names it on', 'So a unit\'s topics are carried in order: compose every topic\'s record, have each verifier pass it, settle the sections the check names, then carry them.'].filter((rule) => !text.includes(rule)), []);
   });
 
-  it('a spec section the record cites is carried whole: citing it for one rule and leaving its others out is a gap', () => {
+  it('a record holds each current decision, finding and open question, and a spec section it cites is carried whole: citing it for one rule and leaving its others out is a gap', () => {
     const text = fs.readFileSync(DIRECTIVE, 'utf8');
 
+    assert.ok(text.includes('Each current decision, finding and open question the topic\'s sources hold, and nothing else:'));
     assert.ok(text.includes('- **A cited section, whole.** A spec section the record cites is carried whole: each current decision, finding and open question it holds that concerns this topic is an entry. Citing a section for one of its rules and leaving its others out is a gap.'));
   });
 

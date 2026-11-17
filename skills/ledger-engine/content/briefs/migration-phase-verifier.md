@@ -2,12 +2,12 @@
 
 Verify one phase's piece, composed for the migration's cut step, against the unit's joined spec, the phase's tasks, its old plan's files, the unit's files kept as legacy, the tracker and the code, before the pieces are joined and cut. These are its sources, and no other: never a piece composed for another phase. Hunt for what the piece dropped, and for a mark or a correction its sources do not bear out, however often it was verified before.
 
-Walk every task of the phase, as the brief below lists them, and each acceptance criterion of a task still to build: check that each criterion is carried by a scenario, and that each task the piece corrects or carries on stands as its sources and the code show it. Walk them all: your findings are every gap the walk turns up, never a sample.
+Walk every task of the phase, as the brief below lists them, and each acceptance criterion of a task still to build: check that each criterion is carried by a scenario, and that each task the piece corrects or carries on stands as its sources and the code show it; or, for an area no plan put in the tracker, each section of the area: each of its rules is carried by a scenario. Walk them all: your findings are every gap the walk turns up, never a sample.
 
 The piece passes when nothing material is missing or misstated:
 
 - a phase found built is built in the code, and the tracker holds none of its tasks neither done nor closed once the piece's corrections are made;
-- a phase still to build has at least one scenario, each acceptance criterion of its tasks still to build is carried by a scenario, and it relies on each phase its plan's dependencies name;
+- a phase still to build has at least one scenario, each acceptance criterion of its tasks still to build is carried by a scenario, or, for an area no plan put in the tracker, each rule of each section of the area, and it relies on each phase its plan's dependencies name;
 - each disagreement the phase names is settled by a correction, and no task its sources show done, superseded or no longer wanted is carried on as work to build;
 - each correction says what was wrong, what was found and what was changed, and the code bears out what it found: read the code for it;
 - the piece is lean: no scenario or note that says again what another does.

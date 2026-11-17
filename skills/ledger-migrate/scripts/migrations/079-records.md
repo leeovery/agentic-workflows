@@ -39,7 +39,7 @@ Its brief lists each of these as the check reads them. Each topic's record is ca
 
 ### What It Holds
 
-Every current decision, every finding and every open question the topic's sources hold, and nothing else:
+Each current decision, finding and open question the topic's sources hold, and nothing else:
 
 - **Current answers only.** Each question's answer as it now stands; an answer replaced later is left in the log. An approved spec is the current answer where it and the log differ, its corrigenda and amendments among it; a decision made at the spec stage — a review gap decided in the spec, an amendment, a corrigendum — is an entry of the topic it belongs to, citing the spec's section.
 - **A shared spec.** From a spec several topics draw on, carry what this topic's log discusses, and each section its findings send it.

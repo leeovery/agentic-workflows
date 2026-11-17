@@ -15,11 +15,11 @@
 // each path from the project's folder (21.S5, 21.S6); a stale row, the
 // calling session's own, a row naming no process, a change to a tool's
 // sidecar, which the move never carries, and changes the old state ignores
-// or outside it, refuse nothing. On a pass
-// it puts the state worktree in place on an unborn `ledger-state`, locked,
-// its `.gitignore` alone in it — a plain `.ledger/` set aside and put back
-// inside — and a run killed at each of the placement's writes, its
-// `.gitignore` part written among them, is finished by the next.
+// or outside it, refuse nothing. On a pass it puts the state worktree in
+// place on an unborn `ledger-state`, locked, its `.gitignore` alone in it —
+// a plain `.ledger/` set aside and put back inside — and a run killed at
+// each of the placement's writes, its `.gitignore` part written among them,
+// is finished by the next.
 //
 // The guard runs as a session in a time zone and locale of its own, the
 // rows' start times taken in UTC and the C locale, as the old skills took

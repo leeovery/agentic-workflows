@@ -4,10 +4,10 @@ Verify one record, a topic's or a unit's own, composed for the migration's recor
 
 Walk every source section by section, as the brief below lists them: its files, its log, its brief and its experiments among them; each section of its specs it draws on, every section the record cites among them; and what the discovery sessions say of it. For each section, check that each current decision, finding and open question it holds is carried by an entry, or is not this record's. Walk them all: your findings are every gap the walk turns up, never a sample.
 
-The record passes when it holds every current decision, every finding and every open question its sources hold, as the directive says of it, and nothing material is missing or misstated:
+The record passes when it holds each current decision, finding and open question its sources hold, as the directive says of it, and nothing material is missing or misstated:
 
 - each entry is true to the section it cites;
-- each section it cites is carried whole: each current decision, finding and open question of it that concerns this record is carried;
+- each spec section it cites is carried whole: each current decision, finding and open question of it that concerns this record is carried;
 - an entry crediting the person holds a line of its source where they decided, in those words where they handed the call over;
 - nothing is carried twice.
 

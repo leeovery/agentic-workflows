@@ -304,13 +304,14 @@ describe('the walk of a record\'s sources', () => {
   const CONFINED = 'Its sources are those the brief below lists, and no other: never a record composed for another topic or unit.';
   const LISTED = 'its sources section by section, as the brief below lists them: its files, its log, its brief and its experiments among them; each section of its specs it draws on, every section the record cites among them; and what the discovery sessions say of it.';
 
-  it('the composer composing a record from the start walks its sources section by section, each current decision, finding and open question carried or not the record\'s, an amend answering the findings in its place; the verifier walks every one, its findings every gap the walk turns up, a cited section carried whole; neither reads a record composed for another topic or unit', () => {
+  it('the composer composing a record from the start walks its sources section by section, each current decision, finding and open question carried or not the record\'s, an amend answering the findings in its place and keeping everything else; the verifier walks every one, its findings every gap the walk turns up, a cited section carried whole; neither reads a record composed for another topic or unit', () => {
     assert.deepStrictEqual([
-      unsaid('migration-topic', [CONFINED, `Where you compose the record from the start, walk ${LISTED} For each section, confirm that each current decision, finding and open question it holds is carried by an entry, or is not this record's, and carry each it misses. Where you amend it, the findings stand in for the walk.`]),
+      unsaid('migration-topic', [CONFINED, 'keep everything no finding or fault asks you to change.', `Where you compose the record from the start, walk ${LISTED} For each section, confirm that each current decision, finding and open question it holds is carried by an entry, or is not this record's, and carry each it misses. Where you amend it, the findings stand in for the walk.`]),
       unsaid('migration-verifier', [
         CONFINED,
+        'The record passes when it holds each current decision, finding and open question its sources hold,',
         `Walk every source ${LISTED.slice('its sources '.length)} For each section, check that each current decision, finding and open question it holds is carried by an entry, or is not this record's. Walk them all: your findings are every gap the walk turns up, never a sample.`,
-        '- each section it cites is carried whole: each current decision, finding and open question of it that concerns this record is carried;',
+        '- each spec section it cites is carried whole: each current decision, finding and open question of it that concerns this record is carried;',
       ]),
     ], [[], []]);
   });
