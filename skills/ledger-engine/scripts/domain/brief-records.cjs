@@ -457,17 +457,25 @@
 //                  unit's assets with where each came in from, the topic's
 //                  to link, or its file gone and linked by none; and where
 //                  the topic's record is composed, and whether it is yet,
-//                  the verifier's findings and rulings on it written, the
-//                  findings its composer hands back, and a carry's refusal
-//                  of it kept (21.10.5)
+//                  the verifier's findings, rulings and verdicts on it
+//                  written, the findings its composer hands back, and a
+//                  carry's refusal of it kept (21.10.5)
 //   composed-record that topic's record as composed, fenced as JSON
 //                  (21.10.7), refused while findings its composer handed
-//                  back stand unsettled; the last verifier's findings and
-//                  rulings on it kept as a round once drawn and cleared,
-//                  for the verifier to write afresh: no file is no verdict
-//                  yet
+//                  back stand unsettled, or while its last verifier,
+//                  having written its findings, gave no verdict on each
+//                  entry it read and no other; the last verifier's
+//                  findings, rulings and verdicts kept as a round once
+//                  drawn and cleared, for the verifier to write afresh —
+//                  no file is no verdict yet — and the record it reads
+//                  noted beside it, its hash and refs, `.verifying.json`
+//   walk-sheet     that record laid against its sources for the verifier's
+//                  walk, as the directive's check lays it (`sheetOf`):
+//                  each file under its path, each section by its heading
+//                  path and lines, with every entry citing it, or none
 //   verifier-findings the last verifier's findings on that record, verbatim
-//                  — kept until a verifier reads the record again
+//                  — kept until a verifier reads the record again; refused
+//                  as `composed-record` is while its verdicts miss an entry
 //   verifier-rulings every verifier's rulings on that record so far, the
 //                  points of its sources each ruled are not the record's
 //                  or a later answer replaced, each under its round
@@ -618,7 +626,7 @@ const { reading, reposOf } = require('./phase-checks.cjs');
 const { changeOf, changeTips, workBelow } = require('./review-change.cjs');
 const { fixAcceptance, fixScenarios, fixNamed } = require('./fix-acceptance.cjs');
 const { summaryFile } = require('./knowledge/artifacts.cjs');
-const { CARRY_VERB, DRY_RUN, topicPlace, placePath, recordName, composedPath, findingsPath, rulingsPath, handbackPath, handedBack, checkedPath, verifyingPath, uncheckedRound, lastRound, keepRound, keepRecordRound, besideFindings, refusedPath, roundsPath, settledPath } = require('./ledger-carry.cjs');
+const { CARRY_VERB, DRY_RUN, topicPlace, placePath, recordName, composedPath, findingsPath, rulingsPath, handbackPath, handedBack, checkedPath, noteVerifying, uncheckedRound, lastRound, keepRound, keepRecordRound, besideFindings, refusedPath, roundsPath, settledPath } = require('./ledger-carry.cjs');
 const { OLD_STATE, OLD_PLAN_FILE } = require('../../../ledger-migrate/scripts/old-layout.cjs');
 
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
@@ -1207,9 +1215,10 @@ const otherLines = (others, unit) => others.map(({ topic, unit: of, to, subject 
 
 /**
  * A unit's own record as its brief draws it: the unit, the discovery
- * sessions it is composed from, the unit's topics with their subjects,
- * each of which carries what the sessions say of it — one moved
- * to another unit, that unit — its assets and where the record goes.
+ * sessions it is composed from — each point of them bearing on no topic's
+ * subject — the unit's topics with their subjects, each carrying the
+ * points bearing on its own, one moved to another unit carried there; its
+ * assets and where the record goes.
  * @param {Filling} filling @param {string} root @param {string} unit
  */
 function drawOwnRecord(filling, root, unit) {
@@ -1527,16 +1536,15 @@ function refuseUnchecked(filling) {
 }
 
 /**
- * The last verifier's round kept and cleared, and the refs of the record
- * as the verifier the brief is for reads it written beside it, for its
- * verdicts to be held to.
+ * The last verifier's round kept and cleared, and the record the verifier
+ * the brief is for reads noted beside it — its hash and its refs — for the
+ * carry and its verdicts to be held to.
  * @param {Filling} filling
  */
 function briefVerifier(filling) {
   const { root, unit, topic } = migratedTopic(filling);
   keepRecordRound(root, unit, topic);
-  const { entries } = JSON.parse(fs.readFileSync(path.join(root, composedPath(unit, topic)), 'utf8'));
-  fs.writeFileSync(path.join(root, verifyingPath(unit, topic)), (Array.isArray(entries) ? entries : []).map((entry) => `${entry?.ref}\n`).join(''));
+  noteVerifying(root, unit, topic);
 }
 
 /** The record laid against its sources, as its verifier walks it: each file, each section with its lines and every entry citing it. @param {Filling} filling */

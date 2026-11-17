@@ -30,6 +30,7 @@ require('./hermetic-env.cjs');
 
 const { describe, it, before, after, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
+const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -174,13 +175,31 @@ describe('a topic\'s record carried (21.6, 21.10.9)', () => {
     const RULED = '- The session\'s pricing is not this record\'s: fumi/discovery/session-001.md "Pricing".';
     writeState(dir, refusedPath('fumi', 'licensing'), 'ledger carry: refused.\n');
     writeState(dir, roundsPath('fumi', 'licensing'), '## Round 1\n\nThe trial is wrong.\n');
-    writeState(dir, verifyingPath('fumi', 'licensing'), 'q1\nd1\n');
+    writeState(dir, verifyingPath('fumi', 'licensing'), JSON.stringify({ hash: crypto.createHash('sha256').update(JSON.stringify({ entries: [QUESTION, DECISION] })).digest('hex'), refs: ['q1', 'd1'] }));
     writeState(dir, rulingsPath('fumi', 'licensing'), `${RULED}\n`);
 
     carry(LICENSING, [QUESTION, DECISION]);
 
     assert.strictEqual(readState(dir, roundsPath('fumi', 'licensing')), `## Round 1\n\nThe trial is wrong.\n\n## Round 2\n\nNone: the verifier passed it.\n\n### Rulings\n\n${RULED}\n\n### Checked\n\nq1: ok\nd1: ok\n`);
     assert.deepStrictEqual([findingsPath, rulingsPath, checkedPath, verifyingPath, refusedPath].map((rel) => fs.existsSync(statePath(dir, rel('fumi', 'licensing')))), [false, false, false, false, false]);
+  });
+
+  it('the seam whole: the verifier\'s brief issued on the record, what a verifier writes beside it, then the carry — an empty record with no verdict to give, and one with entries, each verdict a list item or its ref in backticks; a record changed after the brief refused', () => {
+    const brief = (/** @type {string} */ place) => ok(dir, ['brief', 'migration-verifier', '--topic', place, '--directive', '079-records'], { env: SESSION });
+    writeState(dir, layout.unit('fumi', 'discovery', 'session-001.md'), '## Discovery Session 001\n');
+    writeState(dir, composedPath('fumi', null), '{"entries": []}\n');
+    writeState(dir, composedPath('fumi', 'licensing'), JSON.stringify({ entries: [QUESTION, DECISION] }));
+    brief('fumi.discovery');
+    brief(LICENSING);
+    writeState(dir, findingsPath('fumi', null), '');
+    writeState(dir, findingsPath('fumi', 'licensing'), '');
+    writeState(dir, checkedPath('fumi', 'licensing'), '- `q1`: ok\n1. d1: ok\n');
+    writeState(dir, composedPath('fumi', 'licensing'), `${JSON.stringify({ entries: [QUESTION, DECISION] })}\n`);
+    const changed = untouched(['ledger', 'carry', LICENSING]);
+    writeState(dir, composedPath('fumi', 'licensing'), JSON.stringify({ entries: [QUESTION, DECISION] }));
+
+    assert.deepStrictEqual([ok(dir, ['ledger', 'carry', 'fumi.discovery'], { env: SESSION }).carried, ok(dir, ['ledger', 'carry', LICENSING], { env: SESSION }).carried], [0, 2]);
+    assert.strictEqual(changed, 'ledger carry: fumi\'s licensing has changed since its verifier was briefed on it: a record is carried as its verifier read it — brief a fresh verifier');
   });
 
   it('a record whose verifier gave no verdict on every entry it read refused, nothing written: one missing, one it never read, or none at all — read as its brief recorded them, else as the record holds them', () => {
@@ -195,7 +214,7 @@ describe('a topic\'s record carried (21.6, 21.10.9)', () => {
     fs.rmSync(statePath(dir, checked));
     const none = untouched(args);
     writeState(dir, checked, 'q1: ok\nd1: ok\n');
-    writeState(dir, verifyingPath('fumi', 'licensing'), 'q1\n');
+    writeState(dir, verifyingPath('fumi', 'licensing'), JSON.stringify({ hash: crypto.createHash('sha256').update(JSON.stringify({ entries: [QUESTION, DECISION] })).digest('hex'), refs: ['q1'] }));
     const briefed = untouched(args);
 
     assert.deepStrictEqual([missing, unknown, none, briefed], [

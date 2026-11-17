@@ -20,8 +20,9 @@
 // them by construction. Each keeps the ledger whole — a ref that resolves,
 // nothing the sources hold lost — and none judges what the record says,
 // which the directive gives the composer and its verifier to judge:
-//   - a topic whose own files, but its mail, or a spec it draws on hold
-//     text past their headings has a record of an entry at least;
+//   - a topic that draws on a spec, or whose own markdown files, but its
+//     mail, hold text past their headings, has a record of an entry at
+//     least;
 //   - every entry cites a section, a heading its file holds or the
 //     heading's path, `{heading} > {heading}`, the outermost first, in a file
 //     that stays where the cite names it wherever the entry goes: its
@@ -114,7 +115,13 @@
 // changed there in the same run, none of it committed (21.5.8). It reads
 // and changes nothing, and calls no model. Beside the check it answers a
 // topic's sources as the rules read them, which the per-topic agent's
-// brief draws (brief-records.cjs).
+// brief draws (brief-records.cjs), and a record laid against them for its
+// verifier's walk (`sheetOf`): the topic's own markdown files, but its
+// mail, its specs, the discovery sessions it draws on and any other file
+// an entry cites, each section by its lines with the entries citing it.
+// The topic's own files the walk and the empty-record rule read are its
+// markdown files alone: a data file an experiment keeps is read through
+// the record that names it.
 //
 // Known edges: a log with CRLF endings has no heading this reads, nor does
 // a fence nested in a four-backtick block end where it should; the carried
@@ -513,17 +520,16 @@ function ownFilesOf(project, unit, topic) {
  */
 
 /**
- * The sections of one file of the walk, in order: those holding text and
- * those an entry cites, each with every entry citing it, once; in a joined
- * spec, the parts the topic draws on alone, every part where it draws on
- * none.
+ * The sections of one file of the walk, in order: those holding text, in
+ * a joined spec in the parts the topic draws on alone, every part where it
+ * draws on none; and those an entry cites, in any part — each with every
+ * entry citing it, once.
  * @param {Project} project @param {Unit} unit @param {{path: string, part: string|null}[]} specs @param {Record<string, any>[]} entries @param {string} at
  * @returns {SheetSection[]}
  */
 function sheetSections(project, unit, specs, entries, at) {
   const parts = partsDrawn(specs, at);
-  const headings = outlineOf(readText(path.join(project.stateDir, at)) ?? '', at === `${unit.name}/${JOINED_SPEC}`)
-    .filter((heading) => parts === null || parts.includes(heading.part));
+  const headings = outlineOf(readText(path.join(project.stateDir, at)) ?? '', at === `${unit.name}/${JOINED_SPEC}`);
   /** @type {Map<Heading, Record<string, any>[]>} */
   const citing = new Map();
   for (const entry of entries) {
@@ -531,7 +537,8 @@ function sheetSections(project, unit, specs, entries, at) {
     const named = new Set([...byPartOf(headings).values()].flatMap((held) => names.flatMap((name) => namedAlone(held, name))));
     for (const heading of named) citing.set(heading, [...(citing.get(heading) ?? []), entry]);
   }
-  return headings.filter((heading) => heading.text || citing.has(heading)).map((heading) => ({
+  const drawn = (/** @type {Heading} */ heading) => parts === null || parts.includes(heading.part);
+  return headings.filter((heading) => (heading.text && drawn(heading)) || citing.has(heading)).map((heading) => ({
     section: heading.path, line: heading.line, end: heading.end,
     entries: (citing.get(heading) ?? []).map(({ ref, event, text }) => ({ ref: String(ref), event: String(event), text: String(text ?? '') })),
   }));
@@ -692,7 +699,7 @@ function problemsOf(project, unit, topic, phase, record) {
   if (topic === null) return ownProblems(project, unit, record);
   const imports = unlinkedImports(project, unit, topic, record);
   const sourced = specsOf(project, unit, topic).length > 0 || ownFilesOf(project, unit, topic).some((at) => holdsText(readText(path.join(project.stateDir, at)) ?? ''));
-  const empty = record.length === 0 && sourced ? ['its record is empty, and its sources hold text past their headings — its own files or a spec it draws on: compose it from them'] : [];
+  const empty = record.length === 0 && sourced ? ['its record is empty, and it has sources — a spec it draws on, or its own markdown files holding text past their headings: compose it from them'] : [];
   const undecided = phase === 'discovery' ? undecidedProblems(record) : [];
   const narrow = unit.manifest?.work_type === 'cross-cutting' ? narrowProblems(record) : [];
   const cites = citesProblems(project, unit, topic, record);

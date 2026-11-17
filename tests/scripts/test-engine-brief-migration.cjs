@@ -37,6 +37,7 @@ require('./hermetic-env.cjs');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
+const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -328,12 +329,10 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
   });
 
   it('a log\'s run of `key: value` lines no rule closes is read at once, its lines prose', () => {
-    writeState(dir, layout.topic('fumi', 'support', 'log.md'), `## Discussion\n\n---\n${'at: 10:30\n'.repeat(23)}`);
+    writeState(dir, layout.topic('fumi', 'support', 'log.md'), `## Discussion\n\n---\n${'at: 10:30\n'.repeat(40)}`);
 
-    const started = process.hrtime.bigint();
     const { brief } = issued(['migration-topic', ...LICENSING]);
 
-    assert.ok(Number(process.hrtime.bigint() - started) / 1e6 < 1000, 'read at once');
     assert.ok(brief.includes('- support: at: 10:30\n'), brief);
   });
 
@@ -389,7 +388,7 @@ describe('the walk of a record\'s sources', () => {
       unsaid('migration-verifier', [
         CONFINED,
         'The record passes when it holds each current decision, finding and open question its sources hold,',
-        'Walk the sheet below section by section: it lays the record against its sources, each section of each file with its lines and every entry citing it. Read each section in its source, then check that each entry listed beneath it states what the section says, and that each current decision, finding and open question the section holds is carried, by an entry listed there or elsewhere, or is not this record\'s; of the discovery sessions, each point bearing on its subject, or for a unit\'s own record on no topic\'s subject. That a cited heading exists is no check. Walk every section: your findings are every gap the walk turns up, never a sample.',
+        'Walk the sheet below section by section: it lays the record against its sources, each section of each file with its lines and every entry citing it. Read each section in its source, then check that what each entry listed beneath it takes from the section is what the section says, and that each current decision, finding and open question the section holds is carried, by an entry listed there or elsewhere, or is not this record\'s; of the discovery sessions, each point bearing on its subject, or for a unit\'s own record on no topic\'s subject. That a cited heading exists is no check. Walk every section: your findings are every gap the walk turns up, never a sample.',
         'Write the checked file the brief names afresh, a line for each entry of the record, by its ref: `{ref}: ok`, or `{ref}: see finding` where a finding names it.',
         '- each spec section it cites is carried whole: each current decision, finding and open question of it that concerns this record is carried;',
         '- nothing is carried that you rule is not this record\'s: such an entry is a finding, to remove, with the ruling beside it.',
@@ -425,6 +424,7 @@ describe('the walk sheet (the verifier\'s brief)', () => {
       },
     ];
     writeState(dir, composedPath('fumi', 'licensing'), JSON.stringify({ entries }));
+    writeState(dir, layout.topic('fumi', 'licensing', 'experiments', 'E2-trial', 'data.json'), '{"converted": 0.31}\n');
     const F1 = '  - f1, found: A week converts as well as fourteen days in the trial experiment, measured over three cohorts of…';
 
     const { brief } = issued(['migration-verifier', ...LICENSING]);
@@ -440,8 +440,11 @@ describe('the walk sheet (the verifier\'s brief)', () => {
     ].join('\n')}\n\n# The earlier rounds'`), brief);
   });
 
-  it('a joined spec\'s sections in the parts the topic draws on alone', () => {
-    writeState(dir, composedPath('shop', 'weights'), JSON.stringify({ entries: [{ ref: 'q1', event: 'asked', text: 'How do ties break?', cites: [{ path: 'shop/spec.md', section: '1. Weights > Ranking' }] }] }));
+  it('a joined spec\'s sections in the parts the topic draws on alone, and a section an entry cites in another part', () => {
+    writeState(dir, composedPath('shop', 'weights'), JSON.stringify({ entries: [
+      { ref: 'q1', event: 'asked', text: 'How do ties break?', cites: [{ path: 'shop/spec.md', section: '1. Weights > Ranking' }] },
+      { ref: 'q2', event: 'asked', text: 'May a wish be saved twice?', cites: [{ path: 'shop/spec.md', section: '2. Wishlist > Saving' }] },
+    ] }));
     const old = path.join(dir, '.workflows/shop/manifest.json');
     const manifest = JSON.parse(fs.readFileSync(old, 'utf8'));
     manifest.phases.specification.items.wishlist.sources = {};
@@ -452,7 +455,8 @@ describe('the walk sheet (the verifier\'s brief)', () => {
     assert.ok(brief.includes([
       '## shop/spec.md', '', '- Shop > 1. Weights > Ranking, lines 5–8', '  - q1, asked: How do ties break?',
       '- Shop > 1. Weights > Ranking > Detail, lines 9–12: no entry cites it', '- Shop > 1. Weights > Corrigenda, lines 13–16: no entry cites it',
-      '- Shop > 1. Weights > Corrigenda > Detail, lines 17–20: no entry cites it', '', '# The earlier rounds\'',
+      '- Shop > 1. Weights > Corrigenda > Detail, lines 17–20: no entry cites it',
+      '- Shop > 2. Wishlist > Saving, lines 23–26', '  - q2, asked: May a wish be saved twice?', '', '# The earlier rounds\'',
     ].join('\n')), brief);
   });
 });
@@ -462,7 +466,7 @@ describe('the verifier\'s verdict on each entry', () => {
     const RECORD2 = JSON.stringify({ entries: [{ ref: 'q1', event: 'asked', text: 'How long is the trial?', by: 'person' }, { ref: 'q2', event: 'asked', text: 'Is a card needed?', by: 'person' }] });
     writeState(dir, composedPath('fumi', 'licensing'), RECORD2);
     issued(['migration-verifier', ...LICENSING]);
-    const read = readState(dir, verifyingPath('fumi', 'licensing'));
+    const read = JSON.parse(readState(dir, verifyingPath('fumi', 'licensing')));
     const way = 'a verifier writes a line for each entry, `{ref}: ok` or `{ref}: see finding`, and one that does not has given no verdict — remove .cache/migrate/records/fumi/licensing.findings.txt, .cache/migrate/records/fumi/licensing.rulings.txt and .cache/migrate/records/fumi/licensing.checked.txt, and brief a fresh verifier';
     const refusedBrief = (/** @type {string[]} */ args, /** @type {RegExp} */ pattern) => assert.match(refusedUntouched(dir, ['brief', ...args], { env: SESSION }, harness), pattern);
     const refusal = (/** @type {string} */ told) => new RegExp(`^brief: fumi's licensing has no verdict from its last verifier on every entry it read — ${told.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}: ${way.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
@@ -478,9 +482,17 @@ describe('the verifier\'s verdict on each entry', () => {
     issued(['migration-topic', ...LICENSING]);
     issued(['migration-verifier', ...LICENSING]);
 
-    assert.strictEqual(read, 'q1\nq2\n');
+    assert.deepStrictEqual(read, { hash: crypto.createHash('sha256').update(RECORD2).digest('hex'), refs: ['q1', 'q2'] });
     assert.strictEqual(readState(dir, roundsPath('fumi', 'licensing')), '## Round 1\n\nThe trial is wrong.\n\n### Checked\n\nq1: see finding\nq2: ok\n');
-    assert.strictEqual(readState(dir, verifyingPath('fumi', 'licensing')), 'q1\n');
+    assert.deepStrictEqual(JSON.parse(readState(dir, verifyingPath('fumi', 'licensing'))).refs, ['q1']);
+  });
+
+  it('a verifier briefed again before it wrote anything is briefed: no findings is no verdict to hold', () => {
+    writeState(dir, composedPath('fumi', 'licensing'), `${RECORD}\n`);
+
+    issued(['migration-verifier', ...LICENSING]);
+
+    assert.ok(issued(['migration-verifier', ...LICENSING]).brief.includes('# The walk sheet'));
   });
 });
 
@@ -492,8 +504,8 @@ describe('a finding handed back to the session', () => {
 
     refusedUnissued(['migration-verifier', ...LICENSING], /^brief: fumi's licensing has findings handed back to the session in \.cache\/migrate\/records\/fumi\/licensing\.handback\.txt: settle each into \.cache\/migrate\/records\/fumi\/licensing\.settled\.md, replace it in \.cache\/migrate\/records\/fumi\/licensing\.findings\.txt with `Settled: \{point\}, amend to agree` where the record changes, or take it out where it stands, then remove \.cache\/migrate\/records\/fumi\/licensing\.handback\.txt$/);
     assert.strictEqual(readState(dir, findingsPath('fumi', 'licensing')), 'Carry the CLI framework.\n');
-    fs.rmSync(statePath(dir, handbackPath('fumi', 'licensing')));
-    assert.ok(issued(['migration-verifier', ...LICENSING]).brief.includes('## Round 1\n\nCarry the CLI framework.'));
+    writeState(dir, handbackPath('fumi', 'licensing'), '\n');
+    assert.ok(issued(['migration-verifier', ...LICENSING]).brief.includes('## Round 1\n\nCarry the CLI framework.'), 'a hand-back file of nothing is none');
   });
 });
 

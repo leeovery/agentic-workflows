@@ -164,10 +164,10 @@ function refused(dotpath, entries) {
   return refusedKeeping(dir, carryArgs(dir, dotpath, entries), refusedPath(unit, topic));
 }
 
-/** The refusal of a record breaking the rules, its problems listed. @param {string} unit @param {string} topic @param {string[]} problems */
-/** The fault of an empty record whose sources hold text. */
-const EMPTY = 'its record is empty, and its sources hold text past their headings — its own files or a spec it draws on: compose it from them';
+/** The fault of an empty record of a topic with sources. */
+const EMPTY = 'its record is empty, and it has sources — a spec it draws on, or its own markdown files holding text past their headings: compose it from them';
 
+/** The refusal of a record breaking the rules, its problems listed. @param {string} unit @param {string} topic @param {string[]} problems */
 const breaks = (unit, topic, problems) => `ledger carry: ${unit}'s ${topic} breaks the records directive's rules, so nothing is carried — ${problems.join('; ')}`;
 
 /** search's record with neither its map items nor its thread named. */
@@ -393,6 +393,14 @@ describe('a record breaking a rule is refused at the carry, its refusal kept bes
     fs.rmSync(statePath(dir, layout.topic('fumi', 'licensing', 'experiments')), { recursive: true });
 
     assert.deepStrictEqual(['fumi.discussion.search', 'fumi.discussion.licensing'].map((place) => refused(place, []).includes(EMPTY)), [true, true]);
+  });
+
+  it('an empty record of a topic whose own files holding text are no markdown, and which draws on no spec, carries: a data file is read through the record naming it', () => {
+    fs.rmSync(statePath(dir, layout.topic('fumi', 'search', 'log.md')));
+    fs.rmSync(statePath(dir, layout.topic('fumi', 'search', 'experiments', 'E1-latency', 'report.md')));
+    writeState(dir, layout.topic('fumi', 'search', 'experiments', 'E1-latency', 'data.json'), '{"p95": 12}\n');
+
+    assert.strictEqual(refused('fumi.discussion.search', []), breaks('fumi', 'search', SEARCH_UNCARRIED));
   });
 
   it('the unit\'s spec.md where its building never started; where it started, a heading the spec the move joined lacks — whatever its specs under `.workflows/` hold now — and one two of its specs share citing either; a heading\'s path the spec\'s headings lack refused, and one they hold, a part\'s heading over it among them, taken', () => {
@@ -737,9 +745,10 @@ describe('the directive\'s example record, frozen with 079', () => {
     assert.deepStrictEqual([
       'and writes its findings beside the record, an empty file its pass; its rulings: each point of the sources it ruled is not this record\'s, or is replaced by a later answer, one line each, with its source; and its verdict on each entry, `{ref}: ok` or `{ref}: see finding`.',
       'keeps the last as a round in the rounds file beside the record, its rulings and verdicts with it, and clears them',
-      'walking the sheet its brief draws: every section of every source, in order, with the entries citing each. It reads each section in its source, checks each entry beneath it states what the section says and each point the section makes is carried or not this record\'s — that a cited heading exists is no check —',
-      'The next brief and the carry are refused while the last verifier\'s verdicts miss an entry it read, or name one it did not: remove what it wrote, and brief a fresh verifier. The carry keeps the passing round with the rounds before it:',
-      '- **A record at least.** A topic whose sources hold text past their headings — its log, its brief, its experiments\' records, or a spec it draws on — has an entry at least.',
+      'walking the sheet its brief draws: every section of every source, in order, with the entries citing each. It reads each section in its source, checks that what each entry beneath it takes from the section is what the section says, and each point the section makes is carried or not this record\'s — that a cited heading exists is no check —',
+      'The next brief and the carry are refused while the last verifier\'s verdicts miss an entry it read, or name one it did not: remove what it wrote, and brief a fresh verifier. The carry refuses a record changed since its verifier was briefed on it — brief a fresh verifier — and keeps the passing round with the rounds before it:',
+      'Once every topic of a unit has its record composed, read each draft spec several of its topics draw on: a section of it bearing on no one topic\'s subject goes into the findings of one of the topics drawing on it, as below, for the check names an approved spec\'s sections alone.',
+      '- **A record at least.** A topic that draws on a spec, or whose log, brief or experiments\' records — its markdown files — hold text past their headings, has an entry at least.',
       'A finding that opens `Reverses round {R}:` would undo what an earlier round had the record changed to, or carry a point an earlier round\'s rulings set aside: it goes to no agent, nor does a finding a per-topic agent handed back unanswered, asking for a point the rulings set aside, in the hand-back file beside the record.',
       'Once it has returned, settle first each finding it handed back, as below: the verifier\'s brief and the carry are refused while its hand-back file stands. Then, where no `Settled:` finding stands, check the record as the carry would',
       'Settle every handed-back finding before anything else.',
