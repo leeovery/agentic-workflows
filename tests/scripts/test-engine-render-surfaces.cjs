@@ -660,7 +660,11 @@ describe('the boot and knowledge gate surfaces', () => {
     const art = lines.slice(0, 3);
 
     assert.strictEqual(marker, '=== DISPLAY: banner (emit verbatim as a properties code block (```properties fence)) ===');
-    assert.ok(art.every((line) => /^[█▀▄░]+ [█▀▄░]+$/.test(line)), `the art, its two words split at one space: ${art.join('\n')}`);
+    assert.deepStrictEqual(art, [
+      '█░░░█▀▀░█▀▄░█▀▀░█▀▀░█▀▄',
+      '█░░░█▀▀░█░█░█░█░█▀▀░█▀▄',
+      '▀▀▀░▀▀▀░▀▀░░▀▀▀░▀▀▀░▀░▀',
+    ], 'the art spells LEDGER');
     assert.strictEqual(lines[3], version.padStart([...art[0]].length));
     assert.match(lines.slice(4).join('\n'), /^=== TITLE[^\n]*===\n# \*\*`■ Ledger`\*\*$/m);
   });

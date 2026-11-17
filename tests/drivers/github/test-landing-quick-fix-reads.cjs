@@ -7,10 +7,10 @@
 // reaching neither GitHub nor the remote — no gh call and no fetch — the
 // landing read only once its screen is drawn and at its yes, once in each
 // — the screen, the fixes laid on main, fetching main alone, no pull
-// request read; each verb listing the pull requests at most once — a fix's
-// record never, reading its commits off git alone, its opening and the
-// close's yes once, the yes fetching main once before its merge and once
-// after it (N1); and a pull
+// request read, its yes merging the pull request; each verb listing the
+// pull requests at most once — a fix's record never, reading its commits
+// off git alone, its opening and the close's yes once, the yes fetching
+// main once before its merge and once after it (N1); and a pull
 // request closed by hand on GitHub read as none open, so the quick-fix
 // moves to a feature, nothing having landed, the move closing nothing, its
 // yes listing the pull requests once. Git layer:
@@ -59,13 +59,15 @@ describe('when a quick-fix\'s pull request on GitHub is read (N3, N4)', () => {
     const recorded = made(() => fixesRecorded(dir, 2, as()));
     const refs = remoteRefs();
     const board = made(() => ['this', 'unit', 'all'].forEach((tab) => ok(dir, ['board', 'sess-1', '--tab', tab, '--unit', UNIT], as())));
+    let screen = '';
 
     assert.deepStrictEqual([
-      recorded, board, remoteRefs(), made(() => ok(dir, ['land', 'open', UNIT, '1.1'], as())), made(() => output(dir, ['render', 'finish', UNIT], as())), made(() => ok(dir, ['finish', 'yes', UNIT], as())),
+      recorded, board, remoteRefs(), made(() => ok(dir, ['land', 'open', UNIT, '1.1'], as())), made(() => { screen = output(dir, ['render', 'finish', UNIT], as()); }), made(() => ok(dir, ['finish', 'yes', UNIT], as())),
     ], [
       { gh: [], reads: 0, main: 0, branch: 0 }, { gh: [], reads: 0, main: 0, branch: 0 }, refs,
       { gh: ['pr list'], reads: 2, main: 1, branch: 1 }, { gh: [], reads: 1, main: 1, branch: 0 }, { gh: ['pr list', 'pr view', 'pr merge'], reads: 3, main: 2, branch: 1 },
     ]);
+    assert.match(screen, /\*\*`y\/yes`\*\* +→ Close it — merge its pull request and mark it complete\n/);
   });
 
   it('closed by hand on GitHub, it reads as none open, so the quick-fix moves to a feature, the move closing nothing', () => {

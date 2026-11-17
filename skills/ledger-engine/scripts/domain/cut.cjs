@@ -351,4 +351,4 @@ function writeCut(cwd, unit, file) {
   return result;
 }
 
-module.exports = { CUT_USAGE, writeCut, stagedCutPath, stagedCutRefusal, cutHolds, phasesOf, placing, specIn, againstSpec, refuse };
+module.exports = { CUT_USAGE, inWords, writeCut, stagedCutPath, stagedCutRefusal, cutHolds, phasesOf, placing, specIn, againstSpec, refuse };

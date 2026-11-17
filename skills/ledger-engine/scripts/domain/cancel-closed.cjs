@@ -18,7 +18,7 @@
 //   closed (landing.cjs), so after a reactivate the landing opens what it
 //   needs anew; and a merge opens a task again first only for a unit a
 //   cancel closed one of (`closedAny`). The cancel's receipt names the latest entry's
-//   (`lastClosed`, render.cjs).
+//   (`lastClosed`, receipts.cjs).
 // ---------------------------------------------------------------------------
 
 const { CLOSED_BY_CANCEL } = require('../kernel/manifest-schema.cjs');

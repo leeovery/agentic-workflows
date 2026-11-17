@@ -80,7 +80,7 @@
         "command": "gofmt -l ./internal ./cmd"
       }
     ],
-    "tmux_labels": true
+    "session_labels": true
   },
   "baseline": {
     "status": "native"

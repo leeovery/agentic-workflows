@@ -349,11 +349,10 @@ function brownfieldOfferGate() {
   return section('MENU: brownfield offer', MENU_INSTRUCTION, body);
 }
 
-/** The banner's art, its two words split by the one space the properties fence colours them at. */
 const BANNER_ART = Object.freeze([
-  '█▀█░█▀▀░█▀▀░█▀█░▀█▀░▀█▀░█▀▀ █░█░█▀█░█▀▄░█░█░█▀▀░█░░░█▀█░█░█░█▀▀',
-  '█▀█░█░█░█▀▀░█░█░░█░░░█░░█░░ █▄█░█░█░█▀▄░█▀▄░█▀▀░█░░░█░█░█▄█░▀▀█',
-  '▀░▀░▀▀▀░▀▀▀░▀░▀░░▀░░▀▀▀░▀▀▀ ▀░▀░▀▀▀░▀░▀░▀░▀░▀░░░▀▀▀░▀▀▀░▀░▀░▀▀▀',
+  '█░░░█▀▀░█▀▄░█▀▀░█▀▀░█▀▄',
+  '█░░░█▀▀░█░█░█░█░█▀▀░█▀▄',
+  '▀▀▀░▀▀▀░▀▀░░▀▀▀░▀▀▀░▀░▀',
 ]);
 
 /**

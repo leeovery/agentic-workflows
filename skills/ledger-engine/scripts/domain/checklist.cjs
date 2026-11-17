@@ -404,7 +404,9 @@ const POINTS = Object.freeze({
     takes: ['<work-unit>', '<N>'],
     place: onPhase('start'),
     items: [
-      { key: 'tasks-written', text: 'tasks written with their links', check: ofPhase(checks.tasksWritten) },
+      {
+        key: 'tasks-written', text: 'tasks written with their links', check: ofPhase(checks.tasksWritten), way: ofPhase(checks.tasksWrittenWay),
+      },
       { key: 'design-settled', text: 'shared design settled' },
       { key: 'relies-on-done', text: 'what the phase relies on is done: closed, and its stack merged', check: ofPhase(checks.reliedOnDone) },
     ],
