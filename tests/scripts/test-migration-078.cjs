@@ -25,7 +25,7 @@
 // topic's folder no topic owns; its manifest less research and the retired
 // state, the dead end off every topic — one whose work concluded keeping its
 // close, any other cancelled with its mail sent to the inbox; the project's manifest with its id, the baseline's skip its
-// brownfield answer, its retired defaults gone and the roadmap's sources
+// brownfield answer — with none, when the old state first entered git — its retired defaults gone and the roadmap's sources
 // following their files; the roadmap as the product, the baseline's docs its
 // assets; the store and the knowledge config, never the knowledge store, in
 // the state; the hooks naming the engine's new path and the `.workflows/` lines
@@ -89,6 +89,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { execFileSync } = require('child_process');
 
 const { git, initRepo, cleanupFixture } = require('./engine-harness.cjs');
 const MIGRATION = require('../../skills/ledger-migrate/scripts/migrations/078-reshape-move.cjs');
@@ -176,11 +177,18 @@ function write(dir, rel, content) {
   fs.writeFileSync(file, content);
 }
 
-/** @param {string} dir */
-function commitAll(dir) {
+
+/** When a world's old state entered git, in the author time git prints. */
+const ARRIVED = '2025-02-01T23:30:00-05:00';
+
+/** Everything in `dir` committed, authored and committed at `when`. @param {string} dir @param {string} [when] */
+function commitOn(dir, when = ARRIVED) {
   git(dir, ['add', '-A']);
-  git(dir, ['commit', '-q', '-m', 'today\'s layout']);
+  execFileSync('git', ['commit', '-q', '-m', 'today\'s layout'], { cwd: dir, env: { ...process.env, GIT_AUTHOR_DATE: when, GIT_COMMITTER_DATE: when } });
 }
+
+/** Everything in `dir` committed, when the world's old state entered git. @param {string} dir */
+const commitAll = (dir) => commitOn(dir);
 
 /** Every file under `dir`'s folder `at`, relative to it. @param {string} dir @param {string} [at] @returns {string[]} */
 function tree(dir, at = '') {
@@ -1204,13 +1212,13 @@ describe('migration 078: a small project', () => {
   /** The project manifest the move wrote, from the project at `dir`. */
   const movedProject = () => JSON.parse(fs.readFileSync(path.join(dir, '.ledger/manifest.json'), 'utf8'));
 
-  it('21.S50: keeps a native or completed baseline as the brownfield offer\'s answer, in today\'s words, and none for a baseline under way, the status fields gone either way (21.11.2, 8.12.11)', () => {
-    const cases = /** @type {const} */ ([['native', { brownfield_offer: 'native' }], ['completed', { brownfield_offer: 'completed' }], ['in-progress', {}]]);
+  it('21.S50: keeps a native or completed baseline as the brownfield offer\'s answer, in today\'s words, and none for a baseline under way — when the old state arrived kept instead — the status fields gone either way (21.11.2, 8.12.11)', () => {
+    const cases = /** @type {const} */ ([['native', { brownfield_offer: 'native' }], ['completed', { brownfield_offer: 'completed' }], ['in-progress', { arrived: ARRIVED }]]);
     for (const [status, answer] of cases) {
       dir = tempProject(`migration-078-baseline-${status}-`);
       try {
         write(dir, '.workflows/manifest.json', json({ work_units: {}, baseline: { status, areas: { auth: 'completed', billing: 'pending' } } }));
-        commitAll(dir);
+        commitOn(dir, ARRIVED);
         run(dir);
         const { project_id: _id, ...project } = movedProject();
         assert.deepStrictEqual(project, { work_units: {}, ...answer }, status);
@@ -1220,13 +1228,42 @@ describe('migration 078: a small project', () => {
     }
   });
 
+  it('8.12.10, 21.11.2: records when the old state first entered git, by either of its names — its author time, a later commit adding to it no matter — so the offer reads the history before then; none where it never entered git', () => {
+    const LATER = '2025-04-01T09:00:00Z';
+    dir = tempProject('migration-078-arrived-');
+    try {
+      write(dir, 'README.md', '# Tally\n');
+      commitOn(dir, '2024-12-01T09:00:00Z');
+      write(dir, 'docs/workflow/manifest.json', json({ work_units: {} }));
+      commitOn(dir, ARRIVED);
+      git(dir, ['mv', 'docs/workflow', '.workflows']);
+      commitOn(dir, '2025-03-01T09:00:00Z');
+      write(dir, '.workflows/.state/environment-setup.md', 'No special setup required.\n');
+      commitOn(dir, LATER);
+      run(dir);
+      assert.strictEqual(movedProject().arrived, ARRIVED);
+    } finally {
+      cleanupFixture(dir);
+    }
+    dir = tempProject('migration-078-arrived-none-');
+    try {
+      write(dir, '.gitignore', '.workflows/\n');
+      commitOn(dir, LATER);
+      write(dir, '.workflows/manifest.json', json({ work_units: {} }));
+      run(dir);
+      assert.ok(!Object.hasOwn(movedProject(), 'arrived'));
+    } finally {
+      cleanupFixture(dir);
+    }
+  });
+
   it('7.S6: sets no driver, so the task driver its settings read is the default, the plan\'s format and the project skills gone and the defaults with them (7.1.11, 22.3.1, 22.3.2, 22.4.3)', () => {
     dir = tempProject('migration-078-drivers-');
     try {
       write(dir, '.workflows/manifest.json', json({ work_units: {}, defaults: { plan_format: 'local-markdown', project_skills: [] } }));
       commitAll(dir);
       run(dir);
-      const { project_id: _id, ...project } = movedProject();
+      const { project_id: _id, arrived: _arrived, ...project } = movedProject();
       const { driver, set } = chosenDriver(dir, 'task');
       assert.deepStrictEqual([project, driver.name, set], [{ work_units: {} }, listDrivers('task').find(({ isDefault }) => isDefault)?.name, false]);
     } finally {
@@ -1714,7 +1751,7 @@ describe('migration 078: a small project', () => {
       run(dir);
       const state = path.join(dir, '.ledger');
       const { project_id: _id, ...project } = movedProject();
-      assert.deepStrictEqual(project, { work_units: { tally: { work_type: 'feature' } }, checklists });
+      assert.deepStrictEqual(project, { work_units: { tally: { work_type: 'feature' } }, arrived: ARRIVED, checklists });
       assert.strictEqual(fs.readFileSync(path.join(state, '.state/migrations'), 'utf8'), '001\n073\n076\n');
       assert.strictEqual(fs.readFileSync(path.join(state, '.cache/migrate/pending-tally.json'), 'utf8'), '{"ran":["073"]}\n');
       assert.doesNotThrow(() => git(state, ['check-ignore', '--quiet', '.cache/migrate/pending-tally.json']), 'the journal ignored in the state');
@@ -1743,7 +1780,7 @@ describe('migration 078: a small project', () => {
         '.gitignore', `.inbox/ideas/${TODAY}--dropped.md`, '.knowledge/config.json', 'manifest.json', 'tally/manifest.json', 'tally/topics/tally/log.md',
       ]);
       assert.deepStrictEqual(JSON.parse(fs.readFileSync(path.join(state, 'manifest.json'), 'utf8')),
-        { project_id: 'CutShort0123456789abc', work_units: { tally: { work_type: 'feature' } } });
+        { project_id: 'CutShort0123456789abc', work_units: { tally: { work_type: 'feature' } }, arrived: ARRIVED });
       assert.strictEqual(fs.readFileSync(path.join(state, '.knowledge/config.json'), 'utf8'), KNOWLEDGE_CONFIG);
       assert.strictEqual(fs.readFileSync(path.join(state, 'tally/topics/tally/log.md'), 'utf8'), '## Discussion\n\n## Discussion: Tally\n');
       assert.strictEqual(fs.readFileSync(path.join(state, `.inbox/ideas/${TODAY}--dropped.md`), 'utf8'), DROPPED_IDEA);
@@ -1827,7 +1864,7 @@ describe('migration 078: a small project', () => {
         ['node_modules/\n.ledger/\n', json({ permissions: { allow: ['Edit(.ledger/**)'] } }), '.env.local\n'],
       );
       const project = JSON.parse(fs.readFileSync(path.join(dir, '.ledger/manifest.json'), 'utf8'));
-      assert.deepStrictEqual([Object.keys(project), project.environment], [['project_id', 'work_units', 'environment'], { linters: [{ name: 'eslint', command: 'eslint' }] }]);
+      assert.deepStrictEqual([Object.keys(project), project.environment], [['project_id', 'work_units', 'arrived', 'environment'], { linters: [{ name: 'eslint', command: 'eslint' }] }]);
     } finally {
       fs.writeFileSync = realWrite;
       cleanupFixture(dir);

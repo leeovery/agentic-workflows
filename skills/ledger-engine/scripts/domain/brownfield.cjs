@@ -11,7 +11,10 @@
 // So is the signal boot attaches while nothing is recorded: the project's
 // own account of what came before Ledger, read from every repo in it
 // (kernel/repos) and handed to the one-time judgment as evidence to read
-// rather than a number to threshold (8.12.10).
+// rather than a number to threshold (8.12.10). Ledger arrived when the
+// project manifest's `arrived` says — the migration's record of when a
+// migrated project's old state first entered its history (21.11.2) — and
+// otherwise at the state's first commit.
 // ---------------------------------------------------------------------------
 
 const { git, GitError, hasCommits } = require('../kernel/git.cjs');
@@ -84,7 +87,7 @@ const researchOwed = (project) => answerOf(project) === 'accepted';
 /**
  * @typedef {object} BrownfieldSignal
  * @property {string} root_date  author date of the earliest first commit across the project's repos (YYYY-MM-DD)
- * @property {string|null} ledger_date  author date of the state's first commit — null when the state holds none yet, so the whole history predates Ledger
+ * @property {string|null} ledger_date  the date Ledger arrived: the date the project manifest's `arrived` records, else the author date of the state's first commit — null when neither is, so the whole history predates Ledger
  * @property {number} commits_total  every commit reachable from HEAD, summed across the repos — a project inside a larger repository counting the commits that touched its folder, a shallow nested clone none
  * @property {number} commits_before  the commits before the arrival, summed: each repo's last commit made before the state's first commit and that commit's ancestors (each whole history when the state holds no commit)
  * @property {string[]} history_before  those commits as `date  subject`, oldest first across the repos — the head and tail kept around an elision line when the run is long
@@ -166,12 +169,33 @@ function sum(values) {
 }
 
 /**
- * The state's first commit — its author date and committer time — or null
- * when the state holds none yet. Read in the state worktree, isolated.
+ * When the project manifest records Ledger arrived, its `arrived`; null
+ * where it records none, or the manifest will not read.
+ * @param {string} cwd
+ * @returns {{date: string, time: string}|null}
+ */
+function recordedArrival(cwd) {
+  let arrived;
+  try {
+    arrived = readProjectManifest(cwd).arrived;
+  } catch {
+    return null;
+  }
+  const at = typeof arrived === 'string' ? Date.parse(arrived) : NaN;
+  return Number.isNaN(at) ? null : { date: arrived.slice(0, 10), time: String(Math.floor(at / 1000)) };
+}
+
+/**
+ * When Ledger arrived — its date and its time in seconds — as the project
+ * manifest records it, else the state's first commit's author date and
+ * committer time; null when neither is. The commit is read in the state
+ * worktree, isolated.
  * @param {string} cwd
  * @returns {{date: string, time: string}|null}
  */
 function arrivalIn(cwd) {
+  const recorded = recordedArrival(cwd);
+  if (recorded !== null) return recorded;
   const state = findStateRoot(cwd);
   if (state === null) return null;
   const out = isolatedGit(state).tryRun(['log', '--no-show-signature', '--max-parents=0', '--format=%as%x09%ct', 'HEAD']);

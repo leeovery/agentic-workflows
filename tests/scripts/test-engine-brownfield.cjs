@@ -175,6 +175,24 @@ describe('the brownfield signal across the project\'s repos', () => {
     });
   });
 
+  it('a migrated project: the arrival is when the project manifest records its old state first entered git, its date the author\'s, cutting each repo at its last commit before then — never the migration\'s own first commit (21.11.2)', () => {
+    commitOn(dir, 'initial', '2025-01-15');
+    const arrived = '2025-02-01T23:30:00-05:00';
+    writeFile(dir, 'notes.md', 'the old state\n');
+    git(dir, ['add', '-A']);
+    execFileSync('git', ['commit', '-q', '-m', 'add the old state'], { cwd: dir, env: { ...process.env, GIT_AUTHOR_DATE: arrived, GIT_COMMITTER_DATE: arrived } });
+    writeFile(dir, 'src/a.js', 'a\n');
+    commitOn(dir, 'built before Ledger', '2025-03-01');
+    beginState(dir, '2025-09-01');
+    writeState(dir, layout.projectManifest, JSON.stringify({ arrived }));
+
+    assert.deepStrictEqual(brownfieldSignal(dir), {
+      root_date: '2025-01-15', ledger_date: '2025-02-01', commits_total: 3, commits_before: 1,
+      history_before: ['2025-01-15  initial'],
+      files_at_arrival: 2, tree_at_arrival: ['.gitignore', 'README.md'],
+    });
+  });
+
   it('a shallow nested clone adds its tree alone — its truncated history is no account of what came before', () => {
     const source = harness.initRepo(`${dir}-api-source`);
     writeFile(source, 'src/a.js', 'a\n');
