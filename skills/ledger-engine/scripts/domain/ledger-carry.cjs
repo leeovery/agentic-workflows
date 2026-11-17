@@ -67,10 +67,12 @@
 //   verifier's brief was issued on it (`briefedOn`), and its verdicts
 //   naming every entry its brief asked a verdict of — in a later round
 //   those not passed unchanged since (later-rounds.cjs) — and none the
-//   record it read does not hold (`unchecked`); and a topic of
-//   a unit drawing on an approved spec only once every topic of the unit
-//   has its record so passed and no section of those specs goes uncited
-//   (`unitWaits`), a topic carried taking no section found later; refused,
+//   record it read does not hold (`unchecked`); and a record of a unit
+//   whose records share a source — an approved spec, a discovery session
+//   or an asset they walk — only once each record drawing on it, the
+//   unit's own and a topic it promoted among them, is so passed and no
+//   section of it goes uncited (`unitWaits`), a record carried taking no
+//   section found later; refused,
 //   writing nothing beside the record, for the session alone keeps the
 //   order. A dry run names none of it: it is the record's composer's.
 // - Once: the whole record is appended in one write, after what it carried
@@ -666,9 +668,9 @@ function refuseUnsettled(cwd, place) {
   }
   const unsettled = unsettledRound(root, unit, topic, readRecord(place).map(({ ref }) => String(ref)));
   if (unsettled !== null) throw new Error(`${SAID}: ${recordName(place)} ${unsettled}`);
-  const waits = topic === null ? [] : rules.unitWaits({ projectDir: codeRoot(cwd), stateDir: root, unit });
+  const waits = rules.unitWaits({ projectDir: codeRoot(cwd), stateDir: root, unit });
   if (waits.length > 0) {
-    throw new Error(`${SAID}: ${unit}'s ${topic} is carried once every topic of ${unit} has its record passed by its verifier and no section of its approved specs goes uncited — a topic carried takes no section found later: ${waits.join('; ')}`);
+    throw new Error(`${SAID}: ${recordName(place)} is carried once each record of ${unit} drawing on the sources its records share — its approved specs, its discovery sessions and the assets its records walk, its own record and a topic it promoted among them — has passed its verifier, and no section of those sources goes uncited: a record carried takes no section found later — ${waits.join('; ')}`);
   }
 }
 

@@ -496,18 +496,21 @@ describe('a unit\'s own record, `{unit}.discovery` (21.6.2)', () => {
   const SESSION_LOG = '## Discovery Session 001\n\n### Selling\n\nThe shop sells to the trade alone, and its buyers order by the case.\n';
   const selling = { ref: 'f1', event: 'found', text: 'The shop sells to the trade alone.', how: 'read in the discovery session', known: 'read', by: 'claude', cites: [{ path: 'shop/discovery/session-001.md', section: 'Selling' }], assets: [{ path: layout.assets('shop', 'vision.md'), status: 'reference' }] };
 
-  it('is a piece of each epic whose discovery holds a session, carried at the unit\'s discovery, no topic\'s: findings and open questions alone, cites that stay, the imports of the unit\'s discovery as a whole linked — once', () => {
+  it('is a piece of each epic whose discovery holds a session, carried at the unit\'s discovery, no topic\'s: findings and open questions alone, cites that stay, the imports of the unit\'s discovery as a whole linked — once, waiting as a topic does on the unit\'s records', () => {
     dir = world();
     writeState(dir, layout.unit('shop', 'discovery', 'session-001.md'), SESSION_LOG);
     const before = checked().unfinished.find(({ name }) => name === 'shop.discovery');
 
     const faults = refused('shop.discovery', [{ ...selling, assets: [] }, { ref: 'q1', event: 'asked', text: 'Who sets the case size?', by: 'claude', cites: [logCite('shop', 'weights', 'Tie Break')] }, { ref: 'd1', event: 'decided', answers: 'q1', text: 'The trade.', why: 'The session says so.', by: 'claude', given: 'carried', cites: selling.cites }]);
+    const waiting = refusedUntouched(dir, carryArgs(dir, 'shop.discovery', [selling]), { env: SESSION }, harness);
+    carry('shop.discussion.weights', GOOD['shop.discussion.weights']);
     const { ids } = carry('shop.discovery', [selling]);
     const line = JSON.parse(fs.readFileSync(statePath(dir, layout.ledger), 'utf8').split('\n').filter(Boolean).at(-2));
     const again = harness.refuses(dir, ['ledger', 'carry', 'shop.discovery'], { env: SESSION }).error;
 
-    assert.deepStrictEqual([before, faults, Object.keys(ids), [line.unit, line.phase, line.topic], unfinished()['shop.discovery'], again], [
+    assert.deepStrictEqual([before, waiting.endsWith('— shop\'s weights has no record composed'), faults, Object.keys(ids), [line.unit, line.phase, line.topic], unfinished()['shop.discovery'], again], [
       { name: 'shop.discovery', problems: ['has no record composed'] },
+      true,
       breaks('shop', 'own discovery', [
         'entry d1 decides, and nothing is decided in discovery — what its sources settle is a finding, what they leave open a question',
         'entry q1 cites shop/topics/weights/log.md, which is neither its topic\'s own, but its mail, nor the unit\'s beside its topics, nor a discovery session it draws on — a cite names a file that stays with its entry',
@@ -762,7 +765,7 @@ describe('what the check reads once a record is carried', () => {
   it('carries no topic of a unit drawing on an approved spec while any topic of it has no record its verifier passed, or a section of its specs goes uncited: the session\'s order, refused with nothing written, nor anything beside the record (21.10.9)', () => {
     dir = world();
     const commerce = approvedCommerce((text) => `${text}\n## Refunds\n\nWithin a week.\n`);
-    const waits = (/** @type {string[]} */ reasons) => `ledger carry: fumi's licensing is carried once every topic of fumi has its record passed by its verifier and no section of its approved specs goes uncited — a topic carried takes no section found later: ${reasons.join('; ')}`;
+    const waits = (/** @type {string[]} */ reasons) => `ledger carry: fumi's licensing is carried once each record of fumi drawing on the sources its records share — its approved specs, its discovery sessions and the assets its records walk, its own record and a topic it promoted among them — has passed its verifier, and no section of those sources goes uncited: a record carried takes no section found later — ${reasons.join('; ')}`;
     const licensing = () => refusedUntouched(dir, carryArgs(dir, 'fumi.discussion.licensing', GOOD['fumi.discussion.licensing']), { env: SESSION }, harness);
     const others = ['billing', 'search', 'support'];
 
