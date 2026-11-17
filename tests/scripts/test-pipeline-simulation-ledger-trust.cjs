@@ -35,11 +35,10 @@ const { Sim, mappedEpic, answerGate, startPick, startUnit, handoff, enterEntry, 
 const { trustLines } = require('./pipeline-oracle.cjs');
 const { leaningCall } = require('./ledger-world.cjs');
 const { labelAnswers } = require('./labels.cjs');
-const { DAY, UNDRAWN, idOf, lines, history } = require('./trust-world.cjs');
+const { DAY, idOf, lines, history } = require('./trust-world.cjs');
+const { undrawn } = require('./raise-world.cjs');
 
 const DOMAIN = path.join(__dirname, '../../skills/ledger-engine/scripts/domain');
-const decisionPoint = require(path.join(DOMAIN, 'decision-point.cjs'));
-const { decide } = decisionPoint;
 const { TRUST_LOG } = require(path.join(DOMAIN, 'trust-log.cjs'));
 
 /**
@@ -54,9 +53,6 @@ function trustedElsewhere(sim) {
   fs.mkdirSync(sim.configDir, { recursive: true });
   fs.appendFileSync(path.join(sim.configDir, TRUST_LOG), lines(...elsewhere.events));
 }
-
-/** The decision point for the test `t`, on a question whose id draws no blind question. @param {import('node:test').TestContext} t */
-const undrawn = (t) => t.mock.method(decisionPoint, 'decide', (/** @type {any} */ call, /** @type {any} */ at) => decide(call, { ...at, chain: UNDRAWN }));
 
 describe('pipeline simulation: the trust log', () => {
   let sim;

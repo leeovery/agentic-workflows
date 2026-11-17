@@ -46,13 +46,12 @@ const path = require('path');
 const { okSections, okSectionsAsync, refusesAsync, treeSnapshot, head, statePath, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
 const { useTempFolder, createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT, MADE, NOTE, PHASES, ledgerHelpers } = require('./ledger-world.cjs');
-const { SESSION, raiseHelpers } = require('./raise-world.cjs');
-const { MODEL, UNDRAWN } = require('./trust-world.cjs');
+const { SESSION, raiseHelpers, undrawn } = require('./raise-world.cjs');
+const { MODEL } = require('./trust-world.cjs');
 const { labelled } = require('./labels.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
-const { decide } = decisionPoint;
 const { projectName } = require(path.join(SCRIPTS, 'domain/state-checks.cjs'));
 const { MODEL_LINES, countsFrom, stateOf } = require(path.join(SCRIPTS, 'domain/trust-counts.cjs'));
 
@@ -126,14 +125,6 @@ afterEach(() => {
 
 const { write, ledgerText, full, entries } = ledgerHelpers(() => dir);
 const { conversation, inFolder, seals, logText, project, lastEntry, answer, quietOn, labelledAs, raised } = raiseHelpers(() => dir, config, CALL);
-
-/**
- * The decision point for test `t` on a question whose id draws no blind
- * question, so a call the rule lets proceed proceeds
- * (test-engine-raise-blind.cjs).
- * @param {import('node:test').TestContext} t
- */
-const undrawn = (t) => t.mock.method(decisionPoint, 'decide', (/** @type {any} */ call, /** @type {any} */ at) => decide(call, { ...at, chain: UNDRAWN }));
 
 /** The conversation's record of what it sent to check. @returns {Record<string, string>|null} */
 const sentToCheck = () => (fs.existsSync(inFolder('raise-checked.json')) ? JSON.parse(fs.readFileSync(inFolder('raise-checked.json'), 'utf8')) : null);

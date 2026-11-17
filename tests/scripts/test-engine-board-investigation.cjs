@@ -40,6 +40,7 @@ const { startMenuRead } = require('../../skills/ledger-engine/scripts/domain/sta
 const { ledgerHelpers } = require('./ledger-world.cjs');
 const { fixture, misfits, emptyLists, place, standingOn } = require('./board-world.cjs');
 const { labelling } = require('./labels.cjs');
+const { undrawn } = require('./raise-world.cjs');
 
 const BUG = 'kill-all';
 const EARLIER = 'empty-save';
@@ -402,7 +403,8 @@ describe('This session in an investigation (20.12.1)', () => {
     assert.deepStrictEqual([view.fix_direction, view.decided], [{ state: 'picked', stepped_back: FIX_CALL.stepped_back, options: [], pick: null, fix: 'Only stop reading a dying tmux as no sessions' }, []]);
   });
 
-  it('a fix direction the rule let proceed, once logged, reads what stepping back found as Claude\'s call carries it, picked by no one and its options unknown', async () => {
+  it('a fix direction the rule let proceed, once logged, reads what stepping back found as Claude\'s call carries it, picked by no one and its options unknown', async (t) => {
+    undrawn(t);
     takenIn(dispatched('root-cause-validation', []).id);
     const { res } = await okSectionsAsync(dir, ['raise', AT, '--answers', made.fix], { env: { ...env(), ...labelling(FIX_CALL.question, 'behaviour') }, stdin: JSON.stringify(FIX_CALL) });
     run(['investigation-log', 'fix-direction', BUG, '--question', made.fix]);

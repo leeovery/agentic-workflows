@@ -42,14 +42,13 @@ const path = require('path');
 const { ok, output, refusedPristine, screenOf, sectionOf, statePath, fixtureFrom, cleanupFixture, withEnv } = require('./engine-harness.cjs');
 const { useTempFolder, createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT, MADE, NOTE, PHASES, SESSION_ID, ledgerHelpers } = require('./ledger-world.cjs');
-const { SESSION, raiseHelpers } = require('./raise-world.cjs');
-const { DAY, UNDRAWN, lines, history, trustLogHelpers } = require('./trust-world.cjs');
+const { SESSION, raiseHelpers, undrawn } = require('./raise-world.cjs');
+const { DAY, lines, history, trustLogHelpers } = require('./trust-world.cjs');
 const { labelAnswers } = require('./labels.cjs');
 const { auditGate } = require('./gate-audit.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
-const { decide } = decisionPoint;
 const { SHOWN } = require(path.join(SCRIPTS, 'domain/gate.cjs'));
 const { offerDue } = require(path.join(SCRIPTS, 'domain/convergence.cjs'));
 const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
@@ -158,9 +157,6 @@ const agreeing = (h, n, from = 0) => made.here.slice(from, from + n).forEach((en
 
 /** The offer due on `topic` as the decision point reads it: its run, or null. */
 const due = (topic = TOPIC) => withEnv({ LEDGER_CONFIG_DIR: config() }, () => offerDue(dir, UNIT, topic));
-
-/** The decision point for the test `t`, on a question never drawn blind. @param {TestContext} t */
-const undrawn = (t) => t.mock.method(decisionPoint, 'decide', (/** @type {any} */ call, /** @type {any} */ at) => decide(call, { ...at, chain: UNDRAWN }));
 
 /** Why the offer is refused on the note window, drawn as it comes with no word of the person's. */
 const notDue = () => refusedPristine(dir, ['render', 'convergence', AT], { env: conversation() }).error;

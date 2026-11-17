@@ -42,6 +42,7 @@ const { huntIn } = require('../../skills/ledger-engine/scripts/domain/investigat
 const decisionPoint = require('../../skills/ledger-engine/scripts/domain/decision-point.cjs');
 const { showingAnswers } = require('./trust-world.cjs');
 const { labelling } = require('./labels.cjs');
+const { undrawn } = require('./raise-world.cjs');
 const { BUG, HUNT, FEATURE, ENGINE, TODAY, GONE, data, useInvestigationWorld, AT, CLAUDE, made } = require('./investigation-world.cjs');
 
 let dir = ''; // the project
@@ -275,7 +276,8 @@ describe('investigation-log — the hunt under its fixed headings (19.4.1–19.4
     assert.deepStrictEqual(huntIn(huntLog(), 'log.md', []).fixDirection?.body, STEPPED_BACK);
   });
 
-  it('a fix direction the rule lets proceed lands Claude\'s call carrying what the step back found as its evidence (5.1.1), which the fix direction takes as its body in any conversation, the seal holding nothing; a body given besides passed over, said so', async () => {
+  it('a fix direction the rule lets proceed lands Claude\'s call carrying what the step back found as its evidence (5.1.1), which the fix direction takes as its body in any conversation, the seal holding nothing; a body given besides passed over, said so', async (t) => {
+    undrawn(t);
     log('root-cause', ['--entry', made.rootCause]);
     const { res } = await okSectionsAsync(dir, ['raise', AT, '--answers', made.fix], { env: { ...env(), ...labelling(FIX_CALL.question, 'behaviour') }, stdin: JSON.stringify({ ...FIX_CALL, stepped_back: STEPPED_BACK }) });
     const decision = JSON.parse(readState(dir, '.ledger.jsonl').trim().split('\n').at(-1));
