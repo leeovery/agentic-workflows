@@ -250,7 +250,7 @@ describe('pipeline simulation: epic map', () => {
     assert.strictEqual(rowOf(sim.run(['presence', 'scan', wu]), 'discussion', 'gamma'), undefined);
     // The same hook records the ending conversation's transcript in its
     // folder, which every call the sim makes has marked; a conversation that
-    // never ran the workflows has no folder and gets none.
+    // never ran Ledger has no folder and gets none.
     const ending = (/** @type {string} */ id) => JSON.stringify({ session_id: id, transcript_path: `/transcripts/${id}.jsonl`, hook_event_name: 'SessionEnd', reason: 'clear' });
     assert.deepStrictEqual(sim.run(['conversation', 'end'], null, ending('sim-session')), { ok: true, recorded: true });
     assert.deepStrictEqual(sim.run(['conversation', 'end'], null, ending('plain-sess')), { ok: true, recorded: false });
@@ -266,8 +266,8 @@ describe('pipeline simulation: epic map', () => {
     // false disables; the SessionEnd restore sweep answers with nothing to
     // restore and the SessionStart resume — on stderr, its stdout being
     // conversation context — with nothing to resume; opting out takes
-    // `session cleanup` and `session resume` back out and leaves the
-    // workflows' own, the layout hook before every write among them, which
+    // `session cleanup` and `session resume` back out and leaves
+    // Ledger's own, the layout hook before every write among them, which
     // refuses a Write to the ledger and lets one to a manifest through, the
     // brief hook before every dispatch, and the shell hook before every shell
     // command, which refuses a raw commit in the state worktree and lets the
@@ -315,7 +315,7 @@ describe('pipeline simulation: epic map', () => {
     assert.deepStrictEqual(hookVerbs(), {
       SessionEnd: ['engine.cjs" presence cleanup', 'engine.cjs" conversation end'],
       PreToolUse: guardVerbs,
-    }, 'opting out leaves the workflows\' own in place');
+    }, 'opting out leaves Ledger\'s own in place');
     const beforeWrite = (/** @type {string} */ rel) => sim.engine(['layout', 'guard'], null, JSON.stringify({
       hook_event_name: 'PreToolUse', cwd: sim.dir, tool_name: 'Write', tool_input: { file_path: path.join(sim.dir, '.ledger', rel), content: '' },
     }));

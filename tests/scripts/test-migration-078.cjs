@@ -28,7 +28,7 @@
 // brownfield answer, its retired defaults gone and the roadmap's sources
 // following their files; the roadmap as the product, the baseline's docs its
 // assets; the store and the knowledge config, never the knowledge store, in
-// the state; the hooks naming the engine's new path and the workflows' lines
+// the state; the hooks naming the engine's new path and the `.workflows/` lines
 // gone from `.worktreeinclude`; the user-level folder moved and linked;
 // every file written in a place the layout holds; every file the layout has
 // no other place for — implementation folders and the reviews' tracking
@@ -63,7 +63,7 @@
 // the projects with nothing to move, a native baseline, a completed one and
 // one under way, defaults of the plan's format and the project skills alone,
 // read for its task driver after, a task driver's folder whose declaration
-// does not read, a `.worktreeinclude` of the workflows' lines alone,
+// does not read, a `.worktreeinclude` of `.workflows/` lines alone,
 // settings that do not parse, a user-level folder the engine's holds a
 // different copy of a file in, and one that is a link elsewhere. The
 // tracker's store is where its driver's frozen declaration says a project
@@ -817,7 +817,7 @@ describe('migration 078: the move into the layout in .ledger/', () => {
       assert.strictEqual(fs.readFileSync(path.join(dir, '.claude/settings.json'), 'utf8'), json(settings(NEW_ENGINE, '.ledger')));
     });
 
-    it('takes the workflows\' lines out of .worktreeinclude, the person\'s kept', () => {
+    it('takes the .workflows/ lines out of .worktreeinclude, the person\'s kept', () => {
       assert.strictEqual(fs.readFileSync(path.join(dir, '.worktreeinclude'), 'utf8'), '.env.local\n');
     });
   });
@@ -1258,7 +1258,7 @@ describe('migration 078: a small project', () => {
     }
   });
 
-  it('removes a .worktreeinclude that held only the workflows\' lines; renames the permission rules of settings holding no hook of the engine\'s; ignores no tracker\'s files where there is no store; and makes no user-level folder or link where today\'s skills left none', () => {
+  it('removes a .worktreeinclude that held only .workflows/ lines; renames the permission rules of settings holding no hook of the engine\'s; ignores no tracker\'s files where there is no store; and makes no user-level folder or link where today\'s skills left none', () => {
     dir = tempProject('migration-078-include-');
     const user = homes('none');
     try {
@@ -1679,7 +1679,7 @@ describe('migration 078: a small project', () => {
       const { returned } = run(dir);
       assert.deepStrictEqual([fs.readlinkSync(user.old), tree(dotfiles), fs.existsSync(user.current)], [dotfiles, ['config.json'], false]);
       assert.deepStrictEqual(returned, {
-        verify: `${user.old} is a link to ${dotfiles}, not a folder of its own, so nothing in it was moved to ${user.current}: move what the workflows keep there into ${user.current} yourself.`,
+        verify: `${user.old} is a link to ${dotfiles}, not a folder of its own, so nothing in it was moved to ${user.current}: move what it holds into ${user.current} yourself.`,
       });
     } finally {
       homes('none');

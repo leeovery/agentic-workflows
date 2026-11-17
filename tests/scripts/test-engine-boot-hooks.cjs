@@ -3,14 +3,14 @@
 // ---------------------------------------------------------------------------
 // The project's session hooks at boot (ledger-engine/scripts/domain/boot.cjs
 // with domain/session-label.cjs): the tmux label choice reported, the
-// calling conversation's position dropped, the workflows' own hooks and the
+// calling conversation's position dropped, Ledger's own hooks and the
 // label hooks installed or taken out, the sync under the writer lock, and
 // the person's settings kept; and the guards as installed, run by a later
 // session the way Claude Code runs them, with the mod off (6.S31).
 //
 // Layer: verb, and process for the installed command lines. World: the
 // project fixture (boot-world.cjs), a git repository with its state worktree
-// and the workflows' hooks, made once per run and copied; boot runs from
+// and Ledger's hooks, made once per run and copied; boot runs from
 // a copy of the engine beside a stand-in migration runner whose behaviour
 // the test picks through the environment.
 // ---------------------------------------------------------------------------
@@ -25,7 +25,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const { installTmuxStub, tmuxStubEnv, tmuxStubName } = require('./tmux-stub.cjs');
 const harness = require('./engine-harness.cjs');
-const { git, stateGit, commitAll, statePath, layout, writeState, WORKFLOW_HOOKS, LAYOUT_GROUP, GUARD_GROUPS, OWN_HOOKS, hooked } = harness;
+const { git, stateGit, commitAll, statePath, layout, writeState, LEDGER_HOOKS, LAYOUT_GROUP, GUARD_GROUPS, OWN_HOOKS, hooked } = harness;
 const REAL_SCRIPTS = path.dirname(harness.ENGINE);
 const { processStartTime } = require(path.join(REAL_SCRIPTS, 'kernel/process.cjs'));
 const { conversationDir, positionPath } = require(path.join(REAL_SCRIPTS, 'domain/conversation.cjs'));
@@ -130,7 +130,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
 
     assert.strictEqual(res.session_hooks_installed, true);
     assert.deepStrictEqual(res.warnings, []);
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), hooked(WORKFLOW_HOOKS));
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), hooked(LEDGER_HOOKS));
     assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s', 'main']).trim(), 'chore: install Ledger session hooks');
     assert.deepStrictEqual(git(fix.project, ['show', '--name-only', '--pretty=format:', 'main']).trim().split('\n'), ['.claude/settings.json']);
     assert.strictEqual(stateGit(fix.project, ['rev-parse', 'HEAD']).trim(), stateHead, 'no commit on ledger-state');
@@ -139,12 +139,12 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     assert.strictEqual(stateGit(fix.project, ['status', '--porcelain']), '', 'nothing written into the state worktree');
   });
 
-  it('a project with no settings gets the workflows\' own hooks installed — `presence cleanup` and `conversation end`, the layout hook before Write, Edit and NotebookEdit, the brief hook before Agent and SendMessage, and the shell hook before Bash — committed confined, and a second boot changes nothing', () => {
+  it('a project with no settings gets Ledger\'s own hooks installed — `presence cleanup` and `conversation end`, the layout hook before Write, Edit and NotebookEdit, the brief hook before Agent and SendMessage, and the shell hook before Bash — committed confined, and a second boot changes nothing', () => {
     dropSettings();
     const first = bootWith();
     assert.strictEqual(first.session_hooks_installed, true);
     assert.deepStrictEqual(first.warnings, []);
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), hooked(WORKFLOW_HOOKS));
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), hooked(LEDGER_HOOKS));
     assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore: install Ledger session hooks');
     assert.deepStrictEqual(git(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n'), ['.claude/settings.json']);
     const head = git(fix.project, ['rev-parse', 'HEAD']);
@@ -157,10 +157,10 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
 
   it('a project holding the layout group alone gains the brief and shell groups beside it — the foreign groups as they were, a foreign Bash group among them — committed, and a second boot changes nothing', () => {
     const theirs = { matcher: 'Bash', hooks: [{ type: 'command', command: 'echo theirs' }] };
-    commitSettings(JSON.stringify({ hooks: { SessionEnd: [{ hooks: WORKFLOW_HOOKS }], PreToolUse: [theirs, LAYOUT_GROUP] } }, null, 2) + '\n');
+    commitSettings(JSON.stringify({ hooks: { SessionEnd: [{ hooks: LEDGER_HOOKS }], PreToolUse: [theirs, LAYOUT_GROUP] } }, null, 2) + '\n');
     const first = bootWith();
     assert.strictEqual(first.session_hooks_installed, true);
-    assert.deepStrictEqual(settings(), { hooks: { SessionEnd: [{ hooks: WORKFLOW_HOOKS }], PreToolUse: [theirs, ...GUARD_GROUPS] } });
+    assert.deepStrictEqual(settings(), { hooks: { SessionEnd: [{ hooks: LEDGER_HOOKS }], PreToolUse: [theirs, ...GUARD_GROUPS] } });
     assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore: install Ledger session hooks');
     const head = git(fix.project, ['rev-parse', 'HEAD']);
 
@@ -204,7 +204,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     }
   });
 
-  it('labels on adds `session cleanup` beside the workflows\' own, in one group, and a SessionStart `session resume` matched to resume — one commit', () => {
+  it('labels on adds `session cleanup` beside Ledger\'s own, in one group, and a SessionStart `session resume` matched to resume — one commit', () => {
     recordChoice(true);
     const res = bootWith();
     assert.strictEqual(res.session_hooks_installed, true);
@@ -213,21 +213,21 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     assert.strictEqual(bootWith().session_hooks_installed, false);
   });
 
-  it('labels off wants the workflows\' own alone — a `session cleanup` and a `session resume` left behind come back out', () => {
+  it('labels off wants Ledger\'s own alone — a `session cleanup` and a `session resume` left behind come back out', () => {
     recordChoice(false);
     commitSettings(LABELS_ON);
     const res = bootWith();
     assert.strictEqual(res.session_hooks_installed, true);
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), hooked(WORKFLOW_HOOKS));
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), hooked(LEDGER_HOOKS));
   });
 
-  it('labels never asked wants the workflows\' own alone too — stale label hooks come back out', () => {
+  it('labels never asked wants Ledger\'s own alone too — stale label hooks come back out', () => {
     assert.strictEqual(bootWith().session_hooks_installed, false, 'the fixture already carries it');
     assert.ok(!('defaults' in JSON.parse(fs.readFileSync(statePath(fix.project, layout.projectManifest), 'utf8'))), 'no choice recorded');
     commitSettings(LABELS_ON);
     const res = bootWith();
     assert.strictEqual(res.session_hooks_installed, true);
-    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), hooked(WORKFLOW_HOOKS));
+    assert.strictEqual(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8'), hooked(LEDGER_HOOKS));
   });
 
   it('the hook sync waits on a live writer lock — the opt-in read and the write are one hold', (t) => {

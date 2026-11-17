@@ -12,13 +12,15 @@
 // and the glossary call the product Ledger, never the name it was built
 // under, but where history tells of it or the glossary's avoid line names
 // it (23.S19, 23.1.4). The skills, the briefs, the agents, the engine, the
-// book and the README never call it the workflows either, in any of the
-// forms `WORKFLOWS_NAMED` lists — "the workflows", "workflows'" before a
-// word, "Workflows" opening a sentence on a verb, a workflow(s) state or
-// project, the singular before a word only the product takes or a verb,
-// "the workflow engine", "the Workflow" — even split across a line, but in
-// history, a migration and the glossary's avoid line; each form is held to
-// sentences of its own, and none to an ordinary word. Every link of the
+// migrations not yet released, the tests, the book and the README never
+// call it the workflows either, in any of the forms `WORKFLOWS_NAMED`
+// lists — "the workflows", "workflows'" before a word, "Workflows" opening
+// a sentence on a verb, a workflow(s) state or project, the singular before
+// a word only the product takes or a verb, "the workflow engine", "the
+// Workflow" — even split across a line, but in history, a released
+// migration and its suite, the tests' fixtures, what a run writes, this
+// guard's own sentences and the glossary's avoid line; each form is held
+// to sentences of its own, and none to an ordinary word. Every link of the
 // book's and the README's resolves, to its file and the heading it names.
 //
 // Layer: unit. World: the repository's own files, read.
@@ -96,7 +98,7 @@ const PRODUCT_VERBS = 'run|runs|can|keep|keeps|carry|carries|read|reads|write|wr
  */
 const WORKFLOWS_NAMED = [
   { form: '"the workflows"', pattern: new RegExp(String.raw`\bthe${PARTS}workflows\b`, 'gi'), catches: ['The workflows run on Claude Code', '> The mod draws the\n> workflows\' menus', '// the\n// workflows', 'nothing in the \' +\n  \'workflows runs'] },
-  { form: '"workflows\'" before a word', pattern: new RegExp(String.raw`${FREE}workflows['’](?=[ \t]+[a-z])`, 'gi'), catches: ['it holds workflows\' state', 'test(\'workflows’ harness stays on']},
+  { form: '"workflows\'" before a word', pattern: new RegExp(String.raw`${FREE}workflows\\?['’](?=[ \t]+[a-z])`, 'gi'), catches: ['it holds workflows\' state', String.raw`it holds workflows\' state`, 'test(\'workflows’ harness stays on'] },
   { form: '"Workflows" opening a sentence on a verb', pattern: new RegExp(String.raw`(?<=^[ \t>#*/|⚑(\["'\x60-]*|[.!?]\s+)Workflows(?=${PARTS}(?:${PRODUCT_VERBS})\b)`, 'gm'), catches: ['> Workflows run on Claude Code 2.1.287', 'the line before\n- Workflows offer a first session a short walk', '| Workflows keep |', '\'Workflows read up to version 3', '⚑ Workflows need a newer Claude Code', 'It stopped. Workflows can rename it'] },
   { form: 'a workflow(s) state or project', pattern: new RegExp(String.raw`${FREE}workflows?${PARTS}(?:state|project)s?\b`, 'gi'), catches: ['there is no workflows state here', 'a workflow project', 'two workflows projects'] },
   { form: 'the singular before a word only the product takes', pattern: new RegExp(String.raw`${FREE}workflow${PARTS}(?:harness|conversation|session|skill|prose|position|ontology|vocabulary|content|render|value|migration|side|agent)s?\b`, 'gi'), catches: ['sets the workflow harness', 'A workflow\n * conversation\'s compaction', 'chore: apply workflow migrations', 'its workflow side in', 'No custom workflow agents exist'] },
@@ -117,19 +119,34 @@ const ORDINARY = [
   'Workflows differ between teams.',
   '## Git Workflow',
 ];
-/** Where it stands in what ships: every migration, the released ones never edited and 072–081's sweep still to come, and a file whose change is in flight elsewhere. */
-const NAMES_IT_STILL = [
-  path.join('skills', 'ledger-migrate', 'scripts', 'migrations') + path.sep,
-  path.join('skills', 'ledger-engine', 'scripts', 'domain', 'brief-names.cjs'),
+/** The last migration released: its words, and those its suite pins, are never edited. */
+const LAST_RELEASED = 72;
+/** A migration's file or its suite's, its number captured. */
+const MIGRATION_NUMBERED = /^(?:skills\/ledger-migrate\/scripts\/migrations\/|tests\/scripts\/test-migration-)(\d{3})\b/;
+/** Where it stands in the tests: data standing for a project's own files, the prose runs' log, and this guard's own sentences. */
+const TESTS_NAMING_IT = [
+  path.join('tests', 'fixtures'),
+  path.join('tests', 'prose', '.agent-tool-use.log'),
+  path.join('tests', 'scripts', 'test-docs.cjs'),
 ];
+/** What a run writes, never read: every folder so named. */
+const CACHE = '.cache';
 
 /** @param {string} rel from the repository's root */
 const read = (rel) => fs.readFileSync(path.join(REPO, rel), 'utf8');
 
-/** Every file under `skills/` and `agents/`, from the repository's root, but those `NAMES_IT_STILL` lets stand. */
-const productFiles = () => ['skills', 'agents']
-  .flatMap((top) => fs.readdirSync(path.join(REPO, top), { recursive: true, encoding: 'utf8' }).map((rel) => path.join(top, rel)))
-  .filter((rel) => !NAMES_IT_STILL.some((skip) => rel.startsWith(skip)) && fs.statSync(path.join(REPO, rel)).isFile());
+/** Whether `rel` is a released migration's file or its suite's. @param {string} rel */
+const released = (rel) => Number(rel.split(path.sep).join('/').match(MIGRATION_NUMBERED)?.[1] ?? Infinity) <= LAST_RELEASED;
+
+/**
+ * Every file under `tops`, from the repository's root, but a released
+ * migration's, those `skips` names and those in them, never descending into
+ * a cache. @param {string[]} tops @param {string[]} [skips] @returns {string[]}
+ */
+const filesUnder = (tops, skips = []) => tops.flatMap((top) => fs.readdirSync(path.join(REPO, top), { withFileTypes: true })
+  .map((entry) => ({ entry, rel: path.join(top, entry.name) }))
+  .filter(({ entry, rel }) => entry.name !== CACHE && !skips.includes(rel) && !released(rel))
+  .flatMap(({ entry, rel }) => (entry.isDirectory() ? filesUnder([rel], skips) : entry.isFile() ? [rel] : [])));
 
 /**
  * Each place of `rel`'s that names the product the workflows: where, as
@@ -241,11 +258,20 @@ describe('the user docs (23.4)', () => {
     assert.deepStrictEqual(linesNaming(Object.values(surfaces).flat(), OLD_NAMES, TELLS_OF_IT), []);
   });
 
-  it('the skills, the briefs, the agents, the engine, the docs and the README call the product Ledger, never the workflows, but the glossary\'s avoid line naming it', () => {
-    const files = [...productFiles(), ...bookFiles().filter((rel) => rel !== path.join('docs', 'history.md')), 'README.md'];
+  it('the skills, the briefs, the agents, the engine, the migrations not yet released, the tests, the docs and the README call the product Ledger, never the workflows, but the glossary\'s avoid line naming it', () => {
+    const files = [
+      ...filesUnder(['skills', 'agents']),
+      ...filesUnder(['tests'], TESTS_NAMING_IT),
+      ...bookFiles().filter((rel) => rel !== path.join('docs', 'history.md')),
+      'README.md',
+    ];
     const named = files.flatMap(workflowsNamed);
+    const migration = (/** @type {string} */ name) => path.join('skills', 'ledger-migrate', 'scripts', 'migrations', name);
 
     assert.ok(files.includes(GLOSSARY) && files.length > 100, 'the guard reads what ships');
+    assert.ok(files.includes(migration('073-environment-linters.cjs')) && files.includes(migration('079-records.md')), 'the guard reads the migrations not yet released');
+    assert.ok(!files.includes(migration('072-roadmap-kinds-and-notes.cjs')) && !files.includes(path.join('tests', 'scripts', 'test-migration-072.cjs')), 'the guard passes a released migration and its suite by');
+    assert.ok(files.includes(path.join('tests', 'scripts', 'engine-harness.cjs')) && !files.some((rel) => rel.startsWith(TESTS_NAMING_IT[0])), 'the guard reads the tests, never their fixtures');
     assert.ok(named.some(({ stands }) => stands), 'the guard meets the glossary\'s avoid line');
     assert.deepStrictEqual(named.filter(({ stands }) => !stands).map(({ at }) => at), []);
   });

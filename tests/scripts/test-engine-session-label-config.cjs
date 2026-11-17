@@ -49,16 +49,16 @@ describe('engine session label-config', () => {
     assert.strictEqual(fs.readFileSync(path.join(world.dir, '.ledger', 'manifest.json'), 'utf8').slice(-2), '}\n', 'the manifest\'s own formatting');
   });
 
-  it('opting out records false, takes `session cleanup` out, leaves the workflows\' own hooks standing, and commits both', () => {
+  it('opting out records false, takes `session cleanup` out, leaves Ledger\'s own hooks standing, and commits both', () => {
     engine(['session', 'label-config', 'true']);
     const res = engine(['session', 'label-config', 'false']);
     assert.deepStrictEqual(res, { ok: true, tmux_labels: false });
     assert.strictEqual(projectManifest().defaults.tmux_labels, false);
-    assert.deepStrictEqual(settings(), LABELS_OFF, 'the workflows\' own hooks are no label preference');
+    assert.deepStrictEqual(settings(), LABELS_OFF, 'Ledger\'s own hooks are no label preference');
     assert.deepStrictEqual({ state: head(stateGit), code: head(git) }, CHOICE);
   });
 
-  it('declining on a project the hooks never reached still installs the workflows\' own hooks', () => {
+  it('declining on a project the hooks never reached still installs Ledger\'s own hooks', () => {
     const res = engine(['session', 'label-config', 'false']);
     assert.deepStrictEqual(res, { ok: true, tmux_labels: false });
     assert.deepStrictEqual(settings(), LABELS_OFF);
@@ -134,7 +134,7 @@ describe('syncSessionHooks', () => {
   afterEach(teardown);
 
   const BOTH = { session: true, ledger: true };
-  const WORKFLOWS = { session: false, ledger: true };
+  const LEDGER_ONLY = { session: false, ledger: true };
   const NONE = { session: false, ledger: false };
 
   it('installs the labels-on set into an absent settings file — one group per matcher, the SessionStart group matched to resume, the layout, brief and shell groups under PreToolUse', () => {
@@ -143,8 +143,8 @@ describe('syncSessionHooks', () => {
     assert.ok(fs.readFileSync(settingsPath(), 'utf8').endsWith('}\n'));
   });
 
-  it('installs the workflows\' own alone while labels are off — no SessionStart event at all', () => {
-    assert.deepStrictEqual(syncSessionHooks(world.dir, WORKFLOWS), { changed: true });
+  it('installs Ledger\'s own alone while labels are off — no SessionStart event at all', () => {
+    assert.deepStrictEqual(syncSessionHooks(world.dir, LEDGER_ONLY), { changed: true });
     assert.deepStrictEqual(settings(), LABELS_OFF);
   });
 
@@ -185,7 +185,7 @@ describe('syncSessionHooks', () => {
         ],
       },
     });
-    assert.deepStrictEqual(syncSessionHooks(world.dir, WORKFLOWS), { changed: true });
+    assert.deepStrictEqual(syncSessionHooks(world.dir, LEDGER_ONLY), { changed: true });
     assert.deepStrictEqual(settings(), {
       hooks: {
         SessionEnd: [{ hooks: [PRESENCE_HOOK, END_HOOK] }],
@@ -197,7 +197,7 @@ describe('syncSessionHooks', () => {
         ],
       },
     });
-    assert.deepStrictEqual(syncSessionHooks(world.dir, WORKFLOWS), { changed: false });
+    assert.deepStrictEqual(syncSessionHooks(world.dir, LEDGER_ONLY), { changed: false });
   });
 
   it('a second sync changes nothing — the hooks are recognised by their command, whatever surrounds them', () => {
@@ -246,7 +246,7 @@ describe('syncSessionHooks', () => {
       },
     });
 
-    assert.deepStrictEqual(syncSessionHooks(world.dir, WORKFLOWS), { changed: true });
+    assert.deepStrictEqual(syncSessionHooks(world.dir, LEDGER_ONLY), { changed: true });
 
     assert.deepStrictEqual(settings(), {
       hooks: {
@@ -254,18 +254,18 @@ describe('syncSessionHooks', () => {
         PreToolUse: [GUARD_GROUPS[1], { matcher: 'Bash', hooks: [GUARD_GROUPS[2].hooks[0], theirs] }, LAYOUT_GROUP],
       },
     });
-    assert.deepStrictEqual(syncSessionHooks(world.dir, WORKFLOWS), { changed: false });
+    assert.deepStrictEqual(syncSessionHooks(world.dir, LEDGER_ONLY), { changed: false });
   });
 
   it('the mark is the exact `engine.cjs" <verb>` form — a re-quoted command is not recognised', () => {
     writeSettings({ hooks: { SessionEnd: [{ hooks: [{ type: 'command', command: "node '$CLAUDE_PROJECT_DIR/.claude/skills/ledger-engine/scripts/engine.cjs' presence cleanup" }] }] } });
-    assert.deepStrictEqual(syncSessionHooks(world.dir, WORKFLOWS), { changed: true });
+    assert.deepStrictEqual(syncSessionHooks(world.dir, LEDGER_ONLY), { changed: true });
     assert.strictEqual(settings().hooks.SessionEnd.length, 2, 'the re-quoted copy reads as foreign and ours lands beside it');
   });
 
-  it('turning labels off takes `session cleanup` and `session resume` out — the emptied SessionStart event with them — and leaves the workflows\' own; nothing wanted empties the file', () => {
+  it('turning labels off takes `session cleanup` and `session resume` out — the emptied SessionStart event with them — and leaves Ledger\'s own; nothing wanted empties the file', () => {
     syncSessionHooks(world.dir, BOTH);
-    assert.deepStrictEqual(syncSessionHooks(world.dir, WORKFLOWS), { changed: true });
+    assert.deepStrictEqual(syncSessionHooks(world.dir, LEDGER_ONLY), { changed: true });
     assert.deepStrictEqual(settings(), LABELS_OFF);
     assert.deepStrictEqual(syncSessionHooks(world.dir, NONE), { changed: true });
     assert.deepStrictEqual(settings(), {}, 'the hook, its group, the event, and the emptied hooks object all go');

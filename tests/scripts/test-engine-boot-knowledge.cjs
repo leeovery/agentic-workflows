@@ -10,7 +10,7 @@
 // waited on.
 //
 // Layer: verb. World: the project fixture (boot-world.cjs), a git repository
-// with its state worktree and the workflows' hooks, made once per run and
+// with its state worktree and Ledger's hooks, made once per run and
 // copied; boot runs from a copy of the engine beside a stand-in migration
 // runner whose behaviour the test picks through the environment.
 // ---------------------------------------------------------------------------
@@ -64,7 +64,7 @@ describe('engine boot', () => {
       github_squash_offer: false,
       // The fixture's first code commit, its `.gitignore` naming the state,
       // is the setup's own, in the second the state arrived: no history
-      // came before the workflows.
+      // came before Ledger.
       brownfield_signal: {
         root_date: '2026-01-01', ledger_date: '2026-01-01', commits_total: 2, commits_before: 0,
         history_before: [], files_at_arrival: 0, tree_at_arrival: [],

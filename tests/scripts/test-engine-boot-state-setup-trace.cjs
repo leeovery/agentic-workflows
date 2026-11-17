@@ -50,7 +50,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
         'project settings commit failed, and the next boot tries again',
       ]);
       assert.strictEqual(tip(main, 'main'), head);
-      assert.strictEqual(git(main, ['diff', '--cached', '--name-only']), 'README.md\n', 'nothing of the workflows\' left staged');
+      assert.strictEqual(git(main, ['diff', '--cached', '--name-only']), 'README.md\n', 'nothing of Ledger\'s left staged');
       allow();
       git(main, ['commit', '-q', '-m', 'the person\'s own']);
 
@@ -61,7 +61,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
       assert.strictEqual(git(main, ['status', '--porcelain']), '');
     });
 
-    it('a settings file holding the person\'s own uncommitted edit beside the hooks is left as it is, with a warning — their edit is never committed under the workflows\' name', () => {
+    it('a settings file holding the person\'s own uncommitted edit beside the hooks is left as it is, with a warning — their edit is never committed under Ledger\'s name', () => {
       const main = projectInWorld();
       const allow = refusingCommits(main);
       boot(main);
@@ -78,7 +78,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
       ]);
       assert.strictEqual(readFile(main, '.claude/settings.json'), theirs);
       assert.strictEqual(git(main, ['ls-tree', '--name-only', 'HEAD', '--', '.claude']), '', 'nothing of the file committed');
-      assert.strictEqual(git(main, ['log', '-1', '--format=%s']).trim(), 'chore: ignore .ledger/, Ledger\'s state', 'the line, the workflows\' alone, committed');
+      assert.strictEqual(git(main, ['log', '-1', '--format=%s']).trim(), 'chore: ignore .ledger/, Ledger\'s state', 'the line, Ledger\'s alone, committed');
     });
 
     it('a .gitignore of the person\'s never committed takes the line, and is left for them to commit, with a warning', () => {

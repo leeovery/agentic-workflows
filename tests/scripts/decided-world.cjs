@@ -190,7 +190,7 @@ function decidedBoardHelpers(dir) {
   /** The conversation's position at a place, as its labelling records it. @param {string[]} place */
   const at = (place) => ok(dir(), ['session', 'label', ...place], { env: SESSION });
 
-  /** A unit made as the workflows make one, of `type`: when its manifest was stamped. @param {string} name @param {string} type */
+  /** A unit made as Ledger makes one, of `type`: when its manifest was stamped. @param {string} name @param {string} type */
   function made(name, type) {
     ok(dir(), ['workunit', 'create', name, type, '--description', `The ${name} work`, '--session-log-file', writeState(dir(), layout.cache(name, 'session-001.md'), `# ${name}\n`)]);
     return readManifest(dir(), name).created;

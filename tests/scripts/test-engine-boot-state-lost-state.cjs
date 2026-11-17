@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // Lost state (ledger-engine/scripts/domain/state-checks.cjs,
-// domain/boot.cjs, domain/code-trace.cjs): the workflows' trace in the code
+// domain/boot.cjs, domain/code-trace.cjs): Ledger's trace in the code
 // read across the repository, the stop with nothing written — the trust
 // log's waiting events landed all the same — its screen, and the fresh
 // start on yes (`boot --start-again`).
@@ -37,7 +37,7 @@ const world = useWorld();
 // --- lost state -------------------------------------------------------------------
 
 /**
- * A project whose code tree holds the workflows' trace — the state's ignore
+ * A project whose code tree holds Ledger's trace — the state's ignore
  * line and the hooks, committed as boot leaves them — with no state branch
  * here or on its remote, the code dated in the past.
  * @param {{remote?: string|null, trace?: Record<string, string>}} [opts]
@@ -70,7 +70,7 @@ function loseState(main, bare = null) {
 const WRAP = '\u00a0'.repeat(8);
 
 describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
-  it('gone here and on the remote, in a project whose committed settings hold the workflows\' hooks, stops boot with nothing written, the conversation unstamped — and the next boot stops again', () => {
+  it('gone here and on the remote, in a project whose committed settings hold Ledger\'s hooks, stops boot with nothing written, the conversation unstamped — and the next boot stops again', () => {
     const bare = harness.bareRepo(path.join(world(), 'portal.git'));
     const main = lostProject({ remote: bare, trace: { '.claude/settings.json': OWN_SETTINGS } });
     const before = untouched(main, bare);
@@ -240,7 +240,7 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
     });
   });
 
-  it('a .worktreeinclude naming the state is no trace — no version of the workflows wrote such a line — so the project is being set up', () => {
+  it('a .worktreeinclude naming the state is no trace — no version of Ledger wrote such a line — so the project is being set up', () => {
     const main = lostProject({ trace: { '.worktreeinclude': 'node_modules\n.ledger/.knowledge/store.bin\n' } });
 
     assert.strictEqual(boot(main).state, 'ready');
@@ -295,7 +295,7 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
     assert.deepStrictEqual([next('y'), next('n')], [{ kind: 'engine', argv: ['boot', '--start-again'] }, null], 'the yes leads to the fresh start, the no to nothing');
   });
 
-  it('on yes, `boot --start-again` makes a fresh orphan branch and says the state was started again, the conversation stamped — the read of the code the yes promised comes on Claude\'s entry too, its signal reading all the code as before the workflows', () => {
+  it('on yes, `boot --start-again` makes a fresh orphan branch and says the state was started again, the conversation stamped — the read of the code the yes promised comes on Claude\'s entry too, its signal reading all the code as before Ledger', () => {
     const bare = harness.bareRepo(path.join(world(), 'portal.git'));
     const main = lostProject({ remote: bare });
     const code = tip(main, 'main');

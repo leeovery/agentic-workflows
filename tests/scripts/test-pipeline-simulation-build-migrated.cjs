@@ -52,7 +52,7 @@ const {
 
 const WU = 'folio';
 
-/** The old spec, as the workflows from before Ledger wrote it. */
+/** The old spec, as written before Ledger. */
 const OLD_SPEC = '# Specification: Folio\n\n## Pages\n\nA page holds a title and its text.\n\n## Search\n\nA page is found by any word it holds.\n';
 
 /** The area the move joins the old spec into. */

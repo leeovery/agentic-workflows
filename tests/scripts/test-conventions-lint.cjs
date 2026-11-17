@@ -436,11 +436,11 @@ function checkLoadLines(files) {
 // Check 8 — H1 category rule (scoped to the `ledger` and `ledger-*` SKILL.md backbones).
 // Processing backbones (ledger-*-process, plus discovery — a phase that
 // talks — the engine and the project-level skills — roadmap, help) open with
-// a title H1; every other workflow backbone — the start skill and the epic's menu —
+// a title H1; every other backbone of Ledger's — the start skill and the epic's menu —
 // carries none.
 // ---------------------------------------------------------------------------
 
-/** Whether a skill is one of the workflows' own — `ledger` or `ledger-*`. @param {string} name */
+/** Whether a skill is one of Ledger's own — `ledger` or `ledger-*`. @param {string} name */
 function isOurs(name) {
   return name === 'ledger' || name.startsWith('ledger-');
 }
@@ -458,7 +458,7 @@ function checkH1Category(files) {
   const H1_KNOWN = new Set(['ledger-discovery', 'ledger-engine']);
   for (const file of files) {
     const name = skillNameOf(file);
-    if (!name || !isOurs(name)) continue; // only workflow backbones
+    if (!name || !isOurs(name)) continue; // only Ledger's backbones
     const mustHaveH1 = /^ledger-.+-process$/.test(name) || H1_KNOWN.has(name);
     const lines = readLines(file);
     const first = lines[firstContentIndex(lines)] || '';
@@ -504,7 +504,7 @@ function posix(file) {
   return file.split(path.sep).join('/');
 }
 
-// In scope: reference files under a workflow skill (skills/*/references/…).
+// In scope: reference files under a Ledger skill (skills/*/references/…).
 // Matched on path suffix (not repo-anchored) so the same logic drives corpus
 // and temp-fixture tests.
 function isReferenceFile(file) {
@@ -665,8 +665,8 @@ function checkInertLoadChrome(files) {
 // or an @if/@foreach directive) is refused: what has a shape of its own or
 // reads state renders from the engine, and a plain line naming values the
 // conversation holds is Claude's own, said inline, never fenced. The capture
-// skills (`ledger-log-*`) are exempt: they are not workflow skills, and
-// deliberately structureless.
+// skills (`ledger-log-*`) are exempt: they are no flow of Ledger's: no
+// steps, deliberately structureless.
 // ---------------------------------------------------------------------------
 
 // The capture skills, read from the folder directly under the corpus root's
@@ -1119,7 +1119,7 @@ function checkInstalledDispatchPaths(files) {
 // skill the conversation opens on (CONVENTIONS' The Framework Load): each of
 // the engine's HANDOFF_TARGETS — every skill a handoff lands on, the start skill,
 // the user's way in, among them — opens its `## Instructions` section on the
-// framework load. Every other workflow backbone carries neither the section
+// framework load. Every other backbone of Ledger's carries neither the section
 // nor the load: a skill only ever opened in place runs in a conversation that
 // already holds the framework, and the capture skills are exempt.
 // ---------------------------------------------------------------------------
@@ -1237,7 +1237,7 @@ function checkFrameworkLoadsOnce(files) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 30 — no design tool is named in the workflows' prose (9.10.19). A
+// Check 30 — no design tool is named in Ledger's prose (9.10.19). A
 // design lives in the unit as a file and its live link, whatever drew it, so
 // the prose names the artifact and never the tool. The list is the tools a
 // spike is likeliest to come from, each a proper noun no plain word shares —
@@ -1253,7 +1253,7 @@ function checkNoDesignTools(files) {
   for (const file of files) {
     readLines(file).forEach((line, i) => {
       const hit = line.match(DESIGN_TOOL);
-      if (hit) out.push({ file, line: i + 1, message: `"${hit[1]}" names a design tool — the workflows name the design, its file and its live link, never the tool that drew it` });
+      if (hit) out.push({ file, line: i + 1, message: `"${hit[1]}" names a design tool — Ledger names the design, its file and its live link, never the tool that drew it` });
     });
   }
   return out;
@@ -1282,7 +1282,7 @@ function checkSendScratch(files) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 32 — a Bash grant names the state under `.ledger/`. The workflows keep
+// Check 32 — a Bash grant names the state under `.ledger/`. Ledger keeps
 // their state there, so a grant on a `.workflows/` path matches no call the
 // skill's prose makes, and the call stops for permission.
 // ---------------------------------------------------------------------------
@@ -1302,7 +1302,7 @@ function checkGrantsNameTheStateRoot(files) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 33 — nothing the workflows ship writes the project's CLAUDE.md
+// Check 33 — nothing Ledger ships writes the project's CLAUDE.md
 // (8.9.5, 8.S27). It loads into every session and subagent and is the
 // person's to write: a pointer there to the product record is their line. No
 // prose sentence tells a session to write, add to or change it — a sentence
@@ -1339,12 +1339,12 @@ function checkNoClaudeMdWrites(files, code = []) {
   const out = [];
   for (const file of files) {
     readLines(file).forEach((line, i) => {
-      if (line.split(/(?<=[.!?;])\s+/).some(writesClaudeMd)) out.push({ file, line: i + 1, message: 'writes the project\'s CLAUDE.md — it is the person\'s to write; the workflows never change it' });
+      if (line.split(/(?<=[.!?;])\s+/).some(writesClaudeMd)) out.push({ file, line: i + 1, message: 'writes the project\'s CLAUDE.md — it is the person\'s to write; Ledger never changes it' });
     });
   }
   for (const file of code) {
     readLines(file).forEach((line, i) => {
-      if (/CLAUDE\.md/.test(uncommented(line))) out.push({ file, line: i + 1, message: 'names CLAUDE.md in code — the workflows never write the project\'s CLAUDE.md' });
+      if (/CLAUDE\.md/.test(uncommented(line))) out.push({ file, line: i + 1, message: 'names CLAUDE.md in code — Ledger never writes the project\'s CLAUDE.md' });
     });
   }
   return out;
@@ -1910,7 +1910,7 @@ test('check 8 (H1 category) — enforces the processing/backbone split', () => {
     const procNoH1 = write(dir, 'skills/ledger-foo-process/SKILL.md', 'One-liner purpose.\n\n## Step 0\n');
     assert.strictEqual(checkH1Category([procNoH1]).length, 1, 'processing backbone without H1 must be caught');
 
-    const startWithH1 = write(dir, 'skills/ledger/SKILL.md', '# Workflow Start\n\nOne-liner.\n');
+    const startWithH1 = write(dir, 'skills/ledger/SKILL.md', '# Ledger Start\n\nOne-liner.\n');
     assert.strictEqual(checkH1Category([startWithH1]).length, 1, 'start backbone with H1 must be caught');
 
     const navWithH1 = write(dir, 'skills/ledger-continue-foo/SKILL.md', '# Continue Foo\n\nOne-liner.\n');
@@ -1918,7 +1918,7 @@ test('check 8 (H1 category) — enforces the processing/backbone split', () => {
 
     const procGood = write(dir, 'skills/ledger-bar-process/SKILL.md', '# Bar Process\n\nOne-liner.\n');
     const menuGood = write(dir, 'skills/ledger-continue-epic/SKILL.md', 'One-liner purpose.\n\n## Step 0\n');
-    const engineGood = write(dir, 'skills/ledger-engine/SKILL.md', '# Workflow Engine\n\nOne-liner.\n');
+    const engineGood = write(dir, 'skills/ledger-engine/SKILL.md', '# Ledger Engine\n\nOne-liner.\n');
     const discoveryGood = write(dir, 'skills/ledger-discovery/SKILL.md', '---\nname: ledger-discovery\n---\n\n# Discovery\n\nOne-liner.\n');
     assert.strictEqual(checkH1Category([procGood, menuGood, engineGood, discoveryGood]).length, 0, 'correctly-categorised backbones must pass');
 
@@ -1946,7 +1946,7 @@ test('check 10 (attribution) — catches missing/wrong attribution', () => {
     assert.strictEqual(checkAttribution([wrong]).length, 1, 'non-sanctioned attribution must be caught');
 
     const refForm = write(dir, 'skills/x/references/c.md', '# C\n\n*Reference for **[skill-name](../SKILL.md)***\n\n---\n');
-    const sharedForm = write(dir, 'skills/x/references/d.md', '# D\n\n*Shared reference for all workflow skills.*\n');
+    const sharedForm = write(dir, 'skills/x/references/d.md', '# D\n\n*Shared reference for all Ledger skills.*\n');
     assert.strictEqual(checkAttribution([refForm, sharedForm]).length, 0, 'sanctioned forms must pass');
   });
 });
@@ -2741,7 +2741,7 @@ test('check 26 (installed dispatch paths) — catches an agent file or a labelle
   });
 });
 
-test('check 27 (framework load) — catches a skill a conversation opens on whose Instructions section is missing or opens on anything else, and an Instructions section or framework load on a skill only ever opened in place; permits the opening load with a trailing clause, a recovery protocol\'s re-load, fenced content, a capture skill, and a skill outside the workflows', () => {
+test('check 27 (framework load) — catches a skill a conversation opens on whose Instructions section is missing or opens on anything else, and an Instructions section or framework load on a skill only ever opened in place; permits the opening load with a trailing clause, a recovery protocol\'s re-load, fenced content, a capture skill, and a skill outside Ledger', () => {
   withTemp((dir) => {
     const LOAD = 'Load **[framework.md](../ledger-shared/references/framework.md)** and follow its instructions as written.';
     const start = write(dir, 'skills/ledger/SKILL.md', [
@@ -2815,7 +2815,7 @@ test('check 33 (no CLAUDE.md writes) — 8.S27: catches a sentence telling a ses
       '4. **Project conventions**: the `CLAUDE.md` path, the project skill paths.',
       'Do NOT modify commands based on other project documentation (CLAUDE.md, etc.).',
       'The product record is not CLAUDE.md, which is the person\'s to write.',
-      'The workflows never write CLAUDE.md.',
+      'Ledger never writes CLAUDE.md.',
       'Never change CLAUDE.md.',
       'Recorded in the product record, never in CLAUDE.md.',
       'The engine renders the record so a line the person adds to CLAUDE.md can point at it.',
@@ -2879,7 +2879,7 @@ test('check 34 (the build\'s prose) — 12.S46: catches a personal skill, a red-
       ['agents/ledger-builder.md', 4, 'names a personal skill'],
     ], `each line is caught once, at its line, got ${report(v)}`);
     const clean = write(dir, `skills/${BUILD_SKILL}/references/loop.md`, '# Loop\n\nThe checklist holds it; Invoke `/ledger-review-process epic x`; run `.claude/skills/ledger-engine/scripts/engine.cjs`.\n');
-    assert.strictEqual(checkBuildProse([skill, clean]).filter((x) => x.file === clean).length, 0, 'the workflows\' own skills and checklists are no personal skill and no instruction');
+    assert.strictEqual(checkBuildProse([skill, clean]).filter((x) => x.file === clean).length, 0, 'Ledger\'s own skills and checklists are no personal skill and no instruction');
   });
 });
 

@@ -29,7 +29,7 @@ const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const harness = require('./engine-harness.cjs');
-const { git, stateGit, commitAll, statePath, layout, writeState, WORKFLOW_HOOKS, OWN_HOOKS, hooked } = harness;
+const { git, stateGit, commitAll, statePath, layout, writeState, LEDGER_HOOKS, OWN_HOOKS, hooked } = harness;
 const REAL_SCRIPTS = path.dirname(harness.ENGINE);
 const REAL_ENGINE_SKILL = path.dirname(REAL_SCRIPTS);
 const store = require(path.join(REAL_SCRIPTS, 'kernel/knowledge/store.cjs'));
@@ -138,7 +138,7 @@ describe('engine boot (real scripts)', () => {
     assert.strictEqual(third.migrations_committed, null);
   });
 
-  it('a project carrying the function-hooks flag the workflows wrote has it taken out by the migrations, the hook sync beside it — boot commits neither, and the reviewed migration commit records both', () => {
+  it('a project carrying the function-hooks flag an earlier version wrote has it taken out by the migrations, the hook sync beside it — boot commits neither, and the reviewed migration commit records both', () => {
     legacyLayout(project);
     writeState(project, layout.projectManifest, JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
     createFile(project, '.claude/settings.json', JSON.stringify({ hooks: OWN_HOOKS, env: { [FLAG]: '1' } }, null, 2) + '\n');
@@ -327,7 +327,7 @@ describe('engine boot migration notices (real scripts)', () => {
 
   it('tells the person of a plan-mode setting the project had committed, once', () => {
     legacyLayout(project);
-    createFile(project, '.claude/settings.json', hooked(WORKFLOW_HOOKS, { showClearContextOnPlanAccept: true }));
+    createFile(project, '.claude/settings.json', hooked(LEDGER_HOOKS, { showClearContextOnPlanAccept: true }));
     git(project, ['commit', '-q', '-am', 'plan mode on']);
 
     const res = bootThroughDirectives(project);

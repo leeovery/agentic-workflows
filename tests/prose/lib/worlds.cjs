@@ -452,7 +452,7 @@ function stampHarnessState(dir) {
   let manifest = {};
   if (fs.existsSync(file)) manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
   manifest.defaults = { ...(manifest.defaults || {}), tmux_labels: false };
-  // A world grows up on the workflows, and ledger's one-time
+  // A world grows up on Ledger, and its one-time
   // brownfield judgment would record exactly that — a manifest write and a
   // commit in every start case's delta. `native` pins the branch shut; a
   // case about the judgment itself stamps its own state in
@@ -664,7 +664,7 @@ function buildWorld(caseId) {
   // never see them. A fixture that layers the project manifest through its
   // history is stamped when that layer lands instead — the root commit then
   // holds no `.workflows/` at all, which is what lets a case put commits
-  // before the workflows' arrival.
+  // before Ledger's arrival.
   const manifestLayered = layered.has(PROJECT_MANIFEST);
   let stamped = manifestLayered
     ? { brownfield_offer: false, walkthrough: false, settings_created: false }
@@ -760,7 +760,7 @@ function destroyWorld(dir) {
 
 // Worlds die with their logs — and a failed run's logs are exactly the
 // evidence a human wants afterwards. Archiving copies the record (every
-// harness file) and the workflow state out of a world before it is destroyed,
+// harness file) and the state out of a world before it is destroyed,
 // to a directory that outlives the run. Never the skills layer — that
 // is the repo's copy, not the walk's.
 const ARCHIVE_PREFIX = 'prose-failed-';

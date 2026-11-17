@@ -1,7 +1,7 @@
 'use strict';
 
 // The world the boot suites share (test-engine-boot-*.cjs): the project
-// fixture, a git repository with its state worktree and the workflows' own
+// fixture, a git repository with its state worktree and Ledger's own
 // hooks in its settings, made once per run and copied (`bootProject`,
 // `setupProject`); a real project on the layout before Ledger's, with no
 // `.ledger/`, its settings holding the hooks today's product leaves
@@ -21,7 +21,7 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const harness = require('./engine-harness.cjs');
-const { git, commitAll, fixtureFrom, folderFrom, layout, statePath, writeState, engineHook, WORKFLOW_HOOKS, GUARD_GROUPS, hooked } = harness;
+const { git, commitAll, fixtureFrom, folderFrom, layout, statePath, writeState, engineHook, LEDGER_HOOKS, GUARD_GROUPS, hooked } = harness;
 const { createFile } = require('./discovery-test-utils.cjs');
 const store = require(path.join(path.dirname(harness.ENGINE), 'kernel/knowledge/store.cjs'));
 
@@ -32,7 +32,7 @@ const SESSION_HOOK = engineHook('session cleanup');
 const RESUME_HOOK = engineHook('session resume');
 /** The settings such a project reaches with labels on: every SessionEnd hook, the SessionStart resume hook, and the guard groups. */
 const LABELS_ON = JSON.stringify({
-  hooks: { SessionEnd: [{ hooks: [SESSION_HOOK, ...WORKFLOW_HOOKS] }], SessionStart: [{ matcher: 'resume', hooks: [RESUME_HOOK] }], PreToolUse: GUARD_GROUPS },
+  hooks: { SessionEnd: [{ hooks: [SESSION_HOOK, ...LEDGER_HOOKS] }], SessionStart: [{ matcher: 'resume', hooks: [RESUME_HOOK] }], PreToolUse: GUARD_GROUPS },
 }, null, 2) + '\n';
 
 /** A hook running a verb of today's product's engine, at its own path. @param {string} verb */
@@ -72,7 +72,7 @@ const STORE_FILES = ['store.bin', 'metadata.json', 'config.json'].map((name) => 
 
 /**
  * A project fixture: a real git repo with its state worktree at `.ledger/`,
- * its settings already carrying the workflows' own hooks — the state every
+ * its settings already carrying Ledger's own hooks — the state every
  * booted project reaches, so boot's own plumbing commits never join the
  * history a test reads. A test about the install takes the hooks away first.
  * The gate mod is not installed, so boot reports it unavailable; a test
@@ -80,7 +80,7 @@ const STORE_FILES = ['store.bin', 'metadata.json', 'config.json'].map((name) => 
  */
 const projectWorld = fixtureFrom('engine-boot-project-', (project) => {
   writeState(project, layout.manifest('payments'), '{"name":"payments"}\n');
-  createFile(project, '.claude/settings.json', hooked(WORKFLOW_HOOKS));
+  createFile(project, '.claude/settings.json', hooked(LEDGER_HOOKS));
   commitAll(project, 'init');
 });
 

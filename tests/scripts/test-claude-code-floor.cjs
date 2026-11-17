@@ -1,6 +1,6 @@
 'use strict';
 
-// The oldest Claude Code the workflows run on is one value wherever it is
+// The oldest Claude Code Ledger runs on is one value wherever it is
 // written: the engine's, the gate mod's, and the stop Ledger puts
 // to an older Claude Code.
 //

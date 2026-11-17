@@ -60,7 +60,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
-const { git, stateGit, statePath, layout, writeState, readState, killedAt, keywordOnlyKnowledge, indexedFiles, bareRepo, remoteTip, cleanupFixture, hooked, WORKFLOW_HOOKS } = harness;
+const { git, stateGit, statePath, layout, writeState, readState, killedAt, keywordOnlyKnowledge, indexedFiles, bareRepo, remoteTip, cleanupFixture, hooked, LEDGER_HOOKS } = harness;
 const { createFile, useTempFolder } = require('./discovery-test-utils.cjs');
 const {
   UNIT, SESSION, ALL_RECORDED, OLD_STORE, OLD_LOCAL, directiveEngine, finishedMigration, nestedFinished, stateUnborn, codeHead, refusedUntouched,
@@ -500,7 +500,7 @@ describe('the reshape\'s real sequence through its commit (21.S18)', () => {
     assert.match(real.refuses(project, ['manifest', 'get', 'payments', 'status'], unstamped).error, /has not booted Ledger/);
     assert.match(real.refuses(project, ['environment', 'set', 'linters'], { ...unstamped, stdin: '[{"name": "eslint", "command": "npm run lint"}]' }).error, /has not booted Ledger/);
     assert.ok(!fs.existsSync(path.join(project, '.ledger/payments')), 'nothing moved yet');
-    assert.deepStrictEqual([fs.readFileSync(path.join(project, '.claude/settings.json'), 'utf8'), git(project, ['status', '--porcelain', '--', '.claude']).trim()], [hooked(WORKFLOW_HOOKS), 'M .claude/settings.json']);
+    assert.deepStrictEqual([fs.readFileSync(path.join(project, '.claude/settings.json'), 'utf8'), git(project, ['status', '--porcelain', '--', '.claude']).trim()], [hooked(LEDGER_HOOKS), 'M .claude/settings.json']);
     assert.deepStrictEqual(sessionEndAsInstalled(project, 'ending'), [0, 0]);
 
     const written = () => [readState(project, layout.migrations), git(project, ['status', '--porcelain', '--', '.workflows'])];

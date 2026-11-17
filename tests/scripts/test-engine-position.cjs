@@ -5,7 +5,7 @@
 // arrival records in the conversation's folder, labels on or off — a phase,
 // a work unit's menu, the project-level places — a place this project lacks
 // refused, marking the conversation first where the call runs in a
-// workflows project, and nothing without a session id; the builder and
+// Ledger project, and nothing without a session id; the builder and
 // reviewers the gate mod's `conversation builder` records against the task
 // its brief was issued for, riding with that task alone, two recorded at
 // once both standing (24.2.4, 13.3.3, 12.S21) — the tracker's `task start`
@@ -54,7 +54,7 @@ const { PROJECT_IDENTITIES, VALID_PHASES } = require('../../skills/ledger-engine
 
 const POSITION_MODULE = path.join(__dirname, '../../skills/ledger-engine/scripts/domain/position.cjs');
 
-let dir; // a workflows project
+let dir; // a Ledger project
 let config; // this test's system config directory
 let claude; // this test's Claude Code config directory
 
@@ -179,11 +179,11 @@ describe('the position every arrival records', () => {
     assert.deepStrictEqual(position(), { name: 'pay', phase: 'discussion', topic: 'ledger' });
   });
 
-  it('a call run outside a workflows project records nothing and marks nothing', () => {
+  it('a call run outside a Ledger project records nothing and marks nothing', () => {
     const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'engine-position-outside-'));
     try {
       harness.ok(outside, ['session', 'label', 'roadmap'], { env: env('sess-out') });
-      assert.ok(!fs.existsSync(folder('sess-out')), 'no folder for a conversation that never ran in a workflows project');
+      assert.ok(!fs.existsSync(folder('sess-out')), 'no folder for a conversation that never ran in a Ledger project');
     } finally {
       fs.rmSync(outside, { recursive: true, force: true });
     }

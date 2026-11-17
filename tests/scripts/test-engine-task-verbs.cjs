@@ -433,7 +433,7 @@ describe('task link, ready, list and show (7.1.5, 12.6.4)', () => {
     assert.deepStrictEqual(ok(dir, ['task', 'show', UNIT, '2.1']).after, ['1.2']);
   });
 
-  it('the tracker\'s refusal of a cycle reads in the engine\'s names — a task of a person\'s own named as one the workflows did not make — writing nothing', () => {
+  it('the tracker\'s refusal of a cycle reads in the engine\'s names — a task of a person\'s own named as one Ledger did not make — writing nothing', () => {
     const cycle = refusesPristine(['task', 'link', UNIT, '1.1', '--after', '1.3']);
     assert.match(cycle, /\b1\.1\b.*\b1\.3\b|\b1\.3\b.*\b1\.1\b/);
     SIDE.makeTask(statePath(dir), 'Mine');

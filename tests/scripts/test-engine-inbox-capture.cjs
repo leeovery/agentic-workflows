@@ -11,8 +11,8 @@
 // one line drawn. It lands in the one state copy from a linked worktree
 // (18.S23), and in another project's inbox from a session in a project of
 // its own (18.S47), naming that project, a failed commit's retry run from
-// that project's folder; it marks no conversation as running the
-// workflows. Refused, nothing written: a --project folder holding no state,
+// that project's folder; it marks no conversation as running
+// Ledger. Refused, nothing written: a --project folder holding no state,
 // a kind it does not know, a text with no title, and a call of another
 // shape.
 //
@@ -78,7 +78,7 @@ describe('inbox capture (18.6.1, 18.6.2)', () => {
     assert.match(res.warnings.join('\n'), /^ledger-state is committed here but was not pushed to origin .*no pushes today/s);
   });
 
-  it('marks no conversation as running the workflows, where a verb of the work does', () => {
+  it('marks no conversation as running Ledger, where a verb of the work does', () => {
     const { main } = codeProject(world(), { state: true });
     const config = path.join(world(), 'config');
     const env = (/** @type {string} */ id) => ({ LEDGER_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: id });

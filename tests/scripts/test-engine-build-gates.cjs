@@ -77,7 +77,7 @@ describe('the gate after a task, in step (12.14.3, 12.12.7, 3.3.8, 13.4.7)', () 
     assert.doesNotMatch(out, /The digits show whole|Verdict:/, 'no review report is printed (12.12.6)');
   });
 
-  it('a/auto runs the rest of the build in auto through the door verb; yes carries on as the workflow says; the technical retelling and the diagrams bring the gate back (3.S20, 3.3.6)', () => {
+  it('a/auto runs the rest of the build in auto through the door verb; yes carries on as Ledger says; the technical retelling and the diagrams bring the gate back (3.S20, 3.3.6)', () => {
     const picked = Object.fromEntries(['y', 't', 's', 'a'].map((key) => {
       screen(['step-gate', UNIT, '1.1']);
       return [key, ok(dir, ['gate', 'step gate', '--pick', key], { env: env() }).next];

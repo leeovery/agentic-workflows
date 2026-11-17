@@ -17,7 +17,7 @@ const assert = require('node:assert');
 const { ok, refuses, git, stateGit, commitAll, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
 const { createFile } = require('./discovery-test-utils.cjs');
 
-const projectWorld = fixtureFrom('engine-commit-workflows-', (project) => {
+const projectWorld = fixtureFrom('engine-commit-whole-', (project) => {
   createFile(project, '.ledger/payments/manifest.json', '{"name":"payments"}\n');
   createFile(project, 'README.md', '# project\n');
   commitAll(project, 'init');

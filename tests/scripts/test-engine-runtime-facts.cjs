@@ -1,12 +1,12 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// The engine's runtime (22.1.4, 22.S32): every module the workflows ship
-// requires Node's built-ins or a file of the workflows' own, never a
+// The engine's runtime (22.1.4, 22.S32): every module Ledger ships
+// requires Node's built-ins or a file of Ledger's own, never a
 // package — a scan of each `require` naming its module in a literal, quoted
 // or a template with nothing in it computed; the few that compute their
 // path load a driver, a directive's check or a
-// migration from the workflows' own folders. Nothing is installed or built
+// migration from Ledger's own folders. Nothing is installed or built
 // to run it: the repository declares no dependencies and no step at
 // install. A ledger entry's id is drawn from Node's own crypto.
 //
@@ -27,7 +27,7 @@ const REPO = path.join(__dirname, '..', '..');
 const SKILLS = path.join(REPO, 'skills');
 const { newId } = require(path.join(SKILLS, 'ledger-engine/scripts/domain/ledger-ids.cjs'));
 
-/** Every module the workflows ship, by its path. */
+/** Every module Ledger ships, by its path. */
 const modules = () => fs.readdirSync(SKILLS, { recursive: true, encoding: 'utf8' })
   .filter((rel) => rel.endsWith('.cjs') && !rel.split(path.sep).includes('tests'))
   .map((rel) => path.join(SKILLS, rel));
@@ -42,7 +42,7 @@ const required = (file) => requiredIn(fs.readFileSync(file, 'utf8'));
 const builtIn = (name) => builtinModules.includes(name.replace(/^node:/, ''));
 
 describe('the engine\'s runtime (22.1.4, 22.S32)', () => {
-  it('requires Node\'s built-ins and the workflows\' own files alone, every file it names there', () => {
+  it('requires Node\'s built-ins and Ledger\'s own files alone, every file it names there', () => {
     const shipped = modules();
     const strays = shipped.flatMap((file) => required(file)
       .filter((name) => !builtIn(name) && !(name.startsWith('.') && fs.existsSync(path.resolve(path.dirname(file), name)) && path.resolve(path.dirname(file), name).startsWith(SKILLS)))

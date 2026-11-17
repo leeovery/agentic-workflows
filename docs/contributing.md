@@ -243,11 +243,14 @@ hold what can be checked:
   `planning.md` and no collaboration chapter apart from trust; the main
   session's recommended minimum effort, medium, stated; the README's pipeline
   table naming no retired phase; every link going to its file and heading;
-  none of the author's own products and projects named, only described; and
-  the product called Ledger, in the docs, the README, help and the glossary,
-  never by an old name — the one it had while it was built, or the one the
-  glossary's avoid line keeps — which only `history.md` and that line may
-  say.
+  none of the author's own products and projects named, only described; the
+  product called Ledger in the docs, the README, help and the glossary,
+  never by the name it had while it was built, which only `history.md` and
+  the glossary's avoid line may say; and the skills, the agents, the book,
+  the README and the tests never calling it workflows, in any of the
+  forms the suite lists, but in the glossary's avoid line, `history.md`, a
+  released migration and its suite, the tests' fixtures, any `.cache`
+  folder, and the suite itself.
 - `tests/scripts/test-tool-names.cjs` — a tool a driver wraps named only
   where CLAUDE.md's Tool Names allows: the docs and `README.md` may name
   one, help and the glossary never.

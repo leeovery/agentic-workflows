@@ -50,7 +50,7 @@ describe('migration 065: remove the function-hooks flag from the project setting
     fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   });
 
-  it('happy path — the flag the workflows wrote goes, and `env` with it when nothing else is left', () => {
+  it('happy path — the flag an earlier version wrote goes, and `env` with it when nothing else is left', () => {
     writeSettings({ hooks: HOOKS, env: { [FLAG]: '1' } });
     run();
     assert.strictEqual(readText(), json({ hooks: HOOKS }));
