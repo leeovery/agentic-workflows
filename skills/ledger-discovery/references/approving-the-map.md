@@ -26,7 +26,7 @@ What the shaping put beyond this epic — the person placed it later, or the log
 
 ## The Screen
 
-Write the payload to `.ledger/.cache/{home}/discovery/{home}/approve-map-payload.json`, `{"topics": […], "parks": […], "binds": […]}` — every live topic in its order — then stage it and draw the screen, emitting its sections verbatim per their markers:
+Write the payload to `.ledger/.cache/{home}/discovery/{home}/approve-map-payload.json`, `{"topics": […], "parks": […], "binds": […]}` — every live topic in its order — then stage it and draw the screen:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render approve-map {home} --file .ledger/.cache/{home}/discovery/{home}/approve-map-payload.json

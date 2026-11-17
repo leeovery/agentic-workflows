@@ -14,7 +14,7 @@ Each item is a kebab-case `name`, a one-line `summary` in the product's terms, a
 
 Load **[choosing-a-horizon.md](../../ledger-shared/references/choosing-a-horizon.md)** with names = `{name}` and follow its instructions as written.
 
-Write them to `.ledger/.cache/product/discovery/product/roadmap-items.json`, `[{"name", "horizon", "summary", "sources": ["{log}"]}]`, `{log}` the log's path from the state root and `"kind": "bug"` or `"quick-fix"` for those. Draw the proposal, and emit its sections verbatim per their markers:
+Write them to `.ledger/.cache/product/discovery/product/roadmap-items.json`, `[{"name", "horizon", "summary", "sources": ["{log}"]}]`, `{log}` the log's path from the state root and `"kind": "bug"` or `"quick-fix"` for those. Draw the proposal:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render roadmap-harvest --file .ledger/.cache/product/discovery/product/roadmap-items.json

@@ -42,13 +42,13 @@ Every row is terminal — the series is finished.
 
 ## B. Pick From the Register
 
-Render the register and emit its DISPLAY section verbatim per its marker:
+Render the register:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render experiment-register {work_unit}.experiment.{topic}
 ```
 
-Fetch the picker and emit its MENU section verbatim per its marker, directly beneath the register:
+Fetch the picker, directly beneath the register:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render experiment-pick {work_unit}.experiment.{topic}
@@ -88,7 +88,7 @@ Branch on `{record_status}` — no re-read.
 
 #### If status is `conceived`
 
-A fresh record — the spawn conceived it and no laboratory session has run. Render and emit the section verbatim per its marker:
+A fresh record — the spawn conceived it and no laboratory session has run. Render its note:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render phase-note {work_unit}.experiment.{topic} --verb Starting --noun {id}
@@ -98,7 +98,7 @@ node .claude/skills/ledger-engine/scripts/engine.cjs render phase-note {work_uni
 
 #### Otherwise
 
-A record in flight (`designed`, `approved`, or `running`). Render and emit the section verbatim per its marker:
+A record in flight (`designed`, `approved`, or `running`). Render its note:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render phase-note {work_unit}.experiment.{topic} --verb Resuming --noun {id}

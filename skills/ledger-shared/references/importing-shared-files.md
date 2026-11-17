@@ -10,7 +10,7 @@
 node .claude/skills/ledger-engine/scripts/engine.cjs asset import {home} '{path}' ['{path}' …]
 ```
 
-A refusal carrying `missing_imports` landed nothing. Write `{"missing": ["{path}", …]}`, the paths it names in its order, to `.ledger/.cache/{home}/{phase}/{home}/import-reprompt.json`, then fetch the prompt and emit its sections verbatim per their markers:
+A refusal carrying `missing_imports` landed nothing. Write `{"missing": ["{path}", …]}`, the paths it names in its order, to `.ledger/.cache/{home}/{phase}/{home}/import-reprompt.json`, then fetch the prompt:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render import-reprompt --file .ledger/.cache/{home}/{phase}/{home}/import-reprompt.json

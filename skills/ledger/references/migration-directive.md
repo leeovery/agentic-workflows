@@ -6,7 +6,7 @@
 
 The migration stopped at a directive: a step whose work is judgment, which this session carries out before anything else runs in the project.
 
-Say the marker **`▪ Migration`** on a line of its own, then fetch the stop's screen and emit its sections verbatim per their markers:
+Say the marker **`▪ Migration`** on a line of its own, then fetch the stop's screen:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render directive-stop --directive {directive}

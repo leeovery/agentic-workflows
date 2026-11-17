@@ -12,7 +12,7 @@ Each task goes from ready to done: started, built by its builder in a worktree o
 
 Where it answers `back`, that task is in progress already, an answer having freed it, and its turn has come: send its builder its brief again, `brief builder {work_unit} {task}`, by SendMessage to the builder's id. Where this conversation holds no builder for it, after a `/clear`, it goes through **The Builder** afresh, its new builder carrying on from where the work stands.
 
-Tasks of the build started together share one headline. Write, for each, what it is about to change and what to watch when it lands, in the product's terms, to `.ledger/.cache/{work_unit}/build/headline.json` — `{"tasks": [{"task", "changes", "watch"}, …]}` — then fetch it and emit its sections verbatim per their markers:
+Tasks of the build started together share one headline. Write, for each, what it is about to change and what to watch when it lands, in the product's terms, to `.ledger/.cache/{work_unit}/build/headline.json` — `{"tasks": [{"task", "changes", "watch"}, …]}` — then fetch it:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render build-headline {work_unit} --file .ledger/.cache/{work_unit}/build/headline.json
@@ -75,7 +75,7 @@ A refusal of the account goes back to the builder: its brief again, by SendMessa
 
 A bugfix's task 1.1, the test that reproduces the bug: once its account is taken, run it on the unfixed code with the scenario and the command the task names, `verify run {work_unit} {scenario} --unfixed --test "{command}"`. A run that passes sends the test back to its builder: put the run that passed and its output onto the task, written to `.ledger/.cache/{work_unit}/build/addition.md`, `task add {work_unit} 1.1 --file .ledger/.cache/{work_unit}/build/addition.md --by orchestrator`, and send the builder back in, `brief builder {work_unit} 1.1` by SendMessage.
 
-A quick-fix's task lands as **A Quick-Fix's Tasks** says. Any other: fetch the task's landing summary and emit its sections verbatim per their markers:
+A quick-fix's task lands as **A Quick-Fix's Tasks** says. Any other: fetch the task's landing summary:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render task-landed {work_unit} {task}
@@ -87,7 +87,7 @@ Then fetch its gate:
 node .claude/skills/ledger-engine/scripts/engine.cjs render step-gate {work_unit} {task}
 ```
 
-It is refused where the build runs in auto, where no gate follows a task: land it. Otherwise emit its sections verbatim per their markers, which ends the turn, and take the person's answer to `gate "step gate"`:
+It is refused where the build runs in auto, where no gate follows a task: land it. Otherwise take the person's answer to `gate "step gate"`:
 - **yes** — land it.
 - **auto** — land the task.
 - **technical** — retell the task's account from the code's side (**[technical-lens.md](../../ledger-shared/references/technical-lens.md)**), then run its `next`.

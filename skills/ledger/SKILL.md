@@ -32,7 +32,7 @@ Surface the answer's `warnings` first, whatever else it says. Then follow it, br
 
 ## Boot's Stops
 
-Boot names the stop it made in `stop`: what to show, and what follows. Where it names a `marker`, say it on a line of its own, **`▪ {marker}`**. Where it names a `surface`, fetch it with its `args` after it, in order, and emit its sections verbatim per their markers:
+Boot names the stop it made in `stop`: what to show, and what follows. Where it names a `marker`, say it on a line of its own, **`▪ {marker}`**. Where it names a `surface`, fetch it with its `args` after it, in order:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render {surface} {args}
@@ -48,7 +48,7 @@ Then its `next`:
 
 ## The Opening
 
-Past every stop, boot answers `go`. Where it is `menu`, the bare command, fetch the banner first and emit its sections verbatim per their markers:
+Past every stop, boot answers `go`. Where it is `menu`, the bare command, fetch the banner first:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render banner
@@ -68,14 +68,14 @@ Then work each of boot's `gates` in its order, as **The Setup Gates** says, and 
 
 ### A Setup Screen
 
-Fetch the screen and emit its sections verbatim per their markers:
+Fetch the screen:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render {screen}
 ```
 
 A MENU's answer goes to `gate`: run the `next` it returns, and each `next` a call answers after it, until one answers none: the screen is done. A DATA naming the call the person's words answer — `knowledge-ask`'s `the reply:` — is the next to run once they have answered.
-- **An engine call**: emit its sections verbatim per their markers, and surface its `warnings`.
+- **An engine call**: surface its `warnings`.
 - **A refusal that names its way on**: take that way. A call it names draws the screen that tells the person what they need: run it, showing neither the refusal's text nor the call. Carrying on with the start: say the refusal in a line, and go on.
 - **A refusal that names none**: surface it; the start ends. **STOP.** Do not proceed — terminal condition.
 - **A handoff**: Load **[handing-off.md](../ledger-shared/references/handing-off.md)** with route = `/{skill} {args}`.
@@ -87,7 +87,7 @@ A MENU's answer goes to `gate`: run the `next` it returns, and each `next` a cal
 - **`route`**: boot routed the words to Start's type call, or into the work they name. Invoke the skill its `route`'s `next` names, with its `args`, here in this conversation: ``Invoke `/{skill} {args}`.``
 
   This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
-- **`pick`**: the words name work among other words, several pieces of it, or a unit that has closed; or they carry on, with several units in progress. Fetch its `surface` with its `args` after it, in order, and emit its sections verbatim per their markers. The answer goes to `gate`. The `next` it returns is a skill to invoke here, as a route's is, or a closed unit's screen in manage: run it, and emit its sections verbatim per their markers.
+- **`pick`**: the words name work among other words, several pieces of it, or a unit that has closed; or they carry on, with several units in progress. Fetch its `surface` with its `args` after it, in order. The answer goes to `gate`. The `next` it returns is a skill to invoke here, as a route's is, or a closed unit's screen in manage: run it.
 
   ```bash
   node .claude/skills/ledger-engine/scripts/engine.cjs render {surface} {args}

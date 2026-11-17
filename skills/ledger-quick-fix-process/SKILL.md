@@ -30,7 +30,7 @@ Every engine call is `node .claude/skills/ledger-engine/scripts/engine.cjs {verb
 node .claude/skills/ledger-engine/scripts/engine.cjs enter implementation {work_unit}
 ```
 
-A refusal names the way on: say it in a line. Where another session holds the checkout's code, the entry asks first: emit its sections verbatim per their markers; carrying on from it ends the turn.
+A refusal names the way on: say it in a line. Where another session holds the checkout's code, the entry asks first; carrying on from it ends the turn.
 
 Then read what the DATA names. The rest of the DATA is where the fixes stand:
 - `tasks` lists each fix and where it stands.
@@ -106,7 +106,7 @@ node .claude/skills/ledger-engine/scripts/engine.cjs quick-fix notes {work_unit}
 
 A refusal names every fault: put each right and record them again.
 
-Mark it as it holds, `checklist done finish {work_unit} {item}`, or skip it with its reason, `checklist skip finish {work_unit} {item} --reason "{reason}"`. Close it, `checklist close finish {work_unit}`, then draw the close, emitting its sections verbatim per their markers:
+Mark it as it holds, `checklist done finish {work_unit} {item}`, or skip it with its reason, `checklist skip finish {work_unit} {item} --reason "{reason}"`. Close it, `checklist close finish {work_unit}`, then draw the close:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render finish {work_unit}
@@ -130,7 +130,7 @@ The person puts an idea, a bug or a fix aside — "roadmap it", "inbox it", "bac
 
 The work needs a decision from the person beyond a quick call — what the product should do, or a cause still to find. Say so as a tentative read the person can push back on; on their word it moves, a feature where it needs deciding, a bugfix where it needs investigating.
 
-Bring the build's log up to date, then draft the new type's brief at `.ledger/.cache/{work_unit}/build/brief.md`: what the quick-fix set out to change, what the work showed, and the open questions — nothing in it a decision. Write `{"description": "{one line in the person's framing}", "reason": "{one line on why it is this type}", "brief": ".ledger/.cache/{work_unit}/build/brief.md"}` to `.ledger/.cache/{work_unit}/build/move.json`, then stage the move and draw start this work's screen, emitting its sections verbatim per their markers:
+Bring the build's log up to date, then draft the new type's brief at `.ledger/.cache/{work_unit}/build/brief.md`: what the quick-fix set out to change, what the work showed, and the open questions — nothing in it a decision. Write `{"description": "{one line in the person's framing}", "reason": "{one line on why it is this type}", "brief": ".ledger/.cache/{work_unit}/build/brief.md"}` to `.ledger/.cache/{work_unit}/build/move.json`, then stage the move and draw start this work's screen:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs workunit move {work_unit} --to {type:[feature|bugfix]} --file .ledger/.cache/{work_unit}/build/move.json
@@ -140,6 +140,6 @@ A refusal names what to fix. Before following a yes's `next`, stop every agent y
 
 ## Cancelling the Quick-Fix
 
-The person calls the quick-fix off. Bring the build's log up to date, then fetch the confirm, `render cancel-gate {work_unit}`, and emit its MENU verbatim per its marker. Before following a yes's `next`, stop every agent you dispatched with the TaskStop tool. A refusal names what holds the unit: say it in a line.
+The person calls the quick-fix off. Bring the build's log up to date, then fetch the confirm, `render cancel-gate {work_unit}`. Before following a yes's `next`, stop every agent you dispatched with the TaskStop tool. A refusal names what holds the unit: say it in a line.
 
-The cancel answers its receipt: emit its sections verbatim per their markers, then follow the cancel's `next`.
+The cancel answers its receipt; then follow the cancel's `next`.

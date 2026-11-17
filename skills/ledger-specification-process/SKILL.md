@@ -78,9 +78,9 @@ The person puts an idea, a bug or a fix aside — "roadmap it", "inbox it", "bac
 
 ## Cancelling the Work
 
-The person calls the work off. Fetch the confirm, `render cancel-gate {work_unit}`, and emit its MENU verbatim per its marker. A refusal names what holds the unit: say it in a line.
+The person calls the work off. Fetch the confirm, `render cancel-gate {work_unit}`. A refusal names what holds the unit: say it in a line.
 
-The cancel takes the unit's cache, its agents' rows with it: stop every agent you dispatched with the TaskStop tool. The cancel answers its receipt: emit its sections verbatim per their markers, then follow the cancel's `next`.
+The cancel takes the unit's cache, its agents' rows with it: stop every agent you dispatched with the TaskStop tool. The cancel answers its receipt; then follow the cancel's `next`.
 
 ## Splitting the Epic
 

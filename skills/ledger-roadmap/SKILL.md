@@ -15,7 +15,7 @@ Load **[framework.md](../ledger-shared/references/framework.md)** and follow its
 
 ## The Menu
 
-Fetch the roadmap and emit its sections verbatim per their markers:
+Fetch the roadmap:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render roadmap

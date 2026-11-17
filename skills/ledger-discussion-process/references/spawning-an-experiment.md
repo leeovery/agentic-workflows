@@ -24,7 +24,7 @@ A refused create: say why in a line. Otherwise its `id` is the experiment.
 
 ## Now or Later
 
-Yes leaves the topic. Bring the log up to date, then fetch `render wait-agents {work_unit}.{topic}`; where it draws a MENU, emit it verbatim per its marker. Then fetch the gate and emit its MENU section verbatim per its marker:
+Yes leaves the topic. Bring the log up to date, then fetch `render wait-agents {work_unit}.{topic}`. Then fetch the gate:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render experiment-spawn-gate {work_unit}.discussion.{topic} --id {id}

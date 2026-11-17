@@ -44,7 +44,7 @@ Fetch the phase's merge gate:
 node .claude/skills/ledger-engine/scripts/engine.cjs render phase-merge-gate {work_unit} {N}
 ```
 
-It is refused where the build runs in auto, where the stack merges with no gate: merge it, `land phase {work_unit} {N}`. Otherwise emit its sections verbatim per their markers, which ends the turn, and take the person's answer to `gate "phase merge"`. A Comment's change, once confirmed, is a task of the phase through the task loop, and the gate comes again once it is done. A merge refused after the yes names its way on: take it, then run `land phase {work_unit} {N}` again.
+It is refused where the build runs in auto, where the stack merges with no gate: merge it, `land phase {work_unit} {N}`. Otherwise take the person's answer to `gate "phase merge"`. A Comment's change, once confirmed, is a task of the phase through the task loop, and the gate comes again once it is done. A merge refused after the yes names its way on: take it, then run `land phase {work_unit} {N}` again.
 
 ## The Close
 

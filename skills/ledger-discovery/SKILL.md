@@ -35,7 +35,7 @@ Where `$2` is not `none`, the entry takes it as `--seeds "{seeds}"`.
 node .claude/skills/ledger-engine/scripts/engine.cjs enter discovery {home} [--seeds "{seeds}"]
 ```
 
-A refusal names the way on: say it in a line. Where another session holds the home, the entry asks first: emit its MENU verbatim per its marker; carrying on from it ends the turn.
+A refusal names the way on: say it in a line. Where another session holds the home, the entry asks first; carrying on from it ends the turn.
 
 Then read what the DATA names that this conversation does not hold already: each `session log` in full; each `older log` by the closing line it carries; each `shaped by` section of the product's sessions; the `map`, the `roadmap` and the `product` record, by running each call; each `seed` in full; and for each `roadmap seed`, its `note` in full and the parts of the logs its `source` lines point at — and where its row in `roadmap state` carries `earlier`, the record the topic left in the epic that postponed it: its brief, log and mail in full and its record by running the call, as input never changed. Do what `catch up` says. The `log` is this conversation's (**The Log**). Where `research owed` is `yes`, load **[researching-the-code.md](references/researching-the-code.md)** and follow its instructions as written before you open.
 
@@ -131,7 +131,7 @@ In an epic's discovery, something found bears on a topic that has started: it re
 node .claude/skills/ledger-engine/scripts/engine.cjs topic send {home} {topic} --from {home}.discovery --content .ledger/.cache/{home}/discovery/{home}/message-{slug}.md --slug {slug}
 ```
 
-Draw the report from the path the send answered, its `message_path`, or its `inbox_path` where the topic is cancelled, and emit its DISPLAY section verbatim per its marker:
+Draw the report from the path the send answered, its `message_path`, or its `inbox_path` where the topic is cancelled:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render send-report {home}.{topic} --sent {path}
@@ -141,7 +141,7 @@ node .claude/skills/ledger-engine/scripts/engine.cjs render send-report {home}.{
 
 The person puts something off — "roadmap it", "that's a v2 thing", "not now" — or a tangent surfaces that doesn't fit what is taking shape, and you offer to put it aside rather than fold it in. Placed on the timeline, it goes on the roadmap at once, whatever its kind; left undecided, it goes into the inbox. Where their words don't say which, ask, and never choose. A topic already on the map is postponed instead (**Changing the Map**).
 
-For the roadmap, name the item — a kebab-case `{name}` and a one-line `{summary}` in the product's terms — on the horizon the person named; where they named none, fetch `render horizon-pick --park {name}`, emit its MENU verbatim per its marker, and take the horizon picked, or the one the person names. `{log}` is the log's path from the state root, and `--kind` is for a bug or a quick-fix, settled work needing no decision:
+For the roadmap, name the item — a kebab-case `{name}` and a one-line `{summary}` in the product's terms — on the horizon the person named; where they named none, fetch `render horizon-pick --park {name}` and take the horizon picked, or the one the person names. `{log}` is the log's path from the state root, and `--kind` is for a bug or a quick-fix, settled work needing no decision:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs roadmap add {name} --horizon "{horizon}" --summary "{summary}" [--kind {kind:[bug|quick-fix]}] --origin park:{home} --source {log}

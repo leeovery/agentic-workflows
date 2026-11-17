@@ -33,7 +33,7 @@ Then write the payload to `.ledger/.cache/product/discovery/product/start-this-w
 - `seeds` — the inbox paths it starts from, `$2`'s and any taken in; `roadmap` — the waiting roadmap items it starts from, `$2`'s `roadmap:{item}` seeds and any taken in.
 - `brief` — for a feature or a bugfix, the path of its one topic's brief, drafted under `.ledger/.cache/product/discovery/product/`: load **[writing-a-brief.md](writing-a-brief.md)** and follow its instructions as written.
 
-Stage it and draw the screen, emitting its sections verbatim per their markers:
+Stage it and draw the screen:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render start-this-work --file .ledger/.cache/product/discovery/product/start-this-work-payload.json

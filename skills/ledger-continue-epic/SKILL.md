@@ -19,7 +19,7 @@ Load **[framework.md](../ledger-shared/references/framework.md)** and follow its
 
 ## The Menu
 
-Fetch the menu and emit its sections verbatim per their markers:
+Fetch the menu:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render epic-menu {work_unit}

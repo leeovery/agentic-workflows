@@ -30,7 +30,7 @@ Every engine call is `node .claude/skills/ledger-engine/scripts/engine.cjs {verb
 node .claude/skills/ledger-engine/scripts/engine.cjs enter implementation {work_unit}
 ```
 
-A refusal names the way on: say it in a line. Where another session holds the checkout's code or the unit's build, the entry asks first: emit its sections verbatim per their markers; carrying on from it ends the turn.
+A refusal names the way on: say it in a line. Where another session holds the checkout's code or the unit's build, the entry asks first; carrying on from it ends the turn.
 
 Then read what the DATA names: the unit's `record` and its `affected` entries, by running each call, and the `build log`, beside the ledger. Each affected entry is confirmed (`ledger hold`) or replaced before the work resting on it goes on. The rest of the DATA is where the build stands:
 - Each `phase` line, and the `fixes owed` beneath one, say where the phase is.
@@ -95,11 +95,11 @@ The person says they are ready to talk about a waiting question, or all of them 
 
 ## A Task's Account
 
-The person asks for a task's account, however long ago it landed. Fetch `render task-account {work_unit} {task}` and emit its sections verbatim per their markers.
+The person asks for a task's account, however long ago it landed. Fetch `render task-account {work_unit} {task}`.
 
 ## The Phases and Tasks
 
-The person asks where the build stands, or for its phases and tasks. Fetch `render build-progress {work_unit}` and emit its sections verbatim per their markers.
+The person asks where the build stands, or for its phases and tasks. Fetch `render build-progress {work_unit}`.
 
 ## A Switch of Position
 
@@ -111,6 +111,6 @@ The person puts an idea, a bug or a fix aside — "roadmap it", "inbox it", "bac
 
 ## Cancelling the Work
 
-The person calls the work off. Bring the build's log up to date, then fetch the confirm, `render cancel-gate {work_unit}`, and emit its MENU verbatim per its marker. A refusal names what holds the unit: say it in a line.
+The person calls the work off. Bring the build's log up to date, then fetch the confirm, `render cancel-gate {work_unit}`. A refusal names what holds the unit: say it in a line.
 
-The cancel takes the unit's cache, its agents' rows with it: stop every agent you dispatched with the TaskStop tool. The cancel answers its receipt: emit its sections verbatim per their markers, then follow the cancel's `next`.
+The cancel takes the unit's cache, its agents' rows with it: stop every agent you dispatched with the TaskStop tool. The cancel answers its receipt; then follow the cancel's `next`.

@@ -8,7 +8,7 @@
 
 Present the design conversationally in plain terms, in paragraphs as markdown (not a code block) — never a file dump: what we'll do, what we expect and why, and what each outcome triggers ("if the rule reads X we do A; if Y, B"). State what the freeze means as part of the presentation: from approval, changes before results are visible are dated amendments re-confirmed with the user; once results are visible the design is frozen for good. The user's challenges are part of the method — changes fold into `{dir}/design.md` now, before the freeze, and the amended design is re-presented.
 
-Then fetch the gate and emit its MENU section verbatim per its marker:
+Then fetch the gate:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render experiment-approval-gate {work_unit}.experiment.{topic} --id {id}

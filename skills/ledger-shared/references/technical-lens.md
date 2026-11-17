@@ -6,7 +6,7 @@
 
 The record retold from the code's side: a perspective shift, not a dump — never raw file contents, never a jargon chain.
 
-Engine-emitted sections sit outside it entirely: a `=== DISPLAY … ===` or `=== MENU … ===` section is emitted verbatim per its marker, never paraphrased or restated, and a gate re-emitted after a retell is not part of the retelling. The register stops at the section boundary.
+Engine-emitted sections sit outside it entirely, and a gate re-emitted after a retell is not part of the retelling. The register stops at the section boundary.
 
 This file composes with [voice.md](voice.md) rather than competing: this governs the record's shape and fidelity, voice governs how the sentences sound.
 

@@ -6,7 +6,7 @@
 
 The person is ready to talk about the questions waiting on them: one, several in the order they queued them, or all of them, oldest first. The questions waiting, each with the tasks it parks, are `raise waiting {work_unit}`. The other tasks carry on while you talk.
 
-Take the questions one at a time. For each, say first what it is about, in full and product first, from the work as it stands now, then draw it from its park and emit its sections verbatim per their markers, which ends the turn:
+Take the questions one at a time. For each, say first what it is about, in full and product first, from the work as it stands now, then draw it from its park:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs raise draw {work_unit} Q{n}

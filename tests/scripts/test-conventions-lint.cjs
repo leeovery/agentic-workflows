@@ -803,30 +803,27 @@ function checkNoFrontmatterSessionEndHooks(files) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 21 — an engine-section call site defers to its marker. The section
+// Check 21 — an engine section's form is its marker's alone. The section
 // marker (`=== TITLE …`, `=== DISPLAY[: label] …`, `=== MENU[: label] …`)
-// carries the section's handling instruction, so a sentence that emits a
-// section — an active emit verb ("emit", "emits", "emitting", "re-emit…")
-// beside a section named by its kind or as a "section" — says so in the one
-// phrasing, "verbatim per its marker" / "verbatim per their markers"; and a
-// sentence that names a section kind or emits a section never states a form
-// of its own ("as markdown", "(not a code block)", "(markdown)", a text,
-// properties or diff code block or its fence, a bare "as a code block" or
-// "in a code block" — after the deferral too — emphasis ignored) — that is a
-// second instruction for it. The sentence is the unit, so a neighbouring
-// sentence's content and form are never the section's; a bullet whose
-// subject is a section is one unit, its later sentences included. A passive
-// "emitted" describes rather than instructs and is out of scope, as is fenced
-// content — the engine's API reference describes the markers there — and the
-// rendering instruction of a prose-authored block ("Output the next fenced
-// block as …"), which names no engine section.
+// carries the section's handling instruction, and the framework says to
+// follow it, so a sentence that names a section kind or emits a section —
+// an active emit verb ("emit", "emits", "emitting", "re-emit…") beside a
+// section named by its kind or as a "section" — never states a form of its
+// own ("as markdown", "(not a code block)", "(markdown)", a text, properties
+// or diff code block or its fence, a bare "as a code block" or "in a code
+// block", emphasis ignored): that is a second instruction for it. The
+// sentence is the unit, so a neighbouring sentence's form is never the
+// section's; a bullet whose subject is a section is one unit, its later
+// sentences included. Fenced content is out of scope — the engine's API
+// reference describes the markers there — as is the rendering instruction of
+// a prose-authored block ("Output the next fenced block as …"), which names
+// no engine section.
 // ---------------------------------------------------------------------------
 
 const SECTION_KIND = /\b(?:TITLE|DISPLAY|MENU)\b/;
 const SECTION_NAMED = /\b(?:TITLE|DISPLAY|MENU|[Ss]ections?)\b/;
 const SECTION_BULLET = /^\s*[-*] .*\*\*`?(?:TITLE|DISPLAY|MENU)\b/;
 const EMITS = /\b(?:re-)?emit(?:s|ting)?\b/i;
-const DEFERS = /\bverbatim per (?:its marker|their markers)\b/;
 const RESTATED_FORM = /\bas markdown\b|\b(?:as|in) an? (?:[\w-]+ )?code block\b|\b(?:text|properties|diff) code block\b|\(not a code block\)|\(markdown\)|```(?:text|properties|diff)\b/;
 const PROSE_BLOCK_INSTRUCTION = /Output the next fenced block as/;
 
@@ -834,15 +831,12 @@ function sectionCallSiteFault(unit) {
   if (PROSE_BLOCK_INSTRUCTION.test(unit)) return null;
   const emits = EMITS.test(unit) && SECTION_NAMED.test(unit);
   if ((emits || SECTION_KIND.test(unit)) && RESTATED_FORM.test(unit.replace(/\*\*/g, ''))) {
-    return 'an engine-section call site restates its marker\'s form — defer to it ("…section verbatim per its marker")';
-  }
-  if (emits && !DEFERS.test(unit)) {
-    return 'an engine-section call site emits without deferring to its marker — say so ("…section verbatim per its marker")';
+    return 'an engine section\'s form is stated in prose — its marker is the one instruction';
   }
   return null;
 }
 
-function checkSectionsDeferToMarker(files) {
+function checkSectionFormsAreTheMarkers(files) {
   const out = [];
   for (const file of files) {
     const lines = readLines(file);
@@ -1564,7 +1558,7 @@ const CHECKS = [
   ['15: cross-file section references', checkCrossFileSections],
   ['18: no skill-frontmatter SessionEnd hooks', checkNoFrontmatterSessionEndHooks],
   ['20: footerless load directives', checkFooterlessLoads],
-  ['21: engine-section call sites defer to the marker', checkSectionsDeferToMarker],
+  ['21: an engine section\'s form is its marker\'s alone', checkSectionFormsAreTheMarkers],
   ['22: free-text flag values are quoted', checkQuotedFreeTextFlags],
   ['23: a question at a gate sets it aside', checkQuestionsSetGatesAside],
   ['24: rendering instructions name one of four forms over a fence carrying its tag', checkRenderForms],
@@ -2188,38 +2182,36 @@ test('check 18 (frontmatter SessionEnd hooks) — catches a SessionEnd declarati
   });
 });
 
-test('check 21 (engine-section call sites defer to the marker) — catches a section emitted without deferring and a restated form in a section\'s sentence or bullet, permits the deferring form, other content\'s forms and emissions, passive descriptions, fenced content and prose-block instructions', () => {
+test('check 21 (a section\'s form is its marker\'s) — catches a form stated in a section\'s sentence or bullet, permits a section named or emitted with no form, other content\'s forms, fenced content and prose-block instructions', () => {
   withTemp((dir) => {
-    const deferring = write(dir, 'skills/x/deferring.md', [
+    const formless = write(dir, 'skills/x/formless.md', [
+      'Fetch the gate:',
+      '',
       'Emit the call\'s MENU section verbatim per its marker.',
-      'Fetch the gate and emit its `MENU: add gate` section verbatim per its marker:',
-      'Emit the TITLE section, then the DISPLAY section, then the MENU section, each verbatim per its marker.',
-      '- **TITLE** — the view\'s chrome heading. Emit verbatim per its marker, directly above the display.',
-      '- **DISPLAY** — the status block. Emit verbatim per its marker. Never redraw, reflow, or trim it.',
-      'Emit the `DISPLAY: proposed task` section verbatim per its marker; then the raise, as conversational markdown; then the `MENU: task decision` section verbatim per its marker.',
-      'Render and emit each section verbatim per its marker:',
-      'Re-fetch with `--view full` and emit its sections verbatim per their markers — the full updated section with the menu minus the view option.',
-      'Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section, each verbatim per its marker — adding `--warn` when the response\'s `warnings` is non-empty.',
+      '',
+      'Emit the TITLE section, then the DISPLAY section, then the MENU section.',
+      '',
+      '- **DISPLAY** — the rendered map. Emit verbatim. Never redraw, reflow, or trim it.',
+      '',
+      'Then re-emit the `MENU: phase structure gate` section.',
+      '',
+      'Fetch and emit the receipt — the `DISPLAY: kb warning` advisory (when carried) then the `DISPLAY: confirmation` section — adding `--warn` when the response\'s `warnings` is non-empty.',
       '',
     ].join('\n'));
-    assert.strictEqual(checkSectionsDeferToMarker([deferring]).length, 0, 'the deferring form is clean, alone or across several sections');
+    assert.strictEqual(checkSectionFormsAreTheMarkers([formless]).length, 0, `a section named or emitted with no form of its own is clean, got ${report(checkSectionFormsAreTheMarkers([formless]))}`);
 
-    // Not a section's form or emission: a neighbouring sentence on the
-    // section's line, a passive description, an emit of prose-authored
-    // content, the API reference's fenced description of a marker, and the
-    // rendering instruction of a prose-authored block.
+    // Not a section's form: a neighbouring sentence on the section's line,
+    // a passive description, an emit of prose-authored content, the API
+    // reference's fenced description of a marker, and the rendering
+    // instruction of a prose-authored block.
     const others = write(dir, 'skills/x/others.md', [
-      'Present the full phase structure from the planning file as rendered markdown (not a code block) — goals, ordering rationale, acceptance criteria as the designer wrote them. Emit its `MENU: phase structure gate` section verbatim per its marker.',
+      'Present the full phase structure from the planning file as rendered markdown (not a code block) — goals, ordering rationale, acceptance criteria as the designer wrote them. Emit its `MENU: phase structure gate` section.',
       '',
-      'Render the doc file verbatim as markdown. Then re-fetch the gate and emit its `MENU: baseline doc gate` section verbatim per its marker.',
+      'Render the doc file verbatim as markdown. Then re-fetch the gate and emit its `MENU: baseline doc gate` section.',
       '',
-      'Draw each diagram in a text code block (```text fence). Then emit the `MENU: task gate` section verbatim per its marker.',
-      '',
-      'Read the `sessions` rows only — the response\'s receipt is the map\'s and is not emitted here.',
+      'Draw each diagram in a text code block (```text fence). Then emit the `MENU: task gate` section.',
       '',
       'Read `all_decided` and `unresolved` from its DATA section; nothing from this call is emitted.',
-      '',
-      'Emit the lane marker on this drain\'s first screen only — later screens and re-renders skip it:',
       '',
       '```bash',
       'engine render walkthrough-topic --name <slug> [--menu-only]  # one reference card: TITLE, then the content file\'s prose (markdown) and diagrams (fenced) in file order — no menu, so a card shown mid-conversation carries no gate',
@@ -2232,33 +2224,7 @@ test('check 21 (engine-section call sites defer to the marker) — catches a sec
       '```',
       '',
     ].join('\n'));
-    assert.strictEqual(checkSectionsDeferToMarker([others]).length, 0, `nothing outside a section's own emitting sentence is flagged, got ${report(checkSectionsDeferToMarker([others]))}`);
-
-    const silent = write(dir, 'skills/x/silent.md', [
-      'Fetch and emit the `MENU: revisit phases` section (its numbering follows `revisitable_phases` order):',
-      '',
-      'Emit the section verbatim.',
-      '',
-      'Render and emit each section verbatim at its marked instruction:',
-      '',
-      'Emit the MENU section.',
-      '',
-      '- **DISPLAY** — the rendered map. Emit verbatim. Never redraw, reflow, or trim it.',
-      '',
-      'When the person takes it, fetch the card and emit its sections in the order they arrive, each per its own marker:',
-      '',
-      'The calling flow emits each section verbatim beneath the call that fetched it.',
-      '',
-      'Then re-emit the `MENU: phase structure gate` section.',
-      '',
-      'Emit the `DISPLAY: selection` and `MENU: selection` sections verbatim, each per its marker.',
-      '',
-      'Emit the section per its marker.',
-      '',
-    ].join('\n'));
-    const s = checkSectionsDeferToMarker([silent]);
-    assert.deepStrictEqual(s.map((x) => x.line), [1, 3, 5, 7, 9, 11, 13, 15, 17, 19], `each section emitted without deferring in the one phrasing is caught, got ${report(s)}`);
-    assert.ok(s.every((x) => /emits without deferring/.test(x.message)), `the non-deferring message names the fault, got ${report(s)}`);
+    assert.strictEqual(checkSectionFormsAreTheMarkers([others]).length, 0, `nothing outside a section's own sentence is flagged, got ${report(checkSectionFormsAreTheMarkers([others]))}`);
 
     const restated = write(dir, 'skills/x/restated.md', [
       'Fetch the gate and emit its `MENU: add gate` section verbatim as markdown (not a code block):',
@@ -2292,9 +2258,9 @@ test('check 21 (engine-section call sites defer to the marker) — catches a sec
       'Emit the MENU section verbatim per its marker, rendered as markdown.',
       '',
     ].join('\n'));
-    const v = checkSectionsDeferToMarker([restated]);
+    const v = checkSectionFormsAreTheMarkers([restated]);
     assert.deepStrictEqual(v.map((x) => x.line), [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29], `each restating sentence is caught, got ${report(v)}`);
-    assert.ok(v.every((x) => /restates its marker's form/.test(x.message)), `a restated form is reported as one, got ${report(v)}`);
+    assert.ok(v.every((x) => /form is stated in prose/.test(x.message)), `a restated form is reported as one, got ${report(v)}`);
   });
 });
 

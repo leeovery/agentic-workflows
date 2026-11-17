@@ -22,8 +22,6 @@ Render the pick over them (its numbering follows the `horizons` order):
 node .claude/skills/ledger-engine/scripts/engine.cjs render horizon-pick --park {names}
 ```
 
-Emit the call's MENU section verbatim per its marker.
-
 **STOP.** Wait for user response.
 
 The answer goes to `gate`.

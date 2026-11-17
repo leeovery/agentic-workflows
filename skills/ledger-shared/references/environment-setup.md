@@ -27,7 +27,7 @@ node .claude/skills/ledger-engine/scripts/engine.cjs environment set {part:[run|
 
 ## The Screen
 
-Draw it, from manage with `--from manage`, and emit its sections verbatim per their markers:
+Draw it, from manage with `--from manage`:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render environment-setup [--from manage]

@@ -30,7 +30,7 @@ Every engine call is `node .claude/skills/ledger-engine/scripts/engine.cjs {verb
 node .claude/skills/ledger-engine/scripts/engine.cjs enter review {work_unit}
 ```
 
-A refusal names the way on: say it in a line. Where another session holds the unit or the checkout's code, the entry asks first: emit its sections verbatim per their markers; carrying on from it ends the turn.
+A refusal names the way on: say it in a line. Where another session holds the unit or the checkout's code, the entry asks first; carrying on from it ends the turn.
 
 A conflict the entry names is settled with the person, in the conversation.
 
@@ -57,7 +57,7 @@ Each move once the one before it holds:
    Each file-or-drop call out of scope, and each serious finding or bug dropped in scope, is your call on the ledger with its reason. A finding filed goes to the inbox once its call is in.
 3. **The fix tasks.** A round's fix tasks are one more phase of the build, its own: phase {N}, as the entry's `fix phase` line names it. Write the phase, then each fix as a task, findings one change fixes sharing it: its type `fix`, its acceptance scenario the finding's user scenario, its spec reference the area — a quick-fix's, `none`.
 4. **The record.** Write the round to `.ledger/.cache/{work_unit}/review/round.json` and record it, `review round {work_unit} --file .ledger/.cache/{work_unit}/review/round.json`. A refusal names every fault. A report missing or not reading goes back to its reader: brief it again, and never edit a reader's report. A tree changed is **The Working Tree**. Put every other fault right, and record the round again.
-5. **The report.** Draw it, emitting its sections verbatim per their markers:
+5. **The report.** Draw it:
 
    ```bash
    node .claude/skills/ledger-engine/scripts/engine.cjs render review-report {work_unit}
@@ -87,7 +87,7 @@ A quick-fix has no spec. Its review holds the whole change against its fixes' ac
 
 The fix tasks the entry names are built in the same loop as every task of the build: load **[the-task-loop.md](../ledger-implementation-process/references/the-task-loop.md)** and follow its instructions as written, with place = `review` and N = `{N}`, as the entry's `fix phase` line names it. A fix phase has no checklists and no phase review: the areas its tasks changed are read again instead. Once the loop hands back, enter again.
 
-Where the entry names a `merge waiting` gate, phase {M}, the phase that line names, merges first; it can be lower than the fix phase. Fetch the gate and emit its sections verbatim per their markers:
+Where the entry names a `merge waiting` gate, phase {M}, the phase that line names, merges first; it can be lower than the fix phase. Fetch the gate:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render phase-merge-gate {work_unit} {M}
@@ -95,7 +95,7 @@ node .claude/skills/ledger-engine/scripts/engine.cjs render phase-merge-gate {wo
 
 ### The Builders' Notes
 
-Once the round that ended the review has its fix tasks done, the notes their builders left are answered before finish, as a round answers its notes: each `builder note` the entry names by a finding out of scope, of the area `notes`, filed or dropped by your call. Write them, `{findings}`, to `.ledger/.cache/{work_unit}/review/notes.json` and record them, `review notes {work_unit} --file .ledger/.cache/{work_unit}/review/notes.json`. A refusal names every fault: put each right and record them again. Then draw the report again, emitting its sections verbatim per their markers:
+Once the round that ended the review has its fix tasks done, the notes their builders left are answered before finish, as a round answers its notes: each `builder note` the entry names by a finding out of scope, of the area `notes`, filed or dropped by your call. Write them, `{findings}`, to `.ledger/.cache/{work_unit}/review/notes.json` and record them, `review notes {work_unit} --file .ledger/.cache/{work_unit}/review/notes.json`. A refusal names every fault: put each right and record them again. Then draw the report again:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render review-report {work_unit}
@@ -133,7 +133,7 @@ The review runs without the person but for its reports and finish. Every questio
 
 Once a round has passed, or been settled, and its fix tasks are done, finish closes on its checklist; `checklist show finish {work_unit}` lists its items. `inbox-closed` reads the build's log for its claims, each a line of its own, `Resolved: {path}`: check the live inbox against what was built, claim in the log each item the work resolved, by its inbox path, and close them, `inbox close {work_unit} {path} …`. Yours is `build-log-closed` — the build's log ends on what the build and its review came to, nothing left in flight.
 
-Mark it as it holds, `checklist done finish {work_unit} {item}`, or skip it with its reason, `checklist skip finish {work_unit} {item} --reason "{reason}"`. Close it, `checklist close finish {work_unit}`, then draw finish, emitting its sections verbatim per their markers:
+Mark it as it holds, `checklist done finish {work_unit} {item}`, or skip it with its reason, `checklist skip finish {work_unit} {item} --reason "{reason}"`. Close it, `checklist close finish {work_unit}`, then draw finish:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render finish {work_unit}
@@ -143,7 +143,7 @@ After each verdict the screen asks before its gate, draw the screen again. At th
 
 ## The Calls
 
-The person asks what was decided for them — "show me the calls", "what did you decide". Fetch the calls and emit their sections verbatim per their markers:
+The person asks what was decided for them — "show me the calls", "what did you decide". Fetch the calls:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render review-calls {work_unit}
@@ -159,11 +159,11 @@ The person says they are ready to talk about a waiting question, or all of them 
 
 ## A Task's Account
 
-The person asks for a task's account: a fix task's, any of the build's, or one of a quick-fix's fixes. Fetch `render task-account {work_unit} {task}` and emit its sections verbatim per their markers.
+The person asks for a task's account: a fix task's, any of the build's, or one of a quick-fix's fixes. Fetch `render task-account {work_unit} {task}`.
 
 ## The Phases and Tasks
 
-The person asks for the build's phases and tasks, the fix phases among them — a quick-fix's, its fixes then its review's fix tasks. Fetch `render build-progress {work_unit}` and emit its sections verbatim per their markers.
+The person asks for the build's phases and tasks, the fix phases among them — a quick-fix's, its fixes then its review's fix tasks. Fetch `render build-progress {work_unit}`.
 
 ## A Switch of Position
 
@@ -175,6 +175,6 @@ The person puts an idea, a bug or a fix aside — "roadmap it", "inbox it", "bac
 
 ## Cancelling the Work
 
-The person calls the work off. Bring the build's log up to date, then fetch the confirm, `render cancel-gate {work_unit}`, and emit its MENU verbatim per its marker. A refusal names what holds the unit: say it in a line.
+The person calls the work off. Bring the build's log up to date, then fetch the confirm, `render cancel-gate {work_unit}`. A refusal names what holds the unit: say it in a line.
 
-The cancel takes the unit's cache, its agents' rows with it: stop every agent you dispatched with the TaskStop tool. The cancel answers its receipt: emit its sections verbatim per their markers, then follow the cancel's `next`.
+The cancel takes the unit's cache, its agents' rows with it: stop every agent you dispatched with the TaskStop tool. The cancel answers its receipt; then follow the cancel's `next`.

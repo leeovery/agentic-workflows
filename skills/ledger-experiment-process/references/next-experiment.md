@@ -6,7 +6,7 @@
 
 ## A. Read the Series
 
-A record ended, or moved beneath the session. Re-render the register — the series moved — and emit its DISPLAY section verbatim per its marker:
+A record ended, or moved beneath the session. Re-render the register, the series moved:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render experiment-register {work_unit}.experiment.{topic}
@@ -36,7 +36,7 @@ Load **[handing-off.md](../../ledger-shared/references/handing-off.md)** with ro
 
 ## B. Offer the Next Experiment
 
-Fetch the gate and emit its MENU section verbatim per its marker:
+Fetch the gate:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render experiment-next-gate {work_unit}.experiment.{topic}
