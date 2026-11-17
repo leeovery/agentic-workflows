@@ -20,7 +20,7 @@
 // their own: a field of a manifest no engine module names, the project's,
 // a unit's, a phase's or an item's; a build's fix-tracking report 051 moved
 // out of the old cache placed where the move kept it, and no other report
-// so; a link broken where it was live, its words dead in another
+// so; of the old `.state/` the old engine's record alone rebuilt; a link broken where it was live, its words dead in another
 // document; the links dead
 // before excused wherever their old documents went, one kept byte for
 // byte in one place and rewritten in another among them, counted over the
@@ -222,6 +222,15 @@ describe('each check refuses a world made to fail it', () => {
 
     assert.deepStrictEqual(audit(world.dir, old).faults.map(({ check, found }) => `${check}: ${found}`), [
       'files-placed: .workflows/.cache/shop/implementation/cart/review-001.md is not in the cache\'s earlier/ as it was',
+    ]);
+  });
+
+  it('files-placed: of the old .state/, only the old engine\'s record is rebuilt; the environment setup file kept nowhere is a fault', () => {
+    const old = structuredClone(world.old);
+    old.files['.state/environment-setup.md'] = { sha: crypto.createHash('sha256').update('No special setup required.\n').digest('hex') };
+
+    assert.deepStrictEqual(audit(world.dir, old).faults.map(({ check, found }) => `${check}: ${found}`), [
+      'files-placed: .workflows/.state/environment-setup.md is neither placed nor kept as legacy',
     ]);
   });
 

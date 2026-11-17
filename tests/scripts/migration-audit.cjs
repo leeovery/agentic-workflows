@@ -90,7 +90,7 @@ const { chosenDriver } = require(path.join(SCRIPTS, 'domain/drivers.cjs'));
 const OLD = '.workflows';
 const STATE = '.ledger';
 const LEGACY = /(?:^|\/)assets\/legacy\//;
-const REBUILT = [/^\.cache\/(?!.*\.md$)/, /^\.state\//, /^\.knowledge\/(?!config\.json$)/, /^\.gitignore$/, /^[^/]+\/\.state\//];
+const REBUILT = [/^\.cache\/(?!.*\.md$)/, /^\.state\/migrations$/, /^\.knowledge\/(?!config\.json$)/, /^\.gitignore$/, /^[^/]+\/\.state\//];
 // The old cache's documents, which the move copies into the state's cache.
 const CACHE_REPORT = /^\.cache\/(.+\.md)$/;
 // Where the state's cache holds them: a unit's `earlier/`, or the cache's own.

@@ -46,11 +46,6 @@
 //
 // The tracker's store is the task driver's to name (7.1.10): its places are
 // the files each shipped task driver keeps on the state branch.
-//
-// Today's places (`TODAY`) are the paths today's engine and prose still
-// write, until step 2 moves each writer into 4.11's layout. Each names the
-// phase whose rewrite retires it; 29.18 empties the list. None is a log:
-// today's session logs keep their own commits.
 // ---------------------------------------------------------------------------
 
 const { ignoresCase } = require('../kernel/state-root.cjs');
@@ -60,10 +55,10 @@ const { REVIEWER_LETTERS } = require('../kernel/reviewers.cjs');
 /** @typedef {'file'|'free'|'engine'|'log'} PlaceKind */
 
 /**
- * A place in the layout. `sets` is the spec's line that sets one of 4.11's,
- * `retires` the phase that retires one of today's; an engine-only file has
- * `what` it is, and `verb`, the engine's verb that writes it, where one does.
- * @typedef {{kind: PlaceKind, path: string, sets?: string, retires?: string, what?: string, verb?: string}} Place
+ * A place in the layout. `sets` is the spec's line that sets it; an
+ * engine-only file has `what` it is, and `verb`, the engine's verb that
+ * writes it, where one does.
+ * @typedef {{kind: PlaceKind, path: string, sets?: string, what?: string, verb?: string}} Place
  */
 
 /** @typedef {(name: string) => string} Fold */
@@ -90,9 +85,6 @@ const place = (kind, path, sets) => Object.freeze({ kind, path, sets });
 
 /** @param {string} path @param {string} sets @param {string} what @param {string} [verb] @returns {Place} */
 const engineFile = (path, sets, what, verb) => Object.freeze({ kind: 'engine', path, sets, what, ...(verb === undefined ? {} : { verb }) });
-
-/** @param {string} retires @param {PlaceKind} kind @param {string} path @returns {Place} */
-const todays = (retires, kind, path) => Object.freeze({ kind, path, retires });
 
 /** A unit's spec, which the layout hook keeps closed once it is concluded (layout-hook.cjs). */
 const SPEC_PLACE = '{unit}/spec.md';
@@ -151,11 +143,6 @@ const LAYOUT = Object.freeze([
   place('file', '{unit}/review/round-{N}/{area}-{letter}.md', '4.11.5'),
 ]);
 
-/** Today's places, each with the phase that retires it. @type {readonly Place[]} */
-const TODAY = Object.freeze([
-  todays('29.18', 'file', '.state/environment-setup.md'),
-]);
-
 /** The product's folder, its conversation's session logs, and the roadmap's notes (4.11.16). */
 const PRODUCT_DIR = '.product';
 const PRODUCT_SESSIONS = `${PRODUCT_DIR}/sessions`;
@@ -185,9 +172,9 @@ function folding(folder) {
 /** @type {Place[]|null} */
 let places = null;
 
-/** Every place: 4.11's, the tracker's store's, then today's. */
+/** Every place: 4.11's, then the tracker's store's. */
 function everyPlace() {
-  if (places === null) places = [...LAYOUT, ...storePlaces(), ...TODAY];
+  if (places === null) places = [...LAYOUT, ...storePlaces()];
   return places;
 }
 
@@ -289,4 +276,4 @@ function engineRefusal(at, rel) {
   return `${at.what} (${rel}) changes only through the engine's commands${at.verb === undefined ? '' : ` — engine ${at.verb}`}`;
 }
 
-module.exports = { LAYOUT, TODAY, SPEC_PLACE, PRODUCT_DIR, PRODUCT_SESSIONS, PRODUCT_NOTES, SPIKE_HOMES, IN_LOWER_CASE, folding, layoutPlace, stagedPlace, assetHome, engineRefusal };
+module.exports = { LAYOUT, SPEC_PLACE, PRODUCT_DIR, PRODUCT_SESSIONS, PRODUCT_NOTES, SPIKE_HOMES, IN_LOWER_CASE, folding, layoutPlace, stagedPlace, assetHome, engineRefusal };

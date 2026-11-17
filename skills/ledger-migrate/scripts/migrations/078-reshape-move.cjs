@@ -62,12 +62,15 @@
 // change of type rewrites the manifest alone — takes the manifest's type,
 // each so corrected journaled in the state's cache, `.cache/migrate/
 // move.json`, `{corrections: [{unit, was, found, changed}]}`, which the
-// migration's review lists among its corrections. The inbox, the
-// environment setup file and the checkout's knowledge config are carried as
-// they are, but for an inbox file whose name is no item's
-// (`{ideas,bugs,quickfixes}/{YYYY-MM-DD}--{slug}.md`, archived or not), kept
-// as legacy (below); the knowledge store is not, and the next boot builds it
-// from the config, with no setup question (21.9.6). `.roadmap/` is
+// migration's review lists among its corrections. The inbox and the
+// checkout's knowledge config are carried as they are, but for an inbox file
+// whose name is no item's (`{ideas,bugs,quickfixes}/{YYYY-MM-DD}--{slug}.md`,
+// archived or not), kept as legacy (below); the knowledge store is not, and
+// the next boot builds it from the config, with no setup question (21.9.6).
+// The old `.state/` holds the old engine's record, `migrations`, rebuilt,
+// and the environment setup file, free text no environment field takes —
+// the first ready to build asks the setup afresh — kept as legacy, as is any
+// other file there. `.roadmap/` is
 // `.product/` (21.5.7): its sessions as they are but for their headings,
 // demoted as a log's documents are, each note out of its kind's folder under
 // its inbox name, and `imports/` as `assets/`, the documents' links to an
@@ -335,10 +338,10 @@ const PERMISSION_LISTS = ['allow', 'deny', 'ask'];
 const OLD_RULE_PATH = `${CODE_TREE_STATE}/`;
 const NEW_RULE_PATH = `${STATE_DIR}/`;
 
-// The project's files carried into the state as they are: the environment
-// setup, and the checkout's knowledge config, from which the next boot
-// builds the store the move never carries (21.9.6).
-const CARRIED_AS_IS = ['.state/environment-setup.md', '.knowledge/config.json'];
+// The project's files carried into the state as they are: the checkout's
+// knowledge config, from which the next boot builds the store the move never
+// carries (21.9.6).
+const CARRIED_AS_IS = ['.knowledge/config.json'];
 
 const ROADMAP = '.roadmap';
 const PRODUCT = '.product';
@@ -418,9 +421,11 @@ const LEGACY = 'assets/legacy';
 const OLD_CACHE = '.cache';
 const CACHE = '.cache';
 const EARLIER = 'earlier';
+// The old engine's record, which the new one rebuilds.
+const OLD_RECORD = '.state/migrations';
 // The entries of `.workflows/` the move reads, or which hold only what is
-// rebuilt — the cache, the old engine's record, the knowledge store, the
-// engine's own ignore file — beside the units; any other is kept as legacy.
+// rebuilt — the cache, the knowledge store, the engine's own ignore file —
+// beside the units; any other is kept as legacy.
 const READ_OR_REBUILT = ['.cache', '.state', '.knowledge', '.gitignore', '.inbox', '.roadmap', '.baseline', 'manifest.json'];
 // A building unit's spec joined into its `spec.md`, the place a link to it follows.
 const JOINED = Symbol('joined');
@@ -1538,8 +1543,8 @@ const strayInbox = (from, renames) => filesUnder(path.join(from, '.inbox')).filt
 
 /**
  * The project's files carried into the state at their own paths,
- * `.workflows/`-relative: the inbox's items, the environment setup and the
- * checkout's knowledge config.
+ * `.workflows/`-relative: the inbox's items and the checkout's knowledge
+ * config.
  * @param {string} from @param {Map<string, string>} renames @returns {string[]}
  */
 const carriedFiles = (from, renames) => [
@@ -1984,6 +1989,7 @@ function move(projectDir, reportUpdate, reportSkip) {
       ...strayInbox(from, renames),
       ...product.filter(({ at }) => at === null).map(({ source }) => source),
       ...entries.filter((name) => !READ_OR_REBUILT.includes(name) && !manifests.has(name)).flatMap((name) => filesOf(from, name)),
+      ...filesUnder(path.join(from, '.state')).map((rel) => `.state/${rel}`).filter((rel) => rel !== OLD_RECORD),
     ].map((rel) => /** @type {[string, string]} */ ([rel, `${PRODUCT}/${LEGACY}/${rel}`])),
     ...moves.flatMap((unit) => legacyFiles(unit).map((rel) => /** @type {[string, string]} */ ([`${unit.unit}/${rel}`, `${unit.unit}/${LEGACY}/${rel}`]))),
   ]);
