@@ -123,10 +123,9 @@ const ORDINARY = [
 const LAST_RELEASED = 72;
 /** A migration's file or its suite's, its number captured. */
 const MIGRATION_NUMBERED = /^(?:skills\/ledger-migrate\/scripts\/migrations\/|tests\/scripts\/test-migration-)(\d{3})\b/;
-/** Where it stands in the tests: data standing for a project's own files, the prose runs' log, and this guard's own sentences. */
+/** Where it stands in the tests: data standing for a project's own files, and this guard's own sentences. */
 const TESTS_NAMING_IT = [
   path.join('tests', 'fixtures'),
-  path.join('tests', 'prose', '.agent-tool-use.log'),
   path.join('tests', 'scripts', 'test-docs.cjs'),
 ];
 /** What a run writes, never read: every folder so named. */

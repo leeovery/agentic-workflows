@@ -118,15 +118,6 @@ describe('engine session label-config', () => {
     assert.ok(!fs.existsSync(settingsPath()), 'no settings write inside the rebase');
     assert.deepStrictEqual(head(stateGit), CHOICE.state);
   });
-
-  it('LEDGER_HOLD_PROJECT_SETTINGS=1 — the test harness\'s switch — records the choice and leaves the settings file alone', () => {
-    const res = engine(['session', 'label-config', 'true'], { extraEnv: { LEDGER_HOLD_PROJECT_SETTINGS: '1' } });
-    assert.deepStrictEqual(res, { ok: true, tmux_labels: true });
-    assert.deepStrictEqual(projectManifest().defaults, { tmux_labels: true });
-    assert.ok(!fs.existsSync(settingsPath()), 'no settings write under the switch');
-    assert.deepStrictEqual(head(stateGit), CHOICE.state);
-    assert.deepStrictEqual(head(git), { subject: 'ignore the state', files: ['.gitignore'] }, 'no settings commit');
-  });
 });
 
 describe('syncSessionHooks', () => {

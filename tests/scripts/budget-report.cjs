@@ -28,7 +28,7 @@ const ROOT = path.resolve(__dirname, '..', '..');
 
 /** CPU seconds a suite of each layer may spend. */
 const BUDGETS = Object.freeze({
-  unit: 1, verb: 15, git: 30, process: 15, conformance: 30, simulation: 30, migration: 5, prose: 5,
+  unit: 1, verb: 15, git: 30, process: 15, conformance: 30, simulation: 30, migration: 5,
 });
 
 /** The whole run's guide on an idle machine, and what the machine runs at once: 8.5 performance cores' worth. */

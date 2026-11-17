@@ -30,7 +30,7 @@ How-to survives as guidance only where a capable reader would get it wrong untol
 A rule that fits none of the three is one of these:
 - **It holds in every conversation** — how a turn sounds, what a reply at a gate is. It belongs to the framework (The Framework Load), never to a skill.
 - **It guards a state only a crash or a failed tool produces.** Delete it. The engine makes the state unreachable, and Claude reruns a failed tool or agent unprompted.
-- **It is a contract no door can refuse** — a question for the person asked in plain prose in the build, an extra review round. It stays a line of prose, and the prose walks hold it, since they check outcomes.
+- **It is a contract no door can refuse** — a question for the person asked in plain prose in the build, an extra review round. It stays a line of prose.
 - **It is steps around a field's work that the spec puts in prose** — what is read before a topic's opening, discovery's re-read of its log before each move. They stay in prose, in the field's entry or close (Fields and Corridors).
 - **It is a contract the spec names no verb for, or a procedure with no checklist item.** Bring it to the person. It is never held in prose as a "must" until a verb or an item exists. A verb the spec names that is not built yet is built by its phase, never brought to the person.
 

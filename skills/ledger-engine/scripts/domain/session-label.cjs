@@ -23,8 +23,7 @@
 //
 // Opt-in is the project manifest's `defaults.tmux_labels` boolean — absent
 // means never asked, which is what ledger's one-time prompt keys on
-// (boot reports it via `labelConfigStatus`); a prose-test world stamps
-// `false` so a walk never labels the terminal the suite runs in.
+// (boot reports it via `labelConfigStatus`).
 //
 // The hooks live in the project's committed `.claude/settings.json`, where
 // the engine installs them (a SessionEnd hook declared in skill frontmatter
@@ -73,7 +72,7 @@ const { isObject, jsonText, writeJsonAtomic } = require('../kernel/manifest-io.c
 const { operationInProgress } = require('../kernel/git.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { commitStateTail, commitOwnChange, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
-const { SETTINGS_SPEC, parseSettings, readProjectSettings, settingsHeld, writeProjectSettings } = require('./settings.cjs');
+const { SETTINGS_SPEC, parseSettings, readProjectSettings, writeProjectSettings } = require('./settings.cjs');
 const { readPosition, assertPlace, isPlace, recordPosition, dropPosition, placeLine } = require('./position.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 const { loadManifest } = require('./reads.cjs');
@@ -296,7 +295,6 @@ function sessionHooksText(text, want) {
  * @returns {import('./settings.cjs').SettingsSync}
  */
 function syncSessionHooks(cwd, want) {
-  if (settingsHeld()) return { changed: false };
   const open = operationInProgress(codeRoot(cwd));
   if (open !== null) return { changed: false, waiting: open.operation };
   const read = readProjectSettings(cwd);
@@ -314,7 +312,6 @@ function syncSessionHooks(cwd, want) {
  * @param {string} message @param {string} failure the warning's lead where git refuses @param {string[]} warnings
  */
 function commitSessionHooks(cwd, want, message, failure, warnings) {
-  if (settingsHeld()) return;
   commitOwnChange(cwd, SETTINGS_SPEC, (text) => sessionHooksText(text, want), message, failure, warnings);
 }
 

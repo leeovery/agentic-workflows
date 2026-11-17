@@ -4,8 +4,8 @@
 // instant, and `Date.now()` answers it, so a stamp the engine writes — a
 // unit's `created`, a ledger entry's `at`, a gate's time — is known before
 // the call, never computed from today. A module of its own, requiring
-// nothing: a spawned engine loads it through NODE_OPTIONS `--require`
-// before its own entry (the prose harness's `fake-clock-preload.cjs`).
+// nothing, so a spawned engine can load it through NODE_OPTIONS `--require`
+// before its own entry.
 //
 // Never around a call that waits on a lock or reads a file's age: the
 // deadline it counts to never comes, and every file is from the future.

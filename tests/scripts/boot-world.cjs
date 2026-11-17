@@ -207,11 +207,10 @@ function hookHelpers(fix) {
   }
 
   /** Boot with the tmux identity pinned; `tmux` absent unless given; `env` layered over the process's own. */
-  function bootWith({ tmux = false, holdSettings = false, env: extra = {} } = {}) {
+  function bootWith({ tmux = false, env: extra = {} } = {}) {
     const env = {
       ...extra,
       TMUX: tmux ? '/fake/sock,123,7' : undefined,
-      LEDGER_HOLD_PROJECT_SETTINGS: holdSettings ? '1' : undefined,
     };
     return runEngine(stubbed, fix().project, ['boot'], env);
   }

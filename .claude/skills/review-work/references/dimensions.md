@@ -99,8 +99,6 @@ A change lands in one place and is owed in several. Enumerate them.
   the one edited.
 - Engine code, its render surfaces, and the strings it emits.
 - Tests, fixtures, goldens, and the pipeline simulation.
-- Prose-test cases — `case.json` invariants, `act.md`, `assert.md`,
-  fixtures and state files.
 - Migrations, where the change moves stored state.
 - README, `docs/`, and CONVENTIONS.md, where the change alters what they
   document; `commands.md` and the module headers where it alters an engine
@@ -140,8 +138,6 @@ A change lands in one place and is owed in several. Enumerate them.
 - New `.cjs` migrations have a matching node:test suite, registered in
   `package.json`, covering happy path, skip, idempotency, content
   preservation, and every defensive guard.
-- Snapshots regenerated through the runner, never hand-edited, with the
-  display width pinned.
 - Where a finding in any other dimension describes a failure the gates
   would not have caught, the missing case is itself a finding.
 
