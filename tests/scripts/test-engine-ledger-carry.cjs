@@ -60,10 +60,11 @@ const world = () => recordsMigration(path.join(fs.mkdtempSync(path.join(os.tmpdi
 /** A call that must refuse, writing nothing: its error. @param {string[]} args @param {import('./engine-harness.cjs').CallOptions} [opts] */
 const untouched = (args, opts = { env: SESSION }) => refusedUntouched(dir, args, opts, harness);
 
-/** A topic's record composed where the directive keeps it, the carry's argv. @param {string} dotpath @param {unknown} record */
+/** A topic's record composed where the directive keeps it, and passed by its verifier, the carry's argv. @param {string} dotpath @param {unknown} record */
 function composed(dotpath, record) {
   const [unit, , topic] = dotpath.split('.');
   writeState(dir, composedPath(unit, topic), typeof record === 'string' ? record : JSON.stringify(record));
+  writeState(dir, findingsPath(unit, topic), '');
   return ['ledger', 'carry', dotpath];
 }
 
@@ -145,8 +146,22 @@ describe('a topic\'s record carried (21.6, 21.10.9)', () => {
     assert.deepStrictEqual([kept('fumi', 'support').entries, fs.existsSync(statePath(dir, layout.ledger))], [[], false]);
   });
 
-  it('the verifier\'s findings and a refusal beside the record, cleared once it is carried', () => {
-    writeState(dir, findingsPath('fumi', 'licensing'), '## Trial Length\n\nDropped.\n');
+  it('a record its verifier has not passed — no findings beside it, or findings standing — refused, nothing written, nor anything beside the record: the carry clears them, and a record is carried once', () => {
+    const args = composed(LICENSING, { entries: [QUESTION, DECISION] });
+    const findings = findingsPath('fumi', 'licensing');
+    const why = 'a record is carried once its verifier passes it, its findings file empty, for the carry clears the findings beside it and a record is carried once, so a finding left standing would never be answered';
+    fs.rmSync(statePath(dir, findings));
+    const unverified = untouched(args);
+    writeState(dir, findings, '## Trial Length\n\nDropped.\n');
+    const standing = untouched(args);
+
+    assert.deepStrictEqual([unverified, standing], [
+      `ledger carry: fumi's licensing has not passed its verifier — ${findings} is no file: ${why}`,
+      `ledger carry: fumi's licensing has not passed its verifier — its findings stand in ${findings}: ${why}`,
+    ]);
+  });
+
+  it('the verifier\'s pass and a refusal beside the record, cleared once it is carried', () => {
     writeState(dir, refusedPath('fumi', 'licensing'), 'ledger carry: refused.\n');
 
     carry(LICENSING, [QUESTION, DECISION]);

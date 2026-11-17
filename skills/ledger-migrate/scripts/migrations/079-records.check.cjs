@@ -22,7 +22,8 @@
 // which the directive gives the composer and its verifier to judge:
 //   - a topic whose log or brief holds text past its headings has a record
 //     of an entry at least;
-//   - every entry cites a section, a heading its file holds, in a file
+//   - every entry cites a section, a heading its file holds or the
+//     heading's path, `{heading} > {heading}`, the outermost first, in a file
 //     that stays where the cite names it wherever the entry goes: its
 //     topic's own, which move with its entries, but its mail, whose
 //     messages go once read; or one of the unit's beside its topics — its
@@ -32,8 +33,9 @@
 //     folder, which a split may take from under the cite, nor another
 //     unit's, which its retiring may (21.7) — but for a promoted topic the
 //     discovery sessions of the unit it came from, which stay where they
-//     are. A heading its file holds more than once still names a section
-//     of it;
+//     are. A path names a section where a heading's path ends with it,
+//     and one naming several, a heading held more than once among them,
+//     still names a section of the file;
 //   - every subtopic its old discussion map holds — in the unit's manifest
 //     under `.workflows/`, which the move dropped the map from (21.5.8) —
 //     named by an entry's map item, a subtopic's name or a list of them
@@ -63,17 +65,24 @@
 // (`.cache/migrate/records/{unit}.sections.json`): what the spec stage
 // decided, found or left open on a subject no log discusses exists nowhere
 // else (21.6.4), and the session sends each such section to the topic it
-// belongs to. In a joined spec a section is its part's: a cite counts in
-// the parts of its topic's specs, or in every part where its topic draws
-// on none of the spec, a mark is its part's, `{"{path}": {"{part}":
+// belongs to, one of those it is named on. A section is its heading's path
+// within its part — a kept spec's, within the file — named by the shortest
+// path naming it alone there, its heading or with as many of those over it
+// as tell it apart; a cite or a mark counts for the sections it names
+// alone, so a bare heading its part holds more than once counts for none
+// of its copies. In a joined spec a section is its part's: a cite counts
+// in the parts of its topic's specs, or in every part where its topic
+// draws on none of the spec, a mark is its part's, `{"{path}": {"{part}":
 // ["{section}", …]}}`, and the front matter a part opens on, the old
 // spec's, holds none of its text; any other section is marked `{"{path}":
 // ["{section}", …]}`. It is named on each topic drawing on it — in a
 // joined spec, each whose part holds it, any section outside the parts
-// every topic's of the spec — and asks no composer for an entry. Until each
-// topic of a unit drawing on an approved spec has its record, and no such
-// section is named, none of its topics is carried (`unitWaits`, which
-// `ledger carry` asks): a topic carried could take no section found later.
+// every topic's of the spec — and asks no composer for an entry. A record
+// is carried once its verifier has passed it, the findings beside it as
+// composed an empty file (`unverified`, which `ledger carry` asks); and
+// until each topic of a unit drawing on an approved spec has its record so
+// passed, and no such section is named, none of its topics is carried
+// (`unitWaits`): a topic carried could take no section found later.
 // A record of no entries keeps every rule but the cites: its old map, its
 // threads and its imports are asked of it as of any. A topic promoted to a
 // cross-cutting unit took only its discussion there: its research's threads
@@ -133,6 +142,9 @@ const JOINED_SPEC = 'spec.md';
 // The sections of the directive its agents' briefs draw.
 const BRIEFED = ["A Topic's Sources", "A Topic's Record"];
 const HEADING = /^ {0,3}#{1,6}[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$/;
+const LEVEL = /^ {0,3}(#+)/;
+// What a heading's path joins its headings by, the outermost first.
+const PATH_JOIN = ' > ';
 const FENCE = /^ {0,3}(```|~~~)/;
 const PART = /^ {0,3}##[ \t]/;
 const FRONT_MATTER = /^---[ \t]*$/;
@@ -177,19 +189,6 @@ function mainProject(projectDir) {
   return path.resolve(path.dirname(dir), (git(projectDir, ['rev-parse', '--show-prefix']) ?? '').trim());
 }
 
-/** The headings of a markdown text, fenced blocks aside. @param {string} text @returns {Set<string>} */
-function headingsOf(text) {
-  /** @type {Set<string>} */
-  const headings = new Set();
-  let fenced = false;
-  for (const line of text.split('\n')) {
-    if (FENCE.test(line)) fenced = !fenced;
-    const heading = fenced ? null : HEADING.exec(line);
-    if (heading !== null) headings.add(heading[1]);
-  }
-  return headings;
-}
-
 /** Whether a unit's manifest holds the topic in the phase. @param {Record<string, any>} manifest @param {string} phase @param {string} topic */
 const holds = (manifest, phase, topic) => TOPIC_PHASES.includes(phase) && isObject(itemsOf(manifest.phases?.[phase]?.items)[topic]);
 
@@ -214,19 +213,25 @@ function withoutFrontMatter(lines) {
 }
 
 /**
- * Each section of a spec holding text of its own — lines past its heading
- * before the next, fenced blocks among them — by its heading, and in a
- * joined spec the part it is in: the heading at level two over it, or its
- * own at that level. A spec kept whole, and a joined spec outside its
- * parts, has none.
- * @param {string} text @param {boolean} joined @returns {{section: string, part: string|null}[]}
+ * A heading of a markdown text: its trail, the headings over it, the
+ * outermost first, ending in its own; in a joined spec the part it is in,
+ * the heading at level two over it, or its own at that level, null in a
+ * spec kept whole and outside the parts; and whether it holds text of its
+ * own, lines past it before the next heading, fenced blocks among them.
+ * @typedef {{trail: string[], part: string|null, text: boolean}} Heading
  */
-function textSections(text, joined) {
-  /** @type {{section: string, part: string|null}[]} */
-  const held = [];
+
+/**
+ * The headings of a markdown text, fenced blocks aside, and in a joined
+ * spec the front matter each part opens on.
+ * @param {string} text @param {boolean} joined @returns {Heading[]}
+ */
+function outlineOf(text, joined) {
+  /** @type {Heading[]} */
+  const headings = [];
+  /** @type {{level: number, heading: string}[]} */
+  const over = [];
   let fenced = false;
-  /** @type {{section: string, part: string|null}|null} */
-  let open = null;
   /** @type {string|null} */
   let part = null;
   const lines = text.split('\n');
@@ -234,24 +239,66 @@ function textSections(text, joined) {
     const fence = FENCE.test(line);
     const heading = fenced || fence ? null : HEADING.exec(line);
     if (fence) fenced = !fenced;
-    if (heading !== null) {
-      if (joined && PART.test(line)) part = heading[1];
-      open = { section: heading[1], part };
-    } else if (open !== null && line.trim() !== '') {
-      held.push(open);
-      open = null;
+    if (heading === null) {
+      if (line.trim() !== '' && headings.length > 0) headings[headings.length - 1].text = true;
+      continue;
     }
+    const level = /** @type {RegExpExecArray} */ (LEVEL.exec(line))[1].length;
+    while (over.length > 0 && over[over.length - 1].level >= level) over.pop();
+    over.push({ level, heading: heading[1] });
+    if (joined && PART.test(line)) part = heading[1];
+    headings.push({ trail: over.map((each) => each.heading), part, text: false });
   }
-  return held;
+  return headings;
+}
+
+/** A heading's path as a cite or a mark gives it, `{heading} > {heading}`: its headings, the outermost first. @param {unknown} name @returns {string[]} */
+const pathOf = (name) => String(name).split(PATH_JOIN);
+
+/** Whether a heading's trail ends with the path. @param {Heading} heading @param {string[]} names */
+const endsWith = ({ trail }, names) => names.length <= trail.length && names.every((name, at) => name === trail[trail.length - names.length + at]);
+
+/**
+ * The headings among `headings` a path names alone: each its trail ends
+ * with, where all of them share one trail — none where it names headings
+ * of several, so a heading held more than once is named by its bare
+ * heading in none of its copies, and by the path that tells it apart.
+ * @param {Heading[]} headings @param {string[]} names @returns {Heading[]}
+ */
+function namedAlone(headings, names) {
+  const named = headings.filter((heading) => endsWith(heading, names));
+  return new Set(named.map(({ trail }) => trail.join(PATH_JOIN))).size === 1 ? named : [];
+}
+
+/**
+ * The shortest path naming a heading alone among `headings`: its own
+ * heading, or with as many of those over it as tell it apart.
+ * @param {Heading[]} headings @param {Heading} heading
+ */
+function nameOf(headings, heading) {
+  const { trail } = heading;
+  const from = [...trail.keys()].reverse().find((at) => namedAlone(headings, trail.slice(at)).includes(heading)) ?? 0;
+  return trail.slice(from).join(PATH_JOIN);
+}
+
+/** Headings by the part each is in, in their order. @param {Heading[]} headings @returns {Map<string|null, Heading[]>} */
+function byPartOf(headings) {
+  /** @type {Map<string|null, Heading[]>} */
+  const parts = new Map();
+  for (const heading of headings) parts.set(heading.part, [...(parts.get(heading.part) ?? []), heading]);
+  return parts;
 }
 
 /** Whether a text holds anything past its headings and blank lines. @param {string} text */
 const holdsText = (text) => text.split('\n').some((line) => line.trim() !== '' && (FENCE.test(line) || HEADING.exec(line) === null));
 
+/** The topics a unit promoted to a cross-cutting unit, each with the unit it went to, which carries its record. @param {Record<string, any>} manifest @returns {{topic: string, to: string}[]} */
+const promotedOf = (manifest) => Object.entries(itemsOf(manifest.phases?.discussion?.items))
+  .filter(([, item]) => isObject(item) && item.status === 'promoted').map(([topic, item]) => ({ topic, to: String(item.promoted_to) }));
+
 /** The topics of a unit's manifest the directive carries, once each, sorted. @param {Record<string, any>} manifest @returns {string[]} */
 function topicsOf(manifest) {
-  const promoted = new Set(Object.entries(itemsOf(manifest.phases?.discussion?.items))
-    .filter(([, item]) => isObject(item) && item.status === 'promoted').map(([topic]) => topic));
+  const promoted = new Set(promotedOf(manifest).map(({ topic }) => topic));
   return [...new Set(TOPIC_PHASES.flatMap((phase) => Object.keys(itemsOf(manifest.phases?.[phase]?.items))))].filter((topic) => !promoted.has(topic)).sort();
 }
 
@@ -433,7 +480,8 @@ function citeProblem(project, unit, topic, { path: cited, section }) {
   }
   const text = readText(path.join(project.stateDir, cited));
   if (text === null) return `cites ${cited}, which the state does not hold`;
-  return headingsOf(text).has(String(section)) ? null : `cites "${section}" in ${cited}, which has no such heading`;
+  const names = pathOf(section);
+  return outlineOf(text, false).some((heading) => endsWith(heading, names)) ? null : `cites "${section}" in ${cited}, which has no such heading${names.length > 1 ? ' path' : ''}`;
 }
 
 /**
@@ -525,11 +573,28 @@ function unitsOf(project) {
     .map((entry) => entry.name).sort().map((name) => unitOf(project, name));
 }
 
-/** A record's file beneath `folder`: a topic's in its unit's folder, a unit's own beside it. @param {string} folder @param {Unit} unit @param {string|null} topic */
-const recordFile = (folder, unit, topic) => (topic === null ? path.join(folder, `${unit.name}.json`) : path.join(folder, unit.name, `${topic}.json`));
+/**
+ * A record's file beneath `folder`, by its ending: a topic's in its unit's
+ * folder, a unit's own beside it.
+ * @param {string} folder @param {string} unit @param {string|null} topic @param {string} [ending]
+ */
+const recordFile = (folder, unit, topic, ending = '.json') => (topic === null ? path.posix.join(folder, `${unit}${ending}`) : path.posix.join(folder, unit, `${topic}${ending}`));
 
 /** What `ledger carry` kept of a record, or null. @param {Project} project @param {Unit} unit @param {string|null} topic */
-const carriedOf = (project, unit, topic) => readJson(recordFile(path.join(project.stateDir, CARRIED), unit, topic));
+const carriedOf = (project, unit, topic) => readJson(path.join(project.stateDir, recordFile(CARRIED, unit.name, topic)));
+
+/**
+ * Why a record has not passed its verifier, null where it has: the
+ * verifier's findings beside it as composed, an empty file its pass, none
+ * where no verifier has written.
+ * @param {string} stateDir @param {string} unit @param {string|null} topic @returns {string|null}
+ */
+function unverified(stateDir, unit, topic) {
+  const findings = recordFile(COMPOSED, unit, topic, '.findings.txt');
+  const text = readText(path.join(stateDir, findings));
+  if (text === null) return `${findings} is no file`;
+  return text.trim() === '' ? null : `its findings stand in ${findings}`;
+}
 
 /** The sections of the unit's specs the session marked as holding no topic's decision, from the state's folder. @param {string} unit */
 const sectionsMarked = (unit) => `${COMPOSED}/${unit}.sections.json`;
@@ -543,7 +608,7 @@ function recordOf(project, unit, topic) {
   const carried = carriedOf(project, unit, topic);
   if (carried !== null) return carried.record.entries;
   try {
-    const composed = readJson(path.join(project.stateDir, COMPOSED, unit.name, `${topic}.json`));
+    const composed = readJson(path.join(project.stateDir, recordFile(COMPOSED, unit.name, topic)));
     return isObject(composed) && Array.isArray(composed.entries) ? composed.entries.filter(isObject) : null;
   } catch {
     return null;
@@ -562,35 +627,33 @@ function marksOf(project, unit) {
 /** A key of a spec's path and a name in it. @param {string} at @param {string|null} name */
 const specKey = (at, name) => `${at}\n${name ?? ''}`;
 
-/** What stands for every part of a spec, where a cite's topic draws on none of it. */
-const ANY_PART = '*';
-
-/** A key of a section: its spec's path, its part and its heading. @param {string} at @param {string|null} part @param {string} section */
+/** A key of a section: its spec's path, its part and its path within it. @param {string} at @param {string|null} part @param {string} section */
 const sectionKey = (at, part, section) => `${at}\n${part ?? ''}\n${section}`;
 
 /**
- * The sections a topic's record cites: each in the parts of its spec the
- * topic draws on, or in every part where it draws on none.
- * @param {Project} project @param {Unit} unit @param {string} topic @param {Record<string, any>[]} record @returns {string[]}
+ * The cites of a topic's record, each with the parts of its spec the topic
+ * draws on — null where it draws on none, so the cite counts in every part.
+ * @param {Project} project @param {Unit} unit @param {string} topic @param {Record<string, any>[]} record
+ * @returns {{path: string, names: string[], parts: (string|null)[]|null}[]}
  */
-function citedBy(project, unit, topic, record) {
+function citesOf(project, unit, topic, record) {
   const specs = specsOf(project, unit, topic);
-  return record.flatMap(({ cites }) => (Array.isArray(cites) ? cites.filter(isObject) : [])).flatMap(({ path: at, section }) => {
+  return record.flatMap(({ cites }) => (Array.isArray(cites) ? cites.filter(isObject) : [])).map(({ path: at, section }) => {
     const parts = specs.filter((spec) => spec.path === at && spec.part !== null).map(({ part }) => part);
-    return (parts.length > 0 ? parts : [ANY_PART]).map((part) => sectionKey(String(at), part, String(section)));
+    return { path: String(at), names: pathOf(section), parts: parts.length > 0 ? parts : null };
   });
 }
 
 /**
- * The sections of a spec the session marked as holding no topic's: a part's
- * as `{"{path}": {"{part}": [...]}}` marks them, any other as
- * `{"{path}": [...]}`.
- * @param {Record<string, any>} marked @param {string} at @param {string|null} part
+ * The sections of a spec the session marked as holding no topic's, each
+ * by its path: a part's as `{"{path}": {"{part}": [...]}}` marks them, any
+ * other as `{"{path}": [...]}`.
+ * @param {Record<string, any>} marked @param {string} at @param {string|null} part @returns {string[]}
  */
 function markedIn(marked, at, part) {
   const marks = marked[at];
-  if (part === null) return new Set(Array.isArray(marks) ? namesOf(marks) : []);
-  return new Set(isObject(marks) && !Array.isArray(marks) ? namesOf(marks[part]) : []);
+  if (part === null) return Array.isArray(marks) ? namesOf(marks) : [];
+  return isObject(marks) && !Array.isArray(marks) ? namesOf(marks[part]) : [];
 }
 
 /** The mark that settles a section as holding no topic's. @param {string} at @param {string|null} part @param {string} section */
@@ -601,19 +664,18 @@ const drawnBy = (map, key, topics) => map.set(key, new Set([...(map.get(key) ?? 
 
 /**
  * The sections of a unit's approved specs holding text that none of its
- * records cites, nor the session marked as holding no topic's — in a joined
- * spec each by its part and its heading — each with the topics drawing on
- * it: in a joined spec, those whose part holds it, any other section the
- * spec's every topic's — once every topic of it has a record composed or
- * carried; none before.
+ * records cites, nor the session marked as holding no topic's — each by
+ * the shortest path naming it alone in its part, in a joined spec with its
+ * part — each with the topics drawing on it: in a joined spec, those whose
+ * part holds it, any other section the spec's every topic's — once every
+ * topic of it has a record composed or carried; none before.
  * @param {Project} project @param {Unit} unit @returns {{path: string, part: string|null, section: string, topics: string[]}[]}
  */
 function uncitedOf(project, unit) {
   const topics = topicsOf(unit.manifest);
   const records = topics.map((topic) => recordOf(project, unit, topic));
   if (records.some((record) => record === null)) return [];
-  const cited = new Set(topics.flatMap((topic, at) => citedBy(project, unit, topic, /** @type {Record<string, any>[]} */ (records[at]))));
-  const isCited = (/** @type {string} */ at, /** @type {string|null} */ part, /** @type {string} */ section) => cited.has(sectionKey(at, part, section)) || cited.has(sectionKey(at, ANY_PART, section));
+  const cites = topics.flatMap((topic, at) => citesOf(project, unit, topic, /** @type {Record<string, any>[]} */ (records[at])));
   const marked = marksOf(project, unit);
   /** @type {Map<string, Set<string>>} */
   const bySpec = new Map();
@@ -629,9 +691,15 @@ function uncitedOf(project, unit) {
   const uncited = new Map();
   for (const [at, drawn] of bySpec) {
     const joined = at === `${unit.name}/${JOINED_SPEC}`;
-    for (const { section, part } of textSections(readText(path.join(project.stateDir, at)) ?? '', joined)) {
-      if (isCited(at, part, section) || markedIn(marked, at, part).has(section)) continue;
-      drawnBy(uncited, sectionKey(at, part, section), byPart.get(specKey(at, part)) ?? drawn);
+    for (const [part, held] of byPartOf(outlineOf(readText(path.join(project.stateDir, at)) ?? '', joined))) {
+      const named = [
+        ...cites.filter((cite) => cite.path === at && (cite.parts === null || cite.parts.includes(part))).map(({ names }) => names),
+        ...markedIn(marked, at, part).map(pathOf),
+      ];
+      const settled = new Set(named.flatMap((names) => namedAlone(held, names)));
+      for (const heading of held.filter((each) => each.text && !settled.has(each))) {
+        drawnBy(uncited, sectionKey(at, part, nameOf(held, heading)), byPart.get(specKey(at, part)) ?? drawn);
+      }
     }
   }
   return [...uncited].map(([key, drawn]) => {
@@ -642,15 +710,20 @@ function uncitedOf(project, unit) {
 
 /**
  * What a unit's topics wait on before any of them is carried, where any
- * draws on an approved spec: each topic with no record composed or carried,
- * and, once each has one, each section of its specs no record cites.
+ * draws on an approved spec: each topic not carried with no record
+ * composed, or one its verifier has not passed, and, once each has passed,
+ * each section of its specs no record cites.
  * @param {Project} project @param {Unit} unit @returns {string[]}
  */
 function unitWaits(project, unit) {
   const topics = topicsOf(unit.manifest);
   if (!topics.some((topic) => specsOf(project, unit, topic).some(({ approved }) => approved))) return [];
-  const unrecorded = topics.filter((topic) => recordOf(project, unit, topic) === null);
-  if (unrecorded.length > 0) return unrecorded.map((topic) => `${unit.name}'s ${topic} has no record composed`);
+  const unpassed = topics.filter((topic) => carriedOf(project, unit, topic) === null).flatMap((topic) => {
+    if (recordOf(project, unit, topic) === null) return [`${unit.name}'s ${topic} has no record composed`];
+    const why = unverified(project.stateDir, unit.name, topic);
+    return why === null ? [] : [`${unit.name}'s ${topic} has not passed its verifier — ${why}`];
+  });
+  if (unpassed.length > 0) return unpassed;
   return uncitedOf(project, unit).map((each) => uncitedProblem(unit, each));
 }
 
@@ -708,6 +781,7 @@ module.exports = {
   phases: TOPIC_PHASES,
   holds,
   topicsOf,
+  promotedOf,
   /**
    * What a topic's record breaks of the rules, before it is carried in
    * `phase`.
@@ -725,6 +799,14 @@ module.exports = {
   unitWaits({ projectDir, stateDir, unit }) {
     const project = projectOf(projectDir, stateDir);
     return unitWaits(project, unitOf(project, unit));
+  },
+  /**
+   * Why a record has not passed its verifier (the header's), null where it
+   * has.
+   * @param {{stateDir: string, unit: string, topic: string|null}} at
+   */
+  unverified({ stateDir, unit, topic }) {
+    return unverified(stateDir, unit, topic);
   },
   /**
    * Whether a unit has a record of its own (the header's), read from the

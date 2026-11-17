@@ -51,12 +51,16 @@
 //   none where the carry would take the record, and writes nothing, no
 //   refusal beside the record either: the record's composer runs it before
 //   handing back, and the session before a verifier reads the record.
-// - In its unit's order: a topic of a unit drawing on an approved spec is
-//   carried only once every topic of the unit has its record composed and
-//   no section of those specs goes uncited (079's check, `unitWaits`), a
-//   topic carried taking no section found later; refused, writing nothing
-//   beside the record, for the session alone keeps the order. A dry run
-//   names none of it: it is the record's composer's.
+// - Verified, in its unit's order: a record is carried only once its
+//   verifier has passed it, the findings beside it an empty file (079's
+//   check, `unverified`) — the carry clears them, and a record is carried
+//   once, so a finding left standing would never be answered — and a topic
+//   of a unit drawing on an approved spec only once every topic of the
+//   unit has its record so passed and no section of those specs goes
+//   uncited (`unitWaits`), a topic carried taking no section found later;
+//   refused, writing nothing beside the record, for the session alone
+//   keeps the order. A dry run names none of it: it is the record's
+//   composer's.
 // - Once: the whole record is appended in one write, after what it carried
 //   is kept in the state's cache (`.cache/migrate/carried/{unit}/{topic}.json`)
 //   — the record as given, and each entry's ref with the id it was given —
@@ -142,8 +146,10 @@ const RECORDS_DIRECTIVE = '079-records';
  *   phases: string[],
  *   holds: (manifest: Record<string, any>, phase: string, topic: string) => boolean,
  *   topicsOf: (manifest: Record<string, any>) => string[],
+ *   promotedOf: (manifest: Record<string, any>) => {topic: string, to: string}[],
  *   recordProblems: (at: Record<string, unknown>) => string[],
  *   unitWaits: (at: Record<string, unknown>) => string[],
+ *   unverified: (at: Record<string, unknown>) => string|null,
  *   ownRecord: (at: Record<string, unknown>) => boolean,
  *   sourcesOf: (at: Record<string, unknown>) => Record<string, any>,
  * }}
@@ -454,15 +460,21 @@ function composedRecord(cwd, place, session) {
 }
 
 /**
- * Refused, writing nothing, while the topic's unit waits on its records:
- * the session's order to keep, which no composer answers.
+ * Refused, writing nothing, where the record's verifier has not passed it,
+ * or the topic's unit waits on its records: the session's order to keep,
+ * which no composer answers.
  * @param {string} cwd @param {Place} place
  */
-function refuseUnsettled(cwd, { root, unit, topic }) {
-  if (topic === null) return;
-  const waits = recordsRules().unitWaits({ projectDir: codeRoot(cwd), stateDir: root, unit });
+function refuseUnsettled(cwd, place) {
+  const { root, unit, topic } = place;
+  const rules = recordsRules();
+  const unverified = rules.unverified({ stateDir: root, unit, topic });
+  if (unverified !== null) {
+    throw new Error(`${SAID}: ${recordName(place)} has not passed its verifier — ${unverified}: a record is carried once its verifier passes it, its findings file empty, for the carry clears the findings beside it and a record is carried once, so a finding left standing would never be answered`);
+  }
+  const waits = topic === null ? [] : rules.unitWaits({ projectDir: codeRoot(cwd), stateDir: root, unit });
   if (waits.length > 0) {
-    throw new Error(`${SAID}: ${unit}'s ${topic} is carried once every topic of ${unit} has its record composed and no section of its approved specs goes uncited — a topic carried takes no section found later: ${waits.join('; ')}`);
+    throw new Error(`${SAID}: ${unit}'s ${topic} is carried once every topic of ${unit} has its record passed by its verifier and no section of its approved specs goes uncited — a topic carried takes no section found later: ${waits.join('; ')}`);
   }
 }
 

@@ -177,7 +177,7 @@ But a link it names, a task held after one of a later phase or another unit's â€
 - **It holds, on a later phase of another of the unit's old plans.** A known edge: the cut orders the plans by what they depend on, never by the tracker's links. Say so to the person, as the refusal reads, and stop the directive there.
 - **It holds, another unit's task on one of this unit's.** That unit was cut first, so its phase can't be amended to rely on this one: a known edge. Say so to the person, as the refusal reads, and stop the directive there.
 
-Write each such ruling into `phases/{N}.settled.md` of the waiting task's phase, as a reversal's is, and into its findings: it is amended and verified as any finding sends it. Once each link is settled, join and cut again.
+Write each `Settled:` ruling above, a task of this unit's on another unit's and one on a later phase of its own old plan, into `phases/{N}.settled.md` of the waiting task's phase, as a reversal's is, and into its findings: it is amended and verified as any finding sends it. Once each link is settled, join and cut again.
 
 ## An Epic's Research
 

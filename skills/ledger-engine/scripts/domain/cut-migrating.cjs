@@ -372,22 +372,6 @@ function writeManifest(cwd, unit, phases, done, cites) {
   saveWorkUnitManifest(cwd, unit, manifest);
 }
 
-/** The verb taking off a link the cut refuses. */
-const UNLINK = 'task unlink';
-
-/**
- * A unit of the state's, while the migration runs, each refusal opening
- * `said`.
- * @param {string} cwd @param {string} unit @param {string} said
- * @returns {Record<string, any>} the unit's manifest
- */
-function migratingUnit(cwd, unit, said) {
-  if (!migrationRuns(stateRoot(cwd))) throw new Error(`${said}: a unit is cut by the migration only while it runs — the state branch has its first commit, so the migration is done`);
-  const manifest = workUnitNameRefusal(unit) === null ? manifestOf(stateRoot(cwd), unit) : null;
-  if (manifest === null) throw new Error(`${said}: there is no work unit "${unit}"`);
-  return manifest;
-}
-
 /**
  * The unit, cut by the migration, refused as the header says before
  * anything is written, each refusal opening `said`.
@@ -395,7 +379,9 @@ function migratingUnit(cwd, unit, said) {
  * @returns {Record<string, any>} the unit's manifest
  */
 function cuttable(cwd, unit, said = 'cut') {
-  const manifest = migratingUnit(cwd, unit, said);
+  if (!migrationRuns(stateRoot(cwd))) throw new Error(`${said}: a unit is cut by the migration only while it runs — the state branch has its first commit, so the migration is done`);
+  const manifest = workUnitNameRefusal(unit) === null ? manifestOf(stateRoot(cwd), unit) : null;
+  if (manifest === null) throw new Error(`${said}: there is no work unit "${unit}"`);
   if (fs.existsSync(markPath(cwd, unit))) throw new Error(`${said}: the migration has cut ${unit} already — its mark is ${markPath(cwd, unit)}`);
   if (!specJoined(manifest)) throw new Error(`${said}: ${unit}'s specs were not joined by the migration — it cuts only a unit whose building started, its ${SPEC_FILE} those specs joined`);
   return manifest;
@@ -430,24 +416,16 @@ const adoptedPhases = (manifest, phases) => phases.flatMap((phase, at) => (phase
 const givenTask = (unit, value) => (isShownTask(value) ? parseShownTask(unit, value) : parseTaskId(value));
 
 /**
- * `task unlink <unit> <task> --after <task> [--file <plan.json>]`: a link
- * the cut refuses taken off while the migration runs — either task another
- * unit's by its id. For a unit not cut yet, as the cut is, each task
- * named as the cut's adoption of the plan given names it; for one the
- * migration has cut, as the tracker names them, no plan given.
- * @param {string} cwd @param {string} unit @param {string} given @param {string} afterGiven @param {string|undefined} file
+ * `task unlink <unit> <task> --after <task> --file <plan.json>`: a link the
+ * cut refuses taken off, each task named as the cut's adoption of the plan
+ * names it — either another unit's by its id — while the migration runs
+ * and the unit is not cut yet, as the cut is.
+ * @param {string} cwd @param {string} unit @param {string} given @param {string} afterGiven @param {string} file
  */
 function unlinkMigrating(cwd, unit, given, afterGiven, file) {
-  const named = () => ({ task: givenTask(unit, given), after: givenTask(unit, afterGiven) });
-  if (file !== undefined) {
-    const phases = adoptedPhases(cuttable(cwd, unit, UNLINK), planIn(path.resolve(cwd, file)).phases);
-    const { task, after } = named();
-    return unlinkAdopted(cwd, unit, phases, task, after);
-  }
-  migratingUnit(cwd, unit, UNLINK);
-  if (!fs.existsSync(markPath(cwd, unit))) throw new Error(`${UNLINK}: the migration has not cut ${unit} yet — its tasks are named as the cut's adoption of its plan names them, so name the plan, --file <plan.json>`);
-  const { task, after } = named();
-  return unlinkAdopted(cwd, unit, null, task, after);
+  const manifest = cuttable(cwd, unit, 'task unlink');
+  const plan = planIn(path.resolve(cwd, file));
+  return unlinkAdopted(cwd, unit, adoptedPhases(manifest, plan.phases), givenTask(unit, given), givenTask(unit, afterGiven));
 }
 
 /**

@@ -113,9 +113,9 @@ const GOOD = Object.freeze({
   ],
   'shop.discussion.weights': [
     { ref: 'q1', event: 'asked', text: 'How do ties break?', by: 'claude', map_item: 'tie-break', cites: [logCite('shop', 'weights', 'Tie Break')] },
-    { ref: 'd1', event: 'decided', answers: 'q1', text: 'By price.', why: 'The spec\'s corrigendum replaced by name.', by: 'claude', given: 'carried', map_item: 'tie-break', cites: [{ path: 'shop/spec.md', section: 'Corrigenda' }] },
+    { ref: 'd1', event: 'decided', answers: 'q1', text: 'By price.', why: 'The spec\'s corrigendum replaced by name.', by: 'claude', given: 'carried', map_item: 'tie-break', cites: ['Corrigenda', 'Corrigenda > Detail'].map((section) => ({ path: 'shop/spec.md', section })) },
     { ref: 'q2', event: 'asked', text: 'How are items ranked?', by: 'claude', cites: [{ path: 'shop/spec.md', section: 'Ranking' }] },
-    { ref: 'd2', event: 'decided', answers: 'q2', text: 'Newest first, by day; a wishlist newest saved first.', why: 'The spec settles it.', by: 'claude', given: 'carried', cites: ['Ranking', 'Detail'].map((section) => ({ path: 'shop/spec.md', section })) },
+    { ref: 'd2', event: 'decided', answers: 'q2', text: 'Newest first, by day; a wishlist newest saved first.', why: 'The spec settles it.', by: 'claude', given: 'carried', cites: ['Ranking', 'Ranking > Detail'].map((section) => ({ path: 'shop/spec.md', section })) },
     { ref: 'q3', event: 'asked', text: 'How is an item saved to a wishlist?', by: 'claude', cites: [{ path: 'shop/spec.md', section: 'Saving' }] },
     { ref: 'd3', event: 'decided', answers: 'q3', text: 'One tap.', why: 'The spec settles it.', by: 'claude', given: 'carried', cites: [{ path: 'shop/spec.md', section: 'Saving' }] },
   ],
@@ -143,10 +143,11 @@ function recordOf(dotpath) {
   return [unit, topic];
 }
 
-/** The ledger carry of a record, composed where the directive keeps it. @param {string} at @param {string} dotpath @param {unknown[]} entries */
+/** The ledger carry of a record, composed where the directive keeps it and passed by its verifier. @param {string} at @param {string} dotpath @param {unknown[]} entries */
 function carryArgs(at, dotpath, entries) {
   const [unit, topic] = recordOf(dotpath);
   writeState(at, composedPath(unit, topic), JSON.stringify({ entries }));
+  writeState(at, findingsPath(unit, topic), '');
   return ['ledger', 'carry', dotpath];
 }
 
@@ -367,7 +368,7 @@ describe('a record breaking a rule is refused at the carry, its refusal kept bes
     assert.strictEqual(refused('fumi.discussion.search', []), breaks('fumi', 'search', SEARCH_UNCARRIED));
   });
 
-  it('the unit\'s spec.md where its building never started; where it started, a heading the spec the move joined lacks — whatever its specs under `.workflows/` hold now — and one two of its specs share citing either', () => {
+  it('the unit\'s spec.md where its building never started; where it started, a heading the spec the move joined lacks — whatever its specs under `.workflows/` hold now — and one two of its specs share citing either; a heading\'s path the spec\'s headings lack refused, and one they hold, a part\'s heading over it among them, taken', () => {
     fs.appendFileSync(path.join(dir, '.workflows/shop/specification/weights/specification.md'), '\n## Pricing\n\nBy price.\n');
     const licensing = GOOD['fumi.discussion.licensing'];
     const [question, decision] = GOOD['shop.discussion.weights'];
@@ -375,7 +376,9 @@ describe('a record breaking a rule is refused at the carry, its refusal kept bes
       breaks('fumi', 'licensing', ['entry d2 cites fumi/spec.md, which the state does not hold']));
     assert.strictEqual(refused('shop.discussion.weights', [{ ...question, cites: ['Pricing', 'Saving'].map((section) => ({ path: 'shop/spec.md', section })) }, decision]),
       breaks('shop', 'weights', ['entry q1 cites "Pricing" in shop/spec.md, which has no such heading']));
-    carryArgs(dir, 'shop.discussion.weights', [{ ...question, cites: ['Detail', 'Ranking'].map((section) => ({ path: 'shop/spec.md', section })) }, decision]);
+    assert.strictEqual(refused('shop.discussion.weights', [{ ...question, cites: ['Saving > Detail', 'Corrigenda > Detail'].map((section) => ({ path: 'shop/spec.md', section })) }, decision]),
+      breaks('shop', 'weights', ['entry q1 cites "Saving > Detail" in shop/spec.md, which has no such heading path']));
+    carryArgs(dir, 'shop.discussion.weights', [{ ...question, cites: ['Detail', 'Ranking', '1. Weights > Ranking > Detail'].map((section) => ({ path: 'shop/spec.md', section })) }, decision]);
     assert.deepStrictEqual(ok(dir, ['ledger', 'carry', 'shop.discussion.weights', '--dry-run'], { env: SESSION }).faults, []);
   });
 });
@@ -517,7 +520,7 @@ describe('what the check reads once a record is carried', () => {
     assert.deepStrictEqual(unfinished(), {
       'gone/gone': ['entry q1 cites "Cause" in gone/topics/gone/log.md, which has no such heading'],
       'platform/auth': ['its record never reached the ledger'],
-      'shop/weights': ['its record is empty, and its log or brief holds text past its headings', unnamed('tie-break', 'decided'), ...shopUncited('1. Weights', ['Ranking', 'Detail', 'Corrigenda']), ...shopUncited('2. Wishlist', ['Saving', 'Ranking'])],
+      'shop/weights': ['its record is empty, and its log or brief holds text past its headings', unnamed('tie-break', 'decided'), ...shopUncited('1. Weights', ['Ranking', 'Ranking > Detail', 'Corrigenda', 'Corrigenda > Detail']), ...shopUncited('2. Wishlist', ['Saving', 'Ranking'])],
     });
   });
 
@@ -543,13 +546,35 @@ describe('what the check reads once a record is carried', () => {
     const marked = unfinished()['shop/weights'];
 
     assert.deepStrictEqual([composed, marked, ok(dir, ['ledger', 'carry', 'shop.discussion.weights', '--dry-run'], { env: SESSION }).faults], [
-      ['has no record yet', ...shopUncited('1. Weights', ['Ranking', 'Detail']), ...shopUncited('2. Wishlist', ['Saving', 'Ranking'])],
-      ['has no record yet', ...shopUncited('1. Weights', ['Ranking', 'Detail'])],
+      ['has no record yet', ...shopUncited('1. Weights', ['Ranking', 'Ranking > Detail']), ...shopUncited('2. Wishlist', ['Saving', 'Ranking'])],
+      ['has no record yet', ...shopUncited('1. Weights', ['Ranking', 'Ranking > Detail'])],
       [],
     ]);
   });
 
-  it('carries no topic of a unit drawing on an approved spec while any topic of it has no record composed, or a section of its specs goes uncited: the session\'s order, refused with nothing written, nor anything beside the record (21.10.9)', () => {
+  it('a heading its part holds more than once is each copy a section of its own, named by the path that tells it apart: a cite by that path counts for its copy alone, a bare cite for none of them, and a mark by its path silences its copy alone', () => {
+    dir = world();
+    const [q1, d1, q2, d2, ...rest] = GOOD['shop.discussion.weights'];
+    const spec = (/** @type {string[]} */ sections) => sections.map((section) => ({ path: 'shop/spec.md', section }));
+    /** The copies of Detail the check names, d2 citing `sections`. @param {string[]} sections */
+    const details = (sections) => {
+      writeState(dir, composedPath('shop', 'weights'), JSON.stringify({ entries: [q1, { ...d1, cites: spec(['Corrigenda']) }, q2, { ...d2, cites: spec(sections) }, ...rest] }));
+      return unfinished()['shop/weights'].filter((problem) => problem.includes('Detail'));
+    };
+
+    const bare = details(['Ranking', 'Detail']);
+    const byPath = details(['Ranking', 'Ranking > Detail']);
+    writeState(dir, sectionsMarked('shop'), JSON.stringify({ 'shop/spec.md': { '1. Weights': ['Corrigenda > Detail'] } }));
+    const marked = details(['Ranking', 'Detail']);
+
+    assert.deepStrictEqual([bare, byPath, marked], [
+      shopUncited('1. Weights', ['Ranking > Detail', 'Corrigenda > Detail']),
+      shopUncited('1. Weights', ['Corrigenda > Detail']),
+      shopUncited('1. Weights', ['Ranking > Detail']),
+    ]);
+  });
+
+  it('carries no topic of a unit drawing on an approved spec while any topic of it has no record its verifier passed, or a section of its specs goes uncited: the session\'s order, refused with nothing written, nor anything beside the record (21.10.9)', () => {
     dir = world();
     const manifest = path.join(dir, '.workflows/fumi/manifest.json');
     const old = JSON.parse(fs.readFileSync(manifest, 'utf8'));
@@ -557,17 +582,24 @@ describe('what the check reads once a record is carried', () => {
     fs.writeFileSync(manifest, JSON.stringify(old));
     const commerce = layout.assets('fumi', 'specs', 'commerce.md');
     writeState(dir, commerce, `${readState(dir, commerce)}\n## Refunds\n\nWithin a week.\n`);
-    const waits = (/** @type {string[]} */ reasons) => `ledger carry: fumi's licensing is carried once every topic of fumi has its record composed and no section of its approved specs goes uncited — a topic carried takes no section found later: ${reasons.join('; ')}`;
+    const waits = (/** @type {string[]} */ reasons) => `ledger carry: fumi's licensing is carried once every topic of fumi has its record passed by its verifier and no section of its approved specs goes uncited — a topic carried takes no section found later: ${reasons.join('; ')}`;
     const licensing = () => refusedUntouched(dir, carryArgs(dir, 'fumi.discussion.licensing', GOOD['fumi.discussion.licensing']), { env: SESSION }, harness);
+    const others = ['billing', 'search', 'support'];
 
     const alone = licensing();
     for (const [dotpath, entries] of Object.entries(GOOD).filter(([at]) => at.startsWith('fumi.') && at !== 'fumi.discussion.licensing')) writeState(dir, composedPath('fumi', dotpath.split('.')[2]), JSON.stringify({ entries }));
+    const unverified = licensing();
+    for (const topic of others) writeState(dir, findingsPath('fumi', topic), topic === 'search' ? '## Ranking\n\nDropped.\n' : '');
+    const standing = licensing();
+    writeState(dir, findingsPath('fumi', 'search'), '');
     const uncitedRefunds = licensing();
     writeState(dir, sectionsMarked('fumi'), JSON.stringify({ [commerce]: ['Refunds'] }));
     carry('fumi.discussion.licensing', GOOD['fumi.discussion.licensing']);
 
-    assert.deepStrictEqual([alone, uncitedRefunds, fs.existsSync(statePath(dir, refusedPath('fumi', 'licensing')))], [
-      waits(['billing', 'search', 'support'].map((topic) => `fumi's ${topic} has no record composed`)),
+    assert.deepStrictEqual([alone, unverified, standing, uncitedRefunds, fs.existsSync(statePath(dir, refusedPath('fumi', 'licensing')))], [
+      waits(others.map((topic) => `fumi's ${topic} has no record composed`)),
+      waits(others.map((topic) => `fumi's ${topic} has not passed its verifier — ${findingsPath('fumi', topic)} is no file`)),
+      waits([`fumi's search has not passed its verifier — its findings stand in ${findingsPath('fumi', 'search')}`]),
       waits([uncited('fumi', commerce, 'Refunds')]),
       false,
     ]);
@@ -624,7 +656,7 @@ describe('the directive\'s example record, frozen with 079', () => {
   it('carries as the directive writes it, its placeholders filled, and its topic is done', () => {
     dir = world();
     const fills = {
-      unit: 'fumi', topic: 'licensing', subtopic: 'trial-length', heading: 'Trial Length', file: 'pricing.md', experiment: 'E2-trial', 'report heading': 'Result',
+      unit: 'fumi', topic: 'licensing', subtopic: 'trial-length', heading: 'Trial Length', 'repeated heading': 'Decision', file: 'pricing.md', experiment: 'E2-trial', 'report heading': 'Result',
       question: 'How long is the trial?', answer: 'Fourteen days.', 'second answer': 'Extended once, by a week.', why: 'The log settles it.', fact: 'A week converts as well.',
       how: 'measured by the trial experiment', command: 'npm run trial', result: 'as well', 'open question': 'Does the trial need a card?', thread: 'card-on-trial',
     };
@@ -642,10 +674,16 @@ describe('the directive\'s example record, frozen with 079', () => {
     assert.deepStrictEqual(['Where the ruling has the record change, replace the finding with `Settled: {point}, amend to agree`', 'Where the ruling keeps the record as it stands, take the finding out of the findings file', 'An empty findings file is only ever a pass.'].filter((rule) => !text.includes(rule)), []);
   });
 
-  it('a section no record cites goes to the topic it belongs to where it holds a decision, a finding or an open question, and a unit\'s topics are carried once its records are composed and its sections settled', () => {
+  it('a section no record cites goes to the topic it belongs to where it holds a decision, a finding or an open question, and a unit\'s topics are carried once its records are passed and its sections settled', () => {
     const text = fs.readFileSync(DIRECTIVE, 'utf8');
 
-    assert.deepStrictEqual(['Where it holds a decision, a finding or an open question of a topic\'s, write it into the findings of the topic its subject belongs to', 'So a unit\'s topics are carried in order: compose every topic\'s record, settle the sections the check names, then carry them.'].filter((rule) => !text.includes(rule)), []);
+    assert.deepStrictEqual(['Where it holds a decision, a finding or an open question of a topic\'s, write it into the findings of the topic its subject belongs to, one of those the check names it on', 'So a unit\'s topics are carried in order: compose every topic\'s record, have each verifier pass it, settle the sections the check names, then carry them.'].filter((rule) => !text.includes(rule)), []);
+  });
+
+  it('carries nothing of a cancelled unit holding an approved spec and no topic: its spec the reference it is, governing nothing', () => {
+    const text = fs.readFileSync(DIRECTIVE, 'utf8');
+
+    assert.ok(text.includes('Nor is anything of a cancelled unit holding an approved spec and no topic: its spec stays in its assets, the reference it is, and a cancelled unit\'s decisions govern nothing.'));
   });
 
   it('spells no path from the session\'s folder: every state path is the brief\'s or the engine\'s, the carry naming the record\'s place alone, a topic\'s or a unit\'s own', () => {

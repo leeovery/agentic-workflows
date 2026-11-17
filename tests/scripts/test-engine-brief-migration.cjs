@@ -246,12 +246,14 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
     assert.ok(verifier.includes(`# The record\n\n\`\`\`json\n${RECORD}`) && readState(dir, '.cache/migrate/records/shop.rounds.md').includes('The session on selling is not carried.'), verifier);
   });
 
-  it('a promoted topic\'s discovery sessions: its unit\'s, and those of the unit it came from, so marked', () => {
+  it('a promoted topic\'s discovery sessions: its unit\'s, and those of the unit it came from, so marked; the unit it came from lists it among its topics in its own record\'s brief, carried where it went', () => {
     writeState(dir, layout.unit('fumi', 'discovery', 'session-001.md'), '## Discovery Session 001\n');
 
     const { brief } = issued(['migration-topic', '--topic', 'platform.discussion.auth', '--directive', '079-records']);
+    const own = issued(['migration-topic', '--topic', 'fumi.discovery', '--directive', '079-records']).brief;
 
     assert.ok(brief.includes('## The unit\'s discovery sessions\n\n- fumi/discovery/session-001.md, of fumi, which it was promoted from\n'), brief);
+    assert.ok(own.includes('## The unit\'s topics, each carrying what the sessions say of it\n\n- auth, promoted to platform, which carries what the sessions say of it\n- billing, its folder fumi/topics/billing/\n'), own);
   });
 
   it('lists the unit\'s discovery sessions, the migration\'s research session among them, and nothing else its discovery holds; an epic\'s topic never started carried in discovery, and shown so', () => {
@@ -283,6 +285,16 @@ describe('the verifier\'s brief (21.10.7)', () => {
     assert.strictEqual(brief, `Brief ${res.id} — the migration verifier's\n\n${filledTemplate('migration-verifier', {
       'migrated-topic': licensingDrawn(true), 'composed-record': `\`\`\`json\n${RECORD}\n\`\`\``, 'earlier-findings': 'None recorded.', 'settled-points': 'None recorded.', directive: directiveDrawn(),
     })}`);
+  });
+});
+
+describe('a cite of a heading held more than once', () => {
+  it('both briefs say it names the heading\'s path, with an example, a bare heading telling none of its copies apart', () => {
+    writeState(dir, composedPath('fumi', 'licensing'), `${RECORD}\n`);
+
+    const briefs = ['migration-topic', 'migration-verifier'].map((role) => issued([role, ...LICENSING]).brief);
+
+    assert.deepStrictEqual(briefs.map((brief) => ['by its path, as many of the headings over it as tell it apart, then its own: `Identity & Naming > Decision`', '`{"path": "{unit}/spec.md", "section": "Identity & Naming > Decision"}`: a bare one tells none of its copies apart'].filter((said) => !brief.includes(said))), [[], []]);
   });
 });
 

@@ -89,7 +89,7 @@ const MOVED_UNIT = {
 // them, and the code migration after the reshape, which never runs in it.
 const RECORDED = ['090', '091', '092', '093', '094'];
 const MOVE = require(path.join(path.dirname(RUNNER), 'migrations/078-reshape-move.cjs'));
-const { composedPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
+const { composedPath, findingsPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
 
 /** @type {(ReturnType<typeof harness.harness> & {path: string, migrations: string})|null} */
 let engine = null;
@@ -668,6 +668,7 @@ function buildCut(dir) {
   for (const [place, entries] of Object.entries(CUT_RECORDS)) {
     const [unit, , topic] = place.split('.');
     createFile(statePath(dir), composedPath(unit, topic), JSON.stringify({ entries }));
+    createFile(statePath(dir), findingsPath(unit, topic), '');
   }
   for (const place of Object.keys(CUT_RECORDS)) harness.ok(dir, ['ledger', 'carry', place], { env: SESSION });
 }

@@ -41,7 +41,7 @@ const { listOld } = require('./migration-audit.cjs');
 
 const SCRIPTS = path.dirname(harness.ENGINE);
 const { jsonText } = require(path.join(SCRIPTS, 'kernel/manifest-io.cjs'));
-const { composedPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
+const { composedPath, findingsPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
 
 const PROJECT = 'fumi';
 const LISTING = 'old-state.json';
@@ -218,6 +218,7 @@ function workDirective(dir, env, directive) {
       const [unit, , topic = null] = place.split('.');
       writeState(dir, composedPath(unit, topic), JSON.stringify({ entries }));
       assert.deepStrictEqual(harness.ok(dir, ['ledger', 'carry', place, '--dry-run'], opts).faults, [], `${place}'s record keeps the rules`);
+      writeState(dir, findingsPath(unit, topic), '');
     };
     const cart = RECORDS_COMPOSED['shop.discussion.cart'];
     for (const [place, entries] of Object.entries(RECORDS_COMPOSED)) compose(place, place === 'shop.discussion.pay' ? entries.map(({ cites, ...entry }) => ({ ...entry, cites: cites.slice(0, 1) })) : entries);

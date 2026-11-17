@@ -334,7 +334,7 @@ describe('the directive\'s ways on', () => {
       '- **It holds, a task of this unit\'s on another unit\'s.** Take the link off as above; the waiting task\'s phase relies on that unit instead',
       '- **It holds, on a later phase of its own old plan.** Ask the person which way on',
       'or the task is corrected as superseded by that later phase',
-      'Write each such ruling into `phases/{N}.settled.md` of the waiting task\'s phase, as a reversal\'s is, and into its findings',
+      'Write each `Settled:` ruling above, a task of this unit\'s on another unit\'s and one on a later phase of its own old plan, into `phases/{N}.settled.md` of the waiting task\'s phase, as a reversal\'s is, and into its findings',
       '- **It holds, on a later phase of another of the unit\'s old plans.** A known edge',
       '- **It holds, another unit\'s task on one of this unit\'s.** That unit was cut first, so its phase can\'t be amended to rely on this one: a known edge.',
     ]), []);

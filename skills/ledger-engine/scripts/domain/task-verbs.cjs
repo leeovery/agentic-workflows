@@ -598,19 +598,20 @@ function waitingFaults(driver, root, unit, phases, tasks) {
 
 /**
  * `task unlink`: the link holding `task` after `after` taken off, for the
- * migration's cut (21.8.8), either another unit's by its id: before the
- * cut, each named as adopting `phases` in turn would name it; once the
- * cut, `phases` null, as the tracker names them. Refuses a task none holds
- * — no phase the cut adopts, no task of another unit held after one of
- * them, or the tracker, once cut — and a link it does not hold.
- * @param {string} cwd @param {string} unit @param {{phase: number, parent: string, order: string[]}[]|null} phases @param {TaskRef} task @param {TaskRef} after
+ * migration's cut, before its adoption (21.8.8): each named as adopting
+ * `phases` in turn would name it, either another unit's by its id, one of
+ * the two the unit's. Refuses two tasks of other units, a task none holds
+ * — no phase the cut adopts, or no task of another unit held after one of
+ * them — and a link it does not hold.
+ * @param {string} cwd @param {string} unit @param {{phase: number, parent: string, order: string[]}[]} phases @param {TaskRef} task @param {TaskRef} after
  */
 function unlinkAdopted(cwd, unit, phases, task, after) {
   const [shown, afterShown] = [task, after].map((ref) => unlinkName(unit, ref));
+  if (task.unit !== unit && after.unit !== unit) throw new Error(`task unlink: neither ${shown} nor ${afterShown} is ${unit}'s — the cut of ${unit} takes off a link one of whose tasks is its own`);
   return withTracker(cwd, unit, `take the link of ${shown} after ${afterShown} off`, (driver, root) => {
     const held = heldFor(driver, root, unit, phases, task);
     if (!held.after.some((ref) => sameTask(ref, after))) throw new TaskRefusal(`task ${shown} is held after no task ${afterShown} — the link is not there to take off`);
-    driver.unlink(root, unit, phases ?? [], task, after);
+    driver.unlink(root, unit, phases, task, after);
     return { task: shown, after: afterShown };
   });
 }
@@ -618,15 +619,14 @@ function unlinkAdopted(cwd, unit, phases, task, after) {
 /**
  * The task whose link `task unlink` takes off, refused where nothing
  * holds it (`unlinkAdopted`'s).
- * @param {TaskDriver} driver @param {string} root @param {string} unit @param {{phase: number, parent: string, order: string[]}[]|null} phases @param {TaskRef} task
+ * @param {TaskDriver} driver @param {string} root @param {string} unit @param {{phase: number, parent: string, order: string[]}[]} phases @param {TaskRef} task
  * @returns {TaskDetail}
  */
 function heldFor(driver, root, unit, phases, task) {
-  /** @type {[TaskDetail|null|undefined, string]} */
-  const [held, refusal] = phases === null ? [driver.show(root, task), `the tracker holds no task ${shownTask(task)} of ${unit}`]
-    : task.unit === unit ? [driver.adoption(root, unit, phases).flatMap(({ tasks }) => tasks).find(({ ref }) => sameTask(ref, task)), `no phase the cut adopts holds task ${shownTask(task)}`]
-      : [driver.waitingOn(root, unit, phases).find(({ ref }) => sameTask(ref, task)), `task ${taskId(task)} is held after no task of ${unit}'s — the link is not there to take off`];
-  if (held === null || held === undefined) throw new TaskRefusal(refusal);
+  /** @type {[TaskDetail|undefined, string]} */
+  const [held, refusal] = task.unit === unit ? [driver.adoption(root, unit, phases).flatMap(({ tasks }) => tasks).find(({ ref }) => sameTask(ref, task)), `no phase the cut adopts holds task ${shownTask(task)}`]
+    : [driver.waitingOn(root, unit, phases).find(({ ref }) => sameTask(ref, task)), `task ${taskId(task)} is held after no task of ${unit}'s — the link is not there to take off`];
+  if (held === undefined) throw new TaskRefusal(refusal);
   return held;
 }
 
@@ -1402,7 +1402,7 @@ const TASK_VERBS = Object.freeze({
   type: { usage: '<unit> <task> <type>', arity: 3, run: (cwd, [unit, task, type]) => typeTask(cwd, unit, task, type) },
   'close-plan': { usage: '<unit> --parent <tracker-id>', arity: 1, flags: ['parent'], run: (cwd, [unit], parent) => closePlan(cwd, unit, parent) },
   link: { usage: '<unit> <task> --after <task>', arity: 2, flags: ['after'], run: (cwd, [unit, task], after) => linkTask(cwd, unit, task, after) },
-  unlink: { usage: '<unit> <task> --after <task> [--file <plan.json>]', arity: 2, flags: ['after'], mayTake: ['file'], run: (cwd, [unit, task], after, file) => migrating().unlinkMigrating(cwd, unit, task, after, file) },
+  unlink: { usage: '<unit> <task> --after <task> --file <plan.json>', arity: 2, flags: ['after', 'file'], run: (cwd, [unit, task], after, file) => migrating().unlinkMigrating(cwd, unit, task, after, file) },
   ready: { usage: '<unit> [<N>]', arity: 1, optional: 1, run: (cwd, [unit, phase]) => readyTasks(cwd, unit, phase) },
   start: { usage: '<unit> <task>', arity: 2, run: (cwd, [unit, task]) => startTask(cwd, unit, task) },
   done: { usage: '<unit> <task>', arity: 2, run: (cwd, [unit, task]) => doneTask(cwd, unit, task) },

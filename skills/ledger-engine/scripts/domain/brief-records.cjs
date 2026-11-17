@@ -1189,14 +1189,18 @@ function recordGoes(root, unit, topic) {
 /**
  * A unit's own record as its brief draws it: the unit, the discovery
  * sessions it is composed from, the unit's topics, each of which carries
- * what the sessions say of it, its assets and where the record goes.
+ * what the sessions say of it — one promoted, the unit it went to — its
+ * assets and where the record goes.
  * @param {Filling} filling @param {string} root @param {string} unit
  */
 function drawOwnRecord(filling, root, unit) {
   const manifest = readWorkUnitManifest(root, unit);
   const rules = topicRules(filling);
   const sources = rules.sourcesOf({ projectDir: codeRoot(filling.cwd), stateDir: root, unit, topic: null });
-  const topics = rules.topicsOf(manifest).map((topic) => `- ${topic}, its folder ${unit}/topics/${topic}/`);
+  const topics = [
+    ...rules.topicsOf(manifest).map((/** @type {string} */ topic) => [topic, `- ${topic}, its folder ${unit}/topics/${topic}/`]),
+    ...rules.promotedOf(manifest).map((/** @type {{topic: string, to: string}} */ { topic, to }) => [topic, `- ${topic}, promoted to ${to}, which carries what the sessions say of it`]),
+  ].sort(([a], [b]) => (a < b ? -1 : 1)).map(([, line]) => line);
   return [
     `- **Unit:** ${unit}, ${manifest.work_type}, ${manifest.status}`,
     `- **The record:** the unit's own, carried in discovery — what its discovery sessions hold of the unit as a whole, or of no one topic`,
