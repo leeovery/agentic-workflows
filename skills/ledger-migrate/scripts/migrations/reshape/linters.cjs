@@ -22,13 +22,14 @@
 // records its linters keeps them. The old fields go: `defaults.linters`, the
 // `defaults` object with it once empty, and every implementation topic's
 // `linters`. An entry whose command a linter carried already runs, under
-// another name, is that linter. Named in the note handed back, for the
-// migration's review: an entry of no shape above, not carried; a linter
-// whose name is carried already with another command, not carried; an entry
-// carried as the linter running its command; and whatever an entry held
-// beyond its name, its command and its fix command — a scope — which the
-// environment's linter has no room for, so the person sees it when ready to
-// build asks them to confirm the setup.
+// its name or another, is that linter, and its fix that linter's where it
+// has none. Named in the note handed back, for the migration's review: an
+// entry of no shape above, not carried; a linter whose name is carried
+// already with another command, not carried; an entry carried as the
+// linter running its command; and whatever an entry held beyond its name,
+// its command and its fix command — a scope, or a fix other than the one
+// its linter carries — which the environment's linter has no room for, so
+// the person sees it when ready to build asks them to confirm the setup.
 //
 // Each manifest is written whole or not at all, through a temp file beside
 // it the state ignores; a unit manifest that cannot be read is no unit's.
@@ -145,8 +146,13 @@ function merged(lists) {
       clashing.add(`${linter.name} (${linter.command})`);
       continue;
     }
-    if (carried === undefined && running !== undefined) same.add(`${linter.name} as ${running.name}`);
-    else if (carried === undefined) linters.set(linter.name, linter);
+    const kept = carried ?? running;
+    if (kept === undefined) linters.set(linter.name, linter);
+    else {
+      if (carried === undefined) same.add(`${linter.name} as ${kept.name}`);
+      if (kept.fix === undefined && linter.fix !== undefined) kept.fix = linter.fix;
+      else if (linter.fix !== undefined && linter.fix !== kept.fix) beyond.add(`${linter.name}'s ${FIX_KEY} (${JSON.stringify(linter.fix)})`);
+    }
     for (const left of read.beyond) beyond.add(left);
   }
   return { linters: [...linters.values()], uncarried, clashing: [...clashing], same: [...same], beyond: [...beyond] };

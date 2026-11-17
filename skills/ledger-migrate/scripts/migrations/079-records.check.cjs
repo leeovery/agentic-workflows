@@ -87,7 +87,10 @@
 // composed an empty file (`unverified`, which `ledger carry` asks); and
 // until each topic of a unit drawing on an approved spec has its record so
 // passed, and no such section is named, none of its topics is carried
-// (`unitWaits`): a topic carried could take no section found later.
+// (`unitWaits`): a topic carried could take no section found later. A
+// record not yet carried is named where it stands: none composed, what the
+// carry would refuse it for on its own, through the carry's own guards, or
+// passed and waiting to be carried.
 // A record of no entries keeps every rule but the cites: its old map, its
 // threads and its imports are asked of it as of any. A topic promoted to a
 // cross-cutting unit took only its discussion there: its research's threads
@@ -480,8 +483,9 @@ const RULE = /^ {0,3}([-*_])(?: *\1){2,} *$/;
 // The line the old discovery brief opens on, naming the sessions it was drawn from.
 const PROVENANCE = /^Drawn from\b/;
 // A line naming where a text came from and nothing else: links or addresses
-// alone, after a short label such as `Source:`.
-const SOURCE_LINE = /^(?:[*_]*[\w ]{1,24}[*_]*:[*_]*[ \t]*)?(?:(?:!?\[[^\]]*\]\([^)]*\)|<?https?:\/\/[^\s>]+>?)[\s,;]*)+$/i;
+// alone, after a short label such as `Source:`. A bare address ends only
+// where a separator or the line does, so a long line is read in one pass.
+const SOURCE_LINE = /^(?:[*_]*[\w ]{1,24}[*_]*:[*_]*[ \t]*)?(?:(?:!?\[[^\]]*\]\([^)]*\)|<https?:\/\/[^\s>]+>|https?:\/\/[^\s>,;]+(?=[\s,;]|$))[\s,;]*)+$/i;
 
 const LIST_MARK = /^(?:[-*+]|\d+[.)])[ \t]+/;
 
@@ -949,15 +953,25 @@ const uncitedProblem = (unit, { path: at, part, section }) => `"${section}" in $
 /** A record its verifier has passed, waiting for the carry. */
 const PASSED = 'has passed its verifier, and waits to be carried';
 
+/** The carry, whose guards say what a record its verifier passed still waits on. */
+const CARRY = path.join(__dirname, '..', '..', '..', 'ledger-engine', 'scripts', 'domain', 'ledger-carry.cjs');
+
 /**
- * Where a record not yet carried stands: none composed, composed and not
- * passed by its verifier, or passed.
+ * Where a record not yet carried stands: none composed; what the carry
+ * would refuse it for on its own — findings handed back, not passed by its
+ * verifier, changed since its verifier was briefed, a verdict missing; or
+ * passed, waiting for the carry.
  * @param {Project} project @param {Unit} unit @param {string|null} topic
  */
 function uncarried(project, unit, topic) {
-  if (recordOf(project, unit, topic) === null) return 'has no record composed';
+  const record = recordOf(project, unit, topic);
+  if (record === null) return 'has no record composed';
+  const { handedBack, unsettledRound } = require(CARRY);
   const why = unverified(project.stateDir, unit.name, topic);
-  return why === null ? PASSED : `has not passed its verifier — ${why}`;
+  return handedBack(project.stateDir, unit.name, topic)
+    ?? (why === null ? null : `has not passed its verifier — ${why}`)
+    ?? unsettledRound(project.stateDir, unit.name, topic, record.map(({ ref }) => String(ref)))
+    ?? PASSED;
 }
 
 /**

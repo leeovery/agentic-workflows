@@ -58,7 +58,7 @@ const { SESSION, recordsMigration, refusedKeeping, refusedUntouched, passedBesid
 const { templateFolder, copyWorld } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
-const { composedPath, carriedPath, findingsPath, refusedPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
+const { composedPath, carriedPath, findingsPath, rulingsPath, checkedPath, verifyingPath, refusedPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
 
 /** Where the session marks the sections of a unit's specs holding no topic's decision. @param {string} unit */
 const sectionsMarked = (unit) => `.cache/migrate/records/${unit}.sections.json`;
@@ -610,7 +610,7 @@ describe('what the check reads once a record is carried', () => {
     assert.deepStrictEqual([titled, empty()], [[], [EMPTY]]);
   });
 
-  it('once every topic of a unit has a record, composed or carried, each section of its approved specs holding text that no record cites is named on the topics drawing on it — a joined spec\'s by its part, a heading two parts share once in each — asking no composer for an entry, until a record cites it or the session marks it, a mark in its part alone, as holding no topic\'s (21.6.4)', () => {
+  it('once every topic of a unit has a record, composed or carried, each section of its approved specs holding text that no record cites is named on the topics drawing on it — a joined spec\'s by its part, a heading two parts share once in each — asking no composer for an entry, until a record cites it or the session marks it, a mark in its part alone, as holding no topic\'s (21.6.4); the record named passed and waiting to be carried only once the carry\'s own guards hold, else what they name', () => {
     dir = world();
     const [q1, d1] = GOOD['shop.discussion.weights'];
     writeState(dir, composedPath('shop', 'weights'), JSON.stringify({ entries: [q1, d1] }));
@@ -619,12 +619,18 @@ describe('what the check reads once a record is carried', () => {
     writeState(dir, sectionsMarked('shop'), JSON.stringify({ 'shop/spec.md': { '2. Wishlist': ['Saving', 'Ranking'] } }));
     const marked = unfinished()['shop.discussion.weights'];
     writeState(dir, findingsPath('shop', 'weights'), '');
+    const unchecked = unfinished()['shop.discussion.weights'][0];
+    writeState(dir, checkedPath('shop', 'weights'), 'q1: ok\nd1: ok\n');
     const passed = unfinished()['shop.discussion.weights'];
+    writeState(dir, verifyingPath('shop', 'weights'), JSON.stringify({ hash: 'another record', refs: ['q1', 'd1'], entries: {} }));
+    const changed = unfinished()['shop.discussion.weights'][0];
 
-    assert.deepStrictEqual([composed, marked, passed, ok(dir, ['ledger', 'carry', 'shop.discussion.weights', '--dry-run'], { env: SESSION }).faults], [
+    assert.deepStrictEqual([composed, marked, unchecked, passed, changed, ok(dir, ['ledger', 'carry', 'shop.discussion.weights', '--dry-run'], { env: SESSION }).faults], [
       [`has not passed its verifier — ${findingsPath('shop', 'weights')} is no file`, ...shopUncited('1. Weights', ['Ranking', 'Ranking > Detail']), ...shopUncited('2. Wishlist', ['Saving', 'Ranking'])],
       [`has not passed its verifier — ${findingsPath('shop', 'weights')} is no file`, ...shopUncited('1. Weights', ['Ranking', 'Ranking > Detail'])],
+      `has no verdict from its last verifier on every entry its brief asked one of — ${checkedPath('shop', 'weights')} is no file; it names no verdict on q1, d1: a verifier writes a line for each entry its walk sheet does not mark passed, \`{ref}: ok\` or \`{ref}: see finding\`, and one that does not has given no verdict — remove ${findingsPath('shop', 'weights')}, ${rulingsPath('shop', 'weights')} and ${checkedPath('shop', 'weights')}, and brief a fresh verifier`,
       ['has passed its verifier, and waits to be carried', ...shopUncited('1. Weights', ['Ranking', 'Ranking > Detail'])],
+      'has changed since its verifier was briefed on it: a record is carried as its verifier read it — brief a fresh verifier',
       [],
     ]);
   });
@@ -684,7 +690,10 @@ describe('what the check reads once a record is carried', () => {
     const others = ['billing', 'search', 'support'];
 
     const alone = licensing();
-    for (const [dotpath, entries] of Object.entries(GOOD).filter(([at]) => at.startsWith('fumi.') && at !== 'fumi.discussion.licensing')) writeState(dir, composedPath('fumi', dotpath.split('.')[2]), JSON.stringify({ entries }));
+    for (const [dotpath, entries] of Object.entries(GOOD).filter(([at]) => at.startsWith('fumi.') && at !== 'fumi.discussion.licensing')) {
+      writeState(dir, composedPath('fumi', dotpath.split('.')[2]), JSON.stringify({ entries }));
+      writeState(dir, checkedPath('fumi', dotpath.split('.')[2]), entries.map(({ ref }) => `${ref}: ok\n`).join(''));
+    }
     const unverified = licensing();
     for (const topic of others) writeState(dir, findingsPath('fumi', topic), topic === 'search' ? '## Ranking\n\nDropped.\n' : '');
     const standing = licensing();
@@ -781,8 +790,8 @@ describe('the directive\'s example record, frozen with 079', () => {
     ].filter((rule) => !text.includes(rule)), []);
   });
 
-  it('a ref is the record\'s alone: no entry\'s words name another by it, the carry refusing a drafting label', () => {
-    assert.ok(fs.readFileSync(DIRECTIVE, 'utf8').includes('- **`ref`**: the entry\'s name in the record, given once; every link names an entry by it, and no entry\'s words do: the ledger links by id and reads no ref, so the carry refuses one in an entry\'s text, why, how, rules out, alternatives or evidence. Say in words what the entry holds.'));
+  it('a ref is the record\'s alone: no entry\'s words name another by it', () => {
+    assert.ok(fs.readFileSync(DIRECTIVE, 'utf8').includes('- **`ref`**: the entry\'s name in the record, given once; every link names an entry by it, and no entry\'s words do: say in words what the other entry holds.'));
   });
 
   it('a verifier\'s rulings are kept with its round, a reversal of one settled by the session as any, and every amend brief carries them', () => {

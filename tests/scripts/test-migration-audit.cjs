@@ -18,7 +18,8 @@
 // cache's report at another earlier/ place, and one changed — and a link,
 // citation and roadmap source naming nothing; and the rest each have one of
 // their own: a decision asked of a topic decided in its old discussion
-// alone, never of one of research alone; a field of a manifest no engine
+// alone, read under its unit's name before the move or the unit's it was
+// promoted from, never of one of research alone; a field of a manifest no engine
 // module names, the project's, a unit's, a phase's or an item's; a build's fix-tracking report 051 moved
 // out of the old cache placed where the move kept it, and no other report
 // so; of the old `.state/` the old engine's record alone rebuilt; a link broken where it was live, its words dead in another
@@ -206,16 +207,22 @@ describe('each check refuses a world made to fail it', () => {
     ]);
   });
 
-  it('decisions-carried: a topic its old manifest shows decided in its discussion holds a decision; one of research alone, which the move carried as concluded, holds none of its own, so none is asked of it (21.5.22)', () => {
+  it('decisions-carried: a topic an old manifest shows decided in its discussion holds a decision — read under the unit\'s name before the move, its own or the one the move lowercased, or the unit\'s it was promoted from; one of research alone, which the move carried as concluded, holds none of its own, so none is asked of it (21.5.22)', () => {
     changeManifest(layout.manifest('exports'), (manifest) => { manifest.phases.discussion.items.exports.status = 'completed'; });
     const decided = structuredClone(world.old);
     exportsDiscussed(decided, { discussion: { items: { exports: { status: 'completed' } } } });
     const researched = structuredClone(world.old);
     exportsDiscussed(researched, { research: { items: { exports: { status: 'completed' } } } });
+    const cased = structuredClone(decided);
+    cased.files['Exports/manifest.json'] = cased.files['exports/manifest.json'];
+    delete cased.files['exports/manifest.json'];
+    const promoted = structuredClone(researched);
+    promoted.files['platform/manifest.json'] = { sha: 'promoted', text: JSON.stringify({ phases: { discussion: { items: { exports: { status: 'promoted', promoted_to: 'exports' } } } } }) };
 
     const carried = (/** @type {import('./migration-audit.cjs').Listing} */ old) => faults(old).filter((fault) => fault.startsWith('decisions-carried'));
+    const owed = ['decisions-carried: exports/exports is decided and the ledger holds no decision of it'];
 
-    assert.deepStrictEqual([carried(decided), carried(researched)], [['decisions-carried: exports/exports is decided and the ledger holds no decision of it'], []]);
+    assert.deepStrictEqual([decided, researched, cased, promoted].map(carried), [owed, [], owed, owed]);
   });
 
   it('manifests-valid: a field no engine module names — the project\'s, a unit\'s, a phase\'s or an item\'s, each an old one 078 never knew — a fault of its own where it is', () => {

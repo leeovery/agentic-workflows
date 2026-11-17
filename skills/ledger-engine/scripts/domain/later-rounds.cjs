@@ -8,16 +8,20 @@
 //
 // A topic's record (directive 079, ledger-carry.cjs): the note beside the
 // record its verifier is briefed on keeps each entry hashed, its keys
-// sorted, and each section of the walk sheet the verifier walks, with the
-// entries citing it — and what the rounds before it left: the record the
-// last verifier to write read, each entry a verifier passed, `{ref}: ok`,
-// with its hash then, and every section walked. A round counts once its
-// verifier has written its findings; one briefed and never written counts
-// for nothing. From the second round the walk sheet marks each entry
-// passed (passed in an earlier round, unchanged since), changed, new, or
-// unpassed (unchanged since a round that did not pass it), and each
-// section closed — walked before, every entry citing it passed, none that
-// cited it then gone — or open; the verifier gives a verdict on each entry
+// sorted, and its event, text and cites; and each section of the walk
+// sheet the verifier walks, with the entries citing it — and what the
+// rounds before it left: the record the last verifier to write read, each
+// entry a verifier passed, `{ref}: ok` with its hash then and never
+// `{ref}: see finding` since, and every section walked. A round counts
+// once its verifier has written its findings; one briefed and never
+// written counts for nothing. From the second round the walk sheet marks
+// each entry passed (passed in an earlier round, unchanged since),
+// changed, new, or unpassed (unchanged since a round that did not pass
+// it), and each section closed — walked before, every entry citing it
+// passed, none that cited it then gone — or open; and it lists each entry
+// the last record read held and this one does not, removed since the last
+// round, with its event, text and cites, so no entry leaves unseen with
+// the sections only it cited. The verifier gives a verdict on each entry
 // not passed, and walks the open sections alone.
 //
 // A phase's piece (directive 080, cut-merges.cjs): the piece each verifier
@@ -41,28 +45,38 @@ function sortedKeys(value) {
 /** Each entry of a record by its ref, hashed, its keys sorted. @param {Record<string, unknown>[]} entries @returns {Record<string, string>} */
 const entryHashes = (entries) => Object.fromEntries(entries.map((entry) => [String(entry.ref), crypto.createHash('sha256').update(JSON.stringify(sortedKeys(entry))).digest('hex')]));
 
+/** @typedef {{event: string, text: string, cites: {path: string, section: string}[]}} Held */
+
+/** Each entry of a record by its ref, as a later round shows it removed: its event, text and cites. @param {Record<string, any>[]} entries @returns {Record<string, Held>} */
+const entriesHeld = (entries) => Object.fromEntries(entries.map((entry) => [String(entry.ref), {
+  event: String(entry.event),
+  text: typeof entry.text === 'string' ? entry.text : '',
+  cites: Array.isArray(entry.cites) ? entry.cites.map((cite) => ({ path: String(cite?.path), section: String(cite?.section) })) : [],
+}]));
+
 /**
  * What the rounds before a verifier left: the record the last verifier to
- * write read, each entry by its hash, null before any did; each entry a
- * round passed, with its hash then; and each section walked, with the
- * entries citing it then.
- * @typedef {{entries: Record<string, string>|null, passed: Record<string, string>, walked: Record<string, string[]>}} Past
+ * write read, each entry by its hash, null before any did, and each as
+ * held; each entry a round passed, with its hash then; and each section
+ * walked, with the entries citing it then.
+ * @typedef {{entries: Record<string, string>|null, held: Record<string, Held>, passed: Record<string, string>, walked: Record<string, string[]>}} Past
  */
 
 /**
  * The note beside a record its verifier is briefed on: the record's hash,
- * the refs it gives a verdict on, each entry hashed, the sections it walks,
- * and what the rounds before it left.
- * @typedef {{hash: string, refs: string[], entries: Record<string, string>, sections: Record<string, string[]>, before: Past}} Note
+ * the refs it gives a verdict on, each entry hashed and as held, the
+ * sections it walks, and what the rounds before it left.
+ * @typedef {{hash: string, refs: string[], entries: Record<string, string>, held: Record<string, Held>, sections: Record<string, string[]>, before: Past}} Note
  */
 
 /** Before any round. @type {Past} */
-const FIRST = Object.freeze({ entries: null, passed: {}, walked: {} });
+const FIRST = Object.freeze({ entries: null, held: {}, passed: {}, walked: {} });
 
 /**
  * What the rounds so far left, from the last verifier's note and its
  * verdicts, each ref's `ok` or not — null where it wrote no findings, so
- * its round counts for nothing.
+ * its round counts for nothing. An entry its brief asked of is passed on
+ * its `ok`; any entry it names `see finding`, asked of or not, is not.
  * @param {Note|null} note @param {Map<string, boolean>|null} verdicts @returns {Past}
  */
 function pastOf(note, verdicts) {
@@ -73,7 +87,8 @@ function pastOf(note, verdicts) {
     if (verdicts.get(ref) === true) passed[ref] = note.entries[ref];
     else delete passed[ref];
   }
-  return { entries: note.entries, passed, walked: { ...note.before.walked, ...note.sections } };
+  for (const [ref, ok] of verdicts) if (!ok) delete passed[ref];
+  return { entries: note.entries, held: note.held, passed, walked: { ...note.before.walked, ...note.sections } };
 }
 
 /** @typedef {'passed'|'changed'|'new'|'unpassed'|null} EntryMark */
@@ -88,10 +103,11 @@ const sectionKey = (at, { line, section }) => `${at}\n${line}\n${section}`;
 /**
  * The walk sheet marked against the rounds before: each entry and each
  * section, none in a first round; the refs of the entries asked a verdict
- * of, in the record's order; and each section walked, with the entries
- * citing it.
+ * of, in the record's order; each section walked, with the entries citing
+ * it; and each entry the last record read held and this one does not, in
+ * that record's order.
  * @param {SheetFile[]} sheet @param {Record<string, string>} hashes the record's, in its order @param {Past} past
- * @returns {{sheet: {path: string, sections: MarkedSection[]}[], asked: string[], sections: Record<string, string[]>}}
+ * @returns {{sheet: {path: string, sections: MarkedSection[]}[], asked: string[], sections: Record<string, string[]>, removed: (Held & {ref: string})[]}}
  */
 function markedSheet(sheet, hashes, past) {
   const before = past.entries;
@@ -115,7 +131,8 @@ function markedSheet(sheet, hashes, past) {
       return { ...section, closed, entries: section.entries.map((entry) => ({ ...entry, mark: markOf(entry.ref) })) };
     }),
   }));
-  return { sheet: marked, asked: Object.keys(hashes).filter((ref) => markOf(ref) !== 'passed'), sections };
+  const removed = Object.keys(before ?? {}).filter((ref) => !Object.hasOwn(hashes, ref)).map((ref) => ({ ref, ...past.held[ref] }));
+  return { sheet: marked, asked: Object.keys(hashes).filter((ref) => markOf(ref) !== 'passed'), sections, removed };
 }
 
 /**
@@ -125,9 +142,9 @@ function markedSheet(sheet, hashes, past) {
  * @param {Record<string, any>} before @param {Record<string, any>} now @returns {string[]}
  */
 function pieceChanges(before, now) {
-  const shown = (/** @type {unknown} */ value) => (typeof value === 'string' ? value : JSON.stringify(value));
+  const shown = (/** @type {unknown} */ value) => (typeof value === 'string' ? value : JSON.stringify(sortedKeys(value)));
   const fields = [...new Set([...Object.keys(before.phase ?? {}), ...Object.keys(now.phase ?? {})])]
-    .filter((field) => JSON.stringify(before.phase?.[field]) !== JSON.stringify(now.phase?.[field]))
+    .filter((field) => JSON.stringify(sortedKeys(before.phase?.[field])) !== JSON.stringify(sortedKeys(now.phase?.[field])))
     .map((field) => `- The phase's ${field}: was ${shown(before.phase?.[field]) ?? 'none'}, now ${shown(now.phase?.[field]) ?? 'none'}`);
   const listed = (/** @type {string} */ part, /** @type {string} */ one) => {
     const was = (Array.isArray(before[part]) ? before[part] : []).map(shown);
@@ -159,4 +176,4 @@ function notePiece({ piece, findings, verifying, verified }) {
   fs.copyFileSync(piece, verifying);
 }
 
-module.exports = { entryHashes, pastOf, markedSheet, pieceChanges, pieceVerified, notePiece };
+module.exports = { entryHashes, entriesHeld, pastOf, markedSheet, pieceChanges, pieceVerified, notePiece };

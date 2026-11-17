@@ -395,7 +395,7 @@ describe('the refusals, nothing written', () => {
     const window = { ...QUESTION, ref: 'q-window', text: 'How long is the trial window?' };
     const labelled = { ...decision, answers: 'q-window', text: 'Fourteen days, as q-window asks.', why: 'The person set it.', alternatives: ['Thirty days, which `f0` prices.'] };
     const worded = { ...decision, answers: 'q-window', text: 'The q-windows close after fourteen days; d1 stands.' };
-    const told = (/** @type {string} */ field, /** @type {string} */ ref) => `entry d1: its ${field} names ${ref}, the ref of another entry of the record, which the ledger cannot read — say in words what that entry holds, or link it by relies_on`;
+    const told = (/** @type {string} */ field, /** @type {string} */ ref) => `entry d1: its ${field} names ${ref}, the ref of another entry of the record, which the ledger cannot read — say in words what that entry holds, or link it by relies_on; where the words use it as a plain word, rename that entry's ref`;
 
     assert.deepStrictEqual([mend([window, labelled]), ok(dir, [...composed(LICENSING, { entries: [window, worded, KEEPS] }), '--dry-run'], { env: {} }).faults], [
       broken(told('text', 'q-window'), told('alternatives', 'f0')),

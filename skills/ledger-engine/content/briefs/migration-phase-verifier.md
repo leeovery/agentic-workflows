@@ -18,7 +18,7 @@ Where earlier rounds' findings below name anything, check that each is answered.
 
 Wording, the phase's name and goal, and how its criteria are gathered into scenarios are the composer's.
 
-Write only the files the brief below names, and nothing anywhere else: no script, scratch note or copy, in the project, the state or beside them. Write the findings file the phase names afresh: each finding what the piece misses or misstates, and where its source shows it, or the file empty where the piece passes — an empty file is the pass. Hand back whether it passes, and how many findings you wrote.
+Write the findings file the phase names afresh: each finding what the piece misses or misstates, and where its source shows it, or the file empty where the piece passes — an empty file is the pass. Hand back whether it passes, and how many findings you wrote.
 
 # The unit and the phase
 

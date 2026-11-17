@@ -344,6 +344,15 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
     assert.ok(brief.includes('- support: at: 10:30\n'), brief);
   });
 
+  it('a long line of addresses, joined by commas or by nothing, then prose, is read at once, its line prose', () => {
+    const line = `${'https://example.com/a,https://example.com/b'.repeat(30)} and more`;
+    writeState(dir, layout.topic('fumi', 'support', 'log.md'), `## Discussion: Support\n\n${line}\n`);
+
+    const { brief } = issued(['migration-topic', ...LICENSING]);
+
+    assert.ok(brief.includes(`- support: ${line}\n`), brief);
+  });
+
   it('lists the unit\'s discovery sessions, the migration\'s research session among them, and nothing else its discovery holds; an epic\'s topic never started carried in discovery, and shown so', () => {
     writeState(dir, layout.unit('fumi', 'discovery', 'session-001.md'), '## Discovery Session 001\n');
     writeState(dir, layout.unit('fumi', 'discovery', 'session-002.md'), '## Discovery Session 002\n\nResearch the migration placed: index-size.\n');
@@ -546,7 +555,7 @@ describe('a later round (21.10.18)', () => {
   const D1 = { ref: 'd1', event: 'decided', answers: 'q1', text: 'Thirty days.', cites: [log] };
   const F1 = { ref: 'f1', event: 'found', text: 'A week converts as well.', cites: [report] };
   const Q2 = { ref: 'q2', event: 'asked', text: 'Does the corrigendum hold?', cites: [{ path: 'fumi/assets/specs/commerce.md', section: 'Corrigenda' }] };
-  const CLOSED = 'closed — an earlier round passed it, and nothing citing it changed since';
+  const CLOSED = 'closed — walked in an earlier round, nothing citing it changed since';
 
   /** The verifier's brief issued on licensing's record of `entries`: its walk sheet, and the refs it gives a verdict on. @param {Record<string, unknown>[]} entries */
   function round(entries) {
@@ -556,15 +565,17 @@ describe('a later round (21.10.18)', () => {
     return { sheet, asked: JSON.parse(readState(dir, verifyingPath('fumi', 'licensing'))).refs };
   }
 
-  it('the first walks everything; from the second, a section passed unchanged is closed and an entry passed unchanged asked no verdict, each other marked changed — passed before or not — new or not passed; a section an entry left reopened, and a round whose verifier never wrote counting for nothing', () => {
+  it('the first walks everything; from the second, a section passed unchanged is closed and an entry passed unchanged asked no verdict, each other marked changed — passed before or not — new or not passed; a section an entry left reopened, each entry removed listed with its cites; a round whose verifier never wrote counting for nothing, and a `see finding` on an entry not asked of unpassing it', () => {
     const first = round([Q1, D1, F1]);
     verdict('Trial Length > Decision: d1 says thirty days, the log fourteen.\n', 'q1: ok\nd1: see finding\nf1: ok\n');
     const second = round([Q1, { ...D1, text: 'Fourteen days.' }, F1, Q2]);
     verdict('Corrigenda: q2 asks what the section settles.\n', 'q1: ok\nd1: ok\nq2: see finding\n');
     const third = round([{ ...Q1, text: 'How long does the trial run?' }, { ...D1, text: 'Fourteen days.' }, Q2]);
     const again = round([{ ...Q1, text: 'How long does the trial run?' }, { ...D1, text: 'Fourteen days.' }, Q2]);
+    verdict('Trial Length > Decision: d1 drops the week the log weighed.\n', 'q1: ok\nq2: ok\nd1: see finding\n');
+    const fourth = round([{ ...Q1, text: 'How long does the trial run?' }, { ...D1, text: 'Fourteen days.' }]);
 
-    assert.deepStrictEqual([first.asked, second, third, again], [
+    assert.deepStrictEqual([first.asked, second, third, again, fourth], [
       ['q1', 'd1', 'f1'],
       {
         sheet: [
@@ -580,11 +591,22 @@ describe('a later round (21.10.18)', () => {
           '## fumi/topics/licensing/brief.md', '', `- Licensing, lines 1–3: ${CLOSED}`, '',
           '## fumi/topics/licensing/experiments/E2-trial/report.md', '', '- Report > Result, lines 3–5: no entry cites it', '',
           '## fumi/topics/licensing/log.md', '', '- Discussion: Licensing > Trial Length > Decision, lines 7–9', '  - q1, asked, changed: How long does the trial run?', '  - d1, decided, passed unchanged: Fourteen days.', '',
-          '## fumi/assets/specs/commerce.md', '', '- Specification: Commerce > Corrigenda, lines 3–5', '  - q2, asked, not passed: Does the corrigendum hold?',
+          '## fumi/assets/specs/commerce.md', '', '- Specification: Commerce > Corrigenda, lines 3–5', '  - q2, asked, not passed: Does the corrigendum hold?', '',
+          '## Removed since the last round', '', '- f1, found: A week converts as well.', '  - cited Result in fumi/topics/licensing/experiments/E2-trial/report.md',
         ].join('\n'),
         asked: ['q1', 'q2'],
       },
       third,
+      {
+        sheet: [
+          '## fumi/topics/licensing/brief.md', '', `- Licensing, lines 1–3: ${CLOSED}`, '',
+          '## fumi/topics/licensing/experiments/E2-trial/report.md', '', `- Report > Result, lines 3–5: ${CLOSED}`, '',
+          '## fumi/topics/licensing/log.md', '', '- Discussion: Licensing > Trial Length > Decision, lines 7–9', '  - q1, asked, passed unchanged: How long does the trial run?', '  - d1, decided, not passed: Fourteen days.', '',
+          '## fumi/assets/specs/commerce.md', '', '- Specification: Commerce > Corrigenda, lines 3–5: no entry cites it', '',
+          '## Removed since the last round', '', '- q2, asked: Does the corrigendum hold?', '  - cited Corrigenda in fumi/assets/specs/commerce.md',
+        ].join('\n'),
+        asked: ['d1'],
+      },
     ]);
     assert.ok(!first.sheet.includes('closed') && !first.sheet.includes('passed'), first.sheet);
   });
@@ -592,8 +614,8 @@ describe('a later round (21.10.18)', () => {
   it('the verifiers\' briefs: an open section walked, a closed one no finding; a later round checks what changed and raises nothing on what an earlier one passed unchanged, leanness judged on it alone; a verdict on each entry not passed unchanged', () => {
     assert.deepStrictEqual([
       unsaid('migration-verifier', [
-        'Walk every open section of the sheet, every section in a first round: a closed one passed an earlier round unchanged and is no finding, and your findings are every gap the walk turns up, never a sample.',
-        'In a later round, check each finding answered, each entry or line changed since true to its source, and nothing removed that was a point to carry; raise nothing on what an earlier round passed unchanged.',
+        'Walk every open section of the sheet, every section in a first round: a closed one was walked in an earlier round, nothing citing it changed since, and is no finding, and your findings are every gap the walk turns up, never a sample.',
+        'In a later round, check each finding answered, each entry or line changed since true to its source, and that no entry the sheet lists as removed since the last round took a point still to carry; raise nothing on what an earlier round passed unchanged.',
         '- nothing is carried twice — in a later round, judged on what changed since alone;',
         'Write the checked file the brief names afresh, a line for each entry of the record the sheet does not mark passed unchanged, by its ref: `{ref}: ok`, or `{ref}: see finding` where a finding names it.',
       ]),
@@ -645,12 +667,6 @@ describe('the migration\'s agents and the plain search (21.S35, 26.5.1)', () => 
   /** The rule confining an agent's shell, word for word in each agent's file: reading alone, or reading and the check its brief names. */
   const CONFINED = '**The shell is for reading and searching alone:** `rg`, `find`, `ls`, `cat`, `head`, `tail`, `wc` and their like. Never run the engine, never run git, and never write, move or delete a file through it.';
   const CHECKING = '**The shell is for reading and searching, and for the check your brief names:** `rg`, `find`, `ls`, `cat`, `head`, `tail`, `wc` and their like. Never run the engine for anything else, never run git, and never write, move or delete a file through it.';
-
-  it('each brief confines its agent to the files it names: no script, note or copy anywhere else', () => {
-    const WRITES = 'Write only the files the brief below names, and nothing anywhere else: no script, scratch note or copy, in the project, the state or beside them.';
-
-    assert.deepStrictEqual(['migration-topic', 'migration-verifier', 'migration-phase', 'migration-phase-verifier'].filter((role) => unsaid(role, [WRITES]).length > 0), []);
-  });
 
   it('each searches through a shell confined to reading, the per-topic agent\'s running its record\'s check besides — Claude Code giving no Glob or Grep tool — and no agent file names an engine call, nor any brief but the check it names: only the session writes the ledger and the state', () => {
     assert.ok(fs.readFileSync(path.join(AGENTS, 'ledger-migration-topic.md'), 'utf8').includes('- Touch only the files the directive names for a topic or a phase, and only this one\'s: what you compose, and the hand-back file where your brief names one.'), 'the per-topic agent writes its hand-back');

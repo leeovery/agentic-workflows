@@ -24,9 +24,11 @@
 //   - no field of the project's manifest, a unit's, a phase's or an item's
 //     is one no engine module names, read from the engine's code;
 //   - every topic decided in its discussion has a decision in the ledger,
-//     read where every carry took it — a topic whose old manifest held a
-//     discussion completed, never one of research alone, which the move
-//     carried as concluded and whose record may hold no decision (21.5.22);
+//     read where every carry took it — a topic an old manifest held a
+//     discussion of concluded, read under the unit's name before the move,
+//     its own or the one the move lowercased, or the unit's it was promoted
+//     from; never one of research alone, which the move carried as
+//     concluded and whose record may hold no decision (21.5.22);
 //   - no unit waits on a cut: none in progress has its specs joined and no
 //     cut;
 //   - each phase of a cut adopted from the tracker holds every task the
@@ -303,15 +305,30 @@ function manifestsValid(state, units) {
 /** A unit's manifest as the listing holds it from before the migration, empty where it holds none. @param {Listing} old @param {string} unit @returns {any} */
 const oldManifest = (old, unit) => JSON.parse(old.files[`${unit}/manifest.json`]?.text ?? '{}');
 
+// The discussion statuses a topic concluded under before the move, as the move (078) reads them.
+const CONCLUDED = ['completed', 'promoted'];
+
+/**
+ * Whether an old manifest held a topic's discussion concluded, read under
+ * the unit's name before the move: its own, the one the move lowercased, or
+ * the unit's the topic was promoted from to it.
+ * @param {Listing} old @param {string} unit @param {string} topic
+ */
+function discussedBefore(old, unit, topic) {
+  return Object.keys(old.files).filter((rel) => /^[^/]+\/manifest\.json$/.test(rel)).some((rel) => {
+    const name = rel.split('/')[0];
+    const item = oldManifest(old, name).phases?.discussion?.items?.[topic];
+    const promotedHere = typeof item?.promoted_to === 'string' && item.promoted_to.toLowerCase() === unit;
+    return (name === unit || name.toLowerCase() === unit || promotedHere) && CONCLUDED.includes(item?.status);
+  });
+}
+
 /** @param {State} state @param {Map<string, any>} units @param {Listing} old @returns {Fault[]} */
 function decisionsCarried(state, units, old) {
   const decided = new Set(state.ledger.filter(({ event }) => event === 'decided').map(({ unit, topic }) => `${unit}/${topic}`));
-  return [...units].flatMap(([name, manifest]) => {
-    const discussed = oldManifest(old, name).phases?.discussion?.items ?? {};
-    return Object.entries(manifest?.phases?.discussion?.items ?? {})
-      .filter(([topic, item]) => item.status === 'completed' && discussed[topic]?.status === 'completed' && !decided.has(`${name}/${topic}`))
-      .map(([topic]) => ({ check: 'decisions-carried', found: `${name}/${topic} is decided and the ledger holds no decision of it` }));
-  });
+  return [...units].flatMap(([name, manifest]) => Object.entries(manifest?.phases?.discussion?.items ?? {})
+    .filter(([topic, item]) => item.status === 'completed' && discussedBefore(old, name, topic) && !decided.has(`${name}/${topic}`))
+    .map(([topic]) => ({ check: 'decisions-carried', found: `${name}/${topic} is decided and the ledger holds no decision of it` })));
 }
 
 /** @param {Map<string, any>} units @returns {Fault[]} */

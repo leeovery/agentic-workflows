@@ -509,10 +509,10 @@ describe('the per-phase agents and the join (21.10.5, E7)', () => {
     assert.ok(verifier('5').includes('## Round 3\n\nNone: the verifier passed it.\n\n# Points the session settled'));
   });
 
-  it('21.10.18: the first verifier walks the whole piece; a later one is briefed with what changed since the last verifier to write read it — the phase\'s fields, each scenario, note and correction added or removed — a verifier that never wrote counting for nothing', () => {
+  it('21.10.18: the first verifier walks the whole piece; a later one is briefed with what changed since the last verifier to write read it — the phase\'s fields, each scenario, note and correction added or removed, a correction whose keys only moved unchanged — a verifier that never wrote counting for nothing', () => {
     const changes = (/** @type {string} */ brief) => brief.slice(brief.indexOf('# The changes since the last round\n\n') + '# The changes since the last round\n\n'.length, brief.indexOf('\n\n# The earlier rounds'));
     const amend = (/** @type {Record<string, unknown>} */ piece) => writeState(dir, staged(5, 'json'), JSON.stringify(piece, null, 2));
-    const amended = exported({ phase: { name: 'Export', goal: 'Payments exported.', sections: ['2'], relies_on: [3, 4] }, scenarios: ['Given a month of payments, when they are exported, then a CSV file holds each.'], notes: ['The format is CSV.'] });
+    const amended = exported({ phase: { name: 'Export', goal: 'Payments exported.', sections: ['2'], relies_on: [3, 4] }, scenarios: ['Given a month of payments, when they are exported, then a CSV file holds each.'], notes: ['The format is CSV.'], corrections: [{ task: '5.1', to: 'done' }] });
     compose(5, exported(), null);
 
     const first = changes(verifier('5'));
@@ -521,6 +521,7 @@ describe('the per-phase agents and the join (21.10.5, E7)', () => {
     const second = changes(verifier('5'));
     const unwritten = [changes(verifier('5')), changes(verifier('5'))];
     writeState(dir, staged(5, 'findings.txt'), '- The note says CSV, the till says otherwise.\n');
+    amend({ ...amended, corrections: [{ to: 'done', task: '5.1' }] });
     const unchanged = changes(verifier('5'));
 
     assert.deepStrictEqual([first, second, unwritten, unchanged], [
@@ -530,6 +531,7 @@ describe('the per-phase agents and the join (21.10.5, E7)', () => {
         '- A scenario added: Given a month of payments, when they are exported, then a CSV file holds each.',
         '- A scenario removed: Given a month of payments, when they are exported, then a file holds each.',
         '- A note added: The format is CSV.',
+        '- A correction added: {"task":"5.1","to":"done"}',
       ].join('\n'),
       [second, second],
       'None: the piece is as the last round read it.',

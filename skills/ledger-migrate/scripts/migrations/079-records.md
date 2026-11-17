@@ -66,7 +66,7 @@ Each current decision, finding and open question the topic's sources hold, and n
 
 The record is one JSON object, `{"entries": [...]}`, its entries in the order they link: an entry links only to an entry before it.
 
-- **`ref`**: the entry's name in the record, given once; every link names an entry by it, and no entry's words do: the ledger links by id and reads no ref, so the carry refuses one in an entry's text, why, how, rules out, alternatives or evidence. Say in words what the entry holds.
+- **`ref`**: the entry's name in the record, given once; every link names an entry by it, and no entry's words do: say in words what the other entry holds.
 - **`event`**: `asked`, a question; `found`, a finding; or `decided`, a decision.
 - **A question** holds `text` and `by`; `part_of`, the ref of the question it is part of, where it is one. It holds no `product_wide`: that is a decision's or a finding's alone.
 - **A decision** holds `answers`, the ref of the question it answers, `text`, `why`, `by` and `given`; `rules_out`, `alternatives` and `evidence` where the source gives them, each a list of lines; and `product_wide`. The person's decision is given `own`; one given `your-call`, `dont-care` or `carried` is `by` `claude`.

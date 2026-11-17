@@ -479,8 +479,9 @@
 //                  each file under its path, each section by its heading
 //                  path and lines, with every entry citing it, or none;
 //                  from the second round each entry marked passed
-//                  unchanged, changed, new or not passed, and each section
-//                  passed unchanged closed (later-rounds.cjs)
+//                  unchanged, changed, new or not passed, each section
+//                  passed unchanged closed, and each entry removed since
+//                  the last round listed with its cites (later-rounds.cjs)
 //   verifier-findings the last verifier's findings on that record, verbatim
 //                  — kept until a verifier reads the record again; refused
 //                  as `composed-record` is while its verdicts miss an entry
@@ -642,7 +643,7 @@ const { changeOf, changeTips, workBelow } = require('./review-change.cjs');
 const { fixAcceptance, fixScenarios, fixNamed } = require('./fix-acceptance.cjs');
 const { summaryFile } = require('./knowledge/artifacts.cjs');
 const { CARRY_VERB, DRY_RUN, topicPlace, placePath, recordName, composedPath, findingsPath, rulingsPath, handbackPath, handedBack, checkedPath, noteVerifying, briefedOn, lastVerdicts, uncheckedRound, lastRound, keepRound, keepRecordRound, besideFindings, refusedPath, roundsPath, settledPath } = require('./ledger-carry.cjs');
-const { entryHashes, pastOf, markedSheet, pieceChanges, pieceVerified, notePiece } = require('./later-rounds.cjs');
+const { entryHashes, entriesHeld, pastOf, markedSheet, pieceChanges, pieceVerified, notePiece } = require('./later-rounds.cjs');
 const { OLD_STATE, OLD_PLAN_FILE } = require('../../../ledger-migrate/scripts/old-layout.cjs');
 
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
@@ -1342,7 +1343,7 @@ function drawComposedRecord(filling) {
   const text = fs.existsSync(file) && fs.statSync(file).isFile() ? fs.readFileSync(file, 'utf8') : null;
   const named = recordName({ unit, topic });
   const handed = handedBack(root, unit, topic) ?? uncheckedRound(root, unit, topic);
-  if (handed !== null) throw new Error(`brief: ${handed}`);
+  if (handed !== null) throw new Error(`brief: ${named} ${handed}`);
   if (text === null) throw new Error(`${named} has no record composed — ${file} is no file`);
   if (text.trim() === '') throw new Error(`${named} has no record composed — ${file} is empty`);
   return fenced('json', text.trimEnd());
@@ -1577,16 +1578,16 @@ function recordRounds(filling) {
 function refuseUnchecked(filling) {
   const { root, unit, topic } = migratedTopic(filling);
   const missing = uncheckedRound(root, unit, topic);
-  if (missing !== null) throw new Error(`brief: ${missing}`);
+  if (missing !== null) throw new Error(`brief: ${recordName({ unit, topic })} ${missing}`);
 }
 
-/** The round each fill's verifier reads, read once. @type {WeakMap<Filling, ReturnType<typeof markedSheet> & {hashes: Record<string, string>, before: import('./later-rounds.cjs').Past}>} */
+/** The round each fill's verifier reads, read once. @type {WeakMap<Filling, ReturnType<typeof markedSheet> & {hashes: Record<string, string>, held: ReturnType<typeof entriesHeld>, before: import('./later-rounds.cjs').Past}>} */
 const ROUNDS_READ = new WeakMap();
 
 /**
  * The round the verifier the brief is for reads, read before the last
  * round is kept: the record laid against its sources and marked against
- * the rounds before (later-rounds.cjs), and each entry hashed.
+ * the rounds before (later-rounds.cjs), and each entry hashed and as held.
  * @param {Filling} filling
  */
 function verifierRound(filling) {
@@ -1598,7 +1599,7 @@ function verifierRound(filling) {
   const sheet = topicRules(filling).sheetOf({ projectDir: codeRoot(filling.cwd), stateDir: root, unit, topic, entries });
   const hashes = entryHashes(entries);
   const before = pastOf(briefedOn(root, unit, topic), lastVerdicts(root, unit, topic));
-  const round = { ...markedSheet(sheet, hashes, before), hashes, before };
+  const round = { ...markedSheet(sheet, hashes, before), hashes, held: entriesHeld(entries), before };
   ROUNDS_READ.set(filling, round);
   return round;
 }
@@ -1613,30 +1614,37 @@ function verifierRound(filling) {
  */
 function briefVerifier(filling) {
   const { root, unit, topic } = migratedTopic(filling);
-  const { asked, hashes, sections, before } = verifierRound(filling);
+  const { asked, hashes, held, sections, before } = verifierRound(filling);
   keepRecordRound(root, unit, topic);
-  noteVerifying(root, unit, topic, { refs: asked, entries: hashes, sections, before });
+  noteVerifying(root, unit, topic, { refs: asked, entries: hashes, held, sections, before });
 }
 
 /** What the walk sheet says of an entry it marks. @type {Record<string, string>} */
 const ENTRY_MARKS = { passed: 'passed unchanged', changed: 'changed', new: 'new', unpassed: 'not passed' };
 
+/** The heading of the walk sheet's list of the entries the record held when a round last read it, and no longer holds. */
+const REMOVED = 'Removed since the last round';
+
 /**
  * The record laid against its sources, as its verifier walks it: each
  * file, each section with its lines and every entry citing it — from the
- * second round, each entry marked, and a section closed, passed unchanged,
- * shown with none.
+ * second round, each entry marked, a section closed, passed unchanged,
+ * shown with none, and after them each entry removed since the last round,
+ * with what it cited.
  * @param {Filling} filling
  */
 function drawWalkSheet(filling) {
-  return verifierRound(filling).sheet.map(({ path: at, sections }) => [`## ${at}`, '', listed(sections.flatMap(({ section, line, end, closed, entries: citing }) => {
+  const { sheet, removed } = verifierRound(filling);
+  const files = sheet.map(({ path: at, sections }) => [`## ${at}`, '', listed(sections.flatMap(({ section, line, end, closed, entries: citing }) => {
     const lines = line === end ? `line ${line}` : `lines ${line}–${end}`;
-    if (closed) return [`- ${section}, ${lines}: closed — an earlier round passed it, and nothing citing it changed since`];
+    if (closed) return [`- ${section}, ${lines}: closed — walked in an earlier round, nothing citing it changed since`];
     return [
       `- ${section}, ${lines}${citing.length === 0 ? ': no entry cites it' : ''}`,
       ...citing.map(({ ref, event, text, mark }) => `  - ${ref}, ${event}${mark === null ? '' : `, ${ENTRY_MARKS[mark]}`}: ${claimOf(text)}`),
     ];
-  }))].join('\n')).join('\n\n');
+  }))].join('\n'));
+  const gone = removed.map(({ ref, event, text, cites }) => [`- ${ref}, ${event}: ${claimOf(text)}`, ...cites.map((cite) => `  - cited ${cite.section} in ${cite.path}`)].join('\n'));
+  return [...files, ...(gone.length === 0 ? [] : [`## ${REMOVED}\n\n${gone.join('\n')}`])].join('\n\n');
 }
 
 /** The most of an entry's text a walk sheet shows. */

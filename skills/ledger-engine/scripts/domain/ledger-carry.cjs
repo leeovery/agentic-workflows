@@ -196,13 +196,13 @@ const handbackPath = (unit, topic) => recordFile(COMPOSED, unit, topic, '.handba
 
 /**
  * Where findings of the record stand handed back to the session, what it
- * does before the record goes on; else null.
+ * does before the record goes on, said of the record; else null.
  * @param {string} root @param {string} unit @param {string|null} topic @returns {string|null}
  */
 function handedBack(root, unit, topic) {
   const rel = handbackPath(unit, topic);
   if (linesOf(path.join(root, rel)).length === 0) return null;
-  return `${recordName({ unit, topic })} has findings handed back to the session in ${rel}: settle each into ${settledPath(unit, topic)}, replace it in ${findingsPath(unit, topic)} with \`Settled: {point}, amend to agree\` where the record changes, or take it out where it stands, then remove ${rel}`;
+  return `has findings handed back to the session in ${rel}: settle each into ${settledPath(unit, topic)}, replace it in ${findingsPath(unit, topic)} with \`Settled: {point}, amend to agree\` where the record changes, or take it out where it stands, then remove ${rel}`;
 }
 
 /** The last verifier's verdict on each entry it read, a line each, `{ref}: ok` or `{ref}: see finding`. @param {string} unit @param {string|null} topic */
@@ -298,7 +298,7 @@ function lastVerdicts(root, unit, topic) {
  * Where the last verifier's verdicts do not name each entry its brief
  * asked a verdict of, or name one the record it read does not hold — the
  * note its brief was issued on, else, where none was, `refs` for both —
- * what is missing, and the way on; else null. A consistency guard alone:
+ * what is missing, and the way on, said of the record; else null. A consistency guard alone:
  * what each verdict says is the verifier's.
  * @param {string} root @param {string} unit @param {string|null} topic @param {string[]} refs
  * @returns {string|null}
@@ -317,18 +317,32 @@ function unchecked(root, unit, topic, refs) {
     ...(unknown.length > 0 ? [`it names ${unknown.join(', ')}, which the record it read does not hold`] : []),
   ];
   if (told.length === 0) return null;
-  return `${recordName({ unit, topic })} has no verdict from its last verifier on every entry its brief asked one of — ${told.join('; ')}: a verifier writes a line for each entry its walk sheet does not mark passed, \`{ref}: ok\` or \`{ref}: see finding\`, and one that does not has given no verdict — remove ${findingsPath(unit, topic)}, ${rulingsPath(unit, topic)} and ${checked}, and brief a fresh verifier`;
+  return `has no verdict from its last verifier on every entry its brief asked one of — ${told.join('; ')}: a verifier writes a line for each entry its walk sheet does not mark passed, \`{ref}: ok\` or \`{ref}: see finding\`, and one that does not has given no verdict — remove ${findingsPath(unit, topic)}, ${rulingsPath(unit, topic)} and ${checked}, and brief a fresh verifier`;
 }
 
 /**
  * The guard before a brief that follows a verifier: where a verifier was
  * briefed on the record and has written its findings, its verdicts name
- * each entry it read (`unchecked`); else null.
+ * each entry it read (`unchecked`), said of the record; else null.
  * @param {string} root @param {string} unit @param {string|null} topic @returns {string|null}
  */
 function uncheckedRound(root, unit, topic) {
   const briefed = fs.existsSync(path.join(root, verifyingPath(unit, topic))) && fs.existsSync(path.join(root, findingsPath(unit, topic)));
   return briefed ? unchecked(root, unit, topic, []) : null;
+}
+
+/**
+ * Where a record its verifier passed is not as the carry takes it — changed
+ * since that verifier was briefed on it, or its verdicts missing an entry
+ * its brief asked one of (`unchecked`) — what stands and the way on, said
+ * of the record; else null.
+ * @param {string} root @param {string} unit @param {string|null} topic @param {string[]} refs the record's
+ * @returns {string|null}
+ */
+function unsettledRound(root, unit, topic, refs) {
+  const briefed = briefedOn(root, unit, topic);
+  if (briefed !== null && briefed.hash !== recordHash(root, unit, topic)) return 'has changed since its verifier was briefed on it: a record is carried as its verifier read it — brief a fresh verifier';
+  return unchecked(root, unit, topic, refs);
 }
 
 /** The points of the record the session settled where a verifier reversed an earlier round. @param {string} unit @param {string|null} topic */
@@ -549,7 +563,7 @@ function labelFaults(entries) {
   return entries.flatMap((entry) => WORDED.flatMap((field) => {
     const words = new Set([entry[field]].flat().filter((line) => typeof line === 'string').join('\n').split(/[^\w-]+/));
     const named = refs.filter((ref) => ref !== entry.ref && words.has(ref));
-    return named.length === 0 ? [] : [`entry ${entry.ref}: its ${field} names ${named.join(', ')}, the ref of another entry of the record, which the ledger cannot read — say in words what that entry holds, or link it by relies_on`];
+    return named.length === 0 ? [] : [`entry ${entry.ref}: its ${field} names ${named.join(', ')}, the ref of another entry of the record, which the ledger cannot read — say in words what that entry holds, or link it by relies_on; where the words use it as a plain word, rename that entry's ref`];
   }));
 }
 
@@ -638,18 +652,14 @@ function composedRecord(cwd, place, session) {
 function refuseUnsettled(cwd, place) {
   const { root, unit, topic } = place;
   const handed = handedBack(root, unit, topic);
-  if (handed !== null) throw new Error(`${SAID}: ${handed}`);
+  if (handed !== null) throw new Error(`${SAID}: ${recordName(place)} ${handed}`);
   const rules = recordsRules();
   const unverified = rules.unverified({ stateDir: root, unit, topic });
   if (unverified !== null) {
     throw new Error(`${SAID}: ${recordName(place)} has not passed its verifier — ${unverified}: a record is carried once its verifier passes it, its findings file empty, for the carry clears the findings beside it and a record is carried once, so a finding left standing would never be answered`);
   }
-  const briefed = briefedOn(root, unit, topic);
-  if (briefed !== null && briefed.hash !== recordHash(root, unit, topic)) {
-    throw new Error(`${SAID}: ${recordName(place)} has changed since its verifier was briefed on it: a record is carried as its verifier read it — brief a fresh verifier`);
-  }
-  const missing = unchecked(root, unit, topic, readRecord(place).map(({ ref }) => String(ref)));
-  if (missing !== null) throw new Error(`${SAID}: ${missing}`);
+  const unsettled = unsettledRound(root, unit, topic, readRecord(place).map(({ ref }) => String(ref)));
+  if (unsettled !== null) throw new Error(`${SAID}: ${recordName(place)} ${unsettled}`);
   const waits = topic === null ? [] : rules.unitWaits({ projectDir: codeRoot(cwd), stateDir: root, unit });
   if (waits.length > 0) {
     throw new Error(`${SAID}: ${unit}'s ${topic} is carried once every topic of ${unit} has its record passed by its verifier and no section of its approved specs goes uncited — a topic carried takes no section found later: ${waits.join('; ')}`);
@@ -721,4 +731,4 @@ function carryRecord(cwd, args) {
   }
 }
 
-module.exports = { CARRY_VERB, CARRY_USAGE, DRY_RUN, placePath, recordName, carriedPath, composedPath, findingsPath, rulingsPath, handbackPath, handedBack, checkedPath, verifyingPath, noteVerifying, briefedOn, lastVerdicts, uncheckedRound, lastRound, keepRound, keepRecordRound, besideFindings, refusedPath, roundsPath, settledPath, topicPlace, carryRecord };
+module.exports = { CARRY_VERB, CARRY_USAGE, DRY_RUN, placePath, recordName, carriedPath, composedPath, findingsPath, rulingsPath, handbackPath, handedBack, checkedPath, verifyingPath, noteVerifying, briefedOn, lastVerdicts, uncheckedRound, unsettledRound, lastRound, keepRound, keepRecordRound, besideFindings, refusedPath, roundsPath, settledPath, topicPlace, carryRecord };

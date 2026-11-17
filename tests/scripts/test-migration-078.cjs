@@ -2021,6 +2021,20 @@ describe('migration 078: the linters carried onto the project\'s environment (re
     ]);
   });
 
+  it('a fix held only by an entry carried as a linter already carried — by its name or its command — becomes that linter\'s; another fix than the one carried is named for the review', () => {
+    const swiftformat = { name: 'swiftformat', lint_command: 'swiftformat . --lint' };
+    writeState('manifest.json', { project_id: 'p1', defaults: { linters: [swiftformat, { name: 'vet', command: 'go vet ./...' }] } });
+    unitWith('pay', { checkout: [{ ...swiftformat, fix_command: 'swiftformat .' }, { ...swiftformat, fix_command: 'swiftformat Sources' }, { name: 'go-vet', command: 'go vet ./...', fix_command: 'go fix ./...' }] });
+
+    assert.strictEqual(carryLinters(state), 'These linters were carried into environment.linters as the linter carried already that runs their command, under its name: go-vet as vet. '
+      + 'The linters were carried into environment.linters as a name, a command and a fix command, which leaves out swiftformat\'s fix_command ("swiftformat Sources"). '
+      + `Change a linter's command where any is still wanted, when ready to build asks to confirm the project's setup, or now: ${help('those changed')}`);
+    assert.deepStrictEqual(readState('manifest.json').environment.linters, [
+      { name: 'swiftformat', command: 'swiftformat . --lint', fix: 'swiftformat .' },
+      { name: 'vet', command: 'go vet ./...', fix: 'go fix ./...' },
+    ]);
+  });
+
   it('carries an entry whose command a linter carried already runs, under another name, as that linter, and names it for the review — portal\'s and tick\'s entries', () => {
     writeState('manifest.json', { project_id: 'p1', defaults: { linters: [{ name: 'golangci-lint', command: 'golangci-lint run ./...' }, { name: 'go vet', command: 'go vet ./...' }] } });
     unitWith('pay', { checkout: ['golangci-lint run ./...'], ledger: [{ name: 'go-vet', command: 'go vet ./...' }] });
