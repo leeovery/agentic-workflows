@@ -323,7 +323,7 @@ function labelGate(multiplexer) {
     `You're running inside ${multiplexer}. Ledger can label your session to show where you're working — \`myproject · payments · discussion · auth-flow\` inside a phase, \`myproject · payments\` at its menu — putting the original back at the start menu and when the session ends, and bringing the label back when you resume the session. You're asked once per project.`,
     [
       cmdOption('y', 'yes', 'Turn session labels on', { next: { kind: 'engine', argv: ['session', 'label-config', 'true'] } }),
-      cmdOption('n', 'no', 'Leave session names alone', { next: { kind: 'engine', argv: ['session', 'label-config', 'false'] } }),
+      cmdOption('n', 'no', 'Leave your session alone', { next: { kind: 'engine', argv: ['session', 'label-config', 'false'] } }),
     ],
     { question: `Label your ${multiplexer} session as you work?` },
   );

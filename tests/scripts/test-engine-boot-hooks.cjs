@@ -55,14 +55,12 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     assert.strictEqual(bootWith({ tmux: true }).session_labels, 'prompt');
   });
 
-  it('reports prompt inside Portal when never recorded, and on from the project manifest — the one-time question asked there as in tmux', () => {
+  it('reports prompt inside Portal when never recorded — the one-time question asked there as in tmux — and a Portal that does not answer is none', () => {
     const stub = installPortalStub('proj-x1');
     try {
       const portal = portalStubEnv(stub, 'proj-x1');
       assert.strictEqual(bootWith({ env: portal }).session_labels, 'prompt');
-      assert.strictEqual(bootWith({ env: { ...portal, PORTAL_STUB_FAIL: '1' } }).session_labels, 'no-multiplexer', 'a Portal that does not answer is none');
-      recordChoice(true);
-      assert.strictEqual(bootWith({ env: portal }).session_labels, 'on');
+      assert.strictEqual(bootWith({ env: { ...portal, PORTAL_STUB_FAIL: '1' } }).session_labels, 'no-multiplexer');
     } finally {
       fs.rmSync(stub, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     }

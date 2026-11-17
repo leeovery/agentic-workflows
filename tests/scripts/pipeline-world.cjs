@@ -516,7 +516,7 @@ function menuEntry(sim, wu) {
 function handoffEntry(sim, wu, phase, topic) {
   sim.handOver();
   const res = sim.run(['session', 'label', wu, phase, topic]);
-  assert.strictEqual(res.labelled, false, `the sim labels no tmux session (${phase})`);
+  assert.strictEqual(res.labelled, false, `the sim labels no session (${phase})`);
   const here = carryOn(sim);
   assert.deepStrictEqual(here.position, { name: wu, phase, topic }, `the phase skill records its place (${phase})`);
   assert.strictEqual(here.skill, path.join(sim.dir, '.claude/skills', /** @type {string} */ (skillAt(wu, phase, sim.manifest(wu).work_type)), 'SKILL.md'),

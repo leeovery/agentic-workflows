@@ -21,7 +21,7 @@
 const fs = require('fs');
 const { execFileSync } = require('../kernel/spawn.cjs');
 const { callerIdentity, ownsRow } = require('../kernel/process.cjs');
-const { stashDir, stashName, writeRecord, readStash, ownerDead } = require('./session-label-store.cjs');
+const { stashDir, stashName, writeRecord, putRecordBack, readStash, ownerDead } = require('./session-label-store.cjs');
 
 const SEPARATOR = ' · ';
 
@@ -86,7 +86,8 @@ function rename(ctx, label) {
  * Label the session `{base} · {place}`, the original stashed first: the
  * stashed one while the label is still the one applied, else the label
  * worn now. `stash-error` where the stash cannot be written, `portal-error`
- * where the rename fails — the label left alone either way.
+ * where the rename fails, the record put back as it stood — the label left
+ * alone either way.
  * @param {string} cwd @param {PortalSession} ctx @param {string} place
  * @returns {import('./session-label.cjs').LabelResult}
  */
@@ -100,7 +101,10 @@ function apply(cwd, ctx, place) {
   const record = { session: ctx.session, original, applied, ...callerIdentity() };
   try { writeRecord(file, record); } catch { return { labelled: false, reason: 'stash-error' }; }
   if (applied !== ctx.label) {
-    try { rename(ctx, applied); } catch { return { labelled: false, reason: 'portal-error' }; }
+    try { rename(ctx, applied); } catch {
+      putRecordBack(file, stashed);
+      return { labelled: false, reason: 'portal-error' };
+    }
   }
   return { labelled: true, name: applied };
 }
@@ -109,16 +113,17 @@ function apply(cwd, ctx, place) {
  * Put the original back on this session where its label is exactly the one
  * applied, and drop the record; a label the person set since is left, its
  * record dropped. A record a live peer owns is left alone, and one whose
- * rename failed is kept for the next pass.
+ * rename failed is kept for the next pass, as is one `doubt` holds.
  * @param {string} cwd @param {PortalSession} ctx
  * @param {(stash: PortalStash) => boolean} mine whose record this pass may take
+ * @param {(stash: PortalStash) => boolean} doubt where the label read may not be the one worn
  * @returns {boolean} the label was put back
  */
-function putBack(cwd, ctx, mine) {
+function putBack(cwd, ctx, mine, doubt) {
   const file = stashPath(cwd, ctx.session);
   /** @type {PortalStash|null} */
   const stash = readStash(file);
-  if (!stash || !mine(stash)) return false;
+  if (!stash || !mine(stash) || doubt(stash)) return false;
   let restored = false;
   if (stash.applied === ctx.label) {
     try { rename(ctx, stash.original); restored = true; } catch { return false; }
@@ -129,7 +134,10 @@ function putBack(cwd, ctx, mine) {
 
 /**
  * The SessionEnd pass: this session's record, where the ending conversation
- * owns it (an ownerless one counts) or its owner is gone.
+ * owns it (an ownerless one counts) or its owner is gone. `portal current`
+ * answers the session's name when Portal cannot read the session in time,
+ * so a name read where a label was applied is kept for boot's repair to
+ * settle, never taken for a label the person set.
  * @param {string} cwd @param {string} sessionId
  * @returns {boolean}
  */
@@ -138,7 +146,9 @@ function restore(cwd, sessionId) {
   let ctx = null;
   try { ctx = read(); } catch { return false; }
   if (!ctx) return false;
-  return putBack(cwd, ctx, (stash) => !stash.session_id || stash.session_id === sessionId || ownerDead(stash));
+  const { session, label } = ctx;
+  const mine = (/** @type {PortalStash} */ stash) => !stash.session_id || stash.session_id === sessionId || ownerDead(stash);
+  return putBack(cwd, ctx, mine, (stash) => label === session && stash.applied !== label);
 }
 
 /**
@@ -148,7 +158,7 @@ function restore(cwd, sessionId) {
  * @returns {boolean}
  */
 function repair(cwd, ctx) {
-  return putBack(cwd, ctx, (stash) => ownsRow(stash) || ownerDead(stash));
+  return putBack(cwd, ctx, (stash) => ownsRow(stash) || ownerDead(stash), () => false);
 }
 
 module.exports = { name: 'portal', title: 'Portal', present, read, apply, restore, repair };

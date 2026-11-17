@@ -33,6 +33,19 @@ function writeRecord(file, record) {
 }
 
 /**
+ * Put a record back as it stood before a write whose label never landed —
+ * the file gone where there was none — so the record never names a label
+ * the session does not wear.
+ * @param {string} file @param {object|null} prior
+ */
+function putRecordBack(file, prior) {
+  try {
+    if (prior === null) fs.unlinkSync(file);
+    else writeRecord(file, prior);
+  } catch { /* the record stays as written — the next label re-adopts the live name */ }
+}
+
+/**
  * Parse a stash file; null for unreadable or non-object content.
  * @template T @param {string} file @returns {T|null}
  */
@@ -49,4 +62,4 @@ function ownerDead(stash) {
   return !ownerAlive(stash);
 }
 
-module.exports = { stashDir, stashName, writeRecord, readStash, ownerDead };
+module.exports = { stashDir, stashName, writeRecord, putRecordBack, readStash, ownerDead };

@@ -19,6 +19,7 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
+const { spawnSync } = require('child_process');
 const { world, ZMX_NAME, inPortal, portalLabel, setPortalLabel, portalCalls, portalStash, setup, teardown, engine, resume, tmuxName, renameCount, optIn, ownStartTime } = require('./session-label-world.cjs');
 
 const PHASE = `${ZMX_NAME} · pay · discussion · alpha`;
@@ -98,9 +99,22 @@ describe('engine session label inside Portal', () => {
     assert.strictEqual(portalLabel(), ZMX_NAME);
   });
 
-  it('a rename Portal refuses leaves the label alone — portal-error', () => {
+  it('a rename Portal refuses leaves the label alone — portal-error — and no record of a label that never landed', () => {
     optIn();
     assert.deepStrictEqual(label({ portalFailRename: true }), { ok: true, labelled: false, reason: 'portal-error' });
+    assert.strictEqual(portalLabel(), ZMX_NAME);
+    assert.strictEqual(portalStash(), null);
+  });
+
+  it('a re-label Portal refuses puts the earlier record back, so Ledger\'s own label is never taken for the person\'s', () => {
+    optIn();
+    label();
+    const before = portalStash();
+    assert.strictEqual(engine(['session', 'label', 'pay'], { noTmux: true, portalFailRename: true }).reason, 'portal-error');
+    assert.deepStrictEqual(portalStash(), before);
+    assert.strictEqual(engine(['session', 'label', 'roadmap'], { noTmux: true }).name, `${ZMX_NAME} · roadmap`);
+    assert.strictEqual(portalStash().original, ZMX_NAME);
+    assert.deepStrictEqual(cleanup(), { ok: true, restored: true });
     assert.strictEqual(portalLabel(), ZMX_NAME);
   });
 });
@@ -131,6 +145,27 @@ describe('engine session cleanup, repair and resume inside Portal', () => {
     assert.deepStrictEqual(cleanup(), { ok: true, restored: false });
     assert.strictEqual(portalLabel(), `${PHASE} · more`);
     assert.strictEqual(portalStash(), null);
+  });
+
+  it('cleanup keeps the record where Portal answers the session\'s name for a label applied — it may not have read the session in time — and boot\'s repair settles it', () => {
+    label();
+    setPortalLabel(ZMX_NAME);
+    assert.deepStrictEqual(cleanup(), { ok: true, restored: false });
+    assert.notStrictEqual(portalStash(), null);
+    setPortalLabel(PHASE);
+    assert.deepStrictEqual(engine(['session', 'repair'], { noTmux: true }), { ok: true, repaired: true });
+    assert.strictEqual(portalLabel(), ZMX_NAME);
+    assert.strictEqual(portalStash(), null);
+  });
+
+  it('cleanup and repair each put back a label whose owner is gone, whichever session runs them', () => {
+    const gone = spawnSync('true').pid;
+    label({ sessionId: 'crashed', claudePid: gone });
+    assert.deepStrictEqual(cleanup(), { ok: true, restored: true });
+    assert.strictEqual(portalLabel(), ZMX_NAME);
+    label({ sessionId: 'crashed', claudePid: gone });
+    assert.deepStrictEqual(engine(['session', 'repair'], { noTmux: true }), { ok: true, repaired: true });
+    assert.strictEqual(portalLabel(), ZMX_NAME);
   });
 
   it('cleanup leaves a live peer\'s label and record alone, and keeps a record whose rename failed', () => {

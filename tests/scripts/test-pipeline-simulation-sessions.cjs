@@ -221,14 +221,15 @@ describe('pipeline simulation: sessions', () => {
     assert.strictEqual(accepted.answer, 'accepted');
     follow(sim, accepted.next);
 
-    // The label opt-in's no records the choice, and leads nowhere further.
-    sim.render(['label-gate'], { expect: 'content' });
+    // The label opt-in, shown inside a multiplexer: its no records the
+    // choice, and leads nowhere further.
+    sim.render(['label-gate'], { expect: 'content', identity: { TMUX: '/fake/sock,123,7' } });
     const labels = sim.run(answerGate(sim, 'label gate', '--pick', 'n').next.argv);
-    assert.deepStrictEqual([labels.tmux_labels, 'next' in labels], [false, false]);
+    assert.deepStrictEqual([labels.session_labels, 'next' in labels], [false, false]);
 
     const answered = sim.run(['boot']);
     assert.deepStrictEqual(['knowledge', 'walkthrough', 'brownfield'].filter((gate) => answered.gates.includes(gate)), [], 'every screen answered is due no more');
-    assert.strictEqual(JSON.parse(fs.readFileSync(statePath(sim.dir, 'manifest.json'), 'utf8')).defaults.tmux_labels, false);
+    assert.strictEqual(JSON.parse(fs.readFileSync(statePath(sim.dir, 'manifest.json'), 'utf8')).defaults.session_labels, false);
   });
 
   it('boot: a git below the floor stops at its screen, as a folder in no repository does at its own, and a project whose reshape the guard refuses at its own; lost state stops at its screen and the gate\'s yes starts it again; a GitHub remote gets the rule\'s offer and the squash default\'s once each, and each no is recorded', () => {

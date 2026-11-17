@@ -27,7 +27,7 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('../kernel/spawn.cjs');
 const { handedSession, processStartTime, ownsRow } = require('../kernel/process.cjs');
-const { stashDir, stashName, writeRecord, readStash, ownerDead } = require('./session-label-store.cjs');
+const { stashDir, stashName, writeRecord, putRecordBack, readStash, ownerDead } = require('./session-label-store.cjs');
 
 /**
  * @typedef {object} TmuxSession
@@ -163,7 +163,8 @@ function liveSessions(socket) {
 /**
  * Rename the session to `{original} · {place}`, the original stashed
  * first. `stash-error` where the stash cannot be written, `tmux-error` where
- * the rename fails — the name left alone either way.
+ * the rename fails, the record put back as it stood — the name left alone
+ * either way.
  * @param {string} cwd @param {TmuxSession} ctx @param {string} place
  * @returns {import('./session-label.cjs').LabelResult}
  */
@@ -175,9 +176,9 @@ function apply(cwd, ctx, place) {
   const { original, visited } = chainOriginal(listStashes(cwd, ctx.socket), ctx.name);
   const applied = `${original} · ${place}`;
   const pid = Number(process.env.CLAUDE_PID) || null;
-  // Stash before rename: a rename with no restore record strands the label,
-  // while a stash whose `applied` never landed is inert (restore skips it,
-  // the next label re-adopts the live name).
+  // Stash before rename: a rename with no restore record strands the label.
+  // Where the rename fails, the record goes back as it stood, so it never
+  // names a label the session does not wear.
   /** @type {LabelStash} */
   const record = {
     tmux_id: ctx.id,
@@ -188,10 +189,15 @@ function apply(cwd, ctx, place) {
     pid,
     pid_start: pid ? processStartTime(pid) : null,
   };
+  /** @type {LabelStash|null} */
+  const prior = readStash(file);
   try { writeRecord(file, record); } catch { return { labelled: false, reason: 'stash-error' }; }
   if (applied !== ctx.name) {
     try { tmux(['rename-session', '-t', ctx.id, applied], ctx.socket); }
-    catch { return { labelled: false, reason: 'tmux-error' }; }
+    catch {
+      putRecordBack(file, prior);
+      return { labelled: false, reason: 'tmux-error' };
+    }
   }
   // The chain's links are spent — the new id-keyed record holds the true
   // original. Only after the rename lands: a failed attempt keeps them for

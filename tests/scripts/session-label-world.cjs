@@ -101,9 +101,12 @@ function engine(args, { noTmux = false, noZmx = false, noPortal = false, portalF
     : { ZMX_SESSION: undefined };
   // An overlay, where `undefined` takes a key away: what the engine sees is
   // the identity this call declares and nothing the host environment carries.
+  // The Portal session and its pinned PATH win over the caller's, so no call
+  // inside Portal reaches a `portal` but the stub.
   const env = {
     ...portal,
     ...extraEnv,
+    ZMX_SESSION: portal.ZMX_SESSION,
     TMUX: noTmux ? undefined : '/fake/sock,123,7',
     TMUX_PANE: noTmux ? undefined : '%3',
     TMUX_STUB_FAIL: fail ? '1' : undefined,
@@ -112,7 +115,7 @@ function engine(args, { noTmux = false, noZmx = false, noPortal = false, portalF
     CLAUDE_CODE_SESSION_ID: sessionId || undefined,
     CLAUDE_PID: claudePid ? String(claudePid) : undefined,
     CLAUDE_PROJECT_DIR: projectDir || undefined,
-    ...tmuxStubEnv(world.stubDir, extraEnv.PATH || portal.PATH || process.env.PATH),
+    ...tmuxStubEnv(world.stubDir, portal.PATH || extraEnv.PATH || process.env.PATH),
   };
   if (expectFail) return harness.refuses(cwd || world.dir, args, { env, stdin: input });
   const r = harness.call(cwd || world.dir, args, { env, stdin: input });

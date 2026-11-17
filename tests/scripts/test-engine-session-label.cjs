@@ -202,13 +202,25 @@ describe('engine session label', () => {
     assert.strictEqual(records[0].original, 'proj-abc');
   });
 
-  it('a rename failure leaves an inert stash — the next label does not compound', () => {
+  it('a rename failure leaves no record of the name that never landed — the next label does not compound', () => {
     optIn();
     const res = engine(['session', 'label', 'pay', 'discussion', 'alpha'], { failRename: true });
     assert.deepStrictEqual(res, { ok: true, labelled: false, reason: 'tmux-error' });
     assert.strictEqual(tmuxName(), 'proj-abc');
+    assert.strictEqual(stashFile(), null);
     const retry = engine(['session', 'label', 'pay', 'discussion', 'alpha']);
     assert.strictEqual(retry.name, 'proj-abc · pay · discussion · alpha');
+  });
+
+  it('a re-label tmux refuses puts the earlier record back — the next label and the cleanup reach the true original', () => {
+    optIn();
+    engine(['session', 'label', 'pay', 'discussion', 'alpha']);
+    const before = stashRecords();
+    assert.strictEqual(engine(['session', 'label', 'pay'], { failRename: true }).reason, 'tmux-error');
+    assert.deepStrictEqual(stashRecords(), before);
+    assert.strictEqual(engine(['session', 'label', 'roadmap']).name, 'proj-abc · roadmap');
+    assert.deepStrictEqual(engine(['session', 'cleanup', 'sess-1']), { ok: true, restored: true });
+    assert.strictEqual(tmuxName(), 'proj-abc');
   });
 
   it('reports stash-error and leaves the name alone when the stash cannot be written', () => {

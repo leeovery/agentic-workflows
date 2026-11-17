@@ -275,7 +275,7 @@ const PROJECT_MANIFEST = {
     stale: { work_type: 'quick-fix' }, dropped: { work_type: 'quick-fix' },
     gone: { work_type: 'feature' }, shared: { work_type: 'cross-cutting' },
   },
-  defaults: { plan_format: 'sample-format', project_skills: ['.claude/skills/house-style'], linters: [{ name: 'eslint', command: 'npx eslint .' }, { name: 'swiftformat', lint_command: 'swiftformat . --lint', fix_command: 'swiftformat .' }], tmux_labels: true },
+  defaults: { plan_format: 'sample-format', project_skills: ['.claude/skills/house-style'], linters: [{ name: 'eslint', command: 'npx eslint .' }, { name: 'swiftformat', lint_command: 'swiftformat . --lint', fix_command: 'swiftformat .' }], tmux_labels: false },
   roadmap: {
     horizons: ['v1'],
     active_session: '002',
@@ -727,7 +727,7 @@ describe('migration 078: the move into the layout in .ledger/', () => {
       assert.deepStrictEqual(project, {
         project_id: project.project_id,
         work_units: PROJECT_MANIFEST.work_units,
-        defaults: { session_labels: true },
+        defaults: { session_labels: false },
         roadmap: {
           horizons: ['v1'],
           items: {

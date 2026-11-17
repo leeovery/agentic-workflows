@@ -617,7 +617,7 @@ describe('the boot and knowledge gate surfaces', () => {
     assert.ok(unwrap(label).includes("You're running inside tmux. Ledger can label your session to show where you're working"), label);
     assert.match(label, /\*\*`◆ Label your tmux session as you work\?`\*\*/);
     assert.match(label, /\*\*`y\/yes`\*\* → Turn session labels on/);
-    assert.match(unwrap(label), /\*\*`n\/no`\*\*\s+→ Leave session names alone/);
+    assert.match(unwrap(label), /\*\*`n\/no`\*\*\s+→ Leave your session alone/);
     assert.deepStrictEqual(rowsLeadTo(), [['y', ['session', 'label-config', 'true']], ['n', ['session', 'label-config', 'false']]]);
   });
 
