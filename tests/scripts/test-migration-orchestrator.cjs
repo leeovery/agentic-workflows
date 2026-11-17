@@ -118,7 +118,7 @@ const shMig = (id) =>
   `#!/bin/bash\necho "${id}" >> "\${PROJECT_DIR:-.}/order.log"\nreport_update\nreturn 0\n`;
 
 // A directive's check, as its module exports it.
-const CHECK = `'use strict';\nmodule.exports = { counts: { one: 'topic', many: 'topics' }, done: 'have their records', check: () => [] };\n`;
+const CHECK = `'use strict';\nmodule.exports = { counts: { one: 'topic', many: 'topics' }, done: 'have their records', partWay: 'A record it was in the middle of is amended from where it stood.', check: () => [] };\n`;
 
 // A directive: its title, its head, and its instructions.
 const directive = (title) =>

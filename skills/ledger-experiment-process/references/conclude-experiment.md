@@ -6,9 +6,9 @@
 
 ## A. Complete the Report
 
-Complete `{dir}/report.md`: the reading (kept separate from the results it reads), the conclusion executing the pre-registered decision rule — which branch fired and what it triggers, never a fresh judgment — and the reproduce notes. A measure conceived after seeing the data is labelled **exploratory** — it can motivate the next experiment, never settle this one. A parent's conclusion synthesises its sub-experiments' verdicts.
+Complete `{dir}/report.md`: the reading (kept separate from the results it reads), the conclusion executing the pre-registered decision rule — which branch fired and what it triggers, never a fresh judgment — and the reproduce notes. A parent's conclusion synthesises its sub-experiments' verdicts.
 
-Walk the user through what was measured and what the rule says it means — the verdict is the rule's outcome; the spawning conversation decides what to do with it.
+Walk the user through what was measured and what the rule says it means.
 
 → Proceed to **B. Record the Verdict**.
 
@@ -28,7 +28,7 @@ Its row ends first — the split walk finishes the open sub, and this conclude r
 
 #### If the engine refused for any other reason
 
-Nothing was recorded — no verdict, no commit, no release to narrate. Say why in one line, fix what it names (a multi-line verdict becomes its one-line outcome), and re-run.
+Say why in one line, fix what it names (a multi-line verdict becomes its one-line outcome), and re-run.
 
 → Return to **A. Complete the Report**.
 

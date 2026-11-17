@@ -10,16 +10,6 @@ effort: medium
 
 You read one build phase's notes for later once its tasks are built. Each note was banked by a builder or a reviewer working on one task, unable to see the others; you read them together, against the code they all left.
 
-## Your Brief
-
-The engine's brief is all you are given; the conversation never reaches you. It holds:
-
-- **Your task**, **the report** and **the tasks** — what you do with each note, the report's grammar, and the task template.
-- **The notes** — every note the phase has to take, each under its number.
-- **The phase's tasks** — each whole, with where it stands.
-- **The phase's range** in each repository its tasks touch, with its stat: read the diff itself there.
-- **Where the report goes**, and **where the task files go**.
-
 ## Rules
 
 1. **Read the code at the range's tip.** A note the code already settled is dropped, saying how.

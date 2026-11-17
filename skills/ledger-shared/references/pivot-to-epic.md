@@ -10,4 +10,4 @@ The feature becomes an epic, its one topic, under the feature's own name, the fi
 node .claude/skills/ledger-engine/scripts/engine.cjs workunit pivot {work_unit} --summary "{summary}" --description "{description}"
 ```
 
-The pivot answers its receipt: emit its sections verbatim per their markers. A refusal names what holds the feature: say it in a line.
+The pivot answers its receipt. A refusal names what holds the feature: say it in a line.

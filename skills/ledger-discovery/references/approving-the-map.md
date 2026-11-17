@@ -22,14 +22,14 @@ A topic on the map already is named alone. Each roadmap item the epic was starte
 
 ## The Parks
 
-What the shaping put beyond this epic — the person placed it later, or the log reads that way — goes on the roadmap with the map, never as a topic: `{"name", "summary", "horizon", "sources"}`, at capability grain, `sources` the log's path from the state root, and `"kind": "bug"` or `"quick-fix"` for those. The horizon is the person's: for each park they gave none, fetch `render horizon-pick --park {name}` before the screen, emit its MENU verbatim per its marker, and take the horizon picked, or the one the person names; a pick that refuses has none to offer, so ask in the conversation.
+What the shaping put beyond this epic — the person placed it later, or the log reads that way — goes on the roadmap with the map, never as a topic: `{"name", "summary", "horizon", "sources"}`, at capability grain, `sources` the log's path from the state root, and `"kind": "bug"` or `"quick-fix"` for those. The horizon is the person's.
 
 ## The Screen
 
-Write the payload to `.ledger/.cache/{home}/discovery/{home}/approve-map-payload.json`, `{"topics": […], "parks": […], "binds": […]}` — every live topic in its order — then stage it and draw the screen, emitting its sections verbatim per their markers:
+Write the payload to `.ledger/.cache/{home}/discovery/{home}/approve-map-payload.json`, `{"topics": […], "parks": […], "binds": […]}` — every live topic in its order — then stage it and draw the screen:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render approve-map {home} --file .ledger/.cache/{home}/discovery/{home}/approve-map-payload.json
 ```
 
-A refusal names what to fix: fix the payload and stage it again. The answer goes to `gate`; follow its `next`, and then the `next` of what it ran. Keep shaping takes the person's word back into the conversation: a change to a topic already on the map goes through **Changing the Map**, anything else into the payload, staged again.
+A refusal names what to fix: fix the payload and stage it again. At the gate, follow the `next` of what the answer ran. Keep shaping takes the person's word back into the conversation: a change to a topic already on the map goes through **Changing the Map**, anything else into the payload, staged again.

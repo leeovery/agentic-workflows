@@ -66,8 +66,6 @@ A unit being built can't take a topic its specs don't cover, so where the check 
 node .claude/skills/ledger-engine/scripts/engine.cjs render migration-leaving {unit} --directive 080-cut-and-merges
 ```
 
-Emit its sections verbatim per their markers.
-
 **STOP.** Wait for user response.
 
 The answer goes to `gate`.

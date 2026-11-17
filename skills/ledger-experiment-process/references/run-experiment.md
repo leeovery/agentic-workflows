@@ -49,7 +49,6 @@ Execute the setup as designed — the instruments, sample, and environment the d
 Author `{dir}/report.md` as the run goes — load **[report-template.md](report-template.md)** for its shape at the first result:
 
 - **Results land as they're measured, and stand as written.** Later results are added beneath, never folded into a rewrite of what is already there — a resumed run included. Every number traces to a file under `{dir}` (curated extracts in `{dir}/data/`) or a named source. Raw output is kept by default; genuinely bulky output may stay out of git with the report linking it by path.
-- **Deviations are logged as they happen** — the harness broke, the environment surprised. The record shows the run as it went.
 - **The design is frozen** — changes are dated amendments, never silent edits.
 - **The tally is recorded as runs land**, where the design runs conditions. Write every condition to `.ledger/.cache/{work_unit}/experiment/{topic}/{id}-runs.json`, `[{"condition", "of", "values", "unit"}]` — its name, the runs the design gives it, each value measured so far, and the unit they are in, left out where there is none — and record it; the engine works out the medians:
 
@@ -89,9 +88,9 @@ Measure until the design is satisfied, then close the report's results.
 
 ## C. Splits
 
-The split is the laboratory's internal method — it never leaks into the spawning conversation's state: the wait stays on the parent and releases once, when the parent as a whole ends. A split never splits again. The parent's `{id}` and `{dir}` bindings hold in this file — the walk below names each sub directly, and a loaded leg binds its own `{id}`/`{dir}` to the sub for its duration.
+The split is the laboratory's internal method. A split never splits again. The parent's `{id}` and `{dir}` bindings hold in this file — the walk below names each sub directly, and a loaded leg binds its own `{id}`/`{dir}` to the sub for its duration.
 
-On a fresh decomposition, say what decomposed and how in one or two lines, then for each part derive a kebab-case `sub_slug` and create its record — the engine allocates `E{n}.{m}`, nested inside the parent's directory:
+On a fresh decomposition, say what decomposed and how in one or two lines, then for each part derive a kebab-case `sub_slug` and create its record:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs experiment create {work_unit} {topic} --slug {sub_slug} --parent {id}
@@ -121,14 +120,14 @@ Walk each sub in miniature, holding its `id` and `dir` — from the create respo
 
    → Load **[abandon-experiment.md](abandon-experiment.md)** with id = `{sub_id}`.
 
-4. **Verdict** — execute the sub's pre-registered decision rule and record it — a sub's terminal transition releases no wait; the parent's carries them:
+4. **Verdict** — execute the sub's pre-registered decision rule and record it:
 
    ```bash
    node .claude/skills/ledger-engine/scripts/engine.cjs experiment conclude {work_unit} {topic} {sub_id} --verdict "{one line}"
    node .claude/skills/ledger-engine/scripts/engine.cjs commit {work_unit} --topic experiment/{topic} -m "experiment({work_unit}/{topic}): {sub_id} concluded"
    ```
 
-   A refused conclude records nothing and takes no commit — say why in one line, fix what it names (a multi-line verdict becomes its one-line outcome), and re-run the pair.
+   A refused conclude: say why in one line, fix what it names (a multi-line verdict becomes its one-line outcome), and re-run the pair.
 
 When every sub is terminal, the parent's measurement completes by synthesising the sub reports.
 

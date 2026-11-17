@@ -7,21 +7,19 @@ allowed-tools: Bash(node .claude/skills/ledger-engine/scripts/engine.cjs *)
 
 The product's roadmap: what waits on each horizon, and the way on from it.
 
-> **⚠️ ZERO OUTPUT RULE**: Do not narrate your processing. Produce no output until a step or reference file explicitly specifies display content. No "proceeding with...", no discovery summaries, no routing decisions, no transition text. Your first output must be content explicitly called for by the instructions.
-
 ## Instructions
 
 Load **[framework.md](../ledger-shared/references/framework.md)** and follow its instructions as written.
 
 ## The Menu
 
-Fetch the roadmap and emit its sections verbatim per their markers:
+Fetch the roadmap:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render roadmap
 ```
 
-The answer goes to `gate`; follow its `next`. The DATA names each number's item; one picked by its number, or asked about, is told from its row in `roadmap state`. A `next` that draws the start menu, `render start-menu`, hands the conversation to the start menu: Load **[start-menu.md](../ledger/references/start-menu.md)** and follow its instructions as written. A `next` that moves into work goes through the handoff: Load **[handing-off.md](../ledger-shared/references/handing-off.md)** with route = `/{skill} {args}`.
+The DATA names each number's item; one picked by its number, or asked about, is told from its row in `roadmap state`. A `next` that draws the start menu, `render start-menu`, hands the conversation to the start menu: Load **[start-menu.md](../ledger/references/start-menu.md)** and follow its instructions as written. A `next` that moves into work goes through the handoff: Load **[handing-off.md](../ledger-shared/references/handing-off.md)** with route = `/{skill} {args}`.
 
 ## Working on Items
 

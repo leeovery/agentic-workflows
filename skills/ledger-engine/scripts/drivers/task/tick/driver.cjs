@@ -68,7 +68,8 @@
 // the reason, Tick ending the parents itself, and the plan keeps no name of
 // the engine's — history, the build making its own unit's parent as it
 // writes its first phase; a plan holding a task done is refused, closing
-// nothing: the tracker wins, its unit built some of it.
+// nothing: the tracker wins, its unit built some of it, and the migration
+// stops there (21.8.12).
 //
 // The store's merge between two clones is merge.cjs's, given the driver's
 // names for what the store holds. It is loaded only as the store merges:
@@ -554,7 +555,7 @@ function closePlan(root, unit, parent, reason) {
   const leaves = descendants(ids, parent).filter(({ id }) => (ids.children.get(id) ?? []).length === 0);
   const done = leaves.filter(({ status }) => status === 'done');
   if (done.length > 0) {
-    throw new Error(`the plan from before Ledger under ${parent} holds ${done.map(({ title }) => `"${title}"`).join(', ')} done, so ${unitName(unit)} built some of it — the tracker wins: the migration cuts the unit, carrying its plan on, and closes none of it`);
+    throw new Error(`the plan from before Ledger under ${parent} holds ${done.map(({ title }) => `"${title}"`).join(', ')} done, so ${unitName(unit)} built some of it — the tracker wins: none of it is closed, and the migration stops there, telling the person so`);
   }
   const open = leaves.filter(({ status }) => status !== 'cancelled');
   for (const { id } of open) {

@@ -4,7 +4,7 @@
 
 ---
 
-A unit in manage is drawn with what can be done to it as it stands, opened from manage, the closed units or the start's pick. Its answers, and those of the screens its rows draw, go to `gate`; follow each `next`. What follows a pick that carries on in the conversation, or a `next` that runs a lifecycle verb, is below. Once it is done — and on the cancel confirm's no — draw again the screen the unit was opened from, emit its sections verbatim per their markers, and carry on there as the start menu's screens do. Drawn with `--from pick --matches {matches}`, that is the pick:
+A unit in manage is drawn with what can be done to it as it stands, opened from manage, the closed units or the start's pick. What follows a pick that carries on in the conversation, or a `next` that runs a lifecycle verb, is below. Once it is done — and on the cancel confirm's no — draw again the screen the unit was opened from, and carry on there as the start menu's screens do. Drawn with `--from pick --matches {matches}`, that is the pick:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render work-pick --matches {matches}
@@ -26,4 +26,4 @@ node .claude/skills/ledger-engine/scripts/engine.cjs render {list:[manage|closed
 
 ## Cancel and Reactivate
 
-`c/cancel` draws the cancel's confirm, whose yes runs `workunit cancel {work_unit}`; `r/reactivate` runs `workunit reactivate {work_unit}`. Either answers its receipt: emit its sections verbatim per their markers, then follow the cancel's `next`.
+`workunit cancel` and `workunit reactivate` each answer a receipt; then follow the verb's `next`.

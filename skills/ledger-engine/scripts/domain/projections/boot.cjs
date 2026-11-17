@@ -138,10 +138,10 @@ function repoStop(folder) {
  * Boot's stop at a directive of the migration not yet done (21.10.11): no
  * session works in the project until the migration is done; what the
  * directive finished is kept, each piece checked, and a piece it was in the
- * middle of is redone, or, every piece done, the step is ready to close;
- * this session carries it on. Where another live session carries it on
+ * middle of is taken up as its check says (21.10.9), or, every piece done,
+ * the step is ready to close; this session carries it on. Where another live session carries it on
  * (P7), the stop names when that one was last active, says nothing of what
- * a carrying session redoes or closes, and this session stops there. Where
+ * a carrying session takes up or closes, and this session stops there. Where
  * the check cannot say, nothing is said of what is done.
  * @param {{project: string, step: string, progress: import('../directives.cjs').Progress|null, carrier?: number|null}} stopped the project's name, the directive's step in words, where it stands, and the whole seconds since another session carrying it on was last active
  * @returns {string}
@@ -149,9 +149,9 @@ function repoStop(folder) {
 function directiveStop({ project, step, progress, carrier = null }) {
   const held = ['No session works in this project until the migration is done.'];
   if (progress !== null && progress.done > 0) {
-    const { done, of, counts, says } = progress;
+    const { done, of, counts, says, partWay } = progress;
     held.push(`What it finished is kept: ${done} of ${escapeMarkdown(project)}'s ${of} ${of === 1 ? counts.one : counts.many} ${says}, each checked.`);
-    if (carrier === null) held.push(done === of ? 'The step is ready to close.' : `Any ${counts.one} it was in the middle of is redone from the start.`);
+    if (carrier === null) held.push(done === of ? 'The step is ready to close.' : partWay);
   }
   const account = [
     `> ${held.join(' ')}`,

@@ -8,7 +8,7 @@
 // - Each unit's phase is its standing's (board-standing.cjs), as its tab
 //   and its banner have it. What waits on the person in it is counted from
 //   its one list as the start menu's row counts it (start-menu.cjs, 18.2.3),
-//   never its verdicts, and its conclude besides (20.12.5); the project's
+//   its conclude among them (20.12.5), never its verdicts; the project's
 //   total sums them.
 // - How far a unit has come, by the phase it is in: the gate ending it
 //   waiting on the person, by its name — finish, a quick-fix's close, or an
@@ -75,9 +75,8 @@ const HOW_FAR = Object.freeze({
 
 /** What waits on the person in a unit, counted (the header's). @param {BoardAt} at */
 function waitingCount(at) {
-  const waits = waitingOn(at);
-  const { gates, questions, topics } = counts(waits);
-  return gates + questions + topics + waits.filter(({ kind }) => kind === 'conclude').length;
+  const { gates, questions, topics } = counts(waitingOn(at));
+  return gates + questions + topics;
 }
 
 /** How far a unit has come (the header's). @param {BoardAt} at @param {string} phase */

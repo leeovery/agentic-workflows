@@ -30,11 +30,11 @@ Every engine call is `node .claude/skills/ledger-engine/scripts/engine.cjs {verb
 node .claude/skills/ledger-engine/scripts/engine.cjs enter implementation {work_unit}
 ```
 
-A refusal names the way on: say it in a line. Where another session holds the checkout's code, the entry asks first: emit its sections verbatim per their markers and follow the answer's `next`; carrying on from it ends the turn.
+A refusal names the way on: say it in a line. Where another session holds the checkout's code, the entry asks first; carrying on from it ends the turn.
 
-Then read what the DATA names: the `change` and each `seed`, the person's own account of what to change; the unit's `record` by running its call; the `build log`; and the `summary` where it is written. The rest is where the fixes stand:
+Then read what the DATA names. The rest of the DATA is where the fixes stand:
 - `tasks` lists each fix and where it stands.
-- Each fix `in flight` says what it waits on. One with no builder dispatched here goes the way its line names, through the task loop; one parked on a question waits, and is never sent to a new builder.
+- Each fix `in flight` says what it waits on. One with no builder dispatched here goes the way its line names, through the task loop; one parked on a question waits.
 - `waiting` lists the questions waiting on the person.
 
 On resume, say in your own words, in a line, where the fixes stand and what comes next.
@@ -63,7 +63,7 @@ Once a fix's pair has passed it and its nits are committed, write its short reco
 node .claude/skills/ledger-engine/scripts/engine.cjs quick-fix record {work_unit} {task} --file .ledger/.cache/{work_unit}/build/record.md
 ```
 
-A refusal names the way on: a fix with no commit of its own waits for one, and a record that does not read is written again.
+A refusal names the way on.
 
 ### The Person
 
@@ -96,7 +96,7 @@ Append to the build's log, `.ledger/{work_unit}/build/log.md`, as the work goes:
 
 ## Closing
 
-The quick-fix closes once every fix is done or closed, each done fix recorded. Finish closes on its checklist; `checklist show finish {work_unit}` lists its items, and the engine checks most of them, an open one naming its way on. `inbox-closed` reads the build's log for its `Resolved:` lines: check the live inbox against what was built, claim in the log each item the work resolved, and close them, `inbox close {work_unit} {path} …`. Yours is `build-log-closed` — the build's log ends on what the fixes came to, nothing left in flight.
+Finish closes on its checklist; `checklist show finish {work_unit}` lists its items. `inbox-closed` reads the build's log for its `Resolved:` lines: check the live inbox against what was built, claim in the log each item the work resolved, and close them, `inbox close {work_unit} {path} …`. Yours is `build-log-closed` — the build's log ends on what the fixes came to, nothing left in flight.
 
 Where `notes-answered` stays open, the notes for later its fixes' builders and pairs left stand. Answer each by one finding, filed to the inbox or dropped: `{"area": "notes", "scope": "out", "call", "text", "from": ["notes#{k}"], "inbox": "{path}", "ledger": "{id}"}`, or `"drop": "{why}"` in place of `inbox`. `notes#{k}` is note {k} of `.ledger/{work_unit}/build/notes.md`; `call` is the finding's weight, `serious`, `bug` or `nit`; `inbox` is the path `inbox file` answered; `ledger` is the id of your decision to file or drop it (**Doors**). Write them as `{"findings": […]}` to `.ledger/.cache/{work_unit}/build/notes.json` and record them:
 
@@ -106,13 +106,13 @@ node .claude/skills/ledger-engine/scripts/engine.cjs quick-fix notes {work_unit}
 
 A refusal names every fault: put each right and record them again.
 
-Mark it as it holds, `checklist done finish {work_unit} {item}`, or skip it with its reason, `checklist skip finish {work_unit} {item} --reason "{reason}"`. Close it, `checklist close finish {work_unit}`, then draw the close, emitting its sections verbatim per their markers:
+Mark it as it holds, `checklist done finish {work_unit} {item}`, or skip it with its reason, `checklist skip finish {work_unit} {item} --reason "{reason}"`. Close it, `checklist close finish {work_unit}`, then draw the close:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render finish {work_unit}
 ```
 
-A refusal names the way on: take it, then draw the close again. Each verdict the screen asks before its gate goes to `gate`, whose `next` gives the verdict; then draw the screen again. The gate's answer goes to `gate`: follow its `next`, and then the `next` of what it ran. The yes lands the quick-fix's pull request and completes the work; a refusal of the yes names the way on: take it, then run the yes again. The review row records the person's request, and its `next` carries this conversation into the review phase, which hands back to this close once it ends.
+A refusal names the way on: take it, then draw the close again. After each verdict the screen asks before its gate, draw the screen again. At the gate, follow the `next` of what the answer ran; a refusal of the yes names the way on: take it, then run the yes again.
 
 ## Something Outside the Plan
 
@@ -128,18 +128,18 @@ The person puts an idea, a bug or a fix aside — "roadmap it", "inbox it", "bac
 
 ## Moving It to a Feature or a Bugfix
 
-The work needs a decision from the person beyond a quick call — what the product should do, or a cause still to find. Say so as a tentative read the person can push back on; on their word it moves, a feature where it needs deciding, a bugfix where it needs investigating. The move is refused once a fix has landed.
+The work needs a decision from the person beyond a quick call — what the product should do, or a cause still to find. Say so as a tentative read the person can push back on; on their word it moves, a feature where it needs deciding, a bugfix where it needs investigating.
 
-Bring the build's log up to date, then draft the new type's brief at `.ledger/.cache/{work_unit}/build/brief.md`: what the quick-fix set out to change, what the work showed, and the open questions — nothing in it a decision. Write `{"description": "{one line in the person's framing}", "reason": "{one line on why it is this type}", "brief": ".ledger/.cache/{work_unit}/build/brief.md"}` to `.ledger/.cache/{work_unit}/build/move.json`, then stage the move and draw start this work's screen, emitting its sections verbatim per their markers:
+Bring the build's log up to date, then draft the new type's brief at `.ledger/.cache/{work_unit}/build/brief.md`: what the quick-fix set out to change, what the work showed, and the open questions — nothing in it a decision. Write `{"description": "{one line in the person's framing}", "reason": "{one line on why it is this type}", "brief": ".ledger/.cache/{work_unit}/build/brief.md"}` to `.ledger/.cache/{work_unit}/build/move.json`, then stage the move and draw start this work's screen:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs workunit move {work_unit} --to {type:[feature|bugfix]} --file .ledger/.cache/{work_unit}/build/move.json
 ```
 
-A refusal names what to fix. The answer goes to `gate`; follow its `next`, and then the `next` of what it ran, the handoff into the new type's first phase. A yes's `next` sets aside what the checkout holds not committed, takes the checkout off the quick-fix's branch and closes the fixes not done: stop every agent you dispatched with the TaskStop tool before you follow it. The person keeping shaping keeps the quick-fix: carry on with its fixes.
+A refusal names what to fix. Before following a yes's `next`, stop every agent you dispatched with the TaskStop tool; then follow the `next` of what it ran, the handoff into the new type's first phase. The person keeping shaping keeps the quick-fix: carry on with its fixes.
 
 ## Cancelling the Quick-Fix
 
-The person calls the quick-fix off. Bring the build's log up to date, then fetch the confirm, `render cancel-gate {work_unit}`, emit its MENU verbatim per its marker and follow the answer's `next`. A yes's `next` sets aside what the checkout holds not committed and takes the checkout off the quick-fix's branch: stop every agent you dispatched with the TaskStop tool before you follow it. A refusal names what holds the unit: say it in a line.
+The person calls the quick-fix off. Bring the build's log up to date, then fetch the confirm, `render cancel-gate {work_unit}`. Before following a yes's `next`, stop every agent you dispatched with the TaskStop tool. A refusal names what holds the unit: say it in a line.
 
-The cancel answers its receipt: emit its sections verbatim per their markers, then follow the cancel's `next`.
+The cancel answers its receipt; then follow the cancel's `next`.

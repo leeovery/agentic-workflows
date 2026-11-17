@@ -24,15 +24,15 @@ The person has said yes at finish: the engine then holds every phase of the buil
 
 ## Entering
 
-The build runs straight into this phase, invoking it in place once the cut's last phase has closed, and a quick-fix's close does when the person asks for its review; after a break, a menu moves into it. Every engine call is `node .claude/skills/ledger-engine/scripts/engine.cjs {verb} …`, each verb under **Doors**.
+Every engine call is `node .claude/skills/ledger-engine/scripts/engine.cjs {verb} …`, each verb under **Doors**.
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs enter review {work_unit}
 ```
 
-A refusal names the way on: say it in a line. Where another session holds the unit or the checkout's code, the entry asks first: emit its sections verbatim per their markers and follow the answer's `next`; carrying on from it ends the turn.
+A refusal names the way on: say it in a line. Where another session holds the unit or the checkout's code, the entry asks first; carrying on from it ends the turn.
 
-For a unit with a branch of its own, the first round's entry brings the default branch into it. Where the two conflict, the entry is refused, naming the worktree that holds the merge begun: settle each conflict there with the person, in the conversation, finish the merge as the refusal says, then enter again.
+A conflict the entry names is settled with the person, in the conversation.
 
 Otherwise read what the DATA names that this conversation does not hold already — the spec, the unit's record by its call, the build's log, each round's report, the builders' `notes`: each once in the conversation, and after that only what is new since. `base` is the default branch, which the change is read against, and `waiting` lists the questions waiting on the person. Then its lines say what comes next, the first that applies:
 - `fix task waiting` — the last round's fix tasks are built (**The Fixes**).
@@ -56,8 +56,8 @@ Each move once the one before it holds:
 
    Each file-or-drop call out of scope, and each serious finding or bug dropped in scope, is your call on the ledger with its reason. A finding filed goes to the inbox once its call is in.
 3. **The fix tasks.** A round's fix tasks are one more phase of the build, its own: phase {N}, as the entry's `fix phase` line names it. Write the phase, then each fix as a task, findings one change fixes sharing it: its type `fix`, its acceptance scenario the finding's user scenario, its spec reference the area — a quick-fix's, `none`.
-4. **The record.** Write the round to `.ledger/.cache/{work_unit}/review/round.json` and record it, `review round {work_unit} --file .ledger/.cache/{work_unit}/review/round.json`. A refusal names every fault. A report missing or not reading goes back to its reader: brief it again, the fresh brief naming the report it replaces, and never edit a reader's report. A tree changed is **The Working Tree**. Put every other fault right, and record the round again.
-5. **The report.** Draw it, emitting its sections verbatim per their markers:
+4. **The record.** Write the round to `.ledger/.cache/{work_unit}/review/round.json` and record it, `review round {work_unit} --file .ledger/.cache/{work_unit}/review/round.json`. A refusal names every fault. A report missing or not reading goes back to its reader: brief it again, and never edit a reader's report. A tree changed is **The Working Tree**. Put every other fault right, and record the round again.
+5. **The report.** Draw it:
 
    ```bash
    node .claude/skills/ledger-engine/scripts/engine.cjs render review-report {work_unit}
@@ -67,17 +67,17 @@ Each move once the one before it holds:
 
 ### A Round That Fails Again
 
-A round that fails on findings its fix tasks already addressed is yours to settle, as a stuck task is: judge what is wrong and settle it. Where the fix missed, a new fix task carries what it missed, and its finding's text says so: the earlier round's fix missed it, and what the new task carries. Where the findings were fixed in an earlier round or are rightly dropped, the round makes no fix task and its `settled` says how. The report shows either. No count stops the rounds, and settling one stops for the person only where the answer needs them: a question to them goes through `raise` (**The Person**).
+A round that fails on findings its fix tasks already addressed is yours to settle, as a stuck task is: judge what is wrong and settle it. Where the fix missed, a new fix task carries what it missed, and its finding's text says so: the earlier round's fix missed it, and what the new task carries. Where the findings were fixed in an earlier round or are rightly dropped, the round makes no fix task and its `settled` says how. No count stops the rounds, and settling one stops for the person only where the answer needs them: a question to them goes through `raise` (**The Person**).
 
 ### The Working Tree
 
-The review takes its turn in the checkout and leaves the working tree as it found it. Where `review round` refuses a tree outside `.ledger/` changed since the round began, or holds no snapshot of it, the person answers what becomes of the tree at its gate: fetch it and emit its sections verbatim per their markers.
+The review takes its turn in the checkout and leaves the working tree as it found it. A round refused for the tree names its gate:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render review-tree {work_unit}
 ```
 
-The answer goes to `gate`: follow its `next`, then record the round again; where something stays changed, the round refuses again and the gate returns with what remains. Where putting it back answers a `set_aside`, say in a line where what it changed is kept until the person removes it: its `folder`, and each of its `paths`. Where the person puts back by hand what the gate could not, record the round again.
+Once the gate is answered, record the round again. Where putting it back answers a `set_aside`, say in a line where what it changed is kept until the person removes it: its `folder`, and each of its `paths`. Where the person puts back by hand what the gate could not, record the round again.
 
 ## A Quick-Fix's Review
 
@@ -87,7 +87,7 @@ A quick-fix has no spec. Its review holds the whole change against its fixes' ac
 
 The fix tasks the entry names are built in the same loop as every task of the build: load **[the-task-loop.md](../ledger-implementation-process/references/the-task-loop.md)** and follow its instructions as written, with place = `review` and N = `{N}`, as the entry's `fix phase` line names it. A fix phase has no checklists and no phase review: the areas its tasks changed are read again instead. Once the loop hands back, enter again.
 
-Where the entry names a `merge waiting` gate, phase {M}, the phase that line names, merges first; it can be lower than the fix phase. Fetch the gate and emit its sections verbatim per their markers; the answer goes to `gate`, and you follow its `next`:
+Where the entry names a `merge waiting` gate, phase {M}, the phase that line names, merges first; it can be lower than the fix phase. Fetch the gate:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render phase-merge-gate {work_unit} {M}
@@ -95,7 +95,7 @@ node .claude/skills/ledger-engine/scripts/engine.cjs render phase-merge-gate {wo
 
 ### The Builders' Notes
 
-Once the round that ended the review has its fix tasks done, the notes their builders left are answered before finish, as a round answers its notes: each `builder note` the entry names by a finding out of scope, of the area `notes`, filed or dropped by your call. Write them, `{findings}`, to `.ledger/.cache/{work_unit}/review/notes.json` and record them, `review notes {work_unit} --file .ledger/.cache/{work_unit}/review/notes.json`; they join that round's report. A refusal names every fault: put each right and record them again. Then draw the report again, emitting its sections verbatim per their markers:
+Once the round that ended the review has its fix tasks done, the notes their builders left are answered before finish, as a round answers its notes: each `builder note` the entry names by a finding out of scope, of the area `notes`, filed or dropped by your call. Write them, `{findings}`, to `.ledger/.cache/{work_unit}/review/notes.json` and record them, `review notes {work_unit} --file .ledger/.cache/{work_unit}/review/notes.json`. A refusal names every fault: put each right and record them again. Then draw the report again:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render review-report {work_unit}
@@ -105,11 +105,11 @@ The report is no gate: enter again.
 
 ## Reading Again
 
-Once a round's fix tasks are done, the next round reads again, whole, every area whose code they changed: name them, `review reads {work_unit} {read} …`, each read the entry's `reads` line says it must take among them. An area nothing changed is not read again, and the whole change is never read against the spec once more. Then enter again, and **The Round** reads them.
+Once a round's fix tasks are done, the next round reads again, whole, every area whose code they changed: name them, `review reads {work_unit} {read} …`. An area nothing changed is not read again, and the whole change is never read against the spec once more. Then enter again, and **The Round** reads them.
 
 ## The Person
 
-The review runs without the person but for its reports and finish. Every question for them goes through `raise`, at the review's place, which decides whether it reaches them: one asked in plain prose is a slip. One that waits — raised in a round, as one is settled, or for a fix task — is never a gate. Load **[waiting-on-the-person.md](../ledger-implementation-process/references/waiting-on-the-person.md)** and follow its instructions as written.
+The review runs without the person but for its reports and finish. Every question for them goes through `raise`, at the review's place: one asked in plain prose is a slip. One that waits — raised in a round, as one is settled, or for a fix task — is never a gate. Load **[waiting-on-the-person.md](../ledger-implementation-process/references/waiting-on-the-person.md)** and follow its instructions as written.
 
 ## Doors
 
@@ -131,19 +131,19 @@ The review runs without the person but for its reports and finish. Every questio
 
 ## Closing
 
-Once a round has passed, or been settled, and its fix tasks are done, finish closes on its checklist; `checklist show finish {work_unit}` lists its items, and the engine checks most of them, an open one naming its way on. `inbox-closed` reads the build's log for its claims, each a line of its own, `Resolved: {path}`: check the live inbox against what was built, claim in the log each item the work resolved, by its inbox path, and close them, `inbox close {work_unit} {path} …`. Yours is `build-log-closed` — the build's log ends on what the build and its review came to, nothing left in flight.
+Once a round has passed, or been settled, and its fix tasks are done, finish closes on its checklist; `checklist show finish {work_unit}` lists its items. `inbox-closed` reads the build's log for its claims, each a line of its own, `Resolved: {path}`: check the live inbox against what was built, claim in the log each item the work resolved, by its inbox path, and close them, `inbox close {work_unit} {path} …`. Yours is `build-log-closed` — the build's log ends on what the build and its review came to, nothing left in flight.
 
-Mark it as it holds, `checklist done finish {work_unit} {item}`, or skip it with its reason, `checklist skip finish {work_unit} {item} --reason "{reason}"`. Close it, `checklist close finish {work_unit}`, then draw finish, emitting its sections verbatim per their markers:
+Mark it as it holds, `checklist done finish {work_unit} {item}`, or skip it with its reason, `checklist skip finish {work_unit} {item} --reason "{reason}"`. Close it, `checklist close finish {work_unit}`, then draw finish:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render finish {work_unit}
 ```
 
-Each verdict the screen asks before its gate goes to `gate`, whose `next` gives the verdict; then draw the screen again. The gate's answer goes to `gate`: follow its `next`, and then the `next` of what it ran. A refusal of the yes names the way on: take it — a conflict with the default branch settled with the person, as at the entry — then run the yes again.
+After each verdict the screen asks before its gate, draw the screen again. At the gate, follow the `next` of what the answer ran. A refusal of the yes names the way on: take it — a conflict with the default branch settled with the person, as at the entry — then run the yes again.
 
 ## The Calls
 
-The person asks what was decided for them — "show me the calls", "what did you decide". Fetch the calls and emit their sections verbatim per their markers:
+The person asks what was decided for them — "show me the calls", "what did you decide". Fetch the calls:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render review-calls {work_unit}
@@ -159,15 +159,15 @@ The person says they are ready to talk about a waiting question, or all of them 
 
 ## A Task's Account
 
-The person asks for a task's account: a fix task's, any of the build's, or one of a quick-fix's fixes. Fetch `render task-account {work_unit} {task}` and emit its sections verbatim per their markers.
+The person asks for a task's account: a fix task's, any of the build's, or one of a quick-fix's fixes. Fetch `render task-account {work_unit} {task}`.
 
 ## The Phases and Tasks
 
-The person asks for the build's phases and tasks, the fix phases among them — a quick-fix's, its fixes then its review's fix tasks. Fetch `render build-progress {work_unit}` and emit its sections verbatim per their markers.
+The person asks for the build's phases and tasks, the fix phases among them — a quick-fix's, its fixes then its review's fix tasks. Fetch `render build-progress {work_unit}`.
 
 ## A Switch of Position
 
-The person asks to run the fix tasks in auto, or in step. A quick-fix's run as in auto, with no position to switch: say so in a line. Any other unit's: record it, `workunit position {work_unit} {position:[auto|step]}`, and say in a line that it is switched.
+The person asks to run the fix tasks in auto, or in step. Record it, `workunit position {work_unit} {position:[auto|step]}`, and say in a line that it is switched.
 
 ## Backlogging
 
@@ -175,6 +175,6 @@ The person puts an idea, a bug or a fix aside — "roadmap it", "inbox it", "bac
 
 ## Cancelling the Work
 
-The person calls the work off. Bring the build's log up to date, then fetch the confirm, `render cancel-gate {work_unit}`, emit its MENU verbatim per its marker and follow the answer's `next`. A refusal names what holds the unit: say it in a line.
+The person calls the work off. Bring the build's log up to date, then fetch the confirm, `render cancel-gate {work_unit}`. A refusal names what holds the unit: say it in a line.
 
-The cancel takes the unit's cache, its agents' rows with it: stop every agent you dispatched with the TaskStop tool. The cancel answers its receipt: emit its sections verbatim per their markers, then follow the cancel's `next`.
+The cancel takes the unit's cache, its agents' rows with it: stop every agent you dispatched with the TaskStop tool. The cancel answers its receipt; then follow the cancel's `next`.

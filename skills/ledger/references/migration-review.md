@@ -33,12 +33,12 @@ Files were updated, a migration handed over checks its code could not perform, a
    → Return to caller.
 
 3. Write a brief natural language summary of what the migrations did — verification fixes included (e.g., "Restructured workflow directories, created manifest files, recovered a message the converter missed"). Focus on the nature of the changes, not individual file paths — these are Ledger's internal state files.
-4. Write the summary to `{state}/.cache/migrations-applied.json` with the Write tool — `{"summary": "{your natural language summary}", "notices": [{each entry's notice}], "migrations": {N}, "files": {M}}`, each `notice` from `migrations.notices` verbatim, `notices` left out when it is empty; `{N}`/`{M}` from `migrations.output`'s `{N} migration(s) applied, {M} file(s) updated.` line; when it reports no changes, leave both counts out. Fetch the summary and emit its section verbatim per its marker:
+4. Write the summary to `{state}/.cache/migrations-applied.json` with the Write tool — `{"summary": "{your natural language summary}", "notices": [{each entry's notice}], "migrations": {N}, "files": {M}}`, each `notice` from `migrations.notices` verbatim, `notices` left out when it is empty; `{N}`/`{M}` from `migrations.output`'s `{N} migration(s) applied, {M} file(s) updated.` line; when it reports no changes, leave both counts out. Fetch the summary:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render migrations-applied --file {state}/.cache/migrations-applied.json
 ```
 
-5. Work the screen `migration-gate` as the start's **A Setup Screen** says: its yes commits the migration's changes, one commit on each side that changed, or, for the migration into Ledger, each commit `reshape` named in `commits`.
+5. Work the screen `migration-gate` as the start's **A Setup Screen** says.
 
    → Return to caller.

@@ -19,7 +19,7 @@ The question it answers is on the map. Pick its kind:
 - `landscape` — what exists, what it costs, where the gaps are;
 - `verify` — a claim held against sources.
 
-Dispatch it under a kebab-case label, brief it, then make the Agent call — its `subagent_type` the agent `brief` answers, its prompt the pointer alone. The conversation carries on.
+Dispatch it under a kebab-case label, brief it, then make the Agent call. The conversation carries on.
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs agent dispatch {work_unit} discussion {topic} --kind deep-dive --label {slug}

@@ -33,10 +33,10 @@ Then write the payload to `.ledger/.cache/product/discovery/product/start-this-w
 - `seeds` — the inbox paths it starts from, `$2`'s and any taken in; `roadmap` — the waiting roadmap items it starts from, `$2`'s `roadmap:{item}` seeds and any taken in.
 - `brief` — for a feature or a bugfix, the path of its one topic's brief, drafted under `.ledger/.cache/product/discovery/product/`: load **[writing-a-brief.md](writing-a-brief.md)** and follow its instructions as written.
 
-Stage it and draw the screen, emitting its sections verbatim per their markers:
+Stage it and draw the screen:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render start-this-work --file .ledger/.cache/product/discovery/product/start-this-work-payload.json
 ```
 
-A refusal names what to fix: fix the payload and stage it again. The answer goes to `gate`; follow its `next`, and then the `next` of what it ran. For an epic that carries the conversation into the epic's own discovery: read its DATA as on entering — `{home}` is now the epic — and shape its topics there. For a quick-fix it invokes the quick-fix's skill in this conversation, and its fixes start there. Keep shaping takes the person's word back into the conversation.
+A refusal names what to fix: fix the payload and stage it again. At the gate, follow the `next` of what the answer ran. For an epic that carries the conversation into the epic's own discovery: read its DATA as on entering — `{home}` is now the epic — and shape its topics there. Keep shaping takes the person's word back into the conversation.

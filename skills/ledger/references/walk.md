@@ -4,13 +4,11 @@
 
 ---
 
-The walk's screens, one at a time, each ending on its own menu, from `screen` 1. Fetch a screen and emit its sections verbatim per their markers:
+The walk's screens, one at a time, each ending on its own menu, from `screen` 1. Fetch a screen:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render walkthrough-screen --screen {screen} --from {origin:[first-run|help]}
 ```
-
-**STOP.** Wait for user response.
 
 Its answer moves the walk:
 - `next` fetches the screen after it; `back` the one before it, and on screen 1 ends the walk.

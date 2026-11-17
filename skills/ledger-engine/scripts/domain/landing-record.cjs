@@ -12,8 +12,8 @@
 //
 //   {"commit": sha, "tip": sha, "first": sha, "by": "engine"|"read", "at": instant}
 //
-// `commit` is the commit on that repository's default branch that landed
-// the task, on its first-parent line; `tip` the task's tip that landed;
+// `commit` is the commit on that repository's landing branch that landed
+// the task, on its first-parent line (7.2.37); `tip` the task's tip that landed;
 // `first` the commit of its first landing, kept when a task changed after
 // its landing lands again (R30), so the review's change draws its first
 // landing and its last from the record alone; `by` whether a land verb

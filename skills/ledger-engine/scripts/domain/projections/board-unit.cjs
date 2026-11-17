@@ -20,7 +20,7 @@
 //   one closed; where it has come to; how the phase it is in stands —
 //   running, stopped, or waiting on the person — and the unit's one list of
 //   what waits on them, which the epic's page and the tab both show.
-// - The specification waits until every topic is decided, is written until
+// - The specification waits until every topic is settled, is written until
 //   the build begins — held by what waits on the person first in the
 //   unit's list, the map the sweep staged, a gap, or ready to build's yes —
 //   and is complete then; the build and review build until every phase of
@@ -102,8 +102,8 @@ const LATELY_SHOWN = 10;
 /** The phases a session works in a topic of an epic. */
 const TOPIC_PHASES = Object.freeze(['discussion', 'experiment']);
 
-/** What an epic's phases wait on while its discovery runs (20.15.2). @type {Readonly<Record<string, string>>} */
-const EPIC_WAITS = Object.freeze({ discussion: 'once the map is approved', specification: 'once every topic is decided' });
+/** What an epic's phases wait on while its discovery runs (20.15.2): a topic settled is decided, cancelled or postponed (spec-standing.cjs). @type {Readonly<Record<string, string>>} */
+const EPIC_WAITS = Object.freeze({ discussion: 'once the map is approved', specification: 'once every topic is settled' });
 
 /** The sessions the project holds, read once a call. @param {BoardAt} at @returns {ReturnType<typeof scanProject>['sessions']} */
 const presenceOf = (at) => at.once('presence', () => scanProject(at.cwd).sessions);

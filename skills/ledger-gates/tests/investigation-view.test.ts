@@ -231,12 +231,14 @@ WAITING ON YOU ───────────────── 1 · asked in
     expect(drawn(INVESTIGATION, picked).text[2]).toBe('6 hypotheses · 3 confirmed · 10 experiments · ◐ validating the')
   })
 
-  test('20.12.4: concluded, the facts line says the specification is next, and nothing turns', () => {
+  test('20.12.1, 20.12.4: concluded, the facts line says the specification is next and nothing turns, and the unit\'s tab shows the specification being written', () => {
     const done = { ...fixture, standing: 'concluded', waiting: [], fix_direction: { ...fixture.fix_direction, state: 'picked', pick: '1', fix: 'Harden the reads.' } } as View
+    const tab = { ...MINT, type: 'bugfix', here: false, waiting: [], phases: [phase('discovery', 'complete', 'from your inbox note'), phase('investigation', 'complete', '6 hypotheses'), phase('specification', 'running', '', { doing: 'being written' })] } as View
     const { text, holds } = drawn(INVESTIGATION, done)
 
     expect(text.slice(2, 4)).toEqual(['6 hypotheses · 3 confirmed · 10 experiments · ✓ concluded ·', 'the specification next'])
     expect(holds.turns).toBe(false)
+    expect(drawn(UNIT, tab).text.find(row => row.includes('Specification'))).toEndWith(' being written')
   })
 
   test('each validation by where it stands: not started, lost, done with nothing found', () => {

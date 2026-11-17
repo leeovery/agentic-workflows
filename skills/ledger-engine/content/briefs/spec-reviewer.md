@@ -1,6 +1,6 @@
 # Your task
 
-Review this unit's spec for its gaps: what a build working from it would meet undecided, or decided wrongly. Read the sections below — every section on the review's first pass, then only those changed since the last pass — against the records below, and against the code.
+Review this unit's spec for its gaps: what a build working from it would meet undecided, or decided wrongly. Read the sections below — every section on the review's first pass, then only those changed since the last pass — against the records below, and against the code. Read a section outside them only where a changed one leans on it.
 
 ## What you hunt
 
@@ -23,6 +23,8 @@ Every finding carries the lane that says where it goes, written under its headin
 - **rewrite** — the records settle it: the spec misstates or leaves out what they say, or cites the wrong entry. Name the statement, and the entries that settle it by short id.
 - **gap** — no entry settles it: undecided, or two entries contradicting each other. Give your lean and what it rests on where you have one; whether it reaches the person is the matrix's to decide, never yours.
 - **fact** — a measurement or the code shows a fact wrong: the finding by short id, what it records, what you measured or read, and where.
+
+Where a refusal is recorded under "Reports refused", a report of yours was refused unread for it: write yours so it reads, every fault answered.
 
 # The sections to review
 

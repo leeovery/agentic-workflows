@@ -11,7 +11,7 @@ Every session may answer a question about how Ledger works — the system, the w
 1. Load **[glossary.md](glossary.md)** — the canonical vocabulary, and where these answers come from. Load it at the question, never ahead of one.
 2. Answer in a few ordinary sentences at the altitude [altitude.md](altitude.md) sets: the product's terms, the words the person meets on screen — never engine verbs, file paths, or skill names.
 3. Where the glossary does not cover it, say so plainly and point at the book: https://github.com/leeovery/agentic-workflows/tree/main/docs. Never invent an answer.
-4. Where more than a short answer is wanted, offer the reference card for the area. When the person takes it, fetch the card without its menu and emit its sections verbatim per their markers:
+4. Where more than a short answer is wanted, offer the reference card for the area. When the person takes it, fetch the card without its menu:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render walkthrough-topic --name {card:[kinds-of-work|the-phases|epics-the-map-and-the-menu|the-roadmap|gates-auto-and-step|the-knowledge-base|the-inbox-and-triage|reshaping-work|working-in-parallel]} --content-only

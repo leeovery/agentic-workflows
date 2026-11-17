@@ -31,9 +31,9 @@ Every engine call is `node .claude/skills/ledger-engine/scripts/engine.cjs {verb
 node .claude/skills/ledger-engine/scripts/engine.cjs enter investigation {work_unit}
 ```
 
-A refusal names the way on: say it in a line. Where another session holds the topic, the entry asks first: emit its MENU verbatim per its marker and follow the answer's `next`; carrying on from it ends the turn. Otherwise emit each section ahead of the DATA verbatim per its marker. Waiting mail is the conversation's first business (**Mail**).
+A refusal names the way on: say it in a line. Where another session holds the topic, the entry asks first; carrying on from it ends the turn. Waiting mail is the conversation's first business (**Mail**).
 
-Then read what the DATA names: the brief; discovery's logs and the seeds, the person's own account of the bug; the product record; at a first opening of a quick-fix moved here, its `earlier record`, `earlier build log`, `earlier summary` and each `earlier review round`, read as input and never changed, and each `kept branch` and `kept work`, what the quick-fix kept for the person; and on resume the topic's record, its map and the `log`, the hunt so far. Take in each `landed` report as **Validations** says, and close each `lost` one with `agent incorporate`. Search earlier work units' entries in the bug's area with `knowledge query`.
+Then read what the DATA names, each in full, an `earlier` one as input never changed. Take in each `landed` report as **Validations** says, and close each `lost` one with `agent incorporate`. Search earlier work units' entries in the bug's area with `knowledge query`.
 
 Then open the conversation; never stop in silence once you have read. The opening names each `kept branch` and `kept work` to the person, a piece of work with the calls its line gives. On resume, say in your own words, in a line, where the hunt stands and what comes next.
 
@@ -49,7 +49,7 @@ The brief, the seeds and discovery's log are the person's account: confirm what 
 
 Before tracing deep, a bounded recon: the symptoms, the code they implicate and what surrounds it, and whatever the knowledge base turned up. From it form the hypotheses, each with what points at it rather than proof, and log each (`investigation-log hypothesis`). A cause the seeds already pinpoint is a plan of one. Recon that starts confirming rather than forming has gone past the plan: draw it.
 
-Write `{"order": [{"hypothesis": "H{n}", "check": "{how it is checked}"}, …]}` — every hypothesis still open, in the order you'll check them — to `.ledger/.cache/{work_unit}/investigation/{work_unit}/plan.json`. A finding that invalidates the agreed plan — the cause clearly elsewhere, a new suspect dominant, the remaining checks moot — brings the revised plan back to the same gate before the analysis goes on: its payload says besides what the finding changed, `"changed"`, and the call adds `--revised`. The analysis never re-plans past it. Fetch the plan gate and emit its sections verbatim per their markers:
+Write `{"order": [{"hypothesis": "H{n}", "check": "{how it is checked}"}, …]}` — every hypothesis still open, in the order you'll check them — to `.ledger/.cache/{work_unit}/investigation/{work_unit}/plan.json`. A finding that invalidates the agreed plan — the cause clearly elsewhere, a new suspect dominant, the remaining checks moot — brings the revised plan back to the same gate before the analysis goes on: its payload says besides what the finding changed, `"changed"`, and the call adds `--revised`. The analysis never re-plans past it. Fetch the plan gate:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render investigation-plan {work_unit} --file .ledger/.cache/{work_unit}/investigation/{work_unit}/plan.json [--revised]
@@ -61,7 +61,7 @@ Trace from where the person meets the bug back to its source: the data's path, t
 
 What the code or a run shows is a finding, saying how it is known: `read` in the code, `documented` with its source, or `exploratory` with the command and its result. A check run to test a hypothesis is the investigation's own experiment, logged with what it showed and resting on its finding (`investigation-log experiment`). A trace or a longer account goes beneath its entry as `--body`. A hypothesis's state follows the evidence — confirmed, or ruled out, a dead end kept and never deleted — and one the person says is intended behaviour is `intended`, `--by` their answer. A new suspect joins as a hypothesis of its own.
 
-Whenever hypotheses resolve, before the trace moves on, write `{"resolved": ["H{n}", …], "next": "{what is checked next}"}`, those resolved since the last gate, to `.ledger/.cache/{work_unit}/investigation/{work_unit}/check-in.json`, then fetch the check-in gate and emit its sections verbatim per their markers:
+Whenever hypotheses resolve, before the trace moves on, write `{"resolved": ["H{n}", …], "next": "{what is checked next}"}`, those resolved since the last gate, to `.ledger/.cache/{work_unit}/investigation/{work_unit}/check-in.json`, then fetch the check-in gate:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render investigation-check-in {work_unit} --file .ledger/.cache/{work_unit}/investigation/{work_unit}/check-in.json
@@ -83,7 +83,7 @@ Once the evidence settles it, the root cause is your decision on the findings: a
 
 ### Validations
 
-Both always run, each against what it validates as it stands: the root cause's once the root cause is logged, the fix's once the fix is decided. A root cause or a fix replaced is validated again. Each is dispatched, briefed and called, `{kind}` `root-cause-validation` or `fix-validation` and `{id}` the one the dispatch answers; the Agent call's `subagent_type` is the agent `brief` answers, and its prompt the pointer alone:
+Both always run, each against what it validates as it stands: the root cause's once the root cause is logged, the fix's once the fix is decided. Each is dispatched, briefed and called, `{kind}` `root-cause-validation` or `fix-validation` and `{id}` the one the dispatch answers; the Agent call's `subagent_type` is the agent `brief` answers, and its prompt the pointer alone:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs agent dispatch {work_unit} investigation {work_unit} --kind {kind}
@@ -108,7 +108,7 @@ Before setting out fix options, step back from the bug. Was the implementation w
 
 The fix is a question on the map, set out through `raise`, its call holding besides `"stepped_back"`, a line for each thing the step back found. Each row is a way to fix it, said as what the person would notice. Where the cause sits in the design or the area keeps breaking, it carries one row more: rework the area as a feature. Where the root cause is a design problem, each raise of the fix direction is marked `--always design-problem`. The direction says what the fix does, never how it is written — that is the spec's.
 
-Once the fix is decided, log the fix direction (`investigation-log fix-direction`), which carries what the step back found from the raise; then dispatch the fix's validation. Reworking the area as a feature, decided, dispatches no validation: go on to **Reworking It as a Feature**.
+Once the fix is decided, log the fix direction (`investigation-log fix-direction`); then dispatch the fix's validation. Reworking the area as a feature, decided, dispatches no validation: go on to **Reworking It as a Feature**.
 
 ### Mail
 
@@ -157,9 +157,9 @@ Write `{"hunt": "{one paragraph}", "fixes": "{unit}", "area": "{area}"}` — the
 node .claude/skills/ledger-engine/scripts/engine.cjs render conclude {work_unit} --file .ledger/.cache/{work_unit}/investigation/{work_unit}/recap.json
 ```
 
-Where its DATA lists the area you named under another spelling, stage the recap again with the DATA's before emitting anything. Then emit its sections verbatim per their markers. A refusal names the way on: work it — a validation, a question open, mail — then fetch the gate again; one refusing the recap is staged again as it says.
+Where its DATA lists the area you named under another spelling, stage the recap again with the DATA's before emitting anything. A refusal names the way on: work it, then fetch the gate again; one refusing the recap is staged again as it says.
 
-The screen asks a verdict of each call the person changed, one at a time: each answer goes to `gate`, whose `next` gives the verdict; then draw `render conclude {work_unit}` again. At the conclude gate the answer goes to `gate`: the yes runs `investigation conclude`, whose `next` hands the work into the spec — follow it; keep going carries the hunt on. A Comment that changes what the screen says is worked, and the recap staged again.
+The screen asks a verdict of each call the person changed, one at a time; after each, draw `render conclude {work_unit}` again. At the conclude gate, follow the `next` of what the yes runs. A Comment that changes what the screen says is worked, and the recap staged again.
 
 ## Backlogging
 
@@ -171,9 +171,9 @@ The person pushes the bug back to the roadmap. The topic is the unit, so there i
 
 ## Cancelling the Investigation
 
-The person calls the bugfix off, or the conversation agrees it is not worth fixing. Bring the log up to date, then fetch the confirm, `render cancel-gate {work_unit}`, emit its MENU verbatim per its marker and follow the answer's `next`. A refusal names what holds the unit: say it in a line.
+The person calls the bugfix off, or the conversation agrees it is not worth fixing. Bring the log up to date, then fetch the confirm, `render cancel-gate {work_unit}`. A refusal names what holds the unit: say it in a line.
 
-The cancel takes the unit's cache, its agents' rows with it: stop every task you dispatched with the TaskStop tool. The cancel answers its receipt: emit its sections verbatim per their markers, then follow the cancel's `next`.
+The cancel takes the unit's cache, its agents' rows with it: stop every task you dispatched with the TaskStop tool. The cancel answers its receipt; then follow the cancel's `next`.
 
 ## A Shared File
 
@@ -181,14 +181,14 @@ The person shares a file, a path or an image — a log, an export, a screenshot 
 
 ## Reworking It as a Feature
 
-The person has decided the fix direction is to rework the area as a feature. The move waits on the root cause's validation, taken in as **Validations** says, and refuses until it is. Bring the log up to date, then draft the feature's brief at `.ledger/.cache/{work_unit}/investigation/{work_unit}/brief.md`: the symptoms, the root cause and why it is the design's, the ways ruled out and why, and the open questions — nothing in it a decision.
+The person has decided the fix direction is to rework the area as a feature. Bring the log up to date, then draft the feature's brief at `.ledger/.cache/{work_unit}/investigation/{work_unit}/brief.md`: the symptoms, the root cause and why it is the design's, the ways ruled out and why, and the open questions — nothing in it a decision.
 
-Write `{"description": "{one line in the person's framing}", "reason": "{one line on why it is a feature}", "brief": ".ledger/.cache/{work_unit}/investigation/{work_unit}/brief.md"}` to `.ledger/.cache/{work_unit}/investigation/{work_unit}/move.json`, then stage the move and draw start this work's screen, emitting its sections verbatim per their markers:
+Write `{"description": "{one line in the person's framing}", "reason": "{one line on why it is a feature}", "brief": ".ledger/.cache/{work_unit}/investigation/{work_unit}/brief.md"}` to `.ledger/.cache/{work_unit}/investigation/{work_unit}/move.json`, then stage the move and draw start this work's screen:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs workunit move {work_unit} --to feature --file .ledger/.cache/{work_unit}/investigation/{work_unit}/move.json
 ```
 
-A refusal names what to fix. The answer goes to `gate`; follow its `next`, and then the `next` of what it ran: the handoff into the feature's discussion, which reads this investigation as its earlier log.
+A refusal names what to fix. At the gate, follow the `next` of what the answer ran: the handoff into the feature's discussion.
 
 The person keeping shaping at start this work, the bugfix staying one, settles the fix afresh: replace the fix through `raise --replaces {fix} --reason changed-mind`, its call holding what the step back found again, then carry on as **The Fix Direction** says once it is decided.

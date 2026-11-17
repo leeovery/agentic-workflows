@@ -4,7 +4,7 @@
 
 ---
 
-Triage works through the inbox: the person picks items, and what's picked is worked now as one piece of work, put on the roadmap or archived. Its answers, and those of the screens its rows draw, go to `gate`; follow each `next`. What follows a row that carries on in the conversation, or a `next` that runs an inbox verb, is below.
+Triage works through the inbox: the person picks items, and what's picked is worked now as one piece of work, put on the roadmap or archived. What follows a row that carries on in the conversation, or a `next` that runs an inbox verb, is below.
 
 ## Picking
 
@@ -14,7 +14,7 @@ At **Pick** the person names items by number, and triage's DATA gives each numbe
 { "picked": ["{path}"], "fits": ["{path}"] }
 ```
 
-Draw it, and emit its sections verbatim per their markers:
+Draw it:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render triage --file .ledger/.cache/triage.json
@@ -44,11 +44,11 @@ A name already on the roadmap refuses the whole batch: ask the person for anothe
 
 ## Archiving
 
-`a/archive`'s `inbox archive` answers its receipt: emit its sections verbatim per their markers, then draw triage again (Drawn Again).
+`a/archive`'s `inbox archive` answers its receipt; then draw triage again (Drawn Again).
 
 ## Drawn Again
 
-Draw triage with nothing picked, emit its sections verbatim per their markers, and carry on there:
+Draw triage with nothing picked, and carry on there:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render triage
@@ -56,7 +56,7 @@ node .claude/skills/ledger-engine/scripts/engine.cjs render triage
 
 ## The Archived Items
 
-`v/view` draws the archived items, and a number picked draws that item. `u/unarchive`'s `inbox restore` and the delete's yes, `inbox delete`, each answer a receipt: emit its sections verbatim per their markers. Then draw the archived items again — with `--file .ledger/.cache/triage.json` where items were picked when the person chose `v/view` — emit its sections verbatim per their markers, and carry on there:
+`v/view` draws the archived items, and a number picked draws that item. `u/unarchive`'s `inbox restore` and the delete's yes, `inbox delete`, each answer a receipt. Then draw the archived items again — with `--file .ledger/.cache/triage.json` where items were picked when the person chose `v/view` — and carry on there:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render archived [--file .ledger/.cache/triage.json]
@@ -64,4 +64,4 @@ node .claude/skills/ledger-engine/scripts/engine.cjs render archived [--file .le
 
 ## Bringing an Item Back
 
-Asked in words to bring an archived item back, find its file under `.ledger/.inbox/.archived/{ideas|bugs|quickfixes}/` by its name, and restore it → `inbox restore {path}`; emit its receipt's sections verbatim per their markers.
+Asked in words to bring an archived item back, find its file under `.ledger/.inbox/.archived/{ideas|bugs|quickfixes}/` by its name, and restore it → `inbox restore {path}`.

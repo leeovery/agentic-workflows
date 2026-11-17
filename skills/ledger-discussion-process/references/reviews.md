@@ -4,7 +4,7 @@
 
 ---
 
-The review agents read the topic from its record, never the conversation, and run in the background while the conversation carries on. What they find is taken at a natural pause, never jumped to. Each is dispatched, then briefed, then called: the Agent call's `subagent_type` is the agent `brief` answers, and its prompt the pointer alone.
+The review agents read the topic from its record, never the conversation, and run in the background while the conversation carries on. What they find is taken at a natural pause, never jumped to. Each is dispatched, then briefed, then called.
 
 ## The Background Review
 
@@ -15,7 +15,7 @@ node .claude/skills/ledger-engine/scripts/engine.cjs agent dispatch {work_unit} 
 node .claude/skills/ledger-engine/scripts/engine.cjs brief discussion-reviewer {work_unit} {topic} --agent {id}
 ```
 
-The dispatch refuses while the topic has moved too little since the last review, or while mail waits: carry on, and try again at a later pause. A review the person asks for adds `--final` to the dispatch.
+A refused dispatch: carry on, and try again at a later pause. A review the person asks for adds `--final` to the dispatch.
 
 ## Perspectives
 
@@ -39,11 +39,11 @@ The perspectives feed the synthesis, never the conversation: once it is dispatch
 
 ## When a Report Lands
 
-`agent scan {work_unit} discussion {topic}` lists what has landed as `pending`. A perspective waits for its synthesis. Read any other report, then record its findings by the ids its headings carry — `agent ack {work_unit} discussion {topic} {id} --findings {F1,F2}`, or `--clean` where it found none. Take the findings at natural pauses, recording each as you take it, `agent surface {work_unit} discussion {topic} {id} {finding}`; the report closes with its last.
+`agent scan {work_unit} discussion {topic}` lists what has landed as `pending`. A perspective waits for its synthesis. Read any other report, then record its findings by the ids its headings carry — `agent ack {work_unit} discussion {topic} {id} --findings {F1,F2}`, or `--clean` where it found none. Take the findings at natural pauses, recording each as you take it, `agent surface {work_unit} discussion {topic} {id} {finding}`.
 
 Each finding is a question the review asked: `ledger ask` with `"by": "review"`. The reviewer's lane is where you start, never where a finding must end. Re-derive each from the record before you act on it:
 - **apply** — the record or a fact settles it. Check it: a question a current decision answers merges into that decision; one a fact settles is answered as your decision, relying on the finding that records the fact. An `apply` the record contradicts is a call.
-- **call** — a call the topic leaves open is worked through in the conversation while the topic's shape is still open, and goes through `raise` once it is agreed: the decision point, never you, decides whether it reaches the person. A fix you cannot stand behind is raised as a call with several defensible answers.
+- **call** — a call the topic leaves open is worked through in the conversation while the topic's shape is still open, and goes through `raise` once it is agreed. A fix you cannot stand behind is raised as a call with several defensible answers.
 - **route** — another topic's: load **[sending-a-message.md](sending-a-message.md)** and follow its instructions as written, the question moving with the message. Work no topic owns is a scope call, not this topic's: a candidate at the close, which in a single-topic unit parks it on the roadmap.
 - A synthesis's tensions are told to the person; one they take up is a question on the map.
 

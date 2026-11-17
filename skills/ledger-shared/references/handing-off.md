@@ -26,12 +26,12 @@ Tell the person the handoff was refused, quoting the engine's error.
 
 #### If DATA reads `handoff: mod` and the result carries no HANDOFF section
 
-The gate mod took the handoff. Emit the DISPLAY section verbatim per its marker. As the turn ends, the mod clears the conversation and carries the work into the next one.
+The gate mod took the handoff. As the turn ends, the mod clears the conversation and carries the work into the next one.
 
 **STOP.** Do not proceed — terminal condition.
 
 #### Otherwise
 
-DATA reads `handoff: inline`, or the HANDOFF section is still in the result — the mod did not take it. Emit the DISPLAY section verbatim per its marker, then invoke the DATA's `skill` with its `args` — `/{skill} {args}`.
+DATA reads `handoff: inline`, or the HANDOFF section is still in the result — the mod did not take it. Invoke the DATA's `skill` with its `args` — `/{skill} {args}`.
 
 This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.

@@ -598,12 +598,16 @@ function entering(skill) {
 }
 
 describe('what a move carries, read by the skill a topic opens in (19.5.16, R26)', () => {
-  it('each key a move\'s carry is read by is named where the topic opens: the discussion every key, the investigation every one but a bugfix\'s investigation log — a bugfix is moved to from a quick-fix alone', () => {
-    const unread = (/** @type {string} */ skill, /** @type {string[]} */ keys) => keys.filter((key) => !entering(skill).includes(`\`${key}\``));
-    const all = Object.values(CARRIED);
+  it('every key a move\'s carry is read by is read where the topic opens, in the discussion and the investigation: an `earlier` one in full as input never changed, and each piece of work kept named to the person', () => {
+    const kept = [CARRIED.branch, CARRIED.work];
+    const earlier = Object.values(CARRIED).filter((key) => !kept.includes(key));
 
-    assert.deepStrictEqual(unread('ledger-discussion-process', all), []);
-    assert.deepStrictEqual(unread('ledger-investigation-process', all.filter((key) => key !== CARRIED.investigationLog)), []);
+    assert.ok(earlier.every((key) => key.startsWith('earlier ')), 'every carried file is read as an `earlier` key');
+    for (const skill of ['ledger-discussion-process', 'ledger-investigation-process']) {
+      const text = entering(skill);
+      assert.ok(text.includes('read what the DATA names, each in full, an `earlier` one as input never changed'), `${skill} reads every key the DATA names`);
+      assert.deepStrictEqual(kept.filter((key) => !text.includes(`\`${key}\``)), [], `${skill} names each piece of work kept`);
+    }
   });
 });
 

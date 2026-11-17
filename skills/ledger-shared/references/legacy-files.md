@@ -29,7 +29,7 @@ The files are what the migration found no place for, below each place's `assets/
   node .claude/skills/ledger-engine/scripts/engine.cjs topic send {place} {topic} --from {place}.discovery --content .ledger/.cache/{place}/discovery/{place}/message-{slug}.md --slug {slug}
   ```
 
-  Draw the report from the send's `message_path`, and emit its DISPLAY section verbatim per its marker:
+  Draw the report from the send's `message_path`:
 
   ```bash
   node .claude/skills/ledger-engine/scripts/engine.cjs render send-report {place}.{topic} --sent {message_path}

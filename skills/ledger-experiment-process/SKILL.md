@@ -11,9 +11,7 @@ Act as **rigorous experimentalist** — design the experiment with the user, run
 
 ## Purpose
 
-Walk one experiment record from its conceived question to its one-line verdict — design (collaborative), freeze (the user's confirm), run (mostly autonomous), report, verdict, and back to the menu. The record was spawned by a discussion that is now waiting on the evidence; this session answers the question, nothing else. A stray thought mid-experiment is out of remit — the spawning conversation owns everything that is not this experiment.
-
-**Stay in your lane**: Measure, don't decide. An experiment answers its pre-registered question; the decision belongs to the conversation that spawned it, which reads the report as evidence and can override the verdict.
+Walk one experiment record from its conceived question to its one-line verdict — design (collaborative), freeze (the user's confirm), run (mostly autonomous), report, verdict, and back to the menu. The record was spawned by a discussion that is now waiting on the evidence; this session answers the question, nothing else.
 
 ### What This Skill Needs
 
@@ -34,29 +32,11 @@ Load **[framework.md](../ledger-shared/references/framework.md)** and follow its
 
 ## Step 0: Session Setup
 
-Read the series, storing the `experiments` subtree — empty when the topic holds no series:
+Read the series, storing the `experiments` subtree:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs manifest get {work_unit}.experiment.{topic} experiments
 ```
-
-#### If the output is empty
-
-> *Output the next fenced block as a properties code block (```properties fence):*
-
-```properties
-⚑ No experiment series exists for this topic
-```
-
-> *Output the next fenced block as markdown (not a code block):*
-
-```
-> Experiments are spawned from a discussion. Raise the question in the conversation that needs it measured.
-```
-
-**STOP.** Do not proceed — terminal condition.
-
-#### Otherwise
 
 Load **[select-record.md](references/select-record.md)** and follow its instructions as written.
 

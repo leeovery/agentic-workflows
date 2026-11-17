@@ -22,13 +22,13 @@ The parent is mid-split — each sub ends on its own row first.
 
 #### If the engine refused for any other reason
 
-Nothing was recorded — no row closed, no commit, no release to narrate. Say why in one line, fix what it names (a multi-line reason becomes one line), and re-run.
+Say why in one line, fix what it names (a multi-line reason becomes one line), and re-run.
 
 → Return to **A. Record the Reason**.
 
 #### If `{id}` is a sub-experiment (`E{n}.{m}`)
 
-The parent still runs, and no wait moves. Commit:
+Commit:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs commit {work_unit} --topic experiment/{topic} -m "experiment({work_unit}/{topic}): {id} abandoned"

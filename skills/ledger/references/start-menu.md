@@ -6,13 +6,13 @@
 
 ## The Menu
 
-Fetch the start menu and emit its sections verbatim per their markers:
+Fetch the start menu:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render start-menu
 ```
 
-The answer goes to `gate`; follow its `next`. Any other screen it draws is emitted the same way, verbatim per its markers, and its answer goes to `gate` in turn. A `next` that moves into work — a handoff, or a unit's Continue, `handoff unit {work_unit}` — goes through the handoff:
+A `next` that moves into work — a handoff, or a unit's Continue, `handoff unit {work_unit}` — goes through the handoff:
 
 Load **[handing-off.md](../../ledger-shared/references/handing-off.md)** with route = `/{skill} {args}` for a handoff, or `unit {work_unit}` for a Continue.
 
@@ -26,7 +26,7 @@ On return, run **The Menu** again.
 
 ## The Walk
 
-**w/walk**, on the start menu's help, carries on here: Load **[walk.md](walk.md)** with origin = `help`. On return, draw the start menu's help again, emit its sections verbatim per their markers, and carry on there:
+**w/walk**, on the start menu's help, carries on here: Load **[walk.md](walk.md)** with origin = `help`. On return, draw the start menu's help again, and carry on there:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render help start-menu
@@ -34,7 +34,7 @@ node .claude/skills/ledger-engine/scripts/engine.cjs render help start-menu
 
 ## The Reference Cards
 
-A question asked at a reference card is answered per **[answering-how-it-works.md](../../ledger-shared/references/answering-how-it-works.md)**, and the menu it puts back is that card's alone, emitted verbatim per its markers:
+A question asked at a reference card is answered per **[answering-how-it-works.md](../../ledger-shared/references/answering-how-it-works.md)**, and the menu it puts back is that card's alone:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render walkthrough-topic --name {card} --menu-only
@@ -46,7 +46,7 @@ Once triage is drawn: Load **[triage.md](triage.md)** and follow its instruction
 
 ## The Environment Setup
 
-Manage's `s/setup` draws the project's environment setup, and its answer goes to `gate` as any screen's does. A Comment on it says what's different:
+Manage's `s/setup` draws the project's environment setup. A Comment on it says what's different:
 
 Load **[environment-setup.md](../../ledger-shared/references/environment-setup.md)** and follow its instructions as written, with from = `manage`.
 

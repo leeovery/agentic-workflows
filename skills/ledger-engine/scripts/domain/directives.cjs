@@ -122,9 +122,10 @@ const MIGRATE_USAGE = ['migrate check <id>', 'migrate checked', 'migrate review'
 
 /**
  * A directive's check as its module exports it: what its pieces are called,
- * what a piece done has, the check, and any points its own steps raise.
+ * what a piece done has, what becomes of one a session left part-way, the
+ * check, and any points its own steps raise.
  * @typedef {{
- *   counts: Counts, done: string, check: (dirs: {projectDir: string, stateDir: string}) => unknown, raises?: (dirs: {projectDir: string, stateDir: string}) => unknown,
+ *   counts: Counts, done: string, partWay: string, check: (dirs: {projectDir: string, stateDir: string}) => unknown, raises?: (dirs: {projectDir: string, stateDir: string}) => unknown,
  * }} Check
  */
 
@@ -137,8 +138,9 @@ const MIGRATE_USAGE = ['migrate check <id>', 'migrate checked', 'migrate review'
 
 /**
  * Where a directive stands, for its stop: its pieces done of all of them,
- * what they are called, and what a piece done has.
- * @typedef {{done: number, of: number, counts: Counts, says: string}} Progress
+ * what they are called, what a piece done has, and what becomes of one left
+ * part-way.
+ * @typedef {{done: number, of: number, counts: Counts, says: string, partWay: string}} Progress
  */
 
 /**
@@ -168,12 +170,12 @@ const isPoint = (point) => isObject(point) && isWords(point.place) && isWords(po
 
 /**
  * Whether a check module exports the check's shape: `counts`, `{ one, many }`,
- * `done`, and `check()`.
+ * `done`, `partWay`, and `check()`.
  * @param {Record<string, unknown>} checker @returns {checker is Check}
  */
 function isCheck(checker) {
-  const { counts, done, check } = checker;
-  return typeof check === 'function' && isObject(counts) && isWords(counts.one) && isWords(counts.many) && isWords(done);
+  const { counts, done, partWay, check } = checker;
+  return typeof check === 'function' && isObject(counts) && isWords(counts.one) && isWords(counts.many) && isWords(done) && isWords(partWay);
 }
 
 /**
@@ -213,7 +215,7 @@ function loadCheck(id) {
     throw new Error(`${id}'s check could not be loaded from ${check}: ${messageOf(err)}`);
   }
   if (!isCheck(checker)) {
-    throw new Error(`${id}'s check exports no check() beside what it counts — it exports { counts: { one, many }, done, check({ projectDir, stateDir }) }`);
+    throw new Error(`${id}'s check exports no check() beside what it counts — it exports { counts: { one, many }, done, partWay, check({ projectDir, stateDir }) }`);
   }
   return checker;
 }
@@ -285,7 +287,8 @@ function pointsOf(id, raises, dirs) {
 function progressOf(cwd, id) {
   try {
     const { done, of, counts } = checkDirective(cwd, id);
-    return { done, of, counts, says: loadCheck(id).done };
+    const { done: says, partWay } = loadCheck(id);
+    return { done, of, counts, says, partWay };
   } catch {
     return null;
   }

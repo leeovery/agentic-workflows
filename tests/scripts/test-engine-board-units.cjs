@@ -47,7 +47,7 @@ describe('other units\' pages (20.15)', () => {
     assert.deepStrictEqual(board(['--tab', 'unit', '--unit', 'atlas']).view.phases, [
       { phase: 'discovery', state: 'running', words: '', ...later, doing: 'shaping' },
       { phase: 'discussion', state: 'later', words: 'once the map is approved', ...later },
-      { phase: 'specification', state: 'later', words: 'once every topic is decided', ...later },
+      { phase: 'specification', state: 'later', words: 'once every topic is settled', ...later },
       { phase: 'build', state: 'later', words: '', ...later },
       { phase: 'review', state: 'later', words: '', ...later },
     ]);

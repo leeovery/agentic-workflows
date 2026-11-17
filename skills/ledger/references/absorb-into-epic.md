@@ -4,12 +4,10 @@
 
 ---
 
-The feature becomes a topic of the epic, under the feature's own name, `{topic}` = `{work_unit}`. Draft what the topic's map row says of it, from its record, `ledger record {work_unit} {work_unit}`, and its log, `.ledger/{work_unit}/topics/{work_unit}/log.md`: its `{summary}`, one line in the product's terms, and, where they say more than the summary does, its `{description}`. Then fetch the confirm, `--description` only where there is one, and emit its sections verbatim per their markers:
+The feature becomes a topic of the epic, under the feature's own name, `{topic}` = `{work_unit}`. Draft what the topic's map row says of it, from its record, `ledger record {work_unit} {work_unit}`, and its log, `.ledger/{work_unit}/topics/{work_unit}/log.md`: its `{summary}`, one line in the product's terms, and, where they say more than the summary does, its `{description}`. Then fetch the confirm, `--description` only where there is one:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render absorb-confirm-gate {work_unit} --into {epic} --topic {topic} --summary "{summary}" [--description "{description}"]
 ```
 
-A refusal ending `— pick a different name` means the epic holds the name already: derive another kebab-case name from the feature's, set `{topic}` to it, and fetch the confirm again. Any other refusal: say it in a line.
-
-The answer goes to `gate`; follow its `next`. The absorb answers its receipt: emit its sections verbatim per their markers.
+A refusal asking for a different name: set `{topic}` to another, drawn from the feature's, and fetch the confirm again. Any other refusal: say it in a line.

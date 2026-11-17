@@ -37,6 +37,7 @@ const { ok, okSectionsAsync, refuses, output, readManifest, writeState, commitAl
 const { createManifest, withEnv } = require('./discovery-test-utils.cjs');
 const { boardOf, BOARD_USAGE } = require('../../skills/ledger-engine/scripts/domain/board.cjs');
 const { startMenuRead } = require('../../skills/ledger-engine/scripts/domain/start-menu.cjs');
+const { startMenuScreen } = require('../../skills/ledger-engine/scripts/domain/projections/start-menu.cjs');
 const { ledgerHelpers } = require('./ledger-world.cjs');
 const { fixture, misfits, emptyLists, place, standingOn } = require('./board-world.cjs');
 const { labelling } = require('./labels.cjs');
@@ -553,9 +554,10 @@ describe('the investigation concluded, the unit\'s tab and All work (20.12.4, 20
     atTheHunt();
   }
 
-  it('its conclude drawn, its yes waits on the person: This session, the banner, the tab and All work each say the conclude waits, flagged first and counted; the start menu\'s row counts it not, a learned gate (18.2.3); the root cause replaced, logged and both validated again since, the recap drawn before it, it waits no longer', async () => {
+  it('its conclude drawn, its yes waits on the person: This session, the banner, the tab and All work each say the conclude waits, flagged first and counted, and the start menu\'s row counts it among the gates, the unit listed first (18.2.3, 20.12.5); the root cause replaced, logged and both validated again since, the recap drawn before it, it waits no longer', async () => {
     await concludeDrawn();
-    const started = withEnv(env(), () => startMenuRead(dir)).units.find(({ name }) => name === BUG)?.waiting;
+    createManifest(dir, 'tally', { work_type: 'feature' });
+    const started = /** @type {{head: string, cue: string}} */ (startMenuScreen(withEnv(env(), () => startMenuRead(dir))).rows[0].label);
     const { view, banner } = board();
     const standing = standingOn(board, BUG);
     const replaced = write('replace', ['--replaces', made.rootCause, '--reason', 'was-wrong'], { ...CLAUDE, drops: ['the whole truth'], text: 'A save trusts a capture taken mid-shutdown.', why: 'E6 showed it.' }).id;
@@ -574,7 +576,7 @@ describe('the investigation concluded, the unit\'s tab and All work (20.12.4, 20
       banner: { state: 'needs', waits: ['⚑ 1 waiting on you'] },
     });
     assert.deepStrictEqual([stale.standing, stale.waiting], ['investigating', []]);
-    assert.deepStrictEqual(started, { gates: 0, questions: 0, topics: 0 });
+    assert.deepStrictEqual([started.head, started.cue], ['Continue bugfix: Kill All', '1 gate waiting for you']);
   });
 
   it('20.12.5: the conclude waits from its draw to the person\'s pick — keep going ends the wait on every view, and its next draw opens it again', async () => {

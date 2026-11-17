@@ -42,10 +42,6 @@ The instruction says put it aside and no more — "backlog it", "later", "not no
 node .claude/skills/ledger-engine/scripts/engine.cjs render backlog-gate {work_unit}.{phase}.{topic} --file .ledger/.cache/{work_unit}/{phase}/{topic}/backlog.json
 ```
 
-Emit the call's MENU section verbatim per its marker.
-
-**STOP.** Wait for user response.
-
 **If `roadmap`:**
 
 → Proceed to **B. The Horizon**.
@@ -75,7 +71,7 @@ Name the item first, as **C. Park** says.
 
 A source is recorded only once it is on disk. Before this session's record exists (a specification session before its first write), the park carries none: leave `[--source {source}]` out.
 
-Park it — the verb validates, births the map and any new horizon, and self-commits, so no commit call follows:
+Park it:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs roadmap add {name} --kind {kind} --horizon "{horizon}" --summary "{summary}" --origin park:{work_unit} [--source {source}]
@@ -87,7 +83,7 @@ A refusal means the name is already on the roadmap: derive another and park it a
 
 ## D. Capture
 
-It goes to the inbox as a note, unconfirmed as every capture is. Write it from the conversation as an H1 title over a short prose body; its kind is `bug` for something broken, `quick-fix` for settled work needing no decision, and `idea` for anything else and whenever it is unclear. Capture it with the text on stdin, and emit its section verbatim per its marker:
+It goes to the inbox as a note, unconfirmed as every capture is. Write it from the conversation as an H1 title over a short prose body; its kind is `bug` for something broken, `quick-fix` for settled work needing no decision, and `idea` for anything else and whenever it is unclear. Capture it with the text on stdin:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs inbox capture {kind:[idea|bug|quick-fix]} <<'ITEM'

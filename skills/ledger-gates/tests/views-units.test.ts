@@ -392,7 +392,7 @@ PHASES ────────────────────────�
       here: false,
       now: { phase: 'discovery', since: null },
       waiting: [{ kind: 'map', id: 'approve-the-map', text: 'Approve the map: 12 topics in this order, and 4 to the roadmap', page: null }],
-      phases: [phase('discovery', 'waits', '12 topics'), phase('discussion', 'later', 'once the map is approved'), phase('specification', 'later', 'once every topic is decided'), phase('build', 'later'), phase('review', 'later')],
+      phases: [phase('discovery', 'waits', '12 topics'), phase('discussion', 'later', 'once the map is approved'), phase('specification', 'later', 'once every topic is settled'), phase('build', 'later'), phase('review', 'later')],
     } as View).text
 
     expect(stopped).toContain('⚑ Build · 62 of 68 tasks done                          stopped')
@@ -503,7 +503,7 @@ PHASES ────────────────────────�
       phases: [
         phase('discovery', 'running', '3 topics', { doing: 'shaping', session: 'this' }),
         phase('discussion', 'later', 'once the map is approved'),
-        phase('specification', 'later', 'once every topic is decided'),
+        phase('specification', 'later', 'once every topic is settled'),
         phase('build', 'later'),
         phase('review', 'later'),
       ],
@@ -519,7 +519,7 @@ started 17 Jul · in discovery
 PHASES ──────────────────────────────────────────────────────
 ◐ Discovery · 3 topics                                 shaping
 ○ Discussion                          once the map is approved
-○ Specification                    once every topic is decided
+○ Specification                    once every topic is settled
 ○ Build and review                     after the specification
 `),
     )
