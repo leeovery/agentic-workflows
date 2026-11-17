@@ -26,7 +26,7 @@ Behind the verbs, what Claude could do around them is closed off:
 - **The checklists.** A required procedure — a topic's close, ready to build, a build phase's start and close, finish — is a checklist the engine holds. Claude works its items in any order, each ending done or skipped with a recorded reason, and the closing verb refuses while any is open. A skipped item shows, with its reason, on the next screen you sign off.
 - **The briefs.** Every brief Ledger gives its own agents comes from a template the engine fills from the records, and a hook before every dispatch refuses a Ledger agent sent anything but the pointer to a brief issued in this conversation. A refusal is recorded, so a template that keeps getting in the way is improved rather than worked around.
 
-All of these hooks are installed in the project's Claude Code settings by boot, so they hold whether or not Ledger's Claude Code mod runs. What a door cannot refuse — a question asked in plain prose in the build, an extra review round — Ledger's own tests catch: they run the skills' instructions end to end with real agents and check what happened, not which steps were taken.
+All of these hooks are installed in the project's Claude Code settings by boot, so they hold whether or not Ledger's Claude Code mod runs. What a door cannot refuse — a question asked in plain prose in the build, an extra review round — stays in the skills' prose, and is watched in use.
 
 ## Boot
 

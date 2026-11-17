@@ -21,7 +21,7 @@ export type Option = {
   recommended: boolean
 }
 
-/** One row of the payload a span or a natural reply can only answer. */
+/** One row of the payload only a natural reply can answer. */
 export type Typed = {
   label: string
   description: string
@@ -119,9 +119,6 @@ const DROPPED_HINT = ' not sent — the menu changed'
 const PREVIOUS = '↑ previous'
 const NEXT = '↓ next'
 const PAGER_GAP = '   '
-
-/** A typed row's label that is a span of numbers, as the engine writes one. */
-const RANGE = /^\d+–\d+$/
 
 const RULE: Line = { kind: 'rule' }
 const BLANK: Line = { kind: 'blank' }
@@ -360,10 +357,7 @@ function rowGroups(gate: Gate, columns: number, queued: boolean): RowLine[][] {
 }
 
 // A click leaves the keys with the band; only the person can hand them back.
-const typedHint = (label: string) =>
-  RANGE.test(label)
-    ? `${label} — Esc, then type the numbers in the prompt`
-    : `${label} — Esc, then type it in the prompt`
+const typedHint = (label: string) => `${label} — Esc, then type it in the prompt`
 
 /** The footer's words: dim, the answer it speaks of named in bold. */
 export function footerRuns(footer: Footer): Run[] {

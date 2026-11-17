@@ -85,7 +85,7 @@ const { drawnRows, leanShown } = require('./raise.cjs');
 const { huntOf, huntEntries, rootCauseNow } = require('../investigation-log.cjs');
 const { VALIDATIONS, validationSince, concludeDraws } = require('../investigation-conclude.cjs');
 const { gapsIn } = require('../spec-passes.cjs');
-const { investigationUnderWay, itemOf, startedOn } = require('../derivations.cjs');
+const { itemOf, startedOn } = require('../derivations.cjs');
 const { projectName } = require('../state-checks.cjs');
 
 /** @typedef {import('../board.cjs').BoardAt} BoardAt */
@@ -102,9 +102,6 @@ const { projectName } = require('../state-checks.cjs');
 /** @typedef {import('../topic-map.cjs').Row} Row */
 
 const PHASE = 'investigation';
-
-/** Whether the unit's investigation is under way. @param {BoardAt} at */
-const investigating = ({ manifest }) => investigationUnderWay(manifest);
 
 /** The unit's entries, from the one fold of the ledger a board call shares. @param {BoardAt} at @returns {Entries} */
 const entriesAt = (at) => at.shared('unit-entries', () => everyUnitEntries(at.cwd, at.warnings))(at.unit);

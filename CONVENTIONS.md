@@ -141,7 +141,7 @@ In discussion, questions are asked in the conversation and each answer lands thr
 
 ## Writing for the Model Pass
 
-When Ledger moves to a new model, the prose is walked on it and one pass cuts what that model no longer needs. The pass cuts prose, so where a part sits decides whether it can be cut:
+When Ledger moves to a new model, the model pass is a session entering each phase by hand on it, at the efforts Ledger dispatches; what it finds the model no longer needs is cut. The pass cuts prose, so where a part sits decides whether it can be cut:
 - **Guidance a better model could do without is prose.** It stays in the skill, where the pass can cut it.
 - **What the hard layers hold is there for the person, whatever the model.** A new engine piece is proposed with the failure it prevents and how often that failure happened; one with no failure behind it is brought to the person as a cut.
 - **A hard-layer part held for today's model** — a checklist item, a brief template's words, a hook's entry, the model or effort of a call the engine makes itself — **needs its line in the model pass's list** (`docs/contributing.md`, Moving to a new model), which every pass re-weighs. An agent's model and effort need none: they sit in its definition, which the pass edits in place.

@@ -40,12 +40,6 @@ node .claude/skills/ledger-engine/scripts/engine.cjs gate "{name}" --pick {key}
 
 `gate` logs the answer and returns `next`: an engine call to run, a handoff to make, a skill to invoke in this conversation, or carry on. Do what `next` says, and branch on nothing else. A rewritten phase's rows declare their `next`; a null `next` is an old-shape gate's, until its phase is rewritten, and the skill's own words for that row say what follows.
 
-A row that picks items — a numbered range, `1–4` — is an answer too. The pick goes to `gate` as typed, under the row's key (its label's words, lowercase, joined by hyphens: `1-4`), and the skill's words act on the items picked:
-
-```bash
-node .claude/skills/ledger-engine/scripts/engine.cjs gate "{name}" --typed {key}
-```
-
 A bare go-ahead given at a gate on screen ("ok, let's move ahead") picks a row only where the gate has one way forward — a yes/no consent, a single continue.
 
 Any other reply — through the prompt row (Comment, Ask), or free text: a question, a thought, a request, a go-ahead that picks no row — still goes to `gate` as typed, under the prompt row's key, such as `comment`, or with no key for free text, the person's words on stdin as they wrote them. The gate is then set aside.

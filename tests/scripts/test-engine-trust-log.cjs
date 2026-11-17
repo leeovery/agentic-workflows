@@ -472,7 +472,6 @@ describe('an append that fails (16.13.3, 16.S74)', () => {
 
       assert.ok(keeper.taken > 0, 'the keeper never found the lock held: the two never met');
       assert.deepStrictEqual(landed.warnings, []);
-      appendWaiting(dir, []);
       assert.deepStrictEqual(readAll(dir).map((event) => event.id), [waited.id, ...(landed.id === null ? [] : [landed.id]), keeper.id]);
     });
   }

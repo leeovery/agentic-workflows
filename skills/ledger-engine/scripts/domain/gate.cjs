@@ -6,23 +6,21 @@
 // with what the answered row leads to, performing none of it — and the
 // record of the gate shown that it answers against.
 //
-// - The gate shown is the gate a command's MENU stated (surfaces.cjs),
-//   kept in the calling conversation's folder (conversation.cjs) as
+// - The gate shown is the gate a command's MENU stated (surfaces.cjs), kept
+//   in the calling conversation's folder (conversation.cjs) as
 //   `gate-shown.json`: its name, its question, each row by its key with its
 //   word, its head, its tail and any detail beneath it, whether the engine
-//   recommended it and what answering it leads to; each typed row by its
-//   key with its label and what it leads to; the time it was drawn and the
-//   time its showing opened, a learned gate's showing (learned-gates.cjs),
-//   and its answer once given. The engine's
-//   dispatch writes it once the command has answered, never as the MENU is
-//   built; a command that states no gate, or fails, leaves the last one
-//   standing. Nothing is kept for a command Claude
+//   recommended it and what answering it leads to; each typed row by its key
+//   with its label and what it leads to; the time it was drawn and the time
+//   its showing opened, a learned gate's showing (learned-gates.cjs), and its
+//   answer once given. The engine's dispatch writes it once the command has
+//   answered, never as the MENU is built; a command that states no gate, or
+//   fails, leaves the last one standing. Nothing is kept for a command Claude
 //   Code handed no session id; a record that cannot be written costs the
-//   command nothing. It is kept for a conversation not yet marked as
-//   running Ledger too, its folder made for it, so a gate before the
-//   project has state is answered like any other. The layout hook refuses
-//   Claude's own writes to it and to the mod's `pressed.json`
-//   (layout-hook.cjs).
+//   command nothing. It is kept for a conversation not yet marked as running
+//   Ledger too, its folder made for it, so a gate before the project has
+//   state is answered like any other. The layout hook refuses Claude's own
+//   writes to it and to the mod's `pressed.json` (layout-hook.cjs).
 // - A gate's name is the one its MENU declares, up to its first ` — `: one
 //   gate is one name, however many entries share it (`in-session gate — 3`
 //   is `in-session gate`), and `gate` takes either. The name is never made
@@ -59,18 +57,19 @@
 //   answers no row (6.6.2). At a learned gate every pick leaves it but a row
 //   whose next shows the gate again at its place — the Comment at the
 //   investigation's gates, the wait's wait (learned-gates.cjs); at any other,
-//   every pick but a typed row, a Comment or an Ask, which sets it aside. Drawn again while it lasts, the gate shown
-//   keeps the time the showing opened and the showing it was drawn on, so
-//   the showing is one event under one id however many replies it took, the
-//   first read (16.13.3); the time it was drawn is this draw's,
-//   so a press, or a proposal's yes (person-verbs.cjs), is told against the
-//   screen the person answered. A learned gate's showing is held at its
-//   place, its own record (showing-hold.cjs): the gate shown keeps the place,
-//   and a pick that leaves the gate ends the hold — the showing that opened
-//   then alone — so another gate, a raise or a new conversation never ends
-//   it, and its event's id is drawn from the showing, never the
-//   conversation. Any other gate's lasts while the conversation's gate shown
-//   is that gate's. The gate drawn after a pick is a new showing.
+//   every pick but a typed row, a Comment or an Ask, which sets it aside.
+//   Drawn again while it lasts, the gate shown keeps the time the showing
+//   opened and the showing it was drawn on, so the showing is one event under
+//   one id however many replies it took, the first read (16.13.3); the time
+//   it was drawn is this draw's, so a press, or a proposal's yes
+//   (person-verbs.cjs), is told against the screen the person answered. A
+//   learned gate's showing is held at its place, its own record
+//   (showing-hold.cjs): the gate shown keeps the place, and a pick that
+//   leaves the gate ends the hold — the showing that opened then alone — so
+//   another gate, a raise or a new conversation never ends it, and its
+//   event's id is drawn from the showing, never the conversation. Any other
+//   gate's lasts while the conversation's gate shown is that gate's. The gate
+//   drawn after a pick is a new showing.
 // - A learned gate run as an automatic step (learned-gates.cjs) is no answer:
 //   its draw logs it as a step (decision-point.cjs), never a gate's answer;
 //   it is never recorded as the gate shown, and the command clears the gate

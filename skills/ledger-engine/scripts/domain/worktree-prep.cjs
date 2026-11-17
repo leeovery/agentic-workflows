@@ -65,7 +65,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { git, dirtyEntries, hasCommits, emptyTree, literally } = require('../kernel/git.cjs');
+const { git, dirtyEntries, hasCommits, emptyTree } = require('../kernel/git.cjs');
 const { projectDirtyEntries, folderUnder } = require('../kernel/repos.cjs');
 const { mainCheckout, gitfileTarget } = require('../kernel/isolated-git.cjs');
 const { runShellCommand, tailText } = require('../kernel/shell-command.cjs');

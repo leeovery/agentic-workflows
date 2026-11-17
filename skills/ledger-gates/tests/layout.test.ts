@@ -512,17 +512,11 @@ describe('layout', () => {
     )
   })
 
-  test('a range row asks for the numbers', () => {
-    expect(textOf(footerRuns({ kind: 'typed', label: '1–12' }))).toBe(
-      '1–12 — Esc, then type the numbers in the prompt',
-    )
-  })
-
   test('the footer holds the height of the tallest thing it can say, whatever it says', () => {
-    const range: Typed = { label: '1–12', description: 'Pick items', detail: null }
+    const change: Typed = { label: 'Tell me what to change', description: 'What to revise', detail: null }
     const gate = gateOf({
       options: [optionOf({ key: 'y', word: 'yes' }), optionOf({ key: 'b', word: 'bounded' })],
-      typed: [COMMENT, range],
+      typed: [COMMENT, change],
     })
 
     const said: Footer[] = [
@@ -530,7 +524,7 @@ describe('layout', () => {
       { kind: 'picked', answer: 'yes' },
       { kind: 'picked', answer: 'bounded' },
       { kind: 'typed', label: 'Comment' },
-      { kind: 'typed', label: '1–12' },
+      { kind: 'typed', label: 'Tell me what to change' },
     ]
 
     const natural = said.map(footer => wrapRuns(footerRuns(footer), 42).length)
@@ -620,7 +614,7 @@ describe('layout', () => {
   })
 
   test('the footer wraps at the gutter, a short state leaving the rest of its slot empty', () => {
-    const gate = gateOf({ typed: [{ label: '1–12', description: 'Pick items', detail: null }] })
+    const gate = gateOf({ typed: [{ label: 'Ask', description: 'Ask about it', detail: null }] })
     const footer = (said: Footer) =>
       linesOf(gate, 25, said)
         .filter(line => line.kind === 'footer')
@@ -632,10 +626,10 @@ describe('layout', () => {
       '»',
     ])
 
-    expect(footer({ kind: 'typed', label: '1–12' })).toEqual([
-      '» 1–12 — Esc, then type',
-      '» the numbers in the',
-      '» prompt',
+    expect(footer({ kind: 'typed', label: 'Ask' })).toEqual([
+      '» Ask — Esc, then type it',
+      '» in the prompt',
+      '»',
     ])
   })
   test('a gate that fits shows whole, with no pager; one line short of it, its rows page', () => {

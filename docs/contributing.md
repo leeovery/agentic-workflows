@@ -38,7 +38,7 @@ is to run them before every commit rather than at the end of a branch.
 
 | Command | What it covers | Layers |
 | --- | --- | --- |
-| `npm test` | Node suites: engine, drivers, knowledge, migrations, pipeline simulation, and the checks on the docs, the glossary and where a tool may be named; ends with the budget report, the run's CPU against its guide (`tests/README.md` §12) | unit, verb, git, process, simulation, migration (047 on) |
+| `npm test` | Node suites: engine, drivers, knowledge, migrations, pipeline simulation, and the checks on the docs, the glossary and where a tool may be named; ends with the budget report, the run's CPU against its guide (`tests/README.md` §12) | unit, verb, git, process, conformance, simulation, migration (047 on) |
 | `npm run test:cli` | The shell contract suite of the manifest field surface | shell, closing into verb |
 | `npm run test:migrations` | Every `tests/scripts/test-migration-*.sh` | migration (the frozen fleet) |
 | `npm run typecheck` | JSDoc type contracts (`tsc -p tsconfig.json`) | — |
@@ -236,9 +236,10 @@ silently non-compliant skills more than once.
 
 ## Moving to a new model
 
-When Ledger moves to a new model, the prose is walked on it and one
-pass cuts what that model no longer needs. Beyond the prose, the pass
-re-weighs each item below, each held as it is for today's model:
+When Ledger moves to a new model, the model pass is a session entering
+each phase by hand on it, at the efforts Ledger dispatches; what it finds
+the model no longer needs is cut. Beyond the prose, the pass re-weighs
+each item below, each held as it is for today's model:
 
 - the brief templates in the engine's content folder
   (`skills/ledger-engine/content/briefs/`);

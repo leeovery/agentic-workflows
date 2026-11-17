@@ -4,7 +4,7 @@
 // Domain ring: composition conventions for Ledger's renders.
 //
 // These know what Ledger's content should LOOK like — the glyph vocabulary,
-// the `[tag]` suffix format, the `↳` derived-from line — and produce the plain
+// the `[tag]` suffix format, the `↳` state line — and produce the plain
 // strings that the kernel renderer (../kernel/render.cjs) lays out. Keeping
 // conventions here, separate from layout, means the format is normalised in
 // one place while the renderer stays domain-free.

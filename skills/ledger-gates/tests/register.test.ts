@@ -245,9 +245,9 @@ const COMMENT = {
   detail: null,
 }
 
-const RANGE = {
-  label: '1–2',
-  description: 'Select item(s) to work on',
+const ASK = {
+  label: 'Ask',
+  description: 'Ask about it',
   detail: null,
 }
 
@@ -1542,7 +1542,7 @@ describe('register', () => {
       on,
       announced({
         options: DETAILED,
-        typed: [RANGE],
+        typed: [ASK],
         question: 'What would you like to do?',
         statement: 'Specification Overview\nTwo discussions are ready to be grouped.',
       }),
@@ -1568,7 +1568,7 @@ describe('register', () => {
 
       expect(await footerOf(ui), 'a pick is on the footer').toMatch(`${answer} is in your`)
 
-      await click(ui, RANGE.description)
+      await click(ui, ASK.description)
       heights.push((await linesOf(ui)).length)
 
       expect(await footerOf(ui), 'the typed hint is on the footer').toMatch(/prompt$/)
@@ -2067,22 +2067,6 @@ describe('register', () => {
 
     expect(await footerOf(ui), 'the footer follows the last click').toMatch(
       /^2 is in your prompt/,
-    )
-
-    await ui.unmount()
-  })
-
-  test('a click on a range row asks for the numbers', async ($, on) => {
-    world($, on, announced({ typed: [RANGE] }))
-
-    await presented($)
-
-    const ui = await $.ui.mount(MOUNT)
-
-    await click(ui, RANGE.description)
-
-    expect(await footerOf(ui)).toBe(
-      '1–2 — Esc, then type the numbers in the prompt',
     )
 
     await ui.unmount()
