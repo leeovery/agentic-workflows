@@ -24,7 +24,9 @@
 //   - no field of the project's manifest, a unit's, a phase's or an item's
 //     is one no engine module names, read from the engine's code;
 //   - every topic decided in its discussion has a decision in the ledger,
-//     read where every carry took it;
+//     read where every carry took it — a topic whose old manifest held a
+//     discussion completed, never one of research alone, which the move
+//     carried as concluded and whose record may hold no decision (21.5.22);
 //   - no unit waits on a cut: none in progress has its specs joined and no
 //     cut;
 //   - each phase of a cut adopted from the tracker holds every task the
@@ -298,12 +300,18 @@ function manifestsValid(state, units) {
   ].map((found) => ({ check: 'manifests-valid', found }));
 }
 
-/** @param {State} state @param {Map<string, any>} units @returns {Fault[]} */
-function decisionsCarried(state, units) {
+/** A unit's manifest as the listing holds it from before the migration, empty where it holds none. @param {Listing} old @param {string} unit @returns {any} */
+const oldManifest = (old, unit) => JSON.parse(old.files[`${unit}/manifest.json`]?.text ?? '{}');
+
+/** @param {State} state @param {Map<string, any>} units @param {Listing} old @returns {Fault[]} */
+function decisionsCarried(state, units, old) {
   const decided = new Set(state.ledger.filter(({ event }) => event === 'decided').map(({ unit, topic }) => `${unit}/${topic}`));
-  return [...units].flatMap(([name, manifest]) => Object.entries(manifest?.phases?.discussion?.items ?? {})
-    .filter(([topic, item]) => item.status === 'completed' && !decided.has(`${name}/${topic}`))
-    .map(([topic]) => ({ check: 'decisions-carried', found: `${name}/${topic} is decided and the ledger holds no decision of it` })));
+  return [...units].flatMap(([name, manifest]) => {
+    const discussed = oldManifest(old, name).phases?.discussion?.items ?? {};
+    return Object.entries(manifest?.phases?.discussion?.items ?? {})
+      .filter(([topic, item]) => item.status === 'completed' && discussed[topic]?.status === 'completed' && !decided.has(`${name}/${topic}`))
+      .map(([topic]) => ({ check: 'decisions-carried', found: `${name}/${topic} is decided and the ledger holds no decision of it` }));
+  });
 }
 
 /** @param {Map<string, any>} units @returns {Fault[]} */
@@ -314,8 +322,7 @@ function noCutWaiting(units) {
 
 /** The tracker parents of each old plan's phases a unit kept, from its old manifest. @param {Listing} old @param {string} unit @returns {string[]} */
 function oldPlanPhases(old, unit) {
-  const manifest = JSON.parse(old.files[`${unit}/manifest.json`]?.text ?? '{}');
-  return Object.entries(manifest.phases?.planning?.items ?? {}).flatMap(([topic, item]) => Object.entries(item?.task_map ?? {})
+  return Object.entries(oldManifest(old, unit).phases?.planning?.items ?? {}).flatMap(([topic, item]) => Object.entries(item?.task_map ?? {})
     .filter(([id]) => new RegExp(`^${topic}-\\d+$`).test(id)).map(([, parent]) => /** @type {string} */ (parent)));
 }
 
@@ -545,7 +552,7 @@ function audit(project, old) {
     ...migrationsRecorded(state),
     ...bootReady(project, state),
     ...manifestsValid(state, units),
-    ...decisionsCarried(state, units),
+    ...decisionsCarried(state, units, old),
     ...noCutWaiting(units),
     ...cutsHoldTracker(state, units, old),
     ...filesPlaced(state, units, old, olds, holders),
