@@ -149,7 +149,7 @@ const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { resolveDriver, chosenDriver, settingOf, needsRefusal } = require('./drivers.cjs');
 const { ignoreInState, withIgnored, migrationRuns } = require('./state-worktree.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
-const { TASK_TYPES, taskId, shownTask, parseShownTask, parsePhase, taskName, phaseName } = require('./task-id.cjs');
+const { TASK_TYPES, taskId, sameTask, shownTask, parseShownTask, parsePhase, taskName, phaseName } = require('./task-id.cjs');
 const { NO_SPEC, breaksLine, readTaskText, specReferenceOf, scenarioIds } = require('./task-file.cjs');
 const { recordTask, clearTask, clearTasks, recordStop } = require('./position.cjs');
 const { tasksInFlight } = require('./conversation.cjs');
@@ -544,17 +544,23 @@ function closePlan(cwd, unit, parent) {
   return closed;
 }
 
+/** A task the verb that takes a link off names as `--after`: its own unit's as shown, another's by its id. @param {string} unit @param {TaskRef} after */
+const unlinkedAfter = (unit, after) => (after.unit === unit ? shownTask(after) : taskId(after));
+
 /**
  * A task's link after another as the cut refuses it, each by its title as
  * the tracker holds it, naming why the build would wait on it for ever and
- * the remedy: the link is the tracker's, so no piece of the plan settles it.
+ * the verb that takes the link off where it no longer holds: the link is
+ * the tracker's, so no piece of the plan settles it.
  * @param {TaskRow} task @param {TaskRow} after
  */
 function linkWords(task, after) {
-  const own = after.ref.unit === task.ref.unit;
+  const { unit } = task.ref;
+  const own = after.ref.unit === unit;
   const held = `task ${shownTask(task.ref)}, "${task.title}", is held after ${own ? `task ${shownTask(after.ref)}` : taskName(after.ref)}, "${after.title}"`;
   const why = own ? 'of a later phase — a task waits on its own phase\'s or an earlier one\'s alone' : 'another unit\'s — a task waits on its own unit\'s alone';
-  return `${held}, ${why}, so ${shownTask(task.ref)} would never start: the link is the tracker's, which no piece of the plan settles — take it off in the tracker, then cut again`;
+  const verb = `task unlink ${unit} ${shownTask(task.ref)} --after ${unlinkedAfter(unit, after.ref)} --file <plan.json>`;
+  return `${held}, ${why}, so ${shownTask(task.ref)} would never start: the link is the tracker's, which no piece of the plan settles — where it no longer holds, ${verb} takes it off`;
 }
 
 /**
@@ -569,6 +575,24 @@ function linkFaults(driver, root, unit, tasks) {
     const on = held.get(taskId(ref)) ?? driver.show(root, ref);
     return on === null || ENDED.includes(on.status) ? [] : [linkWords(task, on)];
   }));
+}
+
+/**
+ * `task unlink`: the link holding `task` after `after` taken off, for the
+ * migration's cut, before its adoption (21.8.8): each named as adopting
+ * `phases` in turn would name it, another unit's by its id. Refuses a task
+ * no phase the cut adopts holds, and a link it does not hold.
+ * @param {string} cwd @param {string} unit @param {{phase: number, parent: string, order: string[]}[]} phases @param {TaskRef} task @param {TaskRef} after
+ */
+function unlinkAdopted(cwd, unit, phases, task, after) {
+  const said = `${shownTask(task)} after ${unlinkedAfter(unit, after)}`;
+  return withTracker(cwd, unit, `take the link of ${said} off`, (driver, root) => {
+    const held = driver.adoption(root, unit, phases).flatMap(({ tasks }) => tasks).find(({ ref }) => sameTask(ref, task));
+    if (held === undefined) throw new TaskRefusal(`no phase the cut adopts holds task ${shownTask(task)}`);
+    if (!held.after.some((ref) => sameTask(ref, after))) throw new TaskRefusal(`task ${shownTask(task)} is held after no task ${unlinkedAfter(unit, after)} — the link is not there to take off`);
+    driver.unlink(root, unit, phases, task, after);
+    return { task: shownTask(task), after: unlinkedAfter(unit, after) };
+  });
 }
 
 /**
@@ -1308,11 +1332,13 @@ function stoppedTask(cwd, unit, given) {
 }
 
 // The build's records, loaded at their call: each reads its task, or the
-// tracker's phases, through this module.
+// tracker's phases, through this module; and the migration's cut, which
+// takes a link off through it.
 const account = () => require('./task-account.cjs');
 const reviewRound = () => require('./review-round.cjs');
 const settlement = () => require('./phase-settlement.cjs');
 const notes = () => require('./notes.cjs');
+const migrating = () => require('./cut-migrating.cjs');
 
 const SETTLE_USAGE = '<unit> <task> --file <why> | <unit> --phase <N> --file <why> [--fixes <task>,…]';
 
@@ -1341,6 +1367,7 @@ const TASK_VERBS = Object.freeze({
   type: { usage: '<unit> <task> <type>', arity: 3, run: (cwd, [unit, task, type]) => typeTask(cwd, unit, task, type) },
   'close-plan': { usage: '<unit> --parent <tracker-id>', arity: 1, flags: ['parent'], run: (cwd, [unit], parent) => closePlan(cwd, unit, parent) },
   link: { usage: '<unit> <task> --after <task>', arity: 2, flags: ['after'], run: (cwd, [unit, task], after) => linkTask(cwd, unit, task, after) },
+  unlink: { usage: '<unit> <task> --after <task> --file <plan.json>', arity: 2, flags: ['after', 'file'], run: (cwd, [unit, task], after, file) => migrating().unlinkMigrating(cwd, unit, task, after, file) },
   ready: { usage: '<unit> [<N>]', arity: 1, optional: 1, run: (cwd, [unit, phase]) => readyTasks(cwd, unit, phase) },
   start: { usage: '<unit> <task>', arity: 2, run: (cwd, [unit, task]) => startTask(cwd, unit, task) },
   done: { usage: '<unit> <task>', arity: 2, run: (cwd, [unit, task]) => doneTask(cwd, unit, task) },
@@ -1370,4 +1397,4 @@ function runTaskVerb(cwd, verb, positional, opts) {
   return run(cwd, positional, ...values, .../** @type {string[]} */ (given));
 }
 
-module.exports = { TASK_VERBS, ENDED, STATUS_WORDS, runTaskVerb, closeForMove, migratedTracker, adoptionRead, writePhase, trackedTask, trackedPhases, trackedLists, trackedPhase, trackedBuild, removeBuild, trackedUnit, goingOn, goesOn, phaseOpen, takesTurns, stepTurn, turnOf, turnEnds, turnRefusal, turnWords, checkoutHold, refuseNotHolding, phaseWritten, givenText, trackedStart, copiedTasks };
+module.exports = { TASK_VERBS, ENDED, STATUS_WORDS, runTaskVerb, closeForMove, migratedTracker, adoptionRead, unlinkAdopted, writePhase, trackedTask, trackedPhases, trackedLists, trackedPhase, trackedBuild, removeBuild, trackedUnit, goingOn, goesOn, phaseOpen, takesTurns, stepTurn, turnOf, turnEnds, turnRefusal, turnWords, checkoutHold, refuseNotHolding, phaseWritten, givenText, trackedStart, copiedTasks };

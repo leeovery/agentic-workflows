@@ -442,12 +442,13 @@
 //                  brief's second level and those beneath it kept in step:
 //                  what an agent does, never the session's own work
 //                  (21.10.2)
-//   migrated-topic the topic: the unit, its work type and status, the
-//                  phases the directive carries a topic of that the topic
-//                  is in, the state's place and the project's in the main
-//                  checkout, each file of the topic's folder but its mail,
-//                  and as the directive's check reads
-//                  them its specs — each where it is cited, the part of the
+//   migrated-topic the topic: the unit, its work type and status, the phase
+//                  its record is carried in — discovery for an epic's topic
+//                  never started — and the phases the directive carries a
+//                  topic of that it is in, the state's place and the
+//                  project's in the main checkout, each file of the topic's
+//                  folder but its mail, the unit's discovery sessions, and
+//                  as the directive's check reads them its specs — each where it is cited, the part of the
 //                  unit's spec.md it makes where it was joined there, and
 //                  whether it was approved or is a draft — its old map and
 //                  its research's threads still open; the unit's assets
@@ -457,11 +458,17 @@
 //                  verifier's findings on it written and a carry's refusal
 //                  of it kept (21.10.5)
 //   composed-record that topic's record as composed, fenced as JSON
-//                  (21.10.7), the verifier's findings on it cleared once
-//                  drawn, for the verifier to write afresh: no file is no
-//                  verdict yet
+//                  (21.10.7), the last verifier's findings on it kept as a
+//                  round once drawn and cleared, for the verifier to write
+//                  afresh: no file is no verdict yet
 //   verifier-findings the last verifier's findings on that record, verbatim
 //                  — kept until a verifier reads the record again
+//   earlier-findings every verifier's findings on that record so far, each
+//                  under its round, the last's among them, as `.rounds.md`
+//                  beside the record keeps them
+//   settled-points the points of that record the session settled where a
+//                  verifier reversed an earlier round, verbatim, as
+//                  `.settled.md` beside the record holds them
 //   carry-refusal  what `ledger carry` refused that record for, verbatim,
 //                  cleared once drawn, so it reaches no later brief
 //   record-check   the call that checks that record as the carry would,
@@ -486,10 +493,17 @@
 //                  tracker disagree over it — the folder kept as legacy, and
 //                  where its piece goes
 //   composed-piece that phase's piece as composed, fenced as JSON, the
-//                  verifier's findings on it cleared once drawn, for the
-//                  verifier to write afresh: no file is no verdict yet
+//                  last verifier's findings on it kept as a round once
+//                  drawn and cleared, for the verifier to write afresh: no
+//                  file is no verdict yet
 //   piece-findings the verifier's findings on that piece, verbatim — kept
 //                  until the verifier reads the piece composed again
+//   earlier-piece-findings every verifier's findings on that piece so far,
+//                  each under its round, the last's among them
+//   settled-piece-points the points of that piece the session settled
+//                  where a verifier reversed an earlier round, verbatim
+//   piece-check    the call that checks that piece as the join would,
+//                  writing nothing: `migrate join --phase --dry-run`
 //
 // A record taking a flag names it, and its role takes every flag its records
 // name, once, and no other — every one but a flag a record holds optional;
@@ -596,7 +610,7 @@ const { reading, reposOf } = require('./phase-checks.cjs');
 const { changeOf, changeTips, workBelow } = require('./review-change.cjs');
 const { fixAcceptance, fixScenarios, fixNamed } = require('./fix-acceptance.cjs');
 const { summaryFile } = require('./knowledge/artifacts.cjs');
-const { CARRY_VERB, DRY_RUN, topicPlace, composedPath, findingsPath, refusedPath } = require('./ledger-carry.cjs');
+const { CARRY_VERB, DRY_RUN, topicPlace, composedPath, findingsPath, refusedPath, roundsPath, settledPath } = require('./ledger-carry.cjs');
 const { OLD_STATE, OLD_PLAN_FILE } = require('../../../ledger-migrate/scripts/old-layout.cjs');
 
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
@@ -1158,7 +1172,7 @@ const migratedTopic = (filling) => topicPlace(filling.cwd, filling.given.topic, 
 
 /** @param {Filling} filling */
 function drawMigratedTopic(filling) {
-  const { root, unit, topic } = migratedTopic(filling);
+  const { root, unit, phase: carried, topic } = migratedTopic(filling);
   const manifest = readWorkUnitManifest(root, unit);
   const rules = topicRules(filling);
   const phases = rules.phases.filter((phase) => rules.holds(manifest, phase, topic)).map((phase) => {
@@ -1167,6 +1181,8 @@ function drawMigratedTopic(filling) {
   });
   const folder = path.join(root, unit, 'topics', topic);
   const files = (fs.existsSync(folder) ? filesUnder(folder) : []).filter((file) => !file.startsWith('mail/')).map((file) => `${unit}/topics/${topic}/${file}`).sort();
+  const discovery = path.join(root, unit, 'discovery');
+  const sessions = (fs.existsSync(discovery) ? filesUnder(discovery) : []).filter((file) => DISCOVERY_SESSION.test(file)).map((file) => `- ${unit}/discovery/${file}`).sort();
   const sources = rules.sourcesOf({ projectDir: codeRoot(filling.cwd), stateDir: root, unit, topic });
   const assets = sources.imports.map(({ path: at, origin, owner, held }) => {
     const owed = !held ? ' — its file is gone, so no entry links it' : owner === topic ? ' — this topic\'s to link' : '';
@@ -1176,7 +1192,7 @@ function drawMigratedTopic(filling) {
   const composed = fs.existsSync(path.join(root, composedPath(unit, topic)));
   return [
     `- **Unit:** ${unit}, ${manifest.work_type}, ${manifest.status}`,
-    `- **Topic:** ${topic}, in ${phases.join('; ')}`,
+    `- **Topic:** ${topic}, in ${phases.join('; ')} — its record carried in ${carried}${carried === NEVER_STARTED ? ', the topic never started' : ''}`,
     `- **The state:** ${root} — each path below is from there, as an entry cites it, but one under \`${OLD_STATE}/\``,
     `- **The project:** ${sources.project} — each path under \`${OLD_STATE}/\` is from there`,
     '',
@@ -1187,6 +1203,10 @@ function drawMigratedTopic(filling) {
     '## Its specs',
     '',
     listed(specs),
+    '',
+    '## The unit\'s discovery sessions',
+    '',
+    listed(sessions),
     '',
     `## Its old map, as \`${OLD_STATE}/\` holds it`,
     '',
@@ -1207,6 +1227,12 @@ function drawMigratedTopic(filling) {
     `- A carry's refusal of it: ${refusedPath(unit, topic)}`,
   ].join('\n');
 }
+
+/** A discovery session's log, as the unit's discovery folder holds it. */
+const DISCOVERY_SESSION = /^session-[0-9]{3}\.md$/;
+
+/** The phase an epic's topic never started is carried in. */
+const NEVER_STARTED = 'discovery';
 
 /** The call that checks the topic's record as the carry would, writing nothing. @param {Filling} filling */
 function drawRecordCheck(filling) {
@@ -1354,10 +1380,16 @@ function drawMigratedPhase(filling) {
   ].join('\n');
 }
 
-/** A file of the phase's in the unit's staging, absolute. @param {Filling} filling @param {'piece'|'findings'} which */
+/** A file of the phase's in the unit's staging, absolute. @param {Filling} filling @param {'piece'|'findings'|'rounds'|'settled'} which */
 function phaseFile(filling, which) {
   const { sources, phase } = migratedPhase(filling);
   return path.join(stateRoot(filling.cwd), piecePaths(sources, phase.number)[which]);
+}
+
+/** The call that checks the phase's piece as the join would, writing nothing. @param {Filling} filling */
+function drawPieceCheck(filling) {
+  const { unit, phase } = migratedPhase(filling);
+  return `\`${ENGINE_RUN} migrate join ${unit} --directive ${filling.given.directive} --phase ${phase.number} ${DRY_RUN}\``;
 }
 
 /** @param {Filling} filling */
@@ -1370,25 +1402,59 @@ function drawComposedPiece(filling) {
   return fenced('json', text.trimEnd());
 }
 
-/** @param {Filling} filling */
-function drawPieceFindings(filling) {
-  const file = phaseFile(filling, 'findings');
+/** A file's text, trimmed, or none recorded where it is missing or holds nothing. @param {string} file */
+function verbatim(file) {
   const text = fs.existsSync(file) ? fs.readFileSync(file, 'utf8').trim() : '';
   return text === '' ? NONE : text;
+}
+
+/** The heading a verifier's round of findings is kept under. */
+const ROUND = /^## Round (\d+)$/gm;
+
+/**
+ * The last verifier's findings, at `findings`, as the round after those kept
+ * at `rounds`, under its heading — an empty file its pass — or null where
+ * no verifier wrote since the last was kept.
+ * @param {string} rounds @param {string} findings @returns {string|null}
+ */
+function lastRound(rounds, findings) {
+  if (!fs.existsSync(findings)) return null;
+  const kept = fs.existsSync(rounds) ? [...fs.readFileSync(rounds, 'utf8').matchAll(ROUND)].length : 0;
+  const text = fs.readFileSync(findings, 'utf8').trim();
+  return `## Round ${kept + 1}\n\n${text === '' ? 'None: the verifier passed it.' : text}`;
+}
+
+/** Every verifier's findings, round by round, the last among them; none recorded before the first. @param {string} rounds @param {string} findings */
+function drawRounds(rounds, findings) {
+  const kept = fs.existsSync(rounds) ? fs.readFileSync(rounds, 'utf8').trim() : '';
+  const text = [kept, lastRound(rounds, findings) ?? ''].filter((part) => part !== '').join('\n\n');
+  return text === '' ? NONE : text;
+}
+
+/**
+ * The last verifier's findings kept as a round at `rounds`, and cleared, so
+ * the verifier the brief is for writes its findings afresh: no file is no
+ * verdict yet.
+ * @param {string} rounds @param {string} findings
+ */
+function keepRound(rounds, findings) {
+  const round = lastRound(rounds, findings);
+  if (round !== null) fs.appendFileSync(rounds, `${fs.existsSync(rounds) ? '\n' : ''}${round}\n`);
+  fs.rmSync(findings, { force: true });
+}
+
+/** A file beside the topic's record, absolute. @param {Filling} filling @param {(unit: string, topic: string) => string} rel */
+function besideFile(filling, rel) {
+  const { root, unit, topic } = migratedTopic(filling);
+  return path.join(root, rel(unit, topic));
 }
 
 /** What the topic's record has beside it at `rel`, verbatim, or none recorded. @param {Filling} filling @param {(unit: string, topic: string) => string} rel */
-function besideRecord(filling, rel) {
-  const { root, unit, topic } = migratedTopic(filling);
-  const file = path.join(root, rel(unit, topic));
-  const text = fs.existsSync(file) ? fs.readFileSync(file, 'utf8').trim() : '';
-  return text === '' ? NONE : text;
-}
+const besideRecord = (filling, rel) => verbatim(besideFile(filling, rel));
 
 /** What the topic's record has beside it at `rel` cleared, the brief having taken it. @param {Filling} filling @param {(unit: string, topic: string) => string} rel */
 function clearBeside(filling, rel) {
-  const { root, unit, topic } = migratedTopic(filling);
-  fs.rmSync(path.join(root, rel(unit, topic)), { force: true });
+  fs.rmSync(besideFile(filling, rel), { force: true });
 }
 
 /** The unit a unit's record is drawn for. @param {Filling} filling @returns {string} */
@@ -2496,13 +2562,18 @@ const RECORDS = Object.freeze({
   'knowledge-query': { of: null, draw: drawKnowledgeQuery },
   directive: { of: null, flags: [DIRECTIVE], draw: drawDirective },
   'migrated-topic': { of: null, flags: [MIGRATED, DIRECTIVE], draw: drawMigratedTopic },
-  'composed-record': { of: null, flags: [MIGRATED, DIRECTIVE], draw: drawComposedRecord, bind: (filling) => clearBeside(filling, findingsPath) },
+  'composed-record': { of: null, flags: [MIGRATED, DIRECTIVE], draw: drawComposedRecord, bind: (filling) => keepRound(besideFile(filling, roundsPath), besideFile(filling, findingsPath)) },
   'verifier-findings': { of: null, flags: [MIGRATED, DIRECTIVE], draw: (filling) => besideRecord(filling, findingsPath) },
+  'earlier-findings': { of: null, flags: [MIGRATED, DIRECTIVE], draw: (filling) => drawRounds(besideFile(filling, roundsPath), besideFile(filling, findingsPath)) },
+  'settled-points': { of: null, flags: [MIGRATED, DIRECTIVE], draw: (filling) => besideRecord(filling, settledPath) },
   'carry-refusal': { of: null, flags: [MIGRATED, DIRECTIVE], draw: (filling) => besideRecord(filling, refusedPath), bind: (filling) => clearBeside(filling, refusedPath) },
   'record-check': { of: null, flags: [MIGRATED, DIRECTIVE], draw: drawRecordCheck },
   'migrated-phase': { of: 'unit', flags: [DIRECTIVE, PHASE], draw: drawMigratedPhase },
-  'composed-piece': { of: 'unit', flags: [DIRECTIVE, PHASE], draw: drawComposedPiece, bind: (filling) => fs.rmSync(phaseFile(filling, 'findings'), { force: true }) },
-  'piece-findings': { of: 'unit', flags: [DIRECTIVE, PHASE], draw: drawPieceFindings },
+  'composed-piece': { of: 'unit', flags: [DIRECTIVE, PHASE], draw: drawComposedPiece, bind: (filling) => keepRound(phaseFile(filling, 'rounds'), phaseFile(filling, 'findings')) },
+  'piece-findings': { of: 'unit', flags: [DIRECTIVE, PHASE], draw: (filling) => verbatim(phaseFile(filling, 'findings')) },
+  'earlier-piece-findings': { of: 'unit', flags: [DIRECTIVE, PHASE], draw: (filling) => drawRounds(phaseFile(filling, 'rounds'), phaseFile(filling, 'findings')) },
+  'settled-piece-points': { of: 'unit', flags: [DIRECTIVE, PHASE], draw: (filling) => verbatim(phaseFile(filling, 'settled')) },
+  'piece-check': { of: 'unit', flags: [DIRECTIVE, PHASE], draw: drawPieceCheck },
   'spec-outline': { of: 'unit', draw: drawSpecOutline },
   'spec-scenarios': { of: 'unit', draw: drawSpecScenarios },
   'relies-on-graph': { of: 'unit', draw: drawReliesOnGraph },

@@ -437,9 +437,27 @@ describe('the migration\'s cut of a unit whose building started (21.7.1, 21.8.6�
     for (const [title, after] of [['Refund a charge', 'Export payments'], ['Email a receipt', 'Take a card'], ['Email a receipt', 'Write a memo'], ['Refund a charge', 'Count a day'], ['Charge the card', 'Export payments']]) SIDE.linkBy(root, title, after);
 
     assert.strictEqual(trackerUntouched('shop', cutArgs('shop', shopPlan())), [
-      'cut: task 4.2, "Refund a charge", is held after task 5.1, "Export payments", of a later phase — a task waits on its own phase\'s or an earlier one\'s alone, so 4.2 would never start: the link is the tracker\'s, which no piece of the plan settles — take it off in the tracker, then cut again',
-      'task 4.3, "Email a receipt", is held after task 1.1 of memo, "Write a memo", another unit\'s — a task waits on its own unit\'s alone, so 4.3 would never start: the link is the tracker\'s, which no piece of the plan settles — take it off in the tracker, then cut again',
+      'cut: task 4.2, "Refund a charge", is held after task 5.1, "Export payments", of a later phase — a task waits on its own phase\'s or an earlier one\'s alone, so 4.2 would never start: the link is the tracker\'s, which no piece of the plan settles — where it no longer holds, task unlink shop 4.2 --after 5.1 --file <plan.json> takes it off',
+      'task 4.3, "Email a receipt", is held after task 1.1 of memo, "Write a memo", another unit\'s — a task waits on its own unit\'s alone, so 4.3 would never start: the link is the tracker\'s, which no piece of the plan settles — where it no longer holds, task unlink shop 4.3 --after memo-1-1 --file <plan.json> takes it off',
     ].join('; '));
+
+    const plan = cutArgs('shop', shopPlan()).at(-1);
+    const unlinked = [['4.2', '5.1'], ['4.3', 'memo-1-1']].map(([task, after]) => ok(dir, ['task', 'unlink', 'shop', task, '--after', after, '--file', String(plan)], { env: SESSION }));
+    assert.deepStrictEqual(unlinked.map(({ task, after }) => [task, after]), [['4.2', '5.1'], ['4.3', 'memo-1-1']]);
+    cut('shop', shopPlan());
+    const after = (/** @type {number} */ n) => DRIVER.show(root, { unit: 'shop', phase: 4, n })?.after.map(({ unit, phase, n: m }) => `${unit}-${phase}-${m}`);
+    assert.deepStrictEqual([after(2)?.includes('shop-5-1'), after(3)?.includes('memo-1-1'), after(3)?.includes('shop-3-1')], [false, false, true]);
+  });
+
+  it('task unlink refuses a link the tracker does not hold, a task no adopted phase holds, and a unit cut already, writing nothing', () => {
+    const plan = String(cutArgs('shop', shopPlan()).at(-1));
+    const unlink = (/** @type {string} */ task, /** @type {string} */ after) => trackerUntouched('shop', ['task', 'unlink', 'shop', task, '--after', after, '--file', plan]);
+    assert.deepStrictEqual([unlink('4.2', '5.1'), unlink('9.1', '5.1')], [
+      'task 4.2 is held after no task 5.1 — the link is not there to take off',
+      'no phase the cut adopts holds task 9.1',
+    ]);
+    cut('shop', shopPlan());
+    assert.match(unlink('4.2', '5.1'), /^task unlink: the migration has cut shop already/);
   });
 
   it('a link refused for its phases\' order leaves the tracker as it was, so the plan cutting them in the order the link holds is taken', () => {
@@ -459,10 +477,11 @@ describe('the migration\'s cut of a unit whose building started (21.7.1, 21.8.6�
     assert.strictEqual(fs.existsSync(statePath(dir, 'shop/build/notes.md')), false);
   });
 
-  it('runs only while the migration does, as `task close-plan` does, writing nothing outside it (E13)', () => {
+  it('runs only while the migration does, as `task close-plan` and `task unlink` do, writing nothing outside it (E13)', () => {
     migrationDone();
     const head = git(statePath(dir), ['rev-parse', 'HEAD']);
-    const outside = [cutArgs('shop', shopPlan()), ['task', 'close-plan', 'memo', '--parent', PLANS.memo.root]].map((args) => {
+    const plan = cutArgs('shop', shopPlan());
+    const outside = [plan, ['task', 'close-plan', 'memo', '--parent', PLANS.memo.root], ['task', 'unlink', 'shop', '4.2', '--after', '5.1', '--file', String(plan.at(-1))]].map((args) => {
       const before = harness.treeSnapshot(dir);
       const { error } = refuses(dir, args, { env: SESSION });
       assert.deepStrictEqual(harness.treeSnapshot(dir), before, `engine ${args.join(' ')} wrote on refusing`);
@@ -472,6 +491,7 @@ describe('the migration\'s cut of a unit whose building started (21.7.1, 21.8.6�
     assert.deepStrictEqual(outside, [
       'cut: a unit is cut by the migration only while it runs — the state branch has its first commit, so the migration is done',
       'a plan from before Ledger is taken in only while the migration runs — the state branch has its first commit, so the migration is done',
+      'task unlink: a unit is cut by the migration only while it runs — the state branch has its first commit, so the migration is done',
     ]);
     assert.strictEqual(git(statePath(dir), ['rev-parse', 'HEAD']), head);
   });

@@ -159,6 +159,9 @@ function oldProject(folder) {
 /** @param {string} unit @param {string} topic @param {string} section */
 const logCite = (unit, topic, section) => ({ path: layout.topic(unit, topic, 'log.md'), section });
 
+/** A section of the spec the unit's building drew on, joined. @param {string} unit @param {string} section */
+const specCite = (unit, section) => ({ path: `${unit}/spec.md`, section });
+
 // Each topic's record, as the records directive's agents would compose it.
 const RECORDS_COMPOSED = Object.freeze({
   'gateway.discussion.auth': AUTH_MAP.flatMap((item, at) => [
@@ -169,19 +172,21 @@ const RECORDS_COMPOSED = Object.freeze({
   'gateway.discussion.limits': [{ ref: 'q1', event: 'asked', text: 'Does the gateway limit calls?', by: 'claude', cites: [logCite('gateway', 'limits', 'Burst')] }],
   'caching.discussion.invalidation': [
     { ref: 'q1', event: 'asked', text: 'When is a cached key purged?', by: 'claude', cites: [logCite('caching', 'invalidation', 'Purging')] },
-    { ref: 'd1', event: 'decided', answers: 'q1', text: 'Every write purges its keys.', why: 'The log settles it.', by: 'claude', given: 'carried', product_wide: true, cites: [logCite('caching', 'invalidation', 'Purging')] },
+    { ref: 'd1', event: 'decided', answers: 'q1', text: 'Every write purges its keys.', why: 'The log and the spec settle it.', by: 'claude', given: 'carried', product_wide: true, cites: [logCite('caching', 'invalidation', 'Purging'), { path: 'caching/assets/specs/caching.md', section: 'Invalidation' }] },
   ],
   'memo.discussion.memo': [
     { ref: 'q1', event: 'asked', text: 'How long is a memo?', by: 'claude', cites: [logCite('memo', 'memo', 'Writing')] },
-    { ref: 'd1', event: 'decided', answers: 'q1', text: 'One line.', why: 'The log settles it.', by: 'claude', given: 'carried', cites: [logCite('memo', 'memo', 'Writing')] },
+    { ref: 'd1', event: 'decided', answers: 'q1', text: 'One line.', why: 'The approved spec settles it.', by: 'claude', given: 'carried', cites: [logCite('memo', 'memo', 'Writing'), specCite('memo', 'Writing')] },
+    { ref: 'q2', event: 'asked', text: 'How is a memo shared?', by: 'claude', cites: [specCite('memo', 'Sharing')] },
+    { ref: 'd2', event: 'decided', answers: 'q2', text: 'By link.', why: 'Decided at the spec stage.', by: 'claude', given: 'carried', cites: [specCite('memo', 'Sharing')] },
   ],
   'shop.discussion.cart': [
     { ref: 'q1', event: 'asked', text: 'How is an item added?', by: 'claude', cites: [logCite('shop', 'cart', 'Adding')] },
-    { ref: 'd1', event: 'decided', answers: 'q1', text: 'One tap.', why: 'The log settles it.', by: 'claude', given: 'carried', cites: [logCite('shop', 'cart', 'Adding')] },
+    { ref: 'd1', event: 'decided', answers: 'q1', text: 'One tap.', why: 'The log settles it.', by: 'claude', given: 'carried', cites: [logCite('shop', 'cart', 'Adding'), specCite('shop', 'Adding')] },
   ],
   'shop.discussion.pay': [
     { ref: 'q1', event: 'asked', text: 'Which cards are taken?', by: 'claude', cites: [logCite('shop', 'pay', 'Cards')] },
-    { ref: 'd1', event: 'decided', answers: 'q1', text: 'Visa and more.', why: 'The log settles it.', by: 'claude', given: 'carried', cites: [logCite('shop', 'pay', 'Cards')] },
+    { ref: 'd1', event: 'decided', answers: 'q1', text: 'Visa and more.', why: 'The log settles it.', by: 'claude', given: 'carried', cites: [logCite('shop', 'pay', 'Cards'), specCite('shop', 'Cards')] },
   ],
   'exports.discussion.exports': [{ ref: 'q1', event: 'asked', text: 'What format do exports take?', by: 'claude', cites: [logCite('exports', 'exports', 'Format')] }],
 });
@@ -205,12 +210,16 @@ function workDirective(dir, env, directive) {
   if (directive === RECORDS) {
     const { unfinished } = harness.ok(dir, ['migrate', 'check', RECORDS], opts);
     assert.deepStrictEqual(unfinished.map(({ name }) => name).sort(), Object.keys(RECORDS_COMPOSED).map((place) => place.replace('.discussion.', '/')).sort(), 'the records\' check names each topic');
-    for (const [place, entries] of Object.entries(RECORDS_COMPOSED)) {
+    const compose = (/** @type {string} */ place, /** @type {unknown[]} */ entries) => {
       const [unit, , topic] = place.split('.');
       writeState(dir, composedPath(unit, topic), JSON.stringify({ entries }));
       assert.deepStrictEqual(harness.ok(dir, ['ledger', 'carry', place, '--dry-run'], opts).faults, [], `${place}'s record keeps the rules`);
-      harness.ok(dir, ['ledger', 'carry', place], opts);
-    }
+    };
+    for (const [place, entries] of Object.entries(RECORDS_COMPOSED)) compose(place, place === 'shop.discussion.pay' ? entries.map(({ cites, ...entry }) => ({ ...entry, cites: cites.slice(0, 1) })) : entries);
+    const uncited = (/** @type {string} */ name) => harness.ok(dir, ['migrate', 'check', RECORDS], opts).unfinished.find((piece) => piece.name === name)?.problems.filter((problem) => problem.includes('an approved spec'));
+    assert.deepStrictEqual([uncited('shop/cart'), uncited('shop/pay')?.map((problem) => problem.split(' in ')[0])], [[], ['"Cards"']], 'a joined spec\'s section no record cites is named on the topic whose part holds it');
+    compose('shop.discussion.pay', RECORDS_COMPOSED['shop.discussion.pay']);
+    for (const place of Object.keys(RECORDS_COMPOSED)) harness.ok(dir, ['ledger', 'carry', place], opts);
   } else {
     harness.ok(dir, ['workunit', 'retire', 'caching'], opts);
     writeState(dir, layout.cache('migrate', 'cut-and-merges', 'memo', 'phases', '2.json'), JSON.stringify(SHARING_PIECE));
@@ -218,7 +227,8 @@ function workDirective(dir, env, directive) {
     const { plan } = harness.ok(dir, ['migrate', 'join', 'memo', '--directive', CUT_AND_MERGES], opts);
     harness.ok(dir, ['cut', 'memo', '--migrating', '--file', plan], opts);
   }
-  assert.strictEqual(harness.ok(dir, ['migrate', 'check', directive], opts).passed, true, `${directive}'s check passes`);
+  const checked = harness.ok(dir, ['migrate', 'check', directive], opts);
+  assert.strictEqual(checked.passed, true, `${directive}'s check passes — ${JSON.stringify(checked.unfinished)}`);
   harness.ok(dir, ['checklist', 'close', 'directive', directive], opts);
 }
 

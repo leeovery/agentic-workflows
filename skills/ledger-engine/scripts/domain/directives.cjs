@@ -62,8 +62,9 @@
 //   journals), then the cut and the merges', where a unit's manifest and
 //   its tracker disagreed, as each unit's cut marked it (cut-migrating.cjs).
 // - `migrate join <unit> --directive <id>` joins the pieces a building
-//   unit's phases were composed in into the plan its cut takes
-//   (cut-merges.cjs).
+//   unit's phases were composed in into the plan its cut takes, and with
+//   `--phase <N> --dry-run` names the faults of that phase's piece alone,
+//   writing nothing (cut-merges.cjs).
 // - A directive that agents carry a piece of names, in its check, the
 //   sections of it their briefs draw, `briefed` (`briefedSections`): each
 //   from its heading to the next at its level or above — what an agent
@@ -109,7 +110,7 @@ const DIRECTIVE_ID = /^([0-9]+)-[a-z0-9]+(?:-[a-z0-9]+)*$/;
 /** The line the runner records beside a directive it recorded unrun. @param {string} number */
 const unrunLine = (number) => `${number} unrun`;
 
-const MIGRATE_USAGE = ['migrate check <id>', 'migrate checked', 'migrate review', 'migrate join <work-unit> --directive <id>'].join('\n');
+const MIGRATE_USAGE = ['migrate check <id>', 'migrate checked', 'migrate review', 'migrate join <work-unit> --directive <id> [--phase <N> --dry-run]'].join('\n');
 
 /** A directive the migrations hold: its id, the number its record line is, and its two files. @typedef {{id: string, number: string, file: string, check: string}} Directive */
 

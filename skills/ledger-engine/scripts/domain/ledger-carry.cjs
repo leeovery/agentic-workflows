@@ -40,8 +40,10 @@
 //   so a record carried passes the check and one that would not is
 //   refused, nothing carried, to be amended.
 // - Every fault at once: the record's shape, entry by entry, each check of
-//   an entry run whichever others refuse, and the directive's rules, so one
-//   refusal names everything to mend. `--dry-run` answers the same faults,
+//   an entry run whichever others refuse — within its content, each field
+//   unknown, missing or of another type, and what it says of itself that
+//   cannot be — and the directive's rules, so one refusal names everything
+//   to mend. `--dry-run` answers the same faults,
 //   none where the carry would take the record, and writes nothing, no
 //   refusal beside the record either: the record's composer runs it before
 //   handing back, and the session before a verifier reads the record.
@@ -80,7 +82,7 @@ const { manifestOf } = require('./ledger-units.cjs');
 const { withStateLock, assertMigrationRuns } = require('./state-worktree.cjs');
 const { HELD_NOTE } = require('./commit.cjs');
 const { refreshLedgerCopies } = require('./ledger-copies.cjs');
-const { WRITES, contentFields, checkSaid, checkUnsealed, decisionGiven } = require('./ledger-write.cjs');
+const { WRITES, contentFaults, saidFaults, unsealedFaults, decisionGiven } = require('./ledger-write.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { directiveOf } = require('./directives.cjs');
 
@@ -148,6 +150,12 @@ const findingsPath = (unit, topic) => path.posix.join(COMPOSED, unit, `${topic}.
 /** @param {string} unit @param {string} topic */
 const refusedPath = (unit, topic) => path.posix.join(COMPOSED, unit, `${topic}.refused.md`);
 
+/** Every verifier's findings before the last, each under its round. @param {string} unit @param {string} topic */
+const roundsPath = (unit, topic) => path.posix.join(COMPOSED, unit, `${topic}.rounds.md`);
+
+/** The points of the record the session settled where a verifier reversed an earlier round. @param {string} unit @param {string} topic */
+const settledPath = (unit, topic) => path.posix.join(COMPOSED, unit, `${topic}.settled.md`);
+
 /**
  * A topic of a unit, from its dot-path, live or not, as a directive's check
  * carries topics — the records directive's, where no other is given — at
@@ -207,16 +215,23 @@ function readRecord({ root, unit, topic }) {
 const isNamed = (named) => (typeof named === 'string' && named !== '')
   || (Array.isArray(named) && named.length > 0 && named.every((name) => typeof name === 'string' && name !== ''));
 
+/** What a link of one ref is given as. */
+const ONE_REF = 'the ref of an entry before it';
+
+/** What a link of several refs is given as. */
+const REFS = 'a list of refs, each an entry\'s before it';
+
 /**
  * One link's refs, each naming an entry before it of the kind it needs:
- * the ids of those that do, in order, a fault said for each that does not.
- * @param {(text: string) => void} fault @param {string} field @param {unknown} refs
+ * the ids of those that do, in order, a fault said for each that does not,
+ * and one for refs given in another shape than `shape` says.
+ * @param {(text: string) => void} fault @param {string} field @param {unknown} refs @param {string} shape
  * @param {Map<string, Earlier>} before @param {string|null} event the event each must be, or null for any
  * @returns {string[]}
  */
-function linked(fault, field, refs, before, event) {
+function linked(fault, field, refs, shape, before, event) {
   if (!Array.isArray(refs) || !refs.every((ref) => typeof ref === 'string')) {
-    fault(`${field} names entries by their refs`);
+    fault(`${field} is ${shape}`);
     return [];
   }
   return refs.flatMap((ref) => {
@@ -269,22 +284,19 @@ function markFaults(entry, event, fault) {
 }
 
 /**
- * An entry's content as its write takes it, or null, the write's refusal
- * kept as a fault.
+ * An entry's content as its write takes it, or null, every fault its write
+ * would refuse it for kept: each field unknown, missing or of another
+ * type, and what it says of itself that cannot be. Who moved whom is the
+ * carry's to give, so no fault names it among the fields an entry holds.
  * @param {string[]} faults @param {string} said @param {string} event @param {Record<string, unknown>} entry
  * @returns {Record<string, unknown>|null}
  */
 function entryContent(faults, said, event, entry) {
   const given = Object.fromEntries(Object.entries(entry).filter(([key]) => !RECORD_KEYS.includes(key)));
-  try {
-    const content = contentFields(said, WRITES[EVENT_WRITES[event]], { ...given, who_moved_whom: 'none' }, null);
-    checkUnsealed(said, content);
-    checkSaid(said, EVENT_KINDS[event], content);
-    return content;
-  } catch (err) {
-    faults.push(messageOf(err));
-    return null;
-  }
+  const read = contentFaults(said, WRITES[EVENT_WRITES[event]], { ...given, who_moved_whom: 'none' }, null, ['who_moved_whom']);
+  const all = [...read.faults, ...unsealedFaults(said, read.content), ...saidFaults(said, EVENT_KINDS[event], read.content)];
+  faults.push(...all);
+  return all.length === 0 ? read.content : null;
 }
 
 /**
@@ -311,9 +323,9 @@ function entryLines(place, entry, at, before, tags) {
   }
   markFaults(entry, event, fault);
   const links = {
-    ...(event === 'asked' ? { part_of: partOf === undefined ? null : linked(fault, 'part_of', [partOf], before, 'asked')[0] } : {}),
-    ...(event === 'decided' && answers !== undefined ? { answers: linked(fault, 'answers', [answers], before, 'asked')[0] } : {}),
-    relies_on: linked(fault, 'relies_on', reliesOn, before, null),
+    ...(event === 'asked' ? { part_of: partOf === undefined ? null : linked(fault, 'part_of', [partOf], ONE_REF, before, 'asked')[0] } : {}),
+    ...(event === 'decided' && answers !== undefined ? { answers: linked(fault, 'answers', [answers], ONE_REF, before, 'asked')[0] } : {}),
+    relies_on: linked(fault, 'relies_on', reliesOn, REFS, before, null),
     task: null,
   };
   const content = entryContent(faults, said, event, entry);
@@ -455,4 +467,4 @@ function carryRecord(cwd, args) {
   }
 }
 
-module.exports = { CARRY_VERB, CARRY_USAGE, DRY_RUN, carriedPath, composedPath, findingsPath, refusedPath, topicPlace, recordsRules, carryRecord };
+module.exports = { CARRY_VERB, CARRY_USAGE, DRY_RUN, carriedPath, composedPath, findingsPath, refusedPath, roundsPath, settledPath, topicPlace, recordsRules, carryRecord };

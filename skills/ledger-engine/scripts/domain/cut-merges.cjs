@@ -25,7 +25,7 @@
 // plan's topic and number (21.8.6). A verifier reads each
 // piece and writes its findings beside it, `phases/{N}.findings.txt`: an
 // empty file is the pass, one holding findings sends the piece back to be
-// composed again, and no file means the piece was never verified.
+// amended, and no file means the piece was never verified.
 //
 // `migrate join <unit> --directive <id>` joins the pieces into the unit's
 // plan, `plan.json`, as the cut takes it (cut-migrating.cjs): the phases in
@@ -42,6 +42,13 @@
 // another plan's phase still to build, relying on nothing that names it —
 // the old dependency named, and both phases. It answers the plan's path
 // from the project's folder, as `cut --migrating --file` reads it.
+//
+// `migrate join <unit> --directive <id> --phase <N> --dry-run` answers the
+// faults of that phase's piece alone, as the join would name them, and
+// writes nothing: the per-phase agent checks its piece with it before
+// handing back. Its verifier's verdict and the reliances between phases
+// are the join's own, met there. It refuses a phase the cut lacks, one the
+// join writes itself, and a piece that will not read.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -54,6 +61,7 @@ const { ENDED, STATUS_WORDS, adoptionRead } = require('./task-verbs.cjs');
 const { loadCheck } = require('./directives.cjs');
 const { noteFaults, correctionFaults } = require('./cut-migrating.cjs');
 const { SPEC_FILE, readSpec, specSections } = require('./spec-sections.cjs');
+const { DRY_RUN } = require('./ledger-carry.cjs');
 
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
 
@@ -81,7 +89,7 @@ const { SPEC_FILE, readSpec, specSections } = require('./spec-sections.cjs');
 const PIECE_KEYS = Object.freeze(['phase', 'scenarios', 'notes', 'corrections']);
 const ENTRY_KEYS = Object.freeze(['name', 'goal', 'sections', 'relies_on', 'built']);
 const PIECE_SHAPE = '{"phase": {"name", "goal", "sections", "relies_on"}, "scenarios": ["<text>", …], "notes": [], "corrections": []}, or for a phase found built {"phase": {"name", "goal", "sections", "built": true}, "scenarios": [], …}';
-const USAGE = 'migrate join <work-unit> --directive <id>';
+const USAGE = `migrate join <work-unit> --directive <id> [--phase <N> ${DRY_RUN}]`;
 
 /** @param {unknown} text */
 const isLine = (text) => typeof text === 'string' && text.trim() !== '' && !/[\r\n]/.test(text);
@@ -229,8 +237,19 @@ function oldReliances(phases) {
 /** The unit's staging, from the state's folder. @param {UnitSources} sources @param {string} name */
 const staged = (sources, name) => `${sources.staging}/${name}`;
 
-/** Where a phase's piece goes, and the verifier's findings on it, from the state's folder. @param {UnitSources} sources @param {number} number */
-const piecePaths = (sources, number) => ({ piece: staged(sources, `phases/${number}.json`), findings: staged(sources, `phases/${number}.findings.txt`) });
+/**
+ * Where a phase's piece goes, from the state's folder, and beside it the
+ * last verifier's findings on it, every verifier's before the last, and the
+ * points of it the session settled where a verifier reversed an earlier
+ * round.
+ * @param {UnitSources} sources @param {number} number
+ */
+const piecePaths = (sources, number) => ({
+  piece: staged(sources, `phases/${number}.json`),
+  findings: staged(sources, `phases/${number}.findings.txt`),
+  rounds: staged(sources, `phases/${number}.rounds.md`),
+  settled: staged(sources, `phases/${number}.settled.md`),
+});
 
 /**
  * The faults of a phase's piece, read from its file, against the spec's
@@ -277,6 +296,20 @@ function verifiedFaults(root, sources, phase) {
 const specAddresses = (cwd, unit) => new Set(specSections(readSpec(cwd, unit)).keys());
 
 /**
+ * A phase's piece as its file holds it, or the fault that it will not read.
+ * @param {string} root @param {UnitSources} sources @param {CutPhase} phase
+ * @returns {{piece: any, fault: string|null}}
+ */
+function pieceIn(root, sources, phase) {
+  const rel = piecePaths(sources, phase.number).piece;
+  try {
+    return { piece: JSON.parse(fs.readFileSync(path.join(root, rel), 'utf8')), fault: null };
+  } catch (err) {
+    return { piece: null, fault: `phase ${phase.number} has no piece that reads — ${rel}: ${messageOf(err)}` };
+  }
+}
+
+/**
  * The plan the cut takes, joined from the pieces (the header's), or every
  * fault that refuses the join.
  * @param {string} root the state's folder @param {UnitSources} sources @param {CutPhase[]} phases @param {Set<string>} sections the spec's
@@ -285,13 +318,8 @@ const specAddresses = (cwd, unit) => new Set(specSections(readSpec(cwd, unit)).k
 function joined(root, sources, phases, sections) {
   const read = phases.map((phase) => {
     if (!phase.composed) return { phase, piece: null, faults: [] };
-    const file = path.join(root, piecePaths(sources, phase.number).piece);
-    let piece;
-    try {
-      piece = JSON.parse(fs.readFileSync(file, 'utf8'));
-    } catch (err) {
-      return { phase, piece: null, faults: [`phase ${phase.number} has no piece that reads — ${piecePaths(sources, phase.number).piece}: ${messageOf(err)}`] };
-    }
+    const { piece, fault } = pieceIn(root, sources, phase);
+    if (fault !== null) return { phase, piece: null, faults: [fault] };
     return { phase, piece, faults: [...pieceFaults(phase, piece, sections, phases), ...verifiedFaults(root, sources, phase)] };
   });
   const faults = read.flatMap((each) => each.faults);
@@ -317,12 +345,28 @@ function joined(root, sources, phases, sections) {
 }
 
 /**
- * `migrate join <unit> --directive <id>` (the header's).
+ * The faults of one phase's piece, as the join would name them, nothing
+ * written (the header's).
+ * @param {string} root @param {string} unit @param {UnitSources} sources @param {CutPhase[]} phases @param {Set<string>} sections @param {string} number
+ */
+function pieceCheck(root, unit, sources, phases, sections, number) {
+  const phase = phases.find((each) => String(each.number) === number);
+  if (phase === undefined) throw new Error(`migrate join: ${unit}'s cut has no phase ${number} — its phases are numbered 1 to ${phases.length}`);
+  if (!phase.composed) throw new Error(`migrate join: phase ${phase.number} of ${unit}'s cut is built, and the manifest and the tracker agree — the join writes it`);
+  const { piece, fault } = pieceIn(root, sources, phase);
+  if (fault !== null) throw new Error(`migrate join: ${fault}`);
+  return { unit, phase: phase.number, faults: pieceFaults(phase, piece, sections, phases) };
+}
+
+/**
+ * `migrate join <unit> --directive <id> [--phase <N> --dry-run]` (the
+ * header's).
  * @param {string} cwd @param {string[]} argv
  */
 function joinPlan(cwd, argv) {
   const [unit, flag, directive, ...rest] = argv;
-  if (unit === undefined || flag !== '--directive' || directive === undefined || rest.length > 0) throw new Error(`migrate join: ${USAGE}`);
+  const checked = rest.length === 3 && rest[0] === '--phase' && rest[2] === DRY_RUN ? rest[1] : null;
+  if (unit === undefined || flag !== '--directive' || directive === undefined || (rest.length > 0 && checked === null)) throw new Error(`migrate join: ${USAGE}`);
   const said = 'migrate join';
   const sources = unitSources(cwd, unit, directive, said);
   const root = stateRoot(cwd);
@@ -335,6 +379,7 @@ function joinPlan(cwd, argv) {
   } catch (err) {
     throw new Error(`${said}: ${messageOf(err)}`);
   }
+  if (checked !== null) return pieceCheck(root, unit, sources, phases, sections, checked);
   const { plan, faults } = joined(root, sources, phases, sections);
   if (plan === null) throw new Error(`${said}: ${faults.join('; ')}`);
   const file = path.join(root, staged(sources, 'plan.json'));

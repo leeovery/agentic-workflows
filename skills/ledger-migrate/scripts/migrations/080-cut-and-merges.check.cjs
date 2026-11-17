@@ -56,8 +56,9 @@
 // It reads and changes nothing, and calls no model.
 //
 // Known edges: a migration session a person edited until the move's line
-// is gone is no piece; research placed after the records is read by its
-// topic's discussion, not its record (079 cited the log before it grew).
+// is gone is no piece. Research placed after the records reached them
+// before it moved: 079 reads a unit's discovery sessions, the migration's
+// among them, as every topic's source.
 //
 
 const fs = require('fs');

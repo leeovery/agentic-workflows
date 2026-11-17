@@ -144,10 +144,11 @@
 //     record's files other than its problem, design, report and `data/` —
 //     its instruments — which go under its `data/`, at their path from the
 //     record's folder (4.11.15), a sub-experiment's the same;
-//   - a topic never started — on the map, its item in no phase after it —
-//     that no brief came to has its map row's description written as its
-//     brief, under its name titled, so what discovery knew of it reaches
-//     the records and its first opening, whose only source it is;
+//   - a topic on the map that no brief came to has its map row's
+//     description written as its brief, under its name titled, whatever
+//     its items after it — never started, a discussion a message opened
+//     and no one began, research cancelled before a line of it — so what
+//     discovery knew of it reaches the records and its next opening;
 //   - nothing lands in a topic's folder no topic owns: a brief, experiment
 //     records, a discussion or an investigation under any other name is kept
 //     as legacy, and the experiments' manifest items go;
@@ -741,7 +742,6 @@ function mapTopics(reshaped) {
 const isQuickFix = (manifest) => manifest.work_type === 'quick-fix';
 
 // The phases a started topic holds an item in, once the move reshaped its unit's manifest.
-const STARTED_PHASES = ['discussion', 'investigation'];
 
 /** Whether every phase of a quick-fix's old pipeline completed, as today's engine reads a phase. @param {Record<string, any>} manifest */
 const pipelineDone = (manifest) => QUICK_FIX_PIPELINE.every((phase) => {
@@ -1402,14 +1402,13 @@ function withFolders(places, held) {
 const intoData = (rel, at) => rel.startsWith('experiment/') && !at.endsWith(rel.split('/').slice(2).join('/'));
 
 /**
- * Each topic never started that no brief came to given its map row's
+ * Each topic on the map that no brief came to given its map row's
  * description as its brief.
  * @param {UnitMove} move
  */
 function describedBriefs(move) {
   for (const [topic, row] of Object.entries(itemsOf(move.manifest, 'discovery'))) {
     if (!isObject(row) || typeof row.description !== 'string' || row.description.trim() === '') continue;
-    if (STARTED_PHASES.some((phase) => Object.hasOwn(itemsOf(move.manifest, phase), topic))) continue;
     const brief = `topics/${topic}/brief.md`;
     if (!fs.existsSync(path.join(move.state, move.unit, brief))) put(move, brief, `# ${titled(topic)}\n\n${row.description.trim()}\n`);
   }

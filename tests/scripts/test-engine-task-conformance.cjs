@@ -483,6 +483,16 @@ for (const driver of listDrivers('task')) {
         assert.deepStrictEqual(read, [1, 2].map((phase) => ({ phase, plan: OLD, title: PLAN[phase - 1].title, tasks: [1, 2, 3].map((n) => driver.show(root, old(phase, n))) })));
       });
 
+      it('unlink takes a link off before adoption, each task named as adopting the phases would name it, writing no name', () => {
+        const phases = [{ phase: 1, parent: plan.phases[0] }, { phase: 2, parent: plan.phases[1] }];
+        const before = side.apartFromNames(root, OLD);
+        driver.unlink(root, OLD, phases, old(2, 2), old(2, 1));
+        const held = driver.adoption(root, OLD, phases)[1].tasks[1];
+        assert.deepStrictEqual([held.title, held.after, driver.show(root, old(2, 2))], ['Count the till', [], null]);
+        adoptBoth();
+        assert.deepStrictEqual([driver.show(root, old(2, 2))?.after, side.apartFromNames(root, OLD).length], [[], before.length]);
+      });
+
       it('a task\'s type is its tag of the template\'s types — the old plan\'s own tags never read as one — and it takes a type with its other tags kept (21.8.8)', () => {
         adoptBoth();
         const typed = () => [driver.show(root, old(2, 2))?.type, side.tagsOf(root, 'Count the till').toSorted()];

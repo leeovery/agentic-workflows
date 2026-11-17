@@ -3,23 +3,28 @@
 ## Touches
 
 - The tracker, through `task close-plan` for a unit nothing of which was
-  built, and through `cut --migrating` for a unit whose building started.
+  built, and through `cut --migrating` for a unit whose building started,
+  `task unlink` taking off a link the cut refuses that no longer holds.
 - The units, through `workunit retire`, `workunit split` and
   `topic postpone`.
 - Each epic's topics' logs, which grow by the research placed on them.
 - Each unit's staging in the state's cache,
   `.cache/migrate/cut-and-merges/{unit}/`: each phase's piece,
-  `phases/{N}.json`, and the verifier's findings on it,
-  `phases/{N}.findings.txt`, empty where it passed; the plan joined from
-  them, `plan.json`; and the research's placement, `placed.json`.
+  `phases/{N}.json`, the verifier's findings on it,
+  `phases/{N}.findings.txt`, empty where it passed, every round of them
+  before, `phases/{N}.rounds.md`, and the points the session settled,
+  `phases/{N}.settled.md`; the plan joined from them, `plan.json`; and the
+  research's placement, `placed.json`.
 
 ## Asks
 
 - Once for each building unit with topics its specs do not cover: where
   those topics go, a new epic the person names or the roadmap, and, for the
   roadmap, which horizon.
-- For each link in the tracker the cut refuses: that the person take it
-  off there.
+- For each link in the tracker the cut refuses that the sources do not
+  settle: whether it still holds.
+- For a point a verifier reverses that the sources do not settle: how it
+  stands.
 - Nothing else.
 
 ## What It Does
@@ -87,9 +92,9 @@ node .claude/skills/ledger-engine/scripts/engine.cjs topic postpone {unit} {topi
 
 The unit's cut is laid out phase by phase: each old plan's phase with a tracker parent, and each area of the spec no plan put in the tracker, numbered as the cut numbers them, the plans in the order their dependencies allow. An agent composes each phase's piece from that phase alone, but a phase the manifest counts built whose every task the tracker holds ended, where the two agree: the join writes that one itself. Each phase's brief lists the whole cut and which phases the join writes.
 
-A verifier reads each piece and writes its findings beside it, `phases/{N}.findings.txt`. An empty file is the pass. A file holding findings sends the piece back to be composed again. No file means the piece was never verified: the verifier's brief clears the findings it reads the piece for, so a session that ends between composing and verifying leaves none.
+A verifier reads each piece and writes its findings beside it, `phases/{N}.findings.txt`. An empty file is the pass. A file holding findings sends the piece back to be amended. No file means the piece was never verified: the verifier's brief keeps the findings it reads the piece for as a round, `phases/{N}.rounds.md`, and clears them, so a session that ends between composing and verifying leaves none.
 
-For each phase whose piece is not written, or whose findings file holds findings, give it to the migration's per-phase agent, `{N}` the phase's number:
+For each phase whose piece is not written, or whose findings file holds findings, give it to the migration's per-phase agent, `{N}` the phase's number. It amends a piece composed already, never composing it from the start, and checks the piece as the join would before handing back:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs brief migration-phase {unit} --directive 080-cut-and-merges --phase {N}
@@ -101,7 +106,9 @@ Once it has returned, and for each piece with no findings file, the verifier rea
 node .claude/skills/ledger-engine/scripts/engine.cjs brief migration-phase-verifier {unit} --directive 080-cut-and-merges --phase {N}
 ```
 
-Dispatch each brief's agent with its pointer alone; phases' agents can run at once, each writing its own piece. Where a verifier finds something, a fresh per-phase agent composes that piece again, its brief carrying the findings, and the verifier reads it again, until it passes the piece. A piece is never edited by hand.
+Dispatch each brief's agent with its pointer alone; phases' agents can run at once, each writing its own piece. Where a verifier finds something, a fresh per-phase agent amends that piece, its brief carrying the findings, and the verifier reads it again, its brief carrying every round before, until it passes the piece. A piece is never edited by hand.
+
+A finding that opens `Reverses round {R}:` would undo what an earlier round had the piece changed to: it goes to no agent. Settle the point from the phase's sources and the code; where they don't settle it, ask the person in prose, naming what each round found and what each rests on, and **STOP.** Wait for user response. Write the ruling, a line naming the point and what settles it, into `phases/{N}.settled.md`, which every later brief of the phase carries as closed, and take the finding out of the findings file. Where the ruling has the piece change, a fresh per-phase agent amends it, and the verifier reads it again; where no finding is left, the file empty, the piece has passed.
 
 ### A Phase's Piece
 
@@ -148,17 +155,21 @@ Once every phase's piece has passed its verifier, join them into the unit's plan
 node .claude/skills/ledger-engine/scripts/engine.cjs migrate join {unit} --directive 080-cut-and-merges
 ```
 
-The join refuses a piece no verifier has passed. Where it refuses, write its refusal, as it reads, into the findings of each phase it names, and compose those again. Once it is joined, the cut applies the plan whole, `{plan}` the path the join answers:
+The join refuses a piece no verifier has passed. Where it refuses, write its refusal, as it reads, into the findings of each phase it names, and amend those. Once it is joined, the cut applies the plan whole, `{plan}` the path the join answers:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs cut {unit} --migrating --file {plan}
 ```
 
-A cut that refuses writes nothing. Write each fault of its refusal, as it reads, into the findings of each phase it names, and compose those again; then verify, join and cut again. But a link it names, a task held after one of a later phase or another unit's, is the tracker's, which no piece settles: no phase is composed again for it. Tell the person each link, as the refusal reads, to take off in the tracker.
+A cut that refuses writes nothing. Write each fault of its refusal, as it reads, into the findings of each phase it names, and amend those; then verify, join and cut again.
 
-**STOP.** Wait for user response.
+But a link it names, a task held after one of a later phase or another unit's, is the tracker's, which no piece settles: no phase is amended for it. Judge each from the phases' sources and the code: whether the task still needs what the one it waits on builds. Where they show it does not, take the link off, as the refusal names it, `{plan}` the plan the join answered:
 
-Once they have, cut again.
+```bash
+node .claude/skills/ledger-engine/scripts/engine.cjs task unlink {unit} {task} --after {after} --file {plan}
+```
+
+Where they don't settle it, ask the person in prose, naming both tasks as the refusal does and what the sources show, and **STOP.** Wait for user response. A link they say no longer holds is taken off as above. A link that holds leaves a task that would never start: say so to the person, as the refusal reads, and stop the directive there. Once each link is off, cut again.
 
 ## An Epic's Research
 

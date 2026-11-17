@@ -4,7 +4,11 @@ Carry the migration's cut step for one phase of a unit whose building started: c
 
 Settle each disagreement the phase names between the manifest and the tracker, and correct any other task its sources show done, superseded or no longer wanted, from the sources and the code, as the directive says, each a correction in the piece.
 
-Where the verifier's findings below name anything, compose the piece from the start, each answered.
+Where the piece is composed already, amend it in place: answer each of the verifier's findings below, make it agree with each point the session settled, and keep everything no finding asks you to change.
+
+Before you hand back, check the piece. This names every fault the join would refuse it for, and writes nothing; mend each, and check again until it names none:
+
+{{piece-check}}
 
 Hand back whether the phase is still to build or found built, how many scenarios the piece places, and each correction it makes, or that there are none.
 
@@ -15,6 +19,10 @@ Hand back whether the phase is still to build or found built, how many scenarios
 # The verifier's findings
 
 {{piece-findings}}
+
+# Points the session settled
+
+{{settled-piece-points}}
 
 # The directive
 

@@ -54,7 +54,7 @@ const METHODS = Object.freeze({
   task: {
     required: /** @type {const} */ ([
       'ensureStore', 'storeFiles', 'localFiles', 'mergeStore',
-      'createUnit', 'createPhase', 'createTask', 'adoption', 'adopt', 'closePlan', 'add', 'setType', 'link',
+      'createUnit', 'createPhase', 'createTask', 'adoption', 'adopt', 'closePlan', 'add', 'setType', 'link', 'unlink',
       'ready', 'start', 'done', 'close', 'removePhase', 'list', 'show', 'tasks', 'started',
     ]),
     optional: /** @type {const} */ ([]),
@@ -182,7 +182,12 @@ const METHODS = Object.freeze({
  * tracker, the plan given no name of the engine's, so the unit's parent and
  * the phases the build writes are made afresh; it answers how many it
  * closed, a run again closing none; and it refuses, closing nothing, a plan
- * holding a task done — the tracker wins, its unit built some of it. `removePhase` takes a phase written out of the tracker for good,
+ * holding a task done — the tracker wins, its unit built some of it.
+ * `unlink` takes off the link holding a task after another, for the
+ * migration's cut, before its adoption (21.8.8): each task named as
+ * adopting the unit's `phases` in turn would name it, as `adoption`
+ * reads them, another unit's by the names it holds — writing no name.
+ * `removePhase` takes a phase written out of the tracker for good,
  * every task under it with it and every link to them dropped, so it reads
  * as never written and its number and its tasks' names are made again as
  * new. `add` puts an addition onto a task, after any before it;
@@ -228,6 +233,7 @@ const METHODS = Object.freeze({
  *   add: (root: string, ref: TaskRef, addition: TaskAddition) => void,
  *   setType: (root: string, ref: TaskRef, type: string) => void,
  *   link: (root: string, task: TaskRef, after: TaskRef) => void,
+ *   unlink: (root: string, unit: string, phases: {phase: number, parent: string, order?: string[]}[], task: TaskRef, after: TaskRef) => void,
  *   ready: (root: string, unit: string, phase: number|null) => TaskRow[]|null,
  *   start: (root: string, ref: TaskRef) => void,
  *   done: (root: string, ref: TaskRef) => void,

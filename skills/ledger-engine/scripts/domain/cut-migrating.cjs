@@ -102,8 +102,8 @@ const { OLD_STATE, OLD_PLANNING, PAST_THE_TOPICS } = require('../../../ledger-mi
 const { readSpec, specPath, specReading, rowsOf, fencedLines, SPEC_FILE } = require('./spec-sections.cjs');
 const { phasesOf, placing, specIn, againstSpec, refuse } = require('./cut.cjs');
 const { notesPath, notesAppended, topHeading } = require('./notes.cjs');
-const { migratedTracker } = require('./task-verbs.cjs');
-const { parseShownTask } = require('./task-id.cjs');
+const { migratedTracker, unlinkAdopted } = require('./task-verbs.cjs');
+const { parseShownTask, parseTaskId, isShownTask } = require('./task-id.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { isoNow } = require('./dates.cjs');
 
@@ -373,16 +373,16 @@ function writeManifest(cwd, unit, phases, done, cites) {
 
 /**
  * The unit, cut by the migration, refused as the header says before
- * anything is written.
- * @param {string} cwd @param {string} unit
+ * anything is written, each refusal opening `said`.
+ * @param {string} cwd @param {string} unit @param {string} [said]
  * @returns {Record<string, any>} the unit's manifest
  */
-function cuttable(cwd, unit) {
-  if (!migrationRuns(stateRoot(cwd))) throw new Error('cut: a unit is cut by the migration only while it runs — the state branch has its first commit, so the migration is done');
+function cuttable(cwd, unit, said = 'cut') {
+  if (!migrationRuns(stateRoot(cwd))) throw new Error(`${said}: a unit is cut by the migration only while it runs — the state branch has its first commit, so the migration is done`);
   const manifest = workUnitNameRefusal(unit) === null ? manifestOf(stateRoot(cwd), unit) : null;
-  if (manifest === null) throw new Error(`cut: there is no work unit "${unit}"`);
-  if (fs.existsSync(markPath(cwd, unit))) throw new Error(`cut: the migration has cut ${unit} already — its mark is ${markPath(cwd, unit)}`);
-  if (!specJoined(manifest)) throw new Error(`cut: ${unit}'s specs were not joined by the migration — it cuts only a unit whose building started, its ${SPEC_FILE} those specs joined`);
+  if (manifest === null) throw new Error(`${said}: there is no work unit "${unit}"`);
+  if (fs.existsSync(markPath(cwd, unit))) throw new Error(`${said}: the migration has cut ${unit} already — its mark is ${markPath(cwd, unit)}`);
+  if (!specJoined(manifest)) throw new Error(`${said}: ${unit}'s specs were not joined by the migration — it cuts only a unit whose building started, its ${SPEC_FILE} those specs joined`);
   return manifest;
 }
 
@@ -402,6 +402,30 @@ function cutTracker(cwd, unit, parents, type, topics, corrections) {
 }
 
 /**
+ * The phases of the plan the tracker holds a parent of, as their adoption
+ * reads them: each by its number in the cut, its parent, its tasks in its
+ * old plan's order, and what the plan says of it.
+ * @param {Record<string, any>} manifest @param {Phase[]} phases
+ */
+const adoptedPhases = (manifest, phases) => phases.flatMap((phase, at) => (phase.tracker === undefined ? [] : [{
+  phase: at + 1, parent: phase.tracker, order: oldPlanOrder(manifest, phase.tracker), built: 'built' in phase, sections: phase.sections,
+}]));
+
+/**
+ * `task unlink <unit> <task> --after <task> --file <plan.json>`: a link the
+ * cut refuses taken off, each task named as the cut's adoption of the plan
+ * names it — `--after` another unit's by its id — while the migration runs
+ * and the unit is not cut yet, as the cut is.
+ * @param {string} cwd @param {string} unit @param {string} given @param {string} afterGiven @param {string} file
+ */
+function unlinkMigrating(cwd, unit, given, afterGiven, file) {
+  const manifest = cuttable(cwd, unit, 'task unlink');
+  const plan = planIn(path.resolve(cwd, file));
+  const after = isShownTask(afterGiven) ? parseShownTask(unit, afterGiven) : parseTaskId(afterGiven);
+  return unlinkAdopted(cwd, unit, adoptedPhases(manifest, plan.phases), parseShownTask(unit, given), after);
+}
+
+/**
  * `cut --migrating`: the unit's plan applied whole (the header's).
  * @param {string} cwd @param {string} unit @param {string} file absolute or from cwd
  */
@@ -411,9 +435,7 @@ function cutMigrating(cwd, unit, file) {
   const text = plannedSpec(cwd, unit, plan);
   const faults = [...trackerFaults(plan.phases), ...migratedFaults(plan.phases), ...placedFaults(text, plan.phases), ...againstSpec(cwd, unit, plan.phases.map(placing), specIn(text, true))];
   if (faults.length > 0) refuse(faults);
-  const parents = plan.phases.flatMap((phase, at) => (phase.tracker === undefined ? [] : [{
-    phase: at + 1, parent: phase.tracker, order: oldPlanOrder(manifest, phase.tracker), built: 'built' in phase, sections: phase.sections,
-  }]));
+  const parents = adoptedPhases(manifest, plan.phases);
   const topics = manifest.work_type === 'epic' ? joinedTopics(manifest) : null;
   const ends = plan.corrections.flatMap(({ task, title, to, found }) => (task === undefined ? [] : [{ ref: parseShownTask(unit, task), title: /** @type {string} */ (title), to: /** @type {'done'|'closed'} */ (to), why: found }]));
   const tracker = parents.length === 0 ? { adopted: [], typed: [], ended: [], done: [], open: [] } : cutTracker(cwd, unit, parents, migratedType(manifest.work_type), topics, ends);
@@ -447,4 +469,4 @@ function cutMigrating(cwd, unit, file) {
   return result;
 }
 
-module.exports = { MIGRATING_USAGE, cutMigrating, markPath, migratedType, oldPlanOrder, noteFaults, correctionFaults };
+module.exports = { MIGRATING_USAGE, cutMigrating, unlinkMigrating, markPath, migratedType, oldPlanOrder, noteFaults, correctionFaults };

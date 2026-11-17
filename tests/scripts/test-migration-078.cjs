@@ -58,7 +58,8 @@
 // name breaks the kebab-case rule by its case alone carried under its
 // lowercase name, as portal's quick-fix was, every reference following,
 // a merge stopped in the main checkout, an epic's topics never started,
-// one given its map row's description as its brief where none came to it,
+// each on the map given its row's description as its brief where none came
+// to it, whatever its items,
 // the projects with nothing to move, a native baseline, a completed one and
 // one under way, defaults of the plan's format and the project skills alone,
 // read for its task driver after, a task driver's folder whose declaration
@@ -1231,14 +1232,15 @@ describe('migration 078: a small project', () => {
     }
   });
 
-  it('writes a topic never started its map row\'s description as its brief, under its name, where no brief came to it; one a brief came to keeps its own, and a topic started is given none', () => {
+  it('writes a topic on the map its row\'s description as its brief, under its name, where no brief came to it, whatever its items — never started, a discussion a message opened and no one began, research cancelled before it was written, a discussion under way; one a brief came to keeps its own', () => {
     dir = tempProject('migration-078-described-');
     try {
       const row = (/** @type {string} */ name) => ({ routing: 'discussion', source: 'discovery', summary: name, description: `What ${name} covers.\n\nAnd why.` });
       write(dir, '.workflows/manifest.json', json({ work_units: { atlas: { work_type: 'epic' } } }));
       write(dir, '.workflows/atlas/manifest.json', json(unit('atlas', 'epic', 'in-progress', {
-        discovery: { items: { 'deep-links': row('deep links'), lambda: row('lambda'), mu: row('mu') } },
-        discussion: { items: { mu: { status: 'in-progress' } } },
+        discovery: { items: { 'deep-links': row('deep links'), lambda: row('lambda'), mu: row('mu'), pricing: row('pricing'), scale: row('scale') } },
+        discussion: { items: { mu: { status: 'in-progress' }, pricing: { status: 'unstarted' } } },
+        research: { items: { scale: { status: 'cancelled' } } },
       })));
       write(dir, '.workflows/atlas/discovery/briefs/lambda.md', '# Lambda brief\n');
       write(dir, '.workflows/atlas/discussion/mu.md', '# Discussion: Mu\n');
@@ -1249,7 +1251,8 @@ describe('migration 078: a small project', () => {
         return fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null;
       };
 
-      assert.deepStrictEqual(['deep-links', 'lambda', 'mu'].map(brief), ['# Deep Links\n\nWhat deep links covers.\n\nAnd why.\n', '# Lambda brief\n', null]);
+      const described = (/** @type {string} */ name) => `# ${name}\n\nWhat ${name.toLowerCase()} covers.\n\nAnd why.\n`;
+      assert.deepStrictEqual(['deep-links', 'lambda', 'mu', 'pricing', 'scale'].map(brief), [described('Deep Links'), '# Lambda brief\n', described('Mu'), described('Pricing'), described('Scale')]);
     } finally {
       cleanupFixture(dir);
     }

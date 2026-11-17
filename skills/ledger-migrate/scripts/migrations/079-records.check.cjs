@@ -15,7 +15,8 @@
 // them by construction. Each keeps the ledger whole — a ref that resolves,
 // nothing the sources hold lost — and none judges what the record says,
 // which the directive gives the composer and its verifier to judge:
-//   - a topic whose log holds anything has a record of an entry at least;
+//   - a topic whose log or brief holds text past its headings has a record
+//     of an entry at least;
 //   - every entry cites a section, a heading its file holds, in a file
 //     that stays where the cite names it wherever the entry goes: its
 //     topic's own, which move with its entries, but its mail, whose
@@ -44,6 +45,16 @@
 //   - a cross-cutting unit's findings and decisions are every one
 //     product-wide: the cut and the merges keep the unit as the product's
 //     reference (21.7.3).
+// And a unit's: once every topic of it has a record composed or carried,
+// every section of its approved specs holding text — a spec kept in its
+// assets, or its `spec.md` where its specs were joined — cited by one of
+// its records, or marked by the session as holding no decision of a
+// topic's (`.cache/migrate/records/{unit}.sections.json`, `{"{path}":
+// ["{section}", …]}`): a decision made at the spec stage on a subject no log
+// discusses exists nowhere else (21.6.4), and the session sends each such
+// section to the topic it belongs to. It is named on each topic drawing on
+// it — in a joined spec, each whose part holds it, any section outside the
+// parts every topic's of the spec — and asks no composer for an entry.
 // A record of no entries keeps every rule but the cites: its old map, its
 // threads and its imports are asked of it as of any. A topic promoted to a
 // cross-cutting unit took only its discussion there: its research's threads
@@ -57,7 +68,9 @@
 // Beside the check, the points to raise (21.6.10): each question of a
 // carried record marked to raise, on a topic still live — its unit and its
 // item neither cancelled nor postponed — and started, which the engine
-// answers, once the check passes, where it has no raise yet. A topic never
+// answers, once the check passes, where it has no raise yet: raised at the
+// topic, or at the unit's specification where the unit has its spec — its
+// `spec.md`, or its specs joined — past which a topic takes no raise. A topic never
 // started is carried in discovery, where nothing is decided (8.3.4): its
 // points stay open questions on it, which its first opening reads. A
 // cross-cutting unit's record is the product's: its points stay open
@@ -87,6 +100,7 @@ const { spawnSync } = require('child_process');
 const CODE_TREE_STATE = '.workflows';
 const TOPIC_PHASES = ['discovery', 'discussion', 'investigation'];
 const CARRIED = '.cache/migrate/carried';
+const COMPOSED = '.cache/migrate/records';
 const LEDGER = '.ledger.jsonl';
 const OPEN_THREADS = ['open', 'digging'];
 const SET_ASIDE = ['cancelled', 'postponed'];
@@ -98,6 +112,7 @@ const JOINED_SPEC = 'spec.md';
 const BRIEFED = ["A Topic's Sources", "A Topic's Record"];
 const HEADING = /^ {0,3}#{1,6}[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$/;
 const FENCE = /^ {0,3}(```|~~~)/;
+const PART = /^ {0,3}##[ \t]/;
 
 /** @param {unknown} v @returns {v is Record<string, any>} */
 const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
@@ -154,6 +169,39 @@ function headingsOf(text) {
 
 /** Whether a unit's manifest holds the topic in the phase. @param {Record<string, any>} manifest @param {string} phase @param {string} topic */
 const holds = (manifest, phase, topic) => TOPIC_PHASES.includes(phase) && isObject(itemsOf(manifest.phases?.[phase]?.items)[topic]);
+
+/**
+ * Each section of a markdown text holding text of its own — lines past its
+ * heading before the next, fenced blocks among them — by its heading, and
+ * the part it is in: the heading at level two over it, or its own at that
+ * level, null where none is.
+ * @param {string} text @returns {{section: string, part: string|null}[]}
+ */
+function textSections(text) {
+  /** @type {{section: string, part: string|null}[]} */
+  const held = [];
+  let fenced = false;
+  /** @type {{section: string, part: string|null}|null} */
+  let open = null;
+  /** @type {string|null} */
+  let part = null;
+  for (const line of text.split('\n')) {
+    const fence = FENCE.test(line);
+    const heading = fenced || fence ? null : HEADING.exec(line);
+    if (fence) fenced = !fenced;
+    if (heading !== null) {
+      if (PART.test(line)) part = heading[1];
+      open = { section: heading[1], part };
+    } else if (open !== null && line.trim() !== '') {
+      held.push(open);
+      open = null;
+    }
+  }
+  return held;
+}
+
+/** Whether a text holds anything past its headings and blank lines. @param {string} text */
+const holdsText = (text) => text.split('\n').some((line) => line.trim() !== '' && (FENCE.test(line) || HEADING.exec(line) === null));
 
 /** The topics of a unit's manifest the directive carries, once each, sorted. @param {Record<string, any>} manifest @returns {string[]} */
 function topicsOf(manifest) {
@@ -272,8 +320,11 @@ function threadsOf(project, unit, topic) {
     .map(([thread, row]) => ({ thread, status: row.status, question: String(row.question ?? '') })));
 }
 
-/** The topic's log, or '' where it has none. @param {Project} project @param {Unit} unit @param {string} topic */
-const logOf = (project, unit, topic) => readText(path.join(project.stateDir, unit.name, 'topics', topic, 'log.md')) ?? '';
+/** A file of the topic's own, or '' where it has none. @param {Project} project @param {Unit} unit @param {string} topic @param {string} file */
+const ownOf = (project, unit, topic, file) => readText(path.join(project.stateDir, unit.name, 'topics', topic, file)) ?? '';
+
+/** Whether the unit has its spec, past which a point is raised at its specification: its `spec.md`, or its specs joined. @param {Project} project @param {Unit} unit */
+const hasSpec = (project, unit) => Array.isArray(unit.manifest?.spec?.joined) || isFile(path.join(project.stateDir, unit.name, JOINED_SPEC));
 
 /** Whether a topic is still live: its unit and its item neither cancelled nor postponed. @param {Record<string, any>} manifest @param {string} topic */
 const isLive = (manifest, topic) => !SET_ASIDE.includes(manifest.status)
@@ -327,7 +378,7 @@ function citeProblem(project, unit, topic, { path: cited, section }) {
  */
 function undecidedProblems(record) {
   return record.flatMap(({ ref, event, product_wide: wide }) => {
-    if (event === 'decided') return [`entry ${ref} decides, and nothing is decided in discovery — carry it as input`];
+    if (event === 'decided') return [`entry ${ref} decides, and nothing is decided in discovery — what its sources settle is a finding, what they leave open a question`];
     return wide === true ? [`entry ${ref} is product-wide, and nothing found in discovery is product-wide — a line for the product record is decided in the first topic it bears on`] : [];
   });
 }
@@ -354,7 +405,7 @@ function problemsOf(project, unit, topic, phase, record) {
   const imports = importsOf(project, unit).filter((entry) => entry.owner === topic && entry.held)
     .filter((entry) => !record.some(({ assets }) => Array.isArray(assets) && assets.some((asset) => isObject(asset) && asset.path === entry.path)))
     .map((entry) => `${entry.path} came in from ${entry.origin}, and no entry links it`);
-  const empty = record.length === 0 && logOf(project, unit, topic).trim() !== '' ? ['its record is empty, and its log is not'] : [];
+  const empty = record.length === 0 && ['log.md', 'brief.md'].some((file) => holdsText(ownOf(project, unit, topic, file))) ? ['its record is empty, and its log or brief holds text past its headings'] : [];
   const undecided = phase === 'discovery' ? undecidedProblems(record) : [];
   const narrow = unit.manifest?.work_type === 'cross-cutting' ? narrowProblems(record) : [];
   const cites = record.flatMap(({ ref, cites: given }) => {
@@ -387,6 +438,83 @@ function unitsOf(project) {
 /** What `ledger carry` kept of a topic, or null. @param {Project} project @param {Unit} unit @param {string} topic */
 const carriedOf = (project, unit, topic) => readJson(path.join(project.stateDir, CARRIED, unit.name, `${topic}.json`));
 
+/** The sections of the unit's specs the session marked as holding no topic's decision, from the state's folder. @param {string} unit */
+const sectionsMarked = (unit) => `${COMPOSED}/${unit}.sections.json`;
+
+/**
+ * A topic's record as carried or, before that, as composed: its entries,
+ * or null where it has none yet, or none that reads.
+ * @param {Project} project @param {Unit} unit @param {string} topic @returns {Record<string, any>[]|null}
+ */
+function recordOf(project, unit, topic) {
+  const carried = carriedOf(project, unit, topic);
+  if (carried !== null) return carried.record.entries;
+  try {
+    const composed = readJson(path.join(project.stateDir, COMPOSED, unit.name, `${topic}.json`));
+    return isObject(composed) && Array.isArray(composed.entries) ? composed.entries.filter(isObject) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** What the session marked of the unit's specs, by each spec's path: nothing where its file will not read. @param {Project} project @param {Unit} unit @returns {Record<string, any>} */
+function marksOf(project, unit) {
+  try {
+    return itemsOf(readJson(path.join(project.stateDir, sectionsMarked(unit.name))));
+  } catch {
+    return {};
+  }
+}
+
+/** A key of a spec's path and a name in it. @param {string} at @param {string|null} name */
+const specKey = (at, name) => `${at}\n${name ?? ''}`;
+
+/** `topic` added to those `key` holds. @param {Map<string, Set<string>>} map @param {string} key @param {Iterable<string>} topics */
+const drawnBy = (map, key, topics) => map.set(key, new Set([...(map.get(key) ?? []), ...topics]));
+
+/**
+ * The sections of a unit's approved specs holding text that none of its
+ * records cites, nor the session marked as holding no topic's decision —
+ * each with the topics drawing on it: in a joined spec, those whose part
+ * holds it, any other section the spec's every topic's — once every topic
+ * of it has a record composed or carried; none before.
+ * @param {Project} project @param {Unit} unit @returns {{path: string, section: string, topics: string[]}[]}
+ */
+function uncitedOf(project, unit) {
+  const topics = topicsOf(unit.manifest);
+  const records = topics.map((topic) => recordOf(project, unit, topic));
+  if (records.some((record) => record === null)) return [];
+  const cited = new Set(records.flatMap((record) => /** @type {Record<string, any>[]} */ (record).flatMap(({ cites }) => (Array.isArray(cites) ? cites.filter(isObject) : []))
+    .map(({ path: at, section }) => specKey(at, section))));
+  const marked = marksOf(project, unit);
+  /** @type {Map<string, Set<string>>} */
+  const bySpec = new Map();
+  /** @type {Map<string, Set<string>>} */
+  const byPart = new Map();
+  for (const topic of topics) {
+    for (const spec of specsOf(project, unit, topic).filter(({ approved }) => approved)) {
+      drawnBy(bySpec, spec.path, [topic]);
+      if (spec.part !== null) drawnBy(byPart, specKey(spec.path, spec.part), [topic]);
+    }
+  }
+  /** @type {Map<string, Set<string>>} */
+  const uncited = new Map();
+  for (const [at, drawn] of bySpec) {
+    const settled = new Set(namesOf(marked[at]));
+    for (const { section, part } of textSections(readText(path.join(project.stateDir, at)) ?? '')) {
+      if (cited.has(specKey(at, section)) || settled.has(section)) continue;
+      drawnBy(uncited, specKey(at, section), byPart.get(specKey(at, part)) ?? drawn);
+    }
+  }
+  return [...uncited].map(([key, drawn]) => {
+    const [at, section] = key.split('\n');
+    return { path: at, section, topics: [...drawn] };
+  });
+}
+
+/** What a section no record cites lacks, as the topics drawing on its spec are told it. @param {Unit} unit @param {{path: string, section: string}} uncited */
+const uncitedProblem = (unit, { path: at, section }) => `"${section}" in ${at}, an approved spec, holds text no record of ${unit.name} cites — a decision made at the spec stage is carried by the topic it belongs to; one it holds none of is marked in ${sectionsMarked(unit.name)}`;
+
 /**
  * What one topic still lacks: its record carried, each of its ids in the
  * ledger, the record keeping the rules.
@@ -407,12 +535,19 @@ module.exports = {
   check({ projectDir, stateDir }) {
     const project = projectOf(projectDir, stateDir);
     const ids = ledgerIds(stateDir);
-    return unitsOf(project).flatMap((unit) => topicsOf(unit.manifest).map((topic) => ({ name: `${unit.name}/${topic}`, problems: topicProblems(project, ids, unit, topic) })));
+    return unitsOf(project).flatMap((unit) => {
+      const uncited = uncitedOf(project, unit);
+      return topicsOf(unit.manifest).map((topic) => ({
+        name: `${unit.name}/${topic}`,
+        problems: [...topicProblems(project, ids, unit, topic), ...uncited.filter(({ topics }) => topics.includes(topic)).map((each) => uncitedProblem(unit, each))],
+      }));
+    });
   },
   /**
    * The points to raise: each question a carried record marks `raise`, on a
    * topic still live and started, of a unit not cross-cutting — its place,
-   * the question's id and its text.
+   * the topic's or, where the unit has its spec, its specification's, the
+   * question's id and its text.
    * @param {{projectDir: string, stateDir: string}} dirs
    * @returns {{place: string, answers: string, text: string}[]}
    */
@@ -422,8 +557,8 @@ module.exports = {
       const carried = carriedOf(project, unit, topic);
       if (carried === null || carried.phase === 'discovery') return [];
       const ids = new Map(carried.entries.map(({ ref, id }) => [ref, id]));
-      return carried.record.entries.filter((entry) => entry.raise === true)
-        .map((entry) => ({ place: `${unit.name}.${carried.phase}.${topic}`, answers: ids.get(entry.ref), text: entry.text }));
+      const place = hasSpec(project, unit) ? `${unit.name}.specification` : `${unit.name}.${carried.phase}.${topic}`;
+      return carried.record.entries.filter((entry) => entry.raise === true).map((entry) => ({ place, answers: ids.get(entry.ref), text: entry.text }));
     }));
   },
   briefed: BRIEFED,

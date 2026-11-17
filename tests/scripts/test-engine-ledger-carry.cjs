@@ -254,7 +254,7 @@ describe('the refusals, nothing written', () => {
     }
   });
 
-  it('an entry of no ref, a ref twice, another event, who moved whom given, a link naming no earlier entry of its kind, a map item or a thread of another shape, a point to raise that is no open question or marked otherwise, and content its write refuses', () => {
+  it('an entry of no ref, a ref twice, another event, who moved whom given, a link naming no earlier entry of its kind or given in another shape, a map item or a thread of another shape, a point to raise that is no open question or marked otherwise, and content its write refuses — the person\'s decision given other than own, a question product-wide among it', () => {
     const refused = (/** @type {unknown[]} */ entries) => mend(entries);
     const { assets: _, ...decision } = DECISION;
     assert.deepStrictEqual([
@@ -269,6 +269,8 @@ describe('the refusals, nothing written', () => {
       refused([decision, QUESTION]),
       refused([QUESTION, { ...FINDING, relies_on: [] }, { ...decision, answers: 'f1' }]),
       refused([QUESTION, { ...decision, relies_on: ['d1'] }]),
+      refused([QUESTION, { ...decision, relies_on: 'q1' }]),
+      refused([{ ...QUESTION, ref: 'q2', part_of: 1 }, QUESTION]),
       refused([{ ...QUESTION, map_item: [] }]),
       refused([{ ...QUESTION, thread: ['index-size', ''] }]),
       refused([{ ...FINDING, relies_on: [], raise: true }]),
@@ -277,6 +279,8 @@ describe('the refusals, nothing written', () => {
       refused([{ ...QUESTION, text: '' }]),
       refused([{ ...QUESTION, why: 'Because.' }]),
       refused([QUESTION, { ...decision, by: 'person' }]),
+      refused([QUESTION, { ...decision, by: 'person', given: 'your-call' }]),
+      refused([{ ...QUESTION, product_wide: false }]),
       refused([{ ...FINDING, relies_on: [], known: 'measured' }]),
     ], [
       broken('entry 1: gives no ref, the name the record links it by'),
@@ -290,27 +294,41 @@ describe('the refusals, nothing written', () => {
       broken('entry d1: answers names q1, and no entry before it is a question of that ref'),
       broken('entry d1: answers names f1, and no entry before it is a question of that ref'),
       broken('entry d1: relies_on names d1, and no entry before it is an entry of that ref'),
+      broken('entry d1: relies_on is a list of refs, each an entry\'s before it'),
+      broken('entry q2: part_of is the ref of an entry before it'),
       broken('entry q1: a map item is a name, or a list of names'),
       broken('entry q1: a thread is a name, or a list of names'),
       broken('entry f1: raise marks a question to raise, true'),
       broken('entry q1: raise marks a question to raise, true'),
       broken('entry q1: is marked to raise, and a decision of the record answers it — raise refuses a question answered already, so a point to raise is an open question'),
       broken('entry q1: the content\'s text is not non-empty text'),
-      broken('entry q1: the content has no field why — it holds by, who_moved_whom, text, cites'),
+      broken('entry q1: the content has no field why — it holds by, text, cites'),
       broken('entry d1: the person\'s decision is given carried — the person\'s own is given own, and what they hand over, or what is carried over, is Claude\'s line, by claude'),
+      broken('entry d1: the person\'s decision is given your-call — the person\'s own is given own, and what they hand over, or what is carried over, is Claude\'s line, by claude'),
+      broken('entry q1: the content has no field product_wide — it holds by, text, cites'),
       broken('entry f1: a measured finding records the command run and its result — the content needs command and result'),
     ]);
   });
 
-  it('every fault at once: each entry\'s, each check of an entry whichever others break, the entries after a broken one judged on their own, and the directive\'s rules', () => {
-    const { assets: _, map_item: __, ...decision } = DECISION;
-    const { map_item: ___, ...question } = QUESTION;
+  it('every fault at once: each entry\'s, each check of an entry whichever others break — within its content each field unknown, missing or of another type, and what it says of itself that cannot be — the entries after a broken one judged on their own, and the directive\'s rules', () => {
+    const { assets: _, map_item: __, why: ___, ...decision } = DECISION;
+    const { map_item: ____, ...question } = QUESTION;
+    const { how: _____, ...finding } = FINDING;
 
-    assert.strictEqual(mendFile({ entries: [{ ...question, ref: undefined }, { ...question, text: '', raise: 'yes' }, { ...decision, answers: 'q9', relies_on: ['q1'] }] }), broken(
+    assert.strictEqual(mendFile({ entries: [
+      { ...question, ref: undefined }, { ...question, text: '', raise: 'yes' }, { ...decision, answers: 'q9', relies_on: ['q1'], given: 'nope', rules_out: 'one' },
+      { ...finding, relies_on: [], given: 'carried', known: 'measured' },
+    ] }), broken(
       'entry 1: gives no ref, the name the record links it by',
       'entry q1: raise marks a question to raise, true',
       'entry q1: the content\'s text is not non-empty text',
       'entry d1: answers names q9, and no entry before it is a question of that ref',
+      'entry d1: the content needs why',
+      'entry d1: the content\'s rules_out is not a list of non-empty text',
+      'entry d1: the content\'s given is not one of own, your-call, dont-care, carried',
+      'entry f1: the content has no field given — it holds by, text, how, product_wide, known, command, result, cites',
+      'entry f1: the content needs how',
+      'entry f1: a measured finding records the command run and its result — the content needs command and result',
       'trial-length is on its old map, decided, and no entry names it as its map_item',
       'fumi/assets/pricing.md came in from discussion/licensing, and no entry links it',
     ));
