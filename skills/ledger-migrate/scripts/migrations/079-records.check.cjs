@@ -444,6 +444,38 @@ function threadsOf(project, unit, topic) {
 /** A file of the topic's own, or '' where it has none. @param {Project} project @param {Unit} unit @param {string} topic @param {string} file */
 const ownOf = (project, unit, topic, file) => readText(path.join(project.stateDir, unit.name, 'topics', topic, file)) ?? '';
 
+/**
+ * What a topic's brief says it is about: its first line of text past its
+ * headings, else its first heading; null where it has no brief, or one of
+ * nothing.
+ * @param {string} stateDir @param {string} unit @param {string} topic @returns {string|null}
+ */
+function subjectOf(stateDir, unit, topic) {
+  const lines = (readText(path.join(stateDir, unit, 'topics', topic, 'brief.md')) ?? '').split('\n').filter((line) => line.trim() !== '');
+  const text = lines.find((line) => HEADING.exec(line) === null) ?? HEADING.exec(lines[0] ?? '')?.[1] ?? '';
+  return text.trim() === '' ? null : text.trim();
+}
+
+/**
+ * The topics a record's discovery sessions may speak of besides its own,
+ * once each: those of each unit whose sessions it draws on, by name, each
+ * with the unit it was promoted to where it was, and its brief's subject —
+ * what a point of a shared source is judged whose by, never a source.
+ * @param {Project} project @param {Unit} unit @param {string|null} topic
+ * @returns {{topic: string, unit: string, to: string|null, subject: string|null}[]}
+ */
+function othersOf(project, unit, topic) {
+  const homes = topic === null ? [unit.name] : homesOf(project, unit, topic);
+  /** @type {Map<string, {topic: string, unit: string, to: string|null}>} */
+  const others = new Map();
+  for (const home of homes) {
+    const { manifest } = home === unit.name ? unit : unitOf(project, home);
+    const named = [...topicsOf(manifest).map((other) => ({ topic: other, to: null })), ...movedOf(manifest)];
+    for (const { topic: other, to } of named) if (other !== topic && !others.has(other)) others.set(other, { topic: other, unit: home, to });
+  }
+  return [...others.values()].sort((a, b) => (a.topic < b.topic ? -1 : 1)).map((other) => ({ ...other, subject: subjectOf(project.stateDir, other.to ?? other.unit, other.topic) }));
+}
+
 /** Whether the unit has its spec, past which a point is raised at its specification: its `spec.md`, or its specs joined. @param {Project} project @param {Unit} unit */
 const hasSpec = (project, unit) => Array.isArray(unit.manifest?.spec?.joined) || isFile(path.join(project.stateDir, unit.name, JOINED_SPEC));
 
@@ -815,7 +847,6 @@ module.exports = {
   phases: TOPIC_PHASES,
   holds,
   topicsOf,
-  movedOf,
   /**
    * What a topic's record breaks of the rules, before it is carried in
    * `phase`.
@@ -855,8 +886,9 @@ module.exports = {
    * are read in, a topic's old map, its research's threads still open and
    * its specs, the unit's imports, each with the topic owing its link — none
    * for one the unit's own record owes — and whether the state holds its
-   * file, and the discovery sessions it draws on. A unit's own, `topic`
-   * null, has no map, thread or spec.
+   * file, the discovery sessions it draws on, and the other topics those
+   * sessions may speak of (`othersOf`). A unit's own, `topic` null, has no
+   * map, thread or spec.
    * @param {{projectDir: string, stateDir: string, unit: string, topic: string|null}} at
    */
   sourcesOf({ projectDir, stateDir, unit: name, topic }) {
@@ -870,6 +902,7 @@ module.exports = {
       specs: own ? [] : specsOf(project, unit, topic),
       imports: importsOf(project, unit),
       sessions: sessionsOf(project, unit, topic),
+      others: othersOf(project, unit, topic),
     };
   },
 };

@@ -148,7 +148,6 @@ const RECORDS_DIRECTIVE = '079-records';
  *   phases: string[],
  *   holds: (manifest: Record<string, any>, phase: string, topic: string) => boolean,
  *   topicsOf: (manifest: Record<string, any>) => string[],
- *   movedOf: (manifest: Record<string, any>) => {topic: string, to: string}[],
  *   recordProblems: (at: Record<string, unknown>) => string[],
  *   unitWaits: (at: Record<string, unknown>) => string[],
  *   unverified: (at: Record<string, unknown>) => string|null,
@@ -177,7 +176,10 @@ const findingsPath = (unit, topic) => recordFile(COMPOSED, unit, topic, '.findin
 /** @param {string} unit @param {string|null} topic */
 const refusedPath = (unit, topic) => recordFile(COMPOSED, unit, topic, '.refused.md');
 
-/** Every verifier's findings before the last, each under its round. @param {string} unit @param {string|null} topic */
+/** The points the last verifier ruled are not the record's, or a later answer replaced. @param {string} unit @param {string|null} topic */
+const rulingsPath = (unit, topic) => recordFile(COMPOSED, unit, topic, '.rulings.txt');
+
+/** Every verifier's findings before the last, each under its round, its rulings with it. @param {string} unit @param {string|null} topic */
 const roundsPath = (unit, topic) => recordFile(COMPOSED, unit, topic, '.rounds.md');
 
 /** The points of the record the session settled where a verifier reversed an earlier round. @param {string} unit @param {string|null} topic */
@@ -480,9 +482,9 @@ function refuseUnsettled(cwd, place) {
   }
 }
 
-/** What was said of a topic's record beside it cleared, once it is carried: the verifier's findings and any refusal. @param {Place} place */
+/** What was said of a topic's record beside it cleared, once it is carried: the verifier's findings and rulings, and any refusal. @param {Place} place */
 function clearBeside({ root, unit, topic }) {
-  for (const rel of [findingsPath(unit, topic), refusedPath(unit, topic)]) fs.rmSync(path.join(root, rel), { force: true });
+  for (const rel of [findingsPath(unit, topic), rulingsPath(unit, topic), refusedPath(unit, topic)]) fs.rmSync(path.join(root, rel), { force: true });
 }
 
 /**
@@ -539,4 +541,4 @@ function carryRecord(cwd, args) {
   }
 }
 
-module.exports = { CARRY_VERB, CARRY_USAGE, DRY_RUN, placePath, recordName, carriedPath, composedPath, findingsPath, refusedPath, roundsPath, settledPath, topicPlace, carryRecord };
+module.exports = { CARRY_VERB, CARRY_USAGE, DRY_RUN, placePath, recordName, carriedPath, composedPath, findingsPath, rulingsPath, refusedPath, roundsPath, settledPath, topicPlace, carryRecord };

@@ -78,7 +78,7 @@ const ROLES = Object.freeze({
     records: ['topic-record', 'topic-log', 'other-records', 'product-record', 'gap-review', 'dismissed', 'report-to'],
   },
   'plain-search': { agent: 'ledger-plain-search', whose: 'the plain search\'s', records: ['knowledge-query'] },
-  'migration-topic': { agent: 'ledger-migration-topic', whose: 'the migration\'s, for one topic', records: ['migrated-topic', 'verifier-findings', 'carry-refusal', 'settled-points', 'record-check', 'directive'] },
+  'migration-topic': { agent: 'ledger-migration-topic', whose: 'the migration\'s, for one topic', records: ['migrated-topic', 'verifier-findings', 'verifier-rulings', 'carry-refusal', 'settled-points', 'record-check', 'directive'] },
   'migration-verifier': { agent: 'ledger-migration-verifier', whose: 'the migration verifier\'s', records: ['migrated-topic', 'composed-record', 'earlier-findings', 'settled-points', 'directive'] },
   'migration-phase': { agent: 'ledger-migration-topic', whose: 'the migration\'s, for one phase', records: ['migrated-phase', 'piece-findings', 'settled-piece-points', 'piece-check', 'directive'] },
   'migration-phase-verifier': { agent: 'ledger-migration-verifier', whose: 'the migration verifier\'s, for one phase', records: ['migrated-phase', 'composed-piece', 'earlier-piece-findings', 'settled-piece-points', 'directive'] },

@@ -19,6 +19,6 @@ Read every source in full, then what was composed. Hunt for what it dropped and 
 - Judge against the sources and the brief, never against what the composer might have meant.
 - Each finding names where its source shows it and what was missed or misstated, so it can be amended with it answered.
 - Wording and the composer's choices within the directive's rules are no finding.
-- Write only the findings file, the `.txt` your brief names, with the Write tool. Never run the engine and never write the ledger or the tracker.
+- Write only the findings file and the rulings file, the `.txt` files your brief names, with the Write tool. Never run the engine and never write the ledger or the tracker.
 - **The shell is for reading and searching alone:** `rg`, `find`, `ls`, `cat`, `head`, `tail`, `wc` and their like. Never run the engine, never run git, and never write, move or delete a file through it.
 - Never ask the person anything.

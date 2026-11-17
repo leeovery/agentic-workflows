@@ -719,6 +719,34 @@ describe('the directive\'s example record, frozen with 079', () => {
     assert.deepStrictEqual(['Where the ruling has the record change, replace the finding with `Settled: {point}, amend to agree`', 'Where the ruling keeps the record as it stands, take the finding out of the findings file', 'An empty findings file is only ever a pass.'].filter((rule) => !text.includes(rule)), []);
   });
 
+  it('a verifier\'s rulings are kept with its round, a reversal of one settled by the session as any, and every amend brief carries them', () => {
+    const text = fs.readFileSync(DIRECTIVE, 'utf8');
+
+    assert.deepStrictEqual([
+      'writes its findings beside it, an empty file its pass, and its rulings: each point of the sources it ruled is not this record\'s, or is replaced by a later answer, one line each, with its source.',
+      'keeps the last as a round in the rounds file beside the record, its rulings with it, and clears both',
+      'A finding that opens `Reverses round {R}:` would undo what an earlier round had the record changed to, or carry a point an earlier round\'s rulings set aside: it goes to no agent.',
+      'each brief carries the verifier\'s findings, every round\'s rulings, the carry\'s refusal and the points this session settled',
+    ].filter((rule) => !text.includes(rule)), []);
+  });
+
+  it('a point of a shared source is the record\'s of the topic whose subject it bears on, named or not, one bearing on none the unit\'s own; other topics are listed to judge by, never sources', () => {
+    const text = fs.readFileSync(DIRECTIVE, 'utf8');
+    const sources = text.slice(text.indexOf('## A Topic\'s Sources'), text.indexOf('## A Topic\'s Record'));
+
+    assert.deepStrictEqual([
+      'A point in a shared source — a discovery session, a spec several topics draw on, research that fed several topics — belongs to the record of the topic whose subject it bears on, whether or not it names the topic. A point bearing on no topic\'s subject is the unit\'s own record\'s, `{unit}.discovery`.',
+      'and the unit\'s other topics, each with its brief\'s subject, to judge whose a point is by: they are not sources. Each record is carried from its own sources alone, never another topic\'s log, brief or record',
+    ].filter((rule) => !sources.includes(rule)), []);
+  });
+
+  it('product-wide is stated once, in the record\'s shape, with an example of what is and what is not', () => {
+    const text = fs.readFileSync(DIRECTIVE, 'utf8');
+    const shape = text.slice(text.indexOf('### Its Shape'), text.indexOf('## Working Through the Topics'));
+
+    assert.deepStrictEqual([text.split('holds across the whole product').length - 1, shape.includes('- **`product_wide`**: `true` where the entry holds across the whole product — every command, every screen, every output — not only this topic\'s part of it'), shape.includes('A CLI\'s exit codes, its error stream and its global flags are product-wide; one command\'s options are not.'), text.includes('**Product-wide.**')], [1, true, true, false]);
+  });
+
   it('a section no record cites goes to the topic it belongs to where it holds a decision, a finding or an open question, and a unit\'s topics are carried once its records are passed and its sections settled', () => {
     const text = fs.readFileSync(DIRECTIVE, 'utf8');
 

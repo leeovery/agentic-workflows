@@ -38,7 +38,7 @@ const { ok, refuses, git, statePath, layout, writeState, readState, cleanupFixtu
 const { SESSION, recordsMigration, stateUnborn, refusedUntouched, refusedKeeping } = require('./migration-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
-const { carriedPath, composedPath, findingsPath, refusedPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
+const { carriedPath, composedPath, findingsPath, rulingsPath, refusedPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
 
 const LICENSING = 'fumi.discussion.licensing';
 const QUESTION = { ref: 'q1', event: 'asked', text: 'How long is the trial?', by: 'person', map_item: 'trial-length', cites: [{ path: 'fumi/topics/licensing/log.md', section: 'Trial Length' }] };
@@ -161,12 +161,13 @@ describe('a topic\'s record carried (21.6, 21.10.9)', () => {
     ]);
   });
 
-  it('the verifier\'s pass and a refusal beside the record, cleared once it is carried', () => {
+  it('the verifier\'s pass, its rulings and a refusal beside the record, cleared once it is carried', () => {
     writeState(dir, refusedPath('fumi', 'licensing'), 'ledger carry: refused.\n');
+    writeState(dir, rulingsPath('fumi', 'licensing'), '- The session\'s pricing is not this record\'s: fumi/discovery/session-001.md "Pricing".\n');
 
     carry(LICENSING, [QUESTION, DECISION]);
 
-    assert.deepStrictEqual([findingsPath('fumi', 'licensing'), refusedPath('fumi', 'licensing')].map((rel) => fs.existsSync(statePath(dir, rel))), [false, false]);
+    assert.deepStrictEqual([findingsPath('fumi', 'licensing'), rulingsPath('fumi', 'licensing'), refusedPath('fumi', 'licensing')].map((rel) => fs.existsSync(statePath(dir, rel))), [false, false, false]);
   });
 
   it('outside the migration: once the state branch has its first commit, refused, nothing written', () => {
