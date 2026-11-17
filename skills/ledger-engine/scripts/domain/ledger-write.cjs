@@ -1022,40 +1022,54 @@ function replacedEntry(said, at, given, read) {
 }
 
 /**
- * The content the write's event holds, from what stdin gave: for a
- * replacement in the shape of the entry it replaces, each field typed as its
- * schema names, one left out taking its default — for a replacement's
- * product-wide mark, the replaced entry's. Refuses, in the words of
- * `said`, the command asking, a link, a field the engine gives, a field the
- * event does not hold, and a field it needs that is missing.
- * @param {string} said @param {Write} write @param {Record<string, unknown>} given @param {IdFacts|null} replaced
- * @returns {Record<string, unknown>}
+ * The content the write's event holds, from what stdin gave, and every
+ * fault of it, in the words of `said`, the command asking: for a
+ * replacement in the shape of the entry it replaces, each field typed as
+ * its schema names, one left out taking its default — for a replacement's
+ * product-wide mark, the replaced entry's. A fault is a link, a field the
+ * engine gives, a field the event does not hold — the fields it does
+ * named, but those its caller supplies itself, `supplied` — a field it
+ * needs that is missing, and one of another type; the content holds every
+ * field but those.
+ * @param {string} said @param {Write} write @param {Record<string, unknown>} given @param {IdFacts|null} replaced @param {string[]} [supplied]
+ * @returns {{content: Record<string, unknown>, faults: string[]}}
  */
-function contentFields(said, write, given, replaced) {
+function contentFaults(said, write, given, replaced, supplied = []) {
   const fields = eventFields(write.event, replaced === null ? null : replaced.kind).filter((f) => !FLAG_FIELDS.has(f.name) && !ENGINE_FIELDS.has(f.name));
   const defaults = replaced === null || replaced.product_wide === null ? DEFAULTS : { ...DEFAULTS, product_wide: replaced.product_wide };
-  for (const key of Object.keys(given)) {
+  const held = fields.map((f) => f.name).filter((name) => !supplied.includes(name)).join(', ');
+  const faults = Object.keys(given).flatMap((key) => {
     if (FLAG_FIELDS.has(key)) {
       const flag = write.flags.find((f) => f.field === key);
-      throw new Error(`${said}: the content carries ${key}, a link — a link is given as a flag${flag ? ` (${flagName(flag)})` : ''}, never in the content`);
+      return [`${said}: the content carries ${key}, a link — a link is given as a flag${flag ? ` (${flagName(flag)})` : ''}, never in the content`];
     }
-    if (ENGINE_FIELDS.has(key)) throw new Error(`${said}: the content carries ${key}, which the engine gives`);
-    if (!fields.some((f) => f.name === key)) {
-      throw new Error(`${said}: the content has no field ${key} — it holds ${fields.map((f) => f.name).join(', ')}`);
-    }
-  }
+    if (ENGINE_FIELDS.has(key)) return [`${said}: the content carries ${key}, which the engine gives`];
+    return fields.some((f) => f.name === key) ? [] : [`${said}: the content has no field ${key} — it holds ${held}`];
+  });
   /** @type {Record<string, unknown>} */
   const content = {};
   for (const { name, type } of fields) {
     if (!Object.hasOwn(given, name)) {
-      if (!Object.hasOwn(defaults, name)) throw new Error(`${said}: the content needs ${name}`);
-      content[name] = structuredClone(defaults[name]);
+      if (Object.hasOwn(defaults, name)) content[name] = structuredClone(defaults[name]);
+      else faults.push(`${said}: the content needs ${name}`);
     } else if (!type.test(given[name])) {
-      throw new Error(`${said}: the content's ${name} is not ${type.is}`);
+      faults.push(`${said}: the content's ${name} is not ${type.is}`);
     } else {
       content[name] = given[name];
     }
   }
+  return { content, faults };
+}
+
+/**
+ * The content the write's event holds (`contentFaults`), refused, in the
+ * words of `said`, the command asking, at its first fault.
+ * @param {string} said @param {Write} write @param {Record<string, unknown>} given @param {IdFacts|null} replaced
+ * @returns {Record<string, unknown>}
+ */
+function contentFields(said, write, given, replaced) {
+  const { content, faults } = contentFaults(said, write, given, replaced);
+  if (faults.length > 0) throw new Error(faults[0]);
   return content;
 }
 
@@ -1089,23 +1103,38 @@ function trustEventOf(kind, content, reason, replaced) {
 }
 
 /**
- * Refuse, in the words of `said`, the command asking, content that says
- * of itself what cannot be: the person's decision given as anything but
- * their own, a finding saying no kind, a measurement — measured or
+ * Every fault, in the words of `said`, the command asking, of content that
+ * says of itself what cannot be: the person's decision given as anything
+ * but their own, a finding saying no kind, a measurement — measured or
  * exploratory — with no command run or no result, and a command or a
- * result without the other.
+ * result without the other. Each is judged on the fields the content holds,
+ * a field of another type left out of it, which its own fault names.
+ * @param {string} said @param {EntryKind|null} kind @param {Record<string, unknown>} content
+ * @returns {string[]}
+ */
+function saidFaults(said, kind, content) {
+  const holds = (/** @type {string[]} */ ...names) => names.every((name) => Object.hasOwn(content, name));
+  const { by, given, known, command, result } = content;
+  if (kind === 'decision') {
+    return holds('by', 'given') && by === 'person' && given !== 'own' ? [`${said}: the person's decision is given ${given} — the person's own is given own, and what they hand over, or what is carried over, is Claude's line, by claude`] : [];
+  }
+  if (kind !== 'finding' || !holds('known')) return [];
+  if (known === null) return [`${said}: the content's known is null — a finding written now says how it is known`];
+  if (!holds('command', 'result')) return [];
+  if (MEASURED.includes(/** @type {string} */ (known)) && command === null) {
+    return [`${said}: ${known === 'exploratory' ? 'an exploratory' : 'a measured'} finding records the command run and its result — the content needs command and result`];
+  }
+  return (command === null) !== (result === null) ? [`${said}: a finding's command comes with its result — the content gives ${command === null ? 'a result and no command' : 'a command and no result'}`] : [];
+}
+
+/**
+ * Refuse, in the words of `said`, the command asking, content that says
+ * of itself what cannot be (`saidFaults`).
  * @param {string} said @param {EntryKind|null} kind @param {Record<string, unknown>} content
  */
-function checkSaid(said, kind, { by, given, known, command, result }) {
-  if (kind === 'decision' && by === 'person' && given !== 'own') {
-    throw new Error(`${said}: the person's decision is given ${given} — the person's own is given own, and what they hand over, or what is carried over, is Claude's line, by claude`);
-  }
-  if (kind !== 'finding') return;
-  if (known === null) throw new Error(`${said}: the content's known is null — a finding written now says how it is known`);
-  if (MEASURED.includes(/** @type {string} */ (known)) && command === null) {
-    throw new Error(`${said}: ${known === 'exploratory' ? 'an exploratory' : 'a measured'} finding records the command run and its result — the content needs command and result`);
-  }
-  if ((command === null) !== (result === null)) throw new Error(`${said}: a finding's command comes with its result — the content gives ${command === null ? 'a result and no command' : 'a command and no result'}`);
+function checkSaid(said, kind, content) {
+  const [fault] = saidFaults(said, kind, content);
+  if (fault !== undefined) throw new Error(fault);
 }
 
 /**
@@ -1134,16 +1163,22 @@ function checkCarried(said, at, kind, { given }) {
 }
 
 /**
- * Refuse, in the words of `said`, the command asking, the person's entry
- * carrying Claude's sealed answer: the person's answer to Claude's lean is
- * a raise's (raise.cjs), which sealed the lean before they answered and
- * logs the answer beside its entry.
+ * The fault, in the words of `said`, the command asking, of the person's
+ * entry carrying Claude's sealed answer: the person's answer to Claude's
+ * lean is a raise's (raise.cjs), which sealed the lean before they answered
+ * and logs the answer beside its entry.
  * @param {string} said @param {Record<string, unknown>} content
+ * @returns {string[]}
  */
-function checkUnsealed(said, { by, sealed }) {
-  if (by === 'person' && sealed !== undefined && sealed !== null) {
-    throw new Error(`${said}: the person's entry carries sealed, Claude's lean — the person's answer to Claude's lean is recorded by raise answer, against the lean its raise sealed`);
-  }
+function unsealedFaults(said, { by, sealed }) {
+  return by === 'person' && sealed !== undefined && sealed !== null
+    ? [`${said}: the person's entry carries sealed, Claude's lean — the person's answer to Claude's lean is recorded by raise answer, against the lean its raise sealed`] : [];
+}
+
+/** Refuse, in the words of `said`, the command asking, the person's entry carrying Claude's sealed answer (`unsealedFaults`). @param {string} said @param {Record<string, unknown>} content */
+function checkUnsealed(said, content) {
+  const [fault] = unsealedFaults(said, content);
+  if (fault !== undefined) throw new Error(fault);
 }
 
 /** The link naming the question an event closes, by the event. @type {Readonly<Record<string, string>>} */
@@ -1523,5 +1558,5 @@ function landRaised(cwd, raised, warnings) {
 }
 
 module.exports = {
-  LEDGER_USAGE, WRITE_VERBS: Object.keys(WRITES), WRITES, writeLedger, ledgerMessage, verbUsage, writePlaced, landRaised, checkRaised, callLogged, staleness, phasesOf, contentFields, decisionGiven, checkSaid, checkUnsealed,
+  LEDGER_USAGE, WRITE_VERBS: Object.keys(WRITES), WRITES, writeLedger, ledgerMessage, verbUsage, writePlaced, landRaised, checkRaised, callLogged, staleness, phasesOf, contentFaults, decisionGiven, saidFaults, unsealedFaults,
 };

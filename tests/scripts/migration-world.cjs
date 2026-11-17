@@ -89,7 +89,7 @@ const MOVED_UNIT = {
 // them, and the code migration after the reshape, which never runs in it.
 const RECORDED = ['090', '091', '092', '093', '094'];
 const MOVE = require(path.join(path.dirname(RUNNER), 'migrations/078-reshape-move.cjs'));
-const { composedPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
+const { composedPath, findingsPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
 
 /** @type {(ReturnType<typeof harness.harness> & {path: string, migrations: string})|null} */
 let engine = null;
@@ -617,11 +617,11 @@ const cutLogCite = (unit, topic, section) => ({ path: layout.topic(unit, topic, 
 const CUT_RECORDS = Object.freeze({
   'gateway.discussion.auth': [
     { ref: 'q1', event: 'asked', text: 'How do clients authenticate?', by: 'claude', cites: [cutLogCite('gateway', 'auth', 'Tokens')] },
-    { ref: 'd1', event: 'decided', answers: 'q1', text: 'Bearer tokens.', why: 'The log settles it.', by: 'claude', given: 'carried', cites: [cutLogCite('gateway', 'auth', 'Tokens')] },
+    { ref: 'd1', event: 'decided', answers: 'q1', text: 'Bearer tokens on every call.', why: 'The approved spec settles it.', by: 'claude', given: 'carried', cites: [cutLogCite('gateway', 'auth', 'Tokens'), { path: layout.assets('gateway', 'specs', 'auth.md'), section: 'Tokens' }] },
   ],
   'gateway.discussion.limits': [
     { ref: 'q1', event: 'asked', text: 'How many calls a minute?', by: 'claude', cites: [cutLogCite('gateway', 'limits', 'Rate')] },
-    { ref: 'd1', event: 'decided', answers: 'q1', text: 'A hundred.', why: 'The log settles it.', by: 'claude', given: 'carried', cites: [cutLogCite('gateway', 'limits', 'Rate')] },
+    { ref: 'd1', event: 'decided', answers: 'q1', text: 'A hundred.', why: 'The log and the approved spec settle it.', by: 'claude', given: 'carried', cites: [cutLogCite('gateway', 'limits', 'Rate'), { path: layout.assets('gateway', 'specs', 'limits.md'), section: 'Rate' }] },
   ],
   'gateway.discussion.errors': [
     { ref: 'q1', event: 'asked', text: 'What shape is an error?', by: 'claude', cites: [cutLogCite('gateway', 'errors', 'Shape')] },
@@ -668,8 +668,9 @@ function buildCut(dir) {
   for (const [place, entries] of Object.entries(CUT_RECORDS)) {
     const [unit, , topic] = place.split('.');
     createFile(statePath(dir), composedPath(unit, topic), JSON.stringify({ entries }));
-    harness.ok(dir, ['ledger', 'carry', place], { env: SESSION });
+    createFile(statePath(dir), findingsPath(unit, topic), '');
   }
+  for (const place of Object.keys(CUT_RECORDS)) harness.ok(dir, ['ledger', 'carry', place], { env: SESSION });
 }
 
 /** @type {string|null} */

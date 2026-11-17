@@ -14,7 +14,8 @@
 // product leaves. `oldProject` makes
 // it; `migrateWhole` takes it through the whole sequence as the start skill
 // runs it, boot by boot: the guard and the chain to the records directive,
-// whose work is scripted — each topic's record the fixture's, carried —
+// whose work is scripted — each topic's record the fixture's, checked by
+// the carry's dry run, then carried —
 // then the cut and the merges', scripted too — the cross-cutting unit
 // retired, the feature's phase still to build composed and joined into its
 // cut — then the finish, the review's summary and gate, and the yes's
@@ -40,7 +41,7 @@ const { listOld } = require('./migration-audit.cjs');
 
 const SCRIPTS = path.dirname(harness.ENGINE);
 const { jsonText } = require(path.join(SCRIPTS, 'kernel/manifest-io.cjs'));
-const { composedPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
+const { composedPath, findingsPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
 
 const PROJECT = 'fumi';
 const LISTING = 'old-state.json';
@@ -91,6 +92,7 @@ function oldFiles(plan, idOf) {
     }),
     '.workflows/gateway/discussion/auth.md': doc('Discussion: Auth', { Tokens: 'Bearer tokens, as the [old RFC](../research/rfc.md) had it. The flow is drawn at ../imports/flow.png.' }),
     '.workflows/gateway/imports/flow.png': 'PNG the token flow',
+    '.workflows/gateway/discovery/sessions/session-001.md': doc('Discovery Session 001', { Clients: 'The gateway serves partners alone, each through its own key.' }),
     '.workflows/gateway/discussion/errors.md': doc('Discussion: Errors', { Shape: 'Still open.' }),
     '.workflows/gateway/discussion/limits.md': doc('Discussion: Limits', { Burst: 'Cancelled: the gateway sets no limits.' }),
     '.workflows/gateway/discussion/.mailbox/limits/001-burst.md': 'Burst\n\n*From: errors · discussion · 2026-01-05*\n\nMay a client burst past the limit?\n',
@@ -123,8 +125,8 @@ function oldFiles(plan, idOf) {
     }),
     '.workflows/shop/discussion/cart.md': doc('Discussion: Cart', { Adding: 'One tap.' }),
     '.workflows/shop/discussion/pay.md': doc('Discussion: Pay', { Cards: 'Visa and more.' }),
-    '.workflows/shop/specification/cart/specification.md': doc('Specification: Cart', { Adding: 'One tap adds an item.' }),
-    '.workflows/shop/specification/pay/specification.md': doc('Specification: Pay', { Cards: 'Visa and more are taken.' }),
+    '.workflows/shop/specification/cart/specification.md': doc('Specification: Cart', { Adding: 'One tap adds an item.', Notes: 'The cart keeps items a week.' }),
+    '.workflows/shop/specification/pay/specification.md': `---\ntopic: pay\nstatus: concluded\n---\n\n${doc('Specification: Pay', { Cards: 'Visa and more are taken.', Notes: 'See the plan.' })}`,
     '.workflows/shop/implementation/cart/report.md': doc('Build report: Cart', { Built: 'Every task landed.' }),
     '.workflows/exports/manifest.json': jsonText({
       name: 'exports', work_type: 'feature', status: 'cancelled', description: 'Exports', created: '2026-01-05',
@@ -158,7 +160,10 @@ function oldProject(folder) {
 /** @param {string} unit @param {string} topic @param {string} section */
 const logCite = (unit, topic, section) => ({ path: layout.topic(unit, topic, 'log.md'), section });
 
-// Each topic's record, as the records directive's agents would compose it.
+/** A section of the spec the unit's building drew on, joined. @param {string} unit @param {string} section */
+const specCite = (unit, section) => ({ path: `${unit}/spec.md`, section });
+
+// Each record, a topic's or a unit's own, as the records directive's agents would compose it.
 const RECORDS_COMPOSED = Object.freeze({
   'gateway.discussion.auth': AUTH_MAP.flatMap((item, at) => [
     { ref: `q${at + 1}`, event: 'asked', text: `How does the gateway settle ${item}?`, by: 'claude', map_item: item, cites: [logCite('gateway', 'auth', 'Tokens')] },
@@ -168,21 +173,26 @@ const RECORDS_COMPOSED = Object.freeze({
   'gateway.discussion.limits': [{ ref: 'q1', event: 'asked', text: 'Does the gateway limit calls?', by: 'claude', cites: [logCite('gateway', 'limits', 'Burst')] }],
   'caching.discussion.invalidation': [
     { ref: 'q1', event: 'asked', text: 'When is a cached key purged?', by: 'claude', cites: [logCite('caching', 'invalidation', 'Purging')] },
-    { ref: 'd1', event: 'decided', answers: 'q1', text: 'Every write purges its keys.', why: 'The log settles it.', by: 'claude', given: 'carried', product_wide: true, cites: [logCite('caching', 'invalidation', 'Purging')] },
+    { ref: 'd1', event: 'decided', answers: 'q1', text: 'Every write purges its keys.', why: 'The log and the spec settle it.', by: 'claude', given: 'carried', product_wide: true, cites: [logCite('caching', 'invalidation', 'Purging'), { path: 'caching/assets/specs/caching.md', section: 'Invalidation' }] },
   ],
   'memo.discussion.memo': [
     { ref: 'q1', event: 'asked', text: 'How long is a memo?', by: 'claude', cites: [logCite('memo', 'memo', 'Writing')] },
-    { ref: 'd1', event: 'decided', answers: 'q1', text: 'One line.', why: 'The log settles it.', by: 'claude', given: 'carried', cites: [logCite('memo', 'memo', 'Writing')] },
+    { ref: 'd1', event: 'decided', answers: 'q1', text: 'One line.', why: 'The approved spec settles it.', by: 'claude', given: 'carried', cites: [logCite('memo', 'memo', 'Writing'), specCite('memo', 'Writing')] },
+    { ref: 'q2', event: 'asked', text: 'How is a memo shared?', by: 'claude', cites: [specCite('memo', 'Sharing')] },
+    { ref: 'd2', event: 'decided', answers: 'q2', text: 'By link.', why: 'Decided at the spec stage.', by: 'claude', given: 'carried', cites: [specCite('memo', 'Sharing')] },
   ],
   'shop.discussion.cart': [
     { ref: 'q1', event: 'asked', text: 'How is an item added?', by: 'claude', cites: [logCite('shop', 'cart', 'Adding')] },
-    { ref: 'd1', event: 'decided', answers: 'q1', text: 'One tap.', why: 'The log settles it.', by: 'claude', given: 'carried', cites: [logCite('shop', 'cart', 'Adding')] },
+    { ref: 'd1', event: 'decided', answers: 'q1', text: 'One tap.', why: 'The log settles it.', by: 'claude', given: 'carried', cites: [logCite('shop', 'cart', 'Adding'), specCite('shop', 'Adding')] },
+    { ref: 'q2', event: 'asked', text: 'How long does the cart keep items?', by: 'claude', cites: [specCite('shop', 'Notes')] },
+    { ref: 'd2', event: 'decided', answers: 'q2', text: 'A week.', why: 'Decided at the spec stage.', by: 'claude', given: 'carried', cites: [specCite('shop', 'Notes')] },
   ],
   'shop.discussion.pay': [
     { ref: 'q1', event: 'asked', text: 'Which cards are taken?', by: 'claude', cites: [logCite('shop', 'pay', 'Cards')] },
-    { ref: 'd1', event: 'decided', answers: 'q1', text: 'Visa and more.', why: 'The log settles it.', by: 'claude', given: 'carried', cites: [logCite('shop', 'pay', 'Cards')] },
+    { ref: 'd1', event: 'decided', answers: 'q1', text: 'Visa and more.', why: 'The log settles it.', by: 'claude', given: 'carried', cites: [logCite('shop', 'pay', 'Cards'), specCite('shop', 'Cards')] },
   ],
   'exports.discussion.exports': [{ ref: 'q1', event: 'asked', text: 'What format do exports take?', by: 'claude', cites: [logCite('exports', 'exports', 'Format')] }],
+  'gateway.discovery': [{ ref: 'f1', event: 'found', text: 'The gateway serves partners alone.', how: 'read in the discovery session', known: 'read', by: 'claude', cites: [{ path: 'gateway/discovery/session-001.md', section: 'Clients' }] }],
 });
 
 // The feature's phase still to build, as the cut and the merges' per-phase agent would compose it.
@@ -204,11 +214,26 @@ function workDirective(dir, env, directive) {
   if (directive === RECORDS) {
     const { unfinished } = harness.ok(dir, ['migrate', 'check', RECORDS], opts);
     assert.deepStrictEqual(unfinished.map(({ name }) => name).sort(), Object.keys(RECORDS_COMPOSED).map((place) => place.replace('.discussion.', '/')).sort(), 'the records\' check names each topic');
-    for (const [place, entries] of Object.entries(RECORDS_COMPOSED)) {
-      const [unit, , topic] = place.split('.');
+    const compose = (/** @type {string} */ place, /** @type {unknown[]} */ entries) => {
+      const [unit, , topic = null] = place.split('.');
       writeState(dir, composedPath(unit, topic), JSON.stringify({ entries }));
-      harness.ok(dir, ['ledger', 'carry', place], opts);
-    }
+      assert.deepStrictEqual(harness.ok(dir, ['ledger', 'carry', place, '--dry-run'], opts).faults, [], `${place}'s record keeps the rules`);
+      writeState(dir, findingsPath(unit, topic), '');
+    };
+    const cart = RECORDS_COMPOSED['shop.discussion.cart'];
+    for (const [place, entries] of Object.entries(RECORDS_COMPOSED)) compose(place, place === 'shop.discussion.pay' ? entries.map(({ cites, ...entry }) => ({ ...entry, cites: cites.slice(0, 1) })) : entries);
+    /** Each section of shop's spec the check names on a topic of it, as `{section} in {part}`. @param {string} name */
+    const uncited = (name) => harness.ok(dir, ['migrate', 'check', RECORDS], opts).unfinished.find((piece) => piece.name === name)?.problems
+      .flatMap((problem) => /^"(.+?)" in part "(.+?)" of shop\/spec\.md, an approved spec/.exec(problem)?.slice(1).join(' in ') ?? []);
+    const cited = [uncited('shop/cart'), uncited('shop/pay')];
+    compose('shop.discussion.cart', cart.filter(({ ref }) => !['q2', 'd2'].includes(ref)));
+    writeState(dir, '.cache/migrate/records/shop.sections.json', JSON.stringify({ 'shop/spec.md': { '2. Pay': ['Notes'] } }));
+    const marked = [uncited('shop/cart'), uncited('shop/pay')];
+    assert.deepStrictEqual([cited, marked], [[[], ['Cards in 2. Pay', 'Notes in 2. Pay']], [['Notes in 1. Cart'], ['Cards in 2. Pay']]],
+      'a joined spec\'s section is named on the topic whose part holds it, a part\'s front matter holding none of its text: a cite counts in its topic\'s part alone, and a mark in its own');
+    compose('shop.discussion.cart', cart);
+    compose('shop.discussion.pay', RECORDS_COMPOSED['shop.discussion.pay']);
+    for (const place of Object.keys(RECORDS_COMPOSED)) harness.ok(dir, ['ledger', 'carry', place], opts);
   } else {
     harness.ok(dir, ['workunit', 'retire', 'caching'], opts);
     writeState(dir, layout.cache('migrate', 'cut-and-merges', 'memo', 'phases', '2.json'), JSON.stringify(SHARING_PIECE));
@@ -216,7 +241,8 @@ function workDirective(dir, env, directive) {
     const { plan } = harness.ok(dir, ['migrate', 'join', 'memo', '--directive', CUT_AND_MERGES], opts);
     harness.ok(dir, ['cut', 'memo', '--migrating', '--file', plan], opts);
   }
-  assert.strictEqual(harness.ok(dir, ['migrate', 'check', directive], opts).passed, true, `${directive}'s check passes`);
+  const checked = harness.ok(dir, ['migrate', 'check', directive], opts);
+  assert.strictEqual(checked.passed, true, `${directive}'s check passes — ${JSON.stringify(checked.unfinished)}`);
   harness.ok(dir, ['checklist', 'close', 'directive', directive], opts);
 }
 

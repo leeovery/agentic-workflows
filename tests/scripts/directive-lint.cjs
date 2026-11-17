@@ -8,11 +8,13 @@
 // beneath it — and its check sits beside it, `NNN-{slug}.check.cjs`,
 // exporting the check's shape as the engine reads it (`isCheck`). It names
 // no model and no effort: an agent it dispatches fixes its own in its
-// definition (21.10.5).
+// definition (21.10.5). Each section its check names `briefed`, which its
+// agents' briefs draw, is a heading it holds, and none calls the engine:
+// those calls are the session's.
 
 const fs = require('fs');
 const path = require('path');
-const { isCheck } = require('../../skills/ledger-engine/scripts/domain/directives.cjs');
+const { isCheck, briefedSections } = require('../../skills/ledger-engine/scripts/domain/directives.cjs');
 
 const HEAD = ['Touches', 'Asks'];
 
@@ -48,6 +50,25 @@ function modelProblems(text) {
   return named === null ? [] : [`it names "${named[0]}" — an agent's model and effort are its definition's`];
 }
 
+/** How a directive's command calls the engine. */
+const ENGINE_CALL = 'ledger-engine/scripts/engine.cjs';
+
+/**
+ * What the sections a directive's check names `briefed` lack, one sentence
+ * each: none where it names none; a heading the directive lacks; a section
+ * calling the engine, the session's work.
+ * @param {string} text @param {unknown} briefed @returns {string[]}
+ */
+function briefedProblems(text, briefed) {
+  if (briefed === undefined) return [];
+  try {
+    return briefedSections('the directive', text, briefed).filter((lines) => lines.some((line) => line.includes(ENGINE_CALL)))
+      .map(([heading]) => `its section ${heading.replace(/^#+ /, '')}, which its agents' briefs draw, calls the engine — the session's work`);
+  } catch (err) {
+    return [/** @type {Error} */ (err).message];
+  }
+}
+
 /**
  * Every problem of every directive in a migrations folder, each named by
  * its file: its head, and its check beside it.
@@ -62,8 +83,9 @@ function lintDirectives(folder) {
     const problems = [...headProblems(text), ...modelProblems(text)];
     if (!fs.existsSync(check)) problems.push('no check sits beside it');
     else if (!isCheck(require(check))) problems.push('its check exports no check() beside what it counts');
+    else problems.push(...briefedProblems(text, require(check).briefed));
     return problems.map((problem) => `${name}: ${problem}`);
   });
 }
 
-module.exports = { headProblems, modelProblems, lintDirectives };
+module.exports = { headProblems, modelProblems, briefedProblems, lintDirectives };

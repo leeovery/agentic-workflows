@@ -302,6 +302,7 @@ ${Object.values(MAP_USAGE).map((usage) => `  ${usage}`).join('\n')}
   task type <work-unit> <task> <type>
   task close-plan <work-unit> --parent <tracker-id>
   task link <work-unit> <task> --after <task>
+  task unlink <work-unit> <task> --after <task> --file <plan.json>
   task ready <work-unit> [<N>]
   task start <work-unit> <task>
   task done <work-unit> <task>

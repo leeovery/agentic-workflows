@@ -25,7 +25,7 @@
 // plan's topic and number (21.8.6). A verifier reads each
 // piece and writes its findings beside it, `phases/{N}.findings.txt`: an
 // empty file is the pass, one holding findings sends the piece back to be
-// composed again, and no file means the piece was never verified.
+// amended, and no file means the piece was never verified.
 //
 // `migrate join <unit> --directive <id>` joins the pieces into the unit's
 // plan, `plan.json`, as the cut takes it (cut-migrating.cjs): the phases in
@@ -35,13 +35,21 @@
 // refuses, naming every fault and writing nothing: a unit no building
 // unit; a phase whose piece is missing, will not read or is of another
 // shape — a phase still to build with no `relies_on` or no scenario, a
-// built one with either, a section `spec.md` lacks, a correction the cut
-// would refuse (cut-migrating.cjs, `correctionFaults`), each named by its
-// phase; a piece its verifier has not passed, or whose findings stand; and
-// a phase still to build of a plan that depends on another plan's phase
-// still to build, relying on nothing that names it — the old dependency
-// named, and both phases. It answers the plan's path from the project's
-// folder, as `cut --migrating --file` reads it.
+// built one with either, a section `spec.md` lacks, a note or a correction
+// the cut would refuse (cut-migrating.cjs, `noteFaults`, `correctionFaults`),
+// each named by its phase; a piece its verifier has not passed, or whose
+// findings stand; and a phase still to build of a plan that depends on
+// another plan's phase still to build, relying on nothing that names it —
+// the old dependency named, and both phases. It answers the plan's path
+// from the project's folder, as `cut --migrating --file` reads it.
+//
+// `migrate join <unit> --directive <id> --phase <N> --dry-run` answers the
+// faults of that phase's piece alone, as the join would name them, and
+// writes nothing: the per-phase agent checks its piece with it before
+// handing back. A phase it relies on counts as still to build unless the
+// join writes it or its piece reads built; its verifier's verdict is the
+// join's own, met there. It refuses a phase the cut lacks, one the
+// join writes itself, and a piece that will not read.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -52,8 +60,9 @@ const { codeRoot } = require('../kernel/code-root.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { ENDED, STATUS_WORDS, adoptionRead } = require('./task-verbs.cjs');
 const { loadCheck } = require('./directives.cjs');
-const { correctionFaults } = require('./cut-migrating.cjs');
+const { noteFaults, correctionFaults } = require('./cut-migrating.cjs');
 const { SPEC_FILE, readSpec, specSections } = require('./spec-sections.cjs');
+const { DRY_RUN } = require('./ledger-carry.cjs');
 
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
 
@@ -81,7 +90,7 @@ const { SPEC_FILE, readSpec, specSections } = require('./spec-sections.cjs');
 const PIECE_KEYS = Object.freeze(['phase', 'scenarios', 'notes', 'corrections']);
 const ENTRY_KEYS = Object.freeze(['name', 'goal', 'sections', 'relies_on', 'built']);
 const PIECE_SHAPE = '{"phase": {"name", "goal", "sections", "relies_on"}, "scenarios": ["<text>", …], "notes": [], "corrections": []}, or for a phase found built {"phase": {"name", "goal", "sections", "built": true}, "scenarios": [], …}';
-const USAGE = 'migrate join <work-unit> --directive <id>';
+const USAGE = `migrate join <work-unit> --directive <id> [--phase <N> ${DRY_RUN}]`;
 
 /** @param {unknown} text */
 const isLine = (text) => typeof text === 'string' && text.trim() !== '' && !/[\r\n]/.test(text);
@@ -229,8 +238,19 @@ function oldReliances(phases) {
 /** The unit's staging, from the state's folder. @param {UnitSources} sources @param {string} name */
 const staged = (sources, name) => `${sources.staging}/${name}`;
 
-/** Where a phase's piece goes, and the verifier's findings on it, from the state's folder. @param {UnitSources} sources @param {number} number */
-const piecePaths = (sources, number) => ({ piece: staged(sources, `phases/${number}.json`), findings: staged(sources, `phases/${number}.findings.txt`) });
+/**
+ * Where a phase's piece goes, from the state's folder, and beside it the
+ * last verifier's findings on it, every verifier's before the last, and the
+ * points of it the session settled where a verifier reversed an earlier
+ * round.
+ * @param {UnitSources} sources @param {number} number
+ */
+const piecePaths = (sources, number) => ({
+  piece: staged(sources, `phases/${number}.json`),
+  findings: staged(sources, `phases/${number}.findings.txt`),
+  rounds: staged(sources, `phases/${number}.rounds.md`),
+  settled: staged(sources, `phases/${number}.settled.md`),
+});
 
 /**
  * The faults of a phase's piece, read from its file, against the spec's
@@ -255,7 +275,7 @@ function pieceFaults(phase, piece, sections, phases) {
     ...(built && ('relies_on' in entry || (Array.isArray(scenarios) && scenarios.length > 0)) ? [`${which} marks it built and gives it ${'relies_on' in entry ? '"relies_on"' : 'scenarios'} — a phase found built places no scenario and relies on nothing`] : []),
     ...(!built && !Array.isArray(entry.relies_on) ? [`${which} gives no "relies_on" — a phase still to build names what it relies on, [] for nothing`] : []),
     ...(!built && (!isLines(scenarios) || scenarios.length === 0) ? [`${which} gives no scenario of one line — a phase still to build places its scenarios`] : []),
-    ...(isLines(notes) ? [] : [`${which}'s notes are not lines of text`]),
+    ...(Array.isArray(notes) ? noteFaults(notes).map((fault) => `${which}: ${fault}`) : [`${which}'s notes are not a list`]),
     ...(Array.isArray(corrections) ? correctionFaults(corrections, tracked).map((fault) => `${which}: ${fault}`) : [`${which}'s corrections are not a list`]),
   ];
 }
@@ -277,6 +297,32 @@ function verifiedFaults(root, sources, phase) {
 const specAddresses = (cwd, unit) => new Set(specSections(readSpec(cwd, unit)).keys());
 
 /**
+ * A phase's piece as its file holds it, or the fault that it will not read.
+ * @param {string} root @param {UnitSources} sources @param {CutPhase} phase
+ * @returns {{piece: any, fault: string|null}}
+ */
+function pieceIn(root, sources, phase) {
+  const rel = piecePaths(sources, phase.number).piece;
+  try {
+    return { piece: JSON.parse(fs.readFileSync(path.join(root, rel), 'utf8')), fault: null };
+  } catch (err) {
+    return { piece: null, fault: `phase ${phase.number} has no piece that reads — ${rel}: ${messageOf(err)}` };
+  }
+}
+
+/**
+ * Each phase still to build of `phases` that relies on nothing for a phase
+ * still to build its plan depends on, in the join's words — `of` alone where
+ * one is named; `building` says which are still to build, and `reliesOn`
+ * what a phase's piece relies on.
+ * @param {CutPhase[]} phases @param {(phase: CutPhase) => boolean} building @param {(number: number) => unknown[]} reliesOn @param {CutPhase|null} [of]
+ */
+function unreliedFaults(phases, building, reliesOn, of = null) {
+  return oldReliances(phases).filter(({ phase, on }) => (of === null || phase === of) && building(phase) && building(on) && !reliesOn(phase.number).includes(on.number))
+    .map(({ phase, on, by }) => `phase ${phase.number}, of ${phase.topic}'s plan, relies on nothing for ${by}, which phase ${on.number}, of ${on.topic}'s plan, builds — it relies on phase ${on.number}`);
+}
+
+/**
  * The plan the cut takes, joined from the pieces (the header's), or every
  * fault that refuses the join.
  * @param {string} root the state's folder @param {UnitSources} sources @param {CutPhase[]} phases @param {Set<string>} sections the spec's
@@ -285,20 +331,14 @@ const specAddresses = (cwd, unit) => new Set(specSections(readSpec(cwd, unit)).k
 function joined(root, sources, phases, sections) {
   const read = phases.map((phase) => {
     if (!phase.composed) return { phase, piece: null, faults: [] };
-    const file = path.join(root, piecePaths(sources, phase.number).piece);
-    let piece;
-    try {
-      piece = JSON.parse(fs.readFileSync(file, 'utf8'));
-    } catch (err) {
-      return { phase, piece: null, faults: [`phase ${phase.number} has no piece that reads — ${piecePaths(sources, phase.number).piece}: ${messageOf(err)}`] };
-    }
+    const { piece, fault } = pieceIn(root, sources, phase);
+    if (fault !== null) return { phase, piece: null, faults: [fault] };
     return { phase, piece, faults: [...pieceFaults(phase, piece, sections, phases), ...verifiedFaults(root, sources, phase)] };
   });
   const faults = read.flatMap((each) => each.faults);
   const stillToBuild = new Set(read.filter(({ phase, piece }) => phase.composed && piece?.phase?.built !== true).map(({ phase }) => phase.number));
   const reliesOn = (/** @type {number} */ number) => read.find(({ phase }) => phase.number === number)?.piece?.phase?.relies_on ?? [];
-  const unrelied = oldReliances(phases).filter(({ phase, on }) => stillToBuild.has(phase.number) && stillToBuild.has(on.number) && !reliesOn(phase.number).includes(on.number))
-    .map(({ phase, on, by }) => `phase ${phase.number}, of ${phase.topic}'s plan, relies on nothing for ${by}, which phase ${on.number}, of ${on.topic}'s plan, builds — it relies on phase ${on.number}`);
+  const unrelied = unreliedFaults(phases, (phase) => stillToBuild.has(phase.number), reliesOn);
   if (faults.length > 0 || unrelied.length > 0) return { plan: null, faults: [...faults, ...unrelied] };
   /** @type {Record<string, string[]>} */
   const scenarios = {};
@@ -317,12 +357,32 @@ function joined(root, sources, phases, sections) {
 }
 
 /**
- * `migrate join <unit> --directive <id>` (the header's).
+ * The faults of one phase's piece, as the join would name them, nothing
+ * written (the header's): its own, and where it relies on nothing for a
+ * phase its plan depends on, which counts as still to build unless the join
+ * writes it or its piece reads built.
+ * @param {string} root @param {string} unit @param {UnitSources} sources @param {CutPhase[]} phases @param {Set<string>} sections @param {string} number
+ */
+function pieceCheck(root, unit, sources, phases, sections, number) {
+  const phase = phases.find((each) => String(each.number) === number);
+  if (phase === undefined) throw new Error(`migrate join: ${unit}'s cut has no phase ${number} — its phases are numbered 1 to ${phases.length}`);
+  if (!phase.composed) throw new Error(`migrate join: phase ${phase.number} of ${unit}'s cut is built, and the manifest and the tracker agree — the join writes it`);
+  const { piece, fault } = pieceIn(root, sources, phase);
+  if (fault !== null) throw new Error(`migrate join: ${fault}`);
+  const building = (/** @type {CutPhase} */ other) => (other === phase ? piece?.phase?.built !== true : other.composed && pieceIn(root, sources, other).piece?.phase?.built !== true);
+  const reliance = unreliedFaults(phases, building, () => (Array.isArray(piece?.phase?.relies_on) ? piece.phase.relies_on : []), phase);
+  return { unit, phase: phase.number, faults: [...pieceFaults(phase, piece, sections, phases), ...reliance] };
+}
+
+/**
+ * `migrate join <unit> --directive <id> [--phase <N> --dry-run]` (the
+ * header's).
  * @param {string} cwd @param {string[]} argv
  */
 function joinPlan(cwd, argv) {
   const [unit, flag, directive, ...rest] = argv;
-  if (unit === undefined || flag !== '--directive' || directive === undefined || rest.length > 0) throw new Error(`migrate join: ${USAGE}`);
+  const checked = rest.length === 3 && rest[0] === '--phase' && rest[2] === DRY_RUN ? rest[1] : null;
+  if (unit === undefined || flag !== '--directive' || directive === undefined || (rest.length > 0 && checked === null)) throw new Error(`migrate join: ${USAGE}`);
   const said = 'migrate join';
   const sources = unitSources(cwd, unit, directive, said);
   const root = stateRoot(cwd);
@@ -335,6 +395,7 @@ function joinPlan(cwd, argv) {
   } catch (err) {
     throw new Error(`${said}: ${messageOf(err)}`);
   }
+  if (checked !== null) return pieceCheck(root, unit, sources, phases, sections, checked);
   const { plan, faults } = joined(root, sources, phases, sections);
   if (plan === null) throw new Error(`${said}: ${faults.join('; ')}`);
   const file = path.join(root, staged(sources, 'plan.json'));

@@ -28,10 +28,12 @@
 // marking built a phase with a task open, or not built one with none, the
 // tracker winning; a built phase naming a section outside the area of its
 // old plan's topic; a link holding a task not ended after an unfinished one
-// of a later phase or another unit's, naming each, the order it names then
-// cut; and, writing nothing at all, a built phase naming no tracker parent
-// or no section, a phase still to build placing no scenario, an area of the
-// joined spec no phase places, and every refusal of the verb's own —
+// of a later phase or another unit's, naming each by its titles and the
+// remedy, the tracker's, the tracker left as it was so a plan cut in the
+// link's order is then taken; and, writing nothing at all, a built phase
+// naming no tracker parent or no section, a phase still to build placing no
+// scenario, an area of the joined spec no phase places, and every refusal
+// of the verb's own —
 // outside the migration, a unit marked or not joined, a plan of another
 // shape or whose cut the spec refuses. A run killed at each of its writes
 // run again to what a whole run leaves, and a run again whose plan holds no
@@ -428,16 +430,64 @@ describe('the migration\'s cut of a unit whose building started (21.7.1, 21.8.6�
     assert.ok(!/staging|bank/.test(readState(dir, 'shop/manifest.json')), 'no staging, banked finding or old item stands on the manifest');
   });
 
-  it('refuses, nothing written to the tracker or the unit, a link holding a task neither done nor closed after one neither, of a later phase or another unit\'s — `task link`\'s rule (12.6.4, 7.1.14) — naming each; a link after an ended task, another unit\'s among them, or holding an ended one, holding nothing up', () => {
+  it('refuses, nothing written to the tracker or the unit, a link holding a task neither done nor closed after one neither, of a later phase or another unit\'s — `task link`\'s rule (12.6.4, 7.1.14) — naming each by its title, and the remedy the tracker\'s, never a piece\'s; a link after an ended task, another unit\'s among them, or holding an ended one, holding nothing up', () => {
     const root = statePath(dir);
     DRIVER.adopt(root, 'memo', 1, PLANS.memo.phases[0]);
     cut('tally', tallyPlan());
     for (const [title, after] of [['Refund a charge', 'Export payments'], ['Email a receipt', 'Take a card'], ['Email a receipt', 'Write a memo'], ['Refund a charge', 'Count a day'], ['Charge the card', 'Export payments']]) SIDE.linkBy(root, title, after);
 
     assert.strictEqual(trackerUntouched('shop', cutArgs('shop', shopPlan())), [
-      'cut: task 4.2 is held after task 5.1, of a later phase — a task waits on its own phase\'s or an earlier one\'s alone, so 4.2 would never start: cut the phases in the order the link holds, or take the link off in the tracker',
-      'task 4.3 is held after task 1.1 of memo, another unit\'s — a task waits on its own unit\'s alone, so 4.3 would never start: take the link off in the tracker',
+      'cut: task 4.2, "Refund a charge", is held after task 5.1, "Export payments", of a later phase — a task waits on its own phase\'s or an earlier one\'s alone, so 4.2 would never start: the link is the tracker\'s, which no piece of the plan settles — where it no longer holds, task unlink shop 4.2 --after 5.1 --file <plan.json> takes it off',
+      'task 4.3, "Email a receipt", is held after task 1.1 of memo, "Write a memo", another unit\'s — a task waits on its own unit\'s alone, so 4.3 would never start: the link is the tracker\'s, which no piece of the plan settles — where it no longer holds, task unlink shop 4.3 --after memo-1-1 --file <plan.json> takes it off',
     ].join('; '));
+
+    const plan = cutArgs('shop', shopPlan()).at(-1);
+    const unlinked = [['4.2', '5.1'], ['4.3', 'memo-1-1']].map(([task, after]) => ok(dir, ['task', 'unlink', 'shop', task, '--after', after, '--file', String(plan)], { env: SESSION }));
+    assert.deepStrictEqual(unlinked.map(({ task, after }) => [task, after]), [['4.2', '5.1'], ['4.3', 'memo-1-1']]);
+    cut('shop', shopPlan());
+    const after = (/** @type {number} */ n) => DRIVER.show(root, { unit: 'shop', phase: 4, n })?.after.map(({ unit, phase, n: m }) => `${unit}-${phase}-${m}`);
+    assert.deepStrictEqual([after(2)?.includes('shop-5-1'), after(3)?.includes('memo-1-1'), after(3)?.includes('shop-3-1')], [false, false, true]);
+  });
+
+  it('refuses, nothing written to the tracker or the unit, another unit\'s task neither done nor closed held after one of the unit\'s neither — that unit cut first, before the unit\'s tasks had names — the remedy named through the unit\'s plan, which task unlink takes; a link after one of the unit\'s ended, or holding another unit\'s ended, holding nothing up', () => {
+    const root = statePath(dir);
+    const [counts, totals] = PLANS.tally.phases;
+    DRIVER.adopt(root, 'memo', 1, PLANS.memo.phases[0]);
+    SIDE.reopenTask(root, 'Total a week');
+    for (const [title, after] of [['Total a week', 'Email a receipt'], ['Total a week', 'Take a card'], ['Count a day', 'Email a receipt']]) SIDE.linkBy(root, title, after);
+    cut('tally', {
+      phases: [{ name: 'Counts', goal: 'Days counted.', sections: ['1'], built: true, tracker: counts }, { name: 'Totals', goal: 'Weeks totalled.', scenarios: ['1.S1'], sections: ['1'], relies_on: [1], tracker: totals }],
+      scenarios: { 1: ['Given a week of counts, when it ends, then its total shows.'] },
+    });
+    const plan = String(cutArgs('shop', shopPlan()).at(-1));
+    const unlink = (/** @type {string} */ task) => ['task', 'unlink', 'shop', task, '--after', '4.3', '--file', plan];
+
+    assert.deepStrictEqual([trackerUntouched('shop', cutArgs('shop', shopPlan())), trackerUntouched('shop', unlink('memo-1-1'))], [
+      'cut: task 2.1 of tally, "Total a week", is held after task 4.3, "Email a receipt", another unit\'s — a task waits on its own unit\'s alone, so task 2.1 of tally would never start: the link is the tracker\'s, which no piece of the plan settles — where it no longer holds, task unlink shop tally-2-1 --after 4.3 --file <plan.json> takes it off',
+      'task memo-1-1 is held after no task of shop\'s — the link is not there to take off',
+    ]);
+
+    const unlinked = ok(dir, unlink('tally-2-1'), { env: SESSION });
+    cut('shop', shopPlan());
+    assert.deepStrictEqual([unlinked.task, unlinked.after, DRIVER.show(root, { unit: 'tally', phase: 2, n: 1 })?.after], ['tally-2-1', '4.3', [{ unit: 'shop', phase: 3, n: 1 }]]);
+  });
+
+  it('task unlink refuses a link the tracker does not hold, a task no adopted phase holds, two tasks neither of them the unit\'s, a link the cut keeps, no plan, and a unit cut already, writing nothing', () => {
+    const root = statePath(dir);
+    DRIVER.adopt(root, 'memo', 1, PLANS.memo.phases[0]);
+    cut('tally', tallyPlan());
+    for (const [title, after] of [['Total a week', 'Write a memo'], ['Total a week', 'Email a receipt'], ['Email a receipt', 'Take a card']]) SIDE.linkBy(root, title, after);
+    const plan = String(cutArgs('shop', shopPlan()).at(-1));
+    const unlink = (/** @type {string} */ task, /** @type {string} */ after, /** @type {string[]} */ file = ['--file', plan]) => trackerUntouched('shop', ['task', 'unlink', 'shop', task, '--after', after, ...file]);
+    assert.deepStrictEqual([unlink('4.2', '5.1'), unlink('1.9', '5.1'), unlink('tally-2-1', 'memo-1-1'), unlink('4.3', '3.1'), unlink('4.2', '5.1', [])], [
+      'task 4.2 is held after no task 5.1 — the link is not there to take off',
+      'no phase the cut adopts holds task 1.9',
+      'task unlink: neither tally-2-1 nor memo-1-1 is shop\'s — the cut of shop takes off a link one of whose tasks is its own',
+      'task unlink: 4.3 after 3.1 is a link of its own phase or an earlier one\'s, which the cut keeps — it takes off a link the cut refuses',
+      'Usage: engine task unlink <unit> <task> --after <task> --file <plan.json>',
+    ]);
+    cut('shop', shopPlan());
+    assert.match(unlink('4.2', '5.1'), /^task unlink: the migration has cut shop already/);
   });
 
   it('a link refused for its phases\' order leaves the tracker as it was, so the plan cutting them in the order the link holds is taken', () => {
@@ -457,10 +507,11 @@ describe('the migration\'s cut of a unit whose building started (21.7.1, 21.8.6�
     assert.strictEqual(fs.existsSync(statePath(dir, 'shop/build/notes.md')), false);
   });
 
-  it('runs only while the migration does, as `task close-plan` does, writing nothing outside it (E13)', () => {
+  it('runs only while the migration does, as `task close-plan` and `task unlink` do, writing nothing outside it (E13)', () => {
     migrationDone();
     const head = git(statePath(dir), ['rev-parse', 'HEAD']);
-    const outside = [cutArgs('shop', shopPlan()), ['task', 'close-plan', 'memo', '--parent', PLANS.memo.root]].map((args) => {
+    const plan = cutArgs('shop', shopPlan());
+    const outside = [plan, ['task', 'close-plan', 'memo', '--parent', PLANS.memo.root], ['task', 'unlink', 'shop', '4.2', '--after', '5.1', '--file', String(plan.at(-1))]].map((args) => {
       const before = harness.treeSnapshot(dir);
       const { error } = refuses(dir, args, { env: SESSION });
       assert.deepStrictEqual(harness.treeSnapshot(dir), before, `engine ${args.join(' ')} wrote on refusing`);
@@ -470,6 +521,7 @@ describe('the migration\'s cut of a unit whose building started (21.7.1, 21.8.6�
     assert.deepStrictEqual(outside, [
       'cut: a unit is cut by the migration only while it runs — the state branch has its first commit, so the migration is done',
       'a plan from before Ledger is taken in only while the migration runs — the state branch has its first commit, so the migration is done',
+      'task unlink: a unit is cut by the migration only while it runs — the state branch has its first commit, so the migration is done',
     ]);
     assert.strictEqual(git(statePath(dir), ['rev-parse', 'HEAD']), head);
   });

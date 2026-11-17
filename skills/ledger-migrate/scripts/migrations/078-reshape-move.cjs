@@ -144,6 +144,11 @@
 //     record's files other than its problem, design, report and `data/` —
 //     its instruments — which go under its `data/`, at their path from the
 //     record's folder (4.11.15), a sub-experiment's the same;
+//   - a topic on the map that no brief came to has its map row's
+//     description written as its brief, under its name titled, whatever
+//     its items after it — never started, a discussion a message opened
+//     and no one began, research cancelled before a line of it — so what
+//     discovery knew of it reaches the records and its next opening;
 //   - nothing lands in a topic's folder no topic owns: a brief, experiment
 //     records, a discussion or an investigation under any other name is kept
 //     as legacy, and the experiments' manifest items go;
@@ -1395,6 +1400,19 @@ function withFolders(places, held) {
 const intoData = (rel, at) => rel.startsWith('experiment/') && !at.endsWith(rel.split('/').slice(2).join('/'));
 
 /**
+ * Each topic on the map that no brief came to given its map row's
+ * description as its brief.
+ * @param {UnitMove} move
+ */
+function describedBriefs(move) {
+  for (const [topic, row] of Object.entries(itemsOf(move.manifest, 'discovery'))) {
+    if (!isObject(row) || typeof row.description !== 'string' || row.description.trim() === '') continue;
+    const brief = `topics/${topic}/brief.md`;
+    if (!fs.existsSync(path.join(move.state, move.unit, brief))) put(move, brief, `# ${titled(topic)}\n\n${row.description.trim()}\n`);
+  }
+}
+
+/**
  * Move one unit into the layout — every file placed, its place recorded in
  * `relocations`, or dropped, its legacy kept by `keepAsItWas` — then its
  * manifest.
@@ -1414,6 +1432,7 @@ function moveUnit(move) {
     else put(move, at, takeDocument(move, rel, `${move.unit}/${at}`), mode);
     relocate(move, rel, `${move.unit}/${at}`);
   }
+  describedBriefs(move);
   put(move, 'manifest.json', jsonText(move.joined.length === 0 ? move.manifest : { ...move.manifest, spec: { joined: move.joined } }));
 }
 

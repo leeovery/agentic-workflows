@@ -36,7 +36,8 @@
 // which the store alone holds. Tick's own ids in a refusal it makes are put
 // in the engine's words. A task's text is its
 // description, its type its one tag, an addition a note naming whose it is,
-// and a link a dependency; a closed task is cancelled, its reason a note; a
+// and a link a dependency, the migration's unlink Tick's removal of one; a
+// closed task is cancelled, its reason a note; a
 // phase removed is Tick's remove of it, which takes its tasks with it and
 // drops every link to them.
 // Tick counts a cancelled task, as a done one, as holding nothing up, and
@@ -353,6 +354,16 @@ function link(root, task, after) {
   tick(root, ['dep', 'add', idOf(ids, taskRef(task)), idOf(ids, taskRef(after))]);
 }
 
+/**
+ * The dependency holding `task` after `after` removed, each named as the
+ * adoption of `phases` would name it.
+ * @param {string} root @param {string} unit @param {{phase: number, parent: string, order?: string[]}[]} phases @param {TaskRef} task @param {TaskRef} after
+ */
+function unlink(root, unit, phases, task, after) {
+  const ids = adoptedIds(root, unit, phases);
+  tick(root, ['dep', 'remove', idOf(ids, taskRef(task)), idOf(ids, taskRef(after))]);
+}
+
 /** Every task under `parent`, however deep, as Tick's `--parent` reads it. @param {Ids} ids @param {string} parent @returns {Held[]} */
 function descendants(ids, parent) {
   return (ids.children.get(parent) ?? []).flatMap((child) => [child, ...descendants(ids, child.id)]);
@@ -487,21 +498,42 @@ function planNameOf(ids, parent) {
 }
 
 /**
+ * The store as read, with the names adopting `phases` in turn would give
+ * beside the names it holds, nothing written; refused as `adopt` refuses.
  * @param {string} root @param {string} unit @param {{phase: number, parent: string, order?: string[]}[]} phases
- * @returns {{phase: number, plan: string|null, title: string, tasks: TaskDetail[]}[]}
+ * @returns {Ids}
  */
-function adoption(root, unit, phases) {
+function adoptedIds(root, unit, phases) {
   let ids = idsIn(root);
   for (const { phase, parent, order = [] } of phases) {
     const names = adoptedNames(ids, unit, phase, adoptedParent(ids, unit, phase, parent), order);
     refuseNames(ids, names);
     ids = withNames(ids, names);
   }
-  const named = ids;
+  return ids;
+}
+
+/**
+ * @param {string} root @param {string} unit @param {{phase: number, parent: string, order?: string[]}[]} phases
+ * @returns {{phase: number, plan: string|null, title: string, tasks: TaskDetail[]}[]}
+ */
+function adoption(root, unit, phases) {
+  const named = adoptedIds(root, unit, phases);
   return phases.map(({ phase, parent }) => {
     const held = adoptedParent(named, unit, phase, parent);
     return { phase, plan: planNameOf(named, held), title: phaseTitle(held.title), tasks: namedTasks(named, descendants(named, parent)).map(({ ref, task }) => detailOf(named, ref, task)) };
   });
+}
+
+/**
+ * @param {string} root @param {string} unit @param {{phase: number, parent: string, order?: string[]}[]} phases
+ * @returns {TaskDetail[]}
+ */
+function waitingOn(root, unit, phases) {
+  const named = adoptedIds(root, unit, phases);
+  return namedTasks(named, [...named.held.values()]).filter(({ ref }) => ref.unit !== unit)
+    .map(({ ref, task }) => detailOf(named, ref, task))
+    .filter(({ after }) => after.some((on) => on.unit === unit));
 }
 
 /** @param {string} root @param {string} unit @param {number} phase @param {string} parent @param {string[]} [order] @returns {TaskRef[]} */
@@ -627,11 +659,13 @@ module.exports = {
   createPhase,
   createTask,
   adoption,
+  waitingOn,
   adopt,
   closePlan,
   add,
   setType,
   link,
+  unlink,
   ready,
   start,
   done,

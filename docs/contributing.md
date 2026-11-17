@@ -120,9 +120,14 @@ format and its check's contract.
   the runner, unrun, where its check answers no piece at all: there is
   nothing for the session to do, and the line `NNN unrun` beside its own
   keeps it out of the review's directives done.
+- A directive whose pieces agents carry names, in its check, the
+  sections their briefs draw, `briefed`: a list of its headings, each
+  drawn with what nests beneath it. An agent's brief holds those alone,
+  never the session's own steps and engine calls.
 - `tests/scripts/test-migration-directives.cjs` lints every directive's
-  head and holds its check beside it; a directive's own suite drives its
-  check over a project the migration is under way in
+  head, holds its check beside it, and holds each section its check names
+  `briefed` to a heading it has that calls no engine; a directive's own
+  suite drives its check over a project the migration is under way in
   (`tests/scripts/migration-world.cjs`).
 
 The **reshape** — the migration from a project's `.workflows/`, from
