@@ -29,7 +29,7 @@ const { landOpen } = require('../../../skills/ledger-engine/scripts/domain/landi
 
 const { ok, git, withEnv, fixtureFrom, cleanupFixture } = harness;
 
-const world = fixtureFrom('github-landing-quick-fix-host-clone-', (dir) => twoFixesBuilt(dir, { ready: side.prepare, env: GH_ENV }));
+const world = fixtureFrom('quick-fix-two-fixes-github-', (dir) => twoFixesBuilt(dir, { ready: side.prepare, env: GH_ENV }));
 const config = useTempFolder('github-landing-quick-fix-host-clone-config-');
 
 let dir = ''; // the project

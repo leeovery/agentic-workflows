@@ -38,7 +38,7 @@ const { UNIT, BRANCH, createFix, fixChanged, fixDone, twoFixesBuilt } = require(
 const DOCS = 'Spell the docs --colour';
 const MAN = 'Spell the man page --colour';
 
-const world = fixtureFrom('quick-fix-end-', twoFixesBuilt);
+const world = fixtureFrom('quick-fix-two-fixes-', twoFixesBuilt);
 
 let dir = ''; // the project
 const config = useTempFolder('quick-fix-end-config-');

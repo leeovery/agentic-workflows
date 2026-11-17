@@ -35,7 +35,7 @@ const { git, readManifest } = require('../../scripts/engine-harness.cjs');
 const { card } = TASKS;
 const PHASE = ['land', 'phase', UNIT, '1'];
 
-const project = useLandingWorld('github-landing-again-pull-', side.prepare);
+const project = useLandingWorld('github-landing-again-pull-', side.prepare, 'landing-github-');
 
 /** The pull requests GitHub holds once task 4.1's merged one is opened again and left open. */
 const OPENED_AND_LEFT = Object.freeze([{ number: 1, state: 'MERGED', base: 'main' }, { number: 2, state: 'OPEN', base: 'main' }]);

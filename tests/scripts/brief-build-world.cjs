@@ -4,7 +4,7 @@
 // The build briefs' suites' world and helpers (test-engine-brief-build.cjs,
 // test-engine-brief-build-review.cjs, test-engine-brief-build-rounds.cjs,
 // test-engine-brief-build-changes.cjs, test-engine-brief-build-ways.cjs,
-// test-engine-brief-build-chain.cjs): a project, built once per process and
+// test-engine-brief-build-chain.cjs): a project, built once per run and
 // copied for each test, with a unit past ready to build — its spec of two
 // areas, its cut of three phases, the first two written in the tracker
 // through the default driver, phase 1's tasks done, in progress, closed and
@@ -215,7 +215,7 @@ const world = fixtureFrom('brief-build-', (dir) => {
   calls.api = write(dir, 'replace', atBuild, ['--replaces', calls.byHand, '--reason', 'changed-mind'], {
     by: 'person', text: 'Refunds through the API.', why: 'They come weekly now.', drops: ['refunds by hand'],
   });
-});
+}, { kept: calls });
 
 /** @type {string} */
 let dir;

@@ -3,7 +3,7 @@
 // The world the boot-state suites share (test-engine-boot-state-*.cjs): a
 // temp folder per test (`useWorld`); a code project, on a bare remote or a
 // remote the test names, from the library's project worlds; a project boot
-// has set up, made once per process and copied (`setUp`); boot run from the
+// has set up, made once per run and copied (`setUp`); boot run from the
 // library's stub engine (`engine`, `STUB_ENGINE`), its migration runner a
 // stand-in; the workflows' own hooks as boot installs them; and the reads
 // the assertions make: the state worktree in place, what a stopped boot
@@ -91,7 +91,7 @@ const setUps = new Map();
 function setUp({ name = 'portal', remote = false } = {}) {
   const key = JSON.stringify({ name, remote });
   if (!setUps.has(key)) {
-    setUps.set(key, folderFrom(`boot-state-${name}-`, (folder) => {
+    setUps.set(key, folderFrom(`boot-state-${name}-${remote ? 'remote' : 'alone'}-`, (folder) => {
       const { main } = harness.codeProject(folder, { name, remote });
       assert.strictEqual(boot(main).state, 'ready');
       if (remote) git(main, ['push', '-q', 'origin', 'main']);

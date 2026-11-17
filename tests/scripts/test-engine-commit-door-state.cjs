@@ -288,7 +288,7 @@ describe('engine commit --state: the files only the engine writes, the unit\'s a
 });
 
 describe('engine commit --migrations: the state and the paths the workflows own', () => {
-  const setup = fixtureFrom('engine-commit-', (at) => {
+  const setup = fixtureFrom('engine-commit-migrations-', (at) => {
     writeState(at, layout.manifest('payments'), '{"name":"payments"}\n');
     createFile(at, '.claude/settings.json', '{}\n');
     createFile(at, '.worktreeinclude', '.ledger/.knowledge/store.bin\n');

@@ -29,7 +29,7 @@ const lg = require('../../../skills/ledger-engine/scripts/domain/landing-git.cjs
 
 const { ok, refuses, git, createFile, fixtureFrom, cleanupFixture } = harness;
 
-const world = fixtureFrom('github-landing-quick-fix-host-conflict-', (dir) => twoFixesBuilt(dir, { ready: side.prepare, env: GH_ENV }));
+const world = fixtureFrom('quick-fix-two-fixes-github-', (dir) => twoFixesBuilt(dir, { ready: side.prepare, env: GH_ENV }));
 const config = useTempFolder('github-landing-quick-fix-host-conflict-config-');
 const SUGGESTED = 'const flag = \'colour\'; // suggested\n';
 const SETTLED = 'const flag = \'colour\'; // reworked, as suggested\n';

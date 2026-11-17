@@ -45,7 +45,7 @@ const BACK = 'Put the docs back';
 const RECORD = Object.freeze({ changed: 'A change.', why: 'A reason.', leaves: 'Nothing.' });
 const FAILED = '# Review\n\n## Findings\n\n- bug: the docs still say --color\n  Scenario: the docs read\n\nVerdict: fail\n';
 
-const world = fixtureFrom('quick-fix-given-up-', twoFixesBuilt);
+const world = fixtureFrom('quick-fix-two-fixes-', twoFixesBuilt);
 
 let dir = ''; // the project
 const config = useTempFolder('quick-fix-given-up-config-');

@@ -10,7 +10,7 @@
 // stub armed for it (labels.cjs), and one unlabelled, a call handed over —
 // and its decided checklist marked but for the closing
 // pass; and a feature, `solo`, whose one question the person answered, its
-// checklist marked but for the closing pass and its log written. Built once per process and
+// checklist marked but for the closing pass and its log written. Built once per run and
 // copied for each test, its trust log in a config folder of the test's own.
 // ---------------------------------------------------------------------------
 
@@ -95,7 +95,7 @@ const world = fixtureFrom('decided-', (dir) => {
   answeredIn(dir, SOLO_AT, 'Does a tally reset daily?', { ...PERSON, text: 'At midnight.' });
   fs.mkdirSync(path.dirname(statePath(dir, SOLO_LOG)), { recursive: true });
   fs.writeFileSync(statePath(dir, SOLO_LOG), '# Solo\n\nA tally resets at midnight.\n');
-});
+}, { kept: NOTE_MAP });
 
 /**
  * The world for each test of the calling file, copied before it and

@@ -11,7 +11,7 @@
 // product's code whose parts each log their call and do what the test steers
 // them to from a folder in the repository's git directory — `unrecorded`, and
 // `world`, the same with the setup recorded through `verify setup` — each
-// built once per process and copied for each test.
+// built once per run and copied for each test.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');

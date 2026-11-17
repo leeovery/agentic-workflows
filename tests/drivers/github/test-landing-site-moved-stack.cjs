@@ -31,7 +31,7 @@ const { call, git } = require('../../scripts/engine-harness.cjs');
 const { card } = TASKS;
 const PHASE = ['land', 'phase', UNIT, '1'];
 const FINISH = ['land', 'finish', UNIT];
-const project = useLandingWorld('github-landing-site-moved-stack-', side.prepare);
+const project = useLandingWorld('github-landing-site-moved-stack-', side.prepare, 'landing-github-');
 
 /** A commit made on 1.1's branch on the site after its landing, writing post.txt: its sha. @param {string} dir */
 const posted = (dir) => madeOnGithub(dir, card.branch, { 'post.txt': 'post\n' }, 'Apply suggestion after');

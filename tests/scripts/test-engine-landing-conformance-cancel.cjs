@@ -71,7 +71,7 @@ for (const { name } of listDrivers('landing')) {
     buildLanding(dir);
     side.prepare(dir);
   });
-  const ownWorld = fixtureFrom(`engine-landing-cancel-own-${name}-`, (dir) => unitBranchLanded(dir, side));
+  const ownWorld = fixtureFrom(`landing-unit-landed-${name}-`, (dir) => unitBranchLanded(dir, side));
 
   describe(`a unit's cancel through the ${name} landing driver (18.3.9)`, () => {
     /** @type {string|null} */

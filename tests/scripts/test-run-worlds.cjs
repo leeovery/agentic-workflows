@@ -4,12 +4,15 @@
 // Worlds built once per run (run-worlds.cjs): a world's key, hashed from its
 // name and the sources that could build it; built in process where the run
 // names no folder; built once under its claim by the first of two processes
-// that ask at once and renamed into place whole, the other waiting and
-// taking it; a build that fails leaving its error, which every later asker
-// meets at once; a world placed between a look and a claim never built
-// again; a dead builder's claim taken over by the next to ask; and a builder
-// alive past the wait limit left to finish while the waiter, having looked
-// once a pause, builds its own.
+// that ask at once, where it stands, and marked, the other waiting and
+// taking it; what a build answers carried to every process that takes its
+// world; one name to one build, a second builder of a name refused, in
+// another process or in this one; a build that fails leaving its error,
+// which every later asker meets at once; a world marked between a look and
+// a claim never built again; a dead builder's claim taken over by the next
+// to ask, and its half-built world built over; and a builder alive past the
+// wait limit left to finish while the waiter, having looked once a pause,
+// builds its own.
 //
 // Layer: process, for the race and the wait limit, each asker a child; the
 // rest in process.
@@ -21,6 +24,7 @@ require('./hermetic-env.cjs');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
+const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -49,6 +53,15 @@ describe('worlds built once per run', () => {
   };
   /** A unique world's name, so no test meets another's in this process. @param {string} what */
   const named = (what) => `stand-in ${what} ${path.basename(tmp)}`;
+  /**
+   * The world at `dir` as a builder in another process leaves it: its
+   * folder, marked with what `by` is known by and what it answered.
+   * @param {string} dir @param {(dir: string) => void} by @param {unknown} kept @param {string} [site]
+   */
+  const placedBy = (dir, by, kept, site = 'another process') => {
+    fs.mkdirSync(dir);
+    fs.writeFileSync(`${dir}.built`, JSON.stringify({ source: crypto.createHash('sha256').update(String(by)).digest('hex').slice(0, 16), site, kept }));
+  };
 
   beforeEach(() => {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'run-worlds-'));
@@ -92,7 +105,7 @@ describe('worlds built once per run', () => {
     });
   });
 
-  it('two processes asking at once: the first to claim it builds it, the other waits on the claim, never meets it half built, and takes it, the folder it was built in renamed into place; the folder holds the world alone', async () => {
+  it('two processes asking at once: the first to claim it builds it where it stands and marks it, the other waits on the claim, never meets it half built, and takes it; the folder holds the world and its mark alone', async () => {
     const marks = path.join(tmp, 'marks');
     fs.mkdirSync(marks);
     const world = path.join(folder, worldKey('stand-in'));
@@ -114,8 +127,8 @@ describe('worlds built once per run', () => {
       'const exists = fs.existsSync;',
       'fs.existsSync = (at) => {',
       '  const there = exists(at);',
-      '  if (at === world && there && !exists(path.join(world, "built-by"))) mark("half-built");',
-      '  if (at === world && marked(`held-${process.pid}`)) mark(`looked-${process.pid}`);',
+      '  if (at === `${world}.built` && there && !exists(path.join(world, "built-by"))) mark("half-built");',
+      '  if (at === `${world}.built` && marked(`held-${process.pid}`)) mark(`looked-${process.pid}`);',
       '  return there;',
       '};',
       'atBarrier();',
@@ -134,8 +147,8 @@ describe('worlds built once per run', () => {
     assert.match(builder, /^\d+\n$/, 'built once');
     assert.deepStrictEqual([...new Set(fs.readdirSync(marks).map((name) => name.replace(/-\d+$/, '')))].sort(), ['builds', 'held', 'looked'], 'the other found the claim held and looked again while it was built, never at a world half built');
     for (const report of reports) assert.deepStrictEqual({ dir: report.dir, builtBy: report.builtBy }, { dir: world, builtBy: builder.trim() });
-    assert.strictEqual(fs.readFileSync(path.join(world, 'inode'), 'utf8'), String(fs.statSync(world).ino), 'published whole: the folder it was built in, renamed, never a copy of it');
-    assert.deepStrictEqual(fs.readdirSync(folder), [path.basename(world)], 'no claim and no half-built folder left beside it');
+    assert.strictEqual(fs.readFileSync(path.join(world, 'inode'), 'utf8'), String(fs.statSync(world).ino), 'built where it stands, never moved or copied there');
+    assert.deepStrictEqual(fs.readdirSync(folder).sort(), [path.basename(world), `${path.basename(world)}.built`], 'no claim and no folder but the world beside its mark');
   });
 
   it('a build that fails leaves its error in place of the world, nothing half built and no claim: the next to ask fails with it at once, building nothing', () => {
@@ -151,27 +164,64 @@ describe('worlds built once per run', () => {
     });
   });
 
-  it('a world placed by its builder between this process\'s look and its claim: taken as found, never built again', (t) => {
+  it('a world marked by its builder between this process\'s look and its claim: taken as found, never built again', (t) => {
     const name = named('placed');
     const dir = path.join(folder, worldKey(name));
     const link = fs.linkSync;
     t.mock.method(fs, 'linkSync', (/** @type {string} */ from, /** @type {string} */ to) => {
-      if (to === `${dir}.claim`) fs.mkdirSync(dir);
+      if (to === `${dir}.claim`) placedBy(dir, build, 'placed');
       return link(from, to);
     });
     const world = withEnv({ LEDGER_TEST_WORLDS: folder }, () => worldOfTheRun(name, build));
-    assert.deepStrictEqual(world, { dir, how: 'found' });
+    assert.deepStrictEqual(world, { dir, how: 'found', kept: 'placed' });
     assert.deepStrictEqual(builds, []);
-    assert.deepStrictEqual(fs.readdirSync(folder), [path.basename(dir)], 'the claim let go');
+    assert.deepStrictEqual(fs.readdirSync(folder).sort(), [path.basename(dir), `${path.basename(dir)}.built`], 'the claim let go');
   });
 
-  it('a builder that died under its claim: the next to ask takes the claim over and builds the world for the run', () => {
+  it('a builder that died under its claim, its world half built: the next to ask takes the claim over and builds the world for the run over what it left', () => {
     const name = named('dead');
     fs.writeFileSync(path.join(folder, `${worldKey(name)}.claim`), DEAD);
+    fs.mkdirSync(path.join(folder, worldKey(name)));
+    fs.writeFileSync(path.join(folder, worldKey(name), 'half'), '');
     const world = withEnv({ LEDGER_TEST_WORLDS: folder }, () => worldOfTheRun(name, build, AT_ONCE));
-    assert.deepStrictEqual(world, { dir: path.join(folder, worldKey(name)), how: 'built' });
+    assert.deepStrictEqual(world, { dir: path.join(folder, worldKey(name)), how: 'built', kept: undefined });
+    assert.deepStrictEqual(fs.readdirSync(world.dir), ['built-by'], 'what the dead builder left gone');
     assert.strictEqual(fs.readFileSync(path.join(world.dir, 'built-by'), 'utf8'), String(process.pid));
-    assert.deepStrictEqual(fs.readdirSync(folder), [worldKey(name)], 'the dead claim gone, the world in its place');
+    assert.deepStrictEqual(fs.readdirSync(folder).sort(), [worldKey(name), `${worldKey(name)}.built`], 'the dead claim gone, the world and its mark in its place');
+  });
+
+  it('what a build answers travels with its world: a process that takes it built elsewhere is answered it', async () => {
+    // Each asker a process of its own, so the second takes the world the first built.
+    const asker = () => contend(1, [
+      `const { worldOfTheRun } = require(${JSON.stringify(RUN_WORLDS)});`,
+      'atBarrier();',
+      'const { how, kept } = worldOfTheRun("stand-in kept", () => ({ minted: `q-${process.pid}` }));',
+      'report({ how, kept, pid: process.pid });',
+    ].join('\n'), [], { ...process.env, LEDGER_TEST_WORLDS: folder });
+    const [built] = await asker();
+    const [found] = await asker();
+    assert.deepStrictEqual([built.how, built.kept], ['built', { minted: `q-${built.pid}` }]);
+    assert.deepStrictEqual([found.how, found.kept], ['found', { minted: `q-${built.pid}` }], 'what the builder\'s process answered, not this one\'s');
+  });
+
+  it('one name to one build: a world built by a builder of another source is refused, naming where each asked for it', () => {
+    const name = named('two builders');
+    withEnv({ LEDGER_TEST_WORLDS: folder }, () => {
+      placedBy(path.join(folder, worldKey(name)), (/** @type {string} */ dir) => fs.writeFileSync(path.join(dir, 'other'), ''), undefined, 'elsewhere.cjs:1:1');
+      assert.throws(() => worldOfTheRun(name, build), (/** @type {Error} */ err) => err.message.startsWith(`the world ${name} has two builders, at elsewhere.cjs:1:1 and at ${__filename}:`));
+    });
+    assert.deepStrictEqual(builds, [], 'built nothing');
+  });
+
+  it('one name to one build in this process: a name asked for again with another builder is refused, the first builder\'s world untouched', () => {
+    const name = named('two in one');
+    const other = (/** @type {string} */ dir) => build(dir);
+    withEnv({ LEDGER_TEST_WORLDS: undefined }, () => {
+      const world = worldOfTheRun(name, build, { by: build });
+      assert.deepStrictEqual(worldOfTheRun(name, (dir) => build(dir), { by: build }), world, 'the same builder, wrapped afresh: the same world');
+      assert.throws(() => worldOfTheRun(name, other, { by: other }), new RegExp(`^Error: the world ${name} has two builders, at ${__filename}:\\d+:\\d+ and at ${__filename}:\\d+:\\d+`));
+      assert.deepStrictEqual(builds, [world.dir], 'built once');
+    });
   });
 
   it('a builder alive past the wait limit: the waiter looks again once a pause until the limit, then builds its own, leaving the run\'s folder to the builder', async () => {

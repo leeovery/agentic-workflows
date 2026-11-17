@@ -76,15 +76,15 @@ function parkStub(dir, phase, topic) {
   writeFile(dir, '.ledger/payments/manifest.json', JSON.stringify(m, null, 2) + '\n');
 }
 
-/** A world built once over the payments epic as `manifest` gives it, every test given a copy. @param {Record<string, unknown>} manifest */
-function paymentsFixture(manifest) {
-  return harness.fixtureFrom('engine-tx-', (dir) => {
+/** A world built once over the payments epic as `manifest` gives it, named `name`, every test given a copy. @param {string} name @param {Record<string, unknown>} manifest */
+function paymentsFixture(name, manifest) {
+  return harness.fixtureFrom(name, (dir) => {
     writeFile(dir, '.ledger/payments/manifest.json', JSON.stringify(manifest, null, 2) + '\n');
     commitAll(dir, 'init');
   });
 }
 
-const setupEpicFixture = paymentsFixture(epicManifest());
+const setupEpicFixture = paymentsFixture('engine-tx-epic-', epicManifest());
 
 // An epic whose map carries every unit shape the cancel meets: a never-
 // started topic, a started one with a live evidence wait, and decided ones.
@@ -118,7 +118,7 @@ function unitManifest() {
   };
 }
 
-const setupUnitFixture = paymentsFixture(unitManifest());
+const setupUnitFixture = paymentsFixture('engine-tx-unit-', unitManifest());
 
 describe('engine topic cancel — the discovery unit', () => {
   let dir;
@@ -439,7 +439,7 @@ function featureManifest() {
   };
 }
 
-const setupFeatureFixture = harness.fixtureFrom('engine-tx-', (dir) => {
+const setupFeatureFixture = harness.fixtureFrom('engine-tx-feature-', (dir) => {
   writeFile(dir, '.ledger/auth-flow/manifest.json', JSON.stringify(featureManifest(), null, 2) + '\n');
   // The completed phase artifacts (the re-index discovers only files that
   // exist on disk).
@@ -455,7 +455,7 @@ const setupFeatureFixture = harness.fixtureFrom('engine-tx-', (dir) => {
 });
 
 /** A quick-fix, over a knowledge store that cannot be loaded. */
-const setupBrokenStoreQuickFixFixture = harness.fixtureFrom('engine-tx-', (dir) => {
+const setupBrokenStoreQuickFixFixture = harness.fixtureFrom('engine-tx-broken-store-', (dir) => {
   writeFile(dir, '.ledger/caching/manifest.json', JSON.stringify({
     name: 'caching',
     work_type: 'quick-fix',
@@ -728,7 +728,7 @@ describe('engine usage banner', () => {
 });
 
 describe('a topic\'s start — the discovery map gates the birth of a phase item', () => {
-  const mapped = harness.fixtureFrom('engine-tx-', (dir) => {
+  const mapped = harness.fixtureFrom('engine-tx-mapped-', (dir) => {
     writeFile(dir, '.ledger/mapped/manifest.json', JSON.stringify({
       name: 'mapped',
       work_type: 'epic',

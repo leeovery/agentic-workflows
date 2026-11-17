@@ -27,7 +27,7 @@ const RAISED = Object.freeze({
   product_wide: false,
 });
 
-const world = fixtureFrom('quick-fix-close-', twoFixesBuilt);
+const world = fixtureFrom('quick-fix-two-fixes-', twoFixesBuilt);
 
 /**
  * The calls a suite's tests make in their conversation, in the project

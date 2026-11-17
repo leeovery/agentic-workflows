@@ -6,12 +6,13 @@
 // stdout, `ok` and `refuses` failing on the wrong outcome, and `okSections`
 // — the git fixture is a repo with its state worktree that an engine commit
 // lands in, every remote in the tests is a bare repo that runs no
-// maintenance, a test's git runs within a time limit, a world made once is
-// copied whole and apart, a keyword-only checkout is one a transaction's
+// maintenance, a test's git runs within a time limit, a world made once per
+// run is copied whole and apart, what its build keeps set in a process that
+// takes it built elsewhere, a keyword-only checkout is one a transaction's
 // index builds a real store in, a call's attempts at a lock are seen as it
 // makes them, and the `ps` that fails does.
 //
-// Layer: verb.
+// Layer: verb, and process for a world taken from another process.
 
 require('./hermetic-env.cjs');
 
@@ -23,6 +24,7 @@ const path = require('path');
 const { execFileSync, spawnSync } = require('child_process');
 
 const harness = require('./engine-harness.cjs');
+const { worldKey } = require('./run-worlds.cjs');
 const { GIT_TIMEOUT_MS, layout, writeState } = require('./discovery-test-utils.cjs');
 const io = require('../../skills/ledger-engine/scripts/kernel/manifest-io.cjs');
 const {
@@ -243,17 +245,41 @@ describe('engine harness — a world made once and copied', () => {
     assert.strictEqual(stateGit(at, ['log', '-1', '--pretty=%s']).trim(), 'init');
   });
 
-  it('is made under a temp prefix of the template\'s own, so a leftover template is told from a leftover copy', () => {
+  it('is built once per run under its name, in the run\'s folder where the run names one, else in a template folder of its own; each copy in a temp folder named for it', () => {
     copies = [world()];
-    assert.match(path.basename(made[0]), /^harness-test-template-/);
-    assert.doesNotMatch(path.basename(copies[0]), /template/);
+    const run = process.env.LEDGER_TEST_WORLDS;
+    if (run) assert.strictEqual(made[0], path.join(fs.realpathSync(run), worldKey('harness-test-')));
+    else assert.match(path.basename(made[0]), /^harness-test-template-/);
+    assert.match(path.basename(copies[0]), /^harness-test-(?!template-)/);
   });
 
   it('adds no exit listener of its own: every template is removed by the one the fixture library holds', () => {
     const listeners = process.listenerCount('exit');
-    const another = harness.fixtureFrom('harness-test-', seed);
+    const another = harness.fixtureFrom('harness-test-another-', seed);
     copies = [another(), another()];
     assert.strictEqual(process.listenerCount('exit'), listeners);
+  });
+
+  it('sets what its build set in `kept` in a process that takes the world another process built', async () => {
+    const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-test-run-'));
+    // Each asker a process of its own, building the world or taking it.
+    const asker = () => harness.contend(1, [
+      `const harness = require(${JSON.stringify(require.resolve('./engine-harness.cjs'))});`,
+      "const path = require('path');",
+      'const kept = { minted: "" };',
+      'const world = harness.fixtureFrom("harness-test-kept-", () => { kept.minted = `q-${process.pid}`; }, { kept });',
+      'atBarrier();',
+      'const copy = world();',
+      'report({ kept, pid: process.pid, copied: fs.existsSync(path.join(copy, ".git")) });',
+    ].join('\n'), [], { ...process.env, LEDGER_TEST_WORLDS: folder });
+    try {
+      const [built] = await asker();
+      const [took] = await asker();
+      assert.deepStrictEqual(built, { kept: { minted: `q-${built.pid}` }, pid: built.pid, copied: true });
+      assert.deepStrictEqual(took, { kept: { minted: `q-${built.pid}` }, pid: took.pid, copied: true }, 'what the builder minted, set here without building');
+    } finally {
+      fs.rmSync(folder, { recursive: true, force: true });
+    }
   });
 });
 

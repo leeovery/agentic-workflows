@@ -89,7 +89,7 @@ const STATEMENTS = () => [
   `1.1.8 Corners are rounded. [${made.radius}]`,
 ];
 
-const world = fixtureFrom('spec-review-', (dir) => {
+const world = fixtureFrom('spec-review-record-', (dir) => {
   payments(dir, 'in-progress');
   commitAll(dir, 'init');
   const { write, carriedOver } = ledgerHelpers(() => dir);

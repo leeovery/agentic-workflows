@@ -24,7 +24,7 @@
 //
 // A fixture is a git repository with its state worktree at `.ledger/`
 // (`discovery-test-utils.cjs` makes it). A world many tests start from is
-// built once per process and copied for each (`fixtureFrom`). A suite reads
+// built once per run and copied for each (`fixtureFrom`). A suite reads
 // a state commit off the state branch (`stateGit`), and an owned code-tree
 // file's off the code tree's.
 //
@@ -71,6 +71,7 @@ const {
   STATE_BRANCH, createState, createStateBranchFromRemote, addStateWorktree, withStateLock, commitState,
 } = require('../../skills/ledger-engine/scripts/domain/state-worktree.cjs');
 const { stampBoot } = require('../../skills/ledger-engine/scripts/domain/boot-stamp.cjs');
+const { worldOfTheRun } = require('./run-worlds.cjs');
 
 /** Each driver's stand-ins, as they come first on the PATH. */
 const STAND_INS = Object.freeze(fs.readdirSync(path.join(__dirname, '..', 'drivers'))
@@ -596,48 +597,84 @@ function setupGitFixture(prefix = 'engine-') {
 }
 
 /**
- * A world many tests start from, made once per process: `build` fills a
- * fresh world at the first call, and every call answers a copy of it — at
- * the folder given, or in a temp folder of its own — the build's git work
- * paid once, not per test. A world whose git config names a path outside
- * it, a remote beside it, is no template: the copy would share it.
- * @param {string} prefix temp-directory prefix, so a leftover names its suite; the template's is `{prefix}template-`
- * @param {(dir: string) => void} build
- * @returns {(dir?: string) => string} symbolic links resolved — the path the engine names it by
+ * `build` run, and what it changed in `kept` — each key whose value it set
+ * anew — or nothing where there is no `kept`.
+ * @param {Record<string, unknown>|undefined} kept @param {() => void} build
+ * @returns {Record<string, unknown>|undefined}
  */
-function fixtureFrom(prefix, build) {
-  /** @type {string|null} */
-  let made = null;
-  return (dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix))) => {
-    if (made === null) {
-      const template = setupFixtureAt(templateFolder(`${prefix}template-`));
-      build(template);
-      made = template;
-    }
-    return copyWorld(made, dir);
+function keptBy(kept, build) {
+  const before = kept && JSON.stringify(kept);
+  build();
+  if (!kept) return undefined;
+  const was = JSON.parse(/** @type {string} */ (before));
+  return Object.fromEntries(Object.entries(kept).filter(([key, value]) => JSON.stringify(value) !== JSON.stringify(was[key])));
+}
+
+/**
+ * What a build set in `kept`, set there: a record it holds filled in place,
+ * any other value put.
+ * @param {Record<string, unknown>} kept @param {Record<string, unknown>} set
+ */
+function keep(kept, set) {
+  const record = (/** @type {unknown} */ value) => typeof value === 'object' && value !== null && !Array.isArray(value);
+  for (const [key, value] of Object.entries(set)) {
+    if (record(kept[key]) && record(value)) Object.assign(/** @type {object} */ (kept[key]), value);
+    else kept[key] = value;
+  }
+}
+
+/**
+ * The world `name` from the run (run-worlds.cjs), `build` filling the empty
+ * folder it is given; at the first ask, what the build set in `kept` set
+ * here too, wherever the world was built.
+ * @param {string} name @param {(dir: string) => void} build @param {Function} by @param {Record<string, unknown>|undefined} kept
+ * @returns {() => string} the world's folder
+ */
+function runWorld(name, build, by, kept) {
+  let took = false;
+  return () => {
+    const world = worldOfTheRun(name, (dir) => keptBy(kept, () => build(dir)), { by });
+    if (!took && kept) keep(kept, /** @type {Record<string, unknown>} */ (world.kept));
+    took = true;
+    return world.dir;
   };
 }
 
 /**
- * A world of several repositories many tests start from, made once per
- * process: `build` fills an empty folder at the first call, and every call
- * copies what it made into `dir`, each repository moved onto the copy's
- * paths (`copyFolder`) — a remote beside a project among them.
- * @param {string} prefix the template's temp-directory prefix, so a leftover names its suite
+ * A world many tests start from, the project world as `build` fills it,
+ * built once per run under its name (run-worlds.cjs) — one name to one
+ * build, so a builder whose world depends on more than its source, a
+ * driver or a shape, names it — and every call answers a copy of it, at the
+ * folder given, or in a temp folder named for the world. What the build sets
+ * in `kept`, a module's record of the ids it minted, is set in every process
+ * that takes the world. A world whose git config names a path outside it, a
+ * remote beside it, is no template: the copy would share it.
+ * @param {string} name the world's own, and its copies' temp-directory prefix
+ * @param {(dir: string) => void} build
+ * @param {{kept?: Record<string, unknown>}} [options]
+ * @returns {(dir?: string) => string} symbolic links resolved — the path the engine names it by
+ */
+function fixtureFrom(name, build, { kept } = {}) {
+  const world = runWorld(name, (template) => {
+    setupFixtureAt(template);
+    build(template);
+  }, build, kept);
+  return (dir = fs.mkdtempSync(path.join(os.tmpdir(), name))) => copyWorld(world(), dir);
+}
+
+/**
+ * A world of several repositories many tests start from, `build` filling
+ * an empty folder, built once per run under its name as `fixtureFrom`'s
+ * is, and every call copies it into `dir`, each repository moved onto the
+ * copy's paths (`copyFolder`) — a remote beside a project among them.
+ * @param {string} name the world's own
  * @param {(folder: string) => void} build
+ * @param {{kept?: Record<string, unknown>}} [options]
  * @returns {(dir: string) => string} dir, symbolic links resolved
  */
-function folderFrom(prefix, build) {
-  /** @type {string|null} */
-  let made = null;
-  return (dir) => {
-    if (made === null) {
-      const template = templateFolder(`${prefix}template-`);
-      build(template);
-      made = template;
-    }
-    return copyFolder(made, dir);
-  };
+function folderFrom(name, build, { kept } = {}) {
+  const world = runWorld(name, build, build, kept);
+  return (dir) => copyFolder(world(), dir);
 }
 
 /** A clone of the remote `bare` at `dir`, under the test identity. @param {string} bare @param {string} dir @param {string[]} [args] further `git clone` flags */
@@ -702,14 +739,14 @@ const projects = new Map();
 /**
  * A project at `{dir}/{name}` with one code commit on `main` — and, as its
  * shape asks, a bare remote beside it and its state — each shape made once
- * per process and copied; its commits dated as the project world's are.
+ * per run and copied; its commits dated as the project world's are.
  * @param {string} dir @param {ProjectShape} [shape]
  * @returns {{main: string, root: string, bare: string|null}} the main checkout, its state root, and its remote
  */
 function codeProject(dir, { name = 'project', remote = false, state = false, objectFormat = 'sha1' } = {}) {
   const shape = { name, remote, state, objectFormat };
   const key = JSON.stringify(shape);
-  if (!projects.has(key)) projects.set(key, folderFrom(`project-${name}-`, (folder) => buildProject(folder, shape)));
+  if (!projects.has(key)) projects.set(key, folderFrom(`project-${name}-${remote ? 'remote' : 'alone'}-${state ? 'state' : 'code'}-${objectFormat}-`, (folder) => buildProject(folder, shape)));
   const at = /** @type {(dir: string) => string} */ (projects.get(key))(dir);
   const main = path.join(at, name);
   return { main, root: path.join(main, STATE_DIR_NAME), bare: remote ? path.join(at, `${name}.git`) : null };
@@ -724,7 +761,7 @@ const machines = new Map();
  * Two machines on one remote: here, a project, `name`, at `{dir}/{name}`,
  * its state pushed to the bare remote beside it, `{name}.git`; and there, a
  * clone of the remote at `{dir}/other-machine`, its state worktree made from
- * the remote's state branch. Made once per process for each name, copied;
+ * the remote's state branch. Made once per run for each name, copied;
  * the project's commits dated as the project world's are.
  * @param {string} dir @param {{name?: string}} [opts]
  * @returns {{here: Machine, there: Machine, bare: string}}

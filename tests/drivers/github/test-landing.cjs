@@ -39,7 +39,7 @@ const { REPOSITORY, github, onGithub, bareOf, calls, closeByHand, defaultOnGithu
 const { git, tip, readManifest, traced } = harness;
 const { createManifest } = require('../../scripts/discovery-test-utils.cjs');
 const { card, total, rounding } = TASKS;
-const project = useLandingWorld('github-landing-', side.prepare);
+const project = useLandingWorld('github-landing-', side.prepare, 'landing-github-');
 
 /** The query every verb reads the unit's pull requests by. */
 const LIST = 'pr list --state all --limit 1000 --json number,state,headRefName,baseRefName,headRefOid,title,body';

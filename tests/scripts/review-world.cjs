@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // The review phase's suites' world and helpers (test-engine-review-*.cjs,
-// test-engine-brief-review.cjs): a project, built once per process and
+// test-engine-brief-review.cjs): a project, built once per run and
 // copied for each test, with a feature, `pay`, whose build has finished —
 // its spec of two areas, each with its scenarios, its statements citing
 // the ledger so the second area relies on the first; its cut of two
@@ -202,7 +202,7 @@ const world = fixtureFrom('review-', (dir) => {
   calls.refund = decided(dir, atSpec, 'What does a refund\'s receipt say?', { by: 'person', text: 'A refund\'s receipt names the shop.', why: 'As its charge\'s did.' }, { flags: ['--relies-on', calls.copy] });
   writeState(dir, layout.unit(UNIT, SPEC_FILE), specOf({ token: calls.token, copy: calls.copy, refund: calls.refund }));
   commitAll(dir, 'the spec');
-});
+}, { kept: calls });
 
 /** @type {string} */
 let dir;

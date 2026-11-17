@@ -57,7 +57,7 @@ module.exports = {
   env: {},
   /** The most git commands the engine runs for each land verb in the landing world (test-engine-landing-conformance-record.cjs). */
   gitCalls: { open: 36, phase: 38, again: 23, finish: 76 },
-  /** The world readied for the driver, once per process. @param {string} dir */
+  /** The world readied for the driver, once per run. @param {string} dir */
   prepare: (dir) => setLandingDriver(dir, 'local'),
   /** A repository nested in the world readied for the driver: nothing to ready. */
   nest: () => {},

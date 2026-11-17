@@ -29,7 +29,7 @@ const { GH_ENV, github, bareOf, closeByHand, pulls, tipOnGithub } = require('./w
 const { ok, refuses, git, withEnv, fixtureFrom, cleanupFixture } = harness;
 const { quickFixLanding, quickFixClose } = require('../../../skills/ledger-engine/scripts/domain/landing.cjs');
 
-const world = fixtureFrom('github-landing-quick-fix-pull-', (dir) => twoFixesBuilt(dir, { ready: side.prepare, env: GH_ENV }));
+const world = fixtureFrom('quick-fix-two-fixes-github-', (dir) => twoFixesBuilt(dir, { ready: side.prepare, env: GH_ENV }));
 const config = useTempFolder('github-landing-quick-fix-pull-config-');
 
 let dir = ''; // the project

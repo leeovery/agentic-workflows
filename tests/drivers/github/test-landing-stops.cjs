@@ -46,7 +46,7 @@ const { GH_ENV, ghEnv, github, onGithub, bareOf, calls, closeByHand, lagOnGithub
 
 const { git, tip } = harness;
 const { card, total, rounding } = TASKS;
-const project = useLandingWorld('github-landing-stops-', side.prepare);
+const project = useLandingWorld('github-landing-stops-', side.prepare, 'landing-github-');
 
 /**
  * Each fetch from GitHub of the clone at `dir` refused while the shell test

@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 // The worlds and helpers of discovery's gate suites (test-engine-start-this-
 // work.cjs, test-engine-approve-map.cjs, test-engine-workunit-create.cjs's
-// creations through the gate). Each is built once per process through the
+// creations through the gate). Each is built once per run through the
 // verbs and copied for each test, its trust log in a config folder of the
 // test's own:
 // - before the work: the product's conversation open on its first session,

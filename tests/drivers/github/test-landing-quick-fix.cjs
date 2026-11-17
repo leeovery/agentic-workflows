@@ -32,7 +32,7 @@ const { GH_ENV, pulls, tipOnGithub } = require('./world.cjs');
 
 const { ok, refuses, git, readManifest, fixtureFrom, cleanupFixture } = harness;
 
-const world = fixtureFrom('github-landing-quick-fix-', (dir) => twoFixesBuilt(dir, { ready: side.prepare, env: GH_ENV }));
+const world = fixtureFrom('quick-fix-two-fixes-github-', (dir) => twoFixesBuilt(dir, { ready: side.prepare, env: GH_ENV }));
 const config = useTempFolder('github-landing-quick-fix-config-');
 
 let dir = ''; // the project
