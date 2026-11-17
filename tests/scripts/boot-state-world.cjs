@@ -84,7 +84,7 @@ const setUps = new Map();
 /**
  * A project boot set up, its code — the state's ignore line and the hooks
  * boot committed — pushed where it has a remote; each shape made once per
- * process and copied into the running test's folder.
+ * run and copied into the running test's folder.
  * @param {{name?: string, remote?: boolean}} [opts]
  * @returns {{main: string, root: string, bare: string|null}}
  */
@@ -95,7 +95,7 @@ function setUp({ name = 'portal', remote = false } = {}) {
       const { main } = harness.codeProject(folder, { name, remote });
       assert.strictEqual(boot(main).state, 'ready');
       if (remote) git(main, ['push', '-q', 'origin', 'main']);
-    }));
+    }, { by: [key] }));
   }
   const at = /** @type {(dir: string) => string} */ (setUps.get(key))(world());
   const main = path.join(at, name);

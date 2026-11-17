@@ -234,14 +234,14 @@ function quickFixConformance(name, prefix) {
     git(dir, ['tag', 'landing-base']);
     side.prepare(dir);
   };
-  const world = fixtureFrom(`quick-fix-${name}-`, readied);
+  const world = fixtureFrom(`quick-fix-${name}-`, readied, { by: [side.prepare] });
   const firstWorld = fixtureFrom(`quick-fix-first-${name}-`, (dir) => {
     readied(dir);
     asGone((gone) => {
       entered(dir, gone);
       fixBuilt(dir, 1, SET[0].title, SET[0].file, SET[0].text, gone);
     }, side.env);
-  });
+  }, { by: [side.prepare] });
   /** @type {string[]} */
   let made = [];
   afterEach(() => {
@@ -333,7 +333,7 @@ function quickFixNestedConformance(name, prefix) {
     const dir = path.join(folder, 'project');
     side.prepare(dir);
     for (const { folder: at, into } of Object.values(NESTED)) side.nest(path.join(dir, at), into);
-  });
+  }, { by: [side.prepare, side.nest] });
   /** @type {string[]} */
   let made = [];
   afterEach(() => {

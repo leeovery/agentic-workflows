@@ -28,8 +28,9 @@ const HOOKS = ['before', 'after', 'beforeEach', 'afterEach', 'mock'];
 
 // The worlds folder (run-worlds.cjs), made before the `node --test` and
 // removed as the script exits, a Ctrl-C among the ways out: /bin/sh runs no
-// EXIT trap on an INT it has no trap for.
-const WORLDS = 'export LEDGER_TEST_WORLDS=$(mktemp -d); trap \'rm -rf "$LEDGER_TEST_WORLDS"\' EXIT; trap \'exit 130\' INT; ';
+// EXIT trap on an INT it has no trap for; and the sources hash the worlds
+// are keyed by, hashed once for the run.
+const WORLDS = 'export LEDGER_TEST_WORLDS=$(mktemp -d) LEDGER_TEST_SOURCES=$(node tests/scripts/run-worlds.cjs); trap \'rm -rf "$LEDGER_TEST_WORLDS"\' EXIT; trap \'exit 130\' INT; ';
 
 /** The `npm test` script. */
 const script = () => JSON.parse(fs.readFileSync(PACKAGE, 'utf8')).scripts.test;
@@ -82,7 +83,7 @@ function suites(dir, root) {
 }
 
 describe('the npm test script', () => {
-  it('runs in a worlds folder of the run\'s own, made at its start and removed at its end, a Ctrl-C\'s too', () => {
+  it('runs in a worlds folder of the run\'s own, made at its start and removed at its end, a Ctrl-C\'s too, its sources hashed once at its start', () => {
     assert.ok(script().startsWith(WORLDS), script().slice(0, 200));
   });
 

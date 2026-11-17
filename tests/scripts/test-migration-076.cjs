@@ -29,7 +29,7 @@
 // apply are test-migration-075.cjs's and -077.cjs's.
 //
 // Layer: migration. World: codeintel as the reshape's guard leaves it
-// (migration-world.cjs, `splitMigration`), made once per process and copied
+// (migration-world.cjs, `splitMigration`), made once per run and copied
 // for each test; the runner, the real one over the real migrations, spawned.
 // ---------------------------------------------------------------------------
 

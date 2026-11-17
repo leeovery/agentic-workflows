@@ -6,7 +6,7 @@
 // committing nothing, and mixed scopes refused.
 //
 // Layer: verb. World: a project with its state worktree, one work unit and a
-// file in its code tree committed, made once per process and copied.
+// file in its code tree committed, made once per run and copied.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');

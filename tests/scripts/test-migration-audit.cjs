@@ -31,7 +31,7 @@
 // cut short at a directive, where boot stops.
 //
 // Layer: verb. World: the project migrated whole (migration-sequence-
-// world.cjs), made once per process and copied for each test; each mutant
+// world.cjs), made once per run and copied for each test; each mutant
 // committed, so the boot the audit runs finds nothing of its own to do.
 // ---------------------------------------------------------------------------
 

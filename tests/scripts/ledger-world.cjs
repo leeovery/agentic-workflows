@@ -86,14 +86,15 @@ function ledgerWorld(prefix, phases = PHASES) {
  * @template {string} Name
  * @param {string} prefix @param {Record<string, unknown>} phases
  * @param {(write: ReturnType<typeof ledgerHelpers>['write']) => Record<Name, string>} build
+ * @param {unknown[]} [by] what a helper that wraps `build` was given (`fixtureFrom`)
  * @returns {{world: (dir?: string) => string, made: Record<Name, string>}}
  */
-function writtenWorld(prefix, phases, build) {
+function writtenWorld(prefix, phases, build, by = []) {
   const made = /** @type {Record<Name, string>} */ ({});
   const world = fixtureFrom(prefix, (template) => {
     createManifest(template, UNIT, { work_type: 'epic', phases });
     Object.assign(made, build(ledgerHelpers(() => template).write));
-  });
+  }, { by: [build, JSON.stringify(phases), ...by] });
   return { world, made };
 }
 
@@ -108,7 +109,7 @@ function writtenWorld(prefix, phases, build) {
 function askedWorld(prefix, phases, questions) {
   const { world, made } = writtenWorld(prefix, phases, (write) => /** @type {Record<Name, string>} */ (Object.fromEntries(
     Object.entries(questions).map(([name, text]) => [name, write('ask', NOTE, [], { ...MADE, text }).id]),
-  )));
+  )), [JSON.stringify(questions)]);
   return { world, asked: made };
 }
 

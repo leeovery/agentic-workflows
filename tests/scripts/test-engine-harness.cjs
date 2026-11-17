@@ -245,19 +245,38 @@ describe('engine harness — a world made once and copied', () => {
     assert.strictEqual(stateGit(at, ['log', '-1', '--pretty=%s']).trim(), 'init');
   });
 
-  it('is built once per run under its name, in the run\'s folder where the run names one, else in a template folder of its own; each copy in a temp folder named for it', () => {
-    copies = [world()];
-    const run = process.env.LEDGER_TEST_WORLDS;
-    if (run) assert.strictEqual(made[0], path.join(fs.realpathSync(run), worldKey('harness-test-')));
-    else assert.match(path.basename(made[0]), /^harness-test-template-/);
-    assert.match(path.basename(copies[0]), /^harness-test-(?!template-)/);
+  /**
+   * The world `name` asked for, and copied, where the run's folder is
+   * `folder`, or where there is none: the folder it was built in, and the copy.
+   * @param {string|undefined} folder @param {string} name @param {unknown[]} [by]
+   */
+  const askedWhere = (folder, name, by) => harness.withEnv({ LEDGER_TEST_WORLDS: folder }, () => {
+    /** @type {string[]} */
+    const built = [];
+    const copy = harness.fixtureFrom(name, (at) => { built.push(at); seed(at); }, { by })();
+    copies.push(copy);
+    return { built: built[0], copy };
   });
 
-  it('adds no exit listener of its own: every template is removed by the one the fixture library holds', () => {
+  it('is built once per run under its name, in the run\'s folder; each copy in a temp folder named for it', () => {
+    const run = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-test-run-')));
+    copies.push(run);
+    const { built, copy } = askedWhere(run, 'harness-test-in-run-');
+    assert.strictEqual(built, path.join(run, worldKey('harness-test-in-run-')));
+    assert.match(path.basename(copy), /^harness-test-in-run-(?!template-)/);
+  });
+
+  it('outside a run, is built in a template folder of its own, and adds no exit listener of its own: every template is removed by the one the fixture library holds', () => {
     const listeners = process.listenerCount('exit');
-    const another = harness.fixtureFrom('harness-test-another-', seed);
-    copies = [another(), another()];
+    const { built, copy } = askedWhere(undefined, 'harness-test-alone-');
+    assert.match(path.basename(built), /^harness-test-alone-template-/);
+    assert.match(path.basename(copy), /^harness-test-alone-(?!template-)/);
     assert.strictEqual(process.listenerCount('exit'), listeners);
+  });
+
+  it('is known by what a helper wrapping its build was given: the same name asked with another refused, naming the suite', () => {
+    askedWhere(undefined, 'harness-test-given-', ['one']);
+    assert.throws(() => askedWhere(undefined, 'harness-test-given-', ['another']), new RegExp(`^Error: the world harness-test-given- has two builders, at ${__filename}:\\d+:\\d+ and at ${__filename}:\\d+:\\d+:`));
   });
 
   it('sets what its build set in `kept` in a process that takes the world another process built', async () => {
@@ -270,7 +289,9 @@ describe('engine harness — a world made once and copied', () => {
       'const world = harness.fixtureFrom("harness-test-kept-", () => { kept.minted = `q-${process.pid}`; }, { kept });',
       'atBarrier();',
       'const copy = world();',
-      'report({ kept, pid: process.pid, copied: fs.existsSync(path.join(copy, ".git")) });',
+      'const copied = fs.existsSync(path.join(copy, ".git"));',
+      'harness.cleanupFixture(copy);',
+      'report({ kept, pid: process.pid, copied });',
     ].join('\n'), [], { ...process.env, LEDGER_TEST_WORLDS: folder });
     try {
       const [built] = await asker();

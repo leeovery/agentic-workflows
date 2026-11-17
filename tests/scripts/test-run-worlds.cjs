@@ -2,12 +2,14 @@
 
 // ---------------------------------------------------------------------------
 // Worlds built once per run (run-worlds.cjs): a world's key, hashed from its
-// name and the sources that could build it; built in process where the run
+// name and the sources that could build it, as the run hashed them where it
+// did; built in process where the run
 // names no folder; built once under its claim by the first of two processes
 // that ask at once, where it stands, and marked, the other waiting and
 // taking it; what a build answers carried to every process that takes its
 // world; one name to one build, a second builder of a name refused, in
-// another process or in this one; a build that fails leaving its error,
+// another process or in this one, by its source, naming the suite that
+// asked through any module between; a build that fails leaving its error,
 // which every later asker meets at once; a world marked between a look and
 // a claim never built again; a dead builder's claim taken over by the next
 // to ask, and its half-built world built over; and a builder alive past the
@@ -25,6 +27,7 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const crypto = require('crypto');
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -64,15 +67,15 @@ describe('worlds built once per run', () => {
   };
 
   beforeEach(() => {
-    tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'run-worlds-'));
+    tmp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'run-worlds-')));
     folder = path.join(tmp, 'worlds');
     fs.mkdirSync(folder);
     builds = [];
   });
   afterEach(() => { fs.rmSync(tmp, { recursive: true, force: true }); });
 
-  it('keys a world by its name and by the path and bytes of every file under skills/ and of the test library; never by a suite, where the tree sits, or when it was written', () => {
-    const files = { 'skills/a/scripts/engine.cjs': 'one', 'tests/scripts/a-world.cjs': 'two', 'tests/scripts/test-a.cjs': 'three' };
+  it('keys a world by its name and by the path and bytes of every file under skills/ and of the test library, a driver\'s fixtures among it; never by a suite, where the tree sits, or when it was written', () => {
+    const files = { 'skills/a/scripts/engine.cjs': 'one', 'tests/scripts/a-world.cjs': 'two', 'tests/scripts/test-a.cjs': 'three', 'tests/drivers/a/landing.cjs': 'four', 'tests/drivers/a/test-a.cjs': 'five' };
     /** A sources tree of `files`, `changed` over them, a file changed to null gone. @param {string} name @param {Record<string, string|null>} [changed] */
     const tree = (name, changed = {}) => {
       const root = path.join(tmp, name);
@@ -92,7 +95,29 @@ describe('worlds built once per run', () => {
     assert.notStrictEqual(worldKey('cutClosed', tree('library', { 'tests/scripts/a-world.cjs': 'two, changed' })), key, 'a library module changed');
     assert.notStrictEqual(worldKey('cutClosed', tree('added', { 'skills/a/SKILL.md': 'new' })), key, 'a file added');
     assert.notStrictEqual(worldKey('cutClosed', tree('moved', { 'skills/a/scripts/engine.cjs': null, 'skills/a/scripts/kernel.cjs': 'one' })), key, 'a file moved');
+    assert.notStrictEqual(worldKey('cutClosed', tree('driver', { 'tests/drivers/a/landing.cjs': 'four, changed' })), key, 'a driver\'s fixture changed');
     assert.strictEqual(worldKey('cutClosed', tree('suite', { 'tests/scripts/test-a.cjs': 'three, changed' })), key, 'a suite changed builds no world');
+    assert.strictEqual(worldKey('cutClosed', tree('driver-suite', { 'tests/drivers/a/test-a.cjs': 'five, changed' })), key, 'a driver\'s suite changed builds no world');
+  });
+
+  it('keys this checkout\'s worlds by the sources the run hashed once at its start, where it did, hashing none itself; as the module run as a script hashes them', async () => {
+    const hashed = 'a'.repeat(64);
+    const asker = (/** @type {NodeJS.ProcessEnv} */ env) => contend(1, [
+      `const { worldKey } = require(${JSON.stringify(RUN_WORLDS)});`,
+      'const read = fs.readFileSync;',
+      'let reads = 0;',
+      'fs.readFileSync = (...args) => { reads += 1; return read(...args); };',
+      'atBarrier();',
+      'const key = worldKey("stand-in");',
+      'report({ key, reads });',
+    ].join('\n'), [], env);
+    const [run] = await asker({ ...process.env, LEDGER_TEST_SOURCES: hashed });
+    const ofTheRun = `stand-in-${crypto.createHash('sha256').update(`stand-in\0${hashed}`).digest('hex').slice(0, 16)}`;
+    assert.deepStrictEqual(run, { key: ofTheRun, reads: 0 }, 'the run\'s hash, no source read');
+    const [alone] = await asker({ ...process.env, LEDGER_TEST_SOURCES: undefined });
+    const script = execFileSync(process.execPath, [RUN_WORLDS], { encoding: 'utf8' });
+    assert.match(script, /^[0-9a-f]{64}$/);
+    assert.strictEqual(alone.key, `stand-in-${crypto.createHash('sha256').update(`stand-in\0${script}`).digest('hex').slice(0, 16)}`, 'outside a run, its own hash of the sources, the script\'s');
   });
 
   it('a run naming no folder: the world built in this process, in a folder of its own, once however often it is asked for', () => {
@@ -213,14 +238,29 @@ describe('worlds built once per run', () => {
     assert.deepStrictEqual(builds, [], 'built nothing');
   });
 
-  it('one name to one build in this process: a name asked for again with another builder is refused, the first builder\'s world untouched', () => {
+  it('one name to one build in this process, by its source: a builder of the same source, made afresh, takes the world; one of another source is refused, the first builder\'s world untouched', () => {
     const name = named('two in one');
-    const other = (/** @type {string} */ dir) => build(dir);
+    const wrapped = () => (/** @type {string} */ dir) => build(dir);
+    const other = (/** @type {string} */ dir) => { build(dir); };
     withEnv({ LEDGER_TEST_WORLDS: undefined }, () => {
-      const world = worldOfTheRun(name, build, { by: build });
-      assert.deepStrictEqual(worldOfTheRun(name, (dir) => build(dir), { by: build }), world, 'the same builder, wrapped afresh: the same world');
-      assert.throws(() => worldOfTheRun(name, other, { by: other }), new RegExp(`^Error: the world ${name} has two builders, at ${__filename}:\\d+:\\d+ and at ${__filename}:\\d+:\\d+`));
+      const world = worldOfTheRun(name, wrapped(), { by: [wrapped()] });
+      assert.deepStrictEqual(worldOfTheRun(name, wrapped(), { by: [wrapped()] }), world, 'the same source, made afresh: the same world');
+      assert.throws(() => worldOfTheRun(name, wrapped(), { by: [other] }), new RegExp(`^Error: the world ${name} has two builders, at ${__filename}:\\d+:\\d+ and at ${__filename}:\\d+:\\d+`));
       assert.deepStrictEqual(builds, [world.dir], 'built once');
+    });
+  });
+
+  it('a world asked for through a module of worlds: a refusal names the suite each asked from, not the module between', () => {
+    const name = named('through a module');
+    const helper = path.join(tmp, 'helper-world.cjs');
+    fs.writeFileSync(helper, [
+      `const { worldOfTheRun } = require(${JSON.stringify(RUN_WORLDS)});`,
+      `module.exports = (build) => worldOfTheRun(${JSON.stringify(name)}, (dir) => build(dir), { by: [build] });`,
+    ].join('\n'));
+    const ask = require(helper);
+    withEnv({ LEDGER_TEST_WORLDS: undefined }, () => {
+      ask(build);
+      assert.throws(() => ask((/** @type {string} */ dir) => { build(dir); }), new RegExp(`^Error: the world ${name} has two builders, at ${__filename}:\\d+:\\d+ and at ${__filename}:\\d+:\\d+:`));
     });
   });
 
@@ -234,9 +274,10 @@ describe('worlds built once per run', () => {
         `const { worldOfTheRun } = require(${JSON.stringify(RUN_WORLDS)});`,
         "const path = require('path');",
         'const [world, limitMs, pollMs] = process.argv.slice(1);',
+        // A look is the loop's at the mark, the one test it makes each turn.
         'let looks = 0;',
         'const exists = fs.existsSync;',
-        'fs.existsSync = (at) => { if (at === world) looks += 1; return exists(at); };',
+        'fs.existsSync = (at) => { if (at === `${world}.built`) looks += 1; return exists(at); };',
         'const started = Date.now();',
         'const { dir, how } = worldOfTheRun("stand-in", (into) => fs.writeFileSync(path.join(into, "built-by"), ""), { limitMs: Number(limitMs), pollMs: Number(pollMs) });',
         'report({ how, apart: !dir.startsWith(path.dirname(world)), waitedMs: Date.now() - started, looks });',
@@ -244,7 +285,7 @@ describe('worlds built once per run', () => {
 
       assert.deepStrictEqual({ how: waiter.how, apart: waiter.apart }, { how: 'own', apart: true }, 'built its own, in a folder of its own');
       assert.ok(waiter.waitedMs >= LIMIT_MS, `built its own after ${waiter.waitedMs} ms, inside the ${LIMIT_MS} ms limit`);
-      assert.ok(waiter.looks <= LIMIT_MS / POLL_MS + 1, `${waiter.looks} looks in ${LIMIT_MS} ms with ${POLL_MS} ms between them`);
+      assert.ok(waiter.looks >= 2 && waiter.looks <= LIMIT_MS / POLL_MS + 1, `${waiter.looks} looks in ${LIMIT_MS} ms with ${POLL_MS} ms between them`);
       assert.deepStrictEqual(fs.readdirSync(folder), [`${path.basename(world)}.claim`], 'nothing placed beside the claim');
     } finally {
       release();

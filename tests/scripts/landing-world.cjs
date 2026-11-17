@@ -470,13 +470,14 @@ const landingCommits = (dir, into = 'main') => git(dir, ['log', '--reverse', '--
  * @param {string} prefix temp-directory prefix, so a leftover names its suite
  * @param {(dir: string) => void} [ready]
  * @param {string} [name] the world's
+ * @param {unknown[]} [by] what a helper that wraps `ready` was given (`fixtureFrom`)
  * @returns {() => string}
  */
-function useLandingWorld(prefix, ready, name = ready === undefined ? 'landing-' : prefix) {
+function useLandingWorld(prefix, ready, name = ready === undefined ? 'landing-' : prefix, by = []) {
   return copiesOf(prefix, fixtureFrom(name, (dir) => {
     buildLanding(dir);
     ready?.(dir);
-  }));
+  }, { by: [ready, ...by] }));
 }
 
 /** A copy of the nested world: the project, and its clones' checkouts. @typedef {{dir: string, ext: string, lib: string}} Nested */
@@ -484,14 +485,14 @@ function useLandingWorld(prefix, ready, name = ready === undefined ? 'landing-' 
 /**
  * A copy of the nested world at each call, as `useLandingWorld` copies the
  * landing world, `ready` run on its project, under `name` as there.
- * @param {string} prefix @param {(dir: string) => void} [ready] @param {string} [name]
+ * @param {string} prefix @param {(dir: string) => void} [ready] @param {string} [name] @param {unknown[]} [by]
  * @returns {() => Nested}
  */
-function useNestedWorld(prefix, ready, name = ready === undefined ? 'landing-nested-' : prefix) {
+function useNestedWorld(prefix, ready, name = ready === undefined ? 'landing-nested-' : prefix, by = []) {
   const copy = copiesOf(prefix, folderFrom(name, (folder) => {
     const dir = buildNested(folder);
     ready?.(dir);
-  }));
+  }, { by: [ready, ...by] }));
   return () => {
     const dir = path.join(copy(), NESTED_PROJECT);
     return { dir, ext: path.join(dir, NESTED.ext.folder), lib: path.join(dir, NESTED.lib.folder) };
@@ -542,7 +543,7 @@ function nestedConformance(name, prefix) {
   const project = useNestedWorld(prefix, (dir) => {
     side.prepare(dir);
     for (const { folder, into } of Object.values(NESTED)) side.nest(path.join(dir, folder), into);
-  }, `landing-nested-${name}-`);
+  }, `landing-nested-${name}-`, [side.prepare, side.nest]);
   /** @param {Nested} at @returns {Record<string, [string, string]>} */
   const repos = (at) => ({ '.': [at.dir, 'main'], ext: [at.ext, NESTED.ext.into], lib: [at.lib, NESTED.lib.into] });
   return {
@@ -851,7 +852,7 @@ function personState(kind, prefix, ready = () => {}) {
     ready(dir);
     makeSigningKey(dir);
   };
-  const project = useLandingWorld(kind === 'busy' ? `${prefix}the person's path ` : prefix, world);
+  const project = useLandingWorld(kind === 'busy' ? `${prefix}the person's path ` : prefix, world, undefined, [ready]);
   return { project, apply: PERSON_STATES[kind], signs };
 }
 

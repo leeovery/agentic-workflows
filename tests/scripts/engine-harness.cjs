@@ -627,7 +627,7 @@ function keep(kept, set) {
  * The world `name` from the run (run-worlds.cjs), `build` filling the empty
  * folder it is given; at the first ask, what the build set in `kept` set
  * here too, wherever the world was built.
- * @param {string} name @param {(dir: string) => void} build @param {Function} by @param {Record<string, unknown>|undefined} kept
+ * @param {string} name @param {(dir: string) => void} build @param {unknown[]} by @param {Record<string, unknown>|undefined} kept
  * @returns {() => string} the world's folder
  */
 function runWorld(name, build, by, kept) {
@@ -647,19 +647,24 @@ function runWorld(name, build, by, kept) {
  * driver or a shape, names it — and every call answers a copy of it, at the
  * folder given, or in a temp folder named for the world. What the build sets
  * in `kept`, a module's record of the ids it minted, is set in every process
- * that takes the world. A world whose git config names a path outside it, a
- * remote beside it, is no template: the copy would share it.
+ * that takes the world. A helper that wraps what it was given in `build`
+ * names it in `by`, so the world is known by it too. A world whose git
+ * config names a path outside it, a remote beside it, is no template: the
+ * copy would share it.
  * @param {string} name the world's own, and its copies' temp-directory prefix
  * @param {(dir: string) => void} build
- * @param {{kept?: Record<string, unknown>}} [options]
+ * @param {{kept?: Record<string, unknown>, by?: unknown[]}} [options]
  * @returns {(dir?: string) => string} symbolic links resolved — the path the engine names it by
  */
-function fixtureFrom(name, build, { kept } = {}) {
+function fixtureFrom(name, build, { kept, by = [] } = {}) {
   const world = runWorld(name, (template) => {
     setupFixtureAt(template);
     build(template);
-  }, build, kept);
-  return (dir = fs.mkdtempSync(path.join(os.tmpdir(), name))) => copyWorld(world(), dir);
+  }, [build, ...by], kept);
+  return (dir) => {
+    const from = world();
+    return copyWorld(from, dir ?? fs.mkdtempSync(path.join(os.tmpdir(), name)));
+  };
 }
 
 /**
@@ -669,11 +674,11 @@ function fixtureFrom(name, build, { kept } = {}) {
  * copy's paths (`copyFolder`) — a remote beside a project among them.
  * @param {string} name the world's own
  * @param {(folder: string) => void} build
- * @param {{kept?: Record<string, unknown>}} [options]
+ * @param {{kept?: Record<string, unknown>, by?: unknown[]}} [options]
  * @returns {(dir: string) => string} dir, symbolic links resolved
  */
-function folderFrom(name, build, { kept } = {}) {
-  const world = runWorld(name, build, build, kept);
+function folderFrom(name, build, { kept, by = [] } = {}) {
+  const world = runWorld(name, build, [build, ...by], kept);
   return (dir) => copyFolder(world(), dir);
 }
 
@@ -746,7 +751,7 @@ const projects = new Map();
 function codeProject(dir, { name = 'project', remote = false, state = false, objectFormat = 'sha1' } = {}) {
   const shape = { name, remote, state, objectFormat };
   const key = JSON.stringify(shape);
-  if (!projects.has(key)) projects.set(key, folderFrom(`project-${name}-${remote ? 'remote' : 'alone'}-${state ? 'state' : 'code'}-${objectFormat}-`, (folder) => buildProject(folder, shape)));
+  if (!projects.has(key)) projects.set(key, folderFrom(`project-${name}-${remote ? 'remote' : 'alone'}-${state ? 'state' : 'code'}-${objectFormat}-`, (folder) => buildProject(folder, shape), { by: [key] }));
   const at = /** @type {(dir: string) => string} */ (projects.get(key))(dir);
   const main = path.join(at, name);
   return { main, root: path.join(main, STATE_DIR_NAME), bare: remote ? path.join(at, `${name}.git`) : null };
@@ -773,7 +778,7 @@ function twoMachines(dir, { name = 'project' } = {}) {
       const there = cloneOf(path.join(folder, `${name}.git`), path.join(folder, 'other-machine'));
       createStateBranchFromRemote(path.join(there, STATE_DIR_NAME));
       addStateWorktree(path.join(there, STATE_DIR_NAME));
-    }));
+    }, { by: [name] }));
   }
   const at = /** @type {(dir: string) => string} */ (machines.get(name))(dir);
   /** @param {string} folder @returns {Machine} */

@@ -25,7 +25,7 @@ function roadmapWorld(name, build = () => {}) {
     fs.writeFileSync(path.join(dir, '.ledger', 'manifest.json'), '{}\n');
     commitAll(dir, 'init');
     build(dir);
-  });
+  }, { by: [build] });
 }
 
 /** A path in the state as a state commit names it: from the state root. */
