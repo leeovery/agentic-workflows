@@ -165,7 +165,7 @@ function placeOf(root, position) {
   if (position === null || PROJECT_IDENTITIES.includes(position.name)) return none;
   const manifest = manifestOf(root, position.name);
   if (manifest === null) return none;
-  return { unit: position.name, type: manifest.work_type, phase: position.phase ?? null, topic: position.topic ?? null };
+  return { unit: position.name, type: manifest.work_type, phase: position.phase ?? null, topic: position.topic ?? null, ...(position.record === undefined ? {} : { record: position.record }) };
 }
 
 /**

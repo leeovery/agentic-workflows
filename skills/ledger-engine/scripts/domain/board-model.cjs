@@ -43,8 +43,9 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
 /**
  * Where the session is, as its position records it: a unit, its type, the
  * phase and topic it works in — each null where it is at none; all null at
- * the start menu or a project-level place.
- * @typedef {{unit: string|null, type: string|null, phase: string|null, topic: string|null}} Place
+ * the start menu or a project-level place — and in the laboratory, the
+ * experiment its entry named.
+ * @typedef {{unit: string|null, type: string|null, phase: string|null, topic: string|null, record?: string}} Place
  */
 
 /** A banner's state: running, waiting on the person, done, or neither. @typedef {'running'|'needs'|'done'|'idle'} BannerState */

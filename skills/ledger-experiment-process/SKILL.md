@@ -14,6 +14,7 @@ The laboratory a discussion hands a question to that no amount of talking settle
 - `$0` — **work_type**: `epic` or `feature`.
 - `$1` — **work_unit**.
 - `$2` — **topic**: the topic whose series holds the experiment. A single-topic unit's topic is the unit: topic = `$2`, or `$1` where it is left off.
+- `$3` (optional) — **record**: the experiment the handoff names, the one a spawn worked now just conceived.
 
 ## Instructions
 
@@ -25,15 +26,17 @@ The experiment entered has ended, concluded with its verdict or abandoned with i
 
 ## Entering
 
-Every engine call is `node .claude/skills/ledger-engine/scripts/engine.cjs {verb} …`, each verb under **Doors**.
+Every engine call is `node .claude/skills/ledger-engine/scripts/engine.cjs {verb} …`, each verb under **Doors**. Where `$3` is given, the entry takes it as `--record {record}`.
 
 ```bash
-node .claude/skills/ledger-engine/scripts/engine.cjs enter experiment {work_unit} {topic}
+node .claude/skills/ledger-engine/scripts/engine.cjs enter experiment {work_unit} {topic} [--record {record}]
 ```
 
-A refusal names the way on: say it in a line. Where another session holds the laboratory, or the series holds several live experiments, the entry asks first: emit its sections verbatim per their markers and follow the answer's `next`; carrying on from it ends the turn.
+A refusal names the way on: say it in a line. Where another session holds the laboratory, or the series holds several live experiments, the entry asks first: emit its sections verbatim per their markers and follow the answer's `next`; where that `next` is `continue`, end the turn there.
 
 Then read what the DATA names. Its `experiment`, `status` and `folder` are the experiment this conversation works, `{id}` and `{folder}` below. Read its `problem`, its `design` and its `report` where written, and the documents in each `split`'s folder. Until the design is approved, the design is built on the spawning topic: read its `topic record`, its `topic log`, its `brief`, and for a unit's one topic each `discovery log` and `seed`. They are inherited ground, never a list of questions to ask again. From the approval, the record's own documents are the ground, never the conversation's memory.
+
+Where a `split` is live, the run is part way through its splits. Load **[splitting.md](references/splitting.md)** and follow its instructions as written.
 
 Then say in your own words, in a line, which experiment this is and where it stands, and carry on from there.
 
@@ -78,7 +81,7 @@ A question that turns into two primary questions mid-run splits: load **[splitti
 
 ### Amending a Frozen Design
 
-Until the first result is visible, the approved design changes only by a recorded amendment, never a silent edit. Append a dated entry to the design's `## Amendments` saying what changes and why, the approved text above it untouched; present the change in plain terms; and ask the person's go before measurement starts or resumes. On their go, `experiment amend` records it. An amendment they decline is struck, dated, and `experiment amend` records the strike.
+Until the first result is visible, the approved design changes only by a recorded amendment, never a silent edit. Append a dated entry to the design's `## Amendments` saying what changes and why, the approved text above it untouched; present the change in plain terms; and ask the person's go before measurement starts or resumes. On their go, `experiment amend` records it. An amendment they decline is struck, dated, and `experiment amend --struck` records the strike.
 
 Once results are visible, the design is frozen for good. A flaw found then goes in the report's `## Corrections`, dated and append-only, and is the next experiment's to fix; old data is never scored again under a new rule. A run departing from the design is a deviation in the report, never an amendment.
 
@@ -86,19 +89,19 @@ Once results are visible, the design is frozen for good. A flaw found then goes 
 
 Complete the report: the reading, kept apart from the results it reads; the conclusion, applying the pre-registered rule, which branch fired and what it triggers, never a fresh judgment; and how to reproduce the run. A measure thought of after seeing the data is labelled exploratory: it can motivate the next experiment, never settle this one. A disproven hypothesis is examined run first, since only a clean run indicts the belief. A parent's conclusion brings its splits' verdicts together.
 
-Walk the person through what was measured and what the rule says it means, then record the verdict, the conclusion's one line, with `experiment conclude`. Say in a line where the result goes: back to the spawning conversation, which takes it in when it next opens, or, where the response's `report_sent` names a topic, into that topic's mail, reopening it where `reopened` says so. Then follow its `next`: where it draws the next experiment's gate, emit its sections verbatim per their markers, and the answer goes to `gate`, whose `next` you follow.
+Walk the person through what was measured and what the rule says it means, then record the verdict, the conclusion's one line, with `experiment conclude`. Say in a line where the result goes: a split's to its parent, whose conclusion brings it in; the series' own back to the spawning conversation, which takes it in when it next opens, or, where the response's `report_sent` names a topic, into that topic's mail, reopening it where `reopened` says so. Then follow its `next`: where it draws the next experiment's gate, emit its sections verbatim per their markers, and the answer goes to `gate`, whose `next` you follow.
 
 ## Doors
 
-- The experiment → `enter experiment {work_unit} {topic}`.
+- The experiment → `enter experiment {work_unit} {topic} [--record {record}]`.
 - The design written → `experiment advance {work_unit} {topic} {id}`; the approval → the briefing gate, `render experiment-approval-gate {work_unit}.experiment.{topic} --id {id}`, whose yes runs `experiment approve`; measurement begun → `experiment advance`.
-- An amendment, or its strike → `experiment amend {work_unit} {topic} {id}`.
+- An amendment → `experiment amend {work_unit} {topic} {id}`; its strike → `experiment amend {work_unit} {topic} {id} --struck`.
 - The tally → `experiment runs {work_unit} {topic} {id} --file {tally}`.
 - A split → `experiment create {work_unit} {topic} --slug {slug} --parent {id}`.
 - The verdict → `experiment conclude {work_unit} {topic} {id} --verdict "{verdict}"`; an abandonment → `experiment abandon {work_unit} {topic} {id} --reason "{reason}"`.
 - A gate's answer → `gate "{name}" --pick {key}`, or `--typed {key}` for a typed row such as Amend.
 
-Each `experiment` verb commits what it records with the experiment's folder: the design, the report and the data written there since.
+Each `experiment` verb commits what it records with the experiment's folder: the design, the report and the data written there since. From the approval, a step refuses a design changed since its commit: record the change with `experiment amend` first.
 
 ## Abandoning the Experiment
 

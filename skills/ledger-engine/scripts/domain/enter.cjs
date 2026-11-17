@@ -67,7 +67,10 @@
 // laboratory's alone) is the one of the place's several the entry works,
 // checked by the row before anything is written; where the call names none
 // and the place holds several, the row asks which after any hold's question,
-// nothing written, each answer the entry again naming its record.
+// nothing written, each answer the entry again naming its record. The record
+// worked, named or the one there is, rides the conversation's position, so
+// what reads it later — the verbs' way on, a compaction's note, the board —
+// knows which.
 //
 // The refusals, the question, what a row readies and the reads take no
 // lock, but a read of the tracker, which takes the state's lock as every
@@ -153,8 +156,9 @@ const { ontoEpic } = require('./topic-leave.cjs');
  * place, drawn whole, for a row that has such a hold; and, for a row that
  * takes seeds, the check refusing what it cannot take; for a row whose
  * place holds several records, the check refusing a record that is not one
- * it works, and the question asking which where the call named none, drawn
- * whole, `again` the entry again naming the one picked; and, for a row that
+ * it works, the question asking which where the call named none, drawn
+ * whole, `again` the entry again naming the one picked, and the one it works
+ * once nothing is asked, recorded on the position; and, for a row that
  * readies its place before its start, the readying, each line it adds to
  * the DATA. A start that commits
  * a write of its own through the tracker's verbs, which commit their own
@@ -180,6 +184,7 @@ const { ontoEpic } = require('./topic-leave.cjs');
  * @property {(at: Standing, seeds: string) => void} [seeds]
  * @property {(at: Standing, record: string) => void} [record]
  * @property {(at: Standing, again: (record: string) => string[]) => string|null} [pick]
+ * @property {(at: Standing, record: string|null) => string} [worked]
  * @property {(at: Entering) => Line[]} [readies]
  */
 
@@ -496,13 +501,14 @@ function standingOf(entry, cwd, phase, unit, named) {
 /**
  * How an entry holds its place: the writer lock over the manifest its start
  * writes, that manifest, state-relative, the retry a commit git refuses
- * names, and the arrival — the product's conversation a project place, named
- * by its identity alone.
+ * names, and the arrival, with the record the entry works where it works
+ * one — the product's conversation a project place, named by its identity
+ * alone.
  * @typedef {object} Held
  * @property {<T>(fn: () => T) => T} lock
  * @property {string} manifest
  * @property {string} retry
- * @property {() => void} arrive
+ * @property {(record: string|null) => void} arrive
  */
 
 /** @param {string} cwd @param {string} phase @param {string} unit @param {string} place @returns {Held} */
@@ -510,7 +516,7 @@ function heldAt(cwd, phase, unit, place) {
   if (unit === PRODUCT) {
     return { lock: (fn) => withProjectLock(cwd, fn), manifest: PROJECT_MANIFEST_SPEC, retry: '--product', arrive: () => { arriveAt(cwd, PRODUCT); } };
   }
-  return { lock: (fn) => withWorkUnitLock(cwd, unit, fn), manifest: `${unit}/manifest.json`, retry: `${unit} --state`, arrive: () => { arriveAt(cwd, unit, phase, place); } };
+  return { lock: (fn) => withWorkUnitLock(cwd, unit, fn), manifest: `${unit}/manifest.json`, retry: `${unit} --state`, arrive: (record) => { arriveAt(cwd, unit, phase, place, record ?? undefined); } };
 }
 
 /**
@@ -621,15 +627,16 @@ function enterThrough(entries, cwd, argv) {
   const picked = (/** @type {string} */ id) => entryAgain(at, { ...carried, record: id });
   const stop = (take ? null : heldQuestion(entry, at, place, carried)) ?? (record === null ? entry.pick?.(at, picked) ?? null : null);
   if (stop !== null) return { response: { phase, unit, ...atTopic, entered: false }, sections: stop };
+  const worked = entry.worked?.(at, record) ?? null;
   /** @type {Entering} */
-  const entering = { ...at, started: entry.unstarted(at), voided: entry.voids?.(at) ?? false, notes: [], seeds, record };
+  const entering = { ...at, started: entry.unstarted(at), voided: entry.voids?.(at) ?? false, notes: [], seeds, record: worked };
   const readied = entering.started ? entry.readies?.(entering) ?? [] : [];
   entry.closes?.(at);
   const reads = [...entry.reads(entering), ...readied];
   const held = heldAt(cwd, phase, unit, place);
   /** @type {{committed?: string|null, note?: string, warnings?: string[]}} */
   const commit = entering.started || entering.voided || departure !== null ? settle(cwd, entry, entering, held, departure) : {};
-  held.arrive();
+  held.arrive(worked);
   beatQuietly(cwd, unit, phase, place);
   recordEntry(cwd, unit, phase, place);
   const lines = [...reads, ...personLines(), ...logLines(cwd, entry, entering)];

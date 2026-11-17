@@ -189,6 +189,14 @@ describe('engine handoff — the composed answer for every target', () => {
     }
   });
 
+  it('the laboratory takes after its topic the top-level experiment a spawn worked now names, the line naming the topic; a split\'s id or another shape refused', () => {
+    createManifest(dir, 'lab', { work_type: 'epic' });
+    assert.strictEqual(inline(dir, ['ledger-experiment-process', 'epic', 'lab', 'timing', 'E2']),
+      inlineAnswer('ledger-experiment-process', 'epic lab timing E2', '→ Experiment · timing'));
+    refused(dir, ['ledger-experiment-process', 'epic', 'lab', 'timing', 'E1.1'], /^the record is a top-level experiment's id, E\{n\} — got "E1\.1"$/);
+    refused(dir, ['ledger-experiment-process', 'epic', 'lab', 'timing', 'X1'], /^the record is a top-level experiment's id, E\{n\} — got "X1"$/);
+  });
+
   it('a topic the work unit does not hold yet is named all the same — the phase starts it', () => {
     assert.strictEqual(payloadOf(carried(dir, ['ledger-discussion-process', 'epic', 'fumi', 'payments'])).line,
       '→ Discussion · payments');
@@ -417,6 +425,7 @@ describe('engine handoff — refusals', () => {
       [['ledger-discussion-process', 'feature'], /^Usage: engine handoff ledger-discussion-process <epic\|feature> <work-unit> \[<topic>\]$/],
       [['ledger-quick-fix-process', 'quick-fix', 'a', 'b'], /^Usage: engine handoff ledger-quick-fix-process <quick-fix> <work-unit>$/],
       [['ledger-implementation-process', 'epic'], /^Usage: engine handoff ledger-implementation-process <epic\|feature\|bugfix> <work-unit>$/],
+      [['ledger-experiment-process', 'epic', 'lab', 'timing', 'E1', 'more'], /^Usage: engine handoff ledger-experiment-process <epic\|feature> <work-unit> \[<topic> \[<record>\]\]$/],
     ];
     for (const [args, pattern] of cases) refused(dir, args, pattern);
   });

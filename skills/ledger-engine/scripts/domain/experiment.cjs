@@ -40,9 +40,12 @@
 // (and reopens a completed series), the last record's terminal transition
 // closes it — the user never starts or completes it by hand.
 //
-// A top-level record's end answers the way on: the next experiment's gate
-// where the series still holds a live record, else the laboratory left
-// through the unit's Continue; a split's carries the parent's run on.
+// A top-level record's end in the laboratory answers the way on: the next
+// experiment's gate where the series still holds a live record, else the
+// laboratory left through the unit's Continue; a split's carries the
+// parent's run on, as does an end from anywhere else — the spawning
+// conversation abandoning one no one will run — whose call it is told by
+// the conversation's position, never by a flag.
 //
 // Judgment decides, code records. All errors throw loud and specific before
 // anything is written; every load→mutate→save runs under the work unit's
@@ -53,7 +56,10 @@
 // the spawning topic's log among the logs; each step the manifest with the
 // record's folder; and `amend`, which writes nothing itself, the record's
 // folder alone — an amendment to a frozen design, or its strike, standing.
-// A commit git refuses leaves the write saved, with the retry in its note.
+// Since a step commits the record's folder, it refuses first a frozen design
+// changed since its commit, naming `amend`: the freeze held, never a silent
+// edit riding a step's commit. A commit git refuses leaves the write saved,
+// with the retry in its note.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -62,6 +68,7 @@ const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureCont
 const {
   VALID_EXPERIMENT_STATUSES,
   EXPERIMENT_TERMINAL_STATUSES,
+  EXPERIMENT_FROZEN_STATUSES,
   EXPERIMENT_ID_PATTERN,
   isParentExperimentId,
   EXPERIMENT_SPAWN_PHASES,
@@ -75,9 +82,11 @@ const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { measuredQuestion, reportRoute } = require('./experiment-question.cjs');
 const { rebaseLinks } = require('./markdown-links.cjs');
 const { recordDir } = require('./experiment-paths.cjs');
-const { statePath, cacheScratch } = require('../kernel/state-root.cjs');
+const { statePath, stateRoot, cacheScratch } = require('../kernel/state-root.cjs');
+const { hasChangesInPaths, literally } = require('../kernel/git.cjs');
 const { shaped, listed, readPayload } = require('./staged-payload.cjs');
 const { todayStamp } = require('./dates.cjs');
+const { sittingIn } = require('./topic-leave.cjs');
 
 // The mechanical steps `advance` walks. designed → approved is missing on
 // purpose: that transition is the briefing gate's freeze (`approve`).
@@ -362,8 +371,28 @@ function committedStep(cwd, workUnit, result, what, warnings = []) {
 }
 
 /**
+ * Refuses a step over a frozen design changed since it was committed: from
+ * its approval a design changes only by a recorded amendment, `amend`'s
+ * (4.11.15), never folded silently into a step's commit. Held for each
+ * record the step's commit takes, the record's own and its splits', which
+ * nest in its folder.
+ * @param {string} cwd @param {string} workUnit @param {string} topic @param {string} id
+ * @param {Record<string, ExperimentRecord>} experiments
+ */
+function assertFrozenDesigns(cwd, workUnit, topic, id, experiments) {
+  const changed = Object.entries(experiments)
+    .filter(([other, record]) => (other === id || other.startsWith(`${id}.`)) && EXPERIMENT_FROZEN_STATUSES.includes(record.status))
+    .map(([other]) => other)
+    .find((other) => hasChangesInPaths(stateRoot(cwd), literally([path.join(recordDir(workUnit, topic, other, experiments), 'design.md')])));
+  if (changed !== undefined) {
+    throw new Error(`experiment ${changed} ("${topic}")'s design changed after its approval — record the change with experiment amend ${workUnit} ${topic} ${changed} first, or put the design back`);
+  }
+}
+
+/**
  * One shared status write: load, guard, step, save, answer. The transition
- * itself is the caller's closure over the loaded record.
+ * itself is the caller's closure over the loaded record; a frozen design
+ * changed since its commit refuses it first (`assertFrozenDesigns`).
  * @param {string} cwd @param {string} workUnit @param {string} topic @param {string} id
  * @param {(record: ExperimentRecord, item: {experiments?: Record<string, ExperimentRecord>}, manifest: object) => Partial<ExperimentOpResult>} step
  * @returns {ExperimentOpResult}
@@ -373,6 +402,7 @@ function recordTransition(cwd, workUnit, topic, id, step) {
     const manifest = loadWorkUnitManifest(cwd, workUnit);
     const item = experimentItem(manifest, topic);
     const record = seriesRecord(item, topic, id);
+    assertFrozenDesigns(cwd, workUnit, topic, id, /** @type {Record<string, ExperimentRecord>} */ (item.experiments));
     const extra = step(record, item, manifest);
     saveWorkUnitManifest(cwd, workUnit, manifest);
     return {
@@ -441,23 +471,23 @@ function approveExperiment(cwd, workUnit, topic, id) {
  * record's folder committed, its design among it, the amendment dated
  * beneath what was approved. Refused, writing nothing, for a design not yet
  * frozen, which changes freely until its approval, and for an experiment
- * ended.
+ * ended. `struck` names the commit a strike's.
  * @param {string} cwd project root
- * @param {string} workUnit @param {string} topic @param {string} id
+ * @param {string} workUnit @param {string} topic @param {string} id @param {{struck?: boolean}} [opts]
  * @returns {ExperimentOpResult}
  */
-function amendExperiment(cwd, workUnit, topic, id) {
+function amendExperiment(cwd, workUnit, topic, id, { struck = false } = {}) {
   const manifest = loadWorkUnitManifest(cwd, workUnit);
   const item = experimentItem(manifest, topic);
   const record = seriesRecord(item, topic, id);
   assertNotTerminal(record, topic, id);
-  if (record.status !== 'approved' && record.status !== 'running') {
+  if (!EXPERIMENT_FROZEN_STATUSES.includes(record.status)) {
     throw new Error(`experiment ${id} ("${topic}") is ${record.status} — its design changes freely until the approval freezes it; an amendment is to a frozen design`);
   }
   const experiments = /** @type {Record<string, ExperimentRecord>} */ (item.experiments);
   /** @type {ExperimentOpResult} */
   const result = { topic, id, slug: record.slug, status: record.status, dir: statePath(cwd, recordDir(workUnit, topic, id, experiments)) };
-  return committed(cwd, [result.dir], `experiment(${workUnit}/${topic}): ${id} design amended`, result, `${workUnit} --topic experiment/${topic}`, []);
+  return committed(cwd, [result.dir], `experiment(${workUnit}/${topic}): ${id} ${struck ? 'amendment struck' : 'design amended'}`, result, `${workUnit} --topic experiment/${topic}`, []);
 }
 
 /**
@@ -571,16 +601,18 @@ function ended(workUnit, topic, id, item, manifest) {
 }
 
 /**
- * The way on once a record ended: a split's carries its parent's run on; a
- * top-level record's leads to the next experiment's gate where the series
- * still holds a live one, else out of the laboratory through the unit's
- * Continue.
+ * The way on once a record ended, the laboratory's alone: a split's carries
+ * its parent's run on; a top-level record's leads to the next experiment's
+ * gate where the series still holds a live one, else out of the laboratory
+ * through the unit's Continue. Ended from anywhere but the laboratory at
+ * this topic, as the spawning conversation abandons one no one will run,
+ * the calling flow carries on: whose call it is, its position says.
  * @param {string} workUnit @param {string} topic @param {string} id
  * @param {{experiments?: Record<string, ExperimentRecord>}} item
  * @returns {import('./projections/surfaces.cjs').Next}
  */
 function afterEnd(workUnit, topic, id, item) {
-  if (!isParentExperimentId(id)) return { kind: 'continue' };
+  if (sittingIn(workUnit, topic) !== 'experiment' || !isParentExperimentId(id)) return { kind: 'continue' };
   const live = Object.entries(item.experiments || {})
     .some(([other, r]) => isParentExperimentId(other) && !EXPERIMENT_TERMINAL_STATUSES.includes(/** @type {string} */ (r.status)));
   return live

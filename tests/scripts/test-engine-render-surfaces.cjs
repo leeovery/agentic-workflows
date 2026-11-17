@@ -423,23 +423,6 @@ describe('experiment spawn gate — the conversation\'s pause for its laboratory
 
 });
 
-describe('render phase-note', () => {
-  let dir;
-  beforeEach(() => {
-    dir = setup();
-    writeManifest(dir, 'pay', { phases: { investigation: { items: { 'auth-flow': { status: 'completed' } } } } });
-  });
-  afterEach(() => teardown(dir));
-
-  it('renders the one-liner with the phase noun by default and an override when given', () => {
-    assert.strictEqual(renderSurface(dir, 'phase-note', { dotpath: 'pay.investigation.auth-flow', verb: 'Resuming' }),
-      '=== DISPLAY: phase note (emit verbatim as a text code block (```text fence) — do not stop; continue as the skill instructs) ===\nResuming investigation: Auth Flow\n');
-    assert.ok(renderSurface(dir, 'phase-note', { dotpath: 'pay.investigation.auth-flow', verb: 'Reopening', noun: 'hunt' })
-      .includes('Reopening hunt: Auth Flow'));
-    assert.throws(() => renderSurface(dir, 'phase-note', { dotpath: 'pay.investigation.auth-flow' }), /--verb is required/);
-  });
-});
-
 describe('roadmap surfaces', () => {
   let dir;
   beforeEach(() => { dir = setup(); });

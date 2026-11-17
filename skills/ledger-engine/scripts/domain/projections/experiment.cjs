@@ -127,10 +127,10 @@ function experimentNextGate(live, { next, leave }) {
 /**
  * The now-or-later gate — rendered by the spawning session right after the
  * spawn is recorded, while the conversation still holds the knowledge. Yes
- * pauses the conversation and hands off to the laboratory for the topic, as
- * every spawn worked now does; later carries the conversation on, the
- * question the experiment measures waiting on its result unless the person
- * answers it first (9.1.11).
+ * pauses the conversation and hands off to the laboratory for the topic, the
+ * experiment it just spawned named, as every spawn worked now does; later
+ * carries the conversation on, the question the experiment measures waiting
+ * on its result unless the person answers it first (9.1.11).
  * @param {{phase: string, id: string, unit: string, topic: string, workType: string}} spawn
  * @param {import('../learned-gates.cjs').GateStep} step the gate's, a learned one
  * @returns {string}
@@ -138,7 +138,7 @@ function experimentNextGate(live, { next, leave }) {
 function experimentSpawnGate({ phase, id, unit, topic, workType }, step) {
   return section('MENU: experiment spawn gate', MENU_INSTRUCTION, menu('', [
     cmdOption('y', 'yes', `Pause this ${phase} here and open the laboratory for ${id}`,
-      { next: { kind: 'handoff', skill: 'ledger-experiment-process', args: [workType, unit, topic] } }),
+      { next: { kind: 'handoff', skill: 'ledger-experiment-process', args: [workType, unit, topic, id] } }),
     cmdOption('l', 'later', `Keep the conversation going — the question ${id} measures waits for its result, unless you answer it first`, { next: { kind: 'continue' } }),
   ], { question: `Work ${id} now?` }), step);
 }

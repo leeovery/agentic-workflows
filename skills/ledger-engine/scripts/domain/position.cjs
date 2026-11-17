@@ -71,8 +71,7 @@ const { handedSession } = require('../kernel/process.cjs');
 const { positionPath, leftPath, storedPosition, readPosition, isMarked, markConversation, runningTranscript } = require('./conversation.cjs');
 const { ROLES, issuedOf } = require('./brief-names.cjs');
 const { loadManifest, loadProjectManifest } = require('./reads.cjs');
-const { buildBegun, buildRefusal, quickFixReviewRefusal, isFixPhase, computeTopicLifecycle, itemOf, openRecords, phaseData, UNIT_PHASES } = require('./derivations.cjs');
-const { recordDir } = require('./experiment-paths.cjs');
+const { buildBegun, buildRefusal, quickFixReviewRefusal, isFixPhase, computeTopicLifecycle, itemOf, phaseData, UNIT_PHASES } = require('./derivations.cjs');
 const { latestSessionLog, productSession } = require('./discovery-session.cjs');
 const { PRODUCT_SESSIONS } = require('./layout.cjs');
 const { phaseSkill, HANDOFF_TARGETS } = require('./handoff.cjs');
@@ -251,14 +250,15 @@ function taskStep(internalId) {
 }
 
 /**
- * Record the calling conversation's arrival at a place `assertPlace` passed.
- * @param {string} cwd @param {string} name @param {string} [phase] @param {string} [topic]
+ * Record the calling conversation's arrival at a place `assertPlace` passed,
+ * and at the laboratory the experiment its entry named, `record`.
+ * @param {string} cwd @param {string} name @param {string} [phase] @param {string} [topic] @param {string} [record]
  */
-function recordPosition(cwd, name, phase, topic) {
+function recordPosition(cwd, name, phase, topic, record) {
   const own = arrivingConversation(cwd);
   if (!own) return;
   /** @type {Position} */
-  const position = phase === undefined ? { name } : { name, phase, topic };
+  const position = phase === undefined ? { name } : { name, phase, topic, ...(record === undefined ? {} : { record }) };
   updatePosition(own, (prior) => withTasks(position, unitTasks(prior, name)), ARRIVING);
 }
 
@@ -468,7 +468,9 @@ function dropPosition(sessionId) {
 // framework, then the engine calls the place re-reads beside its documents,
 // and the log its conversation keeps, where it keeps one, which is caught
 // up from the conversation's transcript (8.14.9). An epic's menu and the
-// roadmap name their skill alone, and an experiment its live records:
+// roadmap name their skill alone; the laboratory's, what its entry reads
+// of the experiment the position holds, named in a line, and until its
+// approval the spawning topic's record and log (experiment-entry.cjs);
 // discussion's names the topic's record and its log (24.2.1–24.2.3), and a
 // bugfix investigation's the same, its log the investigation (19.4.3);
 // discovery's, at an epic, the unit's map and the open log, and at the
@@ -528,21 +530,20 @@ function internalIdOf(topic, { task }) {
 }
 
 /**
- * Each live experiment record's files, in register order; none from a
- * series whose records do not resolve to their directories.
- * @param {string} cwd @param {string} workUnit @param {string} topic @param {Record<string, unknown>} manifest
- * @returns {string[]}
+ * The laboratory's note, carried whole, as its entry reads it
+ * (experiment-entry.cjs): the experiment the position holds, its documents
+ * and its splits', and until the approval the spawning topic's record and
+ * log.
+ * @param {string} cwd @param {string} unit @param {string} topic @param {Record<string, any>} manifest @param {string|undefined} record
+ * @returns {Omit<Work, 'skill'>}
  */
-function experimentFiles(cwd, workUnit, topic, manifest) {
-  const experiments = itemOf(manifest, 'experiment', topic)?.experiments;
-  try {
-    return openRecords(manifest, topic).flatMap((id) => {
-      const dir = statePath(cwd, recordDir(workUnit, topic, id, experiments));
-      return ['problem.md', 'design.md', 'report.md'].map((f) => path.join(dir, f));
-    });
-  } catch {
-    return [];
-  }
+function labWork(cwd, unit, topic, manifest, record) {
+  // Required here, as the laboratory's entry reaches this module through the
+  // way onto a menu.
+  const { calls, documents, lines } = record === undefined
+    ? { calls: [], documents: [], lines: [] }
+    : require('./experiment-entry.cjs').labRecovery(cwd, unit, topic, manifest, record);
+  return { documents, whole: { calls, log: null, lines } };
 }
 
 /**
@@ -650,7 +651,7 @@ function workAt(cwd, position, manifest, sessionId) {
       return { skill, documents: [...logs, ...assets, ...spec], whole: { calls: [...records, ...cut], log: null, lines: open } };
     }
     case 'experiment':
-      return { skill, documents: experimentFiles(cwd, name, topic, manifest) };
+      return { skill, ...labWork(cwd, name, topic, /** @type {Record<string, any>} */ (manifest), position.record) };
     case 'implementation':
       return { skill, ...buildWork(cwd, name, position.tasks ?? [], sessionId) };
     case 'review':

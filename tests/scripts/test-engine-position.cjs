@@ -30,7 +30,9 @@
 // conversation its open log (24.S19, 8.S67); and specification's, at the
 // unit, each live topic's record and log, the files linked canonical, then
 // the spec once written and its cut, and the review page while it is open,
-// a concluded spec carrying nothing on;
+// a concluded spec carrying nothing on; the laboratory's, what its entry
+// reads of the experiment the position holds, and until its approval the
+// spawning topic's record and log, none where it holds no experiment;
 // every other phase's sends Claude to its skill's own steps, a build's
 // naming each task in flight with its builder and its pair (24.S12), and a
 // build not to be entered carries nothing on (P12).
@@ -753,39 +755,49 @@ describe('conversation position', () => {
     assert.strictEqual(answer.text, discoveryNote('the discovery of the epic "pay"', [map], '.ledger/pay/discovery/session-002.md', file));
   });
 
-  it('an experiment: each live record\'s files in register order, a concluded one\'s left out', () => {
+  it('the laboratory carries on what its entry reads of the experiment the position holds: its documents and its splits\', never another record\'s, the experiment named in a line; before the approval the spawning topic\'s record and its log as well (24.2.1)', () => {
     install('ledger-experiment-process');
     workUnit('pay', 'epic', {
       experiment: { items: { ledger: { status: 'in-progress', experiments: {
         'E2.1': { slug: 'batch', status: 'designed' },
         E2: { slug: 'throughput', status: 'running' },
-        E1: { slug: 'latency', status: 'concluded' },
-        'E1.1': { slug: 'warm', status: 'running' },
+        E1: { slug: 'latency', status: 'designed' },
       } } } },
     });
     for (const f of [
-      'E1-latency/report.md', 'E1-latency/E1.1-warm/problem.md',
-      'E2-throughput/problem.md', 'E2-throughput/design.md', 'E2-throughput/report.md',
-      'E2-throughput/E2.1-batch/problem.md',
+      'E1-latency/problem.md', 'E1-latency/design.md',
+      'E2-throughput/problem.md', 'E2-throughput/design.md', 'E2-throughput/report.md', 'E2-throughput/E2.1-batch/problem.md',
     ]) write(`.ledger/pay/topics/ledger/experiments/${f}`);
-    ok(['session', 'label', 'pay', 'experiment', 'ledger']);
-    assert.deepStrictEqual(reads().files, [
-      '.ledger/pay/topics/ledger/experiments/E1-latency/E1.1-warm/problem.md',
-      '.ledger/pay/topics/ledger/experiments/E2-throughput/problem.md',
-      '.ledger/pay/topics/ledger/experiments/E2-throughput/design.md',
-      '.ledger/pay/topics/ledger/experiments/E2-throughput/report.md',
-      '.ledger/pay/topics/ledger/experiments/E2-throughput/E2.1-batch/problem.md',
-    ].map(abs));
+    write('.ledger/pay/topics/ledger/log.md');
+    const record = '`node .claude/skills/ledger-engine/scripts/engine.cjs ledger record pay ledger`';
+    writePosition({ name: 'pay', phase: 'experiment', topic: 'ledger', record: 'E2' });
+    const running = reads();
+    writePosition({ name: 'pay', phase: 'experiment', topic: 'ledger', record: 'E1' });
+    const designed = reads();
+    assert.deepStrictEqual([running.skill, running.files, designed.files], [abs('.claude/skills/ledger-experiment-process/SKILL.md'), [
+      'E2-throughput/problem.md', 'E2-throughput/design.md', 'E2-throughput/report.md', 'E2-throughput/E2.1-batch/problem.md',
+    ].map((f) => abs(`.ledger/pay/topics/ledger/experiments/${f}`)), [
+      abs('.ledger/pay/topics/ledger/experiments/E1-latency/problem.md'), abs('.ledger/pay/topics/ledger/experiments/E1-latency/design.md'), abs('.ledger/pay/topics/ledger/log.md'),
+    ]]);
+    assert.deepStrictEqual([running.text, designed.text].map((text) => [text.includes(record), /The experiment worked here is (.*)\.$/m.exec(text)?.[1]]), [
+      [false, 'E2, running; its splits E2.1 designed'],
+      [true, 'E1, designed'],
+    ]);
   });
 
-  it('an experiment series whose records name no directory contributes no files', () => {
+  it('a position naming no experiment, or one the series no longer holds, carries the laboratory\'s skill alone', () => {
     install('ledger-experiment-process');
     workUnit('pay', 'epic', {
-      experiment: { items: { ledger: { status: 'in-progress', experiments: { 'E3.1': { slug: 'orphan', status: 'running' } } } } },
+      experiment: { items: { ledger: { status: 'in-progress', experiments: { E1: { slug: 'latency', status: 'running' } } } } },
     });
-    ok(['session', 'label', 'pay', 'experiment', 'ledger']);
-    const answer = reads();
-    assert.deepStrictEqual([answer.skill, answer.files], [abs('.claude/skills/ledger-experiment-process/SKILL.md'), []]);
+    write('.ledger/pay/topics/ledger/experiments/E1-latency/problem.md');
+    const carried = [undefined, 'E9'].map((named) => {
+      writePosition({ name: 'pay', phase: 'experiment', topic: 'ledger', ...(named === undefined ? {} : { record: named }) });
+      const answer = reads();
+      return [answer.skill, answer.files];
+    });
+    const skill = abs('.claude/skills/ledger-experiment-process/SKILL.md');
+    assert.deepStrictEqual(carried, [[skill, []], [skill, []]]);
   });
 
   it('the project-level places: the product\'s conversation, carried whole in discovery\'s skill before any unit exists, its open log caught up from the transcript (24.S19); the roadmap with its skill alone, holding no session', () => {

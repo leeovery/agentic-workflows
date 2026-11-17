@@ -14,13 +14,16 @@
 // the unit's menu. It starts nothing and keeps no log: the spawn conceived
 // the record.
 //
-// What it reads, of the record named or the one live: its id, its status
-// and its folder; its problem, and its design and its report where written;
-// and each of its splits, with its status and its folder. Until the person
+// The record it works, the one named or the one live, is recorded on the
+// conversation's position. What it reads of it: its id, its status and its
+// folder; its problem, and its design and its report where written; and
+// each of its splits, with its status and its folder. Until the person
 // approved its design it reads the ground the design is built on as well:
 // the spawning topic's record and its log, and what the topic stands on
 // from discovery (`ground`, enter.cjs's). From the freeze the record's own
-// documents are the ground.
+// documents are the ground. A compaction's note carries the same, from the
+// record the position holds (`labRecovery`, position.cjs's), the topic's
+// ground there its record and its log, as a discussion's note names them.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -28,7 +31,7 @@ const path = require('path');
 const { statePath } = require('../kernel/state-root.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { isObject } = require('../kernel/manifest-io.cjs');
-const { compareExperimentIds, isParentExperimentId, EXPERIMENT_TERMINAL_STATUSES } = require('../kernel/manifest-schema.cjs');
+const { compareExperimentIds, isParentExperimentId, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_FROZEN_STATUSES } = require('../kernel/manifest-schema.cjs');
 const { itemOf, topicTitle } = require('./derivations.cjs');
 const { recordDir } = require('./experiment-paths.cjs');
 const { topicLog, recordCall } = require('./topic-log.cjs');
@@ -45,9 +48,6 @@ const { experimentRegister, experimentPick } = require('./projections/experiment
 /** @typedef {import('./projections/surfaces.cjs').Next} Next */
 
 const PHASE = 'experiment';
-
-/** The statuses of a record whose design the person approved. */
-const FROZEN = Object.freeze(['approved', 'running']);
 
 /**
  * A topic's series, its rows in register order — parents by number, each
@@ -85,7 +85,7 @@ function labStanding({ topic = '', manifest }) {
 function checkRecord({ topic = '', manifest }, record) {
   const live = liveRecords(seriesRows(manifest, topic)).map(({ id }) => id);
   if (!live.includes(record)) {
-    throw new Error(`"${record}" is not a live experiment of the topic "${topic}" — its live experiments are ${live.join(', ')}, a split worked inside its parent's run`);
+    throw new Error(`"${record}" is not a live experiment of the topic "${topic}" — its live experiments are ${live.join(', ')}; a split is worked inside its parent's run`);
   }
 }
 
@@ -115,11 +115,56 @@ function pickQuestion({ unit, topic = '', manifest }, again) {
   return experimentRegister(topicTitle(manifest, topic), rows) + experimentPick(live, { into: (id) => ({ kind: 'engine', argv: again(id) }), back });
 }
 
+/** The record the entry works: the one named, else the series' one live. @param {Standing} at @param {string|null} record */
+function workedRecord({ topic = '', manifest }, record) {
+  return record ?? liveRecords(seriesRows(manifest, topic))[0].id;
+}
+
 /** A DATA line's key, put to each value. @param {string} key @returns {(value: string) => Line} */
 const as = (key) => (value) => [key, value];
 
 /** The paths that exist. @param {string[]} paths absolute */
 const existing = (paths) => paths.filter((p) => fs.existsSync(p));
+
+/** A record's documents, by their keys. */
+const DOCUMENTS = Object.freeze(['problem', 'design', 'report']);
+
+/**
+ * @typedef {object} LabSources
+ * @property {SeriesRow} own        the record worked
+ * @property {string} folder        its folder, absolute
+ * @property {Line[]} documents     its problem, design and report, those written
+ * @property {SeriesRow[]} splits   its splits
+ * @property {(id: string) => string} folderOf  a record's folder, absolute
+ * @property {boolean} frozen       whether the person approved its design
+ * @property {string} topicRecord   the spawning topic's record, its call
+ * @property {string} topicLog      the spawning topic's log, absolute
+ */
+
+/**
+ * What the laboratory reads of `record` (the header's), the entry's DATA
+ * and a compaction's note alike; null where the series no longer holds it.
+ * @param {string} cwd @param {string} unit @param {string} topic @param {Record<string, any>} manifest @param {string} record
+ * @returns {LabSources|null}
+ */
+function labSources(cwd, unit, topic, manifest, record) {
+  const rows = seriesRows(manifest, topic);
+  const own = rows.find(({ id }) => id === record);
+  if (own === undefined) return null;
+  const experiments = itemOf(manifest, PHASE, topic)?.experiments;
+  const folderOf = (/** @type {string} */ id) => statePath(cwd, recordDir(unit, topic, id, experiments));
+  const folder = folderOf(own.id);
+  return {
+    own,
+    folder,
+    documents: DOCUMENTS.flatMap((doc) => existing([path.join(folder, `${doc}.md`)]).map(as(doc))),
+    splits: rows.filter(({ id }) => id.startsWith(`${own.id}.`)),
+    folderOf,
+    frozen: EXPERIMENT_FROZEN_STATUSES.includes(own.status),
+    topicRecord: `\`${recordCall(unit, topic)}\``,
+    topicLog: statePath(cwd, topicLog(unit, topic)),
+  };
+}
 
 /**
  * What the laboratory reads (the header's), `ground` what the topic stands
@@ -129,23 +174,44 @@ const existing = (paths) => paths.filter((p) => fs.existsSync(p));
 function labReads(ground) {
   return (at) => {
     const { cwd, unit, topic = '', manifest, record } = at;
-    const rows = seriesRows(manifest, topic);
-    const own = /** @type {SeriesRow} */ (rows.find(({ id }) => id === (record ?? liveRecords(rows)[0].id)));
-    const experiments = itemOf(manifest, PHASE, topic)?.experiments;
-    const folder = (/** @type {string} */ id) => statePath(cwd, recordDir(unit, topic, id, experiments));
-    const before = FROZEN.includes(own.status) ? [] : [
-      as('topic record')(`\`${recordCall(unit, topic)}\``),
-      ...existing([statePath(cwd, topicLog(unit, topic))]).map(as('topic log')),
+    const lab = /** @type {LabSources} */ (labSources(cwd, unit, topic, manifest, /** @type {string} */ (record)));
+    const before = lab.frozen ? [] : [
+      as('topic record')(lab.topicRecord),
+      ...existing([lab.topicLog]).map(as('topic log')),
       ...ground(at),
     ];
     return [
-      as('experiment')(own.id),
-      as('status')(own.status),
-      as('folder')(folder(own.id)),
-      ...['problem', 'design', 'report'].flatMap((doc) => existing([path.join(folder(own.id), `${doc}.md`)]).map(as(doc))),
-      ...rows.filter(({ id }) => id.startsWith(`${own.id}.`)).map(({ id, status }) => as('split')(`${id} ${status} ${folder(id)}`)),
+      as('experiment')(lab.own.id),
+      as('status')(lab.own.status),
+      as('folder')(lab.folder),
+      ...lab.documents,
+      ...lab.splits.map(({ id, status }) => as('split')(`${id} ${status} ${lab.folderOf(id)}`)),
       ...before,
     ];
+  };
+}
+
+/**
+ * What a compaction in the laboratory carries the work on with, as its entry
+ * reads it: the experiment worked, named in a line with where it stands and
+ * its splits; its documents and its splits'; and until the approval the
+ * spawning topic's record and its log, as a discussion's note names them
+ * (24.2.1). Nothing where the series no longer holds the record.
+ * @param {string} cwd @param {string} unit @param {string} topic @param {Record<string, any>} manifest @param {string} record
+ * @returns {{calls: string[], documents: string[], lines: string[]}}
+ */
+function labRecovery(cwd, unit, topic, manifest, record) {
+  const lab = labSources(cwd, unit, topic, manifest, record);
+  if (lab === null) return { calls: [], documents: [], lines: [] };
+  const splits = lab.splits.map(({ id, status }) => `${id} ${status}`);
+  return {
+    calls: lab.frozen ? [] : [lab.topicRecord],
+    documents: [
+      ...lab.documents.map(([, file]) => file),
+      ...lab.splits.flatMap(({ id }) => DOCUMENTS.map((doc) => path.join(lab.folderOf(id), `${doc}.md`))),
+      ...(lab.frozen ? [] : [lab.topicLog]),
+    ],
+    lines: [`The experiment worked here is ${lab.own.id}, ${lab.own.status}${splits.length === 0 ? '' : `; its splits ${splits.join(', ')}`}.`],
   };
 }
 
@@ -161,9 +227,10 @@ function experimentRow(ground) {
     start: () => {},
     record: checkRecord,
     pick: pickQuestion,
+    worked: workedRecord,
     questions: () => [],
     reads: labReads(ground),
   });
 }
 
-module.exports = { experimentRow, seriesRows, liveRecords };
+module.exports = { experimentRow, labRecovery, seriesRows, liveRecords };

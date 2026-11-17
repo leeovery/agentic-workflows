@@ -5,8 +5,9 @@
 // experiment, read from the topic's experiment series on the manifest
 // (experiment.cjs) and the question it measures on the ledger.
 //
-// - The experiment shown is the topic's live one, the latest by id; else
-//   its latest, concluded or abandoned.
+// - The experiment shown is the one the session's entry named, where the
+//   series holds it; else the topic's live one, the latest by id; else its
+//   latest, concluded or abandoned.
 // - Its question is the map's question it measures (9.1.11), else its slug
 //   titled; the day it was approved is the one `experiment approve` held on
 //   the record, none where the record holds none.
@@ -41,7 +42,7 @@ const { topicKey, topicTitle } = require('../derivations.cjs');
 function experimentOf(at, topic) {
   const records = Object.entries(at.manifest.phases?.experiment?.items?.[topic]?.experiments ?? {}).sort(([a], [b]) => compareExperimentIds(a, b));
   const live = records.filter(([, record]) => !EXPERIMENT_TERMINAL_STATUSES.includes(record.status));
-  const shown = live.at(-1) ?? records.at(-1);
+  const shown = records.find(([id]) => id === at.place.record) ?? live.at(-1) ?? records.at(-1);
   if (shown === undefined) throw new Error(`${topicTitle(at.manifest, topic)} has run no experiment`);
   return shown;
 }

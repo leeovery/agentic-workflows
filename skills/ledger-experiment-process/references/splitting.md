@@ -12,7 +12,7 @@ Say in a line or two what decomposed and how. For each part, draw a kebab-case `
 node .claude/skills/ledger-engine/scripts/engine.cjs experiment create {work_unit} {topic} --slug {slug} --parent {id}
 ```
 
-On a resume, the DATA's `split` lines name the parts already made, each with its status and its folder.
+On a resume the parts are made already: the DATA's `split` lines name each with its status and its folder, and nothing is created again.
 
 Walk each part as the laboratory walks its parent, the part's id and folder in place of the parent's: its design and `experiment advance`; its briefing, the approval gate drawn with its id; `experiment advance` as its measurement begins, its report in its own folder and its tally under its own id; then its verdict, or its abandonment. A part's end releases nothing, and its `next` carries the parent's run on.
 

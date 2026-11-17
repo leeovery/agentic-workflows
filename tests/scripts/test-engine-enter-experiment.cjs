@@ -89,9 +89,9 @@ const lab = (verb, ...args) => ok(dir, ['experiment', verb, UNIT, TOPIC, ...args
 /** An experiment of timing abandoned. @param {string} id */
 const abandoned = (id) => lab('abandon', id, '--reason', 'moot');
 
-/** E1 walked to `status` through the legal steps. @param {'designed'|'running'} status */
+/** E1 walked to `status` through the legal steps. @param {'designed'|'approved'|'running'} status */
 function walked(status) {
-  for (const verb of status === 'designed' ? ['advance'] : ['advance', 'approve', 'advance']) lab(verb, 'E1');
+  for (const verb of ['advance', 'approve', 'advance'].slice(0, ['designed', 'approved', 'running'].indexOf(status) + 1)) lab(verb, 'E1');
 }
 
 /** The DATA's lines. @param {string} sections */
@@ -123,7 +123,7 @@ describe('what cannot be entered is refused, naming the way on, and nothing is w
     abandoned('E2');
     walked('running');
     lab('create', '--slug', 'part', '--parent', 'E1');
-    const live = 'its live experiments are E1, a split worked inside its parent\'s run';
+    const live = 'its live experiments are E1; a split is worked inside its parent\'s run';
     assert.deepStrictEqual(['E9', 'E2', 'E1.1'].map((id) => refused(['experiment', UNIT, TOPIC, '--record', id])), [
       `"E9" is not a live experiment of the topic "timing" — ${live}`,
       `"E2" is not a live experiment of the topic "timing" — ${live}`,
@@ -170,7 +170,7 @@ describe('several live: the pick, asked first and writing nothing (6.1.21)', () 
   it('a row picked enters the experiment it names', () => {
     enter(['experiment', UNIT, TOPIC]);
     const { res, sections } = enter(answered('experiment pick', 'E2').argv.slice(1));
-    assert.deepStrictEqual([res.entered, dataOf(sections)[0], position()], [true, 'experiment: E2', { name: UNIT, phase: 'experiment', topic: TOPIC }]);
+    assert.deepStrictEqual([res.entered, dataOf(sections)[0], position()], [true, 'experiment: E2', { name: UNIT, phase: 'experiment', topic: TOPIC, record: 'E2' }]);
   });
 
   it('reached from the next experiment\'s gate, the pick\'s back puts that gate back, and keeps it there when the pick is drawn again', () => {
@@ -194,7 +194,7 @@ describe('several live: the pick, asked first and writing nothing (6.1.21)', () 
 });
 
 describe('what the laboratory reads (2.10.3)', () => {
-  it('before the approval: the experiment, its status and folder, its problem and its design, then the spawning topic\'s record, its log and its brief — the place recorded, nothing committed or started', () => {
+  it('before the approval: the experiment, its status and folder, its problem and its design, then the spawning topic\'s record, its log and its brief — the place recorded with the experiment worked, nothing committed or started', () => {
     abandoned('E2');
     written('design.md');
     walked('designed');
@@ -209,7 +209,7 @@ describe('what the laboratory reads (2.10.3)', () => {
         `topic log: ${statePath(dir, layout.topic(UNIT, TOPIC, 'log.md'))}`,
         `brief: ${statePath(dir, layout.brief(UNIT, TOPIC))}`,
       ],
-      { name: UNIT, phase: 'experiment', topic: TOPIC },
+      { name: UNIT, phase: 'experiment', topic: TOPIC, record: 'E1' },
       head,
     ]);
   });
@@ -217,14 +217,18 @@ describe('what the laboratory reads (2.10.3)', () => {
   it('from the approval: the record\'s own documents and each split with its status and folder, never the spawning topic', () => {
     abandoned('E2');
     written('design.md');
-    walked('running');
+    walked('approved');
+    const approved = dataOf(enter(['experiment', UNIT, TOPIC]).sections);
+    lab('advance', 'E1');
     written('report.md');
     lab('create', '--slug', 'part', '--parent', 'E1');
     const record = folder('E1-window-placement');
-    assert.deepStrictEqual(dataOf(enter(['experiment', UNIT, TOPIC]).sections), [
+    assert.deepStrictEqual([approved, dataOf(enter(['experiment', UNIT, TOPIC]).sections)], [[
+      'experiment: E1', 'status: approved', `folder: ${record}`, `problem: ${record}/problem.md`, `design: ${record}/design.md`,
+    ], [
       'experiment: E1', 'status: running', `folder: ${record}`, `problem: ${record}/problem.md`, `design: ${record}/design.md`, `report: ${record}/report.md`,
       `split: E1.1 conceived ${folder('E1-window-placement', 'E1.1-part')}`,
-    ]);
+    ]]);
   });
 
   it('a record named among several live is the one entered', () => {

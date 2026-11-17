@@ -122,7 +122,7 @@ describe('pipeline simulation: experiments, in a feature', () => {
     // fresh context.
     waitAgents(sim, wu, wu);
     follow(sim, spawnGate(sim, wu, 'E1', 'y'));
-    assert.strictEqual(labEntry(sim, wu, wu), 'E1');
+    assert.strictEqual(labEntry(sim, wu, wu, 'E1'), 'E1');
     sim.run(['experiment', 'advance', wu, wu, 'E1']);
     sim.run(['experiment', 'approve', wu, wu, 'E1']);
     sim.run(['experiment', 'advance', wu, wu, 'E1']);
@@ -135,17 +135,19 @@ describe('pipeline simulation: experiments, in a feature', () => {
     assert.strictEqual(leaveTheLab(sim, wu, concluded), `/ledger-discussion-process feature ${wu}`);
     handoffEntry(sim, wu, 'discussion', wu);
 
-    // A second spawn holds the conversation again; the record's abandon is
-    // the release — the wait closes and the series settles over its terminal
-    // records. A feature's topic is its work unit, so the topic-level cancel
-    // is the epic's; the work-unit cancel abandons a feature whole.
+    // A second spawn holds the conversation again; the record's abandon, the
+    // conversation's own for one no one will run, is the release — the wait
+    // closes and the series settles over its terminal records — and carries
+    // the conversation on, the laboratory's way out no business of its. A
+    // feature's topic is its work unit, so the topic-level cancel is the
+    // epic's; the work-unit cancel abandons a feature whole.
     const latency = askedOn(sim, wu, wu, 'What input latency do we hold to?');
     sim.run(['experiment', 'create', wu, wu, '--slug', 'input-latency', '--from', 'discussion', '--question', latency,
       '--problem', sim.write(`.ledger/.cache/${wu}/discussion/${wu}/problem.md`, '# Problem — input latency\n')]);
     sim.refuses(['ledger', 'decide', `${wu}.discussion.${wu}`, '--answers', latency], /is measured by experiment E2, still running/, null,
       JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'What 60fps leaves.', why: 'A guess.' }));
     const dropped = sim.run(['experiment', 'abandon', wu, wu, 'E2', '--reason', 'settled by E1']);
-    assert.deepStrictEqual(dropped.released_waits, [{ phase: 'discussion', released: ['E2'], remaining: [] }]);
+    assert.deepStrictEqual([dropped.released_waits, dropped.next], [[{ phase: 'discussion', released: ['E2'], remaining: [] }], { kind: 'continue' }]);
     assert.strictEqual(sim.manifest(wu).phases.experiment.items[wu].experiments.E2.reason, 'settled by E1');
     assert.strictEqual(sim.manifest(wu).phases.experiment.items[wu].status, 'completed',
       'every record terminal — the derived status settles');
@@ -182,7 +184,7 @@ describe('pipeline simulation: experiments, in a feature', () => {
     // as a message; raised and answered there, the topic closes into its
     // spec.
     follow(sim, spawnGate(sim, wu, 'E1', 'y'));
-    labEntry(sim, wu, wu);
+    labEntry(sim, wu, wu, 'E1');
     for (const step of ['advance', 'approve', 'advance']) sim.run(['experiment', step, wu, wu, 'E1']);
     ledger(['decide', at, '--answers', budget], { by: 'person', who_moved_whom: 'none', text: 'Under a second.', why: 'It feels instant.' });
     for (const item of DECIDED_ITEMS) sim.run(['checklist', 'done', 'decided', wu, wu, item]);

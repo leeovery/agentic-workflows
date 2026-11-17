@@ -122,7 +122,7 @@ const { runFieldCommand, isRead } = require('./domain/fields.cjs');
 const { renderSurface, SURFACES } = require('./domain/render.cjs');
 const { resolveHandoff, topicHandoff, handoffSections, TOPIC_HANDOFF_USAGE } = require('./domain/handoff.cjs');
 const { unitHandoff, UNIT_HANDOFF_USAGE } = require('./domain/unit-handoff.cjs');
-const { leaveNext, putBackNext, putBackBy, stillToAsk } = require('./domain/topic-leave.cjs');
+const { sittingIn, leaveNext, putBackNext, putBackBy, stillToAsk } = require('./domain/topic-leave.cjs');
 const roadmap = require('./domain/roadmap.cjs');
 const brownfield = require('./domain/brownfield.cjs');
 const { subjectSelector, codeLog, selectedDiff, uncommittedDiff, codeStatus } = require('./domain/code.cjs');
@@ -319,7 +319,7 @@ ${Object.values(MAP_USAGE).map((usage) => `  ${usage}`).join('\n')}
   experiment create <work-unit> <topic> --slug <kebab> (--from discussion --problem <file> --question <id> | --parent <E{n}>)
   experiment advance <work-unit> <topic> <id>
   experiment approve <work-unit> <topic> <id>
-  experiment amend <work-unit> <topic> <id>
+  experiment amend <work-unit> <topic> <id> [--struck]
   experiment runs <work-unit> <topic> <id> --file <runs.json>
   experiment conclude <work-unit> <topic> <id> --verdict <one line>
   experiment abandon <work-unit> <topic> <id> --reason <one line>
@@ -412,7 +412,6 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render experiment-approval-gate <wu.experiment.topic> --id <E{n}>
   render experiment-next-gate <wu.experiment.topic>
   render experiment-spawn-gate <wu.discussion.topic> --id <E{n}>
-  render phase-note        <wu.phase.topic> --verb <Word> [--noun <word>]
   render cancel-gate       <wu.discovery.name> | <wu>
   render postpone-gate     <wu.discovery.topic> --horizon "<horizon>"
   render import-reprompt   --file <payload.json>   # {"missing": ["path", …]} — the re-prompt after a landing refused
@@ -502,9 +501,8 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
 // (set/push/pull/delete) answer with the engine's one-line JSON response.
 //
 // No field write heartbeats. A three-segment `set` looks self-referential and
-// frequently is not: a brief's `brief_incorporated` mark writes a
-// discovery item from another phase's session, and a beat there
-// manufactures a hold on a topic nobody is in (P8).
+// need not be: a write to a topic's item from another phase's session would
+// beat a hold on a topic nobody is in (P8).
 // The session's cadence commit is its heartbeat; `apply`, the cross-topic
 // batch door, never beat either.
 // ---------------------------------------------------------------------------
@@ -1181,26 +1179,39 @@ function runTopic(call, argv) {
 // walk, amend an amendment to its frozen design, and runs the tally of its
 // runs while it runs. Each commits what it wrote with the record's folder.
 //
-// Beats follow the acting session: `create --from` is the spawning
-// discussion session recording the spawn on its own item, so it beats
-// that phase; every other verb (splits included) is the laboratory session
-// working its own topic, so it beats the experiment slot — and a top-level
-// conclude or abandon clears it: the record's close is the session's release.
+// Beats follow the acting session, the phase of the topic its position sits
+// in, never a flag: the spawning discussion recording the spawn, or
+// abandoning one no one will run, beats its own; the laboratory working its
+// records beats the experiment slot, and its top-level conclude or abandon
+// clears it — the record's close is the session's release. A session
+// sitting elsewhere beats nothing.
 // ---------------------------------------------------------------------------
+
+/**
+ * The acting session's presence at the topic, in the phase its position
+ * sits in (the header's): beaten, or released where the laboratory's
+ * top-level record ended; nothing where it sits elsewhere.
+ * @param {string} cwd @param {string} workUnit @param {string} topic @param {boolean} released
+ */
+function beatActing(cwd, workUnit, topic, released) {
+  const phase = sittingIn(workUnit, topic);
+  if (phase === null) return;
+  (released && phase === 'experiment' ? clearOwnQuietly : beatQuietly)(cwd, workUnit, phase, topic);
+}
 
 /** @param {Call} call @param {string[]} argv */
 function runExperiment(call, argv) {
   const [command, ...rest] = argv;
   const { cwd } = call;
   try {
-    const { opts, positional } = parseArgs(rest);
+    const { opts, flags, positional } = parseArgs(rest, command === 'amend' ? ['struck'] : []);
     const [workUnit, topic, id] = positional;
     if (command === 'create') {
       if (!workUnit || !topic || positional.length !== 2 || !opts.slug) {
         throw new Error('Usage: engine experiment create <work-unit> <topic> --slug <kebab> (--from discussion --problem <file> --question <id> | --parent <E{n}>)');
       }
       const created = createExperiment(cwd, workUnit, topic, { slug: opts.slug, from: opts.from, parent: opts.parent, problem: opts.problem, question: opts.question });
-      beatQuietly(cwd, workUnit, opts.from ?? 'experiment', topic);
+      beatActing(cwd, workUnit, topic, false);
       respond(call, created);
       return;
     }
@@ -1212,7 +1223,7 @@ function runExperiment(call, argv) {
       const result = command === 'conclude'
         ? concludeExperiment(cwd, workUnit, topic, id, { verdict: payload })
         : abandonExperiment(cwd, workUnit, topic, id, { reason: payload });
-      (isParentExperimentId(id) ? clearOwnQuietly : beatQuietly)(cwd, workUnit, 'experiment', topic);
+      beatActing(cwd, workUnit, topic, isParentExperimentId(id));
       respond(call, result);
       return;
     }
@@ -1221,17 +1232,19 @@ function runExperiment(call, argv) {
         throw new Error('Usage: engine experiment runs <work-unit> <topic> <id> --file <runs.json>');
       }
       const result = recordRuns(cwd, workUnit, topic, id, { file: opts.file });
-      beatQuietly(cwd, workUnit, 'experiment', topic);
+      beatActing(cwd, workUnit, topic, false);
       respond(call, result);
       return;
     }
     const steps = { advance: advanceExperiment, approve: approveExperiment, amend: amendExperiment };
     if (Object.hasOwn(steps, command)) {
-      if (!workUnit || !topic || !id || positional.length !== 3) {
-        throw new Error(`Usage: engine experiment ${command} <work-unit> <topic> <id>`);
+      if (!workUnit || !topic || !id || positional.length !== 3 || Object.keys(opts).length > 0) {
+        throw new Error(`Usage: engine experiment ${command} <work-unit> <topic> <id>${command === 'amend' ? ' [--struck]' : ''}`);
       }
-      const result = steps[/** @type {keyof typeof steps} */ (command)](cwd, workUnit, topic, id);
-      beatQuietly(cwd, workUnit, 'experiment', topic);
+      const result = command === 'amend'
+        ? amendExperiment(cwd, workUnit, topic, id, { struck: flags.has('struck') })
+        : steps[/** @type {'advance'|'approve'} */ (command)](cwd, workUnit, topic, id);
+      beatActing(cwd, workUnit, topic, false);
       respond(call, result);
       return;
     }

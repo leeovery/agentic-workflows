@@ -101,19 +101,6 @@ describe('engine presence', () => {
     assert.strictEqual(res.held, 1, 'idle is not gone');
   });
 
-  it('render phase-note beats the addressed topic — announcing the entry is the same act as claiming the slot', () => {
-    fs.writeFileSync(path.join(dir, '.ledger/pay/manifest.json'), JSON.stringify({
-      name: 'pay', work_type: 'epic', status: 'in-progress',
-      phases: { experiment: { items: { alpha: { status: 'in-progress', experiments: { E1: { slug: 'x', status: 'conceived' } } } } } },
-    }) + '\n');
-    const out = harness.output(dir, ['render', 'phase-note', 'pay.experiment.alpha', '--verb', 'Starting', '--noun', 'E1'],
-      { env: OWN });
-    assert.ok(out.includes('Starting E1: Alpha'), out);
-    assert.ok(fs.existsSync(presenceFile(dir, 'experiment', 'alpha')), 'the note claimed the slot');
-    const scan = engine(dir, ['presence', 'scan', 'pay']).res;
-    assert.strictEqual(scan.sessions.filter((s) => s.phase === 'experiment' && s.topic === 'alpha' && s.held).length, 1);
-  });
-
   it('clear drops the heartbeat and is a no-op when never set', () => {
     engine(dir, ['presence', 'beat', 'pay', 'discussion', 'alpha'], PEER);
     const cleared = engine(dir, ['presence', 'clear', 'pay', 'discussion', 'alpha']).res;

@@ -63,6 +63,17 @@ function sittingAt() {
 }
 
 /**
+ * The phase of the unit's topic the calling conversation sits in, or null
+ * where it sits elsewhere: what a verb acting on the topic from more than one
+ * phase reads to tell whose call it is.
+ * @param {string} workUnit @param {string} topic @returns {string|null}
+ */
+function sittingIn(workUnit, topic) {
+  const at = sittingAt();
+  return at !== null && at.name === workUnit && at.topic === topic && typeof at.phase === 'string' ? at.phase : null;
+}
+
+/**
  * The `next` of a topic that left, from the calling conversation's position.
  * @param {string} workUnit @param {string} topic
  * @returns {Next}
@@ -138,4 +149,4 @@ function putBackNext(cwd, from, names) {
     : { kind: 'engine', argv: ['render', 'horizon-pick', '--back', first, '--from', from, ...thenArgs(rest)] };
 }
 
-module.exports = { ontoEpic, ontoMenu, leaveNext, putBackNext, putBackBy, stillToAsk, thenArgs };
+module.exports = { ontoEpic, ontoMenu, sittingIn, leaveNext, putBackNext, putBackBy, stillToAsk, thenArgs };

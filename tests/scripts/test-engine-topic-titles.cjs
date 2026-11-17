@@ -146,7 +146,6 @@ describe('a screen that writes as it shows, or over the unit changed, goes by th
 
   /** @type {[string, () => string, string][]} */
   const SURFACES = [
-    ['the phase note, beating the topic\'s presence', () => renderSurface(dir, 'phase-note', { dotpath: `${UNIT}.discussion.${KEY}`, verb: 'Resuming' }), `Resuming discussion: ${TITLE}`],
     ['the cancel gate', () => {
       without(dir, 'specification');
       return renderSurface(dir, 'cancel-gate', { dotpath: `${UNIT}.discovery.${KEY}` });

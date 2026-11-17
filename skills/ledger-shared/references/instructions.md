@@ -38,7 +38,7 @@ A gate is answered by its command rows: a pressed row, a typed key or word, or p
 node .claude/skills/ledger-engine/scripts/engine.cjs gate "{name}" --pick {key}
 ```
 
-`gate` logs the answer and returns `next`: an engine call to run, a handoff to make, a skill to invoke in this conversation, or carry on. Do what `next` says, and branch on nothing else. A rewritten phase's rows declare their `next`; a null `next` is an old-shape gate's, until its phase is rewritten, and the skill's own words for that row say what follows.
+`gate` logs the answer and returns `next`: an engine call to run, a handoff to make, a skill to invoke in this conversation, or carry on. Do what `next` says, and branch on nothing else. A few gates' rows still carry a null `next` — the backlog gate's, the import reprompt's, the walkthrough screens' and the lost-state gate's no — and there the skill's own words for that row say what follows.
 
 A bare go-ahead given at a gate on screen ("ok, let's move ahead") picks a row only where the gate has one way forward — a yes/no consent, a single continue.
 

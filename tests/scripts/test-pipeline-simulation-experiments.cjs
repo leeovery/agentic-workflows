@@ -95,14 +95,14 @@ describe('pipeline simulation: experiments, in an epic', () => {
     waitAgents(sim, wu, 'timing', true);
     sim.render(['experiment-spawn-gate', `${wu}.discussion.timing`, '--id', 'E1'], { expect: 'content' });
     assert.deepStrictEqual(sim.run(['gate', 'experiment spawn gate', '--pick', 'y']).next,
-      { kind: 'handoff', skill: 'ledger-experiment-process', args: ['epic', wu, 'timing'] });
-    handoff(sim, `/ledger-experiment-process epic ${wu} timing`);
+      { kind: 'handoff', skill: 'ledger-experiment-process', args: ['epic', wu, 'timing', 'E1'] });
+    handoff(sim, `/ledger-experiment-process epic ${wu} timing E1`);
 
     // The walk to verdict: the entry names the one live experiment, then
     // design → the briefing's freeze → run → conclude, each step committing
     // what it records with the record's folder. The freeze is the approval
     // gate's yes; the gate renders only over a designed record.
-    assert.strictEqual(labEntry(sim, wu, 'timing'), 'E1');
+    assert.strictEqual(labEntry(sim, wu, 'timing', 'E1'), 'E1');
     sim.write(`${e1.dir}/design.md`, '# Design — E1\n\nQuestion, prediction, decision rule.\n');
     sim.run(['experiment', 'advance', wu, 'timing', 'E1']);
     assert.match(sim.render(['experiment-approval-gate', `${wu}.experiment.timing`, '--id', 'E1'], { expect: 'content' }),

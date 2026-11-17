@@ -544,19 +544,22 @@ function enterEntry(sim, wu, phase, topic) {
 }
 
 // The laboratory's entry: handed off as above, the experiment skill's first
-// engine call is its entry, which records the place and names in its DATA
-// the experiment the conversation works — the one live, or `record`, the
-// pick's — so a compaction there carries on in the laboratory's skill.
-// Answers the experiment entered.
+// engine call is its entry, which names in its DATA the experiment the
+// conversation works — the one live, or `record`, the handoff's or the
+// pick's — and records the place with it, so a compaction there carries on
+// in the laboratory's skill, naming that experiment. Answers the experiment
+// entered.
 /** @param {Sim} sim @param {string} wu @param {string} topic @param {string} [record] */
 function labEntry(sim, wu, topic, record) {
   sim.handOver();
   const res = sim.run(['enter', 'experiment', wu, topic, ...(record === undefined ? [] : ['--record', record])]);
   assert.strictEqual(res.entered, true, 'no other session holds the laboratory and one experiment is named, so the entry asks nothing');
+  const worked = /** @type {string} */ (sim.sections.match(/^experiment: (.+)$/m)?.[1]);
   const here = carryOn(sim);
-  assert.deepStrictEqual(here.position, { name: wu, phase: 'experiment', topic }, 'the entry records its place (experiment)');
+  assert.deepStrictEqual(here.position, { name: wu, phase: 'experiment', topic, record: worked }, 'the entry records its place and the experiment worked');
   assert.strictEqual(here.skill, path.join(sim.dir, '.claude/skills/ledger-experiment-process/SKILL.md'), 'a compaction there carries on in the laboratory\'s skill');
-  return /** @type {string} */ (sim.sections.match(/^experiment: (.+)$/m)?.[1]);
+  assert.ok(here.text.includes(`The experiment worked here is ${worked},`), 'a compaction there names the experiment worked');
+  return worked;
 }
 
 // The spec's entry, at the work unit: handed off as above, the spec skill's

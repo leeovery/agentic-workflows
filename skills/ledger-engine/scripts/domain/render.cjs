@@ -9,9 +9,8 @@
 // branching renders inside the surface: the caller never chooses between
 // gated and auto output.
 //
-// Surfaces read; they never write a state commit takes, and write four
-// things beside. `phase-note` beats the addressed topic, since announcing a
-// phase's start is the session taking it. `map` moves the last-looked mark as
+// Surfaces read; they never write a state commit takes, and write three
+// things beside. `map` moves the last-looked mark as
 // it draws, since the map shown in the conversation is the person looking
 // (5.8.14). `decided --file` stages Claude's payload in the topic's cache,
 // what the gate's yes lands (decided.cjs); `start-this-work --file` and
@@ -24,7 +23,7 @@ const fs = require('fs');
 const path = require('path');
 const { loadManifest, loadProjectManifest } = require('./reads.cjs');
 const { titlecase } = require('./conventions.cjs');
-const { section, dataSection, CONTINUE_INSTRUCTION, menu, cmdOption, promptOption, MENU_INSTRUCTION } = require('./projections/surfaces.cjs');
+const { section, dataSection, menu, cmdOption, promptOption, MENU_INSTRUCTION } = require('./projections/surfaces.cjs');
 const { quickFixBranch } = require('./landing-names.cjs');
 const { mayHoldOpen } = require('./landing.cjs');
 const { topicReceipt, importReprompt } = require('./projections/transactions.cjs');
@@ -42,7 +41,6 @@ const { pickRows } = require('./boot-route.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { githubSquashNested } = require('./github-setup.cjs');
 const { multiplexerHere } = require('./session-label.cjs');
-const { beatQuietly } = require('./presence.cjs');
 const { roadmapState, hasRoadmapNode } = require('./roadmap.cjs');
 const { putBackBy, stillToAsk, thenArgs, ontoMenu } = require('./topic-leave.cjs');
 const { roadmapSurface, roadmapHarvestSurface } = require('./projections/roadmap.cjs');
@@ -53,7 +51,7 @@ const {
   computeTopicLifecycle, awaitedExperiments, itemOf,
   UNIT_PHASES, discoveryUnitExists, cancelPlan, unitOpenRecords,
   postponePlan, postponeTarget, openExperiments,
-  topicTitle, topicTitles, itemTitle, goesBy, dismissedNames, topicKey, noTopicRefusal, briefFile, buildDiscoveryMap, quickFixBuild, fixesBegun,
+  topicTitle, topicTitles, goesBy, dismissedNames, topicKey, noTopicRefusal, briefFile, buildDiscoveryMap, quickFixBuild, fixesBegun,
 } = require('./derivations.cjs');
 const { sendReportOf } = require('./mail.cjs');
 const { mapSurface } = require('./topic-map.cjs');
@@ -504,29 +502,6 @@ function postponeGate(cwd, { dotpath, horizon }) {
 }
 
 // ---------------------------------------------------------------------------
-// phase-note — the one-line status notes a phase's start renders (Resuming /
-// Starting / Reopening …). Address-backed; the verb is the caller's word, the
-// noun defaults to the phase segment. Only ever rendered where a phase
-// starts, for its own topic, so it beats the addressed topic: announcing
-// the start is the same act as claiming it.
-// ---------------------------------------------------------------------------
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string, verb?: string, noun?: string}} args
- * @returns {string}
- */
-function phaseNote(cwd, { dotpath, verb, noun }) {
-  const { workUnit, phase, topic, manifest } = resolveAddress(cwd, dotpath, 'phase-note');
-  if (!isFilled(verb)) throw new Error('render phase-note: --verb is required (e.g. Resuming, Reopening, Starting)');
-  beatQuietly(cwd, workUnit, phase, topic);
-  return section(
-    'DISPLAY: phase note',
-    CONTINUE_INSTRUCTION,
-    `${verb} ${isFilled(noun) ? noun : phase}: ${itemTitle(topicTitles(manifest), phase, topic)}`,
-  );
-}
-
 // import-reprompt — the re-prompt after a landing refused on `missing_imports`,
 // a learned gate (8.8.12). No address: the refusal names paths, and the work
 // unit it was aimed at may not exist yet (the work-type commit's own landing
@@ -899,7 +874,6 @@ const SURFACES = {
   'experiment-approval-gate': experimentApprovalGateSurface,
   'experiment-next-gate': experimentNextGateSurface,
   'experiment-spawn-gate': experimentSpawnGateSurface,
-  'phase-note': phaseNote,
   'cancel-gate': cancelGate,
   'postpone-gate': postponeGate,
   'import-reprompt': importRepromptSurface,
