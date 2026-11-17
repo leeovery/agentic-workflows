@@ -7405,8 +7405,6 @@ b/back → Back to the start menu
 
 18.4.23 A finished epic's menu is its complete variant: "■ Complete — {Epic}" as its heading, its tally beneath, its DECIDED topics, and the rows h help and b back alone; finish hands the epic to it (14.6.2). [Claude's proposal, C53: 29.16's P6 and F3, finish hands an epic to its menu, which 18.4.17 drew for no finished epic]
 
-18.4.24 While the epic's legacy folder holds files (21.5.23), its menu has one row for them after what waits, "Sort the legacy files from the migration — 4", never the recommended one, leading to the same pass (21.5.24). [ruled by the person 2026-11-15: legacy files pointed out on the unit's own menu; Claude's derivation, C55: the legacy-files reviews, the row never recommended (projections/epic-menu.cjs)]
-
 Screen, drawn by Claude: the epic menu once the epic is complete. [Claude's proposal, C53: 29.16's P6]
 
 ```text
@@ -7428,6 +7426,8 @@ DECIDED
 h/help → What this menu is for, row by row
 b/back → Back to the start menu
 ```
+
+18.4.24 While the epic's legacy folder holds files (21.5.23), its menu has one row for them after what waits, "Sort the legacy files from the migration — 4", never the recommended one, leading to the same pass (21.5.24). [ruled by the person 2026-11-15: legacy files pointed out on the unit's own menu; Claude's derivation, C55: the legacy-files reviews, the row never recommended (projections/epic-menu.cjs)]
 
 ### 18.5 A specification waits until every topic is decided
 
