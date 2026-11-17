@@ -342,8 +342,7 @@ function pivotWorkUnit(cwd, workUnit, topic) {
   });
 
   // The registration must agree with the manifest — a fresh read under the
-  // project lock, upserted, so a legacy unit that predates registration is
-  // registered rather than skipped.
+  // project lock, upserted.
   withProjectLock(cwd, () => {
     const projectManifest = readProjectManifest(cwd);
     const workUnits = ensureContainer(projectManifest, 'work_units', 'work_units');

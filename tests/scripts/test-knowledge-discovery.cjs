@@ -4,8 +4,7 @@
 // yields exactly the artifacts below, every path state-relative — and never
 // a log, discovery's or the product's, nor a file the product's conversation
 // keeps (8.14.7, 9.2.2), nor a spec (11.1.2), nor anything of a unit's build
-// (22.6.3), nor an older version's investigation file or shared import, nor
-// a seed, an asset, an inbox item or the product record's rendered file
+// (22.6.3), nor a seed, an asset, an inbox item or the product record's rendered file
 // (22.6.12) — a quick-fix's short record among them, at its unit's own
 // identity, retired only by its file gone or its unit cancelled (22.6.9).
 //
@@ -52,8 +51,8 @@ function buildFixture(root) {
   const proj = { work_units: {} };
 
   // Epic: multi-topic phases (mixed statuses), each discussion's log beside
-  // its record copy, an older version's import, seeds, an asset, an older
-  // version's `.state/` files, discovery's logs, the open one among them.
+  // its record copy, seeds, an asset, discovery's logs, the open one among
+  // them.
   proj.work_units['payments'] = { work_type: 'epic' };
   writeJson(path.join(wf, 'payments', 'manifest.json'), {
     name: 'payments', work_type: 'epic', status: 'in-progress', created: '2026-01-01',
@@ -64,14 +63,7 @@ function buildFixture(root) {
         refunds: { status: 'completed' },
         chargebacks: { status: 'pending' },      // not completed → excluded
       } },
-      specification: { items: {
-        ledger: { status: 'completed' },          // completed, but never indexed (11.1.2)
-      } },
-      planning: { items: {
-        ledger: { status: 'completed' },          // completed, but not an indexed phase → excluded
-      } },
     },
-    imports: [{ path: 'imports/oauth-notes.md', origin: 'discovery' }], // an older version's → never indexed
     seeds: [{ path: 'seeds/original-idea.md', source: 'inbox:idea' }],
   });
   for (const topic of ['ledger', 'refunds', 'chargebacks']) {
@@ -80,13 +72,7 @@ function buildFixture(root) {
   writeFile(path.join(wf, '.knowledge', 'records', 'payments', 'ledger.md'), '# Ledger\n');
   writeFile(path.join(wf, '.knowledge', 'records', 'payments', 'refunds.md'), '# Refunds\n');
   writeFile(path.join(wf, '.knowledge', 'records', 'payments.md'), '# Payments\n');
-  writeFile(path.join(wf, 'payments', 'specification', 'ledger', 'specification.md'), '# Spec — never indexed\n');
   writeFile(path.join(wf, 'payments', 'spec.md'), '# The unit\'s spec — never indexed\n');
-  writeFile(path.join(wf, 'payments', 'planning', 'ledger', 'planning.md'), '# Plan — unindexed phase, never discovered\n');
-  writeFile(path.join(wf, 'payments', 'imports', 'oauth-notes.md'), '# OAuth — an older version\'s, never indexed\n');
-  writeFile(path.join(wf, 'payments', '.state', 'discovery-gap-analysis.md'), '# a gap analysis — never indexed (4.11.16)\n');
-  writeFile(path.join(wf, 'payments', '.state', 'environment-setup.md'), '# not indexable\n');
-  writeFile(path.join(wf, 'payments', '.state', 'coherence-analysis.md'), '# legacy cache — not indexable\n');
   writeFile(path.join(wf, 'payments', 'discovery', 'session-001.md'), '# S1 — a log, never indexed\n');
   writeFile(path.join(wf, 'payments', 'discovery', 'session-002.md'), '# S2 — a log, never indexed\n');
   for (const rel of BUILD) writeFile(path.join(wf, rel), '# the build\'s — never indexed\n');
@@ -97,12 +83,10 @@ function buildFixture(root) {
     name: 'auth-flow', work_type: 'feature', status: 'in-progress', created: '2026-01-02',
     phases: {
       discussion: { items: { 'auth-flow': { status: 'completed' } } },
-      specification: { items: { 'auth-flow': { status: 'completed' } } },
     },
   });
   writeFile(path.join(wf, 'auth-flow', 'topics', 'auth-flow', 'log.md'), '# the conversation, never indexed\n');
   writeFile(path.join(wf, '.knowledge', 'records', 'auth-flow', 'auth-flow.md'), '# D\n');
-  writeFile(path.join(wf, 'auth-flow', 'specification', 'auth-flow', 'specification.md'), '# S — never indexed\n');
   writeFile(path.join(wf, 'auth-flow', 'discovery', 'session-001.md'), '# a log, never indexed\n');
 
   // Quick-fix, completed: its short record, no phase's item, beside its build's log.
@@ -113,14 +97,13 @@ function buildFixture(root) {
   writeFile(path.join(wf, 'typo', 'summary.md'), '## Spell the flag\n\n- What changed: The flag.\n');
   writeFile(path.join(wf, 'typo', 'build', 'log.md'), '# the build\'s — never indexed\n');
 
-  // Bugfix: an older version's investigation file beside its seed.
+  // Bugfix: its seed.
   proj.work_units['login-timeout'] = { work_type: 'bugfix' };
   writeJson(path.join(wf, 'login-timeout', 'manifest.json'), {
     name: 'login-timeout', work_type: 'bugfix', status: 'in-progress', created: '2026-01-03',
     phases: { investigation: { items: { 'login-timeout': { status: 'completed' } } } },
     seeds: [{ path: 'seeds/bug-report.md', source: 'inbox:bug' }],
   });
-  writeFile(path.join(wf, 'login-timeout', 'investigation', 'login-timeout.md'), '# I — an older version\'s, never indexed\n');
 
   // Cancelled epic: entirely excluded.
   proj.work_units['old-epic'] = { work_type: 'epic' };
@@ -187,14 +170,6 @@ describe('knowledge bulk discovery — artifact-set equivalence', () => {
     const files = normalise(discover(root)).map((it) => it.file);
     assert.deepStrictEqual(files.filter((f) => f.includes('/build/')), []);
     for (const rel of BUILD) assert.throws(() => deriveIdentity(rel), (err) => err instanceof UserError && /Cannot derive identity/.test(err.message), rel);
-  });
-
-  it('discovers no older version\'s investigation file or shared import, and the one-file door refuses each', () => {
-    const files = normalise(discover(root)).map((it) => it.file);
-    assert.deepStrictEqual(files.filter((f) => f.includes('/investigation/') || f.includes('/imports/')), []);
-    for (const rel of ['login-timeout/investigation/login-timeout.md', 'payments/imports/oauth-notes.md']) {
-      assert.throws(() => deriveIdentity(rel), (err) => err instanceof UserError && /Cannot derive identity/.test(err.message), rel);
-    }
   });
 
   it('yields the identical set over the manifests however they were read', () => {

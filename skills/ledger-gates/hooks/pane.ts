@@ -87,7 +87,7 @@ export function settled(current: Nav, asked: Nav, unwound: Nav): Nav {
 }
 
 /** The engine read for where the person is on the pane. */
-export type Read = (nav: Nav) => Promise<Reading>
+type Read = (nav: Nav) => Promise<Reading>
 
 /** One level back towards This session: the page on top, else the tab; none from This session's top. */
 function unwound(nav: Nav): Nav | null {
@@ -161,10 +161,10 @@ export function pressed(nav: Nav, key: string, board: Board | null, views: Views
 }
 
 /** A tab's button, and whether it is the tab shown. */
-export type TabButton = Button & { isActive: boolean }
+type TabButton = Button & { isActive: boolean }
 
 /** What the pane draws: its tabs, where it has a board to draw, and its lines beneath them. */
-export type Framed = { tabs: TabButton[] | null; lines: Line[] }
+type Framed = { tabs: TabButton[] | null; lines: Line[] }
 
 const THIS_SESSION = '⌂ This session'
 const ALL_WORK = '≡ All work'
@@ -276,10 +276,10 @@ const drawTabs = (els: ElementTable, tabs: readonly TabButton[]) =>
  * from `offset` lines down, the pane scrolling it itself; inline, Claude
  * Code scrolls the whole board, and the box follows what is above it.
  */
-export type Foot = { lines: Line[]; placement: 'dock' | 'inline'; bodyRows: number; offset: number }
+type Foot = { lines: Line[]; placement: 'dock' | 'inline'; bodyRows: number; offset: number }
 
 /** No box at the foot. */
-export const NO_FOOT: Foot = { lines: [], placement: 'inline', bodyRows: 0, offset: 0 }
+const NO_FOOT: Foot = { lines: [], placement: 'inline', bodyRows: 0, offset: 0 }
 
 /** Whether the pane scrolls what is above its foot itself: a box held there, docked. */
 export const isPinned = ({ lines, placement }: Foot) => lines.length > 0 && placement === 'dock'

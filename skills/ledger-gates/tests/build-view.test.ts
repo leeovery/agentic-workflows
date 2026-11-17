@@ -21,10 +21,6 @@ const answered = (board: Board): Answer => ({ kind: 'board', board })
 /** The build with its view as `change` makes it. */
 const built = (change: (build: BuildView) => Partial<BuildView>): Answer => answered({ ...BUILD, view: { ...view, ...change(view) } as View })
 
-/** The running phase's tasks, each as `change` makes it. */
-const sixth = (change: (line: TaskLine) => TaskLine): BuildPhase[] =>
-  view.phases.map(phase => (phase.phase === 6 ? { ...phase, tasks: phase.tasks.map(change) } : phase))
-
 describe('the build\'s This session (20.5)', () => {
   test('20.5\'s drawing: the locked board\'s build at 64 columns, a failed task drawn ✗ (D7), its running tasks\' clocks frozen as its scene froze them', () => {
     expect(paneDrawn(answered(BUILD), { now: NOW, clocked: '0:00' })).toEqual([

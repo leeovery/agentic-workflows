@@ -284,17 +284,6 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     assert.deepStrictEqual(settings(), { effortLevel: 'high', hooks: OWN_HOOKS });
   });
 
-  it('LEDGER_HOLD_PROJECT_SETTINGS=1 — the test harness\'s switch — never touches settings, labels on or off', () => {
-    dropSettings();
-    assert.strictEqual(bootWith({ holdSettings: true }).session_hooks_installed, false);
-    assert.ok(!fs.existsSync(path.join(fix.project, '.claude/settings.json')));
-    recordChoice(true);
-    assert.strictEqual(bootWith({ holdSettings: true }).session_hooks_installed, false);
-    assert.ok(!fs.existsSync(path.join(fix.project, '.claude/settings.json')));
-    assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'no settings', 'no commit of boot\'s');
-    assert.strictEqual(stateGit(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'record the defaults', 'no commit of boot\'s');
-  });
-
   it('a settings file that does not parse is a warning, never a block — left as found', () => {
     recordChoice(true);
     createFile(fix.project, '.claude/settings.json', '{not json');

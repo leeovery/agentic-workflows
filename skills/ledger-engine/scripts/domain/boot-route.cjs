@@ -303,4 +303,4 @@ function gatesDue(facts, { bare, outdated, restarted }) {
   return gates.flatMap(([gate, due, shown]) => (due && shown ? [gate] : []));
 }
 
-module.exports = { CONNECTIVE, PICK, entryOf, pickRows, gatesDue };
+module.exports = { entryOf, pickRows, gatesDue };

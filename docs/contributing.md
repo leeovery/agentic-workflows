@@ -38,7 +38,7 @@ is to run them before every commit rather than at the end of a branch.
 
 | Command | What it covers | Layers |
 | --- | --- | --- |
-| `npm test` | Node suites: engine, drivers, knowledge, migrations, pipeline simulation, prose-test perimeter, and the checks on the docs, the glossary and where a tool may be named; ends with the budget report, the run's CPU against its guide (`tests/README.md` §12) | unit, verb, git, process, simulation, migration (047 on), prose |
+| `npm test` | Node suites: engine, drivers, knowledge, migrations, pipeline simulation, and the checks on the docs, the glossary and where a tool may be named; ends with the budget report, the run's CPU against its guide (`tests/README.md` §12) | unit, verb, git, process, conformance, simulation, migration (047 on) |
 | `npm run test:cli` | The shell contract suite of the manifest field surface | shell, closing into verb |
 | `npm run test:migrations` | Every `tests/scripts/test-migration-*.sh` | migration (the frozen fleet) |
 | `npm run typecheck` | JSDoc type contracts (`tsc -p tsconfig.json`) | — |
@@ -190,45 +190,11 @@ in the same header:
   Until that commit, a run that completes keeps the handbacks it
   journaled, so every boot's review reads them.
 
-## Prose tests
-
-`tests/prose/` walks the skill prose with real agents against real
-project states, through the `/prose-test` skill; when walks run, and what
-a change owes the corpus, are CLAUDE.md's rules (Prose tests). `npm test`
-covers only the token-free perimeter: corpus validation and snapshot
-rebuilds.
-
-**Prerequisite that will otherwise waste your afternoon:** the walker
-records what it did through a `PostToolUse` hook declared in its own
-agent frontmatter, and **frontmatter hooks in a project subagent only
-run once the workspace trust dialog has been accepted for the folder**
-(Claude Code 2.1.218+). Until then they fail *silently* — no warning, no
-error, and `/hooks` shows nothing for an agent that isn't currently
-active. The symptom is every prose-test run reporting `HARNESS ERROR`
-with no action log.
-
-Check it directly:
-
-```bash
-node -e 'const o=require(process.env.HOME+"/.claude.json");
-  console.log(o.projects[process.cwd()]?.hasTrustDialogAccepted)'
-```
-
-If that prints `false`, accept the trust dialog for the folder. Note that
-`hasCompletedProjectOnboarding` can be `true` while trust is still
-`false` — onboarding predates the change that started gating hooks on
-it, so an old checkout will look set up and quietly not be.
-
 ## Known hiccups
 
 - **Agent and skill definitions are cached per session.** Editing
   `.claude/agents/*.md` and immediately testing will exercise the old
   definition. Reload plugins, or restart, before trusting a result.
-- **Snapshot drift is expected after an engine change.** A red
-  `prose-test snapshots` suite means a world moved: regenerate it with
-  `node tests/prose/run.cjs snap <case-id>` and land the snapshot's diff in
-  the same commit as the change that moved it (the suite's header,
-  `tests/scripts/test-prose-snapshots.cjs`).
 - **`CHANGELOG.md` is generated** — CLAUDE.md (Changelog).
 - **Released migrations are frozen** — CLAUDE.md (Migrations).
 
@@ -270,9 +236,10 @@ silently non-compliant skills more than once.
 
 ## Moving to a new model
 
-When Ledger moves to a new model, the prose is walked on it and one
-pass cuts what that model no longer needs. Beyond the prose, the pass
-re-weighs each item below, each held as it is for today's model:
+When Ledger moves to a new model, the model pass is a session entering
+each phase by hand on it, at the efforts Ledger dispatches; what it finds
+the model no longer needs is cut. Beyond the prose, the pass re-weighs
+each item below, each held as it is for today's model:
 
 - the brief templates in the engine's content folder
   (`skills/ledger-engine/content/briefs/`);

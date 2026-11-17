@@ -18,7 +18,7 @@ const { setupFixture, cleanupFixture } = require('./discovery-test-utils.cjs');
 
 const renderSurface = auditingRender(require('../../skills/ledger-engine/scripts/domain/render.cjs').renderSurface);
 
-// Worklist leading indents are non-breaking spaces (a 4-space lead is a code
+// Markdown leading indents are non-breaking spaces (a 4-space lead is a code
 // block to a markdown renderer) — goldens spell them explicitly.
 const NB = (n) => '\u00a0'.repeat(n);
 

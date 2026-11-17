@@ -70,7 +70,6 @@ const STAGING = '.cache/migrate/cut-and-merges';
 const CUT_MARKS = '.cache/migrate/cut';
 const CLOSED_MARKS = '.cache/migrate/closed';
 const PRODUCT_ASSETS = '.product/assets';
-const SET_ASIDE = ['cancelled', 'postponed'];
 // The section of the directive its agents' briefs draw.
 const BRIEFED = ["A Phase's Piece"];
 const OUT_OF_THE_UNIT = ['cancelled', 'postponed', 'promoted'];

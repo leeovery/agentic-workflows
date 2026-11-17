@@ -13,7 +13,7 @@
 // screen of `spec.md` traced, the cut against `spec.md`, the canonical
 // assets linked from `spec.md`, another unit a phase relies on — the review
 // settled is test-engine-spec-review-settled.cjs's, a build phase's
-// checks test-engine-build-checklists.cjs's, and finish's, with its items
+// checks test-engine-build-checklists-{start,close,review}.cjs's, and finish's, with its items
 // worked in Claude's order and its close (2.S2), test-engine-finish.cjs's;
 // no phase's start before the
 // build begins (11.8.3);

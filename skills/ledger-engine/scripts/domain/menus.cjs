@@ -213,4 +213,4 @@ function drawMenu(cwd, m, drawn, screen) {
   return out;
 }
 
-module.exports = { MENUS, NUMBERED, HELP_GATE, QUESTION, menuNamed, titleOf, menuAgain, rowOf, menuBody, drawMenu };
+module.exports = { MENUS, HELP_GATE, QUESTION, menuNamed, titleOf, menuAgain, rowOf, menuBody, drawMenu };

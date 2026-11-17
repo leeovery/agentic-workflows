@@ -254,4 +254,4 @@ function runTrustVerb(cwd, verb, args) {
   throw new Error(`Usage: engine trust <${[...Object.keys(SETTING_VERBS), 'correct'].join('|')}> …\n${TRUST_USAGE}`);
 }
 
-module.exports = { TRUST_USAGE, MATRIX_KINDS, runTrustVerb, matrixSurface, replaySurface };
+module.exports = { TRUST_USAGE, runTrustVerb, matrixSurface, replaySurface };

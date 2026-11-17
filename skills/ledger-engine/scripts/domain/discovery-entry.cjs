@@ -271,4 +271,4 @@ const DISCOVERY = Object.freeze({
   seeds: ({ cwd, unit }, seeds) => { assertSeeds(cwd, unit, seeds); },
 });
 
-module.exports = { DISCOVERY, POINTER, SHAPED_BY };
+module.exports = { DISCOVERY, SHAPED_BY };

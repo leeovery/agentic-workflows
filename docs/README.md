@@ -42,4 +42,4 @@ The phases in order, from a rough idea to landed, reviewed code. Each page cover
 
 ## Working on Ledger
 
-- [Contributing](contributing.md) — for changing this repository rather than using it: the gates, migrations, the prose tests and the setup hiccups worth knowing first.
+- [Contributing](contributing.md) — for changing this repository rather than using it: the gates, migrations and the setup hiccups worth knowing first.

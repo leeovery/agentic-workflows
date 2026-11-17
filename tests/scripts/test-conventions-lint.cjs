@@ -1074,9 +1074,8 @@ function checkDispatchLines(files) {
 
 // ---------------------------------------------------------------------------
 // Check 26 — a path a dispatch hands an agent is written as installed, from
-// the project root (CONVENTIONS' Dispatch Lines): `.claude/skills/…`,
-// `.claude/agents/…`, or a work artifact under `.workflows/…` — never
-// relative to the instruction file, which the session composes wrong. In a
+// the project root (CONVENTIONS' Dispatch Lines): `.claude/skills/…` or
+// `.claude/agents/…` — never relative to the instruction file, which the session composes wrong. In a
 // file holding a dispatch (check 25's units), two shapes are decidable: an
 // input line — a bold label naming a path or a file (`… path`, `… file`, or
 // a `.md` file name) whose value opens on a backticked path or a markdown
@@ -1087,8 +1086,8 @@ function checkDispatchLines(files) {
 const PATH_INPUT = /^\s*(?:[-*]\s+|\d+\.\s+)?\*\*([^*]+)\*\*\s*(?::|—)\s*(?:`([^`]+)`|\*{0,2}\[[^\]]*\]\(([^)]+)\))/;
 const PATH_LABEL = /(?:\bpath|\bfile|\.md)$/i;
 const AGENT_FILE = /`(?!\.claude\/)([^`\s]*agents\/[a-z0-9-]+\.md)`/g;
-const INSTALLED = /^(?:\.claude\/|\.workflows\/)|^\{[^{}]+\}$/;
-const INSTALLED_FORMS = '`.claude/skills/…`, `.claude/agents/…`, or `.workflows/…`';
+const INSTALLED = /^\.claude\/|^\{[^{}]+\}$/;
+const INSTALLED_FORMS = '`.claude/skills/…` or `.claude/agents/…`';
 
 function checkInstalledDispatchPaths(files) {
   const out = [];
@@ -2685,11 +2684,9 @@ test('check 26 (installed dispatch paths) — catches an agent file or a labelle
       '',
       '1. **Review criteria path**: `.claude/skills/ledger-x/references/criteria.md`',
       '2. **read-specification.md**: `.claude/skills/ledger-x/references/read-specification.md`',
-      '3. **Format reading.md path**: `.claude/skills/ledger-x/references/output-formats/{format}/reading.md` — `format` is in session context',
-      '4. **Output path** — `.workflows/{work_unit}/x/{topic}/out.md`',
-      '5. **Output file path** — the `file` from the dispatch response',
-      '6. **Resolved path**: `{resolved_path}`',
-      '7. **Work type**: `work_type` from session context',
+      '3. **Output file path** — the `file` from the dispatch response',
+      '4. **Resolved path**: `{resolved_path}`',
+      '5. **Work type**: `work_type` from session context',
       '',
       'Load **[criteria.md](criteria.md)** and follow its instructions as written.',
       '',

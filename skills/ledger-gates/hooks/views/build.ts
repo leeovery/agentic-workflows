@@ -22,7 +22,7 @@ import { pageKey } from '../pane.ts'
 import { section } from './words.ts'
 
 /** A task's state on the board, as the engine's model holds it. */
-export type TaskState = 'done' | 'building' | 'in-review' | 'at-gate' | 'behind' | 'failed' | 'waits' | 'after' | 'not-started' | 'closed'
+type TaskState = 'done' | 'building' | 'in-review' | 'at-gate' | 'behind' | 'failed' | 'waits' | 'after' | 'not-started' | 'closed'
 
 /** A task's line, as the engine's model holds it. */
 export type TaskLine = { task: string; title: string; state: TaskState; since: string | null; on: string[] }

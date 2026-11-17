@@ -9,8 +9,7 @@
 // the engine reads.
 // ---------------------------------------------------------------------------
 
-const { NBSP, section, emitAs, clipped } = require('./surfaces.cjs');
-const { escapeMarkdown } = require('./worklist.cjs');
+const { NBSP, section, emitAs, clipped, escapeMarkdown } = require('./surfaces.cjs');
 const { ID_LENGTH } = require('../ledger-ids.cjs');
 
 const FOUND_MAX = 60;

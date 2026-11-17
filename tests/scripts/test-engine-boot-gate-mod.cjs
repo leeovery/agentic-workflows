@@ -167,19 +167,6 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     assert.strictEqual(head().subject, 'install the mod', 'no commit of boot\'s');
   });
 
-  it('the harness switch holds the project\'s settings file alone — the mod reports as it would without it', () => {
-    installMod();
-    dropSettings();
-    for (const [version, status] of [['2-1-287', COULD], ['2-1-286', OUTDATED]]) {
-      const res = bootWith({ holdSettings: true, env: { ...TERMINAL, CLAUDE_CONFIG_DIR: claudeDir(), HOME: homeDir(), AI_AGENT: `claude-code_${version}_agent` } });
-      assert.deepStrictEqual(standing(res), status, version);
-      assert.strictEqual(res.session_hooks_installed, false);
-    }
-    assert.ok(!fs.existsSync(path.join(fix.project, '.claude/settings.json')), 'the project\'s settings held');
-    assert.ok(!fs.existsSync(claudeDir()));
-    assert.strictEqual(head().subject, 'no settings', 'no commit of boot\'s');
-  });
-
   it('a flag in the project\'s settings is neither read nor written — the mod\'s own announcement alone decides', () => {
     installMod();
     for (const value of ['1', '0']) {

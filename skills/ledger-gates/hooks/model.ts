@@ -13,7 +13,7 @@ export const BOARD_VERSION = 10
 export type Tab = 'this' | 'unit' | 'all'
 
 /** Where the session is: a unit, its type, the phase and topic it works in; all null at the start menu. */
-export type Place = {
+type Place = {
   unit: string | null
   type: string | null
   phase: string | null
@@ -47,7 +47,7 @@ export type Question = {
 export type View = { kind: string } & Record<string, unknown>
 
 /** A view or page the engine cannot draw, and why, the banner and the questions standing beside it. */
-export type Unavailable = { kind: 'unavailable'; reason: string }
+type Unavailable = { kind: 'unavailable'; reason: string }
 
 /** Whether a view is one the engine cannot draw. */
 export const isUnavailable = (view: View): view is View & Unavailable => view.kind === 'unavailable'

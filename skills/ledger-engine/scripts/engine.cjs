@@ -2833,8 +2833,7 @@ function dispatch(call, argv) {
  * settles, where it answers with one — and restored exactly: a key that was
  * absent is absent again afterwards. `undefined` takes a key away for the
  * call, which is how a caller hands over an environment a spawned process
- * would have had by replacement rather than overlay. Inside a worker thread
- * `process.env` is that thread's own copy, so this is thread-local.
+ * would have had by replacement rather than overlay.
  *
  * The display width is a memo over the environment, resolved once per process
  * because a CLI process is one command: scoping the environment scopes the
@@ -2911,9 +2910,6 @@ function answersLater([command, ...rest]) {
  * exits, chdirs, or leaves the environment moved. Callers are test harnesses
  * that want the engine's answers without a process per answer. A command
  * that answers later is runAsync's, refused here before it runs.
- *
- * The cwd is a parameter rather than a chdir because `process.chdir` is
- * refused inside a worker thread, and the prose world builder runs in one.
  *
  * @param {string[]} argv @param {InProcessOptions} [options]
  * @returns {Answer}

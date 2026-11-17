@@ -44,8 +44,7 @@ const { filled, shaped, listed, readPayload, refusing } = require('../staged-pay
 const { inboxByKind, storeItem, archivedItems, archivedItem } = require('../inbox-set.cjs');
 const { MENUS, drawMenu } = require('../menus.cjs');
 const { counted } = require('./map.cjs');
-const { escapeMarkdown } = require('./worklist.cjs');
-const { section, dataSection, menu, cmdOption, MENU_INSTRUCTION } = require('./surfaces.cjs');
+const { section, dataSection, menu, cmdOption, MENU_INSTRUCTION, escapeMarkdown } = require('./surfaces.cjs');
 
 /** @typedef {import('../inbox-set.cjs').PickupItem} PickupItem */
 /** @typedef {import('../inbox-set.cjs').ArchivedItem} ArchivedItem */

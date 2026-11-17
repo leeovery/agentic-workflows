@@ -214,10 +214,6 @@ whatever branch happens to be checked out. Where the fix lands was settled
 in Step 2; when that is a new layer, the branch is created before the first
 commit, not after it.
 
-If the diff touched skill prose, run
-`node tests/prose/run.cjs select --diff main` and suggest the intersecting
-cases in the report — never run the walks as part of this pass.
-
 → Proceed to **Step 6**.
 
 ## Step 6: Report

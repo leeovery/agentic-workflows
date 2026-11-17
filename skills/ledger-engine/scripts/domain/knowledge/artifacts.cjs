@@ -56,9 +56,6 @@ const UNIT_RECORD = '.unit';
 /** A quick-fix's short record after the work, state-relative (4.11.6). @param {string} unit */
 const summaryFile = (unit) => `${unit}/summary.md`;
 
-/** Every phase a chunk can carry — each has a chunking config. */
-const INDEXED_PHASES = [RECORD_PHASE, SUMMARY_PHASE];
-
 /**
  * @typedef {object} Identity
  * @property {string} workUnit
@@ -356,7 +353,6 @@ function retirements(root, entries, manifests, scope) {
 }
 
 module.exports = {
-  INDEXED_PHASES,
   RECORD_PHASE,
   SUMMARY_PHASE,
   summaryFile,
@@ -368,7 +364,6 @@ module.exports = {
   readManifests,
   readManifestsOr,
   workUnitsOr,
-  unitsByName,
   discoverArtifacts,
   retirements,
 };

@@ -19,7 +19,7 @@ const {
 const {
   capitalise,
   tag,
-  derivedFrom,
+  stateNote,
   title,
   discoveryGlyph,
   discoveryLifecycleLabel,
@@ -33,18 +33,18 @@ const MAP = [
     tag: 'discussing',
     body: [
       'AI imagery (enhancement-only v1), description generation, per-tenant tone / base-knowledge primitive, allowance + overage cost shape',
-      derivedFrom('from exploration'),
+      stateNote('from exploration'),
     ],
   },
   {
     title: title({ glyph: discoveryGlyph('discussing'), label: 'Legal And Regulatory' }),
     tag: 'discussing · awaiting E1, E2 · mail waiting',
-    body: ['Data residency, GDPR, age-gating for the competition flows', derivedFrom('from gap-analysis')],
+    body: ['Data residency, GDPR, age-gating for the competition flows', stateNote('from gap-analysis')],
   },
   {
     title: title({ glyph: discoveryGlyph('discussing'), label: 'Menu And Admin' }),
     tag: 'discussing',
-    body: ['Business-side menu modelling, admin shell (Filament vs custom Vue/Nuxt), JustEat import, staff/roles', derivedFrom('from exploration')],
+    body: ['Business-side menu modelling, admin shell (Filament vs custom Vue/Nuxt), JustEat import, staff/roles', stateNote('from exploration')],
   },
 ];
 
@@ -202,12 +202,12 @@ describe('render shape: renderTree (discovery map)', () => {
     }
   });
 
-  it('renders provenance as a distinct ↳ -marked, capitalised line', () => {
+  it('renders a ↳ note as a distinct ↳ -marked, capitalised line', () => {
     const out = renderTree(MAP, { width: 72 });
-    assert.ok(out.includes('  │     ↳ From exploration'), 'non-last provenance: gutter + arrow + capitalised');
-    assert.ok(out.includes('        ↳ From exploration'), 'last provenance: 8-space gutter + arrow + capitalised');
-    assert.ok(out.includes('↳ From gap-analysis'), 'capitalises whatever the provenance is');
-    assert.ok(!out.includes('from exploration'), 'no lowercase provenance leaks through');
+    assert.ok(out.includes('  │     ↳ From exploration'), 'non-last note: gutter + arrow + capitalised');
+    assert.ok(out.includes('        ↳ From exploration'), 'last note: 8-space gutter + arrow + capitalised');
+    assert.ok(out.includes('↳ From gap-analysis'), 'capitalises whatever the note is');
+    assert.ok(!out.includes('from exploration'), 'no lowercase note leaks through');
   });
 
   it('runs the │ unbroken under non-last topics, drops it under the last', () => {
@@ -344,8 +344,8 @@ describe('conventions (domain composition layer)', () => {
     assert.strictEqual(capitalise(''), '');
   });
 
-  it('derivedFrom builds a capitalised ↳ line that hangs past its marker', () => {
-    assert.deepStrictEqual(derivedFrom('from gap-analysis'), { text: '↳ From gap-analysis', hang: 2 });
+  it('stateNote builds a capitalised ↳ line that hangs past its marker', () => {
+    assert.deepStrictEqual(stateNote('discussing · mail waiting'), { text: '↳ Discussing · mail waiting', hang: 2 });
   });
 
   it('title composes glyph + label + [tag], omitting absent parts', () => {

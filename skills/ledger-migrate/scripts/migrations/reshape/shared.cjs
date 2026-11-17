@@ -222,6 +222,6 @@ function unreadStores(unread, cost) {
 }
 
 module.exports = {
-  OLD_STATE, STATE_DIR, STATE_GITIGNORE, REPOSITORY_ENV, SIDECAR_NAME,
-  git, mustGit, mainCheckout, projectInMain, stateBorn, placeStateWorktree, writeWhole, preLedgerStores, unreadStores,
+  OLD_STATE, STATE_DIR, STATE_GITIGNORE, SIDECAR_NAME,
+  git, mainCheckout, projectInMain, stateBorn, placeStateWorktree, writeWhole, preLedgerStores, unreadStores,
 };

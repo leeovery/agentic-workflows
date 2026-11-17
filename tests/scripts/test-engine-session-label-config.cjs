@@ -118,15 +118,6 @@ describe('engine session label-config', () => {
     assert.ok(!fs.existsSync(settingsPath()), 'no settings write inside the rebase');
     assert.deepStrictEqual(head(stateGit), CHOICE.state);
   });
-
-  it('LEDGER_HOLD_PROJECT_SETTINGS=1 — the test harness\'s switch — records the choice and leaves the settings file alone', () => {
-    const res = engine(['session', 'label-config', 'true'], { extraEnv: { LEDGER_HOLD_PROJECT_SETTINGS: '1' } });
-    assert.deepStrictEqual(res, { ok: true, tmux_labels: true });
-    assert.deepStrictEqual(projectManifest().defaults, { tmux_labels: true });
-    assert.ok(!fs.existsSync(settingsPath()), 'no settings write under the switch');
-    assert.deepStrictEqual(head(stateGit), CHOICE.state);
-    assert.deepStrictEqual(head(git), { subject: 'ignore the state', files: ['.gitignore'] }, 'no settings commit');
-  });
 });
 
 describe('syncSessionHooks', () => {
@@ -234,7 +225,7 @@ describe('syncSessionHooks', () => {
 
   it('a hook of ours whose command is not the one the sync writes — another engine\'s path, another install prefix, an argument added — is rewritten to it where it stands, its group, matcher, place and other fields kept, and a second sync changes nothing', () => {
     const theirs = { type: 'command', command: 'say goodbye' };
-    const other = (/** @type {string} */ verb) => ({ type: 'command', command: `node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" ${verb}` });
+    const other = (/** @type {string} */ verb) => ({ type: 'command', command: `node "$CLAUDE_PROJECT_DIR/.claude/skills/other-engine/scripts/engine.cjs" ${verb}` });
     writeSettings({
       hooks: {
         SessionEnd: [{ hooks: [theirs, other('presence cleanup'), { ...other('conversation end'), timeout: 5 }] }],

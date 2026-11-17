@@ -333,7 +333,7 @@ describe('engine session label — the manifest stamp', () => {
     fs.writeFileSync(path.join(world.dir, '.ledger', 'manifest.json'), JSON.stringify({ defaults }, null, 2) + '\n');
   }
 
-  it('a manifest stamped false — the prose-test world — is disabled, whatever was recorded before', () => {
+  it('a manifest stamped false is disabled, whatever was recorded before', () => {
     optIn();
     writeProjectManifest({ tmux_labels: false });
     const res = engine(['session', 'label', 'pay', 'discussion', 'alpha']);

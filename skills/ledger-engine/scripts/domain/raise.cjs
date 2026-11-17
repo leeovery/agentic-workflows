@@ -360,7 +360,7 @@ const { OVER_THE_LEAN, BACK_TO_THE_LEAN, derivedMove } = require('./ledger-verdi
 const { judgeDecisionAsync } = require('./ledger-one-decision.cjs');
 const { labelledBeside, questionText, kindOf, hardToUndo } = require('./labeller.cjs');
 const { readOnRaise } = require('./answer-reader.cjs');
-const { type, TEXT, KEY, LINE, ALWAYS_MARKS, listOf } = require('./event-fields.cjs');
+const { type, TEXT, LINE, ALWAYS_MARKS, listOf } = require('./event-fields.cjs');
 const { isShownTask, parseShownTask } = require('./task-id.cjs');
 const { markChanged, beingRead } = require('./round-report.cjs');
 const { stepTurn } = require('./task-verbs.cjs');
@@ -2195,4 +2195,4 @@ function raiseScreenOf(cwd, seal, { technical = false } = {}) {
   return raiseScreen(seal, { technical, titles: topicTitles(manifest ?? {}) });
 }
 
-module.exports = { RAISE_USAGE, drawRaise, drawParked, showRaise, answerRaise, raiseWaits, unraised, raiseScreenOf, steppedBackSealed, downChain, sealsAt, sealWaits, investigationPlaces, fixPlaces, raisePlaces };
+module.exports = { RAISE_USAGE, drawRaise, drawParked, showRaise, answerRaise, raiseWaits, unraised, raiseScreenOf, steppedBackSealed, downChain, sealsAt, sealWaits, investigationPlaces, raisePlaces };

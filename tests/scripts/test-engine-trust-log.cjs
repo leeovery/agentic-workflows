@@ -50,7 +50,7 @@ const { processStartTime } = require(path.join(SCRIPTS, 'kernel/process.cjs'));
 const { conversationDir, isMarked } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
 const { isId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { SCHEMA } = require(path.join(SCRIPTS, 'domain/trust-events.cjs'));
-const { newEvent, keepEvent, landKept, record, appendWaiting, readTrustLog, readProjectEvents } = require(TRUST_LOG_MODULE);
+const { newEvent, keepEvent, landKept, record, appendWaiting, readPersonEvents, readProjectEvents } = require(TRUST_LOG_MODULE);
 const { withWriterLock } = require(path.join(SCRIPTS, 'kernel/manifest-io.cjs'));
 
 const SENTENCE = 'rename the customers table to accounts';
@@ -83,12 +83,12 @@ const HEADER_FIELDS = ['v', 'id', 'at', 'type', 'project', 'project_name', 'mode
 
 const { folder, logPath, logText, project } = useTrustWorld('trust-log-');
 
-/** Every event the log reads, and how many lines it could not. */
-function readAll() {
+/** Every event the person's read finds from the project at `dir`. @param {string} dir */
+function readAll(dir) {
   /** @type {Record<string, unknown>[]} */
   const events = [];
-  const { unread } = readTrustLog((event) => events.push(event));
-  return { events, unread };
+  readPersonEvents(statePath(dir), (event) => events.push(event));
+  return events;
 }
 
 describe('record (16.13.4)', () => {
@@ -220,7 +220,7 @@ describe('record (16.13.4)', () => {
       ['correction', { entry: ENTRY, kind: 'look', verdict: 'loss' }, disagree('correction', 'a correction changes a kind or a verdict, one and not both')],
     ];
     for (const [type, fields, message] of refusals) assert.throws(() => record(type, fields, from(dir)), { message });
-    assert.deepStrictEqual(readAll(), { events: recorded, unread: 0 });
+    assert.deepStrictEqual(readAll(dir), recorded);
   });
 
   it('an event recorded before the project has state carries no project', () => {
@@ -230,7 +230,7 @@ describe('record (16.13.4)', () => {
     const event = record('gate', SAMPLES.gate, from(dir));
 
     assert.deepStrictEqual([event.project, event.project_name], [null, null]);
-    assert.deepStrictEqual(readAll().events, [event]);
+    assert.deepStrictEqual(readAll(dir), [event]);
   });
 
   it('refuses a project whose manifest holds no project_id, never filling one in: nothing recorded, the manifest as it was, and its events unread (16.13.5)', () => {
@@ -293,9 +293,7 @@ describe('appending', () => {
     ].join('\n'), [dir, statePath(dir), lock, met]);
 
     assert.ok(reports[0].taken + reports[1].taken > 0, 'neither found the lock held: the two never met');
-    const { events, unread } = readAll();
-    const read = events.map((event) => event.id);
-    assert.strictEqual(unread, 0);
+    const read = readAll(dir).map((event) => event.id);
     assert.strictEqual(read.length, reports[0].ids.length + reports[1].ids.length);
     for (const { ids } of reports) assert.deepStrictEqual(read.filter((id) => ids.includes(id)), ids);
   });
@@ -350,7 +348,7 @@ describe('an append that fails (16.13.3, 16.S74)', () => {
       const next = record('verdict', SAMPLES.verdict, from(dir));
 
       assert.strictEqual(logText(), lines(landed, landed, next));
-      assert.deepStrictEqual(readAll(), { events: [landed, next], unread: 0 });
+      assert.deepStrictEqual(readAll(dir), [landed, next]);
     });
   });
 
@@ -474,8 +472,7 @@ describe('an append that fails (16.13.3, 16.S74)', () => {
 
       assert.ok(keeper.taken > 0, 'the keeper never found the lock held: the two never met');
       assert.deepStrictEqual(landed.warnings, []);
-      appendWaiting(dir, []);
-      assert.deepStrictEqual(readAll().events.map((event) => event.id), [waited.id, ...(landed.id === null ? [] : [landed.id]), keeper.id]);
+      assert.deepStrictEqual(readAll(dir).map((event) => event.id), [waited.id, ...(landed.id === null ? [] : [landed.id]), keeper.id]);
     });
   }
 
@@ -590,7 +587,7 @@ describe('an append that fails (16.13.3, 16.S74)', () => {
 });
 
 describe('reading', () => {
-  it('skips and counts each line it cannot read — a newer release\'s version, a type it does not know, a line no event, one of the wrong shape, a time that is none, a session that is no session id, one followed by words or one in capitals, words for a model, an unterminated last line — and never stops', () => {
+  it('skips each line it cannot read — a newer release\'s version, a type it does not know, a line no event, one of the wrong shape, a time that is none, a session that is no session id, one followed by words or one in capitals, words for a model, an unterminated last line — and never stops', () => {
     const dir = project('fumi');
     const first = record('call', SAMPLES.call, from(dir));
     const unreadable = [
@@ -608,10 +605,10 @@ describe('reading', () => {
     const last = record('verdict', SAMPLES.verdict, from(dir));
     fs.appendFileSync(logPath(), JSON.stringify({ ...last, id: idOf('Unended') }));
 
-    assert.deepStrictEqual(readAll(), { events: [first, last], unread: 10 });
+    assert.deepStrictEqual(readAll(dir), [first, last]);
   });
 
   it('reads no log as empty', () => {
-    assert.deepStrictEqual(readAll(), { events: [], unread: 0 });
+    assert.deepStrictEqual(readAll(project('fumi')), []);
   });
 });

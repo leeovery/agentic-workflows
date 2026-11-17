@@ -22,8 +22,7 @@
 // account says which one this is.
 // ---------------------------------------------------------------------------
 
-const { section, menu, cmdOption, emitAs, MENU_INSTRUCTION, dataSection, clipped } = require('./surfaces.cjs');
-const { escapeMarkdown } = require('./worklist.cjs');
+const { section, menu, cmdOption, emitAs, MENU_INSTRUCTION, dataSection, clipped, escapeMarkdown } = require('./surfaces.cjs');
 const { askedAt, isNotice, choiceId } = require('../state-merge-rules.cjs');
 const { STATE_DIR_NAME } = require('../../kernel/state-root.cjs');
 const { phaseName } = require('../task-id.cjs');

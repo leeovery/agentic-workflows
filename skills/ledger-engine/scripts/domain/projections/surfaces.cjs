@@ -6,9 +6,6 @@
 // rules (CONVENTIONS.md: The Design System — Forms, Menus, Callouts and
 // blockers) exist in code exactly once, here; restyling a surface class is a
 // one-place change.
-// The one sibling: the worklist shape (CONVENTIONS.md: The Design System,
-// Worklists) lives in worklist.cjs — markdown-emitted, so none of the
-// fenced primitives here serve it.
 // Drawn borders never frame content — markdown and fences re-flow with the
 // terminal; fixed-width borders cannot.
 // A learned process gate's MENU (learned-gates.cjs) is drawn with the step
@@ -51,7 +48,7 @@ const OPTION = /^(\*\*.+?\*\*) → (.*)$/;
 
 // Continuation indents are non-breaking spaces — menus are markdown-emitted,
 // four real leading spaces is a code block to a renderer, and lesser leading
-// runs are stripped (the worklist rule). Do not "fix" them back to spaces.
+// runs are stripped. Do not "fix" them back to spaces.
 const NBSP = '\u00a0';
 
 // ` → ` renders three columns — the space each side of the arrow plus the
@@ -256,10 +253,10 @@ function drawLabel(label) {
  * @typedef {{kind: 'engine', argv: string[]} | {kind: 'handoff', skill: string, args: string[]} | {kind: 'invoke', skill: string, args: string[]} | {kind: 'continue'}} Next
  */
 
-/** @typedef {{prose: GateProse|null, rows: Map<string, GateRow>, continuations: Set<string>, options: GateOption[], typed: GateTyped[], prompts: Set<GateTyped>, next: Map<GateRow, Next>}} GateCollection */
+/** @typedef {{prose: GateProse|null, rows: Map<string, GateRow>, options: GateOption[], typed: GateTyped[], next: Map<GateRow, Next>}} GateCollection */
 
 /** @typedef {{key: string, word: string|null, head: string, tail: string|null, detail: string|null, recommended: boolean, next: Next|null}} ShownOption */
-/** A typed row, and whether the person answers it in words — a Comment, an Ask — rather than picking items. @typedef {{label: string, prompt: boolean, next: Next|null}} ShownTyped */
+/** A typed row, answered in words — a Comment, an Ask. @typedef {{label: string, next: Next|null}} ShownTyped */
 /**
  * The gate a MENU stated: its name as declared, its question, its rows and
  * what each leads to, and a learned gate's showing and its hold
@@ -301,7 +298,7 @@ function gateSurfaceAnnounced() {
  * @returns {void}
  */
 function openGate() {
-  collected = { prose: null, rows: new Map(), continuations: new Set(), options: [], typed: [], prompts: new Set(), next: new Map() };
+  collected = { prose: null, rows: new Map(), options: [], typed: [], next: new Map() };
   shown = null;
   stepped = false;
 }
@@ -361,7 +358,7 @@ function gateBlock(name, { showing, hold }) {
     gate: name,
     question,
     options: taken.options.map((o) => ({ key: o.key, word: o.word, head: o.head, tail: o.tail, detail: o.detail, recommended: o.recommended, next: nextOf(o) })),
-    typed: taken.typed.map((t) => ({ label: t.label, prompt: taken.prompts.has(t), next: nextOf(t) })),
+    typed: taken.typed.map((t) => ({ label: t.label, next: nextOf(t) })),
     showing,
     hold,
   };
@@ -374,6 +371,13 @@ function gateBlock(name, { showing, hold }) {
     typed: taken.typed,
   });
   return `=== GATE (${GATE_INSTRUCTION}) ===\n${payload}\n`;
+}
+
+// Angle brackets are escaped alongside the markdown set: a renderer that
+// passes raw HTML through would swallow an unescaped `<!-- -->` whole.
+/** Backslash-escape markdown-active characters in plain prose. @param {string} text */
+function escapeMarkdown(text) {
+  return String(text).replace(/[\\`*_~[\]<>]/g, (c) => `\\${c}`);
 }
 
 // A code span's content and an escaped character are literal text; every
@@ -418,19 +422,17 @@ function recordOption(line, key, word, { head, tail, cue, holder, recommended },
 }
 
 /**
- * Record one typed row — a natural reply, `prompt`, or a span of numbers,
- * never a press — and what answering it leads to, where its composer
- * declared that.
+ * Record one typed row — a natural reply, never a press — and what answering
+ * it leads to, where its composer declared that.
  * @param {string} line  the row as drawn
- * @param {string} label @param {string} description @param {boolean} prompt @param {Next} [next] @returns {void}
+ * @param {string} label @param {string} description @param {Next} [next] @returns {void}
  */
-function recordTyped(line, label, description, prompt, next) {
+function recordTyped(line, label, description, next) {
   if (collected === null) return;
   /** @type {GateTyped} */
   const typed = { label: stripMarkup(label), description: stripMarkup(description), detail: null };
   collected.rows.set(line, typed);
   collected.typed.push(typed);
-  if (prompt) collected.prompts.add(typed);
   if (next) collected.next.set(typed, next);
 }
 
@@ -444,7 +446,7 @@ function recordTyped(line, label, description, prompt, next) {
  */
 function recordFrame(lines) {
   if (collected === null || collected.prose !== null) return;
-  const { rows, continuations } = collected;
+  const { rows } = collected;
   /** @type {string[]} */
   const prose = [];
   /** @type {GateRow|null} */
@@ -453,7 +455,7 @@ function recordFrame(lines) {
     if (line === '') { above = null; continue; }
     const row = rows.get(line);
     if (row) above = row;
-    else if (above !== null && !GLYPHED_LINE.test(line)) describe(above, line, continuations.has(line));
+    else if (above !== null && !GLYPHED_LINE.test(line)) describe(above, line);
     else prose.push(line);
   }
   const ask = prose.findIndex((line) => GLYPHED_LINE.test(line));
@@ -467,14 +469,10 @@ function recordFrame(lines) {
   };
 }
 
-/**
- * Add one line to a row's detail: a continuation the engine wrapped joins the
- * line before it, any other line starts a new one.
- * @param {GateRow} row @param {string} line @param {boolean} continues @returns {void}
- */
-function describe(row, line, continues) {
+/** Add one line to a row's detail. @param {GateRow} row @param {string} line @returns {void} */
+function describe(row, line) {
   const text = stripMarkup(line);
-  row.detail = row.detail === null ? text : `${row.detail}${continues ? ' ' : '\n'}${text}`;
+  row.detail = row.detail === null ? text : `${row.detail}\n${text}`;
 }
 
 // `MENU: task gate` → `task gate`.
@@ -604,14 +602,11 @@ const MENU_INSTRUCTION = emitAs('markdown', STOP_CLAUSE);
 // also carries a MENU needs none of this, because the menu's own
 // instruction ends the turn. Two facts, never blurred:
 // CONTINUE is for displays where no gate exists at all (the word "gate"
-// never appears — naming one would imply something to skip); AUTO_GATE is
-// for a real gate the user's a/auto choice bypasses, and says exactly that.
-// Neither names a next step: where the flow goes is the prose's to own, and
-// an engine string that duplicated it would be a second routing source to
-// keep in sync. The markdown variant serves surfaces whose register cannot
-// live in a fence — worklist strikethrough and code-span tags.
+// never appears — naming one would imply something to skip). It names no
+// next step: where the flow goes is the prose's to own, and an engine string
+// that duplicated it would be a second routing source to keep in sync. The
+// markdown variant serves surfaces whose register cannot live in a fence.
 const CONTINUE_CLAUSE = ' — do not stop; continue as the skill instructs';
-const AUTO_GATE_CLAUSE = ' — the user set this gate to auto: do not stop; continue as the skill instructs';
 const CONTINUE_INSTRUCTION = emitAs('text', CONTINUE_CLAUSE);
 const CONTINUE_MARKDOWN_INSTRUCTION = emitAs('markdown', CONTINUE_CLAUSE);
 // A learned gate the engine ran as an automatic step: its DATA names the row
@@ -670,16 +665,12 @@ function menuFrame(lines, { width, skip = 0 } = {}) {
   return [DOTS, ...body].join('\n');
 }
 
-// A row's code-span head — cmdOption, bareOption and rangeOption write it.
+// A row's code-span head — cmdOption and bareOption write it.
 // The glyphed question shares the head's markup, so the glyph is what tells
 // them apart.
 /** @param {string} span */
 const headedRow = (span) => new RegExp(`^\\*\\*\`(?!${MENU_GLYPH} )${span}\`\\*\\*(?: +→ |$)`);
 const OPTION_ROW = headedRow('[^`]+');
-
-// A key the user presses names one key. A range's span holds both bounds
-// either side of an en dash — the numbers are typed, never pressed.
-const PRESSABLE_ROW = headedRow('[^`–]+');
 
 // Every menu asks: a glyphed question — glyphable, ending in `?` — stands
 // above its first row, and at least one row is a key to press. The check
@@ -687,8 +678,8 @@ const PRESSABLE_ROW = headedRow('[^`–]+');
 // projection composes itself meet the same rule.
 /** @param {string[]} body */
 function asksOverRows(body) {
-  if (!body.some((line) => PRESSABLE_ROW.test(line))) {
-    throw new Error('menu: no row to press — a menu offers at least one single key (cmdOption or bareOption); a range row is typed, never pressed');
+  if (!body.some((line) => OPTION_ROW.test(line))) {
+    throw new Error('menu: no row to press — a menu offers at least one single key (cmdOption or bareOption)');
   }
   const firstRow = body.findIndex((line) => OPTION_ROW.test(line));
   const ask = body.slice(0, firstRow).map((line) => GLYPHED_LINE.exec(line)).find(Boolean);
@@ -784,36 +775,8 @@ function bareOption(key, word, { next } = {}) {
  */
 function promptOption(label, description, { next } = {}) {
   const line = `**${label}** → ${description}`;
-  recordTyped(line, label, description, true, next);
+  recordTyped(line, label, description, next);
   return line;
-}
-
-/**
- * Numbered-range option line — a span of selectable numbers, both bounds
- * inside one code span. `next` is what answering the row leads to
- * (gate.cjs).
- * @param {number|string} first @param {number|string} last @param {string} label
- * @param {{next?: Next}} [opts]
- * @returns {string}
- */
-function rangeOption(first, last, label, { next } = {}) {
-  const line = `**\`${first}–${last}\`** → ${label}`;
-  recordTyped(line, `${first}–${last}`, label, false, next);
-  return line;
-}
-
-/**
- * An option's description, in the menu metadata register: italic lines hung
- * three columns in, directly beneath the option, wrapped at `width`. The
- * lines after the first continue the first, so the payload joins them back
- * into the one line they were wrapped from.
- * @param {string} text @param {number} width
- * @returns {string[]}
- */
-function optionDetail(text, width) {
-  const lines = wrap(text, width).map((seg) => `   *${seg}*`);
-  if (collected !== null) for (const line of lines.slice(1)) collected.continuations.add(line);
-  return lines;
 }
 
 /**
@@ -879,5 +842,5 @@ function treeList(items, { indent = '     ', width = displayWidth() } = {}) {
   return out.join('\n');
 }
 
-module.exports = { DOTS, NBSP, NOTE_SEPARATOR, gateSurfaceAnnounced, openGate, gateShown, gateStepped, illustrate, section, menuSection, GATE_MOD_INSTRUCTION, RENDER_FORMS, emitAs, timedInstruction, STOP_CLAUSE, MENU_INSTRUCTION, titleSection, dataSection, CONTINUE_CLAUSE, AUTO_GATE_CLAUSE, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, menuFrame, alignOptions, menu, drawLabel, cmdOption, bareOption, promptOption, rangeOption, optionDetail, callout, indentedBody, bulletRow, clipped, treeList };
+module.exports = { DOTS, NBSP, NOTE_SEPARATOR, gateSurfaceAnnounced, openGate, gateShown, gateStepped, illustrate, section, menuSection, GATE_MOD_INSTRUCTION, RENDER_FORMS, emitAs, timedInstruction, STOP_CLAUSE, MENU_INSTRUCTION, titleSection, dataSection, CONTINUE_CLAUSE, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, menuFrame, menu, drawLabel, cmdOption, bareOption, promptOption, escapeMarkdown, callout, indentedBody, bulletRow, clipped, treeList };
 

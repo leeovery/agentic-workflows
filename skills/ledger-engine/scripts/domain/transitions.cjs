@@ -23,7 +23,7 @@ const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, readProjec
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const {
   phaseItems, itemOf, computeTopicLifecycle, computeNextAction, CONVERSATION_ACTIONS, CLOSED_LIFECYCLES, lifecyclePhrase, mapWayOn, topicTitle,
-  awaitedExperiments, waits, settleItemStatus,
+  awaitedExperiments, settleItemStatus,
   UNIT_PHASES, unitItems, discoveryUnitExists,
   cancelPlan, postponePlan, briefFile, topicDir, topicKey, noTopicRefusal, topicTitles, goesBy,
 } = require('./derivations.cjs');

@@ -6,29 +6,27 @@
 // with what the answered row leads to, performing none of it — and the
 // record of the gate shown that it answers against.
 //
-// - The gate shown is the gate a command's MENU stated (surfaces.cjs),
-//   kept in the calling conversation's folder (conversation.cjs) as
+// - The gate shown is the gate a command's MENU stated (surfaces.cjs), kept
+//   in the calling conversation's folder (conversation.cjs) as
 //   `gate-shown.json`: its name, its question, each row by its key with its
 //   word, its head, its tail and any detail beneath it, whether the engine
-//   recommended it and what answering it leads to; each typed row by its
-//   key with its label, whether the person answers it in words, and what it
-//   leads to; the time it was drawn and the time its showing opened, a
-//   learned gate's showing (learned-gates.cjs), and its answer once given. The engine's
-//   dispatch writes it once the command has answered, never as the MENU is
-//   built; a command that states no gate, or fails, leaves the last one
-//   standing. Nothing is kept for a command Claude
+//   recommended it and what answering it leads to; each typed row by its key
+//   with its label and what it leads to; the time it was drawn and the time
+//   its showing opened, a learned gate's showing (learned-gates.cjs), and its
+//   answer once given. The engine's dispatch writes it once the command has
+//   answered, never as the MENU is built; a command that states no gate, or
+//   fails, leaves the last one standing. Nothing is kept for a command Claude
 //   Code handed no session id; a record that cannot be written costs the
-//   command nothing. It is kept for a conversation not yet marked as
-//   running Ledger too, its folder made for it, so a gate before the
-//   project has state is answered like any other. The layout hook refuses
-//   Claude's own writes to it and to the mod's `pressed.json`
-//   (layout-hook.cjs).
+//   command nothing. It is kept for a conversation not yet marked as running
+//   Ledger too, its folder made for it, so a gate before the project has
+//   state is answered like any other. The layout hook refuses Claude's own
+//   writes to it and to the mod's `pressed.json` (layout-hook.cjs).
 // - A gate's name is the one its MENU declares, up to its first ` — `: one
 //   gate is one name, however many entries share it (`in-session gate — 3`
 //   is `in-session gate`), and `gate` takes either. The name is never made
 //   to fit: one the trust log cannot key refuses the answer
 //   (trust-events.cjs). A typed row's key is its label's words, lowercase,
-//   joined by hyphens: `comment`, `tell-me-what-to-change`, a span `1-4`.
+//   joined by hyphens: `comment`, `tell-me-what-to-change`.
 // - An answer is a row picked by its key; a typed row, by its key; or free
 //   text, naming no row, the person's words given with it. The separate
 //   call reads the words against the gate's question and its rows, as the
@@ -59,19 +57,19 @@
 //   answers no row (6.6.2). At a learned gate every pick leaves it but a row
 //   whose next shows the gate again at its place — the Comment at the
 //   investigation's gates, the wait's wait (learned-gates.cjs); at any other,
-//   every pick but a typed row the person answers in words, a Comment or an
-//   Ask, which sets it aside. Drawn again while it lasts, the gate shown
-//   keeps the time the showing opened and the showing it was drawn on, so
-//   the showing is one event under one id however many replies it took, the
-//   first read (16.13.3); the time it was drawn is this draw's,
-//   so a press, or a proposal's yes (person-verbs.cjs), is told against the
-//   screen the person answered. A learned gate's showing is held at its
-//   place, its own record (showing-hold.cjs): the gate shown keeps the place,
-//   and a pick that leaves the gate ends the hold — the showing that opened
-//   then alone — so another gate, a raise or a new conversation never ends
-//   it, and its event's id is drawn from the showing, never the
-//   conversation. Any other gate's lasts while the conversation's gate shown
-//   is that gate's. The gate drawn after a pick is a new showing.
+//   every pick but a typed row, a Comment or an Ask, which sets it aside.
+//   Drawn again while it lasts, the gate shown keeps the time the showing
+//   opened and the showing it was drawn on, so the showing is one event under
+//   one id however many replies it took, the first read (16.13.3); the time
+//   it was drawn is this draw's, so a press, or a proposal's yes
+//   (person-verbs.cjs), is told against the screen the person answered. A
+//   learned gate's showing is held at its place, its own record
+//   (showing-hold.cjs): the gate shown keeps the place, and a pick that
+//   leaves the gate ends the hold — the showing that opened then alone — so
+//   another gate, a raise or a new conversation never ends it, and its
+//   event's id is drawn from the showing, never the conversation. Any other
+//   gate's lasts while the conversation's gate shown is that gate's. The gate
+//   drawn after a pick is a new showing.
 // - A learned gate run as an automatic step (learned-gates.cjs) is no answer:
 //   its draw logs it as a step (decision-point.cjs), never a gate's answer;
 //   it is never recorded as the gate shown, and the command clears the gate
@@ -103,7 +101,7 @@ const { stateRoot } = require('../kernel/state-root.cjs');
 
 /** @typedef {import('./projections/surfaces.cjs').Next} Next */
 /** @typedef {import('./projections/surfaces.cjs').ShownOption} ShownOption */
-/** @typedef {{key: string, label: string, prompt: boolean, next: Next|null}} ShownTypedRow */
+/** @typedef {{key: string, label: string, next: Next|null}} ShownTypedRow */
 /** @typedef {{at: string, picked: string|null, via: 'pressed'|'typed'}} Answered */
 /**
  * @typedef {object} ShownRecord
@@ -172,7 +170,7 @@ function recordGateShown() {
       gate,
       question: shown.question,
       options: shown.options,
-      typed: shown.typed.map(({ label, prompt, next }) => ({ key: typedKey(label), label, prompt, next })),
+      typed: shown.typed.map(({ label, next }) => ({ key: typedKey(label), label, next })),
       at,
       opened: shown.hold?.opened ?? openShowing(session, gate)?.opened ?? at,
       showing: shown.showing,
@@ -227,13 +225,12 @@ function openShowing(session, name) {
  * Whether the answer `picked` at the gate `shown` — a row's key, a typed
  * row's, or null for free text — is a pick that leaves the gate, ending its
  * showing: never free text; at a learned gate, any row but one whose next
- * shows the gate again at its place; at any other, any row but a typed row
- * the person answers in words.
+ * shows the gate again at its place; at any other, any row but a typed row.
  * @param {ShownRecord} shown @param {string|null} picked
  */
 function leaves(shown, picked) {
   if (picked === null) return false;
-  return learnedGate(shown.gate) === null ? !shown.typed.some((t) => t.key === picked && t.prompt) : !keepsShowing(shown.gate, picked);
+  return learnedGate(shown.gate) === null ? !shown.typed.some((t) => t.key === picked) : !keepsShowing(shown.gate, picked);
 }
 
 /** Forget the gate the conversation `session` was shown. @param {string} session */

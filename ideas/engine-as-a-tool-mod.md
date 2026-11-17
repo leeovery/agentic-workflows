@@ -30,9 +30,6 @@ the typed tool answers the rest.
 
 - **Every prose call site changes.** Engine calls are Bash fences today,
   hundreds of them, plus the `allowed-tools` frontmatter that names them.
-- **The prose-test invariants change.** `calls_include` and
-  `calls_in_order` match argv strings recorded from Bash; a tool call is
-  recorded differently.
 - **The mod becomes load-bearing.** The tool exists only when the mod is
   loaded. Prose that calls it cannot fall back to Bash, so the
   removability the gate design keeps (delete the mod, the text menus
@@ -48,14 +45,13 @@ the typed tool answers the rest.
   MENU / GATE sections — so nothing downstream of the call changes.
 - Prose migrates fence by fence under the same "touching a file adopts
   it" rule the menu migration uses, with the Bash form kept until the last
-  file converts; the prose-test recorder learns the tool's call shape
-  first.
+  file converts.
 
 ## Open Verification
 
-- Whether `-p` runs and the prose-test walkers (which run the prose without
-  the mod) need the Bash form retained permanently, which would make the
-  migration a dual form rather than a replacement.
+- Whether `-p` runs, which run the prose without the mod, need the Bash
+  form retained permanently, which would make the migration a dual form
+  rather than a replacement.
 - The tool's permission footprint: one tool, allow-listed once, versus the
   `Bash(node …)` patterns the skills declare today.
 

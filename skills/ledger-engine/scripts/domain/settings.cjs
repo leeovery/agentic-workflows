@@ -23,17 +23,6 @@ const SETTINGS_SPEC = '.claude/settings.json';
  * @typedef {{changed: boolean, error?: string, waiting?: string}} SettingsSync
  */
 
-/**
- * Whether the test harness holds the settings file still — its hermeticity
- * switch, which keeps a recipe's boot out of a world's settings. Real
- * projects never set it: what the sync writes is infrastructure, not a
- * setting.
- * @returns {boolean}
- */
-function settingsHeld() {
-  return Boolean(process.env.LEDGER_HOLD_PROJECT_SETTINGS);
-}
-
 /** @param {unknown} err @returns {string} */
 function reason(err) {
   return err instanceof Error ? err.message : String(err);
@@ -112,4 +101,4 @@ function writeProjectSettings(cwd, settings) {
   writeSettings(path.join(codeRoot(cwd), SETTINGS_SPEC), settings);
 }
 
-module.exports = { SETTINGS_SPEC, settingsHeld, readSettings, parseSettings, readProjectSettings, writeProjectSettings };
+module.exports = { SETTINGS_SPEC, readSettings, parseSettings, readProjectSettings, writeProjectSettings };

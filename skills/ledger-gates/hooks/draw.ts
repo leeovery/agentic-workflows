@@ -98,7 +98,7 @@ export type Kit = {
 export type Asked = { unit: string; questions: readonly Question[] }
 
 /** A kit and what the drawing it served holds: anything turning, any clock. */
-export type Drawn = { kit: Kit; holds: { turns: boolean; clocks: boolean } }
+type Drawn = { kit: Kit; holds: { turns: boolean; clocks: boolean } }
 
 /** The cells a run of parts takes. */
 export const widthOf = (parts: readonly Part[]) =>

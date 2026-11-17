@@ -365,4 +365,4 @@ function runQuickFixVerb(cwd, [verb, ...args], opts) {
   return refusing('quick-fix record', () => recordFix(cwd, args[0], args[1], file));
 }
 
-module.exports = { QUICK_FIX_USAGE, RECORD_SECTIONS, readRecord, recordedFixes, pairVerdict, takeOutRecord, indexSummary, runQuickFixVerb, summaryRecords };
+module.exports = { QUICK_FIX_USAGE, RECORD_SECTIONS, recordedFixes, pairVerdict, takeOutRecord, indexSummary, runQuickFixVerb, summaryRecords };

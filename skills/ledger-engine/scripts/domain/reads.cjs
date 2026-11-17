@@ -9,7 +9,6 @@
 
 const fs = require('fs');
 const path = require('path');
-const crypto = require('crypto');
 const { stateRoot } = require('../kernel/state-root.cjs');
 
 function fileExists(p) {
@@ -18,14 +17,6 @@ function fileExists(p) {
     return true;
   } catch {
     return false;
-  }
-}
-
-function listFiles(dir, ext) {
-  try {
-    return fs.readdirSync(dir).filter(f => f.endsWith(ext)).sort();
-  } catch {
-    return [];
   }
 }
 
@@ -38,18 +29,6 @@ function listDirs(dir) {
   } catch {
     return [];
   }
-}
-
-function filesChecksum(paths) {
-  if (!paths || paths.length === 0) return null;
-  const hash = crypto.createHash('md5');
-  for (const p of paths) {
-    try {
-      hash.update(fs.readFileSync(p));
-    } catch {
-    }
-  }
-  return hash.digest('hex');
 }
 
 function loadProjectManifest(cwd) {
@@ -113,12 +92,10 @@ function loadAllManifests(cwd) {
 }
 
 module.exports = {
-  listFiles,
   listDirs,
   fileExists,
   loadManifest,
   seedFiles,
-  filesChecksum,
   loadActiveManifests,
   loadAllManifests,
   loadProjectManifest,

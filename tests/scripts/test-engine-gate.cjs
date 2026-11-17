@@ -44,11 +44,11 @@ const { setupFixture, createManifest, statePath, useTempFolder, withEnv, layout,
 const SKILLS = path.join(__dirname, '../../skills');
 const SCRIPTS = path.join(SKILLS, 'ledger-engine/scripts');
 const {
-  openGate, gateShown, illustrate, section, menu, cmdOption, promptOption, rangeOption, MENU_INSTRUCTION,
+  openGate, gateShown, illustrate, section, menu, cmdOption, promptOption, MENU_INSTRUCTION,
 } = require(path.join(SCRIPTS, 'domain/projections/surfaces.cjs'));
 const { showingOf, shows } = require(path.join(SCRIPTS, 'domain/learned-gates.cjs'));
 const { recordGateShown } = require(path.join(SCRIPTS, 'domain/gate.cjs'));
-const { readTrustLog } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
+const { readProjectEvents } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
 const { SCHEMA } = require(path.join(SCRIPTS, 'domain/trust-events.cjs'));
 const { renderSurface } = require(path.join(SCRIPTS, 'domain/render.cjs'));
 const { codeGate } = require(path.join(SCRIPTS, 'domain/projections/enter.cjs'));
@@ -177,7 +177,7 @@ describe('the gate shown (3.S6)', () => {
       gate: 'migration gate',
       question: 'Ready to continue?',
       options: [{ key: 'y', word: 'yes', head: 'Proceed', tail: null, detail: null, recommended: false, next: null }],
-      typed: [{ key: 'ask', label: 'Ask', prompt: true, next: null }],
+      typed: [{ key: 'ask', label: 'Ask', next: null }],
       showing: null,
       place: null,
       answered: null,
@@ -292,14 +292,13 @@ describe('the gate shown (3.S6)', () => {
     assert.deepStrictEqual([...names].filter((name) => !gate?.type.test(name)), []);
   });
 
-  it('a typed row is keyed by its label\'s words, lowercase, joined by hyphens, and marked where the person answers it in words rather than picking items', () => {
+  it('a typed row is keyed by its label\'s words, lowercase, joined by hyphens', () => {
     showMenu('shaped gate', () => [
       cmdOption('y', 'yes', 'Go'),
       promptOption('Tell me what to change', 'what to revise'),
-      rangeOption(1, 4, 'Start work on item(s)'),
     ]);
 
-    assert.deepStrictEqual(shown().typed.map((/** @type {{key: string, prompt: boolean}} */ t) => [t.key, t.prompt]), [['tell-me-what-to-change', true], ['1-4', false]]);
+    assert.deepStrictEqual(shown().typed.map((/** @type {{key: string}} */ t) => t.key), ['tell-me-what-to-change']);
   });
 });
 
@@ -442,7 +441,7 @@ describe('gate (6.6, 6.S18)', () => {
     const [first, again, next] = events().map((event) => event.id);
     /** @type {unknown[]} */
     const read = [];
-    inConversation(() => readTrustLog((event) => read.push(event.picked)));
+    inConversation(() => readProjectEvents(statePath(dir), (event) => read.push(event.picked)));
     assert.deepStrictEqual([again === first, next === first, read], [true, false, ['y', 'b']]);
   });
 
@@ -463,20 +462,10 @@ describe('gate (6.6, 6.S18)', () => {
     const [first, ...rest] = events().map((event) => event.id);
     /** @type {unknown[]} */
     const read = [];
-    inConversation(() => readTrustLog((event) => read.push([event.picked, event.with_text])));
+    inConversation(() => readProjectEvents(statePath(dir), (event) => read.push([event.picked, event.with_text])));
     assert.deepStrictEqual([afterWords, afterAsk, afterPick].map(({ at, opened }) => [opened === opening.opened, at === opening.at]), [[true, false], [true, false], [false, false]]);
     assert.deepStrictEqual(rest.map((id) => id === first), [true, true, false]);
     assert.deepStrictEqual(read, [[null, true], ['y', false]]);
-  });
-
-  it('a typed row that picks items is an answer: the gate shown after it is a new showing', () => {
-    const rows = () => [cmdOption('y', 'yes', 'Go'), rangeOption(1, 4, 'Start work on item(s)')];
-    showMenu('shaped gate', rows);
-    const { opened } = shown();
-    answer(['shaped gate', '--typed', '1-4']);
-    showMenu('shaped gate', rows);
-
-    assert.notStrictEqual(shown().opened, opened);
   });
 
   it('a learned gate\'s answer logs the showing it was drawn on, so a replay draws its blind ask again; any other gate\'s logs none', () => {

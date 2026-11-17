@@ -1558,5 +1558,5 @@ function landRaised(cwd, raised, warnings) {
 }
 
 module.exports = {
-  LEDGER_USAGE, WRITE_VERBS: Object.keys(WRITES), WRITES, writeLedger, ledgerMessage, verbUsage, writePlaced, landRaised, checkRaised, callLogged, staleness, phasesOf, contentFaults, decisionGiven, saidFaults, unsealedFaults,
+  LEDGER_USAGE, WRITE_VERBS: Object.keys(WRITES), WRITES, writeLedger, ledgerMessage, verbUsage, writePlaced, landRaised, checkRaised, callLogged, staleness, contentFaults, decisionGiven, saidFaults, unsealedFaults,
 };

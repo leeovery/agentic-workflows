@@ -119,7 +119,7 @@ describe('pipeline simulation: epic-topics', () => {
     sim.run(['manifest', 'delete', `${wu}.discussion`, 'items.stale']);
 
     // There is no phase-level cancel and no cascade.
-    for (const phase of ['discussion', 'experiment', 'specification', 'planning', 'implementation', 'review']) {
+    for (const phase of ['discussion', 'experiment', 'specification', 'implementation', 'review']) {
       sim.refuses(['topic', 'cancel', wu, phase, 'billing'], /^cancel is topic-level — discovery/);
       sim.refuses(['topic', 'reactivate', wu, phase, 'billing'], /^reactivate is topic-level — discovery/);
     }

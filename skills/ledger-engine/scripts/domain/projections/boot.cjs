@@ -14,11 +14,10 @@
 // surface reads what a display names).
 // ---------------------------------------------------------------------------
 
-const { section, titleSection, menu, cmdOption, promptOption, treeList, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, emitAs, MENU_INSTRUCTION } = require('./surfaces.cjs');
+const { section, titleSection, menu, cmdOption, promptOption, treeList, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, emitAs, MENU_INSTRUCTION, escapeMarkdown } = require('./surfaces.cjs');
 const { wrapWithPrefix } = require('../../kernel/render.cjs');
 const { displayWidth } = require('../../kernel/terminal.cjs');
 const { ENGINE_COMMAND } = require('../../kernel/call.cjs');
-const { escapeMarkdown } = require('./worklist.cjs');
 const { titlecase } = require('../conventions.cjs');
 const { fmtAge } = require('../presence.cjs');
 

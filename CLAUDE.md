@@ -17,7 +17,6 @@ This file holds the rules for working on the repo and a map of the system. How t
 - **`skills/ledger-shared/references/glossary.md`** — the canonical vocabulary.
 - **`skills/ledger-gates/README.md`** and **`skills/ledger-gates-rows/README.md`** — the Claude Code mods.
 - **`tests/README.md`** — how a test is written: the layers, the fixture library, assertions, measuring.
-- **`tests/prose/README.md`** — the prose-test harness.
 - **`design/`** — each programme's design record.
 
 ## Git Workflow
@@ -79,7 +78,7 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 - **Drivers** (`skills/ledger-engine/scripts/drivers/{task,landing}/{name}/`) — the code behind the `task` verbs (the tracker) and the `land` verbs (the code host); `domain/drivers.cjs` loads them, one of each kind picked by the project manifest's `drivers` setting. In code, only a driver names its tool; its test fixtures (`tests/drivers/{name}/`), the user docs and design notes may too.
 - **Gate mods** (`ledger-gates`, `ledger-gates-rows`) — Claude Code mods that draw menus as buttons and carry handoffs.
 - **Agents** — `agents/` are the subagents the product dispatches (`docs/agents.md`).
-- **Development only** — `.claude/agents/` and `.claude/skills/` (`prose-test`, `review-work`) serve work on this repo and never ship.
+- **Development only** — `.claude/agents/` and `.claude/skills/` (`review-work`) serve work on this repo and never ship.
 
 ### Paths
 
@@ -150,13 +149,6 @@ The gates, run locally before every commit (`docs/contributing.md` lists what ea
 - **Where a tool may be named** is held by `tests/scripts/test-tool-names.cjs`: a driver's tool, in the forms only it takes, nowhere outside the places Tool Names allows, and in help and the glossary not even as a word.
 - **The glossary** is held by `tests/scripts/test-glossary.cjs`: no retired term, every term the design adds, and no entry speaking in an engine verb, a path or a skill name.
 - **The docs** are held by `tests/scripts/test-docs.cjs`: the book's chapters, the effort line, the README's pipeline table, none of the author's own products named, the product called Ledger in the docs, help and the glossary, and never workflows in the skills, the agents, the book, the README and the tests — but in the glossary's avoid line, `history.md`, released migrations and their suites, fixtures, `.cache` folders, and the suite itself.
-
-### Prose tests
-
-`tests/prose/` walks the skill prose end to end (`tests/prose/README.md`).
-
-- Walks cost tokens: run them on command through `/prose-test`, never as part of a routine gate.
-- The corpus is rewritten after the reshape's manual testing, then run as the clean baseline (`tests/README.md` §13). Until then no change adds a case or a snapshot.
 
 ## Skill Authoring
 

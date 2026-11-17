@@ -196,7 +196,7 @@ describe('engine topic cancel — the discovery unit', () => {
     assert.match(engineFails(dir, ['topic', 'cancel', 'payments', 'discovery', 'ghost']).error,
       /no topic "ghost" — the map's topics are auth-flow, fee-model, session-model$/);
     assert.match(engineFails(dir, ['topic', 'cancel', 'ghost', 'discovery', 'data-export']).error, /manifest not found/);
-    for (const phase of ['discussion', 'experiment', 'specification', 'planning', 'nonsense']) {
+    for (const phase of ['discussion', 'experiment', 'specification', 'nonsense']) {
       assert.strictEqual(engineFails(dir, ['topic', 'cancel', 'payments', phase, 'auth-flow']).error,
         'cancel is topic-level — discovery, the map row with its discussion and experiments', phase);
     }
@@ -276,7 +276,7 @@ describe('engine topic reactivate', () => {
   it('refuses a unit that is not cancelled, an unknown topic, and every non-unit phase', () => {
     assert.match(engineFails(dir, ['topic', 'reactivate', 'payments', 'discovery', 'auth-flow']).error, /"auth-flow" is not cancelled \(lifecycle: discussing\)/);
     assert.match(engineFails(dir, ['topic', 'reactivate', 'payments', 'discovery', 'ghost']).error, /no topic "ghost"/);
-    for (const phase of ['discussion', 'experiment', 'specification', 'planning']) {
+    for (const phase of ['discussion', 'experiment', 'specification', 'nonsense']) {
       assert.match(engineFails(dir, ['topic', 'reactivate', 'payments', phase, 'auth-flow']).error,
         /^reactivate is topic-level — discovery/, phase);
     }
@@ -352,17 +352,15 @@ describe('a topic\'s start — the function `enter` runs', () => {
   it('rejects an unknown work unit and phase — loud and specific', () => {
     assert.throws(() => startItem(dir, 'ghost', 'investigation', 'auth-flow'), { message: /manifest not found/ });
     assert.throws(() => startItem(dir, 'payments', 'nonsense', 'auth-flow'), { message: /unknown or non-lifecycle phase "nonsense"/ });
-    assert.throws(() => startItem(dir, 'payments', 'research', 'auth-flow'), { message: /unknown or non-lifecycle phase "research"/ });
     assert.match(engineFails(dir, ['topic', 'begin', 'payments', 'investigation', 'auth-flow']).error, /Usage: engine topic <send\|cancel\|reactivate\|postpone\|mailbox\|answered\|add\|add-batch\|edit\|rename\|remove\|order\|brief> <work-unit> …/);
   });
 
-  it('refuses a specification item on every unit, a quick-fix\'s too — the spec is entered at the work unit — and a planning item, a phase no table holds', () => {
+  it('refuses a specification item on every unit, a quick-fix\'s too — the spec is entered at the work unit', () => {
     writeFile(dir, '.ledger/typo/manifest.json', JSON.stringify({ name: 'typo', work_type: 'quick-fix', status: 'in-progress', phases: {} }, null, 2) + '\n');
     const before = ['payments', 'typo'].map((unit) => fs.readFileSync(path.join(dir, '.ledger', unit, 'manifest.json'), 'utf8'));
     for (const unit of ['payments', 'typo']) {
       assert.throws(() => startItem(dir, unit, 'specification', unit),
         { message: `${unit}'s spec keeps no items — it is entered at the work unit: engine enter specification ${unit}` }, unit);
-      assert.throws(() => startItem(dir, unit, 'planning', unit), { message: /^unknown or non-lifecycle phase "planning"/ }, unit);
     }
     assert.deepStrictEqual(['payments', 'typo'].map((unit) => fs.readFileSync(path.join(dir, '.ledger', unit, 'manifest.json'), 'utf8')), before, 'nothing written');
   });

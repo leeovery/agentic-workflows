@@ -110,7 +110,7 @@ const looseOf = (discussion: Discussion, questions: readonly Question[]): string
 }
 
 /** What a press did: the discussion after it, and the one line it says to Claude, null for one that says nothing. */
-export type Pressed = { discussion: Discussion; line: string | null }
+type Pressed = { discussion: Discussion; line: string | null }
 
 const quiet = (discussion: Discussion): Pressed => ({ discussion, line: null })
 
@@ -276,7 +276,7 @@ function parkedFact(question: Question | undefined): Fact[] {
 }
 
 /** The banner as the discussion draws it (20.2.4), and the buttons it carries before the board's own. */
-export type Discussed = { banner: Banner; buttons: Button[] }
+type Discussed = { banner: Banner; buttons: Button[] }
 
 /**
  * The banner with the discussion's facts and buttons: while a question is

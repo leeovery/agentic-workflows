@@ -34,8 +34,7 @@
 // from its first word: a leading indent in a menu is a row's continuation.
 // ---------------------------------------------------------------------------
 
-const { section, menu, cmdOption, promptOption, MENU_INSTRUCTION, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
-const { escapeMarkdown } = require('./worklist.cjs');
+const { section, menu, cmdOption, promptOption, MENU_INSTRUCTION, CONTINUE_INSTRUCTION, escapeMarkdown } = require('./surfaces.cjs');
 const { titlecase, TREE_WIDTH } = require('../conventions.cjs');
 const { wrapWithPrefix } = require('../../kernel/render.cjs');
 const { titled } = require('../derivations.cjs');

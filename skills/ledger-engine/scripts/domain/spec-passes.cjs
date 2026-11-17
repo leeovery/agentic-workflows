@@ -365,9 +365,6 @@ function gapEntry(id, entry) {
 /** Every replacement the passes given raised, each with its pass. @param {Pass[]} passes @returns {Raised[]} */
 const raisedBy = (passes) => passes.flatMap((pass) => pass.raised.map((raise) => ({ ...raise, pass: pass.id })));
 
-/** Every replacement the unit's review passes raised. @param {string} cwd @param {string} unit @returns {Raised[]} */
-const raisedIn = (cwd, unit) => raisedBy(reportedPasses(cwd, unit));
-
 /**
  * The pass and finding that asked the current question `id`: a finding its
  * pass asked as the question, or as one the question grew into since —
@@ -509,5 +506,5 @@ function reviewSettled(cwd, unit, warnings) {
 }
 
 module.exports = {
-  ownTexts, printOf, changedSince, changedBetween, recordLand, lastLand, recordTaking, recordCutTaking, recordCut, cutRequests, outstanding, reviewedSpec, sectionsToReview, raisedBy, raisedIn, askedBy, gapsIn, waitingGaps, gapsWaiting, passesRunningOn, waitingOn, reviewSettled,
+  ownTexts, printOf, changedSince, changedBetween, recordLand, recordTaking, recordCutTaking, recordCut, cutRequests, outstanding, reviewedSpec, sectionsToReview, raisedBy, askedBy, gapsIn, waitingGaps, gapsWaiting, passesRunningOn, waitingOn, reviewSettled,
 };

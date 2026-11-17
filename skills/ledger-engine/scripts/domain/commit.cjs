@@ -257,24 +257,6 @@ function noteIfNothingCommitted(result, committed) {
 }
 
 /**
- * Transaction-tail code-tree commit: the write has already landed, so a git
- * failure here (index.lock contention from a concurrent session, a hook)
- * degrades to a warning and a pending note — it never fails the verb.
- * @param {string} cwd @param {string|string[]} pathspec @param {string} message
- * @param {string[]} warnings
- * @returns {{committed: string|null, failed: boolean}}
- */
-function commitTailPathspec(cwd, pathspec, message, warnings) {
-  try {
-    return { committed: commitPathspecScoped(cwd, pathspec, message), failed: false };
-  } catch (err) {
-    const detail = err instanceof Error ? err.message : String(err);
-    warnings.push(`commit failed: ${detail}`);
-    return { committed: null, failed: true };
-  }
-}
-
-/**
  * Commit Ledger's own change to a file it owns in the code tree,
  * confined to it — the write this call made, or one an earlier call could not
  * commit, which this one retries — where the file's whole difference from
@@ -347,7 +329,6 @@ module.exports = {
   commitPathspecScoped,
   commitAcrossRepos,
   commitStagedScoped,
-  commitTailPathspec,
   commitOwnChange,
   noteCommitOutcome,
   noteIfNothingCommitted,

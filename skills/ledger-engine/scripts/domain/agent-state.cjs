@@ -395,8 +395,9 @@ function agentRows(cwd, workUnit, phase, topic) {
  * with the ledger's mark, `ledger_mark`, which arming and the gap review
  * measure from, and every investigation's validation, which whether it was
  * taken in for an entry measures from.
- * Numbering starts after both existing rows AND any legacy files already in
- * the cache dir (pre-programme skeletons keep their names; ids never collide).
+ * Numbering starts after both existing rows AND any report already in the
+ * cache dir, a row lost with its report left behind among them, so ids never
+ * collide with files.
  * Each row names the dispatching process and conversation (`pid`,
  * `pid_start`, `session_id`), null where Claude Code handed none.
  * @param {string} cwd @param {string} workUnit @param {string} phase
@@ -466,7 +467,7 @@ function dispatchAgent(cwd, workUnit, phase, topic, { kind, labels = [], set, fi
       const priorRow = inTopic.find((r) => r.id === `synthesis-${set}`);
       const priorFile = path.join(dir, `synthesis-${set}.md`);
       if (fs.existsSync(priorFile) && !priorRow) {
-        throw new Error(`A legacy file synthesis-${set}.md already occupies that name — ids never collide with files`);
+        throw new Error(`A report synthesis-${set}.md with no row already occupies that name — ids never collide with files`);
       }
       if (priorRow) {
         // Re-dispatch over a closed row: the old report must not become the
@@ -1059,9 +1060,7 @@ function refusedReports(cwd, workUnit) {
 }
 
 module.exports = {
-  AGENT_KINDS,
   UNIT_PHASE,
-  AGENT_STATUSES,
   dispatchAgent,
   scanAgents,
   ackAgent,

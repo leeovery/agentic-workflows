@@ -42,7 +42,7 @@ const { createManifest, useTempFolder } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { LEDGER } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
-const { TRUST_LOG, PENDING, trustLogPath, appendWaiting, readTrustLog } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
+const { TRUST_LOG, PENDING, trustLogPath, appendWaiting, readProjectEvents } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
 const { conversationDir } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
 const { WRITER_LOCK } = require(path.join(SCRIPTS, 'kernel/manifest-io.cjs'));
 
@@ -90,11 +90,11 @@ const { logEvents, project } = trustLogHelpers(() => dir, config);
 /** The trust log's lines, each keyed. */
 const logged = () => logEvents().map(keyed);
 
-/** The trust log's events as a read counts them, each once by its id, keyed. */
+/** The project's events as a read counts them, each once by its id, keyed. */
 function counted() {
   /** @type {Record<string, unknown>[]} */
   const events = [];
-  readTrustLog((event) => events.push(keyed(event)));
+  readProjectEvents(statePath(dir), (event) => events.push(keyed(event)));
   return events;
 }
 

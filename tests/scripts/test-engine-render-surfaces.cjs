@@ -495,10 +495,8 @@ describe('experiment spawn gate — the conversation\'s pause for its laboratory
       /--id is required/);
     assert.throws(() => renderSurface(dir, 'experiment-spawn-gate', { dotpath: 'lab.discussion.timing', id: 'E9' }),
       /discussion "timing" holds no evidence wait on E9 — the gate follows the recorded spawn/);
-    for (const phase of ['research', 'experiment']) {
-      assert.throws(() => renderSurface(dir, 'experiment-spawn-gate', { dotpath: `lab.${phase}.timing`, id: 'E1' }),
-        /address must be <work_unit>\.<discussion>\.<topic>/);
-    }
+    assert.throws(() => renderSurface(dir, 'experiment-spawn-gate', { dotpath: 'lab.experiment.timing', id: 'E1' }),
+      /address must be <work_unit>\.<discussion>\.<topic>/);
   });
 
 });

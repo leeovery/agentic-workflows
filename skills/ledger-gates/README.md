@@ -29,7 +29,7 @@ log the answer as pressed rather than typed: a file of its own, since the
 second plugin spends `sent.json` once it draws the row. A send that fails, or
 that another plugin drops, leaves neither recording a send.
 Typing answers too: a key and Enter at the prompt, or Esc then Enter after a
-pick. Rows only typing can answer — Ask, Comment, a range — draw dim, and a
+pick. Rows only typing can answer — Ask, Comment — draw dim, and a
 click on one says to type it in the prompt. The footer under the rows says
 which: how to answer, what is in the prompt, or where to type.
 

@@ -463,4 +463,4 @@ function pushPage(cwd, unit, { store, reason = '', from = '' }) {
   }
 }
 
-module.exports = { PAGE_USAGE, PUBLISHED_USAGE, PUSH_USAGE, CAPABILITIES, buildPage, recordPublished, pushPage };
+module.exports = { PAGE_USAGE, PUBLISHED_USAGE, PUSH_USAGE, buildPage, recordPublished, pushPage };

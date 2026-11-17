@@ -25,7 +25,7 @@ function doc(n, content, embedding) {
     phase: 'discussion',
     topic: 'unit',
     confidence: 'medium',
-    source_file: '.workflows/unit/discussion/unit.md',
+    source_file: '.ledger/.knowledge/records/unit/unit.md',
     timestamp: new Date(2026, 0, 2).getTime(),
     embedding,
   };

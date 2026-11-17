@@ -21,7 +21,7 @@
 // refusing a phase the cut holds until its phase review has passed, or
 // failed and been settled (13.10.1), its refusal naming the settlement,
 // and a fix phase past the cut asking none (7.2.4, P14); what a phase review
-// passed means, test-engine-build-checklists.cjs's. What every driver does
+// passed means, test-engine-build-checklists-review.cjs's. What every driver does
 // is the landing conformance suites'; the local driver's stacks,
 // test-engine-land-local.cjs's; the person's checkouts,
 // test-engine-land-checkout.cjs's and test-engine-land-worktrees.cjs's. Verb

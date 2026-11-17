@@ -106,5 +106,4 @@ class StubProvider {
 module.exports = {
   StubProvider,
   STUB_MODEL_ID,
-  DEFAULT_STUB_DIMENSIONS: DEFAULT_DIMENSIONS,
 };

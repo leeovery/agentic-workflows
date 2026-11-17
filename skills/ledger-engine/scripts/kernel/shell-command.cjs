@@ -98,4 +98,4 @@ function tailText(tail) {
   return tail.length === 0 ? 'It wrote nothing.' : `The last of its output, ${TAIL_LINES} lines at most:\n${tail.join('\n')}`;
 }
 
-module.exports = { TAIL_LINES, runShellCommand, tailText };
+module.exports = { runShellCommand, tailText };

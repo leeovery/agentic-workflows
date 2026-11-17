@@ -64,4 +64,4 @@ function gateSurface(cwd) {
   return gateSurfaceAnnounced() ? 'on' : 'not-running';
 }
 
-module.exports = { MIN_VERSION, MOD_DIR, gateSurface };
+module.exports = { MIN_VERSION, gateSurface };
