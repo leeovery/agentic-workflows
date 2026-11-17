@@ -12,7 +12,7 @@ This file holds the rules for working on the repo and a map of the system. How t
 
 - **The skills** — each `SKILL.md` and its `references/` are the source of truth for their own flow.
 - **`CONVENTIONS.md`** — skill authoring rules.
-- **The engine** — `skills/ledger-engine/SKILL.md` (architecture), `skills/ledger-engine/references/commands.md` (every verb's contract, state and response), and each module's header comment.
+- **The engine** — `skills/ledger-engine/SKILL.md` (architecture), `docs/engine/commands.md` (every verb's contract for its caller: signature, response, refusals and the state it writes), and each module's header comment (how it works).
 - **`docs/`** — the user-facing book: work types, every phase, lifecycle operations (`docs/lifecycle-operations.md`), trust, verification, state and git, tracking, reliability (`docs/reliability.md`), configuration, the knowledge base. `docs/contributing.md` covers setup, the gates, migrations, the docs' checks, and the knowledge-base code.
 - **`skills/ledger-shared/references/glossary.md`** — the canonical vocabulary.
 - **`skills/ledger-gates/README.md`** and **`skills/ledger-gates-rows/README.md`** — the Claude Code mods.
@@ -110,7 +110,7 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 
 ### State
 
-Ledger's state is engine-owned (CONVENTIONS.md, What the Engine Owns). Never hand-write a manifest: outside a migration (see Migrations), field reads and writes go through `engine manifest`, and lifecycle changes through their own verbs (`workunit`, `topic`, `experiment`); every verb's reference is `skills/ledger-engine/references/commands.md`.
+Ledger's state is engine-owned (CONVENTIONS.md, What the Engine Owns). Never hand-write a manifest: outside a migration (see Migrations), field reads and writes go through `engine manifest`, and lifecycle changes through their own verbs (`workunit`, `topic`, `experiment`); every verb's reference is `docs/engine/commands.md`.
 
 ## Tool Names (IMPORTANT)
 

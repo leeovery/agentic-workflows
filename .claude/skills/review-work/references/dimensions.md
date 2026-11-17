@@ -101,7 +101,7 @@ A change lands in one place and is owed in several. Enumerate them.
 - Tests, fixtures, goldens, and the pipeline simulation.
 - Migrations, where the change moves stored state.
 - README, `docs/`, and CONVENTIONS.md, where the change alters what they
-  document; `commands.md` and the module headers where it alters an engine
+  document; `docs/engine/commands.md` and the module headers where it alters an engine
   contract. Documentation is owed where the user's primary action lives.
 - CLAUDE.md's map — The System and the gates under Tests — where the change
   adds, renames or removes a path, a skill, a phase or a gate it names.
