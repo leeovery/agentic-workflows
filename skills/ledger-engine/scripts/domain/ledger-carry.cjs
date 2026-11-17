@@ -34,7 +34,11 @@
 //   source settles, to raise at the end (21.6.10), never one a decision of
 //   the record answers, which `raise` refuses; and its `assets`, each
 //   `{path, status}`, a file the state holds, linked as it is canonical or
-//   reference. Every entry moves no one; a decision lands unchecked, for
+//   reference. An entry's words — its text, why and how, what it rules
+//   out, its alternatives and evidence — never name another entry by its
+//   ref, which the record alone reads: the ledger links by id, so a
+//   drafting label left in them means nothing there, and the carry refuses
+//   it, naming it. Every entry moves no one; a decision lands unchecked, for
 //   the late one-decision check after the migration, and unlabelled, its
 //   kind and hard-to-undo mark null: no call is made while the migration
 //   runs.
@@ -532,12 +536,29 @@ function entryLines(place, entry, at, before, tags) {
   return { lines: [{ fields: { event, ...tags, ...content, ...links, ...(event === 'decided' ? decisionGiven(null, true) : {}) }, id }, ...assetLinks], faults };
 }
 
+/** The fields of an entry that say what it holds, in words. */
+const WORDED = ['text', 'why', 'how', 'rules_out', 'alternatives', 'evidence'];
+
+/**
+ * Each entry whose words name another entry of the record by its ref: a
+ * drafting label the ledger, linking by id, cannot read.
+ * @param {Record<string, any>[]} entries @returns {string[]}
+ */
+function labelFaults(entries) {
+  const refs = entries.map(({ ref }) => ref).filter((ref) => typeof ref === 'string' && ref !== '');
+  return entries.flatMap((entry) => WORDED.flatMap((field) => {
+    const words = new Set([entry[field]].flat().filter((line) => typeof line === 'string').join('\n').split(/[^\w-]+/));
+    const named = refs.filter((ref) => ref !== entry.ref && words.has(ref));
+    return named.length === 0 ? [] : [`entry ${entry.ref}: its ${field} names ${named.join(', ')}, the ref of another entry of the record, which the ledger cannot read — say in words what that entry holds, or link it by relies_on`];
+  }));
+}
+
 /**
  * The record drawn: its lines, each entry followed by its asset links; what
  * is kept of each entry; and every fault it holds — each entry's, each
- * question marked to raise that a decision of the record answers, which
- * `raise` would refuse, and what it breaks of the records directive's
- * rules.
+ * entry whose words name another by its ref, each question marked to raise
+ * that a decision of the record answers, which `raise` would refuse, and
+ * what it breaks of the records directive's rules.
  * @param {string} cwd @param {Place} place @param {Record<string, any>[]} entries @param {string|null} session
  * @returns {Drawn}
  */
@@ -554,7 +575,7 @@ function drawnRecord(cwd, place, entries, session) {
   return {
     lines: drawn.flatMap(({ lines }) => lines),
     kept: [...before].map(([ref, { id }]) => ({ ref, id })),
-    faults: [...drawn.flatMap(({ faults }) => faults), ...settled, ...problems],
+    faults: [...drawn.flatMap(({ faults }) => faults), ...labelFaults(entries), ...settled, ...problems],
   };
 }
 

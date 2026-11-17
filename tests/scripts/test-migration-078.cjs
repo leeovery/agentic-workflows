@@ -670,11 +670,7 @@ describe('migration 078: the move into the layout in .ledger/', () => {
           + 'Move any into a better place in its unit\'s assets/, or the product\'s, as wanted. '
           + 'These files of experiment records, neither a record\'s problem, design or report nor in its data/, were moved under its data/, at their paths from the record\'s folder: '
           + '.ledger/core/topics/alpha/experiments/E1-frame-budget/E1.1-one-monitor/data/sample.tsv, .ledger/core/topics/alpha/experiments/E1-frame-budget/data/harness/run.sh, '
-          + '.ledger/core/topics/alpha/experiments/E1-frame-budget/data/rubric.md. A path a record\'s text or script spells out is left as written. '
-          + 'The linters were carried into environment.linters as a name and a command, which leaves out swiftformat\'s fix_command ("swiftformat ."). '
-          + 'Change a linter\'s command where any is still wanted, when ready to build asks to confirm the project\'s setup, or now: read the linters recorded with '
-          + '`node .claude/skills/ledger-engine/scripts/engine.cjs environment show`, then record the whole list, those changed, with '
-          + '`node .claude/skills/ledger-engine/scripts/engine.cjs environment set linters`, its JSON on stdin.',
+          + '.ledger/core/topics/alpha/experiments/E1-frame-budget/data/rubric.md. A path a record\'s text or script spells out is left as written.',
       });
     });
   });
@@ -748,7 +744,7 @@ describe('migration 078: the move into the layout in .ledger/', () => {
           },
         },
         brownfield_offer: 'skipped',
-        environment: { linters: [{ name: 'eslint', command: 'npx eslint .' }, { name: 'swiftformat', command: 'swiftformat . --lint' }] },
+        environment: { linters: [{ name: 'eslint', command: 'npx eslint .' }, { name: 'swiftformat', command: 'swiftformat . --lint', fix: 'swiftformat .' }] },
         product_session: '002',
       });
       assert.strictEqual(Object.keys(project)[0], 'project_id');
@@ -2008,18 +2004,18 @@ describe('migration 078: the linters carried onto the project\'s environment (re
     });
   });
 
-  it('carries each linter\'s check command, a lint command beside its fix command among them, and names for the review what the environment\'s linter has no room for — the fix command, a scope — once each', () => {
+  it('carries each linter\'s check command, a lint command beside its fix command among them, the fix command its fix, and names for the review what the environment\'s linter has no room for — a scope — once each', () => {
     const swiftformat = { name: 'swiftformat', lint_command: 'swiftformat Sources Tests Package.swift --lint --swiftversion 6.0', fix_command: 'swiftformat Sources Tests Package.swift --swiftversion 6.0' };
     const pint = { name: 'pint', command: 'cd api && composer pint', scope: 'api' };
     const eslint = { name: 'eslint', command: 'cd app && npm run lint -- --fix', scope: 'app' };
     writeState('manifest.json', { project_id: 'p1', defaults: { linters: [swiftformat, pint, eslint] } });
     unitWith('pay', { checkout: [swiftformat, pint] });
 
-    assert.strictEqual(carryLinters(state), 'The linters were carried into environment.linters as a name and a command, which leaves out '
-      + 'swiftformat\'s fix_command ("swiftformat Sources Tests Package.swift --swiftversion 6.0"), pint\'s scope ("api"), eslint\'s scope ("app"). '
+    assert.strictEqual(carryLinters(state), 'The linters were carried into environment.linters as a name, a command and a fix command, which leaves out '
+      + 'pint\'s scope ("api"), eslint\'s scope ("app"). '
       + `Change a linter's command where any is still wanted, when ready to build asks to confirm the project's setup, or now: ${help('those changed')}`);
     assert.deepStrictEqual(readState('manifest.json').environment.linters, [
-      { name: 'swiftformat', command: 'swiftformat Sources Tests Package.swift --lint --swiftversion 6.0' },
+      { name: 'swiftformat', command: 'swiftformat Sources Tests Package.swift --lint --swiftversion 6.0', fix: 'swiftformat Sources Tests Package.swift --swiftversion 6.0' },
       { name: 'pint', command: 'cd api && composer pint' },
       { name: 'eslint', command: 'cd app && npm run lint -- --fix' },
     ]);

@@ -85,7 +85,7 @@ const SESSION_ID = 'brief-session';
 const SESSION = Object.freeze({ CLAUDE_CODE_SESSION_ID: SESSION_ID });
 const AT_UNIT = `${UNIT}.specification`;
 const MADE = Object.freeze({ who_moved_whom: 'none' });
-const LINTERS = Object.freeze([{ name: 'eslint', command: 'npx eslint .' }, { name: 'tsc', command: 'npx tsc --noEmit' }]);
+const LINTERS = Object.freeze([{ name: 'eslint', command: 'npx eslint .', fix: 'npx eslint . --fix' }, { name: 'tsc', command: 'npx tsc --noEmit' }]);
 const PROJECT_WORDS = 'Always answer in French.';
 
 /** The unit's spec: two areas, the first with two parts, a heading in a fence. */
@@ -281,7 +281,7 @@ function drawnForTakeACard() {
     engine: `\`node ${path.join(__dirname, '../../skills/ledger-engine/scripts/engine.cjs')}\` — the engine of the checkout the orchestrator runs in. Run every engine command this brief and your instructions name as that, from wherever you run it.`,
     chain: 'Your branch holds its phase\'s chain as it stands.',
     workplace: 'Before anything else, lay the task out in the worktree you were started in: from its root, run the engine\'s `task worktree pay 1.1`. It puts the worktree, and every repository nested in it, on the task\'s branch. Build, run and commit only there.',
-    task, 'spec-sections': `${REFUNDS}\n\n${FORM}`, 'decided-calls': decisions, linters: '- eslint: npx eslint .\n- tsc: npx tsc --noEmit', 'account-to': `\`${statePath(dir, 'pay/build/tasks/1.1.md')}\``, 'setup-to': `\`${statePath(dir, '.cache/pay/build/verify-setup.json')}\`\n\nNo verify setup is recorded yet.`,
+    task, 'spec-sections': `${REFUNDS}\n\n${FORM}`, 'decided-calls': decisions, linters: '- eslint: npx eslint ., its fix npx eslint . --fix\n- tsc: npx tsc --noEmit', 'account-to': `\`${statePath(dir, 'pay/build/tasks/1.1.md')}\``, 'setup-to': `\`${statePath(dir, '.cache/pay/build/verify-setup.json')}\`\n\nNo verify setup is recorded yet.`,
   };
 }
 

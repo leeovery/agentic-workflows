@@ -93,7 +93,10 @@
 // cross-cutting unit took only its discussion there: its research's threads
 // stay with the unit it came from, and are read from there. Its reviews
 // never folded in are in its log already, where the move folded them
-// (078), cited as any section of it is.
+// (078), cited as any section of it is. A file an agent left beside the
+// records — in the unit's folder of them, or beside its own, no file a
+// record is kept in — is named to remove: on the topic it is named for,
+// else on the unit's own record, or each topic where it has none.
 //
 // The sections of the directive its agents' briefs draw, `briefed`: the
 // topic's sources and its record, never the session's own work.
@@ -206,6 +209,9 @@ function mainProject(projectDir) {
 
 /** Whether a unit's manifest holds the topic in the phase. @param {Record<string, any>} manifest @param {string} phase @param {string} topic */
 const holds = (manifest, phase, topic) => TOPIC_PHASES.includes(phase) && isObject(itemsOf(manifest.phases?.[phase]?.items)[topic]);
+
+/** A topic's place, as the brief and the carry take it: the last phase holding it, where its record is carried. @param {Unit} unit @param {string} topic */
+const topicPlace = (unit, topic) => `${unit.name}.${[...TOPIC_PHASES].reverse().find((phase) => holds(unit.manifest, phase, topic))}.${topic}`;
 
 /**
  * The indexes of a joined spec's lines but the front matter each part
@@ -473,18 +479,23 @@ const FRONTMATTER = /^---\n(?:[^\n:]*:[^\n]*\n)*---$/gm;
 const RULE = /^ {0,3}([-*_])(?: *\1){2,} *$/;
 // The line the old discovery brief opens on, naming the sessions it was drawn from.
 const PROVENANCE = /^Drawn from\b/;
+// A line naming where a text came from and nothing else: links or addresses
+// alone, after a short label such as `Source:`.
+const SOURCE_LINE = /^(?:[*_]*[\w ]{1,24}[*_]*:[*_]*[ \t]*)?(?:(?:!?\[[^\]]*\]\([^)]*\)|<?https?:\/\/[^\s>]+>?)[\s,;]*)+$/i;
 
 const LIST_MARK = /^(?:[-*+]|\d+[.)])[ \t]+/;
 
-/** A text's lines of prose, trimmed, a list item's mark dropped: past its headings, rules, fences and frontmatter. @param {string} text */
+/** A text's lines of prose, trimmed, a list item's mark dropped: past its headings, rules, fences, frontmatter and lines naming its sources alone. @param {string} text */
 const proseOf = (text) => text.replace(FRONTMATTER, '').split('\n').map((line) => line.trim())
   .filter((line) => line !== '' && HEADING.exec(line) === null && !RULE.test(line) && !FENCE.test(line))
-  .map((line) => line.replace(LIST_MARK, ''));
+  .map((line) => line.replace(LIST_MARK, ''))
+  .filter((line) => !SOURCE_LINE.test(line));
 
 /**
  * What a topic is about, first that holds: its map row's summary in the
  * unit that names it; its brief's first line of prose but its provenance;
- * its log's first line of prose; or null, its name alone.
+ * its log's first line of prose; or null, its name alone — a line of links
+ * or addresses alone, its source, never prose.
  * @param {string} stateDir @param {Record<string, any>} manifest the unit naming the topic @param {string} at the unit whose folder holds it @param {string} topic
  * @returns {string|null}
  */
@@ -539,7 +550,10 @@ function ownFilesOf(project, unit, topic) {
  * The sections of one file of the walk, in order: those holding text, in
  * a joined spec in the parts the topic draws on alone, but none of a spec
  * of the unit's it draws no part of, its later answer; and those an entry
- * cites, in any part — each with every entry citing it, once.
+ * cites — a cite naming its section, as the carry reads it, within the
+ * parts the topic draws on, so a heading several parts hold is the one in
+ * the topic's part, and in any other only where none of those holds it —
+ * each with every entry citing it, once.
  * @param {Project} project @param {Unit} unit @param {{specs: Spec[], later: Set<string>}} drawing the topic's specs, and the paths of the unit's it draws no part of
  * @param {Record<string, any>[]} entries @param {string} at
  * @returns {SheetSection[]}
@@ -548,11 +562,17 @@ function sheetSections(project, unit, { specs, later }, entries, at) {
   const parts = partsDrawn(specs, at);
   const headings = outlineOf(readText(path.join(project.stateDir, at)) ?? '', at === `${unit.name}/${JOINED_SPEC}`);
   const counted = (/** @type {string|null} */ part) => parts === null || parts.includes(part);
+  const byPart = [...byPartOf(headings)];
+  const namedIn = (/** @type {string} */ name, /** @type {(part: string|null) => boolean} */ kept) => byPart.filter(([part]) => kept(part)).flatMap(([, held]) => namedAlone(held, name));
+  const resolved = (/** @type {string} */ name) => {
+    const own = namedIn(name, counted);
+    return own.length > 0 ? own : namedIn(name, () => true);
+  };
   /** @type {Map<Heading, Record<string, any>[]>} */
   const citing = new Map();
   for (const entry of entries) {
     const names = (Array.isArray(entry.cites) ? entry.cites.filter(isObject) : []).filter((cite) => cite.path === at).map(({ section }) => String(section));
-    const named = new Set([...byPartOf(headings).values()].flatMap((held) => names.flatMap((name) => namedAlone(held, name))));
+    const named = new Set(names.flatMap(resolved));
     for (const heading of named) citing.set(heading, [...(citing.get(heading) ?? []), entry]);
   }
   const drawn = (/** @type {Heading} */ heading) => !later.has(at) && counted(heading.part);
@@ -771,10 +791,35 @@ function unverified(stateDir, unit, topic) {
 /** The sections of the unit's specs the session marked as holding no topic's decision, from the state's folder. @param {string} unit */
 const sectionsMarked = (unit) => `${COMPOSED}/${unit}.sections.json`;
 
+// The files a record is kept in as it is composed, by their endings, as
+// ledger-carry.cjs names them: the record, its verifier's findings, rulings,
+// verdicts and note, the carry's refusal, its composer's hand-back, its
+// rounds, and the points the session settled.
+const RECORD_FILES = ['.json', '.findings.txt', '.rulings.txt', '.checked.txt', '.verifying.json', '.refused.md', '.handback.txt', '.rounds.md', '.settled.md'];
+
+/**
+ * Each file beside a unit's records that no record is kept in — in its
+ * folder of them, or beside its own record — each with the topic it is
+ * named for, null where it names none of the unit's.
+ * @param {Project} project @param {Unit} unit @returns {{at: string, topic: string|null}[]}
+ */
+function strayRecordFiles(project, unit) {
+  const topics = topicsOf(unit.manifest);
+  const kept = (/** @type {string} */ name, /** @type {string} */ stem) => RECORD_FILES.some((ending) => name === `${stem}${ending}`);
+  const folder = `${COMPOSED}/${unit.name}`;
+  /** @param {string} rel @returns {string[]} */
+  const under = (rel) => fs.readdirSync(path.join(project.stateDir, rel), { withFileTypes: true }).flatMap((entry) => (entry.isDirectory() ? under(`${rel}/${entry.name}`) : [`${rel}/${entry.name}`]));
+  const inFolder = fs.existsSync(path.join(project.stateDir, folder)) ? under(folder).filter((at) => !topics.some((topic) => kept(at.slice(folder.length + 1), topic))) : [];
+  const beside = fs.existsSync(path.join(project.stateDir, COMPOSED)) ? fs.readdirSync(path.join(project.stateDir, COMPOSED), { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.startsWith(`${unit.name}.`) && !kept(entry.name, unit.name) && entry.name !== `${unit.name}.sections.json`)
+    .map((entry) => `${COMPOSED}/${entry.name}`) : [];
+  return [...inFolder, ...beside].map((at) => ({ at, topic: topics.find((topic) => at.startsWith(`${folder}/${topic}.`)) ?? null }));
+}
+
 /**
  * A topic's record as carried or, before that, as composed: its entries,
  * or null where it has none yet, or none that reads.
- * @param {Project} project @param {Unit} unit @param {string} topic @returns {Record<string, any>[]|null}
+ * @param {Project} project @param {Unit} unit @param {string|null} topic @returns {Record<string, any>[]|null}
  */
 function recordOf(project, unit, topic) {
   const carried = carriedOf(project, unit, topic);
@@ -891,9 +936,8 @@ function unitWaits(project, unit) {
   const topics = topicsOf(unit.manifest);
   if (!topics.some((topic) => specsOf(project, unit, topic).some(({ approved }) => approved))) return [];
   const unpassed = topics.filter((topic) => carriedOf(project, unit, topic) === null).flatMap((topic) => {
-    if (recordOf(project, unit, topic) === null) return [`${unit.name}'s ${topic} has no record composed`];
-    const why = unverified(project.stateDir, unit.name, topic);
-    return why === null ? [] : [`${unit.name}'s ${topic} has not passed its verifier — ${why}`];
+    const said = uncarried(project, unit, topic);
+    return said === PASSED ? [] : [`${unit.name}'s ${topic} ${said}`];
   });
   if (unpassed.length > 0) return unpassed;
   return uncitedOf(project, unit).map((each) => uncitedProblem(unit, each));
@@ -901,6 +945,20 @@ function unitWaits(project, unit) {
 
 /** What a section no record cites lacks, as the topics drawing on it are told it. @param {Unit} unit @param {{path: string, part: string|null, section: string}} uncited */
 const uncitedProblem = (unit, { path: at, part, section }) => `"${section}" in ${part === null ? '' : `part "${part}" of `}${at}, an approved spec, holds text no record of ${unit.name} cites — what the spec stage decided, found or left open is carried by the topic it belongs to; a section holding none of it is marked in ${sectionsMarked(unit.name)} as ${markOf(at, part, section)}`;
+
+/** A record its verifier has passed, waiting for the carry. */
+const PASSED = 'has passed its verifier, and waits to be carried';
+
+/**
+ * Where a record not yet carried stands: none composed, composed and not
+ * passed by its verifier, or passed.
+ * @param {Project} project @param {Unit} unit @param {string|null} topic
+ */
+function uncarried(project, unit, topic) {
+  if (recordOf(project, unit, topic) === null) return 'has no record composed';
+  const why = unverified(project.stateDir, unit.name, topic);
+  return why === null ? PASSED : `has not passed its verifier — ${why}`;
+}
 
 /**
  * What one record still lacks: carried, each of its ids in the ledger, and
@@ -910,7 +968,7 @@ const uncitedProblem = (unit, { path: at, part, section }) => `"${section}" in $
  */
 function topicProblems(project, ids, unit, topic) {
   const carried = carriedOf(project, unit, topic);
-  if (carried === null) return ['has no record yet'];
+  if (carried === null) return [uncarried(project, unit, topic)];
   if (!carried.entries.every(({ id }) => ids.has(id))) return ['its record never reached the ledger'];
   return problemsOf(project, unit, topic, carried.phase, carried.record.entries);
 }
@@ -925,10 +983,14 @@ module.exports = {
     const ids = ledgerIds(stateDir);
     return unitsOf(project).flatMap((unit) => {
       const uncited = uncitedOf(project, unit);
-      const own = hasOwnRecord(stateDir, unit.name, unit.manifest) ? [{ name: `${unit.name}.discovery`, problems: topicProblems(project, ids, unit, null) }] : [];
+      const hasOwn = hasOwnRecord(stateDir, unit.name, unit.manifest);
+      const strays = strayRecordFiles(project, unit);
+      const strayOn = (/** @type {string|null} */ topic) => strays.filter((stray) => stray.topic === topic || (stray.topic === null && !hasOwn))
+        .map(({ at }) => `${at} is no file a record is kept in — an agent left it: remove it`);
+      const own = hasOwn ? [{ name: `${unit.name}.discovery`, problems: [...topicProblems(project, ids, unit, null), ...strayOn(null)] }] : [];
       return [...topicsOf(unit.manifest).map((topic) => ({
-        name: `${unit.name}/${topic}`,
-        problems: [...topicProblems(project, ids, unit, topic), ...uncited.filter(({ topics }) => topics.includes(topic)).map((each) => uncitedProblem(unit, each))],
+        name: topicPlace(unit, topic),
+        problems: [...topicProblems(project, ids, unit, topic), ...uncited.filter(({ topics }) => topics.includes(topic)).map((each) => uncitedProblem(unit, each)), ...strayOn(topic)],
       })), ...own];
     });
   },

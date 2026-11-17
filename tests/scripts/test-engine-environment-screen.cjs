@@ -31,7 +31,7 @@ const FOUND = Object.freeze({
   prepare: [{ name: 'Dependencies', when: 'both', command: 'go mod download' }],
   concurrency: [],
   verify: null,
-  linters: [{ name: 'go vet', command: 'go vet ./...' }, { name: 'gofmt', command: 'gofmt -l .' }, { name: 'golangci-lint', command: 'golangci-lint run ./...' }],
+  linters: [{ name: 'go vet', command: 'go vet ./...' }, { name: 'gofmt', command: 'gofmt -l .', fix: 'gofmt -w .' }, { name: 'golangci-lint', command: 'golangci-lint run ./...' }],
   confirmed: null,
 });
 
@@ -75,7 +75,7 @@ describe('the environment setup\'s screen (22.5.7, 22.5.8)', () => {
       '',
       'LINTERS, AS FOUND',
       '  · go vet — go vet ./...',
-      '  · gofmt — gofmt -l .',
+      '  · gofmt — gofmt -l ., its fix gofmt -w .',
       '  · golangci-lint — golangci-lint run ./...',
     ]);
     assert.deepStrictEqual(gate, [

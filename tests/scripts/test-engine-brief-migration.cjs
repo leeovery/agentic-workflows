@@ -320,7 +320,7 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
     assert.ok(own.includes('## The unit\'s topics, each carrying the points of the sessions bearing on its subject: for judging whose a point is, never sources\n\n- auth, moved to platform: Who signs in, and for how long.\n- billing\n- licensing: How the trial works.\n'), own);
   });
 
-  it('what each other topic is about, the first that holds: its map row\'s summary; its brief\'s first line of prose, the old brief\'s provenance line passed over; its log\'s first line of prose, past a section\'s frontmatter; else its name alone', () => {
+  it('what each other topic is about, the first that holds: its map row\'s summary; its brief\'s first line of prose, the old brief\'s provenance line passed over; its log\'s first line of prose, past a section\'s frontmatter and the lines naming its sources alone; else its name alone', () => {
     const manifest = JSON.parse(readState(dir, layout.manifest('fumi')));
     manifest.phases.discovery.items.billing.summary = 'Invoices, refunds and seat billing.';
     manifest.phases.discovery.items.support.summary = '  ';
@@ -328,11 +328,11 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
     writeState(dir, layout.topic('fumi', 'billing', 'brief.md'), '# Discovery Brief — Billing\n\nDrawn from discovery session 001.\n\n## Soft decisions\n\n- Seats bill monthly.\n');
     writeState(dir, layout.topic('fumi', 'search', 'brief.md'), '# Discovery Brief — Search\n\nDrawn from discovery session 001.\n\n## Soft decisions\n\n- **Ranking**: newest first.\n');
     writeState(dir, layout.topic('fumi', 'support', 'brief.md'), '# Discovery Brief — Support\n\nDrawn from discovery sessions 001–002.\n');
-    writeState(dir, layout.topic('fumi', 'support', 'log.md'), '## Discussion\n\n---\ntopic: support\nstatus: concluded\n---\n\n## Discussion: Support\n\n### Context\n\nCustomers reach us by email alone.\n');
+    writeState(dir, layout.topic('fumi', 'support', 'log.md'), '## Discussion\n\n---\ntopic: support\nstatus: concluded\n---\n\n## Discussion: Support\n\nSource: https://example.com/support-survey\n\n- **Links**: [the survey](../../assets/survey.md), <https://example.com/faq>\n\n### Context\n\nCustomers reach us by email alone, as [the survey](../../assets/survey.md) shows.\n');
 
     const { brief } = issued(['migration-topic', ...LICENSING]);
 
-    assert.ok(brief.includes('- billing: Invoices, refunds and seat billing.\n- search: **Ranking**: newest first.\n- support: Customers reach us by email alone.\n'), brief);
+    assert.ok(brief.includes('- billing: Invoices, refunds and seat billing.\n- search: **Ranking**: newest first.\n- support: Customers reach us by email alone, as [the survey](../../assets/survey.md) shows.\n'), brief);
     assert.ok(issued(['migration-topic', '--topic', 'fumi.discussion.search', '--directive', '079-records']).brief.includes('- auth, moved to platform: Thirty days'), 'a promoted topic\'s log read where it went');
   });
 
@@ -457,9 +457,9 @@ describe('the walk sheet (the verifier\'s brief)', () => {
     ].join('\n')}\n\n# The earlier rounds'`), brief);
   });
 
-  it('a joined spec\'s sections in the parts the topic draws on alone, and a section an entry cites in another part', () => {
+  it('a joined spec\'s sections in the parts the topic draws on alone, and a section an entry cites in another part; a cite of a heading several parts hold, bare, is its part\'s, as the carry reads it', () => {
     writeState(dir, composedPath('shop', 'weights'), JSON.stringify({ entries: [
-      { ref: 'q1', event: 'asked', text: 'How do ties break?', cites: [{ path: 'shop/spec.md', section: '1. Weights > Ranking' }] },
+      { ref: 'q1', event: 'asked', text: 'How do ties break?', cites: [{ path: 'shop/spec.md', section: 'Ranking' }] },
       { ref: 'q2', event: 'asked', text: 'May a wish be saved twice?', cites: [{ path: 'shop/spec.md', section: '2. Wishlist > Saving' }] },
     ] }));
     const old = path.join(dir, '.workflows/shop/manifest.json');
@@ -645,6 +645,12 @@ describe('the migration\'s agents and the plain search (21.S35, 26.5.1)', () => 
   /** The rule confining an agent's shell, word for word in each agent's file: reading alone, or reading and the check its brief names. */
   const CONFINED = '**The shell is for reading and searching alone:** `rg`, `find`, `ls`, `cat`, `head`, `tail`, `wc` and their like. Never run the engine, never run git, and never write, move or delete a file through it.';
   const CHECKING = '**The shell is for reading and searching, and for the check your brief names:** `rg`, `find`, `ls`, `cat`, `head`, `tail`, `wc` and their like. Never run the engine for anything else, never run git, and never write, move or delete a file through it.';
+
+  it('each brief confines its agent to the files it names: no script, note or copy anywhere else', () => {
+    const WRITES = 'Write only the files the brief below names, and nothing anywhere else: no script, scratch note or copy, in the project, the state or beside them.';
+
+    assert.deepStrictEqual(['migration-topic', 'migration-verifier', 'migration-phase', 'migration-phase-verifier'].filter((role) => unsaid(role, [WRITES]).length > 0), []);
+  });
 
   it('each searches through a shell confined to reading, the per-topic agent\'s running its record\'s check besides — Claude Code giving no Glob or Grep tool — and no agent file names an engine call, nor any brief but the check it names: only the session writes the ledger and the state', () => {
     assert.ok(fs.readFileSync(path.join(AGENTS, 'ledger-migration-topic.md'), 'utf8').includes('- Touch only the files the directive names for a topic or a phase, and only this one\'s: what you compose, and the hand-back file where your brief names one.'), 'the per-topic agent writes its hand-back');

@@ -327,7 +327,7 @@ describe('the directive\'s ways on', () => {
   const unstated = (rules) => rules.filter((rule) => !TEXT.includes(rule));
 
   it('a reversal the session settles: a ruling that changes the piece becomes a finding to amend to, one that keeps it takes the finding out — so an empty findings file is only ever a pass; a finding the third round or a later one writes settled by the session as a reversal is', () => {
-    assert.deepStrictEqual(unstated(['Where the ruling has the piece change, replace the finding with `Settled: {point}, amend to agree`', 'Where the ruling keeps the piece as it stands, take the finding out of the findings file', 'An empty findings file is only ever a pass.', 'it goes to no agent, nor does a finding the third round or a later one writes.']), []);
+    assert.deepStrictEqual(unstated(['Where the ruling has the piece change, replace the finding with `Settled: {point}, amend to agree`', 'Where the ruling keeps the piece as it stands, take the finding out of the findings file', 'An empty findings file is only ever a pass.', 'it goes to no agent, nor does a finding the third round or a later one writes.', 'A file an agent left under the phases, which the check names, is removed.']), []);
   });
 
   it('a task\'s criteria carried whole, and an area no plan put in the tracker section by section: the composer composing a piece from the start walks the phase, an amend answering the findings in its place and keeping everything else, the verifier every task, criterion and section, its findings every gap, never a sample; neither reads a piece composed for another phase, the unit\'s legacy files among their sources', () => {
@@ -535,6 +535,24 @@ describe('the per-phase agents and the join (21.10.5, E7)', () => {
       'None: the piece is as the last round read it.',
     ]);
     assert.deepStrictEqual(JSON.parse(readState(dir, staged(5, 'verified.json'))), amended);
+  });
+
+  it('a file an agent left under the staged phases, none of a piece\'s, named on the unit to remove; the piece\'s own files, its verifiers\' among them, never', () => {
+    compose(5, exported(), '- The export names no file format.\n');
+    verifier('5');
+    compose(5, exported());
+    verifier('5');
+    writeState(dir, staged(5, 'json.placeholder-never-written'), '');
+    writeState(dir, `${STAGING}/phases/notes/4.txt`, 'scratch\n');
+    const shop = () => run(['migrate', 'check', DIRECTIVE]).unfinished.find((/** @type {{name: string}} */ piece) => piece.name === 'shop').problems.filter((/** @type {string} */ problem) => problem.includes('phases/'));
+
+    assert.deepStrictEqual(shop(), [
+      `${STAGING}/phases/5.json.placeholder-never-written is none of a phase's files — an agent left it: remove it`,
+      `${STAGING}/phases/notes/4.txt is none of a phase's files — an agent left it: remove it`,
+    ]);
+    fs.rmSync(statePath(dir, staged(5, 'json.placeholder-never-written')));
+    fs.rmSync(statePath(dir, `${STAGING}/phases/notes`), { recursive: true });
+    assert.deepStrictEqual(shop(), []);
   });
 
   it('checks one phase\'s piece as the join would, writing nothing: the faults of the piece alone, its verdict and the reliances between phases the join\'s; refused for a phase the join writes, one the cut lacks, and a piece that will not read', () => {

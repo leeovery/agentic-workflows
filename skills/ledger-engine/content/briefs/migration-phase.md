@@ -1,6 +1,6 @@
 # Your task
 
-Carry the migration's cut step for one phase of a unit whose building started: compose that phase's piece from the unit's joined spec, the phase's tasks, its old plan's files, the unit's files kept as legacy, the tracker and the code, as the directive below says of a phase's piece, and write it as JSON where the phase's piece goes. These are its sources, and no other: never a piece composed for another phase.
+Carry the migration's cut step for one phase of a unit whose building started: compose that phase's piece from the unit's joined spec, the phase's tasks, its old plan's files, the unit's files kept as legacy, the tracker and the code, as the directive below says of a phase's piece, and write it as JSON where the phase's piece goes. These are its sources, and no other: never a piece composed for another phase. Write only the files the brief below names, and nothing anywhere else: no script, scratch note or copy, in the project, the state or beside them.
 
 Settle each disagreement the phase names between the manifest and the tracker, and correct any other task its sources show done, superseded or no longer wanted, from the sources and the code, as the directive says, each a correction in the piece.
 

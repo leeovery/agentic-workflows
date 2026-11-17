@@ -84,7 +84,7 @@ function setupDisplay({ project, setup, manage }) {
     }), none),
     block(`TO PREPARE THE ENVIRONMENT${found}`, setup.prepare.map(stepRow), none),
     block('WHAT CAN\'T RUN AT ONCE, SO FAR', setup.concurrency.map(({ what }) => what), 'Nothing found yet — a build records it when it learns it'),
-    block(`LINTERS${found}`, setup.linters.map(({ name, command }) => `${name} — ${command}`), none),
+    block(`LINTERS${found}`, setup.linters.map(({ name, command, fix }) => `${name} — ${command}${fix === undefined ? '' : `, its fix ${fix}`}`), none),
   ];
   if (manage) blocks.push(verifyBlock(setup.verify));
   return blocks.join('\n\n');

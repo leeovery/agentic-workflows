@@ -276,9 +276,9 @@ describe('the runner meets the legacy split (21.4.3)', () => {
 
     assert.deepStrictEqual([moved.match(/^---DIRECTIVE: (.*)---$/m)?.[1], recorded(main)], ['079-records', [...GUARDED, '075', '076', '077', '078']]);
     const records = ok(main, ['migrate', 'check', '079-records'], { env: SESSION });
-    assert.deepStrictEqual(records.unfinished.map((/** @type {{name: string}} */ piece) => piece.name).filter((name) => name.startsWith(`${SPLIT_EPIC}/`)), [
+    assert.deepStrictEqual(records.unfinished.map((/** @type {{name: string}} */ piece) => piece.name).filter((name) => name.startsWith(`${SPLIT_EPIC}.`)), [
       'api.v2', 'competitive-landscape', 'cost-economics', 'glossary', 'knowledge-model', 'multi-repo-architecture', 'onboarding', 'pricing', 'prior-art', 'product-vision', 'roadmap', 'session-capture', 'tech-stack', 'telemetry',
-    ].map((topic) => `${SPLIT_EPIC}/${topic}`));
+    ].map((topic) => `${SPLIT_EPIC}.${topic === 'roadmap' ? 'discovery' : 'discussion'}.${topic}`).concat(`${SPLIT_EPIC}.discovery`));
     assert.match(fs.readFileSync(statePath(main, layout.topic(SPLIT_EPIC, 'tech-stack', 'log.md')), 'utf8'), /^Tech Stack notes\.$/m);
     assert.ok(stateUnborn(main), 'nothing committed before the migration\'s commit');
     assert.deepStrictEqual(checked(), PASSED, 'after the move');

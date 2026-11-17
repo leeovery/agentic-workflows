@@ -16,7 +16,7 @@ In a later round, check each finding answered, each entry or line changed since 
 
 Wording, order, and how a section's points are shared out among entries are the composer's.
 
-Write the findings file the brief names afresh: each finding the section of the source and what the record misses or misstates, or the file empty where the record passes — an empty file is the pass. Where you ruled that a point of the sources is not this record's, or is replaced by a later answer, write each such ruling into the rulings file the brief names, one line each, naming the point and its source's section. Write the checked file the brief names afresh, a line for each entry of the record the sheet does not mark passed unchanged, by its ref: `{ref}: ok`, or `{ref}: see finding` where a finding names it. Hand back whether it passes, and how many findings you wrote.
+Write only the files the brief below names, and nothing anywhere else: no script, scratch note or copy, in the project, the state or beside them. Write the findings file the brief names afresh: each finding the section of the source and what the record misses or misstates, or the file empty where the record passes — an empty file is the pass. Where you ruled that a point of the sources is not this record's, or is replaced by a later answer, write each such ruling into the rulings file the brief names, one line each, naming the point and its source's section. Write the checked file the brief names afresh, a line for each entry of the record the sheet does not mark passed unchanged, by its ref: `{ref}: ok`, or `{ref}: see finding` where a finding names it. Hand back whether it passes, and how many findings you wrote.
 
 # Whose record
 

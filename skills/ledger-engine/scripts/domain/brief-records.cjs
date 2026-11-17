@@ -25,7 +25,7 @@
 //                  every line after its first indented; a unit's record,
 //                  drawn for a task's brief and a phase's alike
 //   linters        the project's linters, each its name and its command,
-//                  from the environment on the project manifest (22.5.12,
+//                  and its fix where it has one, from the environment on the project manifest (22.5.12,
 //                  environment.cjs); a quick-fix's, where the project has
 //                  no environment setup, the line sending the agent to
 //                  the tests and linters it finds (22.5.10)
@@ -769,7 +769,7 @@ function drawDecidedCalls(filling, warnings) {
  */
 function drawLinters(filling) {
   if (confirmedAt(filling.cwd) === null && filling.unit !== null && quickFixBuild(unitManifest(filling))) return 'None confirmed: the project\'s environment setup is not confirmed yet, so run the tests and linters you find in the repository, asking nothing.';
-  return listed(linters(filling.cwd).map(({ name, command }) => `- ${name}: ${command}`));
+  return listed(linters(filling.cwd).map(({ name, command, fix }) => `- ${name}: ${command}${fix === undefined ? '' : `, its fix ${fix}`}`));
 }
 
 // Named from the repo's folder, a root inside a larger repository reading

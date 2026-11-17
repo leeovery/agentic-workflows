@@ -59,14 +59,14 @@ Each current decision, finding and open question the topic's sources hold, and n
 - **A record at least.** A topic that draws on a spec, or whose log, brief or experiments' records — its markdown files — hold text past their headings, has an entry at least.
 - **What no one measured.** A point a source names unmeasured, untested, unverified or left to check is carried: an open question, or a finding stating that it is unmeasured. A ruling sets it aside only where a later source measured it, or made it moot.
 - **Sources at odds.** Where the sources, or the sections of one, contradict each other on a point, and no later source settles it, the record says so: the entries carrying each side name the other, or an open question names the contradiction and cites both.
-- **Points no source settles** are open questions marked `raise` `true`, for the raises at the end: a log unclear on what was decided, with no approved spec to settle it; a draft spec at odds with its log; a spec at odds with itself. Where an approved spec settles it, it is settled.
+- **Points no source settles** are open questions marked `raise` `true`, for the raises at the end, and they alone: a log unclear on what was decided, with no approved spec to settle it; a draft spec at odds with its log; a spec at odds with itself. Where an approved spec settles it, it is settled. Any other open question, one its sources leave for later work to answer, is carried unmarked.
 - **Nothing invented.** An entry says what a source says, and nothing more.
 
 ### Its Shape
 
 The record is one JSON object, `{"entries": [...]}`, its entries in the order they link: an entry links only to an entry before it.
 
-- **`ref`**: the entry's name in the record, given once; every link names an entry by it.
+- **`ref`**: the entry's name in the record, given once; every link names an entry by it, and no entry's words do: the ledger links by id and reads no ref, so the carry refuses one in an entry's text, why, how, rules out, alternatives or evidence. Say in words what the entry holds.
 - **`event`**: `asked`, a question; `found`, a finding; or `decided`, a decision.
 - **A question** holds `text` and `by`; `part_of`, the ref of the question it is part of, where it is one. It holds no `product_wide`: that is a decision's or a finding's alone.
 - **A decision** holds `answers`, the ref of the question it answers, `text`, `why`, `by` and `given`; `rules_out`, `alternatives` and `evidence` where the source gives them, each a list of lines; and `product_wide`. The person's decision is given `own`; one given `your-call`, `dont-care` or `carried` is `by` `claude`.
@@ -74,7 +74,7 @@ The record is one JSON object, `{"entries": [...]}`, its entries in the order th
 - **`product_wide`**: `true` where the entry holds across the whole product — every command, every screen, every output — not only this topic's part of it: what the product is, who it is for, what it values, or a standing rule that cuts across topics. A CLI's exit codes, its error stream and its global flags are product-wide; one command's options are not. A cross-cutting unit's every finding and decision is product-wide.
 - **Any entry** may hold `relies_on`, a list of the refs it rests on; `map_item` and `thread`, each a name or a list of names; and `assets`, a list of `{"path", "status"}`, each a file the state holds, `status` `reference` or `canonical`.
 - **`cites`**: a list of `{"path", "section"}`, one at least: the file's path from the state's folder and a heading it holds, or the heading's path, `{heading} > {heading}`, the outermost first. A heading held more than once is cited by its path, `{"path": "{unit}/spec.md", "section": "Identity & Naming > Decision"}`: the carry refuses a cite naming several — a bare one tells none of its copies apart — and names the paths that do. The file is the topic's own, but its mail, or the unit's beside its topics — its assets, its `spec.md`, its discovery sessions — or, for a promoted topic, a discovery session of the unit it came from; never the cache, another topic's or another unit's.
-- **`raise`**: `true`, on an open question alone, one no decision of the record answers.
+- **`raise`**: `true` on a point no source settles, as the rules above name them, an open question no decision of the record answers; on no other entry.
 - **`who_moved_whom`** is never given: an entry the migration carries moves no one.
 
 ```json
@@ -109,7 +109,7 @@ Where it names a fault, a fresh per-topic agent amends the record, its own check
 node .claude/skills/ledger-engine/scripts/engine.cjs brief migration-verifier --topic {place} --directive 079-records
 ```
 
-Dispatch each brief's agent with its pointer alone. Where the verifier finds something, a fresh per-topic agent amends the record, its brief carrying the findings, and a fresh verifier reads what changed since, until one passes it.
+Dispatch each brief's agent with its pointer alone. Where the verifier finds something, a fresh per-topic agent amends the record, its brief carrying the findings, and a fresh verifier reads what changed since, until one passes it. A file an agent left beside the records, which the check names, is removed.
 
 A finding that opens `Reverses round {R}:` would undo what an earlier round had the record changed to, or carry a point an earlier round's rulings set aside: it goes to no agent, nor does a finding a per-topic agent handed back unanswered, asking for a point the rulings set aside, in the hand-back file beside the record, nor a finding the third round or a later one writes. Settle every handed-back finding before anything else. Settle the point from the record's sources; where they don't settle it, ask the person in prose, naming what each round found and the lines of the sources each rests on, and **STOP.** Wait for user response. Write what settles it, a line naming the point and the source or answer it rests on, into the settled file beside the record, which every later brief of it carries as closed. Where it has the record change, replace the finding with `Settled: {point}, amend to agree`. Where it keeps the record as it stands, take the finding out of the findings file. Once every handed-back finding is settled, remove the hand-back file. Then, where a `Settled:` finding stands, a fresh per-topic agent amends the record to answer it, and a fresh verifier reads it again, its brief keeping it as a round. Where none stands after a hand-back, the findings left are those the agent answered: check the record, and a fresh verifier reads it next. Where none stands after a reversal, a finding left goes to a fresh per-topic agent, and where none is left, the file empty, the record has passed. An empty findings file is only ever a pass.
 

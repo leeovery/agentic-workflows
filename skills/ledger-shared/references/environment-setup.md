@@ -23,7 +23,7 @@ node .claude/skills/ledger-engine/scripts/engine.cjs environment set {part:[run|
 - **run** — `{"build", "tests", "run"}`, each a command, any the project lacks left out. The commit door runs `tests`, then each linter, before every code commit.
 - **prepare** — `[{"name", "when", "command"}, …]`: env files, keys, dependencies, a test database. `when` is `first`, once before the build's first task; `worktree`, in each worktree a task or its tests run in; or `both`. A worktree already holds what `.worktreeinclude` names and the directories Claude Code links. The engine runs each command as written, so a step no command does — a key the person fetches — is `{"name", "when", "note"}`, shown and never run.
 - **concurrency** — `[{"what"}, …]`, each thing two runs can't share at once, such as a port or a database. A build records each as it learns it; set the part only where the person changes it.
-- **linters** — `[{"name", "command"}, …]`.
+- **linters** — `[{"name", "command", "fix"}, …]`, `fix` the command that mends what the linter finds, left out where it has none.
 
 ## The Screen
 

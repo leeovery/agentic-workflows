@@ -214,7 +214,7 @@ function workDirective(dir, env, directive) {
   const opts = { env };
   if (directive === RECORDS) {
     const { unfinished } = harness.ok(dir, ['migrate', 'check', RECORDS], opts);
-    assert.deepStrictEqual(unfinished.map(({ name }) => name).sort(), Object.keys(RECORDS_COMPOSED).map((place) => place.replace('.discussion.', '/')).sort(), 'the records\' check names each topic');
+    assert.deepStrictEqual(unfinished.map(({ name }) => name).sort(), Object.keys(RECORDS_COMPOSED).sort(), 'the records\' check names each topic as the brief and the carry take it');
     const compose = (/** @type {string} */ place, /** @type {unknown[]} */ entries) => {
       const [unit, , topic = null] = place.split('.');
       writeState(dir, composedPath(unit, topic), JSON.stringify({ entries }));
@@ -226,10 +226,10 @@ function workDirective(dir, env, directive) {
     /** Each section of shop's spec the check names on a topic of it, as `{section} in {part}`. @param {string} name */
     const uncited = (name) => harness.ok(dir, ['migrate', 'check', RECORDS], opts).unfinished.find((piece) => piece.name === name)?.problems
       .flatMap((problem) => /^"(.+?)" in part "(.+?)" of shop\/spec\.md, an approved spec/.exec(problem)?.slice(1).join(' in ') ?? []);
-    const cited = [uncited('shop/cart'), uncited('shop/pay')];
+    const cited = [uncited('shop.discussion.cart'), uncited('shop.discussion.pay')];
     compose('shop.discussion.cart', cart.filter(({ ref }) => !['q2', 'd2'].includes(ref)));
     writeState(dir, '.cache/migrate/records/shop.sections.json', JSON.stringify({ 'shop/spec.md': { '2. Pay': ['Notes'] } }));
-    const marked = [uncited('shop/cart'), uncited('shop/pay')];
+    const marked = [uncited('shop.discussion.cart'), uncited('shop.discussion.pay')];
     assert.deepStrictEqual([cited, marked], [[[], ['Cards in 2. Pay', 'Notes in 2. Pay']], [['Notes in 1. Cart'], ['Cards in 2. Pay']]],
       'a joined spec\'s section is named on the topic whose part holds it, a part\'s front matter holding none of its text: a cite counts in its topic\'s part alone, and a mark in its own');
     compose('shop.discussion.cart', cart);

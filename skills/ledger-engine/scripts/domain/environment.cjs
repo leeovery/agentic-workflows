@@ -35,7 +35,9 @@
 //                            scenario, verdict, commits, at}` — the scenario
 //                            of the cut it ran, the verdict its drive wrote,
 //                            and each repository's HEAD it ran against
-//   environment.linters      each linter, `{name, command}`, each name once
+//   environment.linters      each linter, `{name, command}`, each name once,
+//                            and `fix`, the command that mends what it
+//                            finds, where it has one
 //   environment.confirmed    when the person's yes recorded the setup at the
 //                            project's first ready to build, the one time it
 //                            is asked (22.5.3)
@@ -54,7 +56,7 @@ const { readProjectManifest } = require('../kernel/manifest.cjs');
 const { isObject } = require('../kernel/manifest-io.cjs');
 const { ENVIRONMENT_PARTS, ENVIRONMENT_SETS, RUN_COMMANDS, PREPARE_WHEN } = require('../kernel/manifest-schema.cjs');
 
-/** @typedef {{name: string, command: string}} Linter */
+/** @typedef {{name: string, command: string, fix?: string}} Linter */
 /** @typedef {Partial<Record<(typeof RUN_COMMANDS)[number], string>>} Run */
 /** @typedef {(typeof PREPARE_WHEN)[number]} When */
 /** @typedef {{name: string, when: When, command: string} | {name: string, when: When, note: string}} Step */
@@ -122,8 +124,9 @@ function concurrencyFaults(record) {
 function linterFaults(linter) {
   if (!isObject(linter)) return ['it is not an object'];
   return [
-    ...strayKeys(linter, ['name', 'command'], 'a linter'),
+    ...strayKeys(linter, ['name', 'command', 'fix'], 'a linter'),
     ...['name', 'command'].filter((key) => !filled(linter[key])).map((key) => `its ${key} is not text`),
+    ...(linter.fix === undefined || filled(linter.fix) ? [] : ['its fix is not text']),
   ];
 }
 

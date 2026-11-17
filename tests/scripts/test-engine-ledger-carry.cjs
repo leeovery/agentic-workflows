@@ -390,6 +390,19 @@ describe('the refusals, nothing written', () => {
     ]);
   });
 
+  it('an entry whose words name another entry of the record by its ref, a drafting label, refused, naming each — the ledger links by id, and reads no ref; a ref inside a longer word, or the entry\'s own, names none', () => {
+    const { assets: _, ...decision } = DECISION;
+    const window = { ...QUESTION, ref: 'q-window', text: 'How long is the trial window?' };
+    const labelled = { ...decision, answers: 'q-window', text: 'Fourteen days, as q-window asks.', why: 'The person set it.', alternatives: ['Thirty days, which `f0` prices.'] };
+    const worded = { ...decision, answers: 'q-window', text: 'The q-windows close after fourteen days; d1 stands.' };
+    const told = (/** @type {string} */ field, /** @type {string} */ ref) => `entry d1: its ${field} names ${ref}, the ref of another entry of the record, which the ledger cannot read — say in words what that entry holds, or link it by relies_on`;
+
+    assert.deepStrictEqual([mend([window, labelled]), ok(dir, [...composed(LICENSING, { entries: [window, worded, KEEPS] }), '--dry-run'], { env: {} }).faults], [
+      broken(told('text', 'q-window'), told('alternatives', 'f0')),
+      [],
+    ]);
+  });
+
   it('every fault at once: each entry\'s, each check of an entry whichever others break — within its content each field unknown, missing or of another type, and what it says of itself that cannot be — the entries after a broken one judged on their own, and the directive\'s rules', () => {
     const { assets: _, map_item: __, why: ___, ...decision } = DECISION;
     const { map_item: ____, ...question } = QUESTION;

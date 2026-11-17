@@ -47,7 +47,7 @@ The environment setup is how the project runs for the work, kept per project on 
 - how to run the product, build it and run its tests;
 - the steps that prepare the environment — an env file, keys, dependencies, a test database — run as written before a build's first task, and in each worktree a task runs in for whatever a fresh worktree lacks;
 - what cannot run at once in the project, such as tests sharing a port or a database, recorded whenever a build learns it so no build learns it twice;
-- the linters, each a name and its command;
+- the linters, each a name and its command, and the command that fixes what it finds where it has one;
 - where the [verify setup](verification.md#the-verify-setup) is, and how to call its five parts, recorded by the task that builds it.
 
 It is asked once, at the project's first ready to build, the linters shown as found for you to confirm, and never again at a build; nothing in it runs before your yes. The commit door runs its tests, then each linter, before every code commit. Manage's `s/setup` shows it and changes it. A quick-fix in a project with no environment setup yet runs the tests and linters Claude finds in the repository, asking nothing.
