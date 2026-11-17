@@ -69,7 +69,7 @@ The answer goes to `gate`.
 
 Before anything moves, keep the answer with the unit's plan, `.cache/migrate/cut-and-merges/{unit}/plan.json`, writing the file where it is not there yet, `{"answers": {"leaving": {"to": "epic", "epic": "{epic}"}}}` or `{"answers": {"leaving": {"to": "roadmap", "horizon": "{horizon}"}}}`, and the rest of the plan as it stands.
 
-Where the check says the topics have not left yet, the answer is kept: read it from the plan, never from memory, and move them. To a new epic, `{topics}` is the leaving topics, comma-joined, and `{description}` a line saying what the epic is for, drawn from their briefs. Write the epic's first discovery log to a file of your own, `{log}` — the epic made from the unit's topics at the migration, each named, as the person chose — then:
+Where the check says the topics have not left yet, the answer is kept: read it from the plan, never from memory, and move them. To a new epic, `{topics}` is the leaving topics, comma-joined, and `{description}` a line saying what the epic is for, drawn from their briefs. Write the epic's first discovery log to a file of your own, `{log}`: the epic made from the unit's topics at the migration, each named, as the person chose. Then split them into it:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs workunit split {unit} --topics {topics} --into {epic} --description "{description}" --session-log-file {log}
@@ -160,7 +160,7 @@ The move kept research that fed several topics on the epic's discovery log, in a
 
 - **Where it bears.** A topic it bears on is one whose conversation needs what the section holds to be had: its decisions turn on it, or it answers that topic's questions. A section bearing on one theme of the epic goes to that topic; one bearing on several goes to each.
 - **Epic-wide.** A section that bears on the epic as a whole, or on no topic more than another, stays where it is.
-- **Logs only grow.** Append the section to the end of each topic's log, under `## Research: {source}, from discovery session {NNN}`, a blank line, then everything the session holds under its source's heading up to the next source's, word for word, its own headings among it. A topic's log is `{unit}/topics/{topic}/log.md`, or, for a topic a split took to a new epic, `{epic}/topics/{topic}/log.md`. Change nothing already in the log, and leave the session as it stands.
+- **Logs only grow.** Append the section to the end of each topic's log, under `## Research: {source}, from discovery session {NNN}`, a blank line, then everything the session holds under its source's heading up to the next source's, word for word, its own headings among it, but each relative link rebased to resolve from the log's folder to what it named from the session's. A topic's log is `{unit}/topics/{topic}/log.md`, or, for a topic a split took to a new epic, `{epic}/topics/{topic}/log.md`. Change nothing already in the log, and leave the session as it stands.
 
 Then write the placement, `.cache/migrate/cut-and-merges/{unit}/placed.json`: for each session, each of its sources and the topics it went to, `[]` for one left epic-wide:
 

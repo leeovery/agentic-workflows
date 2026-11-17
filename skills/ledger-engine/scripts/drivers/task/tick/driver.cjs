@@ -488,7 +488,7 @@ function planNameOf(ids, parent) {
 
 /**
  * @param {string} root @param {string} unit @param {{phase: number, parent: string, order?: string[]}[]} phases
- * @returns {{phase: number, plan: string|null, tasks: TaskDetail[]}[]}
+ * @returns {{phase: number, plan: string|null, title: string, tasks: TaskDetail[]}[]}
  */
 function adoption(root, unit, phases) {
   let ids = idsIn(root);
@@ -498,9 +498,10 @@ function adoption(root, unit, phases) {
     ids = withNames(ids, names);
   }
   const named = ids;
-  return phases.map(({ phase, parent }) => ({
-    phase, plan: planNameOf(named, adoptedParent(named, unit, phase, parent)), tasks: namedTasks(named, descendants(named, parent)).map(({ ref, task }) => detailOf(named, ref, task)),
-  }));
+  return phases.map(({ phase, parent }) => {
+    const held = adoptedParent(named, unit, phase, parent);
+    return { phase, plan: planNameOf(named, held), title: phaseTitle(held.title), tasks: namedTasks(named, descendants(named, parent)).map(({ ref, task }) => detailOf(named, ref, task)) };
+  });
 }
 
 /** @param {string} root @param {string} unit @param {number} phase @param {string} parent @param {string[]} [order] @returns {TaskRef[]} */

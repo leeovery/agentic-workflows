@@ -451,7 +451,7 @@ function todaysProject(dir) {
   w('scratch/notes.txt', 'a folder that is no unit\n');
   w('Thumbs.db', 'sidecar\n');
 
-  w('.roadmap/sessions/session-001.md', '# Roadmap Session 001\n\nSee [market](../imports/market.md).\n');
+  w('.roadmap/sessions/session-001.md', '# Roadmap Session 001\n\n## Imports (as of session)\n\n- imports/market.md\n- imports/gone.md\n\nSee [market](../imports/market.md), the brief in hand (imports/market.md).\n');
   w('.roadmap/sessions/session-002.md', '# Roadmap Session 002\n\nSee [the draft](../draft.txt).\n');
   w('.roadmap/notes/bugs/2026-01-03--points-expiry.md', '# Points expiry\n\nPer [market](../../imports/market.md) and [alpha](../../../core/discussion/alpha.md).\n');
   w('.roadmap/notes/ideas/2026-01-03--points-expiry.md', '# Points expiry, an idea of the same name\n');
@@ -480,6 +480,7 @@ function todaysProject(dir) {
   w('core/research/alpha.md', '# Research: Alpha\n\nRead [notes](../imports/notes.md) and ![d](../imports/diagram.png), not [code](../imports/util.js).\n');
   w('core/research/epsilon.md', EDGES);
   w('core/research/exploration-superseded-2026-01-01-1200.md', '# Research: Exploration\n\nSee ../imports/notes.md.\n');
+  w('core/research/overview.md', '# Research: Overview\n\nSee ../imports/notes.md.\n');
   w('core/discussion/alpha.md', `# Discussion: Alpha\n\nThe research said so, and so do we.\n\n${FOLDED_REPORT}`);
   w('core/research/.mailbox/beta/001-first.md', message('First', 'alpha'));
   w('core/research/.mailbox/beta/002-second.md', message('Second', 'alpha'));
@@ -731,7 +732,7 @@ describe('migration 078: the move into the layout in .ledger/', () => {
             loyalty: { ...items.loyalty, sources: ['.product/sessions/session-001.md', '.product/assets/market.md'] },
             'points-expiry': { ...items['points-expiry'], sources: ['.product/notes/2026-01-03--points-expiry.md'] },
             alpha: { ...items.alpha, sources: ['core/topics/alpha/brief.md', 'core/topics/alpha/log.md', 'core/implementation/gone.md'] },
-            exploration: { ...items.exploration, sources: ['core/discovery/session-003.md', 'shared/topics/gamma/log.md', 'core/topics/beta/mail/003-third.md'] },
+            exploration: { ...items.exploration, sources: ['core/assets/research/exploration-superseded-2026-01-01-1200.md', 'shared/topics/gamma/log.md', 'core/topics/beta/mail/003-third.md'] },
             drafts: { ...items.drafts, sources: ['.product/assets/legacy/.roadmap/draft.txt', 'core/assets/legacy/notes.txt'] },
           },
         },
@@ -791,8 +792,8 @@ describe('migration 078: the move into the layout in .ledger/', () => {
       assert.strictEqual(read('.product/assets/baseline/agenda-auth.md'), '# Agenda: Auth\n\n- Why sessions expire: the person said an hour, for the auditors.\n');
     });
 
-    it('points the product\'s documents\' links into its imports at the assets, and to a unit\'s document at its place, from where each now sits, a session\'s headings one level deeper', () => {
-      assert.strictEqual(read('.product/sessions/session-001.md'), '## Roadmap Session 001\n\nSee [market](../assets/market.md).\n');
+    it('points the product\'s documents\' links into its imports at the assets, and to a unit\'s document at its place, from where each now sits, a session\'s headings one level deeper and each import it names in words from the product\'s folder named as its asset, a name of no import as written', () => {
+      assert.strictEqual(read('.product/sessions/session-001.md'), '## Roadmap Session 001\n\n### Imports (as of session)\n\n- assets/market.md\n- imports/gone.md\n\nSee [market](../assets/market.md), the brief in hand (assets/market.md).\n');
       assert.strictEqual(read('.product/notes/2026-01-03--points-expiry.md'), '# Points expiry\n\nPer [market](../assets/market.md) and [alpha](../../core/topics/alpha/log.md#discussion).\n');
     });
 
@@ -802,7 +803,7 @@ describe('migration 078: the move into the layout in .ledger/', () => {
         loyalty: ['.product/sessions/session-001.md', '.product/assets/market.md'],
         'points-expiry': ['.product/notes/2026-01-03--points-expiry.md'],
         alpha: ['core/topics/alpha/brief.md', 'core/topics/alpha/log.md', 'core/implementation/gone.md'],
-        exploration: ['core/discovery/session-003.md', 'shared/topics/gamma/log.md', 'core/topics/beta/mail/003-third.md'],
+        exploration: ['core/assets/research/exploration-superseded-2026-01-01-1200.md', 'shared/topics/gamma/log.md', 'core/topics/beta/mail/003-third.md'],
         drafts: ['.product/assets/legacy/.roadmap/draft.txt', 'core/assets/legacy/notes.txt'],
       });
       for (const source of [...roadmap.items.loyalty.sources, ...roadmap.items.alpha.sources.slice(0, 2), ...roadmap.items.exploration.sources, ...roadmap.items.drafts.sources]) assert.ok(fs.existsSync(path.join(state, source)), source);
@@ -905,13 +906,14 @@ describe('migration 078: the move into the layout in .ledger/', () => {
       assert.deepStrictEqual(warnings, []);
     });
 
-    it('joins research feeding one topic to its log, and sends research feeding several to a discovery session of its own after the last (21.S12, F10)', () => {
+    it('joins research feeding one topic to its log, sends research feeding several to a discovery session of its own after the last, and keeps a legacy split\'s superseded copy as a reference asset, its name kept and its links pointed from there (21.S12, F10)', () => {
       assert.match(read('core/topics/alpha/log.md'), /^## Research\n\n## Research: Alpha\n[\s\S]*\n## Discussion\n\n## Discussion: Alpha\n/);
       assert.strictEqual(read('core/discovery/session-003.md'), [
         '# Discovery Session 003', '', `Date: ${TODAY}`, 'Work unit: core', '',
         'Written by the migration: the research below fed several topics, so it is kept here, on the unit\'s discovery log, until the cut and the merges place it where it bears.',
-        '', '## Research: exploration-superseded-2026-01-01-1200', '', '## Research: Exploration', '', 'See ../assets/notes.md.', '',
+        '', '## Research: overview', '', '## Research: Overview', '', 'See ../assets/notes.md.', '',
       ].join('\n'));
+      assert.strictEqual(read('core/assets/research/exploration-superseded-2026-01-01-1200.md'), '# Research: Exploration\n\nSee ../notes.md.\n', 'a legacy split\'s superseded copy is reference, never research to place: the split topics hold it');
     });
 
     it('moves a topic\'s mail from both its boxes into one sequence, renumbered, and keeps a single box\'s names (21.S13)', () => {
@@ -978,6 +980,7 @@ describe('migration 078: the move into the layout in .ledger/', () => {
         'assets/legacy/specification/search/order-tracking-notes.md',
         'assets/legacy/specification/search/review-input-tracking-c1.md',
         'assets/notes.md',
+        'assets/research/exploration-superseded-2026-01-01-1200.md',
         'assets/specs/search.md',
         'discovery/session-001.md',
         'discovery/session-002.md',
@@ -1361,6 +1364,36 @@ describe('migration 078: a small project', () => {
       const state = path.join(dir, '.ledger');
       assert.deepStrictEqual([Object.keys(JSON.parse(fs.readFileSync(path.join(state, 'manifest.json'), 'utf8')).work_units), tree(state, '.product')], [['tally'], ['assets/legacy/husk/notes.md']]);
       assert.match(String(returned?.verify), /^The registry named these units, and \.workflows\/ held no folder of theirs with a manifest, so the registry drops their entries: ghost, husk\./);
+    } finally {
+      cleanupFixture(dir);
+    }
+  });
+
+  it('types each registry entry as its unit\'s manifest types it, where a change of type rewrote the manifest alone, as mint\'s pivot to an epic did — journaling each correction for the review — and journals none where every entry agrees', () => {
+    dir = tempProject('migration-078-mistyped-');
+    try {
+      write(dir, '.workflows/manifest.json', json({ work_units: { tally: { work_type: 'feature' }, mint: { work_type: 'feature' } } }));
+      write(dir, '.workflows/tally/manifest.json', json(unit('tally', 'feature', 'in-progress', { discussion: { items: { tally: { status: 'in-progress' } } } })));
+      write(dir, '.workflows/mint/manifest.json', json(unit('mint', 'epic', 'completed', { discussion: { items: { release: { status: 'completed' } } } })));
+      commitAll(dir);
+      run(dir);
+      const state = path.join(dir, '.ledger');
+      const journal = path.join(state, '.cache/migrate/move.json');
+      assert.deepStrictEqual([JSON.parse(fs.readFileSync(path.join(state, 'manifest.json'), 'utf8')).work_units, JSON.parse(fs.readFileSync(journal, 'utf8'))], [
+        { tally: { work_type: 'feature' }, mint: { work_type: 'epic' } },
+        {
+          corrections: [{
+            unit: 'mint',
+            was: 'The registry typed it "feature", and its manifest "epic".',
+            found: 'Its manifest is its own record of its type, which a change of type rewrote and the registry missed.',
+            changed: 'The registry types it "epic".',
+          }],
+        },
+      ]);
+
+      write(dir, '.workflows/manifest.json', json({ work_units: { tally: { work_type: 'feature' }, mint: { work_type: 'epic' } } }));
+      run(dir);
+      assert.ok(!fs.existsSync(journal), 'a run again finding every entry agreeing journals none');
     } finally {
       cleanupFixture(dir);
     }

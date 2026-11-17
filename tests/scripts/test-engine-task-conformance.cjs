@@ -30,7 +30,8 @@
 // elsewhere and a task holding all the refs the tracker keeps on one
 // refused, adding nothing; ready across every phase of the unit wherever
 // its parent sits; and the adoption of phases in turn read, writing
-// nothing, as adopt then shows them, refused as adopt refuses. A plan whose
+// nothing, as adopt then shows them, each phase's title read from its
+// parent, refused as adopt refuses. A plan whose
 // unit built nothing closed under its root (21.8.4): each task neither done
 // nor closed closed with the reason, the plan given no name of the
 // engine's, the build's first phase then written under a parent of its own;
@@ -474,12 +475,12 @@ for (const driver of listDrivers('task')) {
         }
       });
 
-      it('reads what adopting the phases in turn would name, writing nothing: each phase\'s tasks as adopt then shows them, and the name its old plan carries on its root', () => {
+      it('reads what adopting the phases in turn would name, writing nothing: each phase\'s tasks as adopt then shows them, the name its old plan carries on its root, and its title as a phase\'s reads', () => {
         const before = store();
         const read = driver.adoption(root, OLD, [{ phase: 1, parent: plan.phases[0] }, { phase: 2, parent: plan.phases[1] }]);
         assert.deepStrictEqual(store(), before);
         adoptBoth();
-        assert.deepStrictEqual(read, [1, 2].map((phase) => ({ phase, plan: OLD, tasks: [1, 2, 3].map((n) => driver.show(root, old(phase, n))) })));
+        assert.deepStrictEqual(read, [1, 2].map((phase) => ({ phase, plan: OLD, title: PLAN[phase - 1].title, tasks: [1, 2, 3].map((n) => driver.show(root, old(phase, n))) })));
       });
 
       it('a task\'s type is its tag of the template\'s types — the old plan\'s own tags never read as one — and it takes a type with its other tags kept (21.8.8)', () => {

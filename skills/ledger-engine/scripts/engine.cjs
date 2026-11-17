@@ -300,7 +300,6 @@ ${Object.values(MAP_USAGE).map((usage) => `  ${usage}`).join('\n')}
   task create <work-unit> <N> --file <path>
   task add <work-unit> <task> --file <path> --by <orchestrator|person>
   task type <work-unit> <task> <type>
-  task adopt <work-unit> <N> --parent <tracker-id>
   task close-plan <work-unit> --parent <tracker-id>
   task link <work-unit> <task> --after <task>
   task ready <work-unit> [<N>]

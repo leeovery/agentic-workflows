@@ -39,9 +39,13 @@
 //     report, which 051 moved into the unit's implementation folder, byte
 //     for byte anywhere in the state; any other byte for byte anywhere
 //     in the state, a manifest where its unit or the project is, or a
-//     document one file of the state holds every line of, its headings,
-//     link targets, numbering and case aside, and the runs of `../` before
-//     an import or an asset, which the move rewrites wherever they stand —
+//     document one file of the state holds every line of — a topic's
+//     research, discussion or investigation its topic's log and mail
+//     together, since released migrations moved part of one into its mail
+//     (054's triage, by way of 071's mailbox) — its headings, link targets,
+//     numbering and case aside, and the runs of `../` before an import or
+//     an asset, and a product session's bare `imports/`, which the move
+//     rewrites wherever they stand —
 //     or is one the migration rebuilds, never kept: the old cache's other
 //     files, the old engine's record, the knowledge store but its config, a
 //     unit's `.state/`, the old state's own ignore file, and the tools'
@@ -99,8 +103,14 @@ const TEXT = /\.(?:md|json)$/;
 const UNREAD = /^(?:\.cache|\.state|\.knowledge)\//;
 const LINK = /(!?)\[([^\]]*)\]\(([^)\s]+)\)/g;
 const SCHEME = /^[a-z][a-z0-9+.-]*:/i;
-// The runs of `../` before an import or an asset, which the move rewrites wherever they stand.
-const IMPORT_PATH = /(?:\.\.\/)+(?:imports|assets)\//g;
+// The runs of `../` before an import or an asset, and an import a product
+// session names from the product's folder, which the move rewrites wherever
+// they stand.
+const IMPORT_PATH = /(?:\.\.\/)+(?:imports|assets)\/|(?<![\w./-])(?:imports|assets)\//g;
+// An old document a topic's log takes, by its topic; and a topic's log or a
+// message in its mail, by the topic's folder.
+const TOPIC_DOCUMENT = /^[^/]+\/(?:research|discussion|investigation)\/([^/]+)\.md$/;
+const LOG_OR_MAIL = /^([^/]+\/topics\/([^/]+))\/(?:log\.md|mail\/[^/]+\.md)$/;
 // The separate call's binary boot runs: the suite's stub, which, unarmed, has no login.
 const CLAUDE_STUB = path.join(__dirname, 'claude-stub.sh');
 const STUB_ARMS = ['CLAUDE_STUB_ANSWERS', 'CLAUDE_STUB_LOG', 'CLAUDE_STUB_MEET'];
@@ -365,6 +375,27 @@ function holdersIn(state) {
 }
 
 /**
+ * Whether a topic's log and its mail together hold every line of an old
+ * document its log takes, the topic read in any unit.
+ * @param {State} state @returns {(doc: Doc) => boolean}
+ */
+function topicHolds(state) {
+  /** @type {Map<string, {topic: string, lines: Set<string>}>} */
+  const folders = new Map();
+  for (const doc of state.docs) {
+    const [, folder, topic] = LOG_OR_MAIL.exec(doc.rel) ?? [];
+    if (folder === undefined) continue;
+    const held = folders.get(folder) ?? { topic, lines: new Set() };
+    for (const line of doc.lines) held.lines.add(line);
+    folders.set(folder, held);
+  }
+  return (doc) => {
+    const topic = TOPIC_DOCUMENT.exec(doc.rel)?.[1];
+    return topic !== undefined && [...folders.values()].some((held) => held.topic === topic && doc.lines.every((line) => held.lines.has(line)));
+  };
+}
+
+/**
  * Whether the state's cache holds a document of the old cache byte for
  * byte where the move copies it, its case aside: a unit's in the unit's
  * `earlier/`, any other in the cache's own.
@@ -379,6 +410,7 @@ function earlierHeld(state, old, report, file) {
 /** @param {State} state @param {Map<string, any>} units @param {Listing} old @param {Doc[]} olds @param {(doc: Doc) => Doc[]} holders */
 function filesPlaced(state, units, old, olds, holders) {
   const docs = new Map(olds.map((doc) => [doc.rel, doc]));
+  const acrossLogAndMail = topicHolds(state);
   const retired = (/** @type {string} */ unit) => state.files.includes(`.product/assets/${unit.toLowerCase()}/manifest.json`);
   /** @param {string} rel @param {OldFile} file */
   const placed = (rel, file) => {
@@ -389,7 +421,7 @@ function filesPlaced(state, units, old, olds, holders) {
     const unit = /^([^/]+)\/manifest\.json$/.exec(rel)?.[1];
     if (unit !== undefined) return units.has(unit.toLowerCase()) || retired(unit);
     const doc = docs.get(rel);
-    return doc !== undefined && (doc.lines.length === 0 || holders(doc).length > 0);
+    return doc !== undefined && (doc.lines.length === 0 || holders(doc).length > 0 || acrossLogAndMail(doc));
   };
   const rebuilt = (/** @type {string} */ rel) => REBUILT.some((rule) => rule.test(rel)) || SIDECAR_NAME.test(path.basename(rel));
   return Object.entries(old.files).sort(([a], [b]) => a.localeCompare(b)).filter(([rel, file]) => !rebuilt(rel) && !placed(rel, file))

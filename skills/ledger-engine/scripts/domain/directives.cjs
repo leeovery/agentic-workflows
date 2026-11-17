@@ -56,9 +56,11 @@
 //   written from, since the state branch's first commit takes the whole
 //   state (21.9.4) — the commits the yes still makes, the units moved, the
 //   topics carried, the directives a session carried out, the code files
-//   the commit takes, and each correction the cut and the merges made where
-//   a unit's manifest and its tracker disagreed, as each unit's cut marked
-//   it (cut-migrating.cjs).
+//   the commit takes, and each correction the migration made, by its unit:
+//   the move's, where the registry typed a unit otherwise than its
+//   manifest, as the move journaled them (078, `move.json` among the
+//   journals), then the cut and the merges', where a unit's manifest and
+//   its tracker disagreed, as each unit's cut marked it (cut-migrating.cjs).
 // - `migrate join <unit> --directive <id>` joins the pieces a building
 //   unit's phases were composed in into the plan its cut takes
 //   (cut-merges.cjs).
@@ -93,6 +95,9 @@ const MIGRATIONS = path.join(MIGRATE_SCRIPTS, 'migrations');
 // The record of the migrations applied, state-relative, which the runner
 // writes and a directive's close appends to.
 const MIGRATIONS_RECORD = '.state/migrations';
+
+// The move's journal of the corrections it made (078), among the migration's journals.
+const MOVE_JOURNAL = 'move.json';
 
 const DIRECTIVE_ID = /^([0-9]+)-[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -362,24 +367,36 @@ function directivesDone(cwd) {
  * What the reshape's summary is written from while its commit is owed:
  * the commits the yes still makes, the units moved, the topics they
  * carry, the directives done, the code files the commit takes, named
- * from the project's folder, and the corrections the cut made, each by its
- * unit, in the units' order.
+ * from the project's folder, and the corrections the migration made, each
+ * by its unit, in the units' order.
  * @typedef {{commits: import('./migration-commit.cjs').CommitsOwed, units: number, topics: number, directives: string[], files: string[], corrections: ({unit: string} & Record<string, unknown>)[]}} ReshapeReview
  */
 
-/**
- * Each correction the migration's cut recorded in its marks, by its unit,
- * in the units' order.
- * @param {string} cwd @returns {({unit: string} & Record<string, unknown>)[]}
- */
+/** @typedef {{unit: string} & Record<string, unknown>} Correction */
+
+/** Each correction the move journaled (078), by its unit. @param {string} cwd @returns {Correction[]} */
+function moveCorrections(cwd) {
+  const file = statePath(cwd, MIGRATION_JOURNALS, MOVE_JOURNAL);
+  const journal = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {};
+  return (Array.isArray(journal.corrections) ? journal.corrections : []).filter((correction) => isObject(correction) && typeof correction.unit === 'string');
+}
+
+/** Each correction the migration's cut recorded in its marks, by its unit. @param {string} cwd @returns {Correction[]} */
 function cutCorrections(cwd) {
   const marks = path.dirname(markPath(cwd, '_'));
-  const units = fs.existsSync(marks) ? fs.readdirSync(marks).filter((name) => name.endsWith('.json')).map((name) => name.slice(0, -'.json'.length)).sort() : [];
+  const units = fs.existsSync(marks) ? fs.readdirSync(marks).filter((name) => name.endsWith('.json')).map((name) => name.slice(0, -'.json'.length)) : [];
   return units.flatMap((unit) => {
     const mark = JSON.parse(fs.readFileSync(markPath(cwd, unit), 'utf8'));
     return (Array.isArray(mark.corrections) ? mark.corrections : []).filter(isObject).map((correction) => ({ unit, ...correction }));
   });
 }
+
+/**
+ * Each correction the migration made, in the units' order: within a unit,
+ * the move's before the cut's.
+ * @param {string} cwd @returns {Correction[]}
+ */
+const migrationCorrections = (cwd) => [...moveCorrections(cwd), ...cutCorrections(cwd)].sort((a, b) => (a.unit < b.unit ? -1 : a.unit > b.unit ? 1 : 0));
 
 /**
  * `migrate review`: the state's folder and the folder the code side's
@@ -402,7 +419,7 @@ function reviewMigration(cwd) {
       topics: units.reduce((sum, manifest) => sum + topicsOf(manifest).length, 0),
       directives: directivesDone(cwd),
       files: codeFiles(finish),
-      corrections: cutCorrections(cwd),
+      corrections: migrationCorrections(cwd),
     },
   };
 }
@@ -436,4 +453,4 @@ function runMigrateVerb(cwd, argv) {
   return checked;
 }
 
-module.exports = { MIGRATE_CJS, MIGRATIONS_RECORD, MIGRATION_JOURNALS, MIGRATE_USAGE, unrunLine, directiveOf, isCheck, loadCheck, checkDirs, piecesOf, checkDirective, recordDirective, directiveStopped, directiveStopSurface, takenStopSurface, leavingSurface, runMigrateVerb };
+module.exports = { MIGRATE_CJS, MIGRATIONS_RECORD, MIGRATION_JOURNALS, MIGRATE_USAGE, unrunLine, directiveOf, isCheck, loadCheck, piecesOf, checkDirective, recordDirective, directiveStopped, directiveStopSurface, takenStopSurface, leavingSurface, runMigrateVerb };

@@ -8,7 +8,8 @@
 // topics numbered in the order they stood, so each starts where it stood and
 // none in discovery; each topic moved whole, its folder — log, brief and mail
 // — and its items, each link to the unit's assets rebased to resolve from
-// where it now sits and each within its folder as written; its ledger lines
+// where it now sits and each within its folder as written, and a link into
+// it from a document of the unit's following it; its ledger lines
 // carried, its record read on the epic's topic with each cite where its file
 // went and its copy following, the knowledge store indexing it there at once;
 // its places in the unit's cache purged; a roadmap item joined to it
@@ -89,8 +90,10 @@ describe('topics leave a building unit for a new epic (21.8.9, 21.8.10)', () => 
   beforeEach(() => { dir = world(); });
   afterEach(() => cleanupFixture(path.dirname(dir)));
 
-  it('the epic made, registered and its map approved, each topic where it stood; each moved whole, its lines carried and read there, its copy following; the roadmap following; the unit keeping the rest; the commit held', () => {
+  it('the epic made, registered and its map approved, each topic where it stood; each moved whole, its lines carried and read there, its copy following, and a link into it from a document it left following it; the roadmap following; the unit keeping the rest; the commit held', () => {
     writeState(dir, layout.brief('shop', 'reviews'), `${readState(dir, layout.brief('shop', 'reviews'))}\nIts talk is in [the log](log.md).\n`);
+    const weights = layout.topic('shop', 'weights', 'log.md');
+    writeState(dir, weights, `${readState(dir, weights)}\nReviews weigh in too: [their talk](../reviews/log.md).\n`);
     const before = treeSnapshot(dir);
 
     assert.deepStrictEqual(run(split()), {
@@ -122,6 +125,8 @@ describe('topics leave a building unit for a new epic (21.8.9, 21.8.10)', () => 
     assert.ok(Object.hasOwn(afterwards, path.posix.join(path.posix.dirname(brief), /** @type {string} */ (/\[the log\]\(([^)]+)\)/.exec(afterwards[brief])?.[1]))),
       'its brief\'s link to its own log resolves where the folder went');
     assert.deepStrictEqual(Object.keys(afterwards).filter((rel) => rel.startsWith(layout.topic('shop', 'reviews', ''))), []);
+    const into = /** @type {string} */ (/\[their talk\]\(([^)]+)\)/.exec(afterwards[weights])?.[1]);
+    assert.strictEqual(path.posix.join(path.posix.dirname(weights), into), layout.topic('storefront', 'reviews', 'log.md'), 'a link from a document the split left follows the topic it names');
     assert.strictEqual(afterwards[layout.session('storefront', '001')], LOG);
 
     const { created, phases: { discovery: { approved_at: approved, ...map }, ...phases }, ...epic } = manifest('storefront');

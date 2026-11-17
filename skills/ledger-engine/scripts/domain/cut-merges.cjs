@@ -20,7 +20,9 @@
 // "scenarios": ["<text>", …], "notes": ["<text>", …], "corrections": […]}`
 // — every phase but one the manifest counts built, whose every task the
 // tracker holds ended, where the two agree: the join writes that one
-// itself, named for its plan's topic and number. A verifier reads each
+// itself, named as its plan heads it, or, where its plan heads it with
+// none, as its parent in the tracker is titled, and failing both for its
+// plan's topic and number (21.8.6). A verifier reads each
 // piece and writes its findings beside it, `phases/{N}.findings.txt`: an
 // empty file is the pass, one holding findings sends the piece back to be
 // composed again, and no file means the piece was never verified.
@@ -58,7 +60,7 @@ const { SPEC_FILE, readSpec, specSections } = require('./spec-sections.cjs');
 /**
  * An old plan as the cut and the merges' check reads it.
  * @typedef {{topic: string, files: string[], root: string|null, phases: OldPhase[], dependencies: Record<string, any>[]}} MigratedPlan
- * @typedef {{number: number, parent: string|null, built: boolean, tasks: {id: string, tracker: string, credited: boolean}[]}} OldPhase
+ * @typedef {{number: number, title: string|null, parent: string|null, built: boolean, tasks: {id: string, tracker: string, credited: boolean}[]}} OldPhase
  */
 
 /**
@@ -69,7 +71,8 @@ const { SPEC_FILE, readSpec, specSections } = require('./spec-sections.cjs');
 /**
  * A phase of the unit's cut: its number, its topic and area, and where it
  * comes from — an old plan's phase, with its tracker parent, what the
- * manifest says of it and its tasks as the cut's adoption names them, or
+ * manifest says of it, its name as its plan heads it or else as the tracker
+ * titles its parent, and its tasks as the cut's adoption names them, or
  * an area no plan put in the tracker — where the manifest and the tracker
  * disagree over it, and whether an agent composes it.
  * @typedef {{number: number, topic: string, area: number|null, plan: MigratedPlan|null, old: OldPhase|null, tasks: TaskDetail[], disagreements: string[], composed: boolean}} CutPhase
@@ -183,7 +186,7 @@ function unitPhases(cwd, unit, sources) {
     else for (const old of plan.phases.filter(({ parent }) => parent !== null)) laid.push({ number: laid.length + 1, topic, area: areaOf(topic), plan, old });
   }
   const adopted = laid.filter(({ old }) => old !== null);
-  /** @type {Map<number, TaskDetail[]>} */
+  /** @type {Map<number, {title: string|null, tasks: TaskDetail[]}>} */
   const held = new Map();
   let refused = null;
   try {
@@ -191,15 +194,16 @@ function unitPhases(cwd, unit, sources) {
       const phase = /** @type {OldPhase} */ (old);
       return { phase: number, parent: /** @type {string} */ (phase.parent), order: phase.tasks.map(({ tracker }) => tracker) };
     }));
-    read.forEach(({ phase, tasks }) => held.set(phase, tasks));
+    read.forEach(({ phase, title, tasks }) => held.set(phase, { title: title.trim() || null, tasks }));
   } catch (err) {
     refused = messageOf(err);
   }
   const phases = laid.map((phase) => {
-    const tasks = held.get(phase.number) ?? [];
-    const disagreements = phase.plan === null || phase.old === null || refused !== null ? [] : disagreementsOf(phase.plan, phase.old, phase.number, tasks);
-    const settled = phase.old !== null && phase.old.built && refused === null && disagreements.length === 0;
-    return { ...phase, tasks, disagreements, composed: !settled };
+    const { title = null, tasks = [] } = held.get(phase.number) ?? {};
+    const old = phase.old === null ? null : { ...phase.old, title: phase.old.title ?? title };
+    const disagreements = phase.plan === null || old === null || refused !== null ? [] : disagreementsOf(phase.plan, old, phase.number, tasks);
+    const settled = old !== null && old.built && refused === null && disagreements.length === 0;
+    return { ...phase, old, tasks, disagreements, composed: !settled };
   });
   return { phases, refused };
 }
@@ -300,7 +304,7 @@ function joined(root, sources, phases, sections) {
   const scenarios = {};
   const cut = read.map(({ phase, piece }) => {
     const tracker = phase.old?.parent ?? undefined;
-    if (piece === null) return { name: `${titled(phase.topic)}, phase ${phase.old?.number}`, goal: `Phase ${phase.old?.number} of the ${phase.topic} plan, built before the migration.`, sections: phase.area === null ? [] : [String(phase.area)], built: true, ...(tracker === undefined ? {} : { tracker }) };
+    if (piece === null) return { name: phase.old?.title ?? `${titled(phase.topic)}, phase ${phase.old?.number}`, goal: `Phase ${phase.old?.number} of the ${phase.topic} plan, built before the migration.`, sections: phase.area === null ? [] : [String(phase.area)], built: true, ...(tracker === undefined ? {} : { tracker }) };
     const { built, relies_on: relies, ...entry } = piece.phase;
     if (built === true) return { ...entry, built: true, ...(tracker === undefined ? {} : { tracker }) };
     const area = String(phase.area);
@@ -351,4 +355,4 @@ function joinPlan(cwd, argv) {
   };
 }
 
-module.exports = { JOIN_USAGE: USAGE, cutOrder, disagreementsOf, unitSources, unitPhases, oldReliances, piecePaths, specAddresses, joinPlan };
+module.exports = { cutOrder, unitSources, unitPhases, oldReliances, piecePaths, specAddresses, joinPlan };

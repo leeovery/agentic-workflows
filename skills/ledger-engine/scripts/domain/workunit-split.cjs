@@ -19,11 +19,13 @@
 //   topics in the order they stood. Its ledger lines are carried to the
 //   epic's topic by one `rehomed` line (ledger-rehomed.cjs), so every read
 //   and the record copies take them there, each at its own phase, each file
-//   they name where the move took it. Each link of its documents to a file
-//   the move left behind — the unit's assets, seeds and spikes — is rebased
-//   to resolve from where the document now sits (21.5.7), and its places
-//   in the unit's cache are purged. A roadmap item joined to the topic
-//   follows it, and a source under its folder follows its file.
+//   they name where the move took it. Every document's links follow the
+//   moves (follow-moves.cjs): each of a moved document's links to a file
+//   the move left behind — the unit's assets, seeds and spikes — rebased to
+//   resolve from where it now sits (21.5.7), and each link of any document
+//   into a moved folder following it. Its places in the unit's cache are
+//   purged. A roadmap item joined to the topic follows it, and a source
+//   under its folder follows its file.
 // - The unit keeps the rest: the topics its specs cover, for its cut.
 // - Once: each step is one a redo repeats or finds done — the epic made,
 //   each folder's move, each topic's carry, of the lines the ledger still
@@ -59,9 +61,8 @@ const { manifestOf } = require('./ledger-units.cjs');
 const { linesOf, movedFiles } = require('./workunit-absorb.cjs');
 const { FIRST_LOG } = require('./workunit-create.cjs');
 const { CLOSED_LIFECYCLES, computeTopicLifecycle, itemJoin, roadmapItems, topicDir } = require('./derivations.cjs');
-const { carrySources, landingOf } = require('./roadmap.cjs');
-const { rebaseLinks } = require('./markdown-links.cjs');
-const { filesUnder } = require('./review-phase.cjs');
+const { carrySources } = require('./roadmap.cjs');
+const { relinkDocuments } = require('./follow-moves.cjs');
 const { purgeTopicCache } = require('./cache.cjs');
 const { todayStamp } = require('./dates.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
@@ -233,25 +234,6 @@ function moveFolders(root, { into, moves }) {
   }
 }
 
-/**
- * Each moved document's links rebased, so each resolves to what it named
- * where that is now: a file the move left behind in the unit, from the
- * document's new folder; a file a topic took along, where it went. A link
- * that resolves already is left as written, so a redo changes nothing.
- * @param {string} root @param {Split} split
- */
-function relinkMoved(root, { moves }) {
-  const follow = (/** @type {string} */ file) => landingOf(file, moves) ?? file;
-  for (const [from, to] of moves.filter(([, moved]) => fs.existsSync(path.join(root, moved)))) {
-    for (const rel of filesUnder(path.join(root, to)).filter((name) => name.endsWith('.md'))) {
-      const file = path.join(root, to, rel);
-      const text = fs.readFileSync(file, 'utf8');
-      const rebased = rebaseLinks(text, path.posix.dirname(`${from}/${rel}`), path.posix.dirname(`${to}/${rel}`), follow);
-      if (rebased !== text) writeTextAtomic(file, rebased);
-    }
-  }
-}
-
 /** Each topic's lines carried to the epic's topic, every carry in one write: how many lines. @param {string} root @param {Split} split @param {string[]} warnings */
 function carryLines(root, { into, lines, moves }, warnings) {
   if (lines.length === 0) return 0;
@@ -318,7 +300,7 @@ function splitWorkUnit(cwd, unit, asked) {
       const split = plannedSplit(cwd, root, unit, asked, warnings);
       makeEpic(cwd, split);
       moveFolders(root, split);
-      relinkMoved(root, split);
+      relinkDocuments(root, split.moves);
       const carried = carryLines(root, split, warnings);
       leaveUnit(cwd, split);
       const { reaimed, rewritten } = followInProject(cwd, split);
