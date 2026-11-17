@@ -205,6 +205,21 @@ describe('an experiment on the board (20.13)', () => {
     });
   });
 
+  it('over several live, it shows the experiment the session\'s entry named, not the latest', () => {
+    spawned();
+    const question = writeIn(dir(), 'ask', NOTE, [], { by: 'person', who_moved_whom: 'none', text: 'How big does a note open?' });
+    const problem = path.join('.ledger', '.cache', UNIT, 'scratch', 'note-size-problem.md');
+    fs.mkdirSync(path.join(dir(), path.dirname(problem)), { recursive: true });
+    fs.writeFileSync(path.join(dir(), problem), '# Problem — note-size\n');
+    ok(dir(), ['experiment', 'create', UNIT, 'note-window', '--slug', 'note-size', '--from', 'discussion', '--problem', problem, '--question', question], { env: SESSION });
+    const shown = ['E1', 'E2'].map((record) => {
+      ok(dir(), ['enter', 'experiment', UNIT, 'note-window', '--record', record], { env: { ...SESSION, ...OWNED } });
+      return board().view.id;
+    });
+
+    assert.deepStrictEqual(shown, ['E1', 'E2']);
+  });
+
   it('20.13.1: its design by its sections once written, the report opening in full once written; 20.13.2: concluded, the topic\'s row says its report waits', () => {
     spawned();
     const record = path.join(dir(), '.ledger', UNIT, 'topics', 'note-window', 'experiments', 'E1-note-open');

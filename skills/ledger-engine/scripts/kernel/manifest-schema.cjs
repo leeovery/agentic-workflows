@@ -93,6 +93,10 @@ const VALID_EXPERIMENT_STATUSES = ['conceived', 'designed', 'approved', 'running
 // pointing at it.
 const EXPERIMENT_TERMINAL_STATUSES = ['concluded', 'abandoned'];
 
+// The record statuses whose design the person approved: frozen, changed
+// only by a recorded amendment.
+const EXPERIMENT_FROZEN_STATUSES = ['approved', 'running'];
+
 // The one home for the experiment id shape: `E{n}` for a series record,
 // `E{n}.{m}` for a sub-experiment under it. An evidence wait
 // (`awaiting_experiments`) only ever holds the parent form — a split is the
@@ -255,6 +259,7 @@ module.exports = {
   VALID_PHASE_STATUSES,
   VALID_EXPERIMENT_STATUSES,
   EXPERIMENT_TERMINAL_STATUSES,
+  EXPERIMENT_FROZEN_STATUSES,
   EXPERIMENT_ID_PATTERN,
   isParentExperimentId,
   compareExperimentIds,

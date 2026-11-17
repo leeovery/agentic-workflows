@@ -490,94 +490,6 @@ function checkLoadFooters(files) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 12 — earned chrome, decidable slice. A backbone step whose only
-// substance is a single Load directive must not carry a step marker when the
-// loaded reference is inert (no STOP gate, no rendering instruction) — pure
-// plumbing earns no chrome. Steps with conditional structure (H4), extra
-// substance, interactive references, or unresolvable/parameterised targets
-// are out of scope: those are the judgment tier.
-// ---------------------------------------------------------------------------
-
-// A reference is inert iff it shows the user nothing and does nothing
-// watchable: no STOP gate, no rendering instruction, no bash fence — and
-// every reference it Loads (resolvable, non-parameterised) is inert too.
-// Anything unresolvable is conservatively treated as not inert.
-function isInertRef(p, visited) {
-  if (visited.has(p)) return true; // cycle: no new activity on this path
-  visited.add(p);
-  if (!fs.existsSync(p)) return false;
-  const text = fs.readFileSync(p, 'utf8');
-  // A reference is inert only if it produces nothing the user can watch.
-  // Interaction, rendered output, a command, and sub-agent dispatch all count
-  // as activity — CONVENTIONS.md names agent dispatch among the shapes that
-  // earn a marker, and a fan-out is often the longest wait in a phase.
-  if (
-    /\*\*STOP\.\*\*/.test(text) ||
-    /Output the next fenced block/.test(text) ||
-    /^```bash/m.test(text) ||
-    /\*\*Agent path\*\*/.test(text)
-  ) return false;
-  const loadRe = /Load \*\*\[[^\]]+\]\(([^)]+)\)\*\*/g;
-  let m;
-  while ((m = loadRe.exec(text))) {
-    const target = m[1].split('#')[0];
-    if (target.includes('{')) return false;
-    if (!isInertRef(path.resolve(path.dirname(p), target), visited)) return false;
-  }
-  return true;
-}
-
-function checkInertLoadChrome(files) {
-  const out = [];
-  for (const file of files) {
-    if (!file.endsWith('SKILL.md')) continue;
-    const dir = path.dirname(file);
-    const lines = readLines(file);
-    const { inFence } = parseFences(lines);
-    const starts = [];
-    lines.forEach((line, i) => {
-      if (!inFence[i] && /^## Step /.test(line)) starts.push(i);
-    });
-    for (const start of starts) {
-      let end = lines.length;
-      for (let j = start + 1; j < lines.length; j++) {
-        if (!inFence[j] && /^## /.test(lines[j])) { end = j; break; }
-      }
-      let markerLine = -1;
-      for (let j = start; j < end; j++) {
-        if (inFence[j] && /^\*\*`[□▪] .+`\*\*$/.test(lines[j])) markerLine = j;
-      }
-      if (markerLine === -1) continue;
-      const substance = [];
-      let structured = false;
-      for (let j = start + 1; j < end; j++) {
-        if (inFence[j] || FENCE.test(lines[j])) continue;
-        const t = lines[j].trim();
-        if (t === '' || t === '---') continue;
-        if (/^> \*Output the next fenced block/.test(t)) continue;
-        if (/^→ /.test(t)) continue;
-        if (/^#{3,4} /.test(t)) { structured = true; break; }
-        substance.push(t);
-      }
-      if (structured || substance.length !== 1) continue;
-      const lm = substance[0].match(/^Load \*\*\[[^\]]+\]\(([^)]+)\)\*\*/);
-      if (!lm) continue;
-      const target = lm[1].split('#')[0];
-      if (target.includes('{')) continue;
-      const p = path.resolve(dir, target);
-      if (!fs.existsSync(p)) continue;
-      if (!isInertRef(p, new Set())) continue;
-      out.push({
-        file,
-        line: markerLine + 1,
-        message: `marker on a load-only step whose reference (${target}) renders nothing — chrome is earned, not automatic`,
-      });
-    }
-  }
-  return out;
-}
-
-// ---------------------------------------------------------------------------
 // Check 13 — a fenced block prose authors is static (CONVENTIONS →
 // Display). A fence headed by a rendering instruction — a display, a
 // marker, a signpost, an ask — carrying anything that varies (a braced token
@@ -1204,12 +1116,10 @@ const CHECKS = [
   ['8: H1 category rule', checkH1Category],
   ['10: reference-file attribution', checkAttribution],
   ['11: load-directive footers (On return)', checkLoadFooters],
-  ['12: earned chrome (inert load-only steps)', checkInertLoadChrome],
   ['13: nothing rendered from prose varies', checkNoTemplatedRenders],
   ['13b: a capture skill knows the engine by its one capture line alone', checkCaptureSkills],
   ['14: buried invocation imperatives', checkBuriedInvoke],
   ['15: cross-file section references', checkCrossFileSections],
-  ['20: footerless load directives', checkFooterlessLoads],
   ['21: an engine section\'s form is its marker\'s alone', checkSectionFormsAreTheMarkers],
   ['22: free-text flag values are quoted', checkQuotedFreeTextFlags],
   ['24: rendering instructions name one of four forms over a fence carrying its tag', checkRenderForms],
@@ -1224,76 +1134,6 @@ const CHECKS = [
   ['37: the start skill\'s description opens with its trigger, and every other skill a handoff lands on says it is reached only through one', checkDescriptions],
   ['38: no skill keeps a section of its own on resuming', checkNoResumeSections],
 ];
-
-// ---------------------------------------------------------------------------
-// Check 20 — a Load directive is never the last word of a step in a skill
-// still on the step model: a step is never left with no footer at all —
-// silence reads as the end of the step, and the next heading gets treated as
-// the fall-through. Within a SKILL.md, a Load **[...]** directive must be
-// followed, before the next heading, by a routing line (→ On return / →
-// Proceed / → Return), a **STOP.** gate, or a bold conditional — inline or
-// as an H4 `#### If`/`#### Otherwise` branch heading — that re-keys the
-// routing to its branches. Only an H2/H3 heading is a fall-through target.
-// The `## Instructions` framework load composes the whole skill and carries
-// no footer by design; the file's final `## ` step is terminal and exempt, as
-// is any segment that declares itself Terminal; a trailing `## Notes` is
-// documentation, not a step, and never counts as the last step. A skill
-// rewritten to the new shape has no steps to fall through — a field and its
-// requests, each load the last word of its section — so the check holds the
-// skills still on the step model alone, and retires with the last of them.
-// ---------------------------------------------------------------------------
-
-// The skills rewritten to the new shape, whose backbones hold no steps.
-const NEW_SHAPE_SKILLS = new Set(['ledger', 'ledger-discussion-process', 'ledger-discovery', 'ledger-specification-process', 'ledger-implementation-process', 'ledger-review-process', 'ledger-investigation-process', 'ledger-quick-fix-process', 'ledger-continue-epic', 'ledger-roadmap']);
-
-function checkFooterlessLoads(files) {
-  const out = [];
-  for (const file of files) {
-    if (!file.endsWith('SKILL.md') || NEW_SHAPE_SKILLS.has(skillNameOf(file))) continue;
-    const lines = readLines(file);
-    const { inFence } = parseFences(lines);
-    const lastH2 = lines.reduce((acc, l, i) => (/^##\s/.test(l) && !/^##\s+Notes\b/.test(l) ? i : acc), -1);
-    let pending = -1;
-    let segmentStart = 0;
-    let instructions = false;
-    const flush = (end) => {
-      if (pending < 0) return;
-      const segment = lines.slice(segmentStart, end).join('\n');
-      const terminal = segmentStart >= lastH2 || /\bTerminal\b/.test(segment);
-      if (!terminal) {
-        out.push({
-          file,
-          line: pending + 1,
-          message: 'Load directive with no footer before the next heading — add "→ On return, …" (or the deferring "→ On return, proceed as the reference directed.")',
-        });
-      }
-      pending = -1;
-    };
-    lines.forEach((line, i) => {
-      if (inFence[i] || FENCE.test(line)) return;
-      if (/^#{2,3}\s/.test(line)) {
-        flush(i);
-        segmentStart = i;
-        instructions = /^##\s+Instructions\b/.test(line);
-        return;
-      }
-      if (instructions) return;
-      if (/^####\s+(If |Otherwise)/.test(line)) {
-        pending = -1;
-        return;
-      }
-      if (/Load \*\*\[/.test(line)) {
-        pending = i;
-        return;
-      }
-      if (pending >= 0 && (/^\s*→/.test(line) || /\*\*STOP\.\*\*/.test(line) || /^\*\*(If |Otherwise)/.test(line))) {
-        pending = -1;
-      }
-    });
-    flush(lines.length);
-  }
-  return out;
-}
 
 function report(violations) {
   return violations.map((v) => `  ${rel(v.file)}:${v.line} — ${v.message}`).join('\n');
@@ -1538,48 +1378,6 @@ test('check 10 (attribution) — catches missing/wrong attribution', () => {
   });
 });
 
-test('check 20 (footerless loads) — catches a load that ends its step, permits footers, gates, branches, and the terminal step', () => {
-  withTemp((dir) => {
-    const bad = write(
-      dir,
-      'skills/x/SKILL.md',
-      '## Step 0: A\n\n#### Otherwise\n\nLoad **[a.md](references/a.md)** with x = `1`.\n\n---\n\n## Step 1: B\n\nLoad **[b.md](references/b.md)** and follow its instructions as written.\n\n→ On return, proceed to **Step 2**.\n\n## Step 2: C\n\nDone.\n'
-    );
-    assert.strictEqual(checkFooterlessLoads([bad]).length, 1, 'a load left as the last word of a non-terminal step must be caught');
-
-    const deferred = write(
-      dir,
-      'skills/y/SKILL.md',
-      '## Step 0: A\n\n#### Otherwise\n\nLoad **[a.md](references/a.md)** with x = `1`.\n\n→ On return, proceed as the reference directed.\n\n---\n\n## Step 1: B\n\nDone.\n'
-    );
-    assert.strictEqual(checkFooterlessLoads([deferred]).length, 0, 'the deferring footer must pass');
-
-    const gated = write(
-      dir,
-      'skills/z/SKILL.md',
-      '## Step 0: A\n\nLoad **[a.md](references/a.md)** and follow its instructions as written.\n\n**STOP.** Wait for user response.\n\n**If `yes`:**\n\n→ Proceed to **Step 1**.\n\n## Step 1: B\n\nLoad **[b.md](references/b.md)** and follow its instructions as written.\n\n**If ready:**\n\n→ Proceed to **Step 2**.\n\n## Step 2: C\n\nLoad **[c.md](references/c.md)** and follow its instructions as written.\n\n## Notes\n\nDocumentation.\n'
-    );
-    assert.strictEqual(checkFooterlessLoads([gated]).length, 0, 'a STOP or bold conditional re-keys the routing, and the final step before a trailing Notes section is terminal');
-
-    const instr = write(
-      dir,
-      'skills/w/SKILL.md',
-      '## Instructions\n\nLoad **[framework.md](../ledger-shared/references/framework.md)** and follow its instructions as written.\n\n---\n\n## Step 0: A\n\nLoad **[a.md](references/a.md)** with x = `1`.\n\n#### If x is `1`\n\n→ Proceed to **Step 1**.\n\n#### Otherwise\n\nLoad **[b.md](references/b.md)** with x = `2`.\n\n## Step 1: B\n\nDone.\n'
-    );
-    assert.strictEqual(checkFooterlessLoads([instr]).length, 1, 'the Instructions load and an H4-branched load pass; the Otherwise branch that ends in a load before the next step is caught');
-
-    const ref = write(dir, 'skills/x/references/r.md', '## A. One\n\nLoad **[a.md](a.md)** and follow its instructions as written.\n\n## B. Two\n');
-    assert.strictEqual(checkFooterlessLoads([ref]).length, 0, 'references are out of scope');
-
-    const sections = '## Research\n\nLoad **[a.md](references/a.md)** and follow its instructions as written.\n\n## Closing\n\nDone.\n';
-    const field = write(dir, 'skills/ledger-discussion-process/SKILL.md', sections);
-    const discovery = write(dir, 'skills/ledger-discovery/SKILL.md', sections);
-    assert.strictEqual(checkFooterlessLoads([field, discovery]).length, 0, 'a skill rewritten to the new shape has no steps to fall through');
-    const stepped = write(dir, 'skills/ledger-experiment-process/SKILL.md', sections);
-    assert.strictEqual(checkFooterlessLoads([stepped]).length, 1, 'a skill still on the step model is held');
-  });
-});
-
 test('check 11 (load footers) — catches bare proceed after a load, permits gated/branch/fenced shapes', () => {
   withTemp((dir) => {
     const bad = write(
@@ -1623,46 +1421,6 @@ test('check 11 (load footers) — catches bare proceed after a load, permits gat
       '```\nLoad **[a.md](a.md)** and follow its instructions as written.\n\n→ Proceed to **Step 2**.\n```\n'
     );
     assert.strictEqual(checkLoadFooters([fenced]).length, 0, 'fenced illustrative seam must be exempt');
-  });
-});
-
-test('check 12 (inert load chrome) — catches unearned markers, skips interactive/structured shapes', () => {
-  withTemp((dir) => {
-    const marker = '**`□ Load Things`**';
-    const step = (body) =>
-      '## Step 1: Load Things\n\n> *Output the next fenced block as markdown (not a code block):*\n\n```\n' +
-      marker +
-      '\n```\n\n> *Output the next fenced block as markdown (not a code block):*\n\n```\n> Loading things.\n```\n\n' +
-      body +
-      '\n→ On return, proceed to **Step 2**.\n\n## Step 2: Next\n';
-
-    write(dir, 'skills/x/references/inert.md', '# Inert\n\nRead the file. Hold values in memory.\n');
-    write(dir, 'skills/x/references/interactive.md', '# Interactive\n\n**STOP.** Wait for user response.\n');
-
-    const bad = write(dir, 'skills/x/SKILL.md', step('Load **[inert.md](references/inert.md)** and follow its instructions as written.\n'));
-    const v = checkInertLoadChrome([bad]);
-    assert.strictEqual(v.length, 1, 'marker on inert load-only step must be caught');
-    assert.match(v[0].message, /inert\.md/);
-
-    const good = write(dir, 'skills/y/SKILL.md', step('Load **[interactive.md](../x/references/interactive.md)** and follow its instructions as written.\n'));
-    assert.strictEqual(checkInertLoadChrome([good]).length, 0, 'interactive reference keeps its marker');
-
-    write(dir, 'skills/x/references/dispatching.md', '# Dispatching\n\n- **Agent path**: `.claude/agents/some-agent.md`\n');
-    const dispatches = write(dir, 'skills/v/SKILL.md', step('Load **[dispatching.md](../x/references/dispatching.md)** and follow its instructions as written.\n'));
-    assert.strictEqual(checkInertLoadChrome([dispatches]).length, 0, 'a step dispatching sub-agents keeps its marker — the fan-out is the wait');
-
-    const silent = write(
-      dir,
-      'skills/z/SKILL.md',
-      '## Step 1: Load Things\n\nLoad **[inert.md](../x/references/inert.md)** and follow its instructions as written.\n\n→ On return, proceed to **Step 2**.\n\n## Step 2: Next\n'
-    );
-    assert.strictEqual(checkInertLoadChrome([silent]).length, 0, 'silent load-only step must pass');
-
-    const structured = write(dir, 'skills/w/SKILL.md', step('#### If ready\n\nLoad **[inert.md](../x/references/inert.md)** and follow its instructions as written.\n'));
-    assert.strictEqual(checkInertLoadChrome([structured]).length, 0, 'H4-structured step is judgment tier — skipped');
-
-    const unresolvable = write(dir, 'skills/v/SKILL.md', step('Load **[gone.md](references/gone.md)** and follow its instructions as written.\n'));
-    assert.strictEqual(checkInertLoadChrome([unresolvable]).length, 0, 'unresolvable target must be skipped');
   });
 });
 

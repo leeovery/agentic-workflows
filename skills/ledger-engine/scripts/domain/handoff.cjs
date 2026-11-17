@@ -14,7 +14,9 @@
 // refused, before anything travels, where the entry would refuse it
 // (topic-standing.cjs). A phase lands on its own skill, but a quick-fix's
 // implementation, which lands on the quick-fix's skill, the one that runs
-// it from its opener to its close (19.5.1).
+// it from its opener to its close (19.5.1). The laboratory's takes, after
+// its topic, the experiment the handoff names: the one a spawn worked now
+// just conceived, so its entry asks no pick of it.
 //
 // The epic's menu takes the epic alone: one in progress, or one finish
 // completed, whose menu is its complete variant (18.4.23). The start,
@@ -33,7 +35,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { VALID_WORK_TYPES, WORK_TYPE_PIPELINES, NO_ARGUMENT, PRODUCT, assertLegalName } = require('../kernel/manifest-schema.cjs');
+const { VALID_WORK_TYPES, WORK_TYPE_PIPELINES, NO_ARGUMENT, PRODUCT, EXPERIMENT_ID_PATTERN, isParentExperimentId, assertLegalName } = require('../kernel/manifest-schema.cjs');
 const { loadWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { assertSeeds } = require('./seeds.cjs');
 const { titlecase } = require('./conventions.cjs');
@@ -178,6 +180,25 @@ function phaseTarget(phase, served) {
   };
 }
 
+/**
+ * The laboratory's target: its phase's, the topic followed by the top-level
+ * experiment the handoff names, where it names one.
+ * @param {Target} phase @returns {Target}
+ */
+function labTarget(phase) {
+  return {
+    get usage() { return `${phase.usage.replace(" [<topic>]", "")} [<topic> [<record>]]`; },
+    counts: [2, 3, 4],
+    check: (cwd, [type, unit, topic, record]) => {
+      phase.check(cwd, [type, unit, topic]);
+      if (record !== undefined && !(EXPERIMENT_ID_PATTERN.test(record) && isParentExperimentId(record))) {
+        throw new Error(`the record is a top-level experiment's id, E{n} — got "${record}"`);
+      }
+    },
+    where: (cwd, [type, unit, topic]) => phase.where(cwd, [type, unit, topic]),
+  };
+}
+
 /** @type {Record<string, Target>} */
 const TARGETS = {
   // No unit named is the product's conversation, where every start lands; an
@@ -216,7 +237,7 @@ const TARGETS = {
     },
     where: (_cwd, [unit]) => at('Epic', unit),
   },
-  ...Object.fromEntries([...PHASE_SKILLS].map(([skill, { phase, served }]) => [skill, phaseTarget(phase, served)])),
+  ...Object.fromEntries([...PHASE_SKILLS].map(([skill, { phase, served }]) => [skill, phase === 'experiment' ? labTarget(phaseTarget(phase, served)) : phaseTarget(phase, served)])),
 };
 
 const HANDOFF_TARGETS = Object.keys(TARGETS);

@@ -125,7 +125,7 @@ describe('a started topic renamed goes by its title on every screen that names i
     ['the map a question moved from', () => shown('map', { dotpath: `${UNIT}.space-homing` }), `moved to ${TITLE}`],
     ['the decided screen', () => shown('decided', { dotpath: `${UNIT}.${KEY}`, file: writeState(dir, layout.cache('scratch', 'decided.json'), JSON.stringify({ lines: [], candidates: [] })) }), `Your yes marks ${TITLE} decided.`],
     ['the wait for agents', () => shown('wait-agents', { dotpath: `${UNIT}.${KEY}` }), `Still running on ${TITLE}: 1 deep dive.`],
-    ['the experiment register', () => shown('experiment-register', { dotpath: `${UNIT}.experiment.${KEY}` }), `Experiments — ${TITLE} (1 experiment)`],
+    ['the experiment register', () => shown('experiment-next-gate', { dotpath: `${UNIT}.experiment.${KEY}` }), `Experiments — ${TITLE} (1 experiment)`],
     ['the raise screen', () => raiseScreenOf(dir, /** @type {any} */ (SEAL)), `Fumi · ${TITLE}`],
     ['the epic menu', () => shown('epic-menu', { dotpath: UNIT }), `Close "${TITLE}" as decided`],
     ['enter\'s held question', () => output(dir, ['enter', 'discussion', UNIT, KEY], { env: SESSION }), `"${TITLE}" is open in another session`],
@@ -146,7 +146,6 @@ describe('a screen that writes as it shows, or over the unit changed, goes by th
 
   /** @type {[string, () => string, string][]} */
   const SURFACES = [
-    ['the phase note, beating the topic\'s presence', () => renderSurface(dir, 'phase-note', { dotpath: `${UNIT}.discussion.${KEY}`, verb: 'Resuming' }), `Resuming discussion: ${TITLE}`],
     ['the cancel gate', () => {
       without(dir, 'specification');
       return renderSurface(dir, 'cancel-gate', { dotpath: `${UNIT}.discovery.${KEY}` });

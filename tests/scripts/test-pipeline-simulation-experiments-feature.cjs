@@ -23,7 +23,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  Sim, sessionLog, continueUnit, startMenu, handoffEntry, enterEntry, handoffBy, follow, answerGate, waitAgents, decideTopic, askedOn, DECIDED_ITEMS,
+  Sim, sessionLog, continueUnit, startMenu, handoffEntry, enterEntry, labEntry, handoffBy, follow, answerGate, waitAgents, decideTopic, askedOn, DECIDED_ITEMS,
 } = require('./pipeline-world.cjs');
 
 /**
@@ -35,8 +35,11 @@ function spawnGate(sim, wu, id, pick) {
   return answerGate(sim, 'experiment spawn gate', '--pick', pick).next;
 }
 
-/** The laboratory's leave once its series has nothing left to work (next-experiment.md): the unit's Continue. @param {Sim} sim @param {string} wu */
-const leaveTheLab = (sim, wu) => handoffBy(sim, ['handoff', 'unit', wu]).invoked;
+/** The laboratory's leave, an end's next once its series has nothing left to work: the unit's Continue. @param {Sim} sim @param {string} wu @param {{next: import('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs').Next}} ended */
+function leaveTheLab(sim, wu, { next }) {
+  assert.deepStrictEqual(next, { kind: 'engine', argv: ['handoff', 'unit', wu] });
+  return handoffBy(sim, next.argv).invoked;
+}
 
 /** The feature's topic closed into its spec, and its `next` followed there. @param {Sim} sim @param {string} wu */
 function intoTheSpec(sim, wu) {
@@ -76,20 +79,23 @@ describe('pipeline simulation: experiments, in a feature', () => {
     assert.strictEqual(continueUnit(sim, wu).text, `Invoke \`/ledger-experiment-process feature ${wu} ${wu}\`.`);
     sim.handOver();
 
-    // Two live records put the pick to the user; a back out of it, on a unit
-    // whose Continue would hand straight back on, lands on the start menu —
-    // no position, the state re-read, the unit still there.
-    sim.render(['experiment-pick', `${wu}.experiment.${wu}`], { expect: 'content' });
+    // Two live records put the entry's pick to the person; a back out of it,
+    // on a unit whose Continue would hand straight back on, lands on the
+    // start menu — no position, the state re-read, the unit still there.
+    assert.strictEqual(sim.run(['enter', 'experiment', wu, wu]).entered, false);
     assert.strictEqual(follow(sim, answerGate(sim, 'experiment pick', '--pick', 'b').next).line, '→ Start');
     assert.ok(startMenu(sim).some(({ next }) => next?.kind === 'engine' && next.argv.join(' ') === `handoff unit ${wu}`),
       'the start menu lists the unit the laboratory was entered from');
 
-    // One record ended and the other still live, the gate offering the next
-    // experiment leads its menu row to the same start menu.
+    // One record picked and ended and the other still live, its end's gate
+    // offering the next experiment leads its menu row to the same start
+    // menu.
     continueUnit(sim, wu);
     sim.handOver();
-    sim.run(['experiment', 'abandon', wu, wu, 'E1', '--reason', 'covered by jank-budget']);
-    sim.render(['experiment-next-gate', `${wu}.experiment.${wu}`], { expect: 'content' });
+    sim.run(['enter', 'experiment', wu, wu]);
+    assert.strictEqual(sim.run(answerGate(sim, 'experiment pick', '--pick', 'E1').next.argv).entered, true);
+    const ended = sim.run(['experiment', 'abandon', wu, wu, 'E1', '--reason', 'covered by jank-budget']);
+    sim.render(ended.next.argv.slice(1), { expect: 'content' });
     assert.deepStrictEqual(answerGate(sim, 'experiment next gate', '--pick', 'm').next, { kind: 'handoff', skill: 'ledger', args: [] });
   });
 
@@ -116,31 +122,32 @@ describe('pipeline simulation: experiments, in a feature', () => {
     // fresh context.
     waitAgents(sim, wu, wu);
     follow(sim, spawnGate(sim, wu, 'E1', 'y'));
-    handoffEntry(sim, wu, 'experiment', wu);
+    assert.strictEqual(labEntry(sim, wu, wu, 'E1'), 'E1');
     sim.run(['experiment', 'advance', wu, wu, 'E1']);
     sim.run(['experiment', 'approve', wu, wu, 'E1']);
     sim.run(['experiment', 'advance', wu, wu, 'E1']);
     sim.run(['experiment', 'runs', wu, wu, 'E1', '--file', sim.write(`.ledger/.cache/${wu}/experiment/${wu}/E1-runs.json`,
       JSON.stringify([{ condition: 'a full scroll', of: 3, values: [16.1, 16.4, 15.9], unit: 'ms' }]))]);
-    sim.run(['experiment', 'conclude', wu, wu, 'E1', '--verdict', 'budget holds at 60fps']);
-    sim.run(['commit', wu, '-m', `experiment(${wu}): conclude E1`, '--topic', `experiment/${wu}`]);
+    const concluded = sim.run(['experiment', 'conclude', wu, wu, 'E1', '--verdict', 'budget holds at 60fps']);
 
-    // The series has nothing left to work: the laboratory's leave is the
-    // unit's Continue, back into the conversation.
-    assert.strictEqual(leaveTheLab(sim, wu), `/ledger-discussion-process feature ${wu}`);
+    // The series has nothing left to work: the conclusion's next is the
+    // laboratory's leave, the unit's Continue, back into the conversation.
+    assert.strictEqual(leaveTheLab(sim, wu, concluded), `/ledger-discussion-process feature ${wu}`);
     handoffEntry(sim, wu, 'discussion', wu);
 
-    // A second spawn holds the conversation again; the record's abandon is
-    // the release — the wait closes and the series settles over its terminal
-    // records. A feature's topic is its work unit, so the topic-level cancel
-    // is the epic's; the work-unit cancel abandons a feature whole.
+    // A second spawn holds the conversation again; the record's abandon, the
+    // conversation's own for one no one will run, is the release — the wait
+    // closes and the series settles over its terminal records — and carries
+    // the conversation on, the laboratory's way out no business of its. A
+    // feature's topic is its work unit, so the topic-level cancel is the
+    // epic's; the work-unit cancel abandons a feature whole.
     const latency = askedOn(sim, wu, wu, 'What input latency do we hold to?');
     sim.run(['experiment', 'create', wu, wu, '--slug', 'input-latency', '--from', 'discussion', '--question', latency,
       '--problem', sim.write(`.ledger/.cache/${wu}/discussion/${wu}/problem.md`, '# Problem — input latency\n')]);
     sim.refuses(['ledger', 'decide', `${wu}.discussion.${wu}`, '--answers', latency], /is measured by experiment E2, still running/, null,
       JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'What 60fps leaves.', why: 'A guess.' }));
     const dropped = sim.run(['experiment', 'abandon', wu, wu, 'E2', '--reason', 'settled by E1']);
-    assert.deepStrictEqual(dropped.released_waits, [{ phase: 'discussion', released: ['E2'], remaining: [] }]);
+    assert.deepStrictEqual([dropped.released_waits, dropped.next], [[{ phase: 'discussion', released: ['E2'], remaining: [] }], { kind: 'continue' }]);
     assert.strictEqual(sim.manifest(wu).phases.experiment.items[wu].experiments.E2.reason, 'settled by E1');
     assert.strictEqual(sim.manifest(wu).phases.experiment.items[wu].status, 'completed',
       'every record terminal — the derived status settles');
@@ -177,7 +184,7 @@ describe('pipeline simulation: experiments, in a feature', () => {
     // as a message; raised and answered there, the topic closes into its
     // spec.
     follow(sim, spawnGate(sim, wu, 'E1', 'y'));
-    handoffEntry(sim, wu, 'experiment', wu);
+    labEntry(sim, wu, wu, 'E1');
     for (const step of ['advance', 'approve', 'advance']) sim.run(['experiment', step, wu, wu, 'E1']);
     ledger(['decide', at, '--answers', budget], { by: 'person', who_moved_whom: 'none', text: 'Under a second.', why: 'It feels instant.' });
     for (const item of DECIDED_ITEMS) sim.run(['checklist', 'done', 'decided', wu, wu, item]);
@@ -186,7 +193,6 @@ describe('pipeline simulation: experiments, in a feature', () => {
     const concluded = sim.run(['experiment', 'conclude', wu, wu, 'E1', '--verdict', 'under a second holds']);
     assert.strictEqual(concluded.report_sent.topic, wu, 'the question closed where it was asked, so the report goes back there');
     assert.ok(fs.existsSync(concluded.report_sent.message_path), 'the report waits in the topic\'s mailbox');
-    sim.run(['commit', wu, '-m', `experiment(${wu}): conclude E1`, '--topic', `experiment/${wu}`]);
     const report = path.basename(concluded.report_sent.message_path, '.md');
     const raised = ledger(['ask', at], { by: 'claude', who_moved_whom: 'none', text: 'Does the report change the budget?' });
     sim.run(['topic', 'answered', wu, wu, report, '--entry', raised]);

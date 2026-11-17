@@ -433,13 +433,14 @@ function applySessionLabel(cwd, name, phase, topic) {
  * Arrive at a place — `session label`'s, and the entry's (enter.cjs): a
  * place this project lacks refused before anything is labelled or recorded,
  * then the session labelled and the conversation's position recorded,
- * labels on or off. Answers the label's own answer.
- * @param {string} cwd @param {string} name @param {string} [phase] @param {string} [topic]
+ * labels on or off, with the laboratory's experiment, `record`, where its
+ * entry named one. Answers the label's own answer.
+ * @param {string} cwd @param {string} name @param {string} [phase] @param {string} [topic] @param {string} [record]
  */
-function arriveAt(cwd, name, phase, topic) {
+function arriveAt(cwd, name, phase, topic, record) {
   assertPlace(cwd, name, phase, topic);
   const labelled = applySessionLabel(cwd, name, phase, topic);
-  recordPosition(cwd, name, phase, topic);
+  recordPosition(cwd, name, phase, topic, record);
   return labelled;
 }
 

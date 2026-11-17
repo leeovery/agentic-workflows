@@ -204,11 +204,13 @@ function readLeft(sessionId) {
 
 /**
  * Where a conversation is working: a work unit, or a project identity; its
- * phase and topic; and, in implementation, every task in flight there.
+ * phase and topic; in the laboratory, the experiment its entry named; and,
+ * in implementation, every task in flight there.
  * @typedef {object} Position
  * @property {string} name
  * @property {string} [phase]
  * @property {string} [topic]
+ * @property {string} [record]
  * @property {InFlight[]} [tasks]
  */
 
@@ -248,12 +250,13 @@ function storedPosition(sessionId) {
     return null;
   }
   if (stored === null || typeof stored !== 'object' || typeof stored.name !== 'string') return null;
-  const { name, phase, topic, tasks } = stored;
+  const { name, phase, topic, record, tasks } = stored;
   const inFlight = Array.isArray(tasks) ? tasks.map(inFlightOf).filter(/** @returns {t is InFlight} */ (t) => t !== null) : [];
   return {
     name,
     ...(typeof phase === 'string' ? { phase } : {}),
     ...(typeof topic === 'string' ? { topic } : {}),
+    ...(typeof record === 'string' ? { record } : {}),
     ...(inFlight.length > 0 ? { tasks: inFlight } : {}),
   };
 }

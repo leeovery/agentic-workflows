@@ -270,7 +270,7 @@ describe('pipeline simulation: workunit', () => {
     assert.deepStrictEqual(m.phases.discussion.items[feat].awaiting_experiments, ['E1'], 'the evidence wait rides the moved discussion item');
     assert.ok(fs.existsSync(path.join(sim.dir, '.ledger', epic, 'topics', feat, 'experiments', 'E1-cutover-cost', 'problem.md')),
       'the record directory moved under the topic name');
-    assert.match(sim.render(['experiment-register', `${epic}.experiment.${feat}`], { expect: 'content' }),
+    assert.match(sim.render(['experiment-next-gate', `${epic}.experiment.${feat}`], { expect: 'content' }),
       /E1 cutover-cost/, 'the register renders the moved series at the epic address');
 
     // The feature's lines are the epic topic's: its decision current there,

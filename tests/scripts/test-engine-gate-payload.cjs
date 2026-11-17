@@ -78,13 +78,8 @@ const CANCEL = ['render', 'cancel-gate', 'pay.discovery.data-export'];
 /** The epic menu over the held epic. */
 const EPIC_MENU = ['render', 'epic-menu', 'v1'];
 
-/** A bugfix's investigation in progress. @param {string} dir */
-function seedInvestigation(dir) {
-  createManifest(dir, 'auth', { work_type: 'bugfix', phases: { investigation: { items: { auth: { status: 'in-progress' } } } } });
-}
-
-/** The phase note over that investigation — a display, no menu. */
-const PHASE_NOTE = ['render', 'phase-note', 'auth.investigation.auth', '--verb', 'Resuming'];
+/** The banner — a display, no menu. */
+const BANNER = ['render', 'banner'];
 
 /**
  * A topic's session held by a live peer, last active four minutes ago.
@@ -143,10 +138,9 @@ describe('gate payload — a render surface', () => {
   afterEach(() => { cleanupFixture(dir); });
 
   it('a display-only surface carries no gate', () => {
-    seedInvestigation(dir);
-    const out = output(dir, PHASE_NOTE, { env: ANNOUNCED });
+    const out = output(dir, BANNER, { env: ANNOUNCED });
 
-    assert.match(out, /^=== DISPLAY: phase note/);
+    assert.match(out, /^=== DISPLAY: banner/);
     assert.strictEqual(gateOf(out), null);
   });
 
@@ -177,10 +171,9 @@ describe('gate payload — a render surface', () => {
 
   it('each render starts from nothing — neither a menu before it nor a menu-less one leaks rows in', () => {
     seedCancel(dir);
-    seedInvestigation(dir);
     const first = output(dir, CANCEL, { env: ANNOUNCED });
     output(dir, ['render', 'walkthrough-offer'], { env: ANNOUNCED });
-    output(dir, PHASE_NOTE, { env: ANNOUNCED });
+    output(dir, BANNER, { env: ANNOUNCED });
     const last = output(dir, CANCEL, { env: ANNOUNCED });
 
     assert.deepStrictEqual(gateOf(last), gateOf(first));

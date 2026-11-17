@@ -9,9 +9,8 @@
 // branching renders inside the surface: the caller never chooses between
 // gated and auto output.
 //
-// Surfaces read; they never write a state commit takes, and write four
-// things beside. `phase-note` beats the addressed topic, since announcing a
-// phase's start is the session taking it. `map` moves the last-looked mark as
+// Surfaces read; they never write a state commit takes, and write three
+// things beside. `map` moves the last-looked mark as
 // it draws, since the map shown in the conversation is the person looking
 // (5.8.14). `decided --file` stages Claude's payload in the topic's cache,
 // what the gate's yes lands (decided.cjs); `start-this-work --file` and
@@ -24,7 +23,7 @@ const fs = require('fs');
 const path = require('path');
 const { loadManifest, loadProjectManifest } = require('./reads.cjs');
 const { titlecase } = require('./conventions.cjs');
-const { section, dataSection, CONTINUE_INSTRUCTION, menu, cmdOption, promptOption, MENU_INSTRUCTION } = require('./projections/surfaces.cjs');
+const { section, dataSection, menu, cmdOption, promptOption, MENU_INSTRUCTION } = require('./projections/surfaces.cjs');
 const { quickFixBranch } = require('./landing-names.cjs');
 const { mayHoldOpen } = require('./landing.cjs');
 const { topicReceipt, importReprompt } = require('./projections/transactions.cjs');
@@ -42,19 +41,17 @@ const { pickRows } = require('./boot-route.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { githubSquashNested } = require('./github-setup.cjs');
 const { multiplexerHere } = require('./session-label.cjs');
-const { beatQuietly } = require('./presence.cjs');
 const { roadmapState, hasRoadmapNode } = require('./roadmap.cjs');
 const { putBackBy, stillToAsk, thenArgs, ontoMenu } = require('./topic-leave.cjs');
 const { roadmapSurface, roadmapHarvestSurface } = require('./projections/roadmap.cjs');
-const { experimentRegister, experimentApprovalGate, experimentPick, experimentNextGate, experimentSpawnGate } = require('./projections/experiment.cjs');
-const { handedSession } = require('../kernel/process.cjs');
-const { lastShown } = require('./gate.cjs');
-const { compareExperimentIds, isParentExperimentId, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, TOPIC_PHASES, assertLegalName } = require('../kernel/manifest-schema.cjs');
+const { experimentRegister, experimentApprovalGate, experimentNextGate, experimentSpawnGate } = require('./projections/experiment.cjs');
+const { seriesRows, liveRecords } = require('./experiment-entry.cjs');
+const { EXPERIMENT_SPAWN_PHASES, TOPIC_PHASES, assertLegalName } = require('../kernel/manifest-schema.cjs');
 const {
   computeTopicLifecycle, awaitedExperiments, itemOf,
   UNIT_PHASES, discoveryUnitExists, cancelPlan, unitOpenRecords,
   postponePlan, postponeTarget, openExperiments,
-  topicTitle, topicTitles, itemTitle, goesBy, dismissedNames, topicKey, noTopicRefusal, briefFile, buildDiscoveryMap, quickFixBuild, fixesBegun,
+  topicTitle, topicTitles, goesBy, dismissedNames, topicKey, noTopicRefusal, briefFile, buildDiscoveryMap, quickFixBuild, fixesBegun,
 } = require('./derivations.cjs');
 const { sendReportOf } = require('./mail.cjs');
 const { mapSurface } = require('./topic-map.cjs');
@@ -182,20 +179,19 @@ function discoveryMapSurface(cwd, { dotpath }) {
 }
 
 // ---------------------------------------------------------------------------
-// The experiment surfaces — the laboratory's gates and displays over one
-// topic's series (projections/experiment.cjs renders; the handlers resolve
-// the item and refuse states the calling prose never reaches).
-// Address-backed: the series lives on the manifest (`experiments.{id}`
-// records), never in a hand-maintained file.
+// The experiment surfaces — the laboratory's gates over one topic's series
+// (projections/experiment.cjs renders; the handlers resolve the item and
+// refuse states the calling prose never reaches). Address-backed: the
+// series lives on the manifest (`experiments.{id}` records), never in a
+// hand-maintained file. The pick is the laboratory's entry's
+// (experiment-entry.cjs).
 // ---------------------------------------------------------------------------
 
 /**
- * Resolve an experiment address to its series rows in id order — parents by
- * number, each parent's sub-experiments beneath it. A loud error when the
- * phase is wrong or the topic holds no series — and where its laboratory
- * left for the menu leads (topic-leave.cjs).
+ * Resolve an experiment address to its series rows in register order. A
+ * loud error when the phase is wrong or the topic holds no series.
  * @param {string} cwd @param {string} dotpath @param {string} surface
- * @returns {{workUnit: string, topic: string, title: string, rows: import('./projections/experiment.cjs').SeriesRow[], leave: Next}}
+ * @returns {{workUnit: string, topic: string, manifest: Record<string, any>, rows: import('./projections/experiment.cjs').SeriesRow[]}}
  */
 function resolveExperiment(cwd, dotpath, surface) {
   const { workUnit, phase, topic, manifest } = resolveAddress(cwd, dotpath, surface);
@@ -206,26 +202,7 @@ function resolveExperiment(cwd, dotpath, surface) {
   if (!item || typeof item !== 'object') {
     throw new Error(`render ${surface}: no experiment series for "${topic}" in "${workUnit}"`);
   }
-  const experiments = (item.experiments && typeof item.experiments === 'object') ? item.experiments : {};
-  const rows = Object.entries(experiments)
-    .map(([id, r]) => ({ id, ...(r && typeof r === 'object' ? r : {}) }))
-    .sort((a, b) => compareExperimentIds(a.id, b.id));
-  return { workUnit, topic, title: topicTitle(manifest, topic), rows, leave: ontoMenu(workUnit, manifest.work_type) };
-}
-
-/** The series' live top-level records, id order. @param {import('./projections/experiment.cjs').SeriesRow[]} rows */
-function liveExperiments(rows) {
-  return rows.filter((r) => isParentExperimentId(r.id) && !EXPERIMENT_TERMINAL_STATUSES.includes(r.status));
-}
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string}} args
- * @returns {string}
- */
-function experimentRegisterSurface(cwd, { dotpath }) {
-  const { title, rows } = resolveExperiment(cwd, dotpath, 'experiment-register');
-  return experimentRegister(title, rows);
+  return { workUnit, topic, manifest, rows: seriesRows(manifest, topic) };
 }
 
 /**
@@ -234,62 +211,36 @@ function experimentRegisterSurface(cwd, { dotpath }) {
  * @returns {string}
  */
 function experimentApprovalGateSurface(cwd, { dotpath, id }) {
-  const { topic, rows } = resolveExperiment(cwd, dotpath, 'experiment-approval-gate');
+  const { workUnit, topic, rows } = resolveExperiment(cwd, dotpath, 'experiment-approval-gate');
   if (!isFilled(id)) throw new Error('render experiment-approval-gate: --id is required (E1, E1.1, …)');
   const record = rows.find((r) => r.id === id);
   if (!record) throw new Error(`render experiment-approval-gate: no experiment ${id} in "${topic}"'s series`);
   if (record.status !== 'designed') {
     throw new Error(`render experiment-approval-gate: ${id} is "${record.status}", not designed — the briefing confirm follows the written design`);
   }
-  return experimentApprovalGate(/** @type {string} */ (id));
+  return experimentApprovalGate({ unit: workUnit, topic, id: /** @type {string} */ (id) });
 }
 
 /**
- * The record picker — the several-live-records path, rendered directly
- * beneath the register it picks from. Refuses a series with no live
- * top-level record — the pick has nothing to offer.
- * @param {string} cwd
- * @param {{dotpath: string}} args
- * @returns {string}
- */
-function experimentPickSurface(cwd, { dotpath }) {
-  const { topic, rows, leave } = resolveExperiment(cwd, dotpath, 'experiment-pick');
-  const live = liveExperiments(rows);
-  if (live.length === 0) {
-    throw new Error(`render experiment-pick: "${topic}"'s series holds no live experiments — there is nothing to pick`);
-  }
-  return experimentPick(live, pickerBack(dotpath, leave));
-}
-
-/**
- * Where the record picker's back leads: the surface before it — the next
- * experiment's gate where the conversation came from it, the picker drawn
- * again keeping its back — else the laboratory left for the menu.
- * @param {string} dotpath @param {Next} leave @returns {Next}
- */
-function pickerBack(dotpath, leave) {
-  const session = handedSession();
-  const before = session === null ? null : lastShown(session);
-  if (before?.gate === 'experiment pick') return before.options.find((o) => o.key === 'b')?.next ?? leave;
-  return before?.gate === 'experiment next gate' ? { kind: 'engine', argv: ['render', 'experiment-next-gate', dotpath] } : leave;
-}
-
-/**
- * The return leg's gate — fetched after a terminal record transition while
- * live records remain: work the next experiment in this session, or back to
- * the menu. Refuses when no live top-level record exists — the calling
- * prose takes the laboratory's leave then, never this gate.
+ * The return leg's gate — fetched after a top-level record ended while live
+ * records remain, under the register: work the next experiment in this
+ * session, its yes the laboratory entered again, or back to the menu.
+ * Refuses when no live top-level record exists — the laboratory's leave
+ * follows then, never this gate.
  * @param {string} cwd
  * @param {{dotpath: string}} args
  * @returns {string}
  */
 function experimentNextGateSurface(cwd, { dotpath }) {
-  const { topic, rows, leave } = resolveExperiment(cwd, dotpath, 'experiment-next-gate');
-  const live = liveExperiments(rows);
+  const { workUnit, topic, manifest, rows } = resolveExperiment(cwd, dotpath, 'experiment-next-gate');
+  const live = liveRecords(rows);
   if (live.length === 0) {
     throw new Error(`render experiment-next-gate: "${topic}"'s series holds no live experiments — the laboratory's leave follows a finished series`);
   }
-  return experimentNextGate(live, leave);
+  return experimentRegister(topicTitle(manifest, topic), rows) + experimentNextGate(live, {
+    next: { kind: 'engine', argv: ['enter', 'experiment', workUnit, topic] },
+    leave: ontoMenu(workUnit, manifest.work_type),
+  });
 }
 
 /**
@@ -551,29 +502,6 @@ function postponeGate(cwd, { dotpath, horizon }) {
 }
 
 // ---------------------------------------------------------------------------
-// phase-note — the one-line status notes a phase's start renders (Resuming /
-// Starting / Reopening …). Address-backed; the verb is the caller's word, the
-// noun defaults to the phase segment. Only ever rendered where a phase
-// starts, for its own topic, so it beats the addressed topic: announcing
-// the start is the same act as claiming it.
-// ---------------------------------------------------------------------------
-
-/**
- * @param {string} cwd
- * @param {{dotpath: string, verb?: string, noun?: string}} args
- * @returns {string}
- */
-function phaseNote(cwd, { dotpath, verb, noun }) {
-  const { workUnit, phase, topic, manifest } = resolveAddress(cwd, dotpath, 'phase-note');
-  if (!isFilled(verb)) throw new Error('render phase-note: --verb is required (e.g. Resuming, Reopening, Starting)');
-  beatQuietly(cwd, workUnit, phase, topic);
-  return section(
-    'DISPLAY: phase note',
-    CONTINUE_INSTRUCTION,
-    `${verb} ${isFilled(noun) ? noun : phase}: ${itemTitle(topicTitles(manifest), phase, topic)}`,
-  );
-}
-
 // import-reprompt — the re-prompt after a landing refused on `missing_imports`,
 // a learned gate (8.8.12). No address: the refusal names paths, and the work
 // unit it was aimed at may not exist yet (the work-type commit's own landing
@@ -943,12 +871,9 @@ function knowledgeAskSurface(_cwd, { provider }) {
 /** The catalogue: surface name → handler. @type {Record<string, (cwd: string, args: {dotpath: string} & Record<string, string|undefined>, lists: Record<string, string[]>) => string>} */
 const SURFACES = {
   'backlog-gate': backlogGate,
-  'experiment-register': experimentRegisterSurface,
   'experiment-approval-gate': experimentApprovalGateSurface,
-  'experiment-pick': experimentPickSurface,
   'experiment-next-gate': experimentNextGateSurface,
   'experiment-spawn-gate': experimentSpawnGateSurface,
-  'phase-note': phaseNote,
   'cancel-gate': cancelGate,
   'postpone-gate': postponeGate,
   'import-reprompt': importRepromptSurface,
