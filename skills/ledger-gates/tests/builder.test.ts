@@ -9,7 +9,7 @@ tier('user')
  */
 const HOME = '/Users/person'
 
-/** The workflows' system config directory where the process names none. */
+/** Ledger's system config directory where the process names none. */
 const DEFAULT_CONFIG = `${HOME}/.config/ledger`
 
 /** The session's project. */

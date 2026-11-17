@@ -61,7 +61,7 @@ describe('pipeline simulation: assets', () => {
     const productNotes = '.product/assets/legacy/notes.md';
     for (const file of ['plan.md', 'research/sketch.png', 'scratch.md']) sim.write(`.ledger/${legacy}/${file}`, `${file}\n`);
     sim.write(`.ledger/${productNotes}`, 'notes\n');
-    sim.run(['commit', '--workflows', '-m', 'the migration']);
+    sim.run(['commit', '--whole', '-m', 'the migration']);
 
     const row = startMenu(sim).find(({ next }) => next?.kind === 'engine' && next.argv.join(' ') === 'asset legacy');
     assert.deepStrictEqual(startPick(sim, row.key).places, [

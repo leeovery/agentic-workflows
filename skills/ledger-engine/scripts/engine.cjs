@@ -375,7 +375,7 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   commit --state -m <message>
   commit --inbox -m <message>
   commit --product -m <message>
-  commit --workflows -m <message>
+  commit --whole -m <message>
   commit --migrations -m <message>
   code log    --subject <prefix>
   code diff   [--subject <prefix>]
@@ -1564,7 +1564,7 @@ function runMeasures(call, argv) {
 }
 
 // ---------------------------------------------------------------------------
-// board — the workflows board's view model, read for the gate mod's pane and
+// board — the board's view model, read for the gate mod's pane and
 // banner (domain/board.cjs). A read: it writes nothing, the conversation's
 // mark among it.
 // ---------------------------------------------------------------------------
@@ -2052,7 +2052,7 @@ function runStateMerge(call, argv) {
 // (`--discovery`). The code tree's commit on the branch checked out:
 // declared code paths (`--paths`), for the task in flight (`--task`). One
 // form makes one commit on each side: the migration review (`--migrations`),
-// the state and the files the workflows own in the code tree. A clean scope
+// the state and the files Ledger owns in the code tree. A clean scope
 // is fine: {committed: null}, and for `--paths`, whose commits are listed per
 // repo, {committed: []}.
 // ---------------------------------------------------------------------------
@@ -2105,7 +2105,7 @@ function topicStatus(cwd, wu, phase, topic) {
  * Validate one declared code path. Code has no layout to derive a pathspec
  * from, so the paths are Claude's to name — each taken literally, so a
  * routing file (`app/[id]/page.tsx`) is that file and never a pattern — and
- * every one is checked before anything is staged: never a workflow artifact,
+ * every one is checked before anything is staged: never one of Ledger's artifacts,
  * which has a derived scope of its own, inside the code root, and
  * committable in the repo that owns it.
  * @param {string} cwd @param {import('./kernel/repos.cjs').Repo[]} repos @param {string} given
@@ -2115,7 +2115,7 @@ function codePathSpec(cwd, repos, given) {
   if (given === '' || given === '-') throw new Error(`commit --paths: "${given}" is not a path`);
   const abs = path.resolve(cwd, given);
   if (insideState(cwd, abs)) {
-    throw new Error(`commit --paths: "${given}" is in the workflows' state — it commits by its own scope (--topic/--discovery)`);
+    throw new Error(`commit --paths: "${given}" is in Ledger's state — it commits by its own scope (--topic/--discovery)`);
   }
   const rel = path.relative(codeRoot(cwd), abs);
   if (rel === '' || rel.startsWith('..') || path.isAbsolute(rel)) {
@@ -2254,7 +2254,7 @@ function commitTaskPaths(cwd, paths, message, unit, given) {
   return codeCommitted(repos, committed, { task: taskId(ref), checks, ...(warnings.length > 0 ? { warnings } : {}) });
 }
 
-const COMMIT_USAGE = 'Usage: engine commit <work-unit> -m <message> [--discovery | --state | --topic <phase>/<topic> [--sweep]] | engine commit --paths <file> … -m <message> --task <work-unit> <N.M> | engine commit --state -m <message> | engine commit --inbox -m <message> | engine commit --product -m <message> | engine commit --workflows -m <message> | engine commit --migrations -m <message>';
+const COMMIT_USAGE = 'Usage: engine commit <work-unit> -m <message> [--discovery | --state | --topic <phase>/<topic> [--sweep]] | engine commit --paths <file> … -m <message> --task <work-unit> <N.M> | engine commit --state -m <message> | engine commit --inbox -m <message> | engine commit --product -m <message> | engine commit --whole -m <message> | engine commit --migrations -m <message>';
 
 /** @param {Call} call @param {string[]} argv */
 function runCommit(call, argv) {
@@ -2268,7 +2268,7 @@ function runCommit(call, argv) {
     let discovery = false;
     let stateScope = false;
     let inbox = false;
-    let workflows = false;
+    let whole = false;
     let migrationsScope = false;
     let productScope = false;
     let sweep = false;
@@ -2283,7 +2283,7 @@ function runCommit(call, argv) {
       else if (a === '--discovery') discovery = true;
       else if (a === '--state') stateScope = true;
       else if (a === '--inbox') inbox = true;
-      else if (a === '--workflows') workflows = true;
+      else if (a === '--whole') whole = true;
       else if (a === '--migrations') migrationsScope = true;
       else if (a === '--product') productScope = true;
       else if (a.startsWith('-')) throw new Error(`unknown flag "${a}"`);
@@ -2297,7 +2297,7 @@ function runCommit(call, argv) {
       // Code commits are the one scope no layout derives (P7): declared,
       // validated, confined, and answered with the residual dirt.
       if (!message || files.length === 0 || topicSpec !== null
-          || discovery || stateScope || inbox || workflows || migrationsScope || productScope || sweep || workUnit !== null) {
+          || discovery || stateScope || inbox || whole || migrationsScope || productScope || sweep || workUnit !== null) {
         throw new Error(COMMIT_USAGE);
       }
       const [unit, given] = taskSpec;
@@ -2310,7 +2310,7 @@ function runCommit(call, argv) {
     // unit's files only the engine writes and the project's, or the
     // project's and its own `.state` — the retry a verb's pending note names.
     const globalState = stateScope && workUnit === null;
-    const scopeCount = [inbox, workflows, migrationsScope, productScope, globalState, workUnit !== null].filter(Boolean).length;
+    const scopeCount = [inbox, whole, migrationsScope, productScope, globalState, workUnit !== null].filter(Boolean).length;
     const workUnitFlags = [topicSpec !== null, discovery, stateScope && workUnit !== null].filter(Boolean).length;
     if (!message || scopeCount !== 1 || taskSpec.length > 0 || (workUnitFlags > 0 && workUnit === null) ||
         workUnitFlags > 1 || topicSpec === '' || topicSpec === undefined ||
@@ -2323,11 +2323,11 @@ function runCommit(call, argv) {
       // written from inside whatever session happened to need it.
       respond(call, stateCommitted(commitStateScoped(cwd, '.state', message, { owned: [null] })));
       return;
-    } else if (workflows) {
+    } else if (whole) {
       scope = '.';
     } else if (migrationsScope) {
-      // The reviewed migration commit: the whole state, and every path the
-      // workflows own in the code tree taken as the index records it — a
+      // The reviewed migration commit: the whole state, and every path
+      // Ledger owns in the code tree taken as the index records it — a
       // migration may stage a removal there that the working tree cannot
       // show. One commit on each side that changed; the reshape's two while
       // it finishes (domain/migration-commit.cjs).
@@ -2773,15 +2773,15 @@ function runCli(call, argv) {
 
 // The commands Claude Code's own hooks run as any conversation in the project
 // ends or resumes, or before it writes a file, dispatches an agent or runs a
-// shell command, whether it ran the workflows or not.
+// shell command, whether it ran Ledger or not.
 const HOOK_TARGETS = ['presence cleanup', 'session cleanup', 'session resume', 'conversation end', ...GUARD_VERBS];
 
 // The commands the gate mod runs for whatever conversation it draws, whether
-// that one runs the workflows or not.
+// that one runs Ledger or not.
 const MOD_READS = ['board'];
 
 // The capture line, which a capture skill runs from a conversation in any
-// project, one that runs the workflows or not (18.6.2).
+// project, one that runs Ledger or not (18.6.2).
 const CAPTURE = 'inbox capture';
 
 /** Whether a command marks the conversation that ran it. @param {string[]} argv */
@@ -2791,8 +2791,8 @@ const marks = (argv) => ![...HOOK_TARGETS, CAPTURE].includes(argv.slice(0, 2).jo
  * One command against a bound call, answering its exit code — later, for
  * the argv `ANSWERS_LATER` says waits. One boot's stamp does not let through
  * is refused before anything runs, and marks nothing. Whatever the exit of
- * any other, a command the conversation ran marks it as one that runs the
- * workflows — but a hook's, the mod's or the capture line's, run for any
+ * any other, a command the conversation ran marks it as one that runs
+ * Ledger — but a hook's, the mod's or the capture line's, run for any
  * conversation; one that answered records the gate its MENU stated as the
  * gate the conversation was shown, where a failed one showed none. Both
  * after the command, which may take the folder both live in: boot's tidy-up

@@ -4,7 +4,7 @@
 //
 // migrate.cjs — the migration orchestrator.
 //
-// Keeps workflow files in sync with the current system design. Discovers every
+// Keeps Ledger's files in sync with the current system design. Discovers every
 // migration in scripts/migrations/ — legacy `*.sh`, modern `*.cjs`, and
 // directives, `*.md` — sorts them into one strict numeric-prefix ordering,
 // and runs each exactly once — a project stuck at 020 catches up through the

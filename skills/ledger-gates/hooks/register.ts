@@ -1,5 +1,5 @@
 /**
- * ledger-gates — the agentic-workflows engine's gates drawn above the
+ * ledger-gates — Ledger's gates drawn above the
  * prompt instead of printed by the model.
  *
  * The engine states each gate as data beside the menu it composed. This
@@ -7,7 +7,7 @@
  * Bash result that carried it, cuts the menu out of what the model reads, and
  * draws the rows in the band once the model's turn is over. A press picks its
  * row's answer into the prompt box; a second press on that row sends it as the
- * next message, which the workflows' prose reads as the answer, or while
+ * next message, which Ledger's prose reads as the answer, or while
  * Claude works on anything else holds it until Claude finishes. In a session
  * that announced, what the band shows is kept in the conversation's folder
  * across a restart, so a conversation resumed where nothing has happened
@@ -17,26 +17,26 @@
  * so where the module never loads, or a cut throws or overruns, the model
  * reads the text menu the engine wrote.
  *
- * The module carries the workflows' handoffs too: a move into work the engine
+ * The module carries Ledger's handoffs too: a move into work the engine
  * names arms off the Bash result that carried it, cut out of what the model
  * reads, and once the turn ends the module clears the conversation, carries
  * the engine's boot stamp into the new one and sends the continuation there,
  * an Esc on that turn carrying nothing.
  *
- * The module also sets Claude Code's harness for the workflows: every session
+ * The module also sets Claude Code's harness for Ledger: every session
  * gets the SendUserMessage tool, kept behind ToolSearch, and a conversation
- * the engine has marked as running the workflows goes without Claude's
+ * the engine has marked as running Ledger goes without Claude's
  * thinking summarised as output and without the nudge to say what it is
  * doing, the person's own values of both put back as it ends. A conversation
  * the engine has not marked keeps them untouched.
  *
- * It registers the rest of what the mod does in a workflow conversation as
+ * It registers the rest of what the mod does in a Ledger conversation as
  * well: the spinner saying the phase (`spinner.ts`), the compaction — Claude
  * Code's own, the engine's note appended last (`compaction.ts`) — each
  * task's builder and reviewers recorded as they are dispatched
- * (`builder.ts`), and the workflows board, its pane beside the conversation
+ * (`builder.ts`), and the board, its pane beside the conversation
  * and its banner on a line of its own beneath the band's rows
- * (`workflows-board.ts`), where the questions waiting are queued to discuss
+ * (`ledger-board.ts`), where the questions waiting are queued to discuss
  * with Claude (`discuss.ts`).
  *
  * All of it happens in Claude Code's terminal app and the Desktop app's Code
@@ -66,7 +66,7 @@ import {
 } from './layout.ts'
 import { spinner } from './spinner.ts'
 import { isAnnounced, isBandAlone } from './surface.ts'
-import { workflowsBoard } from './workflows-board.ts'
+import { ledgerBoard } from './ledger-board.ts'
 
 /** The payload's marker and the menu it sits directly above. */
 const GATE_MARKER = '=== GATE ('
@@ -598,7 +598,7 @@ const inFolder = (folder: string, file: string) => `${folder}/${file}`
 
 /**
  * The folder of the conversation `id` where the engine has marked it as one
- * that runs the workflows; null for any other conversation.
+ * that runs Ledger; null for any other conversation.
  */
 async function markedFolder(
   $: EngineInterface,
@@ -614,7 +614,7 @@ async function markedFolder(
 /**
  * Keeps what the band shows for the conversation at `place` — the gate, or
  * nothing — in its folder, in a session that announced and a conversation
- * that runs the workflows: any other conversation gets no folder.
+ * that runs Ledger: any other conversation gets no folder.
  */
 async function keep($: EngineInterface, place: Place | null, gate: Gate | null) {
   if (place === null || !(await isAnnounced($))) {
@@ -651,7 +651,7 @@ type Replaced = {
 }
 
 /**
- * Puts Claude Code's harness on for a workflow session, one whose
+ * Puts Claude Code's harness on for a Ledger session, one whose
  * conversation the engine has marked in a session that announced: no
  * summary of Claude's thinking printed as if it were output, and no nudge to
  * say what it is doing. Claude Code reads both per request. What it replaces
@@ -711,7 +711,7 @@ async function harnessOff($: EngineInterface) {
  * gets the conversation the transcript holds now, with its kept gate where
  * the transcript still ends where it was kept, or none where it has moved
  * on, the kept gate dropped while the read-back is still owed. A
- * conversation the engine has marked gets the workflow harness back, again
+ * conversation the engine has marked gets Ledger's harness back, again
  * while the read-back is still owed. Nothing settles in a session that did
  * not announce, while the transcript is empty, or while it still holds the
  * conversation that ended in this process.
@@ -757,7 +757,7 @@ async function readBack(
 export const register: Register = on => {
   // First, so its banner's hook wraps the band's: the banner takes its line
   // beneath the rows, which are drawn in the rows it leaves.
-  workflowsBoard(on)
+  ledgerBoard(on)
 
   let band = emptyBand()
 
@@ -779,8 +779,8 @@ export const register: Register = on => {
 
   /**
    * Whether the clear under way is this module's own, for a handoff: the
-   * conversation it leads into runs the workflows by construction, so the
-   * workflow harness stays on through it.
+   * conversation it leads into runs Ledger by construction, so
+   * Ledger's harness stays on through it.
    */
   let isClearingForHandoff = false
 
@@ -896,11 +896,11 @@ export const register: Register = on => {
   }).catch(($, e, next) => next(e))
 
   // A /clear or a resume goes on in this process as another conversation,
-  // which no gate of this one answers and which is no workflow session until
+  // which no gate of this one answers and which is no Ledger session until
   // the engine marks it or it is read back as one it has marked. What the
   // band showed is kept for this one first, stamped where its transcript
   // ends now, which can have moved since its last turn's end. The clear a
-  // handoff runs leads into a workflow conversation, so the harness stays on.
+  // handoff runs leads into a Ledger conversation, so the harness stays on.
   on('session.end', async ($, e, next) => {
     const isHandingOff = isClearingForHandoff && e.reason === 'clear'
 
@@ -938,7 +938,7 @@ export const register: Register = on => {
 
   // Every engine call marks the conversation that made it, whatever its exit,
   // so after each of the conversation's own commands the mark says whether it
-  // runs the workflows; a command that only mentions the engine marks nothing.
+  // runs Ledger; a command that only mentions the engine marks nothing.
   // A failure replays the payloads uncut, so the harness never fails the call
   // and nothing is armed until nothing more can fail.
   on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
@@ -983,7 +983,7 @@ export const register: Register = on => {
   }).catch(($, e, next) => next(e))
 
   // The tool waits behind ToolSearch in every session that announced,
-  // workflow or not: one answer, since a changed answer sends the tool list
+  // running Ledger or not: one answer, since a changed answer sends the tool list
   // again and spends the prompt cache.
   on('tool.describe', { tool: 'SendUserMessage' }, async ($, e, next) => {
     const described = await next(e)

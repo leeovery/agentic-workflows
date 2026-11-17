@@ -135,7 +135,7 @@ describe('engine boot', () => {
     // them, and the tree is HEAD's.
     const { brownfieldSignal } = require(path.join(REAL_SCRIPTS, 'domain/brownfield.cjs'));
     assert.deepStrictEqual(brownfieldSignal(project), {
-      root_date: '2025-03-01', workflows_date: null, commits_total: 2, commits_before: 2,
+      root_date: '2025-03-01', ledger_date: null, commits_total: 2, commits_before: 2,
       history_before: ['2025-03-01  initial', '2025-06-15  more code'],
       files_at_arrival: 3, tree_at_arrival: ['src/ (2)', 'README.md'],
     });
@@ -148,7 +148,7 @@ describe('engine boot', () => {
     const res = runEngine(stubbed, project, ['boot']);
     assert.strictEqual(res.brownfield_offer, 'none');
     assert.deepStrictEqual(res.brownfield_signal, {
-      root_date: '2025-03-01', workflows_date: '2025-09-01', commits_total: 3, commits_before: 2,
+      root_date: '2025-03-01', ledger_date: '2025-09-01', commits_total: 3, commits_before: 2,
       history_before: ['2025-03-01  initial', '2025-06-15  more code'],
       files_at_arrival: 3, tree_at_arrival: ['src/ (2)', 'README.md'],
     });
@@ -161,7 +161,7 @@ describe('engine boot', () => {
     arrive('2025-01-01T12:00:01Z');
     const res = runEngine(stubbed, project, ['boot']);
     assert.deepStrictEqual(res.brownfield_signal, {
-      root_date: '2025-01-01', workflows_date: '2025-01-01', commits_total: 1, commits_before: 1, history_before: ['2025-01-01  import'],
+      root_date: '2025-01-01', ledger_date: '2025-01-01', commits_total: 1, commits_before: 1, history_before: ['2025-01-01  import'],
       files_at_arrival: 5, tree_at_arrival: ['app/ (3)', 'config/ (1)', 'Gemfile'],
     });
   });
@@ -184,7 +184,7 @@ describe('engine boot', () => {
     execFileSync('git', ['merge', '-q', '--no-edit', 'side'], { cwd: project, env: { ...process.env, GIT_AUTHOR_DATE: '2025-05-01T12:00:00Z', GIT_COMMITTER_DATE: '2025-05-01T12:00:00Z' } });
     const res = runEngine(stubbed, project, ['boot']);
     assert.deepStrictEqual(res.brownfield_signal, {
-      root_date: '2025-01-01', workflows_date: '2025-04-01', commits_total: 4, commits_before: 2,
+      root_date: '2025-01-01', ledger_date: '2025-04-01', commits_total: 4, commits_before: 2,
       history_before: ['2025-01-01  root', '2025-02-01  main work'],
       files_at_arrival: 3, tree_at_arrival: ['src/ (3)'],
     });

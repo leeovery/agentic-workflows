@@ -549,7 +549,7 @@ function cancelTopic(cwd, workUnit, phase, said) {
     ...mail.flatMap(({ message, idea }) => [message, idea]),
     ...(reverted.length > 0 ? [PROJECT_MANIFEST_SPEC] : []),
   ];
-  const outcome = commitStateTail(cwd, cancelSpec, `workflow(${workUnit}): cancel ${topic} (discovery)`, warnings);
+  const outcome = commitStateTail(cwd, cancelSpec, `ledger(${workUnit}): cancel ${topic} (discovery)`, warnings);
   /** @type {TopicCancelResult} */
   const result = {
     topic, phase: 'discovery', status: 'cancelled', ...taken, roadmap_reverted: reverted, inbox: mail.map(({ idea }) => statePath(cwd, idea)),
@@ -632,7 +632,7 @@ function reactivateTopic(cwd, workUnit, phase, said) {
   /** @type {string[]} */
   const warnings = [];
   const specs = [`${workUnit}/manifest.json`, ...(rejoined.length > 0 ? [PROJECT_MANIFEST_SPEC] : [])];
-  const outcome = commitStateTail(cwd, specs, `workflow(${workUnit}): reactivate ${topic} (discovery)`, warnings);
+  const outcome = commitStateTail(cwd, specs, `ledger(${workUnit}): reactivate ${topic} (discovery)`, warnings);
   /** @type {TopicReactivateResult} */
   const result = { topic, phase: 'discovery', status: 'reactivated', ...returned, committed: outcome.committed, warnings };
   if (rejoined.length > 0) result.roadmap_rejoined = rejoined;
@@ -723,7 +723,7 @@ function postponeTopic(cwd, workUnit, said, { horizon } = {}) {
   const outcome = commitStateTail(
     cwd,
     [`${workUnit}/manifest.json`, PROJECT_MANIFEST_SPEC],
-    `workflow(${workUnit}): postpone ${topic} → ${horizon}`,
+    `ledger(${workUnit}): postpone ${topic} → ${horizon}`,
     warnings,
   );
   /** @type {TopicPostponeResult} */

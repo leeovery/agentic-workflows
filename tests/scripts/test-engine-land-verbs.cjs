@@ -234,7 +234,7 @@ describe('land: the default branch everything lands on', () => {
     git(dir, ['config', 'init.defaultBranch', 'ledger-state']);
     assert.strictEqual(
       refuses(dir, openArgs(card)).error,
-      'land: the default branch reads as ledger-state, the workflows\' state branch, which nothing lands on — name the project\'s own with `git config init.defaultBranch <branch>`',
+      'land: the default branch reads as ledger-state, Ledger\'s state branch, which nothing lands on — name the project\'s own with `git config init.defaultBranch <branch>`',
     );
     assert.deepStrictEqual(stateAt(dir), before);
   });
@@ -267,7 +267,7 @@ describe('land open: a task judged by its own change', () => {
       const notes = cutTask(dir, '1.4', 'feat', 'Note it', 'main', { 'app/note.txt': 'note\n', '.ledger/notes.md': 'state\n' });
       assert.strictEqual(
         refuses(app, openArgs(notes)).error,
-        'land: task 1.4\'s change carries .ledger/notes.md — the workflows\' state never lands on a code branch, so take it off the task\'s branch and open the task again',
+        'land: task 1.4\'s change carries .ledger/notes.md — Ledger\'s state never lands on a code branch, so take it off the task\'s branch and open the task again',
       );
     });
 

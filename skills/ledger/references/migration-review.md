@@ -18,7 +18,7 @@ Files were updated, a migration handed over checks its code could not perform, a
 
    **If it answers `reshape`**, the migration into Ledger waits on its commit: the summary is written from `reshape` — `units` moved, `topics` carried, the `directives` done, `files`, the code files the commit takes, named from `code`, and each of the `corrections` the migration made where a unit's records disagreed, by its unit: what disagreed, what was found and what was changed — with the files the move kept as legacy in the state, under their unit's `assets/legacy/` or the product's, as its addendum in `migrations.verify` names them. Read no diff of the state: while `commits` names `state`, the state branch's first commit takes it whole, and once it names `code` alone, that commit is made.
 
-   **Otherwise**, see what changed on both sides the commit below takes: run `git -C {state} status --short` and `git -C {state} diff HEAD` for the state, and `git -C {code} status --short -- .claude/settings.json .worktreeinclude .gitignore` and `git -C {code} diff HEAD -- .claude/settings.json .worktreeinclude .gitignore` for the files the workflows own in the code tree. Status shows moved and newly-created files that diff cannot (untracked destinations render a move as bare deletions) — read both before summarising.
+   **Otherwise**, see what changed on both sides the commit below takes: run `git -C {state} status --short` and `git -C {state} diff HEAD` for the state, and `git -C {code} status --short -- .claude/settings.json .worktreeinclude .gitignore` and `git -C {code} diff HEAD -- .claude/settings.json .worktreeinclude .gitignore` for the files Ledger owns in the code tree. Status shows moved and newly-created files that diff cannot (untracked destinations render a move as bare deletions) — read both before summarising.
 
    **If it answers no `reshape`, nothing changed, and `migrations.notices` is empty** (the migrations skipped everything and verification found nothing to fix):
 
@@ -32,7 +32,7 @@ Files were updated, a migration handed over checks its code could not perform, a
 
    → Return to caller.
 
-3. Write a brief natural language summary of what the migrations did — verification fixes included (e.g., "Restructured workflow directories, created manifest files, recovered a message the converter missed"). Focus on the nature of the changes, not individual file paths — these are internal workflow state files.
+3. Write a brief natural language summary of what the migrations did — verification fixes included (e.g., "Restructured workflow directories, created manifest files, recovered a message the converter missed"). Focus on the nature of the changes, not individual file paths — these are Ledger's internal state files.
 4. Write the summary to `{state}/.cache/migrations-applied.json` with the Write tool — `{"summary": "{your natural language summary}", "notices": [{each entry's notice}], "migrations": {N}, "files": {M}}`, each `notice` from `migrations.notices` verbatim, `notices` left out when it is empty; `{N}`/`{M}` from `migrations.output`'s `{N} migration(s) applied, {M} file(s) updated.` line; when it reports no changes, leave both counts out. Fetch the summary and emit its section verbatim per its marker:
 
 ```bash
@@ -52,7 +52,7 @@ node .claude/skills/ledger-engine/scripts/engine.cjs render migration-gate
 Commit the migration changes — one commit on each side that changed, or, for the migration into Ledger, each commit `reshape` named in `commits`:
 
 ```bash
-node .claude/skills/ledger-engine/scripts/engine.cjs commit --migrations -m "chore: apply workflow migrations"
+node .claude/skills/ledger-engine/scripts/engine.cjs commit --migrations -m "chore: apply Ledger's migrations"
 ```
 
 → Return to caller.

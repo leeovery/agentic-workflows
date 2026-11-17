@@ -114,7 +114,7 @@ describe('GitHub\'s landing driver and a unit\'s cancel (18.3.9)', () => {
     const opened = [total, card].map((task) => ok(dir, openArgs(task)).already === true);
 
     assert.match(refusal, /^cancel: .* — cancel again once the network is back$/);
-    assert.deepStrictEqual(left, { status: 'in-progress', record: [{ '.': ['2'] }], commit: `workflow(${UNIT}): record the pull requests its cancel closed`, uncommitted: '' });
+    assert.deepStrictEqual(left, { status: 'in-progress', record: [{ '.': ['2'] }], commit: `ledger(${UNIT}): record the pull requests its cancel closed`, uncommitted: '' });
     assert.deepStrictEqual([carried, record, opened], [false, [{ '.': ['1', '2', '3'] }], [false, false]]);
   });
 

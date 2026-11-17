@@ -124,7 +124,7 @@
 // correction of both or of neither.
 //
 // One file serves every project on the machine, and each project runs the
-// engine its own copy of the workflows installs, so engines of several
+// engine its own copy of Ledger installs, so engines of several
 // releases read and write it at once. Its format is never changed in place:
 //
 // - A release that changes an event's shape, or adds an event, bumps the

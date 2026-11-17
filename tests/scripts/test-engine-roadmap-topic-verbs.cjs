@@ -97,7 +97,7 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
     assert.strictEqual(m.phases.discussion.items.ordering.status, 'postponed');
     assert.strictEqual(m.phases.discussion.items.ordering.previous_status, 'in-progress');
 
-    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'workflow(mvp): postpone ordering → next');
+    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'ledger(mvp): postpone ordering → next');
     const staged = stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
     assert.ok(staged.includes('manifest.json'), 'project manifest staged');
     assert.ok(staged.includes('mvp/manifest.json'), 'epic manifest staged');

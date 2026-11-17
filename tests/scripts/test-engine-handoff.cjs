@@ -26,7 +26,7 @@ const { HANDOFF_TARGETS } = require('../../skills/ledger-engine/scripts/domain/h
 const ANNOUNCED = { LEDGER_HANDOFF: '1' };
 
 const DATA_MARKER = '=== DATA (reason from this — never display or parse the sections below) ===';
-const DISPLAY_MARKER = '=== DISPLAY: handoff (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===';
+const DISPLAY_MARKER = '=== DISPLAY: handoff (emit verbatim as a text code block (```text fence) — do not stop; continue as the skill instructs) ===';
 const HANDOFF_MARKER = '=== HANDOFF (json for the gate mod — never display) ===';
 
 // The skill each phase runs in — the one a handoff into the phase lands on —

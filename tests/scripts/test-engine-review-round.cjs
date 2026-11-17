@@ -161,7 +161,7 @@ describe('inbox file: a finding out of scope filed to the inbox (14.3.5, 6.1.15)
     const rel = '.inbox/quickfixes/2026-01-01--refund-receipts.md';
 
     assert.deepStrictEqual(res, { ok: true, filed: statePath(dir, rel), committed: res.committed });
-    assert.deepStrictEqual([stateText(rel), lastStateCommit()], ['# Refund receipts\n\nA refund sends no receipt.\n', { subject: `workflow(inbox): file refund-receipts from ${UNIT}'s review`, files: [rel] }]);
+    assert.deepStrictEqual([stateText(rel), lastStateCommit()], ['# Refund receipts\n\nA refund sends no receipt.\n', { subject: `ledger(inbox): file refund-receipts from ${UNIT}'s review`, files: [rel] }]);
   });
 
   it('a name only the archive holds today takes the next free -{n}', () => {

@@ -622,7 +622,7 @@ function checkPlaces(root, setup) {
   for (const key of SETUP_PLACES) {
     const place = setup[key];
     if (fold(path.posix.normalize(place.split(path.sep).join('/')).split('/')[0]) === fold(STATE_DIR_NAME)) {
-      throw new Error(`the ${key} ${place} is under ${STATE_DIR_NAME}/, the workflows' state — the verify setup lives in the product's code, riding the phase's pull requests (15.2.12)`);
+      throw new Error(`the ${key} ${place} is under ${STATE_DIR_NAME}/, Ledger's state — the verify setup lives in the product's code, riding the phase's pull requests (15.2.12)`);
     }
     if (!fs.existsSync(path.resolve(root, place))) throw new Error(`the ${key} ${place} is not in the checkout at ${root} — record the setup from the checkout it was built in`);
   }

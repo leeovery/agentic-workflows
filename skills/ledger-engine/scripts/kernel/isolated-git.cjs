@@ -51,7 +51,7 @@
 // tree's, read by its caller each time.
 //
 // From the facts it finds the work tree a folder is in, and a repository's
-// main checkout, the folder the workflows keep their state in, refusing the
+// main checkout, the folder Ledger keeps its state in, refusing the
 // repositories and folders that have none; its refusals say so. It knows
 // nothing else of the state.
 // ---------------------------------------------------------------------------
@@ -96,7 +96,7 @@ const HOOKLESS = Object.freeze(['cat-file', 'config', 'for-each-ref', 'ls-tree',
 const CONVERSION_OFF = Object.freeze(['-c', 'core.autocrlf=false', '-c', 'core.attributesFile=/dev/null']);
 const REFS_LOGGED = Object.freeze(['-c', 'core.logAllRefUpdates=true']);
 
-// The time limit of a call that names none: far past any the workflows make.
+// The time limit of a call that names none: far past any Ledger makes.
 const CALL_TIMEOUT_MS = 300000;
 
 /**
@@ -402,7 +402,7 @@ function refuseCopiedWorktree(cwd, gitDir) {
   if (linked === null || realpathOrSelf(linked) !== realpathOrSelf(gitDir)) return;
   throw new Error(
     `${cwd} is in a copy of the worktree at ${holder}: git reads it as that worktree, in that repository, ` +
-    'so the workflows read and write nothing through it — run from the copy\'s own project folder',
+    'so Ledger reads and writes nothing through it — run from the copy\'s own project folder',
   );
 }
 
@@ -425,7 +425,7 @@ function mainCheckout(cwd) {
   if (path.basename(common) !== '.git') {
     throw new Error(
       `the repository at ${common} has no main checkout — a bare repository, or a git directory kept apart from its ` +
-      'work tree; the workflows keep their state in the main checkout',
+      'work tree; Ledger keeps its state in the main checkout',
     );
   }
   refuseCopiedWorktree(cwd, facts.gitDir);

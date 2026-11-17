@@ -69,8 +69,8 @@ function parseSetupForm(flags) {
 }
 
 /** @param {string} root */
-function requireWorkflowsDir(root) {
-  if (!fs.existsSync(root)) refuse(`no workflows state found at ${root}. Initialise a workflow project first.`);
+function requireState(root) {
+  if (!fs.existsSync(root)) refuse(`no Ledger state found at ${root}. Initialise a Ledger project first.`);
 }
 
 function missingOpenAiKeyMessage() {
@@ -187,7 +187,7 @@ function initProjectStore(call, files) {
  * @param {Call} call @param {string} root
  */
 async function runFromSystem(call, root) {
-  requireWorkflowsDir(root);
+  requireState(root);
   const files = knowledgeFiles(root);
   const sysPath = config.systemConfigPath();
   const detected = setup.detectSystemConfig(sysPath);
@@ -222,7 +222,7 @@ async function runFromSystem(call, root) {
  * @param {Call} call @param {string} root
  */
 async function runKeywordOnly(call, root) {
-  requireWorkflowsDir(root);
+  requireState(root);
   const files = knowledgeFiles(root);
   const sysPath = config.systemConfigPath();
   refuseInvalidSystemConfig(sysPath, setup.detectSystemConfig(sysPath));
@@ -244,7 +244,7 @@ async function runKeywordOnly(call, root) {
  * @param {Call} call @param {string} root @param {Flags} flags
  */
 async function runProviderForm(call, root, flags) {
-  requireWorkflowsDir(root);
+  requireState(root);
   const files = knowledgeFiles(root);
 
   const providerId = flags.provider;

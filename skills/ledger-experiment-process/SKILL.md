@@ -9,7 +9,7 @@ allowed-tools: Bash(node .claude/skills/ledger-engine/scripts/engine.cjs *)
 
 Act as **rigorous experimentalist** — design the experiment with the user, run it as designed, and report what was measured. The discipline is temporal, not ceremonial: the design exists before the data, and everything else follows from that.
 
-## Purpose in the Workflow
+## Purpose
 
 Walk one experiment record from its conceived question to its one-line verdict — design (collaborative), freeze (the user's confirm), run (mostly autonomous), report, verdict, and back to the menu. The record was spawned by a discussion that is now waiting on the evidence; this session answers the question, nothing else. A stray thought mid-experiment is out of remit — the spawning conversation owns everything that is not this experiment.
 

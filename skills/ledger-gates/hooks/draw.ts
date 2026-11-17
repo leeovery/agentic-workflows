@@ -1,5 +1,5 @@
 /**
- * The workflows board's drawing kit, shared by the pane, its views and the
+ * The board's drawing kit, shared by the pane, its views and the
  * banner: the colours, each with one meaning; the marks; a line as parts
  * with its buttons; a section's heading with its rule and count; a complete
  * section folding to its heading; and what runs, its ◐ turned to the frame

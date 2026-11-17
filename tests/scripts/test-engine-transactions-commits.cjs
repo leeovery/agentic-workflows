@@ -54,7 +54,7 @@ describe('engine inbox archive / restore / delete', () => {
     assert.strictEqual(res.committed, shortHead(dir));
     assert.ok(!fs.existsSync(path.join(dir, '.ledger/.inbox/ideas/2026-06-01--smart-retry.md')));
     assert.ok(fs.existsSync(path.join(dir, '.ledger/.inbox/.archived/ideas/2026-06-01--smart-retry.md')));
-    assert.strictEqual(lastMessage(dir), 'workflow(inbox): archive smart-retry');
+    assert.strictEqual(lastMessage(dir), 'ledger(inbox): archive smart-retry');
   });
 
   it('archives a multi-item set in one commit with the N-items message form', () => {
@@ -69,7 +69,7 @@ describe('engine inbox archive / restore / delete', () => {
       path.join(dir, '.ledger/.inbox/.archived/bugs/2026-06-02--login-loop.md'),
     ]);
     assert.ok(fs.existsSync(path.join(dir, '.ledger/.inbox/.archived/bugs/2026-06-02--login-loop.md')));
-    assert.strictEqual(lastMessage(dir), 'workflow(inbox): archive 2 items');
+    assert.strictEqual(lastMessage(dir), 'ledger(inbox): archive 2 items');
     // One commit for the whole set.
     assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s', 'HEAD~1']).trim(), 'init');
   });
@@ -96,7 +96,7 @@ describe('engine inbox archive / restore / delete', () => {
     assert.deepStrictEqual(res.restored, [path.join(dir, '.ledger/.inbox/ideas/2026-06-01--smart-retry.md')]);
     assert.ok(fs.existsSync(path.join(dir, '.ledger/.inbox/ideas/2026-06-01--smart-retry.md')));
     assert.ok(!fs.existsSync(path.join(dir, '.ledger/.inbox/.archived/ideas/2026-06-01--smart-retry.md')));
-    assert.strictEqual(lastMessage(dir), 'workflow(inbox): restore smart-retry');
+    assert.strictEqual(lastMessage(dir), 'ledger(inbox): restore smart-retry');
   });
 
   it('deletes an archived item via git rm', () => {
@@ -105,7 +105,7 @@ describe('engine inbox archive / restore / delete', () => {
 
     assert.deepStrictEqual(res.deleted, [path.join(dir, '.ledger/.inbox/.archived/ideas/2026-06-01--smart-retry.md')]);
     assert.ok(!fs.existsSync(path.join(dir, '.ledger/.inbox/.archived/ideas/2026-06-01--smart-retry.md')));
-    assert.strictEqual(lastMessage(dir), 'workflow(inbox): delete smart-retry');
+    assert.strictEqual(lastMessage(dir), 'ledger(inbox): delete smart-retry');
     assert.strictEqual(stateGit(dir, ['status', '--porcelain']).trim(), '');
   });
 
@@ -274,9 +274,9 @@ describe('engine commit', () => {
 
   it('--inbox commits the inbox scope', () => {
     writeFile(dir, '.ledger/.inbox/ideas/2026-06-02--y.md', '# Y\n');
-    const res = engine(dir, ['commit', '--inbox', '-m', 'workflow(inbox): capture y']);
+    const res = engine(dir, ['commit', '--inbox', '-m', 'ledger(inbox): capture y']);
     assert.strictEqual(res.committed, shortHead(dir));
-    assert.strictEqual(lastMessage(dir), 'workflow(inbox): capture y');
+    assert.strictEqual(lastMessage(dir), 'ledger(inbox): capture y');
   });
 
   it('rejects a missing message, missing scope, a flag it has no more — with a unit or alone, never taken for one — an argument past the unit, and bad work unit names', () => {

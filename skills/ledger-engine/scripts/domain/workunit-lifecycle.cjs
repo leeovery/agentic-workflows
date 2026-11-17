@@ -164,7 +164,7 @@ function leaveCode(cwd, manifest) {
 /** The record of what a refused cancel closed saved and committed alone, the unit otherwise as it stood. @param {string} cwd @param {Record<string, any>} manifest */
 function keepClosed(cwd, manifest) {
   saveWorkUnitManifest(cwd, manifest.name, manifest);
-  commitStateTail(cwd, [`${manifest.name}/manifest.json`], `workflow(${manifest.name}): record the pull requests its cancel closed`, []);
+  commitStateTail(cwd, [`${manifest.name}/manifest.json`], `ledger(${manifest.name}): record the pull requests its cancel closed`, []);
 }
 
 /**
@@ -211,7 +211,7 @@ function cancelWorkUnit(cwd, workUnit) {
   purgeWorkUnitCache(cwd, workUnit);
   const specs = [workUnit, ...mail.map(({ idea }) => idea)];
   if (reverted.length > 0) specs.push('manifest.json');
-  const outcome = commitStateTail(cwd, specs, `workflow(${workUnit}): mark as cancelled`, warnings);
+  const outcome = commitStateTail(cwd, specs, `ledger(${workUnit}): mark as cancelled`, warnings);
   /** @type {WorkUnitLifecycleResult} */
   const result = { work_unit: workUnit, status: 'cancelled', inbox: mail.map(({ idea }) => statePath(cwd, idea)), pull_requests_closed: left.closed, committed: outcome.committed, warnings };
   if (left.checkout !== null) result.checkout = left.checkout;
@@ -277,7 +277,7 @@ function reactivateWorkUnit(cwd, workUnit) {
   reindexWorkUnit(cwd, workUnit, warnings);
 
   const specs = rejoined.length > 0 ? [workUnit, 'manifest.json'] : workUnit;
-  const outcome = commitStateTail(cwd, specs, `workflow(${workUnit}): reactivate work unit`, warnings);
+  const outcome = commitStateTail(cwd, specs, `ledger(${workUnit}): reactivate work unit`, warnings);
   /** @type {WorkUnitLifecycleResult} */
   const result = { work_unit: workUnit, status: 'in-progress', previous_status: previous, committed: outcome.committed, warnings };
   if (rejoined.length > 0) result.roadmap_rejoined = rejoined;
@@ -356,7 +356,7 @@ function pivotWorkUnit(cwd, workUnit, topic) {
   const warnings = [];
   reindexWorkUnit(cwd, workUnit, warnings, { clearFirst: true });
 
-  const outcome = commitStateTail(cwd, [workUnit, 'manifest.json'], `workflow(${workUnit}): pivot to epic`, warnings);
+  const outcome = commitStateTail(cwd, [workUnit, 'manifest.json'], `ledger(${workUnit}): pivot to epic`, warnings);
   /** @type {WorkUnitPivotResult} */
   const result = { work_unit: workUnit, work_type: 'epic', committed: outcome.committed, warnings };
   noteCommitOutcome(result, outcome);

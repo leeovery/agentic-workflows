@@ -16,7 +16,7 @@ const ROOT = '/Users/person/app'
 
 const ENGINE = `${ROOT}/.claude/skills/ledger-engine/scripts/engine.cjs`
 
-/** The workflows' system config directory where the process names none. */
+/** Ledger's system config directory where the process names none. */
 const DEFAULT_CONFIG = `${HOME}/.config/ledger`
 
 /** Where the conversation `s0` records the notes the mod handed up. */
@@ -206,7 +206,7 @@ const compactionOf = (over: Partial<SessionCompactInput> = {}): SessionCompactIn
   ...over,
 })
 
-describe('a workflow conversation\'s compaction', () => {
+describe('a Ledger conversation\'s compaction', () => {
   for (const trigger of ['manual', 'auto', 'plugin'] as const) {
     test(`is Claude Code's own, the engine's note appended last — ${trigger}`, async ($, on) => {
       const calls = world(on)

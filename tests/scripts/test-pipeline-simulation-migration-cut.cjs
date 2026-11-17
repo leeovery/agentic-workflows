@@ -73,7 +73,7 @@ async function buildMigrated(folder) {
   harness.ok(dir, ['cut', 'shop', '--migrating', '--file', plan], { env: SESSION });
   assert.strictEqual(harness.ok(dir, ['migrate', 'check', '080-cut-and-merges'], { env: SESSION }).passed, true, 'the cut and the merges\' check passes');
   FINISH.run({ projectDir: dir, reportUpdate: () => {}, reportSkip: () => {} });
-  harness.ok(dir, ['commit', '--migrations', '-m', 'chore: apply workflow migrations'], { env: SESSION });
+  harness.ok(dir, ['commit', '--migrations', '-m', "chore: apply Ledger's migrations"], { env: SESSION });
   assert.ok(!stateUnborn(dir), 'the migration\'s commit gives the state branch its first commit');
   readyForSim(dir);
   const indexed = await harness.callAsync(dir, ['knowledge', 'index'], { env: SESSION });

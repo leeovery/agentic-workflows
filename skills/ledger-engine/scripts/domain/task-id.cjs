@@ -109,7 +109,7 @@ function unitName(unit) {
 }
 
 /** What a driver calls a task in the tracker that carries none of the engine's names. */
-const FOREIGN_TASK = 'a task the workflows did not make';
+const FOREIGN_TASK = 'a task Ledger did not make';
 
 /**
  * A driver's refusal to make anything under a unit or phase the person
@@ -119,7 +119,7 @@ const FOREIGN_TASK = 'a task the workflows did not make';
  */
 function endedInTracker(whats, unit) {
   const [was, reopen] = whats.length === 1 ? ['was', 'reopen it there'] : ['were', 'reopen them there, in that order,'];
-  return `${whats.join(' and ')} ${was} ended in the tracker — ${reopen} to go on, or cancel ${unit} in the workflows`;
+  return `${whats.join(' and ')} ${was} ended in the tracker — ${reopen} to go on, or cancel ${unit} in Ledger`;
 }
 
 module.exports = {

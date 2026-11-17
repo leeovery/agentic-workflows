@@ -10,8 +10,15 @@
 // phase (23.S14). None of the author's own products and projects is named
 // in the docs or the README (23.S12, 23.4.6). The docs, the README, help
 // and the glossary call the product Ledger, never the name it was built
-// under or "the workflows", but where history tells of it or the
-// glossary's avoid line names it (23.S19, 23.1.4). Every link of the
+// under, but where history tells of it or the glossary's avoid line names
+// it (23.S19, 23.1.4). The skills, the briefs, the agents, the engine, the
+// book and the README never call it the workflows either, in any of the
+// forms `WORKFLOWS_NAMED` lists — "the workflows", "workflows'" before a
+// word, "Workflows" opening a sentence on a verb, a workflow(s) state or
+// project, the singular before a word only the product takes or a verb,
+// "the workflow engine", "the Workflow" — even split across a line, but in
+// history, a migration and the glossary's avoid line; each form is held to
+// sentences of its own, and none to an ordinary word. Every link of the
 // book's and the README's resolves, to its file and the heading it names.
 //
 // Layer: unit. World: the repository's own files, read.
@@ -66,14 +73,80 @@ const OWN_NAMES = [
   /\b(?:SitRep|Switchboard|Turnstile|DocMan|Folio|Portal|rootshell|Fumi|Evvi|Codeintel|quiz-biz|Goosemates)\b/i,
   /\b(?:Harness|Fabric|Kit|Stitch|Mint|Pigeon|Galley|Nod)\b/,
 ];
-/** The names the product had before (23.1.4): the one it was built under, and the workflows, as the glossary's avoid line keeps it. */
-const OLD_NAMES = /\bLeeway\b|\bthe workflows\b/i;
+/** The name the product was built under (23.1.4). */
+const OLD_NAMES = /\bLeeway\b/;
 const PRODUCT = /\bLedger\b/;
 /** Where an old name may stand: history, telling of it, and the glossary's avoid lines, naming it. */
-const TELLS_OF_IT = (/** @type {string} */ rel, /** @type {string} */ line) => rel === path.join('docs', 'history.md') || line.startsWith('_Avoid_:');
+const TELLS_OF_IT = (/** @type {string} */ rel, /** @type {string} */ line) => rel === path.join('docs', 'history.md') || (rel === GLOSSARY && line.startsWith('_Avoid_:'));
+
+/** What may part two words of a name: whitespace, a line break, a comment's, a quote's or a heading's marker, and the engine's string wrap, `' +`. */
+const PARTS = String.raw`(?:\s|\/\/|\*|>|#|'\s*\+\s*')+`;
+/** Not after a word, a path or the repository's name: `.workflows/`, `agentic-workflows`. */
+const FREE = String.raw`(?<![\w./-])`;
+/** The verbs a sentence that opens on the product's old name went on with. */
+const PRODUCT_VERBS = 'run|runs|can|keep|keeps|carry|carries|read|reads|write|writes|make|makes|ship|ships|own|owns|draw|draws|invoke|invokes|hand|hands|need|needs|offer|offers|ask|asks|say|says|show|shows|hold|holds|record|records|commit|commits|land|lands|give|gives|move|moves|will|never';
+
+/**
+ * The workflows as the product's name, each form with sentences it catches,
+ * even where a line break, a marker or the engine's string wrap parts the
+ * words. What none of them catches: the singular before any word but those
+ * named, "Workflows" capitalised mid-sentence, a sentence opening on
+ * "Workflows" and a verb not named, and the singular before "file" or
+ * "artifact", which are GitHub Actions' own words too.
+ */
+const WORKFLOWS_NAMED = [
+  { form: '"the workflows"', pattern: new RegExp(String.raw`\bthe${PARTS}workflows\b`, 'gi'), catches: ['The workflows run on Claude Code', '> The mod draws the\n> workflows\' menus', '// the\n// workflows', 'nothing in the \' +\n  \'workflows runs'] },
+  { form: '"workflows\'" before a word', pattern: new RegExp(String.raw`${FREE}workflows['’](?=[ \t]+[a-z])`, 'gi'), catches: ['it holds workflows\' state', 'test(\'workflows’ harness stays on']},
+  { form: '"Workflows" opening a sentence on a verb', pattern: new RegExp(String.raw`(?<=^[ \t>#*/|⚑(\["'\x60-]*|[.!?]\s+)Workflows(?=${PARTS}(?:${PRODUCT_VERBS})\b)`, 'gm'), catches: ['> Workflows run on Claude Code 2.1.287', 'the line before\n- Workflows offer a first session a short walk', '| Workflows keep |', '\'Workflows read up to version 3', '⚑ Workflows need a newer Claude Code', 'It stopped. Workflows can rename it'] },
+  { form: 'a workflow(s) state or project', pattern: new RegExp(String.raw`${FREE}workflows?${PARTS}(?:state|project)s?\b`, 'gi'), catches: ['there is no workflows state here', 'a workflow project', 'two workflows projects'] },
+  { form: 'the singular before a word only the product takes', pattern: new RegExp(String.raw`${FREE}workflow${PARTS}(?:harness|conversation|session|skill|prose|position|ontology|vocabulary|content|render|value|migration|side|agent)s?\b`, 'gi'), catches: ['sets the workflow harness', 'A workflow\n * conversation\'s compaction', 'chore: apply workflow migrations', 'its workflow side in', 'No custom workflow agents exist'] },
+  { form: '"the workflow engine"', pattern: new RegExp(String.raw`\bthe${PARTS}workflow${PARTS}engine\b|\bWorkflow${PARTS}Engine\b`, 'g'), catches: ['the workflow engine\'s gates', '# Workflow Engine'] },
+  { form: 'the singular at the head of a verb', pattern: new RegExp(String.raw`\b(?:the|no)${PARTS}workflow${PARTS}(?:cannot|can|runs|run|proceeds|instructs|keeps|carries|reads|makes|says)\b`, 'gi'), catches: ['the workflow cannot proceed', 'no workflow runs until it is initialised', 'continue as the workflow instructs'] },
+  { form: '"the Workflow" capitalised', pattern: new RegExp(String.raw`\b[Tt]he${PARTS}Workflow\b`, 'g'), catches: ['## Purpose in the Workflow'] },
+];
+/** Ordinary words no form may catch. */
+const ORDINARY = [
+  'never the workflow around it',
+  'Ledger is not a general workflow engine',
+  'the workflow file and the workflow artifact GitHub Actions keep',
+  'Clone the agentic-workflows project',
+  'the old .workflows state',
+  'project: \'Agentic Engineering Workflows\'',
+  'description: \'…your CI workflows\'',
+  '## Workflows',
+  'Workflows differ between teams.',
+  '## Git Workflow',
+];
+/** Where it stands in what ships: every migration, the released ones never edited and 072–081's sweep still to come, and a file whose change is in flight elsewhere. */
+const NAMES_IT_STILL = [
+  path.join('skills', 'ledger-migrate', 'scripts', 'migrations') + path.sep,
+  path.join('skills', 'ledger-engine', 'scripts', 'domain', 'brief-names.cjs'),
+];
 
 /** @param {string} rel from the repository's root */
 const read = (rel) => fs.readFileSync(path.join(REPO, rel), 'utf8');
+
+/** Every file under `skills/` and `agents/`, from the repository's root, but those `NAMES_IT_STILL` lets stand. */
+const productFiles = () => ['skills', 'agents']
+  .flatMap((top) => fs.readdirSync(path.join(REPO, top), { recursive: true, encoding: 'utf8' }).map((rel) => path.join(top, rel)))
+  .filter((rel) => !NAMES_IT_STILL.some((skip) => rel.startsWith(skip)) && fs.statSync(path.join(REPO, rel)).isFile());
+
+/**
+ * Each place of `rel`'s that names the product the workflows: where, as
+ * `{file}:{line}: {match}`, and whether it stands, as the glossary's avoid
+ * line names it.
+ * @param {string} rel @returns {{at: string, stands: boolean}[]}
+ */
+function workflowsNamed(rel) {
+  const text = read(rel);
+  return WORKFLOWS_NAMED.flatMap(({ pattern }) => [...text.matchAll(pattern)]).map((found) => {
+    const start = text.lastIndexOf('\n', found.index) + 1;
+    return {
+      at: `${rel}:${text.slice(0, found.index).split('\n').length}: ${found[0]}`,
+      stands: rel === GLOSSARY && text.startsWith('_Avoid_:', start),
+    };
+  });
+}
 
 /** Every markdown file the book holds, from the repository's root. */
 const bookFiles = () => fs.readdirSync(DOCS).filter((name) => name.endsWith('.md')).map((name) => path.join('docs', name));
@@ -166,6 +239,23 @@ describe('the user docs (23.4)', () => {
     const surfaces = { docs: bookFiles(), readme: ['README.md'], help: helpFiles().filter((rel) => rel !== GLOSSARY), glossary: [GLOSSARY] };
     for (const [surface, files] of Object.entries(surfaces)) assert.ok(files.some((rel) => PRODUCT.test(read(rel))), `${surface} names Ledger`);
     assert.deepStrictEqual(linesNaming(Object.values(surfaces).flat(), OLD_NAMES, TELLS_OF_IT), []);
+  });
+
+  it('the skills, the briefs, the agents, the engine, the docs and the README call the product Ledger, never the workflows, but the glossary\'s avoid line naming it', () => {
+    const files = [...productFiles(), ...bookFiles().filter((rel) => rel !== path.join('docs', 'history.md')), 'README.md'];
+    const named = files.flatMap(workflowsNamed);
+
+    assert.ok(files.includes(GLOSSARY) && files.length > 100, 'the guard reads what ships');
+    assert.ok(named.some(({ stands }) => stands), 'the guard meets the glossary\'s avoid line');
+    assert.deepStrictEqual(named.filter(({ stands }) => !stands).map(({ at }) => at), []);
+  });
+
+  it('each form of the workflows catches its own sentences, and none catches an ordinary word', () => {
+    const catching = (/** @type {RegExp} */ pattern, /** @type {string} */ text) => [...text.matchAll(pattern)].length > 0;
+    for (const { form, pattern, catches } of WORKFLOWS_NAMED) {
+      for (const text of catches) assert.ok(catching(pattern, text), `${form} catches ${JSON.stringify(text)}`);
+    }
+    assert.deepStrictEqual(ORDINARY.filter((text) => WORKFLOWS_NAMED.some(({ pattern }) => catching(pattern, text))), []);
   });
 });
 

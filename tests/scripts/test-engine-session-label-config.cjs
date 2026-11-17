@@ -133,9 +133,9 @@ describe('syncSessionHooks', () => {
   beforeEach(setup);
   afterEach(teardown);
 
-  const BOTH = { session: true, workflows: true };
-  const WORKFLOWS = { session: false, workflows: true };
-  const NONE = { session: false, workflows: false };
+  const BOTH = { session: true, ledger: true };
+  const WORKFLOWS = { session: false, ledger: true };
+  const NONE = { session: false, ledger: false };
 
   it('installs the labels-on set into an absent settings file — one group per matcher, the SessionStart group matched to resume, the layout, brief and shell groups under PreToolUse', () => {
     assert.deepStrictEqual(syncSessionHooks(world.dir, BOTH), { changed: true });

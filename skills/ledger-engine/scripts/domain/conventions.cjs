@@ -1,9 +1,9 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: composition conventions for workflow renders.
+// Domain ring: composition conventions for Ledger's renders.
 //
-// These know what workflow content should LOOK like — the glyph vocabulary,
+// These know what Ledger's content should LOOK like — the glyph vocabulary,
 // the `[tag]` suffix format, the `↳` derived-from line — and produce the plain
 // strings that the kernel renderer (../kernel/render.cjs) lays out. Keeping
 // conventions here, separate from layout, means the format is normalised in

@@ -178,7 +178,7 @@ const whoseIs = (id) => whoseDecision({ facts: foldLedger(statePath(dir), ID_FAC
 /** The reader reading the person's own words as the row `key`. @param {string} key */
 const readAs = (key) => ({ CLAUDE_STUB_ANSWERS: JSON.stringify({ '': { row: key } }) });
 
-const REVEALED = '=== DISPLAY: blind question revealed (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===';
+const REVEALED = '=== DISPLAY: blind question revealed (emit verbatim as a text code block (```text fence) — do not stop; continue as the skill instructs) ===';
 
 /**
  * A reveal as the person reads it: its marker, and its words, each line

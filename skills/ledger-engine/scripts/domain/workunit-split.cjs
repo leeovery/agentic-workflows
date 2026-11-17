@@ -305,7 +305,7 @@ function splitWorkUnit(cwd, unit, asked) {
       leaveUnit(cwd, split);
       const { reaimed, rewritten } = followInProject(cwd, split);
       const paths = [unit, split.into, PROJECT_MANIFEST_SPEC];
-      const message = `workflow(${unit}): split ${split.topics.join(', ')} into ${split.into}`;
+      const message = `ledger(${unit}): split ${split.topics.join(', ')} into ${split.into}`;
       const outcome = carried > 0 ? commitLedger(cwd, message, warnings, paths) : commitStateTail(cwd, paths, message, warnings);
       refreshLedgerCopies(cwd, warnings, {
         remove: split.topics.map((topic) => recordScope(recordFile(unit, topic))),

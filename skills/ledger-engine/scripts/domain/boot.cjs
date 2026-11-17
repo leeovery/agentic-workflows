@@ -22,7 +22,7 @@
 // uncommitted committed, a warning counting them, and the catch-up from the
 // remote, which carries them, whose stop on a field both clones changed ends
 // boot there for the person's pick (state-merge.cjs). Then the session's own
-// `.gitignore` keeps the state's ignore line, the workflows' trace,
+// `.gitignore` keeps the state's ignore line, Ledger's trace,
 // committed through the code door (code-trace.cjs), and the migrations run,
 // all under that one hold, so a second boot meanwhile finds each done.
 //
@@ -257,8 +257,8 @@ const loading = (reference) => Object.freeze({ kind: 'load', reference });
  * Boot's stops, each as the start skill takes it (`Stop`): `git`, the git
  * on the PATH older than the engine's floor, or none, read before anything
  * else runs; `repo`, the folder in no git repository, read next; `lost`,
- * the state branch gone here and on the remote in a project holding the
- * workflows' trace, its yes `boot --start-again`; `guard`, the reshape's
+ * the state branch gone here and on the remote in a project holding
+ * Ledger's trace, its yes `boot --start-again`; `guard`, the reshape's
  * guard refusing the migration (`GuardStop`); `checks`, the migration
  * stopped before its move for the checks the chain before it handed back
  * (`ChecksStop`); `merge`, the catch-up stopped by a field both clones
@@ -510,8 +510,8 @@ function boot(cwd, { startAgain = false, words = '' } = {}) {
   const { migrations, migrationsCommitted } = migrated;
   dropMigrationRow(cwd);
 
-  // While a reviewed migration commit follows, it takes every path the
-  // workflows own, so boot's own writes there ride it as the record does —
+  // While a reviewed migration commit follows, it takes every path
+  // Ledger owns, so boot's own writes there ride it as the record does —
   // a confined commit of a file a migration also edited would carry that
   // edit past the review under boot's message.
   const sessionHooksInstalled = installSessionHooks(cwd, !migrations.changed, warnings);
@@ -732,7 +732,7 @@ function carriedOn(cwd, stop, at) {
 function commitRecord(cwd, migrations, warnings) {
   if (migrations.changed) return null;
   try {
-    const committed = commitStateScoped(cwd, MIGRATIONS_RECORD, 'chore: record workflow migrations');
+    const committed = commitStateScoped(cwd, MIGRATIONS_RECORD, "chore: record Ledger's migrations");
     warnings.push(...committed.warnings);
     return committed.committed;
   } catch (err) {
@@ -767,7 +767,7 @@ function syncMigrationHooks(cwd, warnings) {
  */
 function installSessionHooks(cwd, commit, warnings) {
   const { want, sync } = withProjectLock(cwd, () => {
-    const wanted = { session: resolveEnabled(cwd) === true, workflows: true };
+    const wanted = { session: resolveEnabled(cwd) === true, ledger: true };
     return { want: wanted, sync: syncSessionHooks(cwd, wanted) };
   });
   if (sync.error) warnings.push(`session hooks not installed: ${sync.error}`);

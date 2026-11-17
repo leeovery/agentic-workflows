@@ -150,7 +150,7 @@ const DOORS = [
     contract: 'the layout: a stray file under the state, by the state commit; a file in the layout lands',
     refused: (dir) => {
       createFile(statePath(dir), layout.unit(UNIT, 'tmp', 'x.md'), 'scratch\n');
-      assert.match(refusedPristine(dir, ['commit', UNIT, '-m', 'discussion(pay): notes']).error, /outside the workflows' layout/);
+      assert.match(refusedPristine(dir, ['commit', UNIT, '-m', 'discussion(pay): notes']).error, /outside Ledger's layout/);
     },
     lands: (dir) => {
       fs.rmSync(statePath(dir, layout.unit(UNIT, 'tmp')), { recursive: true });

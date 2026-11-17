@@ -66,7 +66,7 @@ describe('engine boot', () => {
       // is the setup's own, in the second the state arrived: no history
       // came before the workflows.
       brownfield_signal: {
-        root_date: '2026-01-01', workflows_date: '2026-01-01', commits_total: 2, commits_before: 0,
+        root_date: '2026-01-01', ledger_date: '2026-01-01', commits_total: 2, commits_before: 0,
         history_before: [], files_at_arrival: 0, tree_at_arrival: [],
       },
     });

@@ -124,7 +124,7 @@ describe('land: what the local driver records, and the shapes of landing it read
     git(vendored, ['checkout', '-q', '-b', card.branch]);
     git(vendored, ['commit', '-q', '--allow-empty', '-m', 'card']);
     assert.deepStrictEqual([carried, card].map((task) => refusedMoving(paths, openArgs(task))), [
-      'land: task 1.4\'s change carries .ledger/no\'tes.md — the workflows\' state never lands on a code branch, so take it off the task\'s branch and open the task again',
+      'land: task 1.4\'s change carries .ledger/no\'tes.md — Ledger\'s state never lands on a code branch, so take it off the task\'s branch and open the task again',
       'land: in vendor/li\'b, no default branch to land on — the remote names none, and the repository has no branch init.defaultBranch names, nor main or master; '
       + 'name it with `git config init.defaultBranch <branch>` there',
     ]);

@@ -7,15 +7,15 @@
 // live in a unit's cache, which goes when the unit closes; nor in the
 // project, since the directory a conversation runs in moves under it — a
 // `cd` Claude runs moves it, and a conversation can be resumed from another
-// directory. Each conversation that runs the workflows has one folder beside
+// directory. Each conversation that runs Ledger has one folder beside
 // the system config, `{config}/conversations/{session-id}/`, found by the
 // session id Claude Code hands every command it runs, wherever the command
 // runs, and each concern writes a file of its own there — the files two
 // write are the mod's `sent.json`, which the rows mod spends, and boot's
 // stamp, which the mod copies across a handoff's clear:
 //
-//   workflow       the mark that the conversation runs the workflows, which
-//                  the gate mod reads to set the workflow harness, to say the
+//   workflow       the mark that the conversation runs Ledger, which
+//                  the gate mod reads to set Ledger's harness, to say the
 //                  phase in its spinner, to answer a compaction and to
 //                  record each task's builder and reviewers — written by
 //                  every engine call that carries a session id, run in a
@@ -23,7 +23,7 @@
 //                  until boot has run
 //   transcript     the conversation's transcript path, written as it ends by
 //                  the SessionEnd hook
-//   position.json  where in the workflows the conversation is working, and
+//   position.json  where in Ledger the conversation is working, and
 //                  in implementation every task in flight with its builder's
 //                  agent id and its pair's, the worktree it is built in, and
 //                  when its builder stopped (position.cjs), written under
@@ -81,7 +81,7 @@
 //   briefs/       each brief the conversation issued, `{id}.md`, as its
 //                  template was filled, and beside it `{id}.json`, the
 //                  record of whose it is (brief.cjs): what a dispatch of one of
-//                  the workflows' agents carries by its pointer
+//                  Ledger's agents carries by its pointer
 //   gate.json      the gate the mod keeps for a resume (the mod's own)
 //   sent.json      what the mod last sent from a press, or a handoff's
 //                  continuation with its line (the mod's; the rows mod
@@ -296,9 +296,9 @@ function taskAt(sessionId, cwd) {
 }
 
 /**
- * Mark the calling conversation as one that runs the workflows — once, only
+ * Mark the calling conversation as one that runs Ledger — once, only
  * where Claude Code handed the command a session id, and only for a command
- * run inside a workflows project — one whose repository holds the state, a
+ * run inside a Ledger project — one whose repository holds the state, a
  * code worktree's included: one run anywhere else marks nothing. A mark
  * that cannot be written costs the command nothing.
  * @param {string} cwd
@@ -316,7 +316,7 @@ function markConversation(cwd) {
 
 /**
  * Whether the engine has marked the conversation `sessionId` as one that
- * runs the workflows — what every other writer of the folder but the trust
+ * runs Ledger — what every other writer of the folder but the trust
  * log's and the gate shown's waits on, so a conversation the engine never
  * marked gets no folder from them.
  * @param {string} sessionId
@@ -328,7 +328,7 @@ function isMarked(sessionId) {
 /**
  * Record the ending conversation's transcript path — `conversation end`,
  * the SessionEnd hook's target — in its folder, and only where the folder
- * exists: a conversation that never ran the workflows gets nothing. Never
+ * exists: a conversation that never ran Ledger gets nothing. Never
  * throws: a hook must exit clean.
  * @param {unknown} sessionId @param {unknown} transcriptPath
  * @returns {{recorded: boolean}}

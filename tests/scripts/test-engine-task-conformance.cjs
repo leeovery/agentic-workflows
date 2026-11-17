@@ -261,7 +261,7 @@ for (const driver of listDrivers('task')) {
         refusedFor(() => driver.createTask(root, ref(phase, n), task('Page the ledger')), [unitName(UNIT), phaseName(UNIT, phase)]);
       }
       assert.throws(() => driver.createTask(root, ref(2, 2), task('Page the ledger')), {
-        message: 'unit pay and phase 2 of pay were ended in the tracker — reopen them there, in that order, to go on, or cancel pay in the workflows',
+        message: 'unit pay and phase 2 of pay were ended in the tracker — reopen them there, in that order, to go on, or cancel pay in Ledger',
       });
       assert.deepStrictEqual([driver.list(root, UNIT, 1)?.length, driver.ready(root, UNIT, null)], [3, []]);
     });

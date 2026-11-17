@@ -8,7 +8,7 @@ touching prose or engine:
 
 - **Prevention.** When the intercepted engine result carries an auto-gate
   or continue instruction (`the user set this gate to auto: do not stop` /
-  `do not stop; continue as the workflow instructs`), the `tool.call` hook
+  `do not stop; continue as the skill instructs`), the `tool.call` hook
   attaches `context` to the tool result — text the model reads after the
   result and the user never sees — saying the turn does not end here.
 - **Recovery.** A `turn.complete` hook fires when the turn ends with

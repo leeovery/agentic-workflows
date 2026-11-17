@@ -1487,7 +1487,7 @@ function wentAhead(cwd, raising, sealed, warnings) {
  */
 async function drawRaise(cwd, args, stdin) {
   const session = sessionOf(SAID);
-  if (findStateRoot(cwd) === null) throw new Error('raise: there is no workflows state here — the question a raise answers is in the ledger, which the state holds');
+  if (findStateRoot(cwd) === null) throw new Error('raise: there is no Ledger state here — the question a raise answers is in the ledger, which the state holds');
   /** @type {string[]} */
   const warnings = [];
   const { fact, rest: unfact } = factFlag(args);

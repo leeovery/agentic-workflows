@@ -1,6 +1,6 @@
 /**
  * The conversation's folder, as the engine names it (domain/conversation.cjs):
- * in the workflows' system config directory — `LEDGER_CONFIG_DIR`, else
+ * in Ledger's system config directory — `LEDGER_CONFIG_DIR`, else
  * `.config/ledger` in the home directory — by the session id's safe
  * characters alone, so a `cd` or a resume elsewhere finds it all the same.
  *
@@ -8,7 +8,7 @@
  * module reads the environment and the files itself.
  */
 
-/** The file the engine marks a conversation that runs the workflows with. */
+/** The file the engine marks a conversation that runs Ledger with. */
 export const MARKER = 'workflow'
 
 /** The file the engine keeps the conversation's position in. */

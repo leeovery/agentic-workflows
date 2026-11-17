@@ -670,7 +670,7 @@ describe('section markers — the render forms', () => {
       'emit verbatim as markdown',
       "emit verbatim as markdown, then STOP for the user's response",
       'emit verbatim as a properties code block — ```properties fence',
-      'after the result summary: emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs',
+      'after the result summary: emit verbatim as a text code block (```text fence) — do not stop; continue as the skill instructs',
     ];
     for (const instruction of legacy) {
       assert.throws(() => auditMarkers(section('DISPLAY: legacy', instruction, 'body'), instruction), /names no render form/, instruction);

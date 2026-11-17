@@ -151,7 +151,7 @@ describe('verify setup: recorded once it runs end to end (15.2.5, 15.2.7, 15.2.1
     const places = [['place', '.ledger/verify'], ['feature_map', 'verify/../.ledger/features.md'], ...(IGNORES_CASE ? [['place', '.Ledger/verify']] : [])];
     for (const [key, place] of places) {
       assert.strictEqual(refusedPristine(dir, setupArgs(dir, { ...SETUP, [key]: place })).error,
-        `verify setup: the ${key} ${place} is under .ledger/, the workflows' state — the verify setup lives in the product's code, riding the phase's pull requests (15.2.12)`);
+        `verify setup: the ${key} ${place} is under .ledger/, Ledger's state — the verify setup lives in the product's code, riding the phase's pull requests (15.2.12)`);
     }
     assert.deepStrictEqual(partsRan(dir), []);
   });

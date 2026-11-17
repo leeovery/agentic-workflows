@@ -67,7 +67,7 @@ const BINARY_VAR = 'LEDGER_CLAUDE';
  * process, effort, trace and skills; the session's entrypoint, its channel
  * to its peers and its link to an IDE; the person's plugin folders, which
  * Claude Code loads whatever the settings sources say; and the harness the
- * gate mod sets in a workflow session.
+ * gate mod sets in a Ledger session.
  */
 const CLEARED = Object.freeze([
   'CLAUDE_CODE_SESSION_ID', 'CLAUDE_PROJECT_DIR',

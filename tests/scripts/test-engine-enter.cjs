@@ -521,7 +521,7 @@ describe('the answer', () => {
     const { sections } = enter(['discussion', EPIC, 'licence']);
     const [mail, reads] = sections.split(/(?==== DATA )/);
     assert.strictEqual(mail, [
-      '=== DISPLAY: waiting mail (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
+      '=== DISPLAY: waiting mail (emit verbatim as a text code block (```text fence) — do not stop; continue as the skill instructs) ===',
       '2 messages waiting — raised before anything else',
       '',
       'From Commercialization · 16 Oct',

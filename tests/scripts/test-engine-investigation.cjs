@@ -385,7 +385,7 @@ describe('the plan and check-in gates — learned process gates (19.4.19)', () =
     const sections = rendered(['investigation-plan', HUNT, '--file', payload('plan.json', PLAN)]);
 
     assert.strictEqual(sections.slice(0, sections.indexOf('=== MENU')), [
-      '=== DISPLAY: investigation plan (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
+      '=== DISPLAY: investigation plan (emit verbatim as a text code block (```text fence) — do not stop; continue as the skill instructs) ===',
       'Hunt · investigation plan',
       '',
       'IN THE ORDER I\'LL CHECK THEM (2)',
@@ -447,7 +447,7 @@ describe('the plan and check-in gates — learned process gates (19.4.19)', () =
     const sections = rendered(['investigation-check-in', HUNT, '--file', payload('check-in.json', { resolved: ['H1'], next: 'Run kill-server with the runtime live' })]);
 
     assert.strictEqual(sections.slice(0, sections.indexOf('=== MENU')), [
-      '=== DISPLAY: investigation check-in (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
+      '=== DISPLAY: investigation check-in (emit verbatim as a text code block (```text fence) — do not stop; continue as the skill instructs) ===',
       'Hunt · check-in',
       '',
       '3 hypotheses · 1 confirmed · 1 experiment',

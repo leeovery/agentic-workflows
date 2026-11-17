@@ -14,7 +14,7 @@ tier('user')
  */
 const HOME = '/Users/person'
 
-/** The workflows' system config directory where the process names none. */
+/** Ledger's system config directory where the process names none. */
 const DEFAULT_CONFIG = `${HOME}/.config/ledger`
 
 /** The session's project. */
@@ -52,7 +52,7 @@ const PANE_MOUNT = {
   surface: 'terminal' as const,
   component: 'Pane' as const,
   requestId: 'board',
-  props: { title: 'workflows', isFocused: false, bodyColumns: 64, placement: 'dock' as const, scroll: { offset: 0, bodyRows: 400 }, view: {} },
+  props: { title: 'ledger', isFocused: false, bodyColumns: 64, placement: 'dock' as const, scroll: { offset: 0, bodyRows: 400 }, view: {} },
 }
 
 /** What Claude Code draws in the band beneath the mod. */
@@ -160,7 +160,7 @@ function world(
     return { value: undefined }
   })
 
-  on('ui.panes', () => ({ value: [...panes].map(id => ({ id, title: 'workflows', isShown: true, isFocused: false, isPlaced: true })) }))
+  on('ui.panes', () => ({ value: [...panes].map(id => ({ id, title: 'ledger', isShown: true, isFocused: false, isPlaced: true })) }))
 
   on('ui.invalidate', ($, e, next) => {
     counts.invalidations += 1
@@ -429,12 +429,12 @@ describe('showing and hiding the board', () => {
     expect(await toggleOf(await mounted($, clock))).toBe('hide board')
   })
 
-  test('"▸ show board" opens the pane, titled workflows, and reads "hide board"; pressed again, the pane closes', async ($, on) => {
+  test('"▸ show board" opens the pane, titled ledger, and reads "hide board"; pressed again, the pane closes', async ($, on) => {
     const { clock, opened, panes } = world(on)
     const ui = await mounted($, clock)
 
     await ui.press({ key: 'board:toggle' })
-    expect(opened).toEqual([{ id: 'board', title: 'workflows', columns: 60, rows: 28 }])
+    expect(opened).toEqual([{ id: 'board', title: 'ledger', columns: 60, rows: 28 }])
     expect([...panes]).toEqual(['board'])
     expect(await toggleOf(ui)).toBe('hide board')
 

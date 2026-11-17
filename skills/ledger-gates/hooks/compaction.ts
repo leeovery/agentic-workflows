@@ -1,5 +1,5 @@
 /**
- * A workflow conversation's compaction: Claude Code compacts as it does, and
+ * A Ledger conversation's compaction: Claude Code compacts as it does, and
  * the mod appends one message, last, the engine's own words — that the
  * conversation was just compacted, where it is working, and the skill's steps
  * for resuming after one with what to re-read. A `/compact` starts no turn of
@@ -36,10 +36,10 @@ const isNotes = (value: unknown): value is Notes =>
 
 /**
  * The session's own conversation's folder where the session announced and
- * the engine has marked the conversation as one that runs the workflows;
+ * the engine has marked the conversation as one that runs Ledger;
  * null for any other.
  */
-async function workflowFolder($: EngineInterface): Promise<string | null> {
+async function markedFolder($: EngineInterface): Promise<string | null> {
   if ((await $.env.get('LEDGER_GATE_SURFACE')) !== '1') {
     return null
   }
@@ -120,7 +120,7 @@ export function compaction(on: On) {
       return next(e)
     }
 
-    const folder = await workflowFolder($)
+    const folder = await markedFolder($)
     const carryOn = folder === null ? null : await positionNow($)
 
     if (folder === null || carryOn === null || carryOn.skill === null) {

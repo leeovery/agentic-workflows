@@ -244,7 +244,7 @@ describe('engine commit --state: the files only the engine writes, the unit\'s a
     projectChanged(dir);
     for (const [file, text] of Object.entries(PEERS)) writeState(dir, file, text);
 
-    const res = ok(dir, ['commit', 'payments', '--state', '-m', 'workflow(payments): retry the commit']);
+    const res = ok(dir, ['commit', 'payments', '--state', '-m', 'ledger(payments): retry the commit']);
 
     assert.match(res.committed, /^[0-9a-f]+$/);
     assert.deepStrictEqual(headFiles(dir).sort(), [layout.projectManifest, layout.manifest('payments'), layout.run('payments', '1.S1', '001'), layout.brief('payments', 'topic-b')].sort());
@@ -282,7 +282,7 @@ describe('engine commit --state: the files only the engine writes, the unit\'s a
 
   it('never beats — a retry is not a session sitting in a topic', () => {
     writeState(dir, layout.manifest('payments'), JSON.stringify(epicManifest(), null, 2) + '\n\n');
-    ok(dir, ['commit', 'payments', '--state', '-m', 'workflow(payments): retry the commit']);
+    ok(dir, ['commit', 'payments', '--state', '-m', 'ledger(payments): retry the commit']);
     assert.ok(!fs.existsSync(statePath(dir, layout.cache('payments'))), 'no heartbeat anywhere');
   });
 });
@@ -300,7 +300,7 @@ describe('engine commit --migrations: the state and the paths the workflows own'
   beforeEach(() => { dir = setup(); });
   afterEach(() => { cleanupFixture(dir); });
 
-  const migrate = (message = 'chore: apply workflow migrations') => ok(dir, ['commit', '--migrations', '-m', message]);
+  const migrate = (message = "chore: apply Ledger's migrations") => ok(dir, ['commit', '--migrations', '-m', message]);
 
   /** `git show --name-status` of the code tree's HEAD, sorted. */
   function headChanges() {
@@ -331,8 +331,8 @@ describe('engine commit --migrations: the state and the paths the workflows own'
     const res = migrate();
 
     assert.deepStrictEqual(res, { ok: true, committed: stateHead(), code_committed: codeHead() });
-    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'chore: apply workflow migrations');
-    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'chore: apply workflow migrations');
+    assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), "chore: apply Ledger's migrations");
+    assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), "chore: apply Ledger's migrations");
     assert.deepStrictEqual(headChanges(), ['D\t.worktreeinclude', 'M\t.claude/settings.json', 'M\t.gitignore']);
     assert.deepStrictEqual(stateChanges(), [`A\t${layout.migrations}`, `M\t${layout.manifest('payments')}`]);
     assert.deepStrictEqual(codeStatusLines(dir).sort(), [' M src/app.js', '?? src/new.js'], 'code stays as it was');
@@ -441,7 +441,7 @@ describe('engine commit --migrations: the state and the paths the workflows own'
       createFile(project, '.claude/settings.json', '{"hooks":{}}\n');
       createFile(project, '.gitignore', '.DS_Store\n');
 
-      ok(project, ['commit', '--migrations', '-m', 'chore: apply workflow migrations']);
+      ok(project, ['commit', '--migrations', '-m', "chore: apply Ledger's migrations"]);
 
       assert.deepStrictEqual(git(repo, ['show', '--name-status', '--pretty=format:', 'HEAD']).trim().split('\n').sort(), [
         'A\tapps/web/.gitignore',
@@ -512,7 +512,7 @@ describe('engine commit --migrations: the state and the paths the workflows own'
   });
 
   it('refuses beside another scope, and without a message', () => {
-    assert.match(refuses(dir, ['commit', '--migrations', '--workflows', '-m', 'x']).error, /Usage/);
+    assert.match(refuses(dir, ['commit', '--migrations', '--whole', '-m', 'x']).error, /Usage/);
     assert.match(refuses(dir, ['commit', '--migrations', '--state', '-m', 'x']).error, /Usage/);
     assert.match(refuses(dir, ['commit', 'payments', '--migrations', '-m', 'x']).error, /Usage/);
     assert.match(refuses(dir, ['commit', '--paths', 'src/app.js', '--migrations', '-m', 'x',

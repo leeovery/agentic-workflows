@@ -165,7 +165,7 @@ describe('the conclude — a learned process gate, and its yes (19.4.23, 24.1.2)
     const sections = conclude();
 
     assert.strictEqual(sections.slice(0, sections.indexOf('=== MENU')), [
-      '=== DISPLAY: investigation conclude (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
+      '=== DISPLAY: investigation conclude (emit verbatim as a text code block (```text fence) — do not stop; continue as the skill instructs) ===',
       'Ripe · conclude',
       '',
       'THE HUNT',

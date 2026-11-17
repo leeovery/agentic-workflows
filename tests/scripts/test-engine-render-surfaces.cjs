@@ -332,7 +332,7 @@ describe('the experiment surfaces', () => {
   it('renders the empty register with the none-yet line — no caller branch needed', () => {
     labWith({});
     const out = renderSurface(dir, 'experiment-register', { dotpath: 'lab.experiment.timing' });
-    assert.match(out, /=== DISPLAY: experiment register \(emit verbatim as a text code block \(```text fence\) — do not stop; continue as the workflow instructs\) ===/);
+    assert.match(out, /=== DISPLAY: experiment register \(emit verbatim as a text code block \(```text fence\) — do not stop; continue as the skill instructs\) ===/);
     assert.match(out, /Experiments — Timing \(0 experiments\)/);
     assert.match(out, /\(none yet — the series starts at E1\)/);
   });
@@ -513,7 +513,7 @@ describe('render phase-note', () => {
 
   it('renders the one-liner with the phase noun by default and an override when given', () => {
     assert.strictEqual(renderSurface(dir, 'phase-note', { dotpath: 'pay.investigation.auth-flow', verb: 'Resuming' }),
-      '=== DISPLAY: phase note (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===\nResuming investigation: Auth Flow\n');
+      '=== DISPLAY: phase note (emit verbatim as a text code block (```text fence) — do not stop; continue as the skill instructs) ===\nResuming investigation: Auth Flow\n');
     assert.ok(renderSurface(dir, 'phase-note', { dotpath: 'pay.investigation.auth-flow', verb: 'Reopening', noun: 'hunt' })
       .includes('Reopening hunt: Auth Flow'));
     assert.throws(() => renderSurface(dir, 'phase-note', { dotpath: 'pay.investigation.auth-flow' }), /--verb is required/);
@@ -594,7 +594,7 @@ describe('the boot and knowledge gate surfaces', () => {
       summary: 'Recovered a message the converter missed.', migrations: 2, files: 3,
     });
     assert.strictEqual(renderSurface(dir, 'migrations-applied', { file: counted }), [
-      '=== DISPLAY: migrations applied (emit verbatim as markdown (not a code block) — do not stop; continue as the workflow instructs) ===',
+      '=== DISPLAY: migrations applied (emit verbatim as markdown (not a code block) — do not stop; continue as the skill instructs) ===',
       '**Migrations Applied**',
       '',
       'Recovered a message the converter missed.',
@@ -813,7 +813,7 @@ describe('the boot and knowledge gate surfaces', () => {
     fs.mkdirSync(path.dirname(metadata), { recursive: true });
     fs.writeFileSync(metadata, JSON.stringify({ provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536 }));
     assert.strictEqual(renderSurface(dir, 'knowledge-ready', {}), [
-      '=== DISPLAY: knowledge ready (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
+      '=== DISPLAY: knowledge ready (emit verbatim as a text code block (```text fence) — do not stop; continue as the skill instructs) ===',
       'Knowledge base ready — openai · text-embedding-3-small.',
       '',
     ].join('\n'));
@@ -895,7 +895,7 @@ describe('render import-reprompt', () => {
   it('names the refused paths in the fence, and offers the correction or the skip', () => {
     const file = writePayload(dir, 'reprompt.json', { missing: ['shots/dockset 05.JPEG', 'notes/ghost.md'] });
     assert.strictEqual(renderSurface(dir, 'import-reprompt', { file }), [
-      '=== DISPLAY: missing imports (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
+      '=== DISPLAY: missing imports (emit verbatim as a text code block (```text fence) — do not stop; continue as the skill instructs) ===',
       'One or more paths could not be landed — nothing at the path, a',
       'folder rather than a file, or unreadable:',
       '',

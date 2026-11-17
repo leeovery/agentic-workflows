@@ -441,12 +441,12 @@ describe('the builder\'s brief (6.5.1–6.5.5, 6.S15)', () => {
     ]) assert.ok(template.includes(line), line);
   });
 
-  it('13.S20: the workflows\' references are kept out of the product where the work is checked, every reviewer\'s template returning one as a nit, and the builder\'s, which the brief-quality measurement showed needs none, saying nothing of them (13.11.14)', () => {
-    const rule = '# The workflows\' own references\n\nThe workflows\' own references never go into the product\'s code or comments: task ids, phase numbers and spec sections. Meeting one in the work, return it as a nit.';
+  it('13.S20: Ledger\'s references are kept out of the product where the work is checked, every reviewer\'s template returning one as a nit, and the builder\'s, which the brief-quality measurement showed needs none, saying nothing of them (13.11.14)', () => {
+    const rule = '# Ledger\'s own references\n\nLedger\'s own references never go into the product\'s code or comments: task ids, phase numbers and spec sections. Meeting one in the work, return it as a nit.';
     const read = (/** @type {string} */ role) => fs.readFileSync(path.join(TEMPLATES, `${role}.md`), 'utf8');
 
     for (const role of ['reviewer', 'test-surface', 'phase-review', 'review-area']) assert.ok(read(role).includes(rule), role);
-    assert.ok(!read('builder').includes('workflows\' own references'), 'the builder\'s template');
+    assert.ok(!read('builder').includes('Ledger\'s own references'), 'the builder\'s template');
   });
 
   it('12.14.5: the builder\'s template gives the account\'s grammar, its sections and its rounds, and its example reads by it', () => {

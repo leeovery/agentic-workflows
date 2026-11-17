@@ -154,7 +154,7 @@ describe('a project folder moved or copied', () => {
     const copy = path.join(world(), 'copy');
     fs.cpSync(original, copy, { recursive: true, verbatimSymlinks: true });
 
-    assert.match(bootRefused(statePath(copy)), new RegExp(`is in a copy of the worktree at ${root}: git reads it as that worktree, in that repository, so the workflows read and write nothing through it`));
+    assert.match(bootRefused(statePath(copy)), new RegExp(`is in a copy of the worktree at ${root}: git reads it as that worktree, in that repository, so Ledger reads and writes nothing through it`));
 
     assert.deepStrictEqual({ links: links(original, [root]), refs: git(original, ['for-each-ref']), log: git(root, ['log', '--format=%H']) }, before);
   });

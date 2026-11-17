@@ -14,15 +14,15 @@ Code's framing, and ctrl+o shows the message in full.
 
 Each line it draws for a row the mod sent is kept in that folder,
 `~/.config/ledger/conversations/{session-id}/rows.json` (under
-`LEDGER_CONFIG_DIR` where that is set, beside the workflows' system
+`LEDGER_CONFIG_DIR` where that is set, beside Ledger's system
 config), under the row's message id, so scrolling back and a resumed
 conversation draw the row the same way, wherever the session's working
 directory has moved. The folder goes once Claude Code has deleted the
 conversation's transcript, and the lines with it, with one exception: a
 conversation whose end the session-end hook never saw — the session that first
 installed the hook, or one that crashed — keeps its folder. The mod names the
-folder the way the workflows' engine does. A conversation that
-does not run the workflows has no folder, nor does one in a process that names
+folder the way Ledger's engine does. A conversation that
+does not run Ledger has no folder, nor does one in a process that names
 neither a home directory nor `LEDGER_CONFIG_DIR`: there the mod writes
 nothing and draws the row as Claude Code does.
 

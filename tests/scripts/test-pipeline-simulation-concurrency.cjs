@@ -53,7 +53,7 @@ describe('pipeline simulation: concurrency', () => {
     sim.run(['workunit', 'create', built, 'feature', '--description', 'Dispatch events', '--session-log-file', sessionLog(sim, built)]);
     discussed(sim, built, built);
     specToBuild(sim, built, [built]);
-    sim.run(['commit', wu, '-m', `workflow(${wu}): set the board`]);
+    sim.run(['commit', wu, '-m', `ledger(${wu}): set the board`]);
 
     // The setup ran as one session: its entries and starts beat and its
     // closes cleared, so the scenario opens on a checkout nobody holds.

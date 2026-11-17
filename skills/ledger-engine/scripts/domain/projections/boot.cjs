@@ -65,7 +65,7 @@ function migrationGate({ codeOnly = false } = {}) {
 
 /**
  * Boot's stop where the state branch is gone here and on the remote, in a
- * project whose code tree holds the workflows' trace (4.4.5): what was lost,
+ * project whose code tree holds Ledger's trace (4.4.5): what was lost,
  * the other clone that can put it back, and the fresh start on yes, `boot
  * --start-again`; a no ends the start with nothing written.
  * @param {string} project the project's name

@@ -82,7 +82,7 @@ describe('engine boot', () => {
       [' M .claude/settings.json', ' M .gitignore']);
     assert.deepStrictEqual(stateGit(fix.project, ['status', '--porcelain']).split('\n').filter(Boolean), ['?? .state/']);
 
-    runEngine(stubbed, fix.project, ['commit', '--migrations', '-m', 'chore: apply workflow migrations']);
+    runEngine(stubbed, fix.project, ['commit', '--migrations', '-m', "chore: apply Ledger's migrations"]);
 
     assert.deepStrictEqual(
       git(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').sort(),
@@ -109,7 +109,7 @@ describe('engine boot', () => {
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(path.join(fix.project, '.claude/settings.json'), 'utf8')),
       { permissions: {}, ...JSON.parse(LABELS_ON) }, 'the migration\'s edit and the hooks, side by side');
 
-    runEngine(stubbed, fix.project, ['commit', '--migrations', '-m', 'chore: apply workflow migrations']);
+    runEngine(stubbed, fix.project, ['commit', '--migrations', '-m', "chore: apply Ledger's migrations"]);
 
     assert.deepStrictEqual(
       git(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').sort(),
@@ -146,7 +146,7 @@ describe('engine boot', () => {
     assert.strictEqual(res.migrations.ran, 1);
     assert.deepStrictEqual(res.warnings, []);
     assert.strictEqual(res.migrations_committed, stateGit(fix.project, ['rev-parse', '--short', 'HEAD']).trim());
-    assert.strictEqual(stateGit(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore: record workflow migrations');
+    assert.strictEqual(stateGit(fix.project, ['log', '-1', '--pretty=%s']).trim(), "chore: record Ledger's migrations");
     assert.deepStrictEqual(
       stateGit(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n'),
       [layout.migrations]
@@ -169,7 +169,7 @@ describe('engine boot', () => {
     assert.strictEqual(res.migrations.changed, false);
     assert.deepStrictEqual(res.warnings, []);
     assert.strictEqual(res.migrations_committed, stateGit(fix.project, ['rev-parse', '--short', 'HEAD']).trim());
-    assert.strictEqual(stateGit(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'chore: record workflow migrations');
+    assert.strictEqual(stateGit(fix.project, ['log', '-1', '--pretty=%s']).trim(), "chore: record Ledger's migrations");
     assert.strictEqual(stateGit(fix.project, ['status', '--porcelain']).trim(), '');
   });
 
@@ -261,7 +261,7 @@ describe('engine boot', () => {
       'init',
     ]);
     assert.deepStrictEqual(stateGit(fix.project, ['log', '-2', '--pretty=%s']).trim().split('\n'), [
-      'chore: record workflow migrations',
+      "chore: record Ledger's migrations",
       'a peer topic',
     ]);
     const files = stateGit(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').filter(Boolean);

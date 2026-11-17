@@ -2,20 +2,20 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: the brief hook — Claude Code's hook before Agent and
-// SendMessage, which hands one of the workflows' own agents the brief the
+// SendMessage, which hands one of Ledger's own agents the brief the
 // engine issued for it, and refuses a dispatch of one, or a message to one,
 // carrying anything else (6.5.7, 13.11.11). Boot installs it in the
 // project's settings beside the layout hook, so it holds with or without
 // the mod (6.3.10).
 //
-// The workflows' agents are those named `ledger-*`: an Agent call's
+// Ledger's agents are those named `ledger-*`: an Agent call's
 // `subagent_type`, or the type a SendMessage's recipient was dispatched as,
 // from its record beside the conversation's transcript (conversation.cjs).
 // Any other call it leaves alone, saying nothing and recording nothing
 // (6.5.8): Claude's own subagents, a message to one, a message to a
 // recipient with no record, and a call it cannot read.
 //
-// One of the workflows' agents takes its brief by the pointer `brief:{id}`,
+// One of Ledger's agents takes its brief by the pointer `brief:{id}`,
 // alone in every field that carries the call's text — Agent's `prompt`,
 // SendMessage's `message` and `content` (brief-names.cjs). The hook finds
 // the brief, and what it was issued as, in the folder of the conversation
@@ -29,7 +29,7 @@
 // (`no-brief`); a brief this conversation never issued, either of its files
 // missing (`never-issued`); a pointer with anything beside it (`altered`);
 // a brief issued for another agent (`other-agent`); and any failure
-// checking one of the workflows' agents (`error`). Each refusal appends a
+// checking one of Ledger's agents (`error`). Each refusal appends a
 // line to `{config}/brief-refusals.jsonl`, across the person's projects
 // (6.5.9, 6.5.12) — one append of one short line, so the hook never waits
 // on a lock.
@@ -74,8 +74,8 @@ const DISPATCHES = Object.freeze({
 const BRIEF_HOOK_TOOLS = Object.keys(DISPATCHES);
 
 /**
- * The workflows' agent a call reaches; null where it reaches none of
- * theirs, or the call cannot be read.
+ * Ledger's agent a call reaches; null where it reaches none of
+ * them, or the call cannot be read.
  * @param {HookInput} input @returns {string|null}
  */
 function oursReached(input) {
@@ -145,7 +145,7 @@ function issuedBrief(session, id, agent) {
 }
 
 /**
- * The brief a call of one of the workflows' agents carries, checked: the
+ * The brief a call of one of Ledger's agents carries, checked: the
  * tool's input with the brief in place of each pointer, or why it is
  * refused. Throws where the brief cannot be read.
  * @param {HookInput} input @param {string} agent
@@ -153,7 +153,7 @@ function issuedBrief(session, id, agent) {
  */
 function checkedBrief(input, agent) {
   if (rolesOf(agent).length === 0) {
-    return refusal('no-template', null, `${agent} is named as one of the workflows' agents, and no role is dispatched as ${agent} — there is no template to brief it from`);
+    return refusal('no-template', null, `${agent} is named as one of Ledger's agents, and no role is dispatched as ${agent} — there is no template to brief it from`);
   }
   const session = input.session_id;
   if (typeof session !== 'string' || session === '') throw new Error('the hook was handed no session id');

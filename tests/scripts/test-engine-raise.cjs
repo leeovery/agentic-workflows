@@ -490,7 +490,7 @@ describe('the draw\'s refusals, drawing and sealing nothing', () => {
     const plain = initRepo(fs.mkdtempSync(path.join(os.tmpdir(), 'raise-stateless-')));
     try {
       const { error } = await refusesAsync(plain, ['raise', NOTE, '--answers', asked.where], { env: conversation(), stdin: JSON.stringify(CALL) });
-      assert.strictEqual(error, 'raise: there is no workflows state here — the question a raise answers is in the ledger, which the state holds');
+      assert.strictEqual(error, 'raise: there is no Ledger state here — the question a raise answers is in the ledger, which the state holds');
       assert.strictEqual(seals(), null);
     } finally {
       fs.rmSync(plain, { recursive: true, force: true });

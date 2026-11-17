@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 // Kernel: deterministic renderer for fixed-shape output.
 //
-// Pure layout — no workflow vocabulary. Layout that is fully determined by
+// Pure layout — no Ledger vocabulary. Layout that is fully determined by
 // data is computed here, in code, and emitted verbatim by the caller — never
 // re-derived character-by-character by the model. The wrap/width math lives
 // here once, so the gutter-budget bug can exist in exactly one place.

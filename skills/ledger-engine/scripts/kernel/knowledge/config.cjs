@@ -4,7 +4,7 @@
 // Kernel: the knowledge configuration — two levels merged over the defaults,
 // the provider's API key resolved, and the embedding provider it names.
 //
-// System config:  config.json in the workflows' system config directory
+// System config:  config.json in Ledger's system config directory
 // Project config: .knowledge/config.json in the state
 //
 // Both wrap knowledge settings under a top-level "knowledge" key. Project

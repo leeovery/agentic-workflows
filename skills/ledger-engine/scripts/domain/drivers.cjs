@@ -4,7 +4,7 @@
 // Domain ring: the drivers, the code behind the `task` verbs (the tracker)
 // and the `land` verbs (the code host) (7.1.4, 7.2.1).
 //
-// A driver is a folder the workflows ship, `drivers/{kind}/{name}/driver.cjs`,
+// A driver is a folder Ledger ships, `drivers/{kind}/{name}/driver.cjs`,
 // and never one loaded from elsewhere (7.1.7): the loader reads the shipped
 // folders. A driver declares its kind, its name, whether it is its kind's
 // default, the words a screen names it by, and the tools it needs: each
@@ -27,8 +27,8 @@
 // the default and writes it there, so a driver never changes under a build
 // (7.1.4): the task driver flagged default (22.4.2); for landing, the driver
 // that serves the project's remote, else the one flagged default, the local
-// driver (22.4.3, 7.2.16). A setting naming a driver the workflows don't ship
-// is refused, naming those they do. The code host's driver, which acts on
+// driver (22.4.3, 7.2.16). A setting naming a driver Ledger doesn't ship
+// is refused, naming those it does. The code host's driver, which acts on
 // the remote's host for setup, is the landing driver that serves the
 // remote, whatever the setting; which driver a project lands through can be
 // read without settling it. A driver serves the project unless it lands
@@ -416,7 +416,7 @@ function namesIn(folder) {
 /**
  * The shipped driver of a kind by its name. Refuses a name no driver ships,
  * naming those that do, and a driver whose folder or declaration is amiss.
- * `root` is the drivers' folder, a test's own; the workflows' is the only
+ * `root` is the drivers' folder, a test's own; Ledger's is the only
  * one the engine reads.
  * @param {DriverKind} kind @param {string} name @param {string} [root]
  * @returns {Driver}
@@ -551,7 +551,7 @@ function chosenDriver(cwd, kind, root = DRIVERS_ROOT) {
  * setting is absent, the kind's default, written to the project manifest
  * under the writer lock as the setting from then on. `written` says this
  * call wrote it, for the caller's commit to carry. Refuses a setting naming
- * a driver the workflows don't ship.
+ * a driver Ledger doesn't ship.
  * @param {string} cwd @param {DriverKind} kind @param {string} [root] as `loadDriver`'s
  * @returns {{driver: Driver, written: boolean}}
  */

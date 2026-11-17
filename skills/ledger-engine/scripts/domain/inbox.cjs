@@ -161,7 +161,7 @@ function parseInboxPaths(cwd, paths, opts) {
 /** `archive {slug}` for one item, `archive {N} items` for several. @param {string} verb @param {InboxItem[]} items */
 function commitMessage(verb, items) {
   const what = items.length === 1 ? items[0].slug : `${items.length} items`;
-  return `workflow(inbox): ${verb} ${what}`;
+  return `ledger(inbox): ${verb} ${what}`;
 }
 
 /**
@@ -525,7 +525,7 @@ function fileItem(cwd, unit, file) {
   const rel = freeItemPath(cwd, folder, slug);
   fs.mkdirSync(path.dirname(statePath(cwd, rel)), { recursive: true });
   fs.writeFileSync(statePath(cwd, rel), `${String(text).replace(/\n*$/, '')}\n`);
-  const outcome = commitStateTail(cwd, [rel], `workflow(inbox): file ${path.posix.basename(rel, '.md').replace(/^\d{4}-\d{2}-\d{2}--/, '')} from ${unit}'s ${atClose ? 'close' : 'review'}`, warnings);
+  const outcome = commitStateTail(cwd, [rel], `ledger(inbox): file ${path.posix.basename(rel, '.md').replace(/^\d{4}-\d{2}-\d{2}--/, '')} from ${unit}'s ${atClose ? 'close' : 'review'}`, warnings);
   return committedResult({ filed: statePath(cwd, rel), committed: outcome.committed }, outcome, warnings);
 }
 

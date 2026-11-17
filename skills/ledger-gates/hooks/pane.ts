@@ -1,5 +1,5 @@
 /**
- * The workflows board's pane: its three tabs, This session following the
+ * The board's pane: its three tabs, This session following the
  * session, and the pages the person opens over them.
  *
  * What the pane shows is where the person has gone on it (`Nav`): the tab,
@@ -30,7 +30,7 @@ import type { Views } from './views/index.ts'
 export const PANE = 'board'
 
 /** Its tab's title in Claude Code's tab row, beside sitrep's. */
-export const TITLE = 'workflows'
+export const TITLE = 'ledger'
 
 /** The width and height it asks for. */
 export const SIZE = { columns: 60, rows: 28 }

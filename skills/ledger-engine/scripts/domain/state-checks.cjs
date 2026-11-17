@@ -28,7 +28,7 @@
 //   the migrate skill answers (ledger-migrate/scripts/old-layout.cjs, `owed`)
 //   — goes on to the migration, which puts its state in place, whatever
 //   folder a migration cut short left there; a project being set up gets
-//   the orphan branch; one whose repository holds the workflows' trace — on
+//   the orphan branch; one whose repository holds Ledger's trace — on
 //   any branch, the remote's fetched first, or in any tree checked out —
 //   lost its state, and boot stops there, starting again only on the
 //   person's yes (4.4.5, 4.5.2).

@@ -610,8 +610,8 @@ const MENU_INSTRUCTION = emitAs('markdown', STOP_CLAUSE);
 // an engine string that duplicated it would be a second routing source to
 // keep in sync. The markdown variant serves surfaces whose register cannot
 // live in a fence — worklist strikethrough and code-span tags.
-const CONTINUE_CLAUSE = ' — do not stop; continue as the workflow instructs';
-const AUTO_GATE_CLAUSE = ' — the user set this gate to auto: do not stop; continue as the workflow instructs';
+const CONTINUE_CLAUSE = ' — do not stop; continue as the skill instructs';
+const AUTO_GATE_CLAUSE = ' — the user set this gate to auto: do not stop; continue as the skill instructs';
 const CONTINUE_INSTRUCTION = emitAs('text', CONTINUE_CLAUSE);
 const CONTINUE_MARKDOWN_INSTRUCTION = emitAs('markdown', CONTINUE_CLAUSE);
 // A learned gate the engine ran as an automatic step: its DATA names the row
