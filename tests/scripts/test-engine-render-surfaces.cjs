@@ -282,21 +282,17 @@ describe('the experiment surfaces', () => {
     });
   }
 
-  it('renders the empty register with the none-yet line — no caller branch needed', () => {
-    labWith({});
-    const out = renderSurface(dir, 'experiment-register', { dotpath: 'lab.experiment.timing' });
-    assert.match(out, /=== DISPLAY: experiment register \(emit verbatim as a text code block \(```text fence\) — do not stop; continue as the skill instructs\) ===/);
-    assert.match(out, /Experiments — Timing \(0 experiments\)/);
-    assert.match(out, /\(none yet — the series starts at E1\)/);
-  });
+  /** The register, as the next experiment's gate draws it above itself. */
+  const register = () => renderSurface(dir, 'experiment-next-gate', { dotpath: 'lab.experiment.timing' }).split('=== MENU')[0];
 
-  it('tags live rows, spells terminal state on the ↳ line, and gaps top-level siblings', () => {
+  it('the register tags live rows, spells terminal state on the ↳ line, and gaps top-level siblings', () => {
     labWith({
       E1: { slug: 'window-placement', status: 'concluded', verdict: 'all layouts placed; adopted' },
       E2: { slug: 'multi-monitor', status: 'abandoned', reason: 'question dissolved' },
       E3: { slug: 'focus-order', status: 'running' },
     });
-    const out = renderSurface(dir, 'experiment-register', { dotpath: 'lab.experiment.timing' });
+    const out = register();
+    assert.match(out, /^=== DISPLAY: experiment register \(emit verbatim as a text code block \(```text fence\) — do not stop; continue as the skill instructs\) ===/);
     assert.match(out, /Experiments — Timing \(3 experiments\)/);
     assert.match(out, / {2}├─ E1 window-placement\n {2}│ {5}↳ Concluded — all layouts placed; adopted/);
     assert.match(out, /↳ Abandoned — question dissolved/);
@@ -305,13 +301,13 @@ describe('the experiment surfaces', () => {
     assert.match(out, / {2}│\n {2}├─ E2/, 'top-level rows gap with a gutter-only line');
   });
 
-  it('nests sub-experiments under their parent, id order', () => {
+  it('the register nests sub-experiments under their parent, id order', () => {
     labWith({
       E1: { slug: 'window-placement', status: 'running' },
       'E1.2': { slug: 'multi-monitor', status: 'conceived' },
       'E1.1': { slug: 'single-monitor', status: 'concluded', verdict: 'held' },
     });
-    const out = renderSurface(dir, 'experiment-register', { dotpath: 'lab.experiment.timing' });
+    const out = register();
     assert.match(out, /Experiments — Timing \(3 experiments\)/);
     const e1 = out.indexOf('E1 window-placement');
     const e11 = out.indexOf('E1.1 single-monitor');
@@ -323,9 +319,9 @@ describe('the experiment surfaces', () => {
 
   it('refuses a wrong phase address and a topic with no series', () => {
     labWith({});
-    assert.throws(() => renderSurface(dir, 'experiment-register', { dotpath: 'lab.discussion.timing' }),
+    assert.throws(() => renderSurface(dir, 'experiment-next-gate', { dotpath: 'lab.discussion.timing' }),
       /address must be <work_unit>\.experiment\.<topic>/);
-    assert.throws(() => renderSurface(dir, 'experiment-register', { dotpath: 'lab.experiment.ghost' }),
+    assert.throws(() => renderSurface(dir, 'experiment-approval-gate', { dotpath: 'lab.experiment.ghost', id: 'E1' }),
       /no experiment series for "ghost"/);
   });
 
@@ -361,33 +357,6 @@ describe('the experiment surfaces', () => {
       /no experiment E9/);
     assert.throws(() => renderSurface(dir, 'experiment-approval-gate', { dotpath: 'lab.experiment.timing', id: 'E1' }),
       /E1 is "running", not designed — the briefing confirm follows the written design/);
-  });
-
-  it('renders the record picker byte-exactly — one row per live top-level record, keyed by its id, then back', () => {
-    labWith({
-      E1: { slug: 'window-placement', status: 'running' },
-      'E1.1': { slug: 'single-monitor', status: 'designed' },
-      E2: { slug: 'cold-start', status: 'concluded', verdict: 'held' },
-      E3: { slug: 'warm-cache', status: 'conceived' },
-    });
-    assert.strictEqual(renderSurface(dir, 'experiment-pick', { dotpath: 'lab.experiment.timing' }), [
-      "=== MENU: experiment pick (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-      DOTS,
-      '**`◆ Which experiment?`**',
-      '',
-      '**`E1`**     → window-placement — *running*',
-      '**`E3`**     → warm-cache — *conceived*',
-      '**`b/back`** → Leave without picking one',
-      '',
-    ].join('\n'));
-  });
-
-  it('the picker refuses a wrong phase and a series with nothing live to pick', () => {
-    labWith({ E1: { slug: 'window-placement', status: 'abandoned', reason: 'moot' } });
-    assert.throws(() => renderSurface(dir, 'experiment-pick', { dotpath: 'lab.experiment.timing' }),
-      /"timing"'s series holds no live experiments — there is nothing to pick/);
-    assert.throws(() => renderSurface(dir, 'experiment-pick', { dotpath: 'lab.discussion.timing' }),
-      /address must be <work_unit>\.experiment\.<topic>/);
   });
 
   it('the next gate names the live top-level records and offers next or menu', () => {

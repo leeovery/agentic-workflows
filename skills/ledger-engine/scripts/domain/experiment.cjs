@@ -40,13 +40,20 @@
 // (and reopens a completed series), the last record's terminal transition
 // closes it — the user never starts or completes it by hand.
 //
+// A top-level record's end answers the way on: the next experiment's gate
+// where the series still holds a live record, else the laboratory left
+// through the unit's Continue; a split's carries the parent's run on.
+//
 // Judgment decides, code records. All errors throw loud and specific before
 // anything is written; every load→mutate→save runs under the work unit's
-// manifest lock. The spawn commits the record it installed with the
-// manifest that names it, and with them, as every state commit does, the
-// logs changed beside them — the spawning topic's among them. Every other
-// write is left to the calling session's commit cadence
-// (`commit --topic experiment/{topic}`).
+// manifest lock. Every verb commits what it wrote with the record's folder,
+// the documents Claude wrote there since — its design, its report and its
+// data — and, as every state commit does, the logs changed beside them: the
+// spawn the problem statement it installed with the manifest that names it,
+// the spawning topic's log among the logs; each step the manifest with the
+// record's folder; and `amend`, which writes nothing itself, the record's
+// folder alone — an amendment to a frozen design, or its strike, standing.
+// A commit git refuses leaves the write saved, with the retry in its note.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -175,8 +182,9 @@ function liveSubs(item, parentId) {
  * @property {string} [parent]   sub-experiment creation — the running parent
  * @property {{phase: string, ids: string[]}} [awaiting]  the lock the spawn placed
  * @property {string} [question]  the question the spawn measures, by its short id
- * @property {string|null} [committed]  the spawn's commit — null where none landed
+ * @property {string|null} [committed]  the verb's commit — null where none landed
  * @property {string} [note]  a pending commit's retry
+ * @property {import('./projections/surfaces.cjs').Next} [next]  the way on from a record's end
  * @property {import('./transitions.cjs').WaitRelease[]} [released_waits]
  * @property {ConditionRuns[]} [runs]  the tally `runs` recorded
  * @property {{topic: string, message_path: string, reopened: boolean, committed: string|null}} [report_sent]  the report sent as a message to the topic its question stands on now, the question no longer open on the spawning topic when it landed
@@ -200,8 +208,8 @@ function liveSubs(item, parentId) {
  * whole ends), and no problem file or question: the sub-record's design
  * frames its question, and the parent measures the map's. The record's
  * directory is the response's `dir`, where the design is authored before
- * anything is measured. A spawn commits what it wrote (`committedSpawn`); a
- * split leaves its manifest change to the experiment session's cadence.
+ * anything is measured. A spawn commits what it wrote (`committedSpawn`), as
+ * a split does (`committedStep`).
  * @param {string} cwd project root
  * @param {string} workUnit
  * @param {string} topic
@@ -320,25 +328,37 @@ function createExperiment(cwd, workUnit, topic, { slug, from, parent, problem, q
   if (scratchAbs !== null) {
     try { fs.unlinkSync(scratchAbs); } catch { /* scratch already gone */ }
   }
-  const answer = from === undefined ? result : committedSpawn(cwd, workUnit, result, warnings);
+  return from === undefined
+    ? committedStep(cwd, workUnit, result, `split ${result.id} ${slug} from ${parent}`, warnings)
+    : committed(cwd, [`${workUnit}/manifest.json`, path.join(result.dir, 'problem.md')], `experiment(${workUnit}/${topic}): spawn ${result.id} ${slug}`,
+      result, `${workUnit} --topic experiment/${topic} --sweep`, warnings);
+}
+
+/**
+ * `paths` committed under `message`, any log changed beside them riding
+ * along, the outcome stamped on `result` with the warnings raised: a commit
+ * git refuses leaves the write saved, with the retry, `retry`, in its note.
+ * The spawn's retry marks the topic as one its conversation is not working.
+ * @param {string} cwd @param {string[]} paths @param {string} message @param {ExperimentOpResult} result @param {string} retry @param {string[]} warnings
+ * @returns {ExperimentOpResult}
+ */
+function committed(cwd, paths, message, result, retry, warnings) {
+  const outcome = commitStateTail(cwd, paths, message, warnings);
+  /** @type {ExperimentOpResult & Record<string, unknown>} */
+  const answer = { ...result, committed: outcome.committed };
+  noteCommitOutcome(answer, outcome, retry);
   return warnings.length > 0 ? { ...answer, warnings } : answer;
 }
 
 /**
- * The spawn's commit: the record's problem statement and the manifest that
- * names it, any log changed beside them riding along. A commit git refuses
- * leaves the spawn saved, with the retry in its note.
- * @param {string} cwd @param {string} workUnit @param {ExperimentOpResult} created @param {string[]} warnings
+ * A laboratory step's commit: the manifest and the record's folder, under
+ * `what` the step did.
+ * @param {string} cwd @param {string} workUnit @param {ExperimentOpResult} result @param {string} what @param {string[]} [warnings]
  * @returns {ExperimentOpResult}
  */
-function committedSpawn(cwd, workUnit, created, warnings) {
-  const { topic, id, slug, dir } = created;
-  const outcome = commitStateTail(cwd, [`${workUnit}/manifest.json`, path.join(dir, 'problem.md')],
-    `experiment(${workUnit}/${topic}): spawn ${id} ${slug}`, warnings);
-  /** @type {ExperimentOpResult & Record<string, unknown>} */
-  const answer = { ...created, committed: outcome.committed };
-  noteCommitOutcome(answer, outcome, `${workUnit} --topic experiment/${topic} --sweep`);
-  return answer;
+function committedStep(cwd, workUnit, result, what, warnings = []) {
+  const { topic, dir } = result;
+  return committed(cwd, [`${workUnit}/manifest.json`, dir], `experiment(${workUnit}/${topic}): ${what}`, result, `${workUnit} --topic experiment/${topic}`, warnings);
 }
 
 /**
@@ -365,14 +385,15 @@ function recordTransition(cwd, workUnit, topic, id, step) {
 
 /**
  * Advance an experiment one mechanical step: conceived → designed (the design
- * is written), approved → running (measurement begins). The freeze between
- * them is `approve`; past `running` the exits are conclude and abandon.
+ * is written), approved → running (measurement begins), committed. The
+ * freeze between them is `approve`; past `running` the exits are conclude
+ * and abandon.
  * @param {string} cwd project root
  * @param {string} workUnit @param {string} topic @param {string} id
  * @returns {ExperimentOpResult}
  */
 function advanceExperiment(cwd, workUnit, topic, id) {
-  return recordTransition(cwd, workUnit, topic, id, (record) => {
+  const advanced = recordTransition(cwd, workUnit, topic, id, (record) => {
     assertNotTerminal(record, topic, id);
     if (record.status === 'designed') {
       throw new Error(`experiment ${id} ("${topic}") is designed — the design freezes at the user-confirmed briefing; record it with experiment approve`);
@@ -388,20 +409,22 @@ function advanceExperiment(cwd, workUnit, topic, id) {
     record.status = next;
     return { previous };
   });
+  return committedStep(cwd, workUnit, advanced, `${id} ${advanced.status}`);
 }
 
 /**
  * Record the briefing gate's freeze: designed → approved, the day of it held
  * on the record, and nothing else — the one transition that requires the
- * user's confirm, so it is never a step `advance` can drift past. From `approved` the design is frozen: flaws found
- * after results are visible go in the report's corrections and trigger the
- * next experiment.
+ * user's confirm, so it is never a step `advance` can drift past — committed
+ * with the design it froze. From `approved` the design changes only by a
+ * recorded amendment (`amend`); flaws found after results are visible go in
+ * the report's corrections and trigger the next experiment.
  * @param {string} cwd project root
  * @param {string} workUnit @param {string} topic @param {string} id
  * @returns {ExperimentOpResult}
  */
 function approveExperiment(cwd, workUnit, topic, id) {
-  return recordTransition(cwd, workUnit, topic, id, (record) => {
+  const approved = recordTransition(cwd, workUnit, topic, id, (record) => {
     if (record.status !== 'designed') {
       assertNotTerminal(record, topic, id);
       throw new Error(`experiment ${id} ("${topic}") is ${record.status} — only a designed experiment takes the approval freeze`);
@@ -410,6 +433,31 @@ function approveExperiment(cwd, workUnit, topic, id) {
     record.approved = todayStamp();
     return { previous: 'designed' };
   });
+  return committedStep(cwd, workUnit, approved, `${id} approved — design frozen`);
+}
+
+/**
+ * Record an amendment to a frozen design, or its strike, as standing: the
+ * record's folder committed, its design among it, the amendment dated
+ * beneath what was approved. Refused, writing nothing, for a design not yet
+ * frozen, which changes freely until its approval, and for an experiment
+ * ended.
+ * @param {string} cwd project root
+ * @param {string} workUnit @param {string} topic @param {string} id
+ * @returns {ExperimentOpResult}
+ */
+function amendExperiment(cwd, workUnit, topic, id) {
+  const manifest = loadWorkUnitManifest(cwd, workUnit);
+  const item = experimentItem(manifest, topic);
+  const record = seriesRecord(item, topic, id);
+  assertNotTerminal(record, topic, id);
+  if (record.status !== 'approved' && record.status !== 'running') {
+    throw new Error(`experiment ${id} ("${topic}") is ${record.status} — its design changes freely until the approval freezes it; an amendment is to a frozen design`);
+  }
+  const experiments = /** @type {Record<string, ExperimentRecord>} */ (item.experiments);
+  /** @type {ExperimentOpResult} */
+  const result = { topic, id, slug: record.slug, status: record.status, dir: statePath(cwd, recordDir(workUnit, topic, id, experiments)) };
+  return committed(cwd, [result.dir], `experiment(${workUnit}/${topic}): ${id} design amended`, result, `${workUnit} --topic experiment/${topic}`, []);
 }
 
 /**
@@ -471,7 +519,8 @@ function sendReport(cwd, workUnit, topic, id, { record, to }) {
  * top-level conclusion releases the spawning item's evidence wait on this
  * id; a sub-experiment's conclusion releases nothing — the parent's carries
  * them. The item's derived
- * status settles after every terminal transition. Where the question the
+ * status settles after every terminal transition, and the end answers its
+ * way on (`afterEnd`). Committed with its report; where the question the
  * experiment measures left the open questions of the spawning topic while
  * it ran, the report then reaches as a message the topic the question
  * stands on now (`reportOwed`, `sendReport`).
@@ -485,7 +534,7 @@ function concludeExperiment(cwd, workUnit, topic, id, { verdict }) {
   /** @type {string[]} */
   const warnings = [];
   const report = reportOwed(cwd, workUnit, topic, id, warnings);
-  const result = recordTransition(cwd, workUnit, topic, id, (record, item, manifest) => {
+  const concluded = recordTransition(cwd, workUnit, topic, id, (record, item, manifest) => {
     assertNotTerminal(record, topic, id);
     if (record.status !== 'running') {
       throw new Error(`experiment ${id} ("${topic}") is ${record.status} — only a running experiment concludes; the design exists before the data, and the data before the verdict`);
@@ -498,17 +547,45 @@ function concludeExperiment(cwd, workUnit, topic, id, { verdict }) {
     }
     record.status = 'concluded';
     record.verdict = verdict.trim();
-    /** @type {Partial<ExperimentOpResult>} */
-    const extra = { verdict: record.verdict };
-    if (isParentExperimentId(id)) {
-      const released = releaseExperimentWaits(manifest, topic, { ids: [id] });
-      if (released.length > 0) extra.released_waits = released;
-    }
-    extra.item_status = settleItemStatus(item);
-    return extra;
+    return { verdict: record.verdict, ...ended(workUnit, topic, id, item, manifest) };
   });
-  if (report !== null) result.report_sent = sendReport(cwd, workUnit, topic, id, report);
-  return warnings.length > 0 ? { ...result, warnings } : result;
+  const result = committedStep(cwd, workUnit, concluded, `${id} concluded`, warnings);
+  return report === null ? result : { ...result, report_sent: sendReport(cwd, workUnit, topic, id, report) };
+}
+
+/**
+ * What a record's end writes beside its own row, and answers: a top-level
+ * end releases the spawning item's wait on it; the series' item settles;
+ * and its way on (`afterEnd`).
+ * @param {string} workUnit @param {string} topic @param {string} id
+ * @param {{experiments?: Record<string, ExperimentRecord>}} item @param {object} manifest
+ * @returns {Partial<ExperimentOpResult>}
+ */
+function ended(workUnit, topic, id, item, manifest) {
+  const released = isParentExperimentId(id) ? releaseExperimentWaits(manifest, topic, { ids: [id] }) : [];
+  return {
+    ...(released.length > 0 ? { released_waits: released } : {}),
+    item_status: settleItemStatus(item),
+    next: afterEnd(workUnit, topic, id, item),
+  };
+}
+
+/**
+ * The way on once a record ended: a split's carries its parent's run on; a
+ * top-level record's leads to the next experiment's gate where the series
+ * still holds a live one, else out of the laboratory through the unit's
+ * Continue.
+ * @param {string} workUnit @param {string} topic @param {string} id
+ * @param {{experiments?: Record<string, ExperimentRecord>}} item
+ * @returns {import('./projections/surfaces.cjs').Next}
+ */
+function afterEnd(workUnit, topic, id, item) {
+  if (!isParentExperimentId(id)) return { kind: 'continue' };
+  const live = Object.entries(item.experiments || {})
+    .some(([other, r]) => isParentExperimentId(other) && !EXPERIMENT_TERMINAL_STATUSES.includes(/** @type {string} */ (r.status)));
+  return live
+    ? { kind: 'engine', argv: ['render', 'experiment-next-gate', `${workUnit}.experiment.${topic}`] }
+    : { kind: 'engine', argv: ['handoff', 'unit', workUnit] };
 }
 
 /**
@@ -517,7 +594,8 @@ function concludeExperiment(cwd, workUnit, topic, id, { verdict }) {
  * live sub-experiments refuses — each ends on its own row first. A top-level
  * abandonment releases the spawning item's evidence wait on this id, and
  * the question it measured stands open again. The item's derived status
- * settles after every terminal transition.
+ * settles after every terminal transition, the end answers its way on
+ * (`afterEnd`), and the record's folder is committed with it.
  * @param {string} cwd project root
  * @param {string} workUnit @param {string} topic @param {string} id
  * @param {{reason: string}} opts
@@ -525,7 +603,7 @@ function concludeExperiment(cwd, workUnit, topic, id, { verdict }) {
  */
 function abandonExperiment(cwd, workUnit, topic, id, { reason }) {
   assertOneLine('--reason', reason);
-  return recordTransition(cwd, workUnit, topic, id, (record, item, manifest) => {
+  const abandoned = recordTransition(cwd, workUnit, topic, id, (record, item, manifest) => {
     assertNotTerminal(record, topic, id);
     if (isParentExperimentId(id)) {
       const open = liveSubs(item, id).map(([subId, r]) => `${subId}: ${r.status}`);
@@ -535,15 +613,9 @@ function abandonExperiment(cwd, workUnit, topic, id, { reason }) {
     }
     record.status = 'abandoned';
     record.reason = reason.trim();
-    /** @type {Partial<ExperimentOpResult>} */
-    const extra = { reason: record.reason };
-    if (isParentExperimentId(id)) {
-      const released = releaseExperimentWaits(manifest, topic, { ids: [id] });
-      if (released.length > 0) extra.released_waits = released;
-    }
-    extra.item_status = settleItemStatus(item);
-    return extra;
+    return { reason: record.reason, ...ended(workUnit, topic, id, item, manifest) };
   });
+  return committedStep(cwd, workUnit, abandoned, `${id} abandoned`);
 }
 
 /** The median of measured values, null for none, to twelve significant figures. @param {number[]} values */
@@ -587,7 +659,8 @@ function conditionRuns(given, at) {
  * median in place of the values, the whole tally standing over any
  * before. Refused before anything is written for a tally that is no list,
  * empty, names a condition twice or holds a condition that does not check
- * (`conditionRuns`), and for an experiment not running.
+ * (`conditionRuns`), and for an experiment not running. Committed with the
+ * record's folder: the report and the data the runs wrote.
  * @param {string} cwd project root
  * @param {string} workUnit @param {string} topic @param {string} id
  * @param {{file: string}} opts
@@ -598,7 +671,7 @@ function recordRuns(cwd, workUnit, topic, id, { file }) {
   if (tally.length === 0) throw new Error('the tally names no condition — it holds each condition the design runs');
   const twice = tally.find(({ condition }, at) => tally.findIndex((held) => held.condition === condition) !== at);
   if (twice !== undefined) throw new Error(`the tally names the condition "${twice.condition}" twice`);
-  return recordTransition(cwd, workUnit, topic, id, (record) => {
+  const recorded = recordTransition(cwd, workUnit, topic, id, (record) => {
     assertNotTerminal(record, topic, id);
     if (record.status !== 'running') {
       throw new Error(`experiment ${id} ("${topic}") is ${record.status} — runs are recorded while it runs`);
@@ -606,6 +679,7 @@ function recordRuns(cwd, workUnit, topic, id, { file }) {
     record.runs = tally;
     return { runs: tally };
   });
+  return committedStep(cwd, workUnit, recorded, `${id} runs recorded`);
 }
 
-module.exports = { createExperiment, advanceExperiment, approveExperiment, recordRuns, concludeExperiment, abandonExperiment };
+module.exports = { createExperiment, advanceExperiment, approveExperiment, amendExperiment, recordRuns, concludeExperiment, abandonExperiment };

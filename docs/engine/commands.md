@@ -484,18 +484,19 @@ A topic's mail, an epic's map, and a topic's leaving. A topic phase's item is st
 ### `enter`
 
 ```text
-enter <discussion|discovery|specification|implementation|review|investigation> <work-unit|product> [<topic>] [--take] [--move] [--seeds <seeds>]
+enter <discussion|discovery|specification|implementation|review|investigation|experiment> <work-unit|product> [<topic>] [--take] [--move] [--seeds <seeds>] [--record <record>]
 ```
 
-The one call a phase is entered by. Discussion and investigation are entered at a topic; discovery at an epic or at `product`, the product's conversation; specification, implementation and review at the unit. The entry starts what is not yet started, records where the conversation is working (its position, label, presence, and `.cache/{unit}/{phase}/{topic}/entered.json`), and answers in sections: any question owed first, then a `DATA` of `key: value` lines naming what to read — absolute paths and engine calls, never their contents.
+The one call a phase is entered by. Discussion, investigation and the laboratory, experiment, are entered at a topic; discovery at an epic or at `product`, the product's conversation; specification, implementation and review at the unit. The entry starts what is not yet started, records where the conversation is working (its position, label, presence, and `.cache/{unit}/{phase}/{topic}/entered.json`), and answers in sections: any question owed first, then a `DATA` of `key: value` lines naming what to read — absolute paths and engine calls, never their contents.
 
-- **Asks first.** Where another live session holds the place, the answer is `MENU: held topic gate` alone, nothing written; for implementation and review, where another session works in this checkout, `DISPLAY: code gate` and `MENU: code gate`. Each gate's yes enters again with `--take`. Discussion and investigation raise `DISPLAY: waiting mail` while messages wait.
+- **Asks first.** Where another live session holds the place, the answer is `MENU: held topic gate` alone, nothing written; for implementation and review, where another session works in this checkout, `DISPLAY: code gate` and `MENU: code gate`. Each gate's yes enters again with `--take`. Discussion and investigation raise `DISPLAY: waiting mail` while messages wait. The laboratory, over several live experiments and none named, answers `DISPLAY: experiment register` and `MENU: experiment pick`, nothing written: each row enters again with `--record` naming its experiment, carrying any `--take`; its back returns to the next experiment's gate where the conversation came from it, else to the unit's menu.
+- **`--record`**, the laboratory's alone, names the live top-level experiment to work.
 - **Starts.** A discussion or investigation item, a discovery session (its next log made empty, its marker set), the build's first entry (running the environment's steps for before the first task, `prepared` lines in its `DATA`), and a quick-fix's fixes (phase 1 written in the tracker); each commits the start. Implementation and review put the tracker's tasks in progress in flight on the position. The review phase's first entry brings the default branch into `feat/{unit}` and opens the unit's pull request where the driver lands through a host; a conflict refuses the entry, the merge begun in a worktree for the person to settle.
 - **`--move`** carries the conversation on between discovery's levels — the product's conversation, an epic's discovery, a topic's discussion moving up — in the same session, leaving a pointer in the log it left.
 - **`--seeds`**, discovery's alone, takes in the seeds its handoff carried.
-- **`DATA`** — per phase, what to read, each key naming it: for a build, `in flight` with where each task goes next, `waiting` questions, and `engine`, the engine's path for a call from a worktree. Every topic-level and discovery entry ends with `log`, and `log header`, the line the conversation's next write to it opens with.
+- **`DATA`** — per phase, what to read, each key naming it: for a build, `in flight` with where each task goes next, `waiting` questions, and `engine`, the engine's path for a call from a worktree. Every topic-level and discovery entry ends with `log`, and `log header`, the line the conversation's next write to it opens with, but the laboratory's, which keeps no log: its `experiment`, `status` and `folder`, the record's `problem`, `design` and `report` where written, a `split` line for each split (`{id} {status} {folder}`), and until the design is approved the spawning topic's `topic record` and `topic log`, its `brief`, and a unit's one topic's `discovery log` and `seed` lines.
 
-Response `{phase, unit, topic?, entered, started, committed?, note?, warnings?}`: `entered: false` where it asked first; `started` true where this entry started the place; a failed commit leaves the start on disk, `committed: null` and a `note` naming the retry. Every refusal names its way on, nothing written: a unit cancelled or completed; a phase the unit's type lacks; a topic past the unit's spec, or cancelled, postponed or decided (it reopens by a message); a spec while a topic is still open; a build not begun (ready to build's yes begins it); a review before every phase of the cut has closed, or in step merged; a quick-fix's review before the person asked for one; a failed setup step, named with its exit code.
+Response `{phase, unit, topic?, entered, started, committed?, note?, warnings?}`: `entered: false` where it asked first; `started` true where this entry started the place; a failed commit leaves the start on disk, `committed: null` and a `note` naming the retry. Every refusal names its way on, nothing written: a unit cancelled or completed; a phase the unit's type lacks; a topic past the unit's spec, or cancelled, postponed or decided (it reopens by a message); a spec while a topic is still open; a laboratory whose topic has no experiment or none live, or a `--record` that is no live top-level experiment of the series; a build not begun (ready to build's yes begins it); a review before every phase of the cut has closed, or in step merged; a quick-fix's review before the person asked for one; a failed setup step, named with its exit code.
 
 ### `handoff`
 
@@ -544,19 +545,21 @@ Each refuses, writing nothing, a unit that is no epic, an epic with no discovery
 experiment create <work-unit> <topic> --slug <kebab> (--from discussion --problem <file> --question <id> | --parent <E{n}>)
 experiment advance <work-unit> <topic> <id>
 experiment approve <work-unit> <topic> <id>
+experiment amend <work-unit> <topic> <id>
 experiment runs <work-unit> <topic> <id> --file <runs.json>
 experiment conclude <work-unit> <topic> <id> --verdict <one line>
 experiment abandon <work-unit> <topic> <id> --reason <one line>
 ```
 
-A topic's experiment series: records at `phases.experiment.items.{topic}.experiments.{id}`, documents at `{wu}/topics/{topic}/experiments/{id}-{slug}/`, which Claude writes. The record runs `conceived → designed → approved → running → concluded | abandoned`; the series' status follows its records. A top-level `create` commits, and a `conclude` that sends its report commits the delivery; the rest ride the session's commit, `commit {wu} --topic experiment/{topic}`. Each answers the record (`id`, `slug`, `status`, `dir`) and `warnings`.
+A topic's experiment series: records at `phases.experiment.items.{topic}.experiments.{id}`, documents at `{wu}/topics/{topic}/experiments/{id}-{slug}/`, which Claude writes. The record runs `conceived → designed → approved → running → concluded | abandoned`; the series' status follows its records. Every verb commits what it recorded with the record's folder, the design, report and data Claude wrote there riding along (`experiment({wu}/{topic}): …`), and a `conclude` that sends its report commits the delivery too. Each answers the record (`id`, `slug`, `status`, `dir`), `committed`, with a `note` naming the retry, `commit {wu} --topic experiment/{topic}`, where the commit failed, and `warnings`.
 
-- **`create`** — the spawn, from a discussion: allocates `E{n}`, moves the problem statement (a cache scratch) in as `problem.md`, opens the series, and holds the discussion from closing until it ends (`awaiting`). `--question` names the open question on the topic's map it measures (`question`). Answers `committed`, with a `note` naming the retry where the commit failed. `--parent E{n}` splits a running experiment into `E{n}.{m}`, which never split again, and commits nothing. Refused past the unit's spec.
+- **`create`** — the spawn, from a discussion: allocates `E{n}`, moves the problem statement (a cache scratch) in as `problem.md`, opens the series, and holds the discussion from closing until it ends (`awaiting`); commits the manifest and `problem.md`. `--question` names the open question on the topic's map it measures (`question`). `--parent E{n}` splits a running experiment into `E{n}.{m}`, which never split again, committed as a step. Refused past the unit's spec.
 - **`advance`** — conceived to designed, approved to running; answers `previous`.
-- **`approve`** — designed to approved, the person's yes at the briefing gate; answers `previous`.
+- **`approve`** — designed to approved, the person's yes at the briefing gate, the design frozen; answers `previous`.
+- **`amend`** — commits the record's folder alone: an amendment to a frozen design, or its strike, recorded in `design.md`. Refused for a design not yet approved, which changes freely, and for an ended record.
 - **`runs`** — a running record's tally from a cache scratch, `[{condition, of, values, unit?}]`, kept as `runs: [{condition, of, done, median, unit?}]`.
-- **`conclude`** — a running record's one-line verdict. A top-level one releases the discussion's wait (`released_waits`) and settles the series (`item_status`); where its question has left the topic, it sends `report.md` to the topic the question stands on now (`report_sent`). Refused while a sub-experiment is live; and where a report is owed, with no `report.md` written (write it first), or with the unit past its spec, where no topic takes a message (abandon it, and settle what it found in the spec).
-- **`abandon`** — ends a record from any open status, `--reason` kept; releases the wait as a conclusion does.
+- **`conclude`** — a running record's one-line verdict. A top-level one releases the discussion's wait (`released_waits`) and settles the series (`item_status`); where its question has left the topic, it sends `report.md` to the topic the question stands on now (`report_sent`). Answers `next`: a split's `continue`; a top-level record's `render experiment-next-gate` while the series holds a live one, else `handoff unit {wu}`. Refused while a sub-experiment is live; and where a report is owed, with no `report.md` written (write it first), or with the unit past its spec, where no topic takes a message (abandon it, and settle what it found in the spec).
+- **`abandon`** — ends a record from any open status, `--reason` kept; releases the wait and answers `next` as a conclusion does.
 
 ### `investigation-log`
 
@@ -1114,9 +1117,7 @@ Names hold no dot or slash.
 
 ```text
 render backlog-gate     <wu.phase.topic> --file <payload.json>
-render experiment-register <wu.experiment.topic>
 render experiment-approval-gate <wu.experiment.topic> --id <E{n}>
-render experiment-pick <wu.experiment.topic>
 render experiment-next-gate <wu.experiment.topic>
 render experiment-spawn-gate <wu.discussion.topic> --id <E{n}>
 render phase-note        <wu.phase.topic> --verb <Word> [--noun <word>]
@@ -1223,7 +1224,7 @@ Discovery and the topics:
 - **`wait-agents`** — the gate over a topic's agents still running as it closes; empty when none runs.
 - **`convergence`** — the offer to settle the rest of a topic.
 
-The experiments: **`experiment-register`** (the series' history), **`experiment-approval-gate`** (the briefing gate over a designed record), **`experiment-pick`** (among several live records), **`experiment-next-gate`** (after a record closes with others live) and **`experiment-spawn-gate`** (now or later, after a spawn).
+The experiments: **`experiment-approval-gate`** (the briefing gate over a designed record: its yes `experiment approve`, its abandon `continue`), **`experiment-next-gate`** (after a top-level record ends with others live, under the series' register: its yes `enter experiment` again, its menu row the unit's menu) and **`experiment-spawn-gate`** (now or later, after a spawn). The pick among several live records is `enter experiment`'s.
 
 The authority gates, each drawn from Claude's staged payload (`--file`), its yes its own family's verb:
 

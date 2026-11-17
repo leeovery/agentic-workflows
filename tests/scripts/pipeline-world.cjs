@@ -543,6 +543,22 @@ function enterEntry(sim, wu, phase, topic) {
   return res;
 }
 
+// The laboratory's entry: handed off as above, the experiment skill's first
+// engine call is its entry, which records the place and names in its DATA
+// the experiment the conversation works — the one live, or `record`, the
+// pick's — so a compaction there carries on in the laboratory's skill.
+// Answers the experiment entered.
+/** @param {Sim} sim @param {string} wu @param {string} topic @param {string} [record] */
+function labEntry(sim, wu, topic, record) {
+  sim.handOver();
+  const res = sim.run(['enter', 'experiment', wu, topic, ...(record === undefined ? [] : ['--record', record])]);
+  assert.strictEqual(res.entered, true, 'no other session holds the laboratory and one experiment is named, so the entry asks nothing');
+  const here = carryOn(sim);
+  assert.deepStrictEqual(here.position, { name: wu, phase: 'experiment', topic }, 'the entry records its place (experiment)');
+  assert.strictEqual(here.skill, path.join(sim.dir, '.claude/skills/ledger-experiment-process/SKILL.md'), 'a compaction there carries on in the laboratory\'s skill');
+  return /** @type {string} */ (sim.sections.match(/^experiment: (.+)$/m)?.[1]);
+}
+
 // The spec's entry, at the work unit: handed off as above, the spec skill's
 // first engine call is its entry, which starts nothing and records the unit
 // as its place, so a compaction there carries on in the spec's skill,
@@ -1834,7 +1850,7 @@ function finished(sim, wu, { closed = false } = {}) {
 }
 
 module.exports = {
-  Sim, worldFrom, worlds, readyForSim, shownRows, SPEC_TO_BUILD_UNIT, CUT_CLOSED_UNIT, sessionLog, handoffEntry, enterEntry, specEntry, handoff, answerGate, typeAtGate, gatesAnswered, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, roadmapMenu, pullFromRoadmap, decideTopic, discussed, askedOn,
+  Sim, worldFrom, worlds, readyForSim, shownRows, SPEC_TO_BUILD_UNIT, CUT_CLOSED_UNIT, sessionLog, handoffEntry, enterEntry, labEntry, specEntry, handoff, answerGate, typeAtGate, gatesAnswered, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, roadmapMenu, pullFromRoadmap, decideTopic, discussed, askedOn,
   investigationCache, rootCaused, reported, validated, fixDirected, concluded, investigated, startMenu, startPick, continueUnit, continueInto, startRow, backToStart, startNew, startWith, arrive, send, mappedEpic, continueEpic, menuEntry, epicMenuAt, arriveAtEpicMenu, epicMenuLooked, epicRow, epicSetAside, epicPick, epicBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, triagePick, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, passTakenIn, passSurfaced, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed, handoffBy, follow,
   DECIDED_ITEMS, specWritten, specBuilt, builders, taskBuilt, fixBuilt, builtAside, firstPhaseBuilt, cutClosed, areaRead, testsRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, reviewCall, strayRound, finishClosed, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic, wentAheadBlind, pickedRow,
 };

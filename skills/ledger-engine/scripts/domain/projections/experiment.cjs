@@ -3,17 +3,20 @@
 // ---------------------------------------------------------------------------
 // Domain ring: experiment projections — pure renderers over one topic's
 // series rows (`phases.experiment.items.{topic}.experiments`, resolved by the
-// surface handlers in domain/render.cjs). Like every sibling projection they
-// take a detail and return a string; state resolution and refusals live with
-// the handlers.
+// surface handlers in domain/render.cjs and by the laboratory's entry,
+// experiment-entry.cjs). Like every sibling projection they take a detail
+// and return a string; state resolution and refusals live with their
+// callers.
 //
-// The register is the series' one readout — a render surface off the
-// manifest, never a hand-maintained file: one row per experiment, conceived
-// to verdict, sub-experiments nested under their parent, abandoned rows kept
-// with their reason. The approval gate is the briefing confirm that freezes
-// a design before anything is measured. The spawn gate is the spawning
-// conversation's now-or-later choice right after a spawn, a learned process
-// gate (24.1.2).
+// The register is the series' one readout, off the manifest, never a
+// hand-maintained file: one row per experiment, conceived to verdict,
+// sub-experiments nested under their parent, abandoned rows kept with their
+// reason. It is drawn above the pick the laboratory's entry asks where
+// several records are live, and above the next experiment's gate. The
+// approval gate is the briefing confirm that freezes a design before
+// anything is measured. The spawn gate is the spawning conversation's
+// now-or-later choice right after a spawn, a learned process gate (24.1.2).
+// Every row of each gate declares where it leads.
 // ---------------------------------------------------------------------------
 
 const { renderTree } = require('../../kernel/render.cjs');
@@ -60,65 +63,63 @@ function registerNodes(rows) {
 }
 
 /**
- * The series register — the topic's full measurement history. Renders the
- * none-yet line over an empty series, so no caller needs a branch.
+ * The series register — the topic's full measurement history, drawn over a
+ * series holding a live record.
  * @param {string} named the topic as screens title it @param {SeriesRow[]} rows
  * @returns {string}
  */
 function experimentRegister(named, rows) {
   const n = rows.length;
   const head = treeHeader(`Experiments — ${named} (${n} experiment${n === 1 ? '' : 's'})`);
-  const body = n === 0
-    ? head + '\n  (none yet — the series starts at E1)'
-    : head + '\n' + renderTree(registerNodes(rows), { width: TREE_WIDTH, gap: true });
-  return section('DISPLAY: experiment register', CONTINUE_INSTRUCTION, body);
+  return section('DISPLAY: experiment register', CONTINUE_INSTRUCTION, `${head}\n${renderTree(registerNodes(rows), { width: TREE_WIDTH, gap: true })}`);
 }
 
 /**
  * The briefing gate — the user-confirmed freeze between a written design and
  * the first measurement. Rendered after the design is presented
  * conversationally; yes records the freeze (`experiment approve`), abandon
- * ends the record with its reason and the row kept, an amendment folds in
- * before the freeze.
- * @param {string} id
+ * carries the conversation on to take the reason the record ends with, its
+ * row kept, and an amendment folds in before the freeze.
+ * @param {{unit: string, topic: string, id: string}} record
  * @returns {string}
  */
-function experimentApprovalGate(id) {
+function experimentApprovalGate({ unit, topic, id }) {
   return section('MENU: experiment approval gate', MENU_INSTRUCTION, menu('', [
-    cmdOption('y', 'yes', 'Freeze the design and start measuring'),
-    cmdOption('b', 'abandon', `Abandon ${id} — recorded with its reason; the register keeps the row`),
+    cmdOption('y', 'yes', 'Freeze the design and start measuring', { next: { kind: 'engine', argv: ['experiment', 'approve', unit, topic, id] } }),
+    cmdOption('b', 'abandon', `Abandon ${id} — recorded with its reason; the register keeps the row`, { next: { kind: 'continue' } }),
     promptOption('Amend', 'Tell me what to change — the design folds it in before the freeze'),
   ], { question: `Approve ${id}'s design?` }));
 }
 
 /**
- * The record picker under the register — the several-live-records path: the
- * register shows the series, this menu takes the pick, one row per live
- * top-level record keyed by its id; its back leads where `back` says.
+ * The record picker under the register — the several-live-records path the
+ * laboratory's entry asks: the register shows the series, this menu takes
+ * the pick, one row per live top-level record keyed by its id, each leading
+ * where `into` says; its back leads where `back` says.
  * @param {SeriesRow[]} live  live top-level rows, id order
- * @param {Next} back
+ * @param {{into: (id: string) => Next, back: Next}} ways
  * @returns {string}
  */
-function experimentPick(live, back) {
+function experimentPick(live, { into, back }) {
   return section('MENU: experiment pick', MENU_INSTRUCTION, menu('Which experiment?', [
-    ...live.map((r) => cmdOption(r.id, null, { head: r.slug, tail: r.status })),
+    ...live.map((r) => cmdOption(r.id, null, { head: r.slug, tail: r.status }, { next: into(r.id) })),
     cmdOption('b', 'back', 'Leave without picking one', { next: back }),
   ]));
 }
 
 /**
  * The return leg's gate — a record just closed and the series still holds
- * live experiments: work the next one in this session, or back to the menu,
- * where `leave` leads.
+ * live experiments: work the next one in this session, where `next` leads,
+ * or back to the menu, where `leave` leads.
  * @param {SeriesRow[]} live  live top-level rows, id order
- * @param {Next} leave
+ * @param {{next: Next, leave: Next}} ways
  * @returns {string}
  */
-function experimentNextGate(live, leave) {
+function experimentNextGate(live, { next, leave }) {
   const names = live.map((r) => `${r.id} ${r.slug}`).join(', ');
   const statement = `The series still holds ${names}.`;
   return section('MENU: experiment next gate', MENU_INSTRUCTION, menu(statement, [
-    cmdOption('y', 'yes', 'Work the next experiment'),
+    cmdOption('y', 'yes', 'Work the next experiment', { next }),
     cmdOption('m', 'menu', 'Back to the menu', { next: leave }),
   ], { question: 'Work the next experiment?' }));
 }

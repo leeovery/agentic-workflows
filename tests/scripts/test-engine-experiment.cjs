@@ -2,14 +2,18 @@
 
 // ---------------------------------------------------------------------------
 // The experiment series (ledger-engine/scripts/domain/experiment.cjs,
-// `engine experiment create|advance|approve|runs|conclude|abandon`): the
-// spawn from a discussion, measuring a question on its map it must name, and
-// its lock, the records in the topic's folder (4.11.15), its now-or-later
-// gate, a learned one, its showing held at the spawning topic for its own
-// experiment alone, the walk to verdict, the tally of a running
-// experiment's runs, splits, the release edges, the topic's cancel, and the
-// field surface's guards. The question on the map an
-// experiment measures is test-engine-experiment-question.cjs's.
+// `engine experiment create|advance|approve|amend|runs|conclude|abandon`):
+// the spawn from a discussion, measuring a question on its map it must name,
+// and its lock, the records in the topic's folder (4.11.15), its
+// now-or-later gate, a learned one, its showing held at the spawning topic
+// for its own experiment alone, the walk to verdict, each verb's commit of
+// what it records with the record's folder (6.3.2), an amendment to a
+// frozen design, the tally of a running experiment's runs, splits, the
+// release edges and the way on from a record's end, the laboratory's gates'
+// rows (6.6.2), the topic's cancel, and the field surface's guards. The
+// question on the map an experiment measures is
+// test-engine-experiment-question.cjs's; the laboratory's entry
+// test-engine-enter-experiment.cjs's.
 //
 // Layer: verb. World: experiment-world.cjs's lab, built once and copied, its
 // spawning discussion's map holding the questions spawns measure.
@@ -170,14 +174,6 @@ describe('the spawn commits its record and hands the conversation on', () => {
     ]);
   });
 
-  it('a split commits nothing — its manifest change is the experiment session\'s', () => {
-    spawn(dir, 'discussion', 'window-placement');
-    walkTo(dir, 'E1', 'running');
-    const before = stateGit(dir, ['rev-parse', 'HEAD']).trim();
-    assert.strictEqual(engine(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'part', '--parent', 'E1']).committed, undefined);
-    assert.strictEqual(stateGit(dir, ['rev-parse', 'HEAD']).trim(), before);
-  });
-
   it('yes takes an epic\'s discussion into the laboratory for its topic, later carries the conversation on', () => {
     spawn(dir, 'discussion', 'window-placement');
     assert.deepStrictEqual(answered('lab', 'timing', 'y'), { kind: 'handoff', skill: 'ledger-experiment-process', args: ['epic', 'lab', 'timing'] });
@@ -229,6 +225,132 @@ describe('the spawn commits its record and hands the conversation on', () => {
     const question = engine(dir, ['ledger', 'ask', 'solo.discussion.solo'], { env: SESSION, stdin: JSON.stringify({ ...MADE, text: 'What does a tally cost?' }) }).id;
     engine(dir, ['experiment', 'create', 'solo', 'solo', '--slug', 'tally-cost', '--from', 'discussion', '--problem', problemScratch(dir, 'tally-cost'), '--question', question]);
     assert.deepStrictEqual(answered('solo', 'solo', 'y'), { kind: 'handoff', skill: 'ledger-experiment-process', args: ['feature', 'solo', 'solo'] });
+  });
+});
+
+describe('every laboratory verb commits what it records with the record\'s folder (6.3.2)', () => {
+  let dir;
+  beforeEach(() => {
+    dir = labWorld();
+    spawn(dir, 'discussion', 'window-placement');
+  });
+  afterEach(() => { cleanupFixture(dir); });
+
+  /** A document of E1's record, or of `record`'s, written: its state-relative path. @param {string} file @param {string} [record] */
+  function written(file, record = 'E1-window-placement') {
+    const rel = layout.experiment('lab', 'timing', record, file);
+    fs.mkdirSync(path.dirname(statePath(dir, rel)), { recursive: true });
+    fs.appendFileSync(statePath(dir, rel), `${file} — a line\n`);
+    return rel;
+  }
+
+  /** The verb's answer beside the commit it made: its sha, its message and what it changed, sorted. @param {{committed?: string|null}} res */
+  function commitOf(res) {
+    const changed = stateGit(dir, ['show', '--name-status', '--no-renames', '--format=', 'HEAD']).trim().split('\n').sort();
+    assert.strictEqual(res.committed, stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(), 'the answer names the commit it made');
+    return [lastMessage(dir), changed];
+  }
+
+  const MANIFEST = `M\t${layout.manifest('lab')}`;
+
+  /** E1's step `verb` run, then committed: its message and what it changed. @param {string} verb @param {...string} args */
+  const step = (verb, ...args) => commitOf(engine(dir, ['experiment', verb, 'lab', 'timing', ...args]));
+
+  /** E1's amendment refused, writing nothing: its error. */
+  const amendRefused = () => refusedPristine(dir, ['experiment', 'amend', 'lab', 'timing', 'E1']).error;
+
+  it('each step commits the manifest with the record\'s own folder — the design, the report and the data written there — another record\'s documents left out; amend the folder alone, of a frozen design only; a split its manifest', () => {
+    spawn(dir, 'discussion', 'window-size');
+    const other = written('design.md', 'E2-window-size');
+    const design = written('design.md');
+    const conceived = amendRefused();
+    const designed = step('advance', 'E1');
+    const left = stateGit(dir, ['status', '--porcelain', '--', other]).trim();
+    written('design.md');
+    const unfrozen = amendRefused();
+    const approved = step('approve', 'E1');
+    written('design.md');
+    const amendedApproved = step('amend', 'E1');
+    const running = step('advance', 'E1');
+    written('design.md');
+    const amendedRunning = step('amend', 'E1');
+    const data = [written('report.md'), written('data/raw.csv')];
+    const tally = '.ledger/.cache/lab/experiment/timing/E1-runs.json';
+    fs.mkdirSync(path.join(dir, path.dirname(tally)), { recursive: true });
+    fs.writeFileSync(path.join(dir, tally), JSON.stringify([{ condition: 'one monitor', of: 2, values: [1] }]));
+    const runs = step('runs', 'E1', '--file', tally);
+    const split = step('create', '--slug', 'single-monitor', '--parent', 'E1');
+    const sub = written('design.md', 'E1-window-placement/E1.1-single-monitor');
+    const splitEnded = step('abandon', 'E1.1', '--reason', 'moot');
+    written('report.md');
+    const concluded = step('conclude', 'E1', '--verdict', 'held');
+    const abandoned = step('abandon', 'E2', '--reason', 'moot');
+    const amended = ['experiment(lab/timing): E1 design amended', [`M\t${design}`]];
+    assert.deepStrictEqual(
+      [conceived, designed, left, unfrozen, approved, amendedApproved, running, amendedRunning, runs, split, splitEnded, concluded, abandoned, amendRefused()], [
+        'experiment E1 ("timing") is conceived — its design changes freely until the approval freezes it; an amendment is to a frozen design',
+        ['experiment(lab/timing): E1 designed', [`A\t${design}`, MANIFEST].sort()],
+        `?? ${other}`,
+        'experiment E1 ("timing") is designed — its design changes freely until the approval freezes it; an amendment is to a frozen design',
+        ['experiment(lab/timing): E1 approved — design frozen', [`M\t${design}`, MANIFEST].sort()],
+        amended,
+        ['experiment(lab/timing): E1 running', [MANIFEST]],
+        amended,
+        ['experiment(lab/timing): E1 runs recorded', [...data.map((file) => `A\t${file}`), MANIFEST].sort()],
+        ['experiment(lab/timing): split E1.1 single-monitor from E1', [MANIFEST]],
+        ['experiment(lab/timing): E1.1 abandoned', [`A\t${sub}`, MANIFEST].sort()],
+        ['experiment(lab/timing): E1 concluded', [`M\t${data[0]}`, MANIFEST].sort()],
+        ['experiment(lab/timing): E2 abandoned', [`A\t${other}`, MANIFEST].sort()],
+        'experiment E1 ("timing") is concluded — its verdict stands; a flawed run triggers the next experiment, never a re-score',
+      ]);
+  });
+});
+
+describe('a record\'s end answers its way on, and the laboratory\'s gates their rows\' (6.6.2)', () => {
+  let dir;
+  beforeEach(() => {
+    dir = labWorld();
+    spawn(dir, 'discussion', 'window-placement');
+  });
+  afterEach(() => { cleanupFixture(dir); });
+
+  /** The gate `surface` over timing drawn, then `key` answered: the row's next. @param {string[]} surface @param {string} gate @param {string} key */
+  function answered(surface, gate, key) {
+    output(dir, ['render', ...surface], { env: SESSION });
+    return engine(dir, ['gate', gate, '--pick', key], { env: SESSION }).next;
+  }
+
+  it('a split\'s end carries its parent\'s run on; a top-level end leads to the next experiment\'s gate while one is live, and out through the unit\'s Continue once none is', () => {
+    spawn(dir, 'discussion', 'window-size');
+    walkTo(dir, 'E1', 'running');
+    engine(dir, ['experiment', 'create', 'lab', 'timing', '--slug', 'part', '--parent', 'E1']);
+    const split = engine(dir, ['experiment', 'abandon', 'lab', 'timing', 'E1.1', '--reason', 'moot']).next;
+    const first = engine(dir, ['experiment', 'conclude', 'lab', 'timing', 'E1', '--verdict', 'held']).next;
+    const last = engine(dir, ['experiment', 'abandon', 'lab', 'timing', 'E2', '--reason', 'moot']).next;
+    assert.deepStrictEqual([split, first, last], [
+      { kind: 'continue' },
+      { kind: 'engine', argv: ['render', 'experiment-next-gate', 'lab.experiment.timing'] },
+      { kind: 'engine', argv: ['handoff', 'unit', 'lab'] },
+    ]);
+  });
+
+  it('the approval gate\'s yes freezes the design through approve, and its abandon carries on to take the reason', () => {
+    walkTo(dir, 'E1', 'designed');
+    const surface = ['experiment-approval-gate', 'lab.experiment.timing', '--id', 'E1'];
+    assert.deepStrictEqual([answered(surface, 'experiment approval gate', 'y'), answered(surface, 'experiment approval gate', 'b')], [
+      { kind: 'engine', argv: ['experiment', 'approve', 'lab', 'timing', 'E1'] },
+      { kind: 'continue' },
+    ]);
+  });
+
+  it('the next experiment\'s gate\'s yes enters the laboratory again, and its menu row leaves for the unit\'s menu', () => {
+    spawn(dir, 'discussion', 'window-size');
+    engine(dir, ['experiment', 'abandon', 'lab', 'timing', 'E1', '--reason', 'moot']);
+    const surface = ['experiment-next-gate', 'lab.experiment.timing'];
+    assert.deepStrictEqual([answered(surface, 'experiment next gate', 'y'), answered(surface, 'experiment next gate', 'm')], [
+      { kind: 'engine', argv: ['enter', 'experiment', 'lab', 'timing'] },
+      { kind: 'handoff', skill: 'ledger-continue-epic', args: ['lab'] },
+    ]);
   });
 });
 

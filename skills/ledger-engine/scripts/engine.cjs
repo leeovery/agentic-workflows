@@ -52,7 +52,7 @@ const { cancelTopic, reactivateTopic, postponeTopic } = require('./domain/transi
 const { mailboxDir, mailPhase } = require('./domain/derivations.cjs');
 const { SEND_USAGE, MAILBOX_USAGE, ANSWERED_USAGE, sendMessage, mailboxOf, answerMessage } = require('./domain/mail.cjs');
 const { loadWorkUnitManifest } = require('./kernel/manifest.cjs');
-const { createExperiment, advanceExperiment, approveExperiment, recordRuns, concludeExperiment, abandonExperiment } = require('./domain/experiment.cjs');
+const { createExperiment, advanceExperiment, approveExperiment, amendExperiment, recordRuns, concludeExperiment, abandonExperiment } = require('./domain/experiment.cjs');
 const { seriesDir } = require('./domain/experiment-paths.cjs');
 const { topicLog } = require('./domain/topic-log.cjs');
 const { TASK_VERBS, runTaskVerb } = require('./domain/task-verbs.cjs');
@@ -319,6 +319,7 @@ ${Object.values(MAP_USAGE).map((usage) => `  ${usage}`).join('\n')}
   experiment create <work-unit> <topic> --slug <kebab> (--from discussion --problem <file> --question <id> | --parent <E{n}>)
   experiment advance <work-unit> <topic> <id>
   experiment approve <work-unit> <topic> <id>
+  experiment amend <work-unit> <topic> <id>
   experiment runs <work-unit> <topic> <id> --file <runs.json>
   experiment conclude <work-unit> <topic> <id> --verdict <one line>
   experiment abandon <work-unit> <topic> <id> --reason <one line>
@@ -408,9 +409,7 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   code diff   [--subject <prefix>]
   code status
   render backlog-gate     <wu.phase.topic> --file <payload.json>
-  render experiment-register <wu.experiment.topic>
   render experiment-approval-gate <wu.experiment.topic> --id <E{n}>
-  render experiment-pick <wu.experiment.topic>
   render experiment-next-gate <wu.experiment.topic>
   render experiment-spawn-gate <wu.discussion.topic> --id <E{n}>
   render phase-note        <wu.phase.topic> --verb <Word> [--noun <word>]
@@ -1179,8 +1178,8 @@ function runTopic(call, argv) {
 // (domain/experiment.cjs): create is the spawn (id + item + the spawning
 // item's evidence lock — or a sub-experiment under a running parent);
 // advance/approve/conclude/abandon record one experiment's design-before-data
-// walk, and runs the tally of its runs while it runs. The spawn commits what
-// it wrote; every other write is left to the session's commit cadence.
+// walk, amend an amendment to its frozen design, and runs the tally of its
+// runs while it runs. Each commits what it wrote with the record's folder.
 //
 // Beats follow the acting session: `create --from` is the spawning
 // discussion session recording the spawn on its own item, so it beats
@@ -1226,16 +1225,17 @@ function runExperiment(call, argv) {
       respond(call, result);
       return;
     }
-    if (command === 'advance' || command === 'approve') {
+    const steps = { advance: advanceExperiment, approve: approveExperiment, amend: amendExperiment };
+    if (Object.hasOwn(steps, command)) {
       if (!workUnit || !topic || !id || positional.length !== 3) {
         throw new Error(`Usage: engine experiment ${command} <work-unit> <topic> <id>`);
       }
-      const result = (command === 'advance' ? advanceExperiment : approveExperiment)(cwd, workUnit, topic, id);
+      const result = steps[/** @type {keyof typeof steps} */ (command)](cwd, workUnit, topic, id);
       beatQuietly(cwd, workUnit, 'experiment', topic);
       respond(call, result);
       return;
     }
-    throw new Error('Usage: engine experiment <create|advance|approve|runs|conclude|abandon> <work-unit> <topic> …');
+    throw new Error('Usage: engine experiment <create|advance|approve|amend|runs|conclude|abandon> <work-unit> <topic> …');
   } catch (err) {
     failJson(call, err);
   }

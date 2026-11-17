@@ -1244,7 +1244,7 @@ const CHECKS = [
 // ---------------------------------------------------------------------------
 
 // The skills rewritten to the new shape, whose backbones hold no steps.
-const NEW_SHAPE_SKILLS = new Set(['ledger', 'ledger-discussion-process', 'ledger-discovery', 'ledger-specification-process', 'ledger-implementation-process', 'ledger-review-process', 'ledger-investigation-process', 'ledger-quick-fix-process', 'ledger-continue-epic', 'ledger-roadmap']);
+const NEW_SHAPE_SKILLS = new Set(['ledger', 'ledger-discussion-process', 'ledger-discovery', 'ledger-specification-process', 'ledger-implementation-process', 'ledger-review-process', 'ledger-investigation-process', 'ledger-experiment-process', 'ledger-quick-fix-process', 'ledger-continue-epic', 'ledger-roadmap']);
 
 function checkFooterlessLoads(files) {
   const out = [];
@@ -1575,7 +1575,7 @@ test('check 20 (footerless loads) — catches a load that ends its step, permits
     const field = write(dir, 'skills/ledger-discussion-process/SKILL.md', sections);
     const discovery = write(dir, 'skills/ledger-discovery/SKILL.md', sections);
     assert.strictEqual(checkFooterlessLoads([field, discovery]).length, 0, 'a skill rewritten to the new shape has no steps to fall through');
-    const stepped = write(dir, 'skills/ledger-experiment-process/SKILL.md', sections);
+    const stepped = write(dir, 'skills/ledger-stepped-process/SKILL.md', sections);
     assert.strictEqual(checkFooterlessLoads([stepped]).length, 1, 'a skill still on the step model is held');
   });
 });
