@@ -48,7 +48,12 @@
 // `completed` kept as `brownfield_offer`, the brownfield offer's remembered
 // answer, in today's words — the offer is made once per project, and a
 // completed assessment was offered it — and one still under way kept as
-// nothing, so the offer is made again (21.11.1, 21.11.2, 8.12.11); the
+// nothing, so the offer is made again (21.11.1, 21.11.2, 8.12.11); where
+// none is kept, `arrived`, when the old state first entered the project's
+// history — the author time of the first commit adding a file under
+// `.workflows/`, or `docs/workflow/`, its name before 011 — so the offer's
+// judgment reads the history before then, not the migration's own commit,
+// and none where it never entered git (8.12.10); the
 // defaults first use no longer asks for go, the plan's format and the
 // project skills (22.3.1, 22.3.2), and no driver's setting is written, so a
 // migrated project's drivers are the defaults, resolved at first need
@@ -351,6 +356,8 @@ const ROADMAP_SESSION = /^sessions\/session-[0-9]{3,}\.md$/;
 const ROADMAP_NOTE = /^notes\/(?:ideas|bugs|quickfixes)\/([0-9]{4}-[0-9]{2}-[0-9]{2}--[a-z0-9]+(?:-[a-z0-9]+)*\.md)$/;
 // The baseline's answers the brownfield offer remembers (21.11.2).
 const BROWNFIELD_ANSWERS = ['native', 'skipped', 'completed'];
+// The old state's folder, under each name it had (011 renamed it).
+const OLD_STATE_NAMES = [CODE_TREE_STATE, 'docs/workflow'];
 // The project's defaults first use no longer asks for (22.3.1, 22.3.2).
 const RETIRED_DEFAULTS = ['plan_format', 'project_skills'];
 // The session-label opt-in, under the name it keeps now that tmux is not
@@ -1644,7 +1651,8 @@ function moveProduct(from, state, plan, relocations, places) {
 /**
  * The project manifest less the baseline's status fields, a recorded
  * `native`, `skipped` or `completed` kept as the brownfield offer's answer
- * (21.11.1, 21.11.2); less the defaults first use no longer asks for, the
+ * (21.11.1, 21.11.2), and where none is, when the old state arrived, where
+ * it did; less the defaults first use no longer asks for, the
  * plan's format and the project skills (22.3.1, 22.3.2), the `defaults`
  * object with them once empty; the session-label opt-in as
  * `session_labels`; and no driver's setting written, so each
@@ -1654,15 +1662,16 @@ function moveProduct(from, state, plan, relocations, places) {
  * session the product's conversation's, `product_session`; each registry
  * entry naming no unit's folder dropped; and each mistyped entry typed as
  * its unit's manifest types it.
- * @param {Record<string, any>} project @param {Relocations} relocations @param {string[]} unfoldered @param {Mistyped[]} mistyped
+ * @param {Record<string, any>} project @param {Relocations} relocations @param {string[]} unfoldered @param {Mistyped[]} mistyped @param {string|null} arrived
  * @returns {Record<string, any>}
  */
-function reshapedProject(project, relocations, unfoldered, mistyped) {
+function reshapedProject(project, relocations, unfoldered, mistyped, arrived) {
   const { baseline, ...out } = structuredClone(project);
   if (isObject(out.work_units)) for (const name of unfoldered) delete out.work_units[name];
   for (const { name, is } of mistyped) out.work_units[name].work_type = is;
   const answer = isObject(baseline) ? baseline.status : undefined;
   if (BROWNFIELD_ANSWERS.includes(answer)) out.brownfield_offer = answer;
+  else if (arrived !== null) out.arrived = arrived;
   if (isObject(out.defaults)) {
     for (const field of RETIRED_DEFAULTS) delete out.defaults[field];
     for (const [was, is] of RENAMED_DEFAULTS) {
@@ -1760,17 +1769,28 @@ function journalCorrections(state, mistyped, renames) {
 }
 
 /**
+ * When the old state first entered the project's history: the author time
+ * of the first commit adding a file under its folder, by either name; null
+ * where none did.
+ * @param {string} project @returns {string|null}
+ */
+function oldStateArrived(project) {
+  const { stdout } = git(project, ['log', '--no-show-signature', '--reverse', '--diff-filter=A', '--format=%aI', 'HEAD', '--', ...OLD_STATE_NAMES]);
+  return stdout.split('\n').find(Boolean) ?? null;
+}
+
+/**
  * The project's manifest reshaped, with its id minted first — kept where a
  * move cut short already minted one — and the checklists a directive closed
  * before the move kept.
- * @param {string} state @param {Record<string, any>} project @param {Relocations} relocations @param {string[]} unfoldered @param {Mistyped[]} mistyped
+ * @param {string} state @param {Record<string, any>} project @param {Relocations} relocations @param {string[]} unfoldered @param {Mistyped[]} mistyped @param {string|null} arrived
  */
-function writeProjectManifest(state, project, relocations, unfoldered, mistyped) {
+function writeProjectManifest(state, project, relocations, unfoldered, mistyped, arrived) {
   const moved = path.join(state, 'manifest.json');
   const { project_id: minted, checklists } = fs.existsSync(moved) ? readManifest(moved) : {};
   writeWhole(scratchOf(state), moved, jsonText({
     project_id: typeof minted === 'string' ? minted : newId(),
-    ...reshapedProject(project, relocations, unfoldered, mistyped),
+    ...reshapedProject(project, relocations, unfoldered, mistyped, arrived),
     ...(isObject(checklists) ? { checklists } : {}),
   }));
 }
@@ -2017,7 +2037,7 @@ function move(projectDir, reportUpdate, reportSkip) {
     reportUpdate();
   }
   keepAsItWas(from, state, [...legacy, ...reports], relocations);
-  writeProjectManifest(state, projectManifest, relocations, unfoldered, mistyped);
+  writeProjectManifest(state, projectManifest, relocations, unfoldered, mistyped, oldStateArrived(project));
   renameUnits(state, renames, new Set(stores.flatMap(({ files }) => files)));
   journalCorrections(state, mistyped, renames);
   const placed = (/** @type {string} */ rel) => renamedPath(rel, renames);
@@ -2040,7 +2060,7 @@ function move(projectDir, reportUpdate, reportSkip) {
 module.exports = {
   id: '078',
   description: 'move the project from .workflows/ into the layout in .ledger/, the state worktree on an unborn ledger-state — each topic\'s log, mail, brief and experiments in its own folder, imports as assets, plans, specs and reviews as reference, the retired state dropped; the roadmap as the product, the baseline docs as its assets, the tracker\'s store and the knowledge config in the state, the user-level folder to ~/.config/ledger/, and the project\'s files to the new names',
-  info: 'The reshape moves the project\'s state out of .workflows/ into .ledger/, a worktree of its own unborn branch, ledger-state, committing nothing. Each topic\'s research, discussion and investigation become its log, its mail one sequence in its own folder, a cancelled topic\'s mail ideas in the inbox; research feeding several topics goes to a discovery session of the migration\'s, and a legacy split\'s superseded copies to the unit\'s assets as reference; imports become assets; every moved document\'s links follow the files they name; plans, reviews and specs not yet built become reference assets, a completed quick-fix\'s spec its summary, a quick-fix whose scoping, implementation and review all completed counting as completed; a unit whose name breaks the kebab-case rule by its case alone is carried under its lowercase name, every reference the move writes following; the old engine\'s caches and the retired manifest state go, and every file with no place of its own, implementation folders and the reviews\' tracking files among them, is kept as it was under its unit\'s assets/legacy/, or the product\'s. A registry entry typed otherwise than its unit\'s manifest takes the manifest\'s type, listed among the review\'s corrections. The roadmap becomes .product/, its imports its assets, its sessions naming them there, and its items\' sources following their files; the baseline docs become reference in .product/assets/baseline/, a native, skipped or completed baseline remembered as the brownfield offer\'s answer; the plan format and project skills defaults go, the session-label opt-in is renamed session_labels, and no driver is set, so the defaults serve; the tracker\'s store and the checkout\'s knowledge config are carried into the state, the knowledge store left for the next boot to build. The user-level folder moves to ~/.config/ledger/, a link to it left in its place for projects still on today\'s skills. The code tree\'s .gitignore gains .ledger/, the settings hooks name the engine\'s new path, and .worktreeinclude loses its .workflows/ lines, none of it staged. .workflows/ and the tracker\'s store are left as they are until the migration\'s commit.',
+  info: 'The reshape moves the project\'s state out of .workflows/ into .ledger/, a worktree of its own unborn branch, ledger-state, committing nothing. Each topic\'s research, discussion and investigation become its log, its mail one sequence in its own folder, a cancelled topic\'s mail ideas in the inbox; research feeding several topics goes to a discovery session of the migration\'s, and a legacy split\'s superseded copies to the unit\'s assets as reference; imports become assets; every moved document\'s links follow the files they name; plans, reviews and specs not yet built become reference assets, a completed quick-fix\'s spec its summary, a quick-fix whose scoping, implementation and review all completed counting as completed; a unit whose name breaks the kebab-case rule by its case alone is carried under its lowercase name, every reference the move writes following; the old engine\'s caches and the retired manifest state go, and every file with no place of its own, implementation folders and the reviews\' tracking files among them, is kept as it was under its unit\'s assets/legacy/, or the product\'s. A registry entry typed otherwise than its unit\'s manifest takes the manifest\'s type, listed among the review\'s corrections. The roadmap becomes .product/, its imports its assets, its sessions naming them there, and its items\' sources following their files; the baseline docs become reference in .product/assets/baseline/, a native, skipped or completed baseline remembered as the brownfield offer\'s answer, and with none, when the old state first entered git recorded, so the offer\'s judgment reads the history before then; the plan format and project skills defaults go, the session-label opt-in is renamed session_labels, and no driver is set, so the defaults serve; the tracker\'s store and the checkout\'s knowledge config are carried into the state, the knowledge store left for the next boot to build. The user-level folder moves to ~/.config/ledger/, a link to it left in its place for projects still on today\'s skills. The code tree\'s .gitignore gains .ledger/, the settings hooks name the engine\'s new path, and .worktreeinclude loses its .workflows/ lines, none of it staged. .workflows/ and the tracker\'s store are left as they are until the migration\'s commit.',
   run({ projectDir, reportUpdate, reportSkip }) {
     return move(projectDir, reportUpdate, reportSkip);
   },

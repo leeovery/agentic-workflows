@@ -5,14 +5,15 @@
 // runs over the state it wrote (E4). Released with it, it is frozen with it.
 //
 // The linters are part of the project's environment setup, on the project
-// manifest as `environment.linters`, each `{name, command}`, where a brief
-// reads them. Before Ledger they were recorded twice over: the project's
+// manifest as `environment.linters`, each `{name, command}`, and `fix`
+// where it has a command that mends what it finds, where a brief reads
+// them. Before Ledger they were recorded twice over: the project's
 // `defaults.linters`, and each implementation topic's own `linters`, both
 // arrays, an empty one a confirmed none. Each entry is a name (a string, or
 // `{name}`), or a linter with the command that checks the code: `{name,
 // command}`, `{name, detail}` as discovery recorded it, or `{name,
-// lint_command}` as a session recorded it beside its `fix_command`; a name
-// alone is its command too.
+// lint_command}` as a session recorded it beside its `fix_command`, carried
+// as its `fix`; a name alone is its command too.
 //
 // Where any of them holds an array, the project manifest gains
 // `environment.linters`: the project's default linters first, then each
@@ -21,13 +22,14 @@
 // records its linters keeps them. The old fields go: `defaults.linters`, the
 // `defaults` object with it once empty, and every implementation topic's
 // `linters`. An entry whose command a linter carried already runs, under
-// another name, is that linter. Named in the note handed back, for the
-// migration's review: an entry of no shape above, not carried; a linter
-// whose name is carried already with another command, not carried; an entry
-// carried as the linter running its command; and whatever an entry held
-// beyond its name and its command — a fix command, a scope — which the
-// environment's linter has no room for, so the person sees it when ready to
-// build asks them to confirm the setup.
+// its name or another, is that linter, and its fix that linter's where it
+// has none. Named in the note handed back, for the migration's review: an
+// entry of no shape above, not carried; a linter whose name is carried
+// already with another command, not carried; an entry carried as the
+// linter running its command; and whatever an entry held beyond its name,
+// its command and its fix command — a scope, or a fix other than the one
+// its linter carries — which the environment's linter has no room for, so
+// the person sees it when ready to build asks them to confirm the setup.
 //
 // Each manifest is written whole or not at all, through a temp file beside
 // it the state ignores; a unit manifest that cannot be read is no unit's.
@@ -63,19 +65,26 @@ function writeManifest(file, data) {
   fs.renameSync(temp, file);
 }
 
+/** @typedef {{name: string, command: string, fix?: string}} Linter */
+
+// The key a session recorded a linter's fix command under.
+const FIX_KEY = 'fix_command';
+
 /**
  * A linter as the environment records it, and what the entry held beyond
  * it, each as `{name}'s {key} ({value})`; null for an entry of no shape a
  * linter was recorded in.
- * @param {unknown} entry @returns {{linter: {name: string, command: string}, beyond: string[]}|null}
+ * @param {unknown} entry @returns {{linter: Linter, beyond: string[]}|null}
  */
 function linterOf(entry) {
   if (isFilled(entry)) return { linter: { name: entry.trim(), command: entry.trim() }, beyond: [] };
   if (!isObject(entry) || !isFilled(entry.name)) return null;
   const name = entry.name.trim();
   const key = COMMAND_KEYS.find((k) => isFilled(entry[k]));
-  const beyond = Object.keys(entry).filter((k) => k !== 'name' && k !== key).map((k) => `${name}'s ${k} (${JSON.stringify(entry[k])})`);
-  return { linter: { name, command: key === undefined ? name : entry[key].trim() }, beyond };
+  const fix = isFilled(entry[FIX_KEY]) ? { fix: entry[FIX_KEY].trim() } : {};
+  const taken = ['name', key, ...(fix.fix === undefined ? [] : [FIX_KEY])];
+  const beyond = Object.keys(entry).filter((k) => !taken.includes(k)).map((k) => `${name}'s ${k} (${JSON.stringify(entry[k])})`);
+  return { linter: { name, command: key === undefined ? name : entry[key].trim(), ...fix }, beyond };
 }
 
 /**
@@ -115,10 +124,10 @@ function implementationTopics(manifest) {
  * The linters of every list, each name and each command once, and what was
  * not carried.
  * @param {unknown[][]} lists
- * @returns {LeftOut & {linters: {name: string, command: string}[]}}
+ * @returns {LeftOut & {linters: Linter[]}}
  */
 function merged(lists) {
-  /** @type {Map<string, {name: string, command: string}>} */
+  /** @type {Map<string, Linter>} */
   const linters = new Map();
   const uncarried = [];
   const clashing = new Set();
@@ -137,8 +146,13 @@ function merged(lists) {
       clashing.add(`${linter.name} (${linter.command})`);
       continue;
     }
-    if (carried === undefined && running !== undefined) same.add(`${linter.name} as ${running.name}`);
-    else if (carried === undefined) linters.set(linter.name, linter);
+    const kept = carried ?? running;
+    if (kept === undefined) linters.set(linter.name, linter);
+    else {
+      if (carried === undefined) same.add(`${linter.name} as ${kept.name}`);
+      if (kept.fix === undefined && linter.fix !== undefined) kept.fix = linter.fix;
+      else if (linter.fix !== undefined && linter.fix !== kept.fix) beyond.add(`${linter.name}'s ${FIX_KEY} (${JSON.stringify(linter.fix)})`);
+    }
     for (const left of read.beyond) beyond.add(left);
   }
   return { linters: [...linters.values()], uncarried, clashing: [...clashing], same: [...same], beyond: [...beyond] };
@@ -158,7 +172,7 @@ function noteOf({ uncarried, clashing, same, beyond }) {
   const notes = [
     ...(dropped.length === 0 ? [] : [`${dropped.join(' ')} Add each still wanted: ${commandHelp('those added')}.`]),
     ...(same.length === 0 ? [] : [`These linters were carried into environment.linters as the linter carried already that runs their command, under its name: ${same.join(', ')}.`]),
-    ...(beyond.length === 0 ? [] : [`The linters were carried into environment.linters as a name and a command, which leaves out ${beyond.join(', ')}. Change a linter's command where any is still wanted, when ready to build asks to confirm the project's setup, or now: ${commandHelp('those changed')}.`]),
+    ...(beyond.length === 0 ? [] : [`The linters were carried into environment.linters as a name, a command and a fix command, which leaves out ${beyond.join(', ')}. Change a linter's command where any is still wanted, when ready to build asks to confirm the project's setup, or now: ${commandHelp('those changed')}.`]),
   ];
   return notes.length === 0 ? null : notes.join(' ');
 }

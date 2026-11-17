@@ -17,8 +17,10 @@
 // of the old plan's phases, old files neither placed nor kept — an old
 // cache's report at another earlier/ place, and one changed — and a link,
 // citation and roadmap source naming nothing; and the rest each have one of
-// their own: a field of a manifest no engine module names, the project's,
-// a unit's, a phase's or an item's; a build's fix-tracking report 051 moved
+// their own: a decision asked of a topic decided in its old discussion
+// alone, read under its unit's name before the move or the unit's it was
+// promoted from, never of one of research alone; a field of a manifest no engine
+// module names, the project's, a unit's, a phase's or an item's; a build's fix-tracking report 051 moved
 // out of the old cache placed where the move kept it, and no other report
 // so; of the old `.state/` the old engine's record alone rebuilt; a link broken where it was live, its words dead in another
 // document; the links dead
@@ -82,6 +84,12 @@ function appendOld(old, rel, line) {
   const file = old.files[rel];
   file.text = `${file.text}${line}\n`;
   file.sha = crypto.createHash('sha256').update(file.text).digest('hex');
+}
+
+/** The exports unit's phases in the listing from before the migration set to `phases`. @param {import('./migration-audit.cjs').Listing} old @param {Record<string, unknown>} phases */
+function exportsDiscussed(old, phases) {
+  const file = old.files['exports/manifest.json'];
+  file.text = JSON.stringify({ ...JSON.parse(/** @type {string} */ (file.text)), phases });
 }
 
 /** The audit's faults once the world's change is committed, each as `{check}: {found}`. @param {import('./migration-audit.cjs').Listing} [old] */
@@ -175,6 +183,7 @@ describe('each check refuses a world made to fail it', () => {
     const memo = JSON.parse(/** @type {string} */ (old.files['memo/manifest.json'].text));
     memo.phases.planning.items.memo.task_map['memo-3'] = 'tracker-gone';
     old.files['memo/manifest.json'].text = JSON.stringify(memo);
+    exportsDiscussed(old, { discussion: { items: { exports: { status: 'completed' } } } });
     commitAll(world.dir, 'the mutant');
     const exportsLine = JSON.parse(fs.readFileSync(statePath(world.dir, layout.ledger), 'utf8').split('\n').find((line) => line.includes('"topic":"exports"')) ?? '{}').id;
 
@@ -196,6 +205,24 @@ describe('each check refuses a world made to fail it', () => {
       `names-resolve: ledger line ${exportsLine} names exports/topics/exports/log.md, which is not there`,
       'names-resolve: roadmap item dark-mode names .product/notes/gone.md, which is not there',
     ]);
+  });
+
+  it('decisions-carried: a topic an old manifest shows decided in its discussion holds a decision — read under the unit\'s name before the move, its own or the one the move lowercased, or the unit\'s it was promoted from; one of research alone, which the move carried as concluded, holds none of its own, so none is asked of it (21.5.22)', () => {
+    changeManifest(layout.manifest('exports'), (manifest) => { manifest.phases.discussion.items.exports.status = 'completed'; });
+    const decided = structuredClone(world.old);
+    exportsDiscussed(decided, { discussion: { items: { exports: { status: 'completed' } } } });
+    const researched = structuredClone(world.old);
+    exportsDiscussed(researched, { research: { items: { exports: { status: 'completed' } } } });
+    const cased = structuredClone(decided);
+    cased.files['Exports/manifest.json'] = cased.files['exports/manifest.json'];
+    delete cased.files['exports/manifest.json'];
+    const promoted = structuredClone(researched);
+    promoted.files['platform/manifest.json'] = { sha: 'promoted', text: JSON.stringify({ phases: { discussion: { items: { exports: { status: 'promoted', promoted_to: 'exports' } } } } }) };
+
+    const carried = (/** @type {import('./migration-audit.cjs').Listing} */ old) => faults(old).filter((fault) => fault.startsWith('decisions-carried'));
+    const owed = ['decisions-carried: exports/exports is decided and the ledger holds no decision of it'];
+
+    assert.deepStrictEqual([decided, researched, cased, promoted].map(carried), [owed, [], owed, owed]);
   });
 
   it('manifests-valid: a field no engine module names — the project\'s, a unit\'s, a phase\'s or an item\'s, each an old one 078 never knew — a fault of its own where it is', () => {

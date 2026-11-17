@@ -58,7 +58,7 @@ const { SESSION, recordsMigration, refusedKeeping, refusedUntouched, passedBesid
 const { templateFolder, copyWorld } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
-const { composedPath, carriedPath, findingsPath, refusedPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
+const { composedPath, carriedPath, findingsPath, rulingsPath, checkedPath, verifyingPath, refusedPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
 
 /** Where the session marks the sections of a unit's specs holding no topic's decision. @param {string} unit */
 const sectionsMarked = (unit) => `.cache/migrate/records/${unit}.sections.json`;
@@ -67,7 +67,7 @@ const MOVE = require('../../skills/ledger-migrate/scripts/migrations/078-reshape
 
 const RECORDS = '079-records';
 const TOPICS = { one: 'topic', many: 'topics' };
-const PIECES = ['fumi/billing', 'fumi/licensing', 'fumi/search', 'fumi/support', 'gone/gone', 'platform/auth', 'shop/weights'];
+const PIECES = ['fumi.discovery.billing', 'fumi.discussion.licensing', 'fumi.discussion.search', 'fumi.discovery.support', 'gone.discussion.gone', 'platform.discussion.auth', 'shop.discussion.weights'];
 
 /** @param {string} unit @param {string} topic @param {string} section */
 const logCite = (unit, topic, section) => ({ path: layout.topic(unit, topic, 'log.md'), section });
@@ -224,7 +224,7 @@ describe('the pieces (21.6.2)', () => {
     dir = world();
 
     assert.deepStrictEqual(checked(), {
-      ok: true, directive: RECORDS, passed: false, done: 0, of: 7, counts: TOPICS, unfinished: PIECES.map((name) => ({ name, problems: ['has no record yet'] })),
+      ok: true, directive: RECORDS, passed: false, done: 0, of: 7, counts: TOPICS, unfinished: PIECES.map((name) => ({ name, problems: ['has no record composed'] })),
     });
   });
 
@@ -243,7 +243,7 @@ describe('a record breaking a rule is refused at the carry, its refusal kept bes
 
     carry('fumi.discussion.search', GOOD['fumi.discussion.search']);
 
-    assert.strictEqual(unfinished()['fumi/search'], undefined);
+    assert.strictEqual(unfinished()['fumi.discussion.search'], undefined);
   });
 
   it('an entry citing nothing, a file the state lacks, or a heading its file lacks; one its file holds more than once named by the path that tells it apart', () => {
@@ -441,6 +441,22 @@ describe('a record breaking a rule is refused at the carry, its refusal kept bes
   });
 });
 
+describe('a file an agent left beside the records', () => {
+  it('named to remove, on the topic it is named for, else on the unit\'s own record, or each of its topics where it has none; a file a record is kept in, and the session\'s marks, never', () => {
+    dir = world();
+    const at = (/** @type {string} */ rel) => `.cache/migrate/records/${rel}`;
+    for (const rel of ['fumi/licensing.json.tmp', 'fumi/notes/pn-refs.txt', 'fumi.brief-record.json', 'shop.aa-amend.py', 'fumi/search.findings.txt', 'fumi/search.rounds.md', 'fumi.sections.json']) writeState(dir, at(rel), '');
+    writeState(dir, layout.unit('shop', 'discovery', 'session-001.md'), '## Discovery Session 001\n\n### Selling\n\nTo the trade.\n');
+    const left = (/** @type {string[]} */ rels) => rels.map((rel) => `${at(rel)} is no file a record is kept in — an agent left it: remove it`);
+    const loose = left(['fumi/notes/pn-refs.txt', 'fumi.brief-record.json']);
+
+    assert.deepStrictEqual(Object.fromEntries(Object.entries(unfinished()).map(([name, problems]) => [name, problems.filter((problem) => problem.includes('an agent left it'))])), {
+      'fumi.discovery.billing': loose, 'fumi.discussion.licensing': [...left(['fumi/licensing.json.tmp']), ...loose], 'fumi.discussion.search': loose, 'fumi.discovery.support': loose,
+      'gone.discussion.gone': [], 'platform.discussion.auth': [], 'shop.discussion.weights': [], 'shop.discovery': left(['shop.aa-amend.py']),
+    });
+  });
+});
+
 describe('a unit\'s own record, `{unit}.discovery` (21.6.2)', () => {
   const SESSION_LOG = '## Discovery Session 001\n\n### Selling\n\nThe shop sells to the trade alone, and its buyers order by the case.\n';
   const selling = { ref: 'f1', event: 'found', text: 'The shop sells to the trade alone.', how: 'read in the discovery session', known: 'read', by: 'claude', cites: [{ path: 'shop/discovery/session-001.md', section: 'Selling' }], assets: [{ path: layout.assets('shop', 'vision.md'), status: 'reference' }] };
@@ -456,7 +472,7 @@ describe('a unit\'s own record, `{unit}.discovery` (21.6.2)', () => {
     const again = harness.refuses(dir, ['ledger', 'carry', 'shop.discovery'], { env: SESSION }).error;
 
     assert.deepStrictEqual([before, faults, Object.keys(ids), [line.unit, line.phase, line.topic], unfinished()['shop.discovery'], again], [
-      { name: 'shop.discovery', problems: ['has no record yet'] },
+      { name: 'shop.discovery', problems: ['has no record composed'] },
       breaks('shop', 'own discovery', [
         'entry d1 decides, and nothing is decided in discovery — what its sources settle is a finding, what they leave open a question',
         'entry q1 cites shop/topics/weights/log.md, which is neither its topic\'s own, but its mail, nor the unit\'s beside its topics, nor a discovery session it draws on — a cite names a file that stays with its entry',
@@ -576,9 +592,9 @@ describe('what the check reads once a record is carried', () => {
     writeState(dir, carriedPath('shop', 'weights'), JSON.stringify({ unit: 'shop', phase: 'discussion', topic: 'weights', entries: [], record: { entries: [] } }));
 
     assert.deepStrictEqual(unfinished(), {
-      'gone/gone': ['entry q1 cites "Cause" in gone/topics/gone/log.md, which has no such heading'],
-      'platform/auth': ['its record never reached the ledger'],
-      'shop/weights': [EMPTY, unnamed('tie-break', 'decided'), ...shopUncited('1. Weights', ['Ranking', 'Ranking > Detail', 'Corrigenda', 'Corrigenda > Detail']), ...shopUncited('2. Wishlist', ['Saving', 'Ranking'])],
+      'gone.discussion.gone': ['entry q1 cites "Cause" in gone/topics/gone/log.md, which has no such heading'],
+      'platform.discussion.auth': ['its record never reached the ledger'],
+      'shop.discussion.weights': [EMPTY, unnamed('tie-break', 'decided'), ...shopUncited('1. Weights', ['Ranking', 'Ranking > Detail', 'Corrigenda', 'Corrigenda > Detail']), ...shopUncited('2. Wishlist', ['Saving', 'Ranking'])],
     });
   });
 
@@ -586,7 +602,7 @@ describe('what the check reads once a record is carried', () => {
     dir = carriedWorld();
     writeState(dir, layout.topic('gone', 'gone', 'log.md'), '# Gone\n\n## Discussion\n');
     writeState(dir, carriedPath('gone', 'gone'), JSON.stringify({ unit: 'gone', phase: 'discussion', topic: 'gone', entries: [], record: { entries: [] } }));
-    const empty = () => (unfinished()['gone/gone'] ?? []).filter((problem) => problem.startsWith('its record is empty'));
+    const empty = () => (unfinished()['gone.discussion.gone'] ?? []).filter((problem) => problem.startsWith('its record is empty'));
 
     const titled = empty();
     writeState(dir, layout.topic('gone', 'gone', 'brief.md'), '# Gone\n\nWhy the queue drops jobs.\n');
@@ -594,18 +610,27 @@ describe('what the check reads once a record is carried', () => {
     assert.deepStrictEqual([titled, empty()], [[], [EMPTY]]);
   });
 
-  it('once every topic of a unit has a record, composed or carried, each section of its approved specs holding text that no record cites is named on the topics drawing on it — a joined spec\'s by its part, a heading two parts share once in each — asking no composer for an entry, until a record cites it or the session marks it, a mark in its part alone, as holding no topic\'s (21.6.4)', () => {
+  it('once every topic of a unit has a record, composed or carried, each section of its approved specs holding text that no record cites is named on the topics drawing on it — a joined spec\'s by its part, a heading two parts share once in each — asking no composer for an entry, until a record cites it or the session marks it, a mark in its part alone, as holding no topic\'s (21.6.4); the record named passed and waiting to be carried only once the carry\'s own guards hold, else what they name', () => {
     dir = world();
     const [q1, d1] = GOOD['shop.discussion.weights'];
     writeState(dir, composedPath('shop', 'weights'), JSON.stringify({ entries: [q1, d1] }));
 
-    const composed = unfinished()['shop/weights'];
+    const composed = unfinished()['shop.discussion.weights'];
     writeState(dir, sectionsMarked('shop'), JSON.stringify({ 'shop/spec.md': { '2. Wishlist': ['Saving', 'Ranking'] } }));
-    const marked = unfinished()['shop/weights'];
+    const marked = unfinished()['shop.discussion.weights'];
+    writeState(dir, findingsPath('shop', 'weights'), '');
+    const unchecked = unfinished()['shop.discussion.weights'][0];
+    writeState(dir, checkedPath('shop', 'weights'), 'q1: ok\nd1: ok\n');
+    const passed = unfinished()['shop.discussion.weights'];
+    writeState(dir, verifyingPath('shop', 'weights'), JSON.stringify({ hash: 'another record', refs: ['q1', 'd1'], entries: {} }));
+    const changed = unfinished()['shop.discussion.weights'][0];
 
-    assert.deepStrictEqual([composed, marked, ok(dir, ['ledger', 'carry', 'shop.discussion.weights', '--dry-run'], { env: SESSION }).faults], [
-      ['has no record yet', ...shopUncited('1. Weights', ['Ranking', 'Ranking > Detail']), ...shopUncited('2. Wishlist', ['Saving', 'Ranking'])],
-      ['has no record yet', ...shopUncited('1. Weights', ['Ranking', 'Ranking > Detail'])],
+    assert.deepStrictEqual([composed, marked, unchecked, passed, changed, ok(dir, ['ledger', 'carry', 'shop.discussion.weights', '--dry-run'], { env: SESSION }).faults], [
+      [`has not passed its verifier — ${findingsPath('shop', 'weights')} is no file`, ...shopUncited('1. Weights', ['Ranking', 'Ranking > Detail']), ...shopUncited('2. Wishlist', ['Saving', 'Ranking'])],
+      [`has not passed its verifier — ${findingsPath('shop', 'weights')} is no file`, ...shopUncited('1. Weights', ['Ranking', 'Ranking > Detail'])],
+      `has no verdict from its last verifier on every entry its brief asked one of — ${checkedPath('shop', 'weights')} is no file; it names no verdict on q1, d1: a verifier writes a line for each entry its walk sheet does not mark passed, \`{ref}: ok\` or \`{ref}: see finding\`, and one that does not has given no verdict — remove ${findingsPath('shop', 'weights')}, ${rulingsPath('shop', 'weights')} and ${checkedPath('shop', 'weights')}, and brief a fresh verifier`,
+      ['has passed its verifier, and waits to be carried', ...shopUncited('1. Weights', ['Ranking', 'Ranking > Detail'])],
+      'has changed since its verifier was briefed on it: a record is carried as its verifier read it — brief a fresh verifier',
       [],
     ]);
   });
@@ -617,7 +642,7 @@ describe('what the check reads once a record is carried', () => {
     /** The copies of Detail the check names, d2 citing `sections`. @param {string[]} sections */
     const details = (sections) => {
       writeState(dir, composedPath('shop', 'weights'), JSON.stringify({ entries: [q1, { ...d1, cites: spec(['Corrigenda']) }, q2, { ...d2, cites: spec(sections) }, ...rest] }));
-      return unfinished()['shop/weights'].filter((problem) => problem.includes('Detail'));
+      return unfinished()['shop.discussion.weights'].filter((problem) => problem.includes('Detail'));
     };
 
     const bare = details(['Ranking', 'Detail']);
@@ -636,12 +661,25 @@ describe('what the check reads once a record is carried', () => {
     dir = world();
     const commerce = approvedCommerce(() => '## Decision\n\nThirty days.\n\n## Option A\n\n### Decision\n\nFourteen days.\n');
     for (const [dotpath, entries] of Object.entries(GOOD).filter(([at]) => at.startsWith('fumi.'))) writeState(dir, composedPath('fumi', dotpath.split('.')[2]), JSON.stringify({ entries }));
-    const named = () => unfinished()['fumi/licensing'].filter((problem) => problem.includes(commerce));
+    const named = () => unfinished()['fumi.discussion.licensing'].filter((problem) => problem.includes(commerce));
 
     const before = named();
     writeState(dir, sectionsMarked('fumi'), JSON.stringify({ [commerce]: ['Decision'] }));
 
     assert.deepStrictEqual([before, named()], [['Decision', 'Option A > Decision'].map((section) => uncited('fumi', commerce, section)), [uncited('fumi', commerce, 'Option A > Decision')]]);
+  });
+
+  it('21.6.3: a cite of an approved spec its topic draws no part of, the later answer to its point, gives that answer alone: it settles none of the spec\'s sections, which the topics drawing on it carry', () => {
+    dir = world();
+    const commerce = approvedCommerce((text) => text);
+    const answered = { ref: 'd9', event: 'decided', answers: 'q1', text: 'Fourteen days, as the spec\'s corrigendum holds.', why: 'The approved spec answers it.', by: 'claude', given: 'carried', cites: [{ path: commerce, section: 'Corrigenda' }] };
+    for (const [dotpath, entries] of Object.entries(GOOD).filter(([at]) => at.startsWith('fumi.'))) {
+      const topic = dotpath.split('.')[2];
+      const record = topic === 'licensing' ? entries.filter(({ ref }) => !['q2', 'd2'].includes(ref)) : topic === 'search' ? [...entries, answered] : entries;
+      writeState(dir, composedPath('fumi', topic), JSON.stringify({ entries: record }));
+    }
+
+    assert.deepStrictEqual(unfinished()['fumi.discussion.licensing'].filter((problem) => problem.includes(commerce)), [uncited('fumi', commerce, 'Corrigenda')]);
   });
 
   it('carries no topic of a unit drawing on an approved spec while any topic of it has no record its verifier passed, or a section of its specs goes uncited: the session\'s order, refused with nothing written, nor anything beside the record (21.10.9)', () => {
@@ -652,7 +690,10 @@ describe('what the check reads once a record is carried', () => {
     const others = ['billing', 'search', 'support'];
 
     const alone = licensing();
-    for (const [dotpath, entries] of Object.entries(GOOD).filter(([at]) => at.startsWith('fumi.') && at !== 'fumi.discussion.licensing')) writeState(dir, composedPath('fumi', dotpath.split('.')[2]), JSON.stringify({ entries }));
+    for (const [dotpath, entries] of Object.entries(GOOD).filter(([at]) => at.startsWith('fumi.') && at !== 'fumi.discussion.licensing')) {
+      writeState(dir, composedPath('fumi', dotpath.split('.')[2]), JSON.stringify({ entries }));
+      writeState(dir, checkedPath('fumi', dotpath.split('.')[2]), entries.map(({ ref }) => `${ref}: ok\n`).join(''));
+    }
     const unverified = licensing();
     for (const topic of others) writeState(dir, findingsPath('fumi', topic), topic === 'search' ? '## Ranking\n\nDropped.\n' : '');
     const standing = licensing();
@@ -708,7 +749,7 @@ describe('against what the real move writes (078)', () => {
     commitAll(dir);
     MOVE.run({ projectDir: dir, reportUpdate: () => {}, reportSkip: () => {} });
 
-    assert.deepStrictEqual(checked().unfinished, [{ name: 'fumi/search', problems: ['has no record yet'] }]);
+    assert.deepStrictEqual(checked().unfinished, [{ name: 'fumi.discussion.search', problems: ['has no record composed'] }]);
     assert.ok(readState(dir, layout.topic('fumi', 'search', 'log.md')).endsWith('\n## Review review-001, never folded in\n\n#### F1: Ranking ties\n\nTwo results of one age have no order.\n'));
     assert.strictEqual(refused('fumi.discussion.search', []), breaks('fumi', 'search', [
       EMPTY, unnamed('ranking', 'decided'), unnamed('typo-tolerance', 'exploring'),
@@ -730,7 +771,7 @@ describe('the directive\'s example record, frozen with 079', () => {
 
     carry('fumi.discussion.licensing', entries);
 
-    assert.strictEqual(unfinished()['fumi/licensing'], undefined);
+    assert.strictEqual(unfinished()['fumi.discussion.licensing'], undefined);
   });
 
   it('a reversal the session settles: a ruling that changes the record becomes a finding to amend to, one that keeps it takes the finding out — so an empty findings file is only ever a pass', () => {
@@ -739,17 +780,33 @@ describe('the directive\'s example record, frozen with 079', () => {
     assert.deepStrictEqual(['Write what settles it, a line naming the point and the source or answer it rests on, into the settled file beside the record', 'Where it has the record change, replace the finding with `Settled: {point}, amend to agree`', 'Where it keeps the record as it stands, take the finding out of the findings file', 'An empty findings file is only ever a pass.'].filter((rule) => !text.includes(rule)), []);
   });
 
+  it('one rule marks a point to raise: the points no source settles alone, every other open question carried unmarked', () => {
+    const text = fs.readFileSync(DIRECTIVE, 'utf8');
+
+    assert.deepStrictEqual([
+      '- **Points no source settles** are open questions marked `raise` `true`, for the raises at the end, and they alone:',
+      'Any other open question, one its sources leave for later work to answer, is carried unmarked.',
+      '- **`raise`**: `true` on a point no source settles, as the rules above name them, an open question no decision of the record answers; on no other entry.',
+    ].filter((rule) => !text.includes(rule)), []);
+  });
+
+  it('a ref is the record\'s alone: no entry\'s words name another by it', () => {
+    assert.ok(fs.readFileSync(DIRECTIVE, 'utf8').includes('- **`ref`**: the entry\'s name in the record, given once; every link names an entry by it, and no entry\'s words do: say in words what the other entry holds.'));
+  });
+
   it('a verifier\'s rulings are kept with its round, a reversal of one settled by the session as any, and every amend brief carries them', () => {
     const text = fs.readFileSync(DIRECTIVE, 'utf8');
 
     assert.deepStrictEqual([
-      'and writes its findings beside the record, an empty file its pass; its rulings: each point of the sources it ruled is not this record\'s, or is replaced by a later answer, one line each, with its source; and its verdict on each entry, `{ref}: ok` or `{ref}: see finding`.',
+      'and writes its findings beside the record, an empty file its pass; its rulings: each point of the sources it ruled is not this record\'s, or is replaced by a later answer, one line each, with its source; and its verdict on each entry the sheet does not mark passed unchanged, `{ref}: ok` or `{ref}: see finding`.',
       'keeps the last as a round in the rounds file beside the record, its rulings and verdicts with it, and clears them',
-      'walking the sheet its brief draws: every section of every source, in order, with the entries citing each. It reads each section in its source, checks that what each entry beneath it takes from the section is what the section says, and each point the section makes is carried or not this record\'s — that a cited heading exists is no check —',
-      'The next brief and the carry are refused while the last verifier\'s verdicts miss an entry it read, or name one it did not: remove what it wrote, and brief a fresh verifier. The carry refuses a record changed since its verifier was briefed on it — brief a fresh verifier — and keeps the passing round with the rounds before it:',
+      'walking the sheet its brief draws: every section of every source, in order, with the entries citing each — from the second round, every section the sheet marks open, a closed one walked in an earlier round, nothing citing it changed since. It reads each section in its source, checks that what each entry beneath it takes from the section is what the section says, and each point the section makes is carried or not this record\'s — that a cited heading exists is no check —',
+      'The next brief and the carry are refused while the last verifier\'s verdicts miss an entry its brief asked a verdict of, or name one the record it read does not hold: remove what it wrote, and brief a fresh verifier. The carry refuses a record changed since its verifier was briefed on it — brief a fresh verifier — and keeps the passing round with the rounds before it:',
       'Once every topic of a unit has its record composed, read each draft spec several of its topics draw on: a section of it bearing on no one topic\'s subject goes into the findings of one of the topics drawing on it, as below, for the check names an approved spec\'s sections alone.',
       '- **A record at least.** A topic that draws on a spec, or whose log, brief or experiments\' records — its markdown files — hold text past their headings, has an entry at least.',
-      'A finding that opens `Reverses round {R}:` would undo what an earlier round had the record changed to, or carry a point an earlier round\'s rulings set aside: it goes to no agent, nor does a finding a per-topic agent handed back unanswered, asking for a point the rulings set aside, in the hand-back file beside the record.',
+      'A finding that opens `Reverses round {R}:` would undo what an earlier round had the record changed to, or carry a point an earlier round\'s rulings set aside: it goes to no agent, nor does a finding a per-topic agent handed back unanswered, asking for a point the rulings set aside, in the hand-back file beside the record, nor a finding the third round or a later one writes.',
+      'a fresh verifier reads what changed since, until one passes it.',
+      'A file an agent left beside the records, which the check names, is removed.',
       'Once it has returned, settle first each finding it handed back, as below: the verifier\'s brief and the carry are refused while its hand-back file stands. Then, where no `Settled:` finding stands, check the record as the carry would',
       'Settle every handed-back finding before anything else.',
       'Once every handed-back finding is settled, remove the hand-back file. Then, where a `Settled:` finding stands, a fresh per-topic agent amends the record to answer it, and a fresh verifier reads it again, its brief keeping it as a round. Where none stands after a hand-back, the findings left are those the agent answered: check the record, and a fresh verifier reads it next. Where none stands after a reversal, a finding left goes to a fresh per-topic agent, and where none is left, the file empty, the record has passed.',
@@ -787,7 +844,17 @@ describe('the directive\'s example record, frozen with 079', () => {
     const text = fs.readFileSync(DIRECTIVE, 'utf8');
 
     assert.ok(text.includes('Each current decision, finding and open question the topic\'s sources hold, and nothing else:'));
-    assert.ok(text.includes('- **A cited section, whole.** A spec section the record cites is carried whole: each current decision, finding and open question it holds that concerns this topic is an entry. Citing a section for one of its rules and leaving its others out is a gap.'));
+    assert.ok(text.includes('- **A cited section, whole.** A section of a spec drawing on the topic, cited, is carried whole: each current decision, finding and open question it holds that concerns this topic is an entry. Citing a section for one of its rules and leaving its others out is a gap. A section cited as a later answer gives that answer alone.'));
+  });
+
+  it('21.6.3: every approved spec of the unit is the later answer to each of a topic\'s points, whether it draws on the topic or not: what it replaces left in the log, a question it answers answered by a decision citing its section — in discovery a finding — each in what the agents\' briefs draw', () => {
+    const text = fs.readFileSync(DIRECTIVE, 'utf8');
+    const briefed = text.slice(text.indexOf('## A Topic\'s Sources'), text.indexOf('## Working Through the Topics'));
+
+    assert.deepStrictEqual([
+      '- Its unit\'s approved specs it does not draw on, kept or joined the same way: the later answer to each of its points.',
+      'An approved spec of its unit is the current answer where it and the log differ, whether it draws on the topic or not, its corrigenda and amendments among it: a decision or proposal it replaces is left in the log; a question it answers is answered by a decision citing its section, or, in a record carried in discovery, where nothing is decided, by a finding saying so.',
+    ].filter((rule) => !briefed.includes(rule)), []);
   });
 
   it('a point a source leaves unmeasured is carried, set aside only where a later source measured it or made it moot; a contradiction no later source settles is named — each in what the record holds, which the agents\' briefs draw', () => {

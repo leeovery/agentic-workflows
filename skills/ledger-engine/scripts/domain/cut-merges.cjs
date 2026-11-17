@@ -240,9 +240,10 @@ const staged = (sources, name) => `${sources.staging}/${name}`;
 
 /**
  * Where a phase's piece goes, from the state's folder, and beside it the
- * last verifier's findings on it, every verifier's before the last, and the
+ * last verifier's findings on it, every verifier's before the last, the
  * points of it the session settled where a verifier reversed an earlier
- * round.
+ * round, the piece the last verifier was briefed on, and the piece the
+ * last verifier to write its findings read (later-rounds.cjs).
  * @param {UnitSources} sources @param {number} number
  */
 const piecePaths = (sources, number) => ({
@@ -250,6 +251,8 @@ const piecePaths = (sources, number) => ({
   findings: staged(sources, `phases/${number}.findings.txt`),
   rounds: staged(sources, `phases/${number}.rounds.md`),
   settled: staged(sources, `phases/${number}.settled.md`),
+  verifying: staged(sources, `phases/${number}.verifying.json`),
+  verified: staged(sources, `phases/${number}.verified.json`),
 });
 
 /**

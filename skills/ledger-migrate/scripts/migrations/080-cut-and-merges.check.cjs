@@ -20,7 +20,9 @@
 //     kept with the unit's plan as `answers.leaving`, so a run again never
 //     asks twice. A plan of the unit kept in plain files, with no tracker
 //     root, is refused by name (21.8.13); so is a unit none of whose specs
-//     was joined;
+//     was joined. Each file its agents left under its staged phases that is
+//     none of a piece's — the piece, its findings, its rounds, the points
+//     settled, and the pieces its verifiers read — is named, to remove;
 //   - `{unit}`, a unit nothing of which was built — no old plan's items
 //     left, and not completed — whose old plans put tasks in the tracker,
 //     each a planning item with a tracker root and a task map: done once
@@ -114,6 +116,11 @@ function readJson(file) {
   const text = readText(file);
   return text === null ? null : JSON.parse(text);
 }
+
+// A file of a phase's piece, as cut-merges.cjs stages it: the piece, its
+// verifier's findings, its rounds, the points the session settled, and the
+// pieces its verifiers read.
+const PHASE_FILE = /^[0-9]+\.(?:json|findings\.txt|rounds\.md|settled\.md|verifying\.json|verified\.json)$/;
 
 /** The folders in `dir`, sorted; none where it is no folder. @param {string} dir */
 const foldersIn = (dir) => (fs.existsSync(dir) ? fs.readdirSync(dir, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort() : []);
@@ -259,7 +266,18 @@ function buildingProblems(project, unit, now, before) {
     ? `its topics ${listed(leaving.map(({ topic }) => topic))} are in no spec it joined and have not left it yet, where the person said they go`
     : `its topics ${listed(leaving.map(({ topic }) => topic))} are in no spec it joined, so they leave it, and the person has not said where — ask once (21.8.10)`];
   const cut = isCut(project, unit) ? [] : ['is not cut yet'];
-  return [...left, ...cut];
+  return [...left, ...strayPhaseFiles(project, unit), ...cut];
+}
+
+/**
+ * Each file under a unit's staged phases that is none of a piece's: one an
+ * agent left, named to remove.
+ * @param {Project} project @param {string} unit
+ */
+function strayPhaseFiles(project, unit) {
+  const phases = `${STAGING}/${unit}/phases`;
+  return filesUnder(path.join(project.stateDir, phases)).filter((rel) => !PHASE_FILE.test(rel))
+    .map((rel) => `${phases}/${rel} is none of a phase's files — an agent left it: remove it`);
 }
 
 /**

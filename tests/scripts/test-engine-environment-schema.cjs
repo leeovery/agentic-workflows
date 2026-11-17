@@ -86,10 +86,13 @@ describe('the environment setup\'s schema (22.5.12)', () => {
     ]);
   });
 
-  it('a linter is its name and its command, nothing else, each name once', () => {
+  it('a linter is its name and its command, and its fix where it has one, nothing else, each name once', () => {
     const linters = [{ name: 'eslint', command: 'eslint .', topic: 'auth' }, { name: 'eslint', command: 'npx eslint src' }];
     assert.deepStrictEqual(environmentFaults({ linters }), [
       'linters: entry 1: "topic" is no field of a linter',
+    ]);
+    assert.deepStrictEqual([environmentFaults({ linters: [{ name: 'gofmt', command: 'gofmt -l .', fix: 'gofmt -w .' }] }), environmentFaults({ linters: [{ name: 'gofmt', command: 'gofmt -l .', fix: '' }] })], [
+      [], ['linters: entry 1: its fix is not text'],
     ]);
     assert.deepStrictEqual(environmentFaults({ linters: linters.map(({ name, command }) => ({ name, command })) }), [
       'linters: entry 2: its name "eslint" is an earlier entry\'s',

@@ -25,7 +25,7 @@
 //                  every line after its first indented; a unit's record,
 //                  drawn for a task's brief and a phase's alike
 //   linters        the project's linters, each its name and its command,
-//                  from the environment on the project manifest (22.5.12,
+//                  and its fix where it has one, from the environment on the project manifest (22.5.12,
 //                  environment.cjs); a quick-fix's, where the project has
 //                  no environment setup, the line sending the agent to
 //                  the tests and linters it finds (22.5.10)
@@ -452,8 +452,10 @@
 //                  judge whose a point is by, and as the directive's check
 //                  reads them its specs — each where it is cited, the part
 //                  of the unit's spec.md it makes where it was joined
-//                  there, and whether it was approved or is a draft — its
-//                  old map and its research's threads still open; the
+//                  there, and whether it was approved or is a draft — the
+//                  unit's approved specs it does not draw on, the later
+//                  answer to its points, its old map and its research's
+//                  threads still open; the
 //                  unit's assets with where each came in from, the topic's
 //                  to link, or its file gone and linked by none; and where
 //                  the topic's record is composed, and whether it is yet,
@@ -464,15 +466,22 @@
 //                  (21.10.7), refused while findings its composer handed
 //                  back stand unsettled, or while its last verifier,
 //                  having written its findings, gave no verdict on each
-//                  entry it read and no other; the last verifier's
+//                  entry its brief asked one of, or named one the record
+//                  it read does not hold; the last verifier's
 //                  findings, rulings and verdicts kept as a round once
 //                  drawn and cleared, for the verifier to write afresh —
 //                  no file is no verdict yet — and the record it reads
-//                  noted beside it, its hash and refs, `.verifying.json`
+//                  noted beside it, `.verifying.json`: its hash, the refs
+//                  it gives a verdict on, each entry hashed, the sections
+//                  it walks and what the rounds before left
 //   walk-sheet     that record laid against its sources for the verifier's
 //                  walk, as the directive's check lays it (`sheetOf`):
 //                  each file under its path, each section by its heading
-//                  path and lines, with every entry citing it, or none
+//                  path and lines, with every entry citing it, or none;
+//                  from the second round each entry marked passed
+//                  unchanged, changed, new or not passed, each section
+//                  passed unchanged closed, and each entry removed since
+//                  the last round listed with its cites (later-rounds.cjs)
 //   verifier-findings the last verifier's findings on that record, verbatim
 //                  — kept until a verifier reads the record again; refused
 //                  as `composed-record` is while its verdicts miss an entry
@@ -511,7 +520,14 @@
 //   composed-piece that phase's piece as composed, fenced as JSON, the
 //                  last verifier's findings on it kept as a round once
 //                  drawn and cleared, for the verifier to write afresh: no
-//                  file is no verdict yet
+//                  file is no verdict yet; and the piece it reads kept
+//                  beside it, `{N}.verifying.json`, the one before it the
+//                  piece verified, `{N}.verified.json`, where the last
+//                  verifier wrote its findings
+//   piece-changes  what changed in that piece since the last verifier to
+//                  write its findings read it, field by field, each
+//                  scenario, note and correction added or removed; none in
+//                  a first round (later-rounds.cjs)
 //   piece-findings the verifier's findings on that piece, verbatim — kept
 //                  until the verifier reads the piece composed again
 //   earlier-piece-findings every verifier's findings on that piece so far,
@@ -626,7 +642,8 @@ const { reading, reposOf } = require('./phase-checks.cjs');
 const { changeOf, changeTips, workBelow } = require('./review-change.cjs');
 const { fixAcceptance, fixScenarios, fixNamed } = require('./fix-acceptance.cjs');
 const { summaryFile } = require('./knowledge/artifacts.cjs');
-const { CARRY_VERB, DRY_RUN, topicPlace, placePath, recordName, composedPath, findingsPath, rulingsPath, handbackPath, handedBack, checkedPath, noteVerifying, uncheckedRound, lastRound, keepRound, keepRecordRound, besideFindings, refusedPath, roundsPath, settledPath } = require('./ledger-carry.cjs');
+const { CARRY_VERB, DRY_RUN, topicPlace, placePath, recordName, composedPath, findingsPath, rulingsPath, handbackPath, handedBack, checkedPath, noteVerifying, briefedOn, lastVerdicts, uncheckedRound, lastRound, keepRound, keepRecordRound, besideFindings, refusedPath, roundsPath, settledPath } = require('./ledger-carry.cjs');
+const { entryHashes, entriesHeld, pastOf, markedSheet, pieceChanges, pieceVerified, notePiece } = require('./later-rounds.cjs');
 const { OLD_STATE, OLD_PLAN_FILE } = require('../../../ledger-migrate/scripts/old-layout.cjs');
 
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
@@ -753,7 +770,7 @@ function drawDecidedCalls(filling, warnings) {
  */
 function drawLinters(filling) {
   if (confirmedAt(filling.cwd) === null && filling.unit !== null && quickFixBuild(unitManifest(filling))) return 'None confirmed: the project\'s environment setup is not confirmed yet, so run the tests and linters you find in the repository, asking nothing.';
-  return listed(linters(filling.cwd).map(({ name, command }) => `- ${name}: ${command}`));
+  return listed(linters(filling.cwd).map(({ name, command, fix }) => `- ${name}: ${command}${fix === undefined ? '' : `, its fix ${fix}`}`));
 }
 
 // Named from the repo's folder, a root inside a larger repository reading
@@ -1262,7 +1279,8 @@ function drawMigratedTopic(filling) {
   const sources = rules.sourcesOf({ projectDir: codeRoot(filling.cwd), stateDir: root, unit, topic });
   const sessions = sources.sessions.map((/** @type {string} */ at) => (at.startsWith(`${unit}/`) ? `- ${at}` : `- ${at}, of ${at.split('/')[0]}, which it moved from`));
   const assets = importLines(sources.imports, topic);
-  const specs = sources.specs.map((/** @type {{path: string, part: string|null, approved: boolean}} */ { path: at, part, approved }) => `- ${at}${part === null ? '' : `, its part "${part}"`}, ${approved ? 'approved' : 'a draft'}`);
+  const specs = sources.specs.map((/** @type {{path: string, part: string|null, approved: boolean}} */ { path: at, part, approved }) => `- ${specLine(at, part)}, ${approved ? 'approved' : 'a draft'}`);
+  const later = sources.later.map((/** @type {{path: string, part: string|null}} */ { path: at, part }) => `- ${specLine(at, part)}`);
   return [
     `- **Unit:** ${unit}, ${manifest.work_type}, ${manifest.status}`,
     `- **Topic:** ${topic}, in ${phases.join('; ')} — its record carried in ${carried}${carried === NEVER_STARTED ? ', the topic never started' : ''}`,
@@ -1276,6 +1294,10 @@ function drawMigratedTopic(filling) {
     '## Its specs',
     '',
     listed(specs),
+    '',
+    '## The unit\'s approved specs it does not draw on: the later answer to its points',
+    '',
+    listed(later),
     '',
     '## The unit\'s discovery sessions',
     '',
@@ -1303,6 +1325,9 @@ function drawMigratedTopic(filling) {
   ].join('\n');
 }
 
+/** A spec as a topic's brief names it: its path, and the part of the unit's spec.md it makes where it was joined there. @param {string} at @param {string|null} part */
+const specLine = (at, part) => `${at}${part === null ? '' : `, its part "${part}"`}`;
+
 /** The phase an epic's topic never started is carried in. */
 const NEVER_STARTED = 'discovery';
 
@@ -1318,7 +1343,7 @@ function drawComposedRecord(filling) {
   const text = fs.existsSync(file) && fs.statSync(file).isFile() ? fs.readFileSync(file, 'utf8') : null;
   const named = recordName({ unit, topic });
   const handed = handedBack(root, unit, topic) ?? uncheckedRound(root, unit, topic);
-  if (handed !== null) throw new Error(`brief: ${handed}`);
+  if (handed !== null) throw new Error(`brief: ${named} ${handed}`);
   if (text === null) throw new Error(`${named} has no record composed — ${file} is no file`);
   if (text.trim() === '') throw new Error(`${named} has no record composed — ${file} is empty`);
   return fenced('json', text.trimEnd());
@@ -1454,7 +1479,7 @@ function drawMigratedPhase(filling) {
   ].join('\n');
 }
 
-/** A file of the phase's in the unit's staging, absolute. @param {Filling} filling @param {'piece'|'findings'|'rounds'|'settled'} which */
+/** A file of the phase's in the unit's staging, absolute. @param {Filling} filling @param {keyof ReturnType<typeof piecePaths>} which */
 function phaseFile(filling, which) {
   const { sources, phase } = migratedPhase(filling);
   return path.join(stateRoot(filling.cwd), piecePaths(sources, phase.number)[which]);
@@ -1474,6 +1499,27 @@ function drawComposedPiece(filling) {
   if (text === null) throw new Error(`${which} has no piece composed — ${file} is no file`);
   if (text.trim() === '') throw new Error(`${which} has no piece composed — ${file} is empty`);
   return fenced('json', text.trimEnd());
+}
+
+/** The phase's files a later round reads, absolute. @param {Filling} filling */
+const pieceFiles = (filling) => ({ piece: phaseFile(filling, 'piece'), findings: phaseFile(filling, 'findings'), verifying: phaseFile(filling, 'verifying'), verified: phaseFile(filling, 'verified') });
+
+/**
+ * What changed in the phase's piece since its last verifier to write read
+ * it (later-rounds.cjs): none in a first round, which walks the whole of it.
+ * @param {Filling} filling
+ */
+function drawPieceChanges(filling) {
+  const before = pieceVerified(pieceFiles(filling));
+  if (before === null) return 'None: this is the first round, which walks the whole piece.';
+  const changes = pieceChanges(before, JSON.parse(fs.readFileSync(phaseFile(filling, 'piece'), 'utf8')));
+  return changes.length === 0 ? 'None: the piece is as the last round read it.' : changes.join('\n');
+}
+
+/** The piece the verifier the brief is for reads kept beside it, and the last verifier's round kept and cleared. @param {Filling} filling */
+function briefPieceVerifier(filling) {
+  notePiece(pieceFiles(filling));
+  keepRound(phaseFile(filling, 'rounds'), phaseFile(filling, 'findings'));
 }
 
 /** A file's text, trimmed, or none recorded where it is missing or holds nothing. @param {string} file */
@@ -1532,30 +1578,73 @@ function recordRounds(filling) {
 function refuseUnchecked(filling) {
   const { root, unit, topic } = migratedTopic(filling);
   const missing = uncheckedRound(root, unit, topic);
-  if (missing !== null) throw new Error(`brief: ${missing}`);
+  if (missing !== null) throw new Error(`brief: ${recordName({ unit, topic })} ${missing}`);
+}
+
+/** The round each fill's verifier reads, read once. @type {WeakMap<Filling, ReturnType<typeof markedSheet> & {hashes: Record<string, string>, held: ReturnType<typeof entriesHeld>, before: import('./later-rounds.cjs').Past}>} */
+const ROUNDS_READ = new WeakMap();
+
+/**
+ * The round the verifier the brief is for reads, read before the last
+ * round is kept: the record laid against its sources and marked against
+ * the rounds before (later-rounds.cjs), and each entry hashed and as held.
+ * @param {Filling} filling
+ */
+function verifierRound(filling) {
+  const read = ROUNDS_READ.get(filling);
+  if (read !== undefined) return read;
+  const { root, unit, topic } = migratedTopic(filling);
+  const { entries: held } = JSON.parse(fs.readFileSync(path.join(root, composedPath(unit, topic)), 'utf8'));
+  const entries = Array.isArray(held) ? held : [];
+  const sheet = topicRules(filling).sheetOf({ projectDir: codeRoot(filling.cwd), stateDir: root, unit, topic, entries });
+  const hashes = entryHashes(entries);
+  const before = pastOf(briefedOn(root, unit, topic), lastVerdicts(root, unit, topic));
+  const round = { ...markedSheet(sheet, hashes, before), hashes, held: entriesHeld(entries), before };
+  ROUNDS_READ.set(filling, round);
+  return round;
 }
 
 /**
  * The last verifier's round kept and cleared, and the record the verifier
- * the brief is for reads noted beside it — its hash and its refs — for the
- * carry and its verdicts to be held to.
+ * the brief is for reads noted beside it — its hash, the refs it gives a
+ * verdict on, each entry hashed, the sections it walks and what the
+ * rounds before it left — for the carry, its verdicts and the next round
+ * to be held to.
  * @param {Filling} filling
  */
 function briefVerifier(filling) {
   const { root, unit, topic } = migratedTopic(filling);
+  const { asked, hashes, held, sections, before } = verifierRound(filling);
   keepRecordRound(root, unit, topic);
-  noteVerifying(root, unit, topic);
+  noteVerifying(root, unit, topic, { refs: asked, entries: hashes, held, sections, before });
 }
 
-/** The record laid against its sources, as its verifier walks it: each file, each section with its lines and every entry citing it. @param {Filling} filling */
+/** What the walk sheet says of an entry it marks. @type {Record<string, string>} */
+const ENTRY_MARKS = { passed: 'passed unchanged', changed: 'changed', new: 'new', unpassed: 'not passed' };
+
+/** The heading of the walk sheet's list of the entries the record held when a round last read it, and no longer holds. */
+const REMOVED = 'Removed since the last round';
+
+/**
+ * The record laid against its sources, as its verifier walks it: each
+ * file, each section with its lines and every entry citing it — from the
+ * second round, each entry marked, a section closed, passed unchanged,
+ * shown with none, and after them each entry removed since the last round,
+ * with what it cited.
+ * @param {Filling} filling
+ */
 function drawWalkSheet(filling) {
-  const { root, unit, topic } = migratedTopic(filling);
-  const { entries } = JSON.parse(fs.readFileSync(path.join(root, composedPath(unit, topic)), 'utf8'));
-  const sheet = topicRules(filling).sheetOf({ projectDir: codeRoot(filling.cwd), stateDir: root, unit, topic, entries: Array.isArray(entries) ? entries : [] });
-  return sheet.map(({ path: at, sections }) => [`## ${at}`, '', listed(sections.flatMap(({ section, line, end, entries: citing }) => [
-    `- ${section}, ${line === end ? `line ${line}` : `lines ${line}–${end}`}${citing.length === 0 ? ': no entry cites it' : ''}`,
-    ...citing.map(({ ref, event, text }) => `  - ${ref}, ${event}: ${claimOf(text)}`),
-  ]))].join('\n')).join('\n\n');
+  const { sheet, removed } = verifierRound(filling);
+  const files = sheet.map(({ path: at, sections }) => [`## ${at}`, '', listed(sections.flatMap(({ section, line, end, closed, entries: citing }) => {
+    const lines = line === end ? `line ${line}` : `lines ${line}–${end}`;
+    if (closed) return [`- ${section}, ${lines}: closed — walked in an earlier round, nothing citing it changed since`];
+    return [
+      `- ${section}, ${lines}${citing.length === 0 ? ': no entry cites it' : ''}`,
+      ...citing.map(({ ref, event, text, mark }) => `  - ${ref}, ${event}${mark === null ? '' : `, ${ENTRY_MARKS[mark]}`}: ${claimOf(text)}`),
+    ];
+  }))].join('\n'));
+  const gone = removed.map(({ ref, event, text, cites }) => [`- ${ref}, ${event}: ${claimOf(text)}`, ...cites.map((cite) => `  - cited ${cite.section} in ${cite.path}`)].join('\n'));
+  return [...files, ...(gone.length === 0 ? [] : [`## ${REMOVED}\n\n${gone.join('\n')}`])].join('\n\n');
 }
 
 /** The most of an entry's text a walk sheet shows. */
@@ -2696,7 +2785,8 @@ const RECORDS = Object.freeze({
   'carry-refusal': { of: null, flags: [MIGRATED, DIRECTIVE], draw: (filling) => besideRecord(filling, refusedPath), bind: (filling) => clearBeside(filling, refusedPath) },
   'record-check': { of: null, flags: [MIGRATED, DIRECTIVE], draw: drawRecordCheck },
   'migrated-phase': { of: 'unit', flags: [DIRECTIVE, PHASE], draw: drawMigratedPhase },
-  'composed-piece': { of: 'unit', flags: [DIRECTIVE, PHASE], draw: drawComposedPiece, bind: (filling) => keepRound(phaseFile(filling, 'rounds'), phaseFile(filling, 'findings')) },
+  'composed-piece': { of: 'unit', flags: [DIRECTIVE, PHASE], draw: drawComposedPiece, bind: briefPieceVerifier },
+  'piece-changes': { of: 'unit', flags: [DIRECTIVE, PHASE], draw: drawPieceChanges },
   'piece-findings': { of: 'unit', flags: [DIRECTIVE, PHASE], draw: (filling) => verbatim(phaseFile(filling, 'findings')) },
   'earlier-piece-findings': { of: 'unit', flags: [DIRECTIVE, PHASE], draw: (filling) => drawRounds(phaseFile(filling, 'rounds'), phaseFile(filling, 'findings')) },
   'settled-piece-points': { of: 'unit', flags: [DIRECTIVE, PHASE], draw: (filling) => verbatim(phaseFile(filling, 'settled')) },

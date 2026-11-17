@@ -25,7 +25,7 @@
 // topic's folder no topic owns; its manifest less research and the retired
 // state, the dead end off every topic — one whose work concluded keeping its
 // close, any other cancelled with its mail sent to the inbox; the project's manifest with its id, the baseline's skip its
-// brownfield answer, its retired defaults gone and the roadmap's sources
+// brownfield answer — with none, when the old state first entered git — its retired defaults gone and the roadmap's sources
 // following their files; the roadmap as the product, the baseline's docs its
 // assets; the store and the knowledge config, never the knowledge store, in
 // the state; the hooks naming the engine's new path and the `.workflows/` lines
@@ -89,6 +89,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { execFileSync } = require('child_process');
 
 const { git, initRepo, cleanupFixture } = require('./engine-harness.cjs');
 const MIGRATION = require('../../skills/ledger-migrate/scripts/migrations/078-reshape-move.cjs');
@@ -176,11 +177,18 @@ function write(dir, rel, content) {
   fs.writeFileSync(file, content);
 }
 
-/** @param {string} dir */
-function commitAll(dir) {
+
+/** When a world's old state entered git, in the author time git prints. */
+const ARRIVED = '2025-02-01T23:30:00-05:00';
+
+/** Everything in `dir` committed, authored and committed at `when`. @param {string} dir @param {string} [when] */
+function commitOn(dir, when = ARRIVED) {
   git(dir, ['add', '-A']);
-  git(dir, ['commit', '-q', '-m', 'today\'s layout']);
+  execFileSync('git', ['commit', '-q', '-m', 'today\'s layout'], { cwd: dir, env: { ...process.env, GIT_AUTHOR_DATE: when, GIT_COMMITTER_DATE: when } });
 }
+
+/** Everything in `dir` committed, when the world's old state entered git. @param {string} dir */
+const commitAll = (dir) => commitOn(dir);
 
 /** Every file under `dir`'s folder `at`, relative to it. @param {string} dir @param {string} [at] @returns {string[]} */
 function tree(dir, at = '') {
@@ -662,11 +670,7 @@ describe('migration 078: the move into the layout in .ledger/', () => {
           + 'Move any into a better place in its unit\'s assets/, or the product\'s, as wanted. '
           + 'These files of experiment records, neither a record\'s problem, design or report nor in its data/, were moved under its data/, at their paths from the record\'s folder: '
           + '.ledger/core/topics/alpha/experiments/E1-frame-budget/E1.1-one-monitor/data/sample.tsv, .ledger/core/topics/alpha/experiments/E1-frame-budget/data/harness/run.sh, '
-          + '.ledger/core/topics/alpha/experiments/E1-frame-budget/data/rubric.md. A path a record\'s text or script spells out is left as written. '
-          + 'The linters were carried into environment.linters as a name and a command, which leaves out swiftformat\'s fix_command ("swiftformat ."). '
-          + 'Change a linter\'s command where any is still wanted, when ready to build asks to confirm the project\'s setup, or now: read the linters recorded with '
-          + '`node .claude/skills/ledger-engine/scripts/engine.cjs environment show`, then record the whole list, those changed, with '
-          + '`node .claude/skills/ledger-engine/scripts/engine.cjs environment set linters`, its JSON on stdin.',
+          + '.ledger/core/topics/alpha/experiments/E1-frame-budget/data/rubric.md. A path a record\'s text or script spells out is left as written.',
       });
     });
   });
@@ -740,7 +744,7 @@ describe('migration 078: the move into the layout in .ledger/', () => {
           },
         },
         brownfield_offer: 'skipped',
-        environment: { linters: [{ name: 'eslint', command: 'npx eslint .' }, { name: 'swiftformat', command: 'swiftformat . --lint' }] },
+        environment: { linters: [{ name: 'eslint', command: 'npx eslint .' }, { name: 'swiftformat', command: 'swiftformat . --lint', fix: 'swiftformat .' }] },
         product_session: '002',
       });
       assert.strictEqual(Object.keys(project)[0], 'project_id');
@@ -1204,13 +1208,13 @@ describe('migration 078: a small project', () => {
   /** The project manifest the move wrote, from the project at `dir`. */
   const movedProject = () => JSON.parse(fs.readFileSync(path.join(dir, '.ledger/manifest.json'), 'utf8'));
 
-  it('21.S50: keeps a native or completed baseline as the brownfield offer\'s answer, in today\'s words, and none for a baseline under way, the status fields gone either way (21.11.2, 8.12.11)', () => {
-    const cases = /** @type {const} */ ([['native', { brownfield_offer: 'native' }], ['completed', { brownfield_offer: 'completed' }], ['in-progress', {}]]);
+  it('21.S50: keeps a native or completed baseline as the brownfield offer\'s answer, in today\'s words, and none for a baseline under way — when the old state arrived kept instead — the status fields gone either way (21.11.2, 8.12.11)', () => {
+    const cases = /** @type {const} */ ([['native', { brownfield_offer: 'native' }], ['completed', { brownfield_offer: 'completed' }], ['in-progress', { arrived: ARRIVED }]]);
     for (const [status, answer] of cases) {
       dir = tempProject(`migration-078-baseline-${status}-`);
       try {
         write(dir, '.workflows/manifest.json', json({ work_units: {}, baseline: { status, areas: { auth: 'completed', billing: 'pending' } } }));
-        commitAll(dir);
+        commitOn(dir, ARRIVED);
         run(dir);
         const { project_id: _id, ...project } = movedProject();
         assert.deepStrictEqual(project, { work_units: {}, ...answer }, status);
@@ -1220,13 +1224,42 @@ describe('migration 078: a small project', () => {
     }
   });
 
+  it('8.12.10, 21.11.2: records when the old state first entered git, by either of its names — its author time, a later commit adding to it no matter — so the offer reads the history before then; none where it never entered git', () => {
+    const LATER = '2025-04-01T09:00:00Z';
+    dir = tempProject('migration-078-arrived-');
+    try {
+      write(dir, 'README.md', '# Tally\n');
+      commitOn(dir, '2024-12-01T09:00:00Z');
+      write(dir, 'docs/workflow/manifest.json', json({ work_units: {} }));
+      commitOn(dir, ARRIVED);
+      git(dir, ['mv', 'docs/workflow', '.workflows']);
+      commitOn(dir, '2025-03-01T09:00:00Z');
+      write(dir, '.workflows/.state/environment-setup.md', 'No special setup required.\n');
+      commitOn(dir, LATER);
+      run(dir);
+      assert.strictEqual(movedProject().arrived, ARRIVED);
+    } finally {
+      cleanupFixture(dir);
+    }
+    dir = tempProject('migration-078-arrived-none-');
+    try {
+      write(dir, '.gitignore', '.workflows/\n');
+      commitOn(dir, LATER);
+      write(dir, '.workflows/manifest.json', json({ work_units: {} }));
+      run(dir);
+      assert.ok(!Object.hasOwn(movedProject(), 'arrived'));
+    } finally {
+      cleanupFixture(dir);
+    }
+  });
+
   it('7.S6: sets no driver, so the task driver its settings read is the default, the plan\'s format and the project skills gone and the defaults with them (7.1.11, 22.3.1, 22.3.2, 22.4.3)', () => {
     dir = tempProject('migration-078-drivers-');
     try {
       write(dir, '.workflows/manifest.json', json({ work_units: {}, defaults: { plan_format: 'local-markdown', project_skills: [] } }));
       commitAll(dir);
       run(dir);
-      const { project_id: _id, ...project } = movedProject();
+      const { project_id: _id, arrived: _arrived, ...project } = movedProject();
       const { driver, set } = chosenDriver(dir, 'task');
       assert.deepStrictEqual([project, driver.name, set], [{ work_units: {} }, listDrivers('task').find(({ isDefault }) => isDefault)?.name, false]);
     } finally {
@@ -1714,7 +1747,7 @@ describe('migration 078: a small project', () => {
       run(dir);
       const state = path.join(dir, '.ledger');
       const { project_id: _id, ...project } = movedProject();
-      assert.deepStrictEqual(project, { work_units: { tally: { work_type: 'feature' } }, checklists });
+      assert.deepStrictEqual(project, { work_units: { tally: { work_type: 'feature' } }, arrived: ARRIVED, checklists });
       assert.strictEqual(fs.readFileSync(path.join(state, '.state/migrations'), 'utf8'), '001\n073\n076\n');
       assert.strictEqual(fs.readFileSync(path.join(state, '.cache/migrate/pending-tally.json'), 'utf8'), '{"ran":["073"]}\n');
       assert.doesNotThrow(() => git(state, ['check-ignore', '--quiet', '.cache/migrate/pending-tally.json']), 'the journal ignored in the state');
@@ -1743,7 +1776,7 @@ describe('migration 078: a small project', () => {
         '.gitignore', `.inbox/ideas/${TODAY}--dropped.md`, '.knowledge/config.json', 'manifest.json', 'tally/manifest.json', 'tally/topics/tally/log.md',
       ]);
       assert.deepStrictEqual(JSON.parse(fs.readFileSync(path.join(state, 'manifest.json'), 'utf8')),
-        { project_id: 'CutShort0123456789abc', work_units: { tally: { work_type: 'feature' } } });
+        { project_id: 'CutShort0123456789abc', work_units: { tally: { work_type: 'feature' } }, arrived: ARRIVED });
       assert.strictEqual(fs.readFileSync(path.join(state, '.knowledge/config.json'), 'utf8'), KNOWLEDGE_CONFIG);
       assert.strictEqual(fs.readFileSync(path.join(state, 'tally/topics/tally/log.md'), 'utf8'), '## Discussion\n\n## Discussion: Tally\n');
       assert.strictEqual(fs.readFileSync(path.join(state, `.inbox/ideas/${TODAY}--dropped.md`), 'utf8'), DROPPED_IDEA);
@@ -1827,7 +1860,7 @@ describe('migration 078: a small project', () => {
         ['node_modules/\n.ledger/\n', json({ permissions: { allow: ['Edit(.ledger/**)'] } }), '.env.local\n'],
       );
       const project = JSON.parse(fs.readFileSync(path.join(dir, '.ledger/manifest.json'), 'utf8'));
-      assert.deepStrictEqual([Object.keys(project), project.environment], [['project_id', 'work_units', 'environment'], { linters: [{ name: 'eslint', command: 'eslint' }] }]);
+      assert.deepStrictEqual([Object.keys(project), project.environment], [['project_id', 'work_units', 'arrived', 'environment'], { linters: [{ name: 'eslint', command: 'eslint' }] }]);
     } finally {
       fs.writeFileSync = realWrite;
       cleanupFixture(dir);
@@ -1971,20 +2004,34 @@ describe('migration 078: the linters carried onto the project\'s environment (re
     });
   });
 
-  it('carries each linter\'s check command, a lint command beside its fix command among them, and names for the review what the environment\'s linter has no room for — the fix command, a scope — once each', () => {
+  it('carries each linter\'s check command, a lint command beside its fix command among them, the fix command its fix, and names for the review what the environment\'s linter has no room for — a scope — once each', () => {
     const swiftformat = { name: 'swiftformat', lint_command: 'swiftformat Sources Tests Package.swift --lint --swiftversion 6.0', fix_command: 'swiftformat Sources Tests Package.swift --swiftversion 6.0' };
     const pint = { name: 'pint', command: 'cd api && composer pint', scope: 'api' };
     const eslint = { name: 'eslint', command: 'cd app && npm run lint -- --fix', scope: 'app' };
     writeState('manifest.json', { project_id: 'p1', defaults: { linters: [swiftformat, pint, eslint] } });
     unitWith('pay', { checkout: [swiftformat, pint] });
 
-    assert.strictEqual(carryLinters(state), 'The linters were carried into environment.linters as a name and a command, which leaves out '
-      + 'swiftformat\'s fix_command ("swiftformat Sources Tests Package.swift --swiftversion 6.0"), pint\'s scope ("api"), eslint\'s scope ("app"). '
+    assert.strictEqual(carryLinters(state), 'The linters were carried into environment.linters as a name, a command and a fix command, which leaves out '
+      + 'pint\'s scope ("api"), eslint\'s scope ("app"). '
       + `Change a linter's command where any is still wanted, when ready to build asks to confirm the project's setup, or now: ${help('those changed')}`);
     assert.deepStrictEqual(readState('manifest.json').environment.linters, [
-      { name: 'swiftformat', command: 'swiftformat Sources Tests Package.swift --lint --swiftversion 6.0' },
+      { name: 'swiftformat', command: 'swiftformat Sources Tests Package.swift --lint --swiftversion 6.0', fix: 'swiftformat Sources Tests Package.swift --swiftversion 6.0' },
       { name: 'pint', command: 'cd api && composer pint' },
       { name: 'eslint', command: 'cd app && npm run lint -- --fix' },
+    ]);
+  });
+
+  it('a fix held only by an entry carried as a linter already carried — by its name or its command — becomes that linter\'s; another fix than the one carried is named for the review', () => {
+    const swiftformat = { name: 'swiftformat', lint_command: 'swiftformat . --lint' };
+    writeState('manifest.json', { project_id: 'p1', defaults: { linters: [swiftformat, { name: 'vet', command: 'go vet ./...' }] } });
+    unitWith('pay', { checkout: [{ ...swiftformat, fix_command: 'swiftformat .' }, { ...swiftformat, fix_command: 'swiftformat Sources' }, { name: 'go-vet', command: 'go vet ./...', fix_command: 'go fix ./...' }] });
+
+    assert.strictEqual(carryLinters(state), 'These linters were carried into environment.linters as the linter carried already that runs their command, under its name: go-vet as vet. '
+      + 'The linters were carried into environment.linters as a name, a command and a fix command, which leaves out swiftformat\'s fix_command ("swiftformat Sources"). '
+      + `Change a linter's command where any is still wanted, when ready to build asks to confirm the project's setup, or now: ${help('those changed')}`);
+    assert.deepStrictEqual(readState('manifest.json').environment.linters, [
+      { name: 'swiftformat', command: 'swiftformat . --lint', fix: 'swiftformat .' },
+      { name: 'vet', command: 'go vet ./...', fix: 'go fix ./...' },
     ]);
   });
 
