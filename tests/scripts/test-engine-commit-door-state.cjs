@@ -512,7 +512,7 @@ describe('engine commit --migrations: the state and the paths the workflows own'
   });
 
   it('refuses beside another scope, and without a message', () => {
-    assert.match(refuses(dir, ['commit', '--migrations', '--workflows', '-m', 'x']).error, /Usage/);
+    assert.match(refuses(dir, ['commit', '--migrations', '--whole', '-m', 'x']).error, /Usage/);
     assert.match(refuses(dir, ['commit', '--migrations', '--state', '-m', 'x']).error, /Usage/);
     assert.match(refuses(dir, ['commit', 'payments', '--migrations', '-m', 'x']).error, /Usage/);
     assert.match(refuses(dir, ['commit', '--paths', 'src/app.js', '--migrations', '-m', 'x',

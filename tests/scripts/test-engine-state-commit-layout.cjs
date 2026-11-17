@@ -5,7 +5,7 @@
 // state-worktree.cjs, `commitHere`): a commit reads the state worktree's
 // changes in one `status`. A file on disk the layout has no place for
 // refuses it, naming the file and the way on, with nothing committed — a
-// verb's own commit, `commit --workflows` and `--migrations`, and a
+// verb's own commit, `commit --whole` and `--migrations`, and a
 // transaction's tail, which answers the refusal as a commit pending (6.2.5,
 // 6.S6); a file gone, from the working tree or with its deletion staged,
 // refuses nothing. Every changed log of 4.11's rides along with the verb's
@@ -73,7 +73,7 @@ describe('a file outside the layout (6.2.5)', () => {
     assert.deepStrictEqual(refused, { ok: false, error: outsideLayout(root, STRAY) });
   });
 
-  for (const form of ['--workflows', '--migrations']) {
+  for (const form of ['--whole', '--migrations']) {
     it(`commit ${form} refuses one too, committing nothing on either side`, () => {
       const { main, root } = codeProject(folder(), { state: true });
       createFile(root, BRIEF, '# login\n');
@@ -131,7 +131,7 @@ describe('a file outside the layout (6.2.5)', () => {
       remove(root);
       createFile(root, BRIEF, '# login\n');
 
-      const res = ok(main, ['commit', '--workflows', '-m', 'chore: the state']);
+      const res = ok(main, ['commit', '--whole', '-m', 'chore: the state']);
 
       assert.deepStrictEqual(res, { ok: true, committed: short(root, 'HEAD') });
       assert.deepStrictEqual(touched(root, 'HEAD'), [`A\t${BRIEF}`, 'D\tnotes.txt']);
@@ -165,7 +165,7 @@ describe('the files the person\'s tools leave beside the state\'s', () => {
     for (const rel of left) createFile(root, rel, 'a tool\'s\n');
     createFile(root, BRIEF, '# login\n');
 
-    const res = ok(main, ['commit', '--workflows', '-m', 'chore: the state']);
+    const res = ok(main, ['commit', '--whole', '-m', 'chore: the state']);
 
     assert.deepStrictEqual(res, { ok: true, committed: short(root, 'HEAD') });
     assert.deepStrictEqual(touched(root, 'HEAD'), [`A\t${BRIEF}`]);
@@ -184,7 +184,7 @@ describe('an agent\'s staging of a file place, waiting on its rename', () => {
     for (const rel of STAGED) createFile(root, rel, 'half written\n');
     createFile(root, BRIEF, '# login\n');
 
-    const res = ok(main, ['commit', '--workflows', '-m', 'chore: the state']);
+    const res = ok(main, ['commit', '--whole', '-m', 'chore: the state']);
 
     assert.deepStrictEqual(res, { ok: true, committed: short(root, 'HEAD') });
     assert.deepStrictEqual(touched(root, 'HEAD'), [`A\t${BRIEF}`]);
@@ -197,7 +197,7 @@ describe('an agent\'s staging of a file place, waiting on its rename', () => {
     createFile(root, stray, 'not the engine\'s\n');
     createFile(root, BRIEF, '# login\n');
 
-    assert.strictEqual(refusedPristine(main, ['commit', '--workflows', '-m', 'chore: the state']).error, outsideLayout(root, stray));
+    assert.strictEqual(refusedPristine(main, ['commit', '--whole', '-m', 'chore: the state']).error, outsideLayout(root, stray));
   });
 });
 

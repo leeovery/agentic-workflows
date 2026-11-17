@@ -375,7 +375,7 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   commit --state -m <message>
   commit --inbox -m <message>
   commit --product -m <message>
-  commit --workflows -m <message>
+  commit --whole -m <message>
   commit --migrations -m <message>
   code log    --subject <prefix>
   code diff   [--subject <prefix>]
@@ -2254,7 +2254,7 @@ function commitTaskPaths(cwd, paths, message, unit, given) {
   return codeCommitted(repos, committed, { task: taskId(ref), checks, ...(warnings.length > 0 ? { warnings } : {}) });
 }
 
-const COMMIT_USAGE = 'Usage: engine commit <work-unit> -m <message> [--discovery | --state | --topic <phase>/<topic> [--sweep]] | engine commit --paths <file> … -m <message> --task <work-unit> <N.M> | engine commit --state -m <message> | engine commit --inbox -m <message> | engine commit --product -m <message> | engine commit --workflows -m <message> | engine commit --migrations -m <message>';
+const COMMIT_USAGE = 'Usage: engine commit <work-unit> -m <message> [--discovery | --state | --topic <phase>/<topic> [--sweep]] | engine commit --paths <file> … -m <message> --task <work-unit> <N.M> | engine commit --state -m <message> | engine commit --inbox -m <message> | engine commit --product -m <message> | engine commit --whole -m <message> | engine commit --migrations -m <message>';
 
 /** @param {Call} call @param {string[]} argv */
 function runCommit(call, argv) {
@@ -2268,7 +2268,7 @@ function runCommit(call, argv) {
     let discovery = false;
     let stateScope = false;
     let inbox = false;
-    let workflows = false;
+    let whole = false;
     let migrationsScope = false;
     let productScope = false;
     let sweep = false;
@@ -2283,7 +2283,7 @@ function runCommit(call, argv) {
       else if (a === '--discovery') discovery = true;
       else if (a === '--state') stateScope = true;
       else if (a === '--inbox') inbox = true;
-      else if (a === '--workflows') workflows = true;
+      else if (a === '--whole') whole = true;
       else if (a === '--migrations') migrationsScope = true;
       else if (a === '--product') productScope = true;
       else if (a.startsWith('-')) throw new Error(`unknown flag "${a}"`);
@@ -2297,7 +2297,7 @@ function runCommit(call, argv) {
       // Code commits are the one scope no layout derives (P7): declared,
       // validated, confined, and answered with the residual dirt.
       if (!message || files.length === 0 || topicSpec !== null
-          || discovery || stateScope || inbox || workflows || migrationsScope || productScope || sweep || workUnit !== null) {
+          || discovery || stateScope || inbox || whole || migrationsScope || productScope || sweep || workUnit !== null) {
         throw new Error(COMMIT_USAGE);
       }
       const [unit, given] = taskSpec;
@@ -2310,7 +2310,7 @@ function runCommit(call, argv) {
     // unit's files only the engine writes and the project's, or the
     // project's and its own `.state` — the retry a verb's pending note names.
     const globalState = stateScope && workUnit === null;
-    const scopeCount = [inbox, workflows, migrationsScope, productScope, globalState, workUnit !== null].filter(Boolean).length;
+    const scopeCount = [inbox, whole, migrationsScope, productScope, globalState, workUnit !== null].filter(Boolean).length;
     const workUnitFlags = [topicSpec !== null, discovery, stateScope && workUnit !== null].filter(Boolean).length;
     if (!message || scopeCount !== 1 || taskSpec.length > 0 || (workUnitFlags > 0 && workUnit === null) ||
         workUnitFlags > 1 || topicSpec === '' || topicSpec === undefined ||
@@ -2323,7 +2323,7 @@ function runCommit(call, argv) {
       // written from inside whatever session happened to need it.
       respond(call, stateCommitted(commitStateScoped(cwd, '.state', message, { owned: [null] })));
       return;
-    } else if (workflows) {
+    } else if (whole) {
       scope = '.';
     } else if (migrationsScope) {
       // The reviewed migration commit: the whole state, and every path

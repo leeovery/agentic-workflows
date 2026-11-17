@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// `engine commit --workflows` (ledger-engine/scripts/domain/commit.cjs):
+// `engine commit --whole` (ledger-engine/scripts/domain/commit.cjs):
 // the whole state staged and committed on the state branch, a clean tree
 // committing nothing, and mixed scopes refused.
 //
@@ -23,7 +23,7 @@ const projectWorld = fixtureFrom('engine-commit-workflows-', (project) => {
   commitAll(project, 'init');
 });
 
-describe('engine commit --workflows', () => {
+describe('engine commit --whole', () => {
   let project;
   beforeEach(() => { project = projectWorld(); });
   afterEach(() => cleanupFixture(project));
@@ -34,7 +34,7 @@ describe('engine commit --workflows', () => {
     createFile(project, '.ledger/.state/migrations', '045\n');
     createFile(project, 'unrelated.txt', 'outside the scope\n');
 
-    const res = ok(project, ['commit', '--workflows', '-m', 'chore: apply workflow migrations']);
+    const res = ok(project, ['commit', '--whole', '-m', 'chore: apply workflow migrations']);
 
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.committed, stateGit(project, ['rev-parse', '--short', 'HEAD']).trim());
@@ -52,19 +52,19 @@ describe('engine commit --workflows', () => {
   });
 
   it('a clean tree is fine: committed null, nothing-to-commit note, exit 0', () => {
-    const res = ok(project, ['commit', '--workflows', '-m', 'noop']);
+    const res = ok(project, ['commit', '--whole', '-m', 'noop']);
     assert.deepStrictEqual(res, { ok: true, committed: null, note: 'nothing to commit' });
   });
 
-  it('rejects mixed scopes — exactly one of {wu, --inbox, --workflows}', () => {
+  it('rejects mixed scopes — exactly one of {wu, --inbox, --whole}', () => {
     assert.match(
-      refuses(project, ['commit', '--workflows', 'payments', '-m', 'msg']).error,
+      refuses(project, ['commit', '--whole', 'payments', '-m', 'msg']).error,
       /Usage: engine commit/);
     assert.match(
-      refuses(project, ['commit', '--workflows', '--inbox', '-m', 'msg']).error,
+      refuses(project, ['commit', '--whole', '--inbox', '-m', 'msg']).error,
       /Usage: engine commit/);
     assert.match(
-      refuses(project, ['commit', '--workflows']).error,
+      refuses(project, ['commit', '--whole']).error,
       /Usage: engine commit/);
   });
 });

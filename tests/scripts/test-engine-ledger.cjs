@@ -831,12 +831,12 @@ describe('the append-only check on a state commit (5.S6)', () => {
       const root = statePath(dir);
       const q = appendEntry(root, question(), []);
       appendEntry(root, decision(/** @type {string} */ (q.id)), []);
-      assert.ok(ok(dir, ['commit', '--workflows', '-m', 'state: two entries']).committed);
+      assert.ok(ok(dir, ['commit', '--whole', '-m', 'state: two entries']).committed);
       assert.match(refuses(dir, ['render', 'ledger-stop']).error, /no stop on the ledger is kept — nothing stopped the engine/);
       const [first] = ledgerText(root).split('\n');
       writeLedger(root, `${first}\n`);
 
-      const refusal = refuses(dir, ['commit', '--workflows', '-m', 'state: a shorter ledger']);
+      const refusal = refuses(dir, ['commit', '--whole', '-m', 'state: a shorter ledger']);
 
       assert.strictEqual(refusal.stop, 'ledger');
       assert.match(refusal.error, /\.ledger\.jsonl changed outside the engine: it ends before line 2, which was committed — nothing committed/);
