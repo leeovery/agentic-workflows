@@ -21,7 +21,9 @@
 // migration and its suite, the tests' fixtures, what a run writes, this
 // guard's own sentences and the glossary's avoid line; each form is held
 // to sentences of its own, and none to an ordinary word. Every link of the
-// book's and the README's resolves, to its file and the heading it names.
+// docs' and the README's resolves, to its file and the heading it names.
+// "The docs" is every markdown file under `docs/`, the engine's command
+// reference among them; the book is its top level alone.
 //
 // Layer: unit. World: the repository's own files, read.
 
@@ -167,6 +169,9 @@ function workflowsNamed(rel) {
 /** Every markdown file the book holds, from the repository's root. */
 const bookFiles = () => fs.readdirSync(DOCS).filter((name) => name.endsWith('.md')).map((name) => path.join('docs', name));
 
+/** Every markdown file under `docs/`, the book's and those in its folders beside it, from the repository's root. */
+const docsFiles = () => filesUnder(['docs']).filter((rel) => rel.endsWith('.md'));
+
 /**
  * Each line of `files` that `pattern` finds, as `{file}:{line}: {match}`, but
  * those `passes` lets stand.
@@ -221,8 +226,8 @@ function brokenLinks(rel) {
 }
 
 describe('the user docs (23.4)', () => {
-  it('every link of the book\'s and the README\'s goes somewhere, to the heading it names', () => {
-    assert.deepStrictEqual([...bookFiles(), 'README.md'].flatMap(brokenLinks), []);
+  it('every link of the docs\' and the README\'s goes somewhere, to the heading it names', () => {
+    assert.deepStrictEqual([...docsFiles(), 'README.md'].flatMap(brokenLinks), []);
   });
 
   it('23.S11, 23.S17: the book is the chapters 23.4.2 lists and its index, nothing else — no planning.md, no collaboration chapter apart from trust', () => {
@@ -248,11 +253,11 @@ describe('the user docs (23.4)', () => {
   });
 
   it('23.S12: none of the author\'s own products and projects is named in the docs or the README', () => {
-    assert.deepStrictEqual(OWN_NAMES.flatMap((names) => linesNaming([...bookFiles(), 'README.md'], names)), []);
+    assert.deepStrictEqual(OWN_NAMES.flatMap((names) => linesNaming([...docsFiles(), 'README.md'], names)), []);
   });
 
   it('23.S19: the docs, the README, help and the glossary call the product Ledger, never an old name but where history tells of it or the glossary\'s avoid line names it', () => {
-    const surfaces = { docs: bookFiles(), readme: ['README.md'], help: helpFiles().filter((rel) => rel !== GLOSSARY), glossary: [GLOSSARY] };
+    const surfaces = { docs: docsFiles(), readme: ['README.md'], help: helpFiles().filter((rel) => rel !== GLOSSARY), glossary: [GLOSSARY] };
     for (const [surface, files] of Object.entries(surfaces)) assert.ok(files.some((rel) => PRODUCT.test(read(rel))), `${surface} names Ledger`);
     assert.deepStrictEqual(linesNaming(Object.values(surfaces).flat(), OLD_NAMES, TELLS_OF_IT), []);
   });
@@ -261,13 +266,14 @@ describe('the user docs (23.4)', () => {
     const files = [
       ...filesUnder(['skills', 'agents']),
       ...filesUnder(['tests'], TESTS_NAMING_IT),
-      ...bookFiles().filter((rel) => rel !== path.join('docs', 'history.md')),
+      ...docsFiles().filter((rel) => rel !== path.join('docs', 'history.md')),
       'README.md',
     ];
     const named = files.flatMap(workflowsNamed);
     const migration = (/** @type {string} */ name) => path.join('skills', 'ledger-migrate', 'scripts', 'migrations', name);
 
     assert.ok(files.includes(GLOSSARY) && files.length > 100, 'the guard reads what ships');
+    assert.ok(files.includes(path.join('docs', 'engine', 'commands.md')), 'the guard reads the docs in folders of their own');
     assert.ok(files.includes(migration('073-environment-linters.cjs')) && files.includes(migration('079-records.md')), 'the guard reads the migrations not yet released');
     assert.ok(!files.includes(migration('072-roadmap-kinds-and-notes.cjs')) && !files.includes(path.join('tests', 'scripts', 'test-migration-072.cjs')), 'the guard passes a released migration and its suite by');
     assert.ok(files.includes(path.join('tests', 'scripts', 'engine-harness.cjs')) && !files.some((rel) => rel.startsWith(TESTS_NAMING_IT[0])), 'the guard reads the tests, never their fixtures');

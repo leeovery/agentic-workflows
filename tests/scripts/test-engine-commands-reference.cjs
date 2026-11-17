@@ -4,12 +4,15 @@
 // The command reference is held to the engine: it has one entry per family
 // the engine dispatches and no other, in the families' `### ` headings; each
 // entry's signature block is the engine's own usage for that family, line
-// for line, so the usage has one source; and each entry names every verb
-// its usage says in bold, and no bold name that is neither one of its
-// family's verbs nor a family.
+// for line, so the usage has one source; each entry says something beside
+// its signatures, a family with no verb among them; and each entry names
+// every verb its usage says in bold — `knowledge`'s as its own door names
+// them — and no bold name that is neither one of its family's verbs nor a
+// family.
 //
-// Layer: unit. World: none; reads the reference and the engine's usage, as
-// the engine says it to a command it does not dispatch.
+// Layer: unit. World: none; reads the reference, the engine's usage as the
+// engine says it to a command it does not dispatch, and the knowledge
+// door's as it says it to a verb it does not know.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -37,21 +40,21 @@ for (const line of said) {
   (blocks[current] ??= []).push(line);
 }
 
-/** `knowledge` says its verbs as one placeholder, its whole usage its own `--help`. */
-const VERBS_AS_PLACEHOLDER = ['knowledge'];
-
 /** Each family's verbs: a form's second word, its alternatives apart, a line's later forms of its own family among them. */
 /** @type {Record<string, Set<string>>} */
 const verbs = {};
 for (const line of said.filter((one) => /^[a-z]/.test(one))) {
   for (const form of line.split(' | ').filter((one, i, all) => i === 0 || one.split(' ')[0] === all[0].split(' ')[0])) {
     const [family, second = ''] = form.split(/\s+/);
-    const word = VERBS_AS_PLACEHOLDER.includes(family) ? second.replace(/^<(.*)>$/, '$1') : second;
-    const alternatives = /^([a-z][a-z-]*(?:\|[a-z][a-z-]*)*)$/.exec(word);
+    const alternatives = /^([a-z][a-z-]*(?:\|[a-z][a-z-]*)*)$/.exec(second);
     verbs[family] ??= new Set();
     for (const verb of alternatives ? alternatives[1].split('|') : []) verbs[family].add(verb);
   }
 }
+
+/** `knowledge`'s verbs, which its usage line leaves to its own door: as that door names them, refusing a verb it does not know. */
+const knowledgeRefusal = JSON.parse(String(run(['knowledge', '__unknown__'], { cwd: os.tmpdir() }).stderr)).error;
+verbs.knowledge = new Set(/^Usage: engine knowledge <([a-z|-]+)>/.exec(knowledgeRefusal)?.[1].split('|') ?? []);
 
 /** The reference's entries by family: the signature block and the prose beside it. */
 function entries(/** @type {string} */ doc) {
@@ -77,6 +80,7 @@ function faults(doc) {
   for (const family of names.filter((one) => families.includes(one))) {
     const { block, prose } = found[family];
     if (block !== blocks[family].join('\n')) out.push(`${family}: the signature block is not the engine's usage`);
+    if (prose.trim() === '') out.push(`${family}: says nothing beside its signatures`);
     const bold = new Set([...prose.matchAll(/\*\*`([a-z][a-z-]*)`\*\*/g)].map((m) => m[1]));
     for (const verb of verbs[family]) if (!bold.has(verb)) out.push(`${family} ${verb}: not said`);
     for (const name of bold) if (!verbs[family].has(name) && !families.includes(name)) out.push(`${family} ${name}: no such verb`);
@@ -87,22 +91,26 @@ function faults(doc) {
 describe('the command reference', () => {
   const doc = fs.readFileSync(REFERENCE, 'utf8');
 
-  it('reads the engine\'s usage: every family, and the verbs of each', () => {
-    assert.deepStrictEqual(Object.keys(blocks).sort(), Object.keys(COMMANDS).sort());
+  it('reads the verbs of each family, `knowledge`\'s from its own door', () => {
     assert.ok(Object.values(verbs).reduce((sum, set) => sum + set.size, 0) > 300);
+    assert.ok(verbs.knowledge.has('query') && verbs.knowledge.has('setup'), knowledgeRefusal);
   });
 
   it('has one entry per family the engine dispatches, its signatures the usage, every verb said and none it lacks', () => {
     assert.deepStrictEqual(faults(doc), []);
   });
 
-  it('names what is missing where an entry drops a verb, a signature line or a family', () => {
+  it('names what is missing where an entry drops a verb, a signature line, its prose or a family', () => {
     const verb = doc.replace(/^- \*\*`late-check`\*\* — .*\n/m, '');
     assert.deepStrictEqual(faults(verb), ['ledger late-check: not said']);
     const line = doc.replace(/^ledger late-check .*\n/m, '');
     assert.deepStrictEqual(faults(line), ['ledger: the signature block is not the engine\'s usage']);
     const family = doc.replace(/^### `measures`$/m, '### `measured`');
     assert.deepStrictEqual(faults(family), ['measures: no entry', 'measured: no such family']);
+    const prose = doc.replace(/(^### `boot`\n\n```text\n[\s\S]*?\n```\n)[\s\S]*?(?=\n### )/m, '$1');
+    assert.deepStrictEqual(faults(prose), ['boot: says nothing beside its signatures']);
+    const knowledge = doc.replace(/^- \*\*`fill`\*\* — .*\n/m, '');
+    assert.deepStrictEqual(faults(knowledge), ['knowledge fill: not said']);
   });
 
   it('names a verb the engine lacks', () => {

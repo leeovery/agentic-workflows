@@ -8,7 +8,7 @@ Start by reading `CLAUDE.md` at the repository root — the standing rules
 for working on this repository that are easy to violate by accident, a
 short map of Ledger, and the documents that own each part. How
 Ledger behaves lives in the skills themselves, the engine's command
-reference (`docs/engine/commands.md`: each verb's
+reference ([`docs/engine/commands.md`](engine/commands.md): each verb's
 contract for its caller, its signatures the engine's usage, held to it
 by `test-engine-commands-reference.cjs`), the module header comments
 (how each verb works), and this book.
