@@ -970,17 +970,22 @@ const GUARD_FACTS = Object.freeze(['unit', 'phase', 'topic', 'active']);
 /**
  * Boot's `guard` stop, from the facts its response carries: `--cause
  * live` with the session's `--unit`, `--phase`, `--topic` and `--active`,
- * its seconds since last active; `--cause dirty` with none of them.
- * @param {string} _cwd @param {Record<string, string|undefined>} args @returns {string}
+ * its seconds since last active; `--cause dirty` with a `--path` for each
+ * path changed, and none of the session's.
+ * @param {string} _cwd @param {Record<string, string|undefined>} args @param {Record<string, string[]>} lists
+ * @returns {string}
  */
-function migrationGuardStopSurface(_cwd, args) {
+function migrationGuardStopSurface(_cwd, args, lists) {
   const { cause, unit, phase, topic, active } = args;
+  const paths = lists.path ?? [];
   if (cause === 'dirty') {
     const given = GUARD_FACTS.filter((fact) => args[fact] !== undefined);
     if (given.length > 0) throw new Error(`render migration-guard-stop: --${given[0]} names the live session a refusal for uncommitted changes has none of`);
-    return migrationGuardStop({ cause, folder: OLD_STATE });
+    if (paths.length === 0 || !paths.every(isFilled)) throw new Error('render migration-guard-stop: --cause dirty names each path changed by a --path of its own');
+    return migrationGuardStop({ cause, folder: OLD_STATE, paths });
   }
   if (cause !== 'live') throw new Error(`render migration-guard-stop: --cause is live or dirty, as boot's guard stop answers it, got "${cause ?? ''}"`);
+  if (paths.length > 0) throw new Error('render migration-guard-stop: --path names an uncommitted change a refusal for a live session has none of');
   if (!isFilled(unit) || !isFilled(phase) || !isFilled(topic)) throw new Error('render migration-guard-stop: --cause live names the live session by --unit, --phase and --topic');
   if (active === undefined || !/^(0|[1-9][0-9]*)$/.test(active)) throw new Error(`render migration-guard-stop: --active takes the seconds since the live session was last active, got "${active ?? ''}"`);
   return migrationGuardStop({ cause, unit, phase, topic, active: Number(active) });
@@ -1111,7 +1116,7 @@ function knowledgeReadySurface(cwd) {
   return knowledgeReady(metadata);
 }
 
-/** The catalogue: surface name → handler. @type {Record<string, (cwd: string, args: {dotpath: string} & Record<string, string|undefined>) => string>} */
+/** The catalogue: surface name → handler. @type {Record<string, (cwd: string, args: {dotpath: string} & Record<string, string|undefined>, lists: Record<string, string[]>) => string>} */
 const SURFACES = {
   'backlog-gate': backlogGate,
   'experiment-register': experimentRegisterSurface,
@@ -1203,16 +1208,18 @@ const SURFACES = {
 };
 
 /**
- * Dispatch a surface render.
+ * Dispatch a surface render, `lists` the values of each flag a surface
+ * takes more than once.
  * @param {string} cwd @param {string} surface @param {{dotpath: string} & Record<string, string|undefined>} args
+ * @param {Record<string, string[]>} [lists]
  * @returns {string}
  */
-function renderSurface(cwd, surface, args) {
+function renderSurface(cwd, surface, args, lists = {}) {
   const handler = SURFACES[surface];
   if (!handler) {
     throw new Error(`render: unknown surface "${surface}" (surfaces: ${Object.keys(SURFACES).join(', ')})`);
   }
-  return handler(cwd, args);
+  return handler(cwd, args, lists);
 }
 
 module.exports = { renderSurface, SURFACES };

@@ -1,6 +1,8 @@
 # Your task
 
-Verify one phase's piece, composed for the migration's cut step, against the unit's joined spec, the phase's tasks, its old plan's files, the tracker and the code, before the pieces are joined and cut. Hunt for what the piece dropped, and for a mark or a correction its sources do not bear out, however often it was verified before.
+Verify one phase's piece, composed for the migration's cut step, against the unit's joined spec, the phase's tasks, its old plan's files, the tracker and the code, before the pieces are joined and cut. These are its sources, and no other: a piece composed for another phase is another agent's work, never verified, and never a source. Hunt for what the piece dropped, and for a mark or a correction its sources do not bear out, however often it was verified before.
+
+Walk every task of the phase, as the brief below lists them, and each acceptance criterion of a task still to build: check that each criterion is carried by a scenario, and that each task the piece corrects or carries on stands as its sources and the code show it. Walk them all: your findings are every gap the walk turns up, never a sample.
 
 The piece passes when nothing material is missing or misstated:
 

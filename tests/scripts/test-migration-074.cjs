@@ -11,9 +11,11 @@
 // skills' presence rows — its process still running, by pid and start time,
 // or by pid alone where the row has no start time — in the project's folder
 // in any checkout, naming the unit, phase and topic of the row written last
-// and how long ago, or while `.workflows/` has uncommitted changes (21.S5,
-// 21.S6); a stale row, the calling session's own, a row naming no process,
-// and changes the old state ignores or outside it, refuse nothing. On a pass
+// and how long ago, or while `.workflows/` has uncommitted changes, naming
+// each path from the project's folder (21.S5, 21.S6); a stale row, the
+// calling session's own, a row naming no process, a change to a tool's
+// sidecar, which the move never carries, and changes the old state ignores
+// or outside it, refuse nothing. On a pass
 // it puts the state worktree in place on an unborn `ledger-state`, locked,
 // its `.gitignore` alone in it — a plain `.ledger/` set aside and put back
 // inside — and a run killed at each of the placement's writes, its
@@ -168,7 +170,7 @@ describe('migration 074: the reshape\'s guard', () => {
       presence(main, 'fumi/discussion/licensing', LIVE, 180);
       const before = untouched(main);
 
-      assert.deepStrictEqual(guard(main), { refused: { cause: 'live', unit: 'fumi', phase: 'discussion', topic: 'licensing', active: 180 } });
+      assert.deepStrictEqual(guard(main), { refused: { cause: 'live', unit: 'fumi', phase: 'discussion', topic: 'licensing', active: 180, paths: null } });
       assert.deepStrictEqual(untouched(main), before);
     });
 
@@ -176,14 +178,14 @@ describe('migration 074: the reshape\'s guard', () => {
       t.mock.method(Date, 'now', () => NOW);
       presence(main, 'fumi/discussion/licensing', { pid: process.pid, session_id: 'another-session' }, 600);
 
-      assert.deepStrictEqual(guard(main), { refused: { cause: 'live', unit: 'fumi', phase: 'discussion', topic: 'licensing', active: 600 } });
+      assert.deepStrictEqual(guard(main), { refused: { cause: 'live', unit: 'fumi', phase: 'discussion', topic: 'licensing', active: 600, paths: null } });
 
       const linked = path.join(world, 'fumi-feature');
       git(main, ['worktree', 'add', '-q', '-b', 'feature', linked]);
       presence(linked, 'fumi/specification/search', LIVE, 42);
       presence(main, 'fumi/research/onboarding', LIVE, 3600);
 
-      assert.deepStrictEqual(guard(main), { refused: { cause: 'live', unit: 'fumi', phase: 'specification', topic: 'search', active: 42 } });
+      assert.deepStrictEqual(guard(main), { refused: { cause: 'live', unit: 'fumi', phase: 'specification', topic: 'search', active: 42, paths: null } });
     });
 
     it('reads a nested project\'s rows from its own folder, never another project\'s in the repository', (t) => {
@@ -198,7 +200,7 @@ describe('migration 074: the reshape\'s guard', () => {
       assert.strictEqual('refused' in guard(path.join(mono, 'app')), false, 'the other project\'s session refuses nothing');
 
       presence(path.join(mono, 'app'), 'app/discussion/app', LIVE, 7);
-      assert.deepStrictEqual(guard(path.join(mono, 'app')), { refused: { cause: 'live', unit: 'app', phase: 'discussion', topic: 'app', active: 7 } });
+      assert.deepStrictEqual(guard(path.join(mono, 'app')), { refused: { cause: 'live', unit: 'app', phase: 'discussion', topic: 'app', active: 7, paths: null } });
     });
 
     it('passes over a stale row — its process gone, or another now holding its pid — the calling session\'s own, by its session or its process, a row naming no process, and one that does not read', () => {
@@ -217,19 +219,53 @@ describe('migration 074: the reshape\'s guard', () => {
   });
 
   describe('uncommitted changes under .workflows/ (21.3.2, 21.S6)', () => {
-    it('refuses over a change to a tracked file, and over a file git does not track, writing nothing', () => {
-      for (const change of [
-        () => createFile(main, '.workflows/fumi/manifest.json', '{"name":"fumi","work_type":"feature"}\n'),
-        () => createFile(main, '.workflows/fumi/discussion/new.md', '# New\n'),
-      ]) {
+    /** The guard's refusal over uncommitted changes, naming `paths`. @param {string[]} paths */
+    const dirty = (paths) => ({ refused: { cause: 'dirty', unit: null, phase: null, topic: null, active: null, paths } });
+
+    it('refuses over a change to a tracked file, and over files git does not track, naming each path from the project\'s folder, an untracked folder\'s by each file in it and a rename by its new path, writing nothing', () => {
+      for (const [change, paths] of /** @type {[() => void, string[]][]} */ ([
+        [() => createFile(main, '.workflows/fumi/manifest.json', '{"name":"fumi","work_type":"feature"}\n'), ['.workflows/fumi/manifest.json']],
+        [() => {
+          createFile(main, '.workflows/fumi/discussion/new.md', '# New\n');
+          createFile(main, '.workflows/fumi/discussion/notes/one.md', '# One\n');
+        }, ['.workflows/fumi/discussion/new.md', '.workflows/fumi/discussion/notes/one.md']],
+        [() => git(main, ['mv', '.workflows/fumi/manifest.json', '.workflows/fumi/moved.json']), ['.workflows/fumi/moved.json']],
+      ])) {
         git(main, ['checkout', '-q', '--', '.workflows']);
         git(main, ['clean', '-q', '-fd', '--', '.workflows']);
         change();
         const before = untouched(main);
 
-        assert.deepStrictEqual(guard(main), { refused: { cause: 'dirty', unit: null, phase: null, topic: null, active: null } });
+        assert.deepStrictEqual(guard(main), dirty(paths));
         assert.deepStrictEqual(untouched(main), before);
       }
+      assert.throws(() => withEnv(THIS_SESSION, () => MIGRATION.run({ projectDir: main, reportUpdate() {}, reportSkip() {} })), {
+        message: 'the reshape\'s guard refused: .workflows/ has uncommitted changes: .workflows/fumi/moved.json',
+      });
+    });
+
+    it('names a nested project\'s paths from its own folder', () => {
+      const mono = initRepo(path.join(world, 'mono'));
+      createFile(mono, 'app/.workflows/app/manifest.json', '{"name":"app"}\n');
+      commitCode(mono, 'a nested project');
+      createFile(mono, 'app/.workflows/app/new.md', '# New\n');
+
+      assert.deepStrictEqual(guard(path.join(mono, 'app')), dirty(['.workflows/app/new.md']));
+    });
+
+    it('passes over the files the person\'s tools leave beside theirs, a .DS_Store tracked or not, which the move never carries, naming only the change beside them', () => {
+      createFile(main, '.workflows/fumi/.DS_Store', 'tracked\n');
+      commitCode(main, 'a sidecar committed');
+      createFile(main, '.workflows/fumi/.DS_Store', 'changed\n');
+      createFile(main, '.workflows/.DS_Store', 'untracked\n');
+      createFile(main, '.workflows/fumi/discussion/.DS_Store', 'in a folder of its own\n');
+      createFile(main, '.workflows/fumi/discussion/new.md', '# New\n');
+
+      assert.deepStrictEqual(guard(main), dirty(['.workflows/fumi/discussion/new.md']));
+
+      fs.rmSync(path.join(main, '.workflows/fumi/discussion/new.md'));
+
+      assert.deepStrictEqual(guard(main), { updates: 1, skips: 0 });
     });
 
     it('passes over what the old state ignores, and over changes outside it', () => {

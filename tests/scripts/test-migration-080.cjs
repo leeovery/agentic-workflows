@@ -329,6 +329,17 @@ describe('the directive\'s ways on', () => {
     assert.deepStrictEqual(unstated(['Where the ruling has the piece change, replace the finding with `Settled: {point}, amend to agree`', 'Where the ruling keeps the piece as it stands, take the finding out of the findings file', 'An empty findings file is only ever a pass.']), []);
   });
 
+  it('a task\'s criteria carried whole: the composer walks the phase\'s tasks before its check, the verifier every task and criterion, its findings every gap, never a sample; neither reads a piece composed for another phase', () => {
+    const template = (/** @type {string} */ role) => fs.readFileSync(path.join(__dirname, `../../skills/ledger-engine/content/briefs/${role}.md`), 'utf8');
+    const CONFINED = 'These are its sources, and no other: a piece composed for another phase is another agent\'s work, never verified, and never a source.';
+
+    assert.deepStrictEqual([
+      unstated(['A task\'s criteria are carried whole: carrying some of them and leaving its others out is a gap.']),
+      [CONFINED, 'Before you hand back, walk the phase\'s tasks one by one, as the brief below lists them: confirm that each acceptance criterion of a task still to build is carried by a scenario, and each disagreement the phase names is settled by a correction, and mend what the piece misses. Then check the piece.'].filter((rule) => !template('migration-phase').includes(rule)),
+      [CONFINED, 'Walk every task of the phase, as the brief below lists them, and each acceptance criterion of a task still to build: check that each criterion is carried by a scenario, and that each task the piece corrects or carries on stands as its sources and the code show it. Walk them all: your findings are every gap the walk turns up, never a sample.'].filter((rule) => !template('migration-phase-verifier').includes(rule)),
+    ], [[], [], []]);
+  });
+
   it('a link the cut refuses that still holds: a task of the unit\'s on another unit\'s, the link off and the phase relying on that unit; on a later phase of its own plan, the person\'s choice of a note or a correction; on another plan\'s, or another unit\'s task on one of the unit\'s, a known edge', () => {
     assert.deepStrictEqual(unstated([
       '- **It holds, a task of this unit\'s on another unit\'s.** Take the link off as above; the waiting task\'s phase relies on that unit instead',

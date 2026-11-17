@@ -307,9 +307,10 @@ function stopAt(state, { args, given } = {}) {
  * Why the reshape's guard refused the migration, and the facts its screen
  * states (21.3.4): `live`, another session working in the project — the
  * unit, phase and topic of the presence written last, and how long ago, in
- * whole seconds; `dirty`, uncommitted changes in the project's old state,
- * the other four null.
- * @typedef {{cause: 'live'|'dirty', unit: string|null, phase: string|null, topic: string|null, active: number|null}} Refusal
+ * whole seconds, `paths` null; `dirty`, uncommitted changes in the
+ * project's old state, `paths` each path changed, from the project's
+ * folder, the other four null.
+ * @typedef {{cause: 'live'|'dirty', unit: string|null, phase: string|null, topic: string|null, active: number|null, paths: string[]|null}} Refusal
  */
 
 /**
@@ -534,13 +535,13 @@ function boot(cwd, { startAgain = false, words = '' } = {}) {
 
 /**
  * Boot stopped at the reshape's guard (`GuardStop`), its screen drawn from
- * the refusal's facts: the live session's, or none for uncommitted changes.
+ * the refusal's facts: the live session's, or each path changed.
  * @param {Refusal} refused @param {string[]} warnings @returns {GuardStop}
  */
 function guardStop(refused, warnings) {
-  const { cause, unit, phase, topic, active } = refused;
-  const facts = cause === 'live' ? ['--unit', String(unit), '--phase', String(phase), '--topic', String(topic), '--active', String(active)] : [];
-  return { state: 'guard', cause, unit, phase, topic, active, stop: stopAt('guard', { args: ['--cause', cause, ...facts] }), warnings };
+  const { cause, unit, phase, topic, active, paths } = refused;
+  const facts = cause === 'live' ? ['--unit', String(unit), '--phase', String(phase), '--topic', String(topic), '--active', String(active)] : (paths ?? []).flatMap((at) => ['--path', at]);
+  return { state: 'guard', cause, unit, phase, topic, active, paths, stop: stopAt('guard', { args: ['--cause', cause, ...facts] }), warnings };
 }
 
 /**

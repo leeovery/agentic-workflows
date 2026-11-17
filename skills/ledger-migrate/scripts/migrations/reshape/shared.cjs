@@ -4,7 +4,8 @@
 // What the reshape's steps share — the guard (074), the legacy split
 // (075–077, through split.cjs beside it), the move (078) and finish (081):
 // the layout's names before and after it, git as they run it, a file
-// written whole, the state worktree put in place, and where a project from
+// written whole, the files the person's tools leave beside theirs, the
+// state worktree put in place, and where a project from
 // before Ledger kept a tracker's store. Released with them, it is frozen
 // with them: the runtime's own knowledge of the layout before Ledger is the
 // migrate skill's `old-layout.cjs`, and neither loads the other.
@@ -56,6 +57,16 @@ const REPOSITORY_ENV = [
   'GIT_PREFIX', 'GIT_QUARANTINE_PATH', 'GIT_REPLACE_REF_BASE', 'GIT_SHALLOW_FILE', 'GIT_WORK_TREE',
 ];
 const HOOKS_OFF = ['-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor='];
+// The files the person's tools leave beside theirs, by base name, `*` any
+// run of characters, as the engine lists them (TOOL_SIDECARS): the move
+// never carries one, so the guard counts no change to one.
+const TOOL_SIDECARS = [
+  '.DS_Store', 'Thumbs.db', 'desktop.ini', '._*',
+  '.*.swp', '.*.swo', '.*.swx',
+  '*~', '#*#', '.#*',
+  '*___jb_tmp___', '*___jb_old___',
+];
+const SIDECAR_NAME = new RegExp(`^(?:${TOOL_SIDECARS.map((glob) => glob.replace(/[^\w*]/g, '\\$&').replace(/\*/g, '.*')).join('|')})$`);
 
 /**
  * `file` written whole or not at all, for a step run again reads it back:
@@ -211,6 +222,6 @@ function unreadStores(unread, cost) {
 }
 
 module.exports = {
-  OLD_STATE, STATE_DIR, STATE_GITIGNORE, REPOSITORY_ENV,
+  OLD_STATE, STATE_DIR, STATE_GITIGNORE, REPOSITORY_ENV, SIDECAR_NAME,
   git, mustGit, mainCheckout, projectInMain, stateBorn, placeStateWorktree, writeWhole, preLedgerStores, unreadStores,
 };

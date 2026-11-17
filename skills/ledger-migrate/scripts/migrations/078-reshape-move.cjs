@@ -321,7 +321,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { carryLinters } = require('./reshape/linters.cjs');
 const {
-  OLD_STATE: CODE_TREE_STATE, STATE_DIR, STATE_GITIGNORE, git, mainCheckout, projectInMain, stateBorn, placeStateWorktree, writeWhole, preLedgerStores, unreadStores,
+  OLD_STATE: CODE_TREE_STATE, STATE_DIR, STATE_GITIGNORE, SIDECAR_NAME, git, mainCheckout, projectInMain, stateBorn, placeStateWorktree, writeWhole, preLedgerStores, unreadStores,
 } = require('./reshape/shared.cjs');
 
 const CODE_GITIGNORE = '.gitignore';
@@ -448,16 +448,6 @@ const TRACKING_FILES = {
   specification: /^review-(?:input|gap-analysis|claims)-tracking-c[0-9]+\.md$/,
   planning: /^review-(?:traceability|integrity)-tracking-c[0-9]+\.md$/,
 };
-// The files the person's tools leave beside theirs, by base name, `*` any
-// run of characters, as the engine lists them (TOOL_SIDECARS): never carried,
-// never named as kept.
-const TOOL_SIDECARS = [
-  '.DS_Store', 'Thumbs.db', 'desktop.ini', '._*',
-  '.*.swp', '.*.swo', '.*.swx',
-  '*~', '#*#', '.#*',
-  '*___jb_tmp___', '*___jb_old___',
-];
-const SIDECAR_NAME = new RegExp(`^(?:${TOOL_SIDECARS.map((glob) => glob.replace(/[^\w*]/g, '\\$&').replace(/\*/g, '.*')).join('|')})$`);
 
 const ID_ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
 const ID_LENGTH = 21;

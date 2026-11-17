@@ -25,10 +25,16 @@
 //     one written last is named, with how long ago, in whole seconds;
 //   - `.workflows/` has uncommitted changes, tracked or untracked, in the
 //     project's folder in the main checkout: the copy the migration's commit
-//     drops from the default branch.
+//     drops from the default branch. The move (078) reads that copy as it
+//     stands on disk, carrying an untracked file as any other, so each is
+//     named, an untracked folder's by each file in it — but for the files
+//     the person's tools leave beside theirs, a `.DS_Store` among them
+//     (reshape/shared.cjs, `SIDECAR_NAME`), which the move never carries.
 // A refusal throws an error carrying `refused`, the facts its screen states
-// — `{cause: 'live'|'dirty', unit, phase, topic, active}`, the last four
-// null for uncommitted changes — which the runner prints, recording nothing.
+// — `{cause: 'live'|'dirty', unit, phase, topic, active, paths}`: for a
+// live session its row's place and age, `paths` null; for uncommitted
+// changes each path changed, from the project's folder, the others null —
+// which the runner prints, recording nothing.
 //
 // On a pass it puts the state worktree in place on the unborn
 // `ledger-state` (reshape/shared.cjs, `placeStateWorktree`), its `.gitignore`
@@ -42,7 +48,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
-const { OLD_STATE, git, mainCheckout, projectInMain, stateBorn, placeStateWorktree } = require('./reshape/shared.cjs');
+const { OLD_STATE, SIDECAR_NAME, git, mainCheckout, projectInMain, stateBorn, placeStateWorktree } = require('./reshape/shared.cjs');
 
 const PRESENCE = 'presence';
 
@@ -138,19 +144,38 @@ function liveRows(folders) {
 }
 
 /**
+ * Each path under `.workflows/` changed since the last commit, tracked or
+ * untracked, from the project's folder, but the tools' sidecars.
+ * @param {string} main @param {string} project @returns {string[]}
+ */
+function changedPaths(main, project) {
+  const status = git(project, ['status', '--porcelain', '-z', '--untracked-files=all', '--', OLD_STATE]);
+  if (!status.ok) throw new Error(`git status failed in ${project}: ${status.stderr.trim()}`);
+  const entries = status.stdout.split('\0');
+  /** @type {string[]} */
+  const changed = [];
+  for (let at = 0; at < entries.length && entries[at] !== ''; at += 1) {
+    changed.push(entries[at].slice(3));
+    // A rename's or a copy's entry is followed by its source's path, which names no change of its own.
+    if (/^(?:[RC]|.[RC])/.test(entries[at])) at += 1;
+  }
+  return changed.map((rel) => path.relative(project, path.join(main, rel)).split(path.sep).join('/'))
+    .filter((at) => !SIDECAR_NAME.test(path.posix.basename(at)));
+}
+
+/**
  * The guard's refusal, or null where the project may migrate.
  * @param {string} main @param {string} project
- * @returns {{cause: 'live'|'dirty', unit: string|null, phase: string|null, topic: string|null, active: number|null}|null}
+ * @returns {{cause: 'live'|'dirty', unit: string|null, phase: string|null, topic: string|null, active: number|null, paths: string[]|null}|null}
  */
 function refusal(main, project) {
   const [last] = liveRows(projectCheckouts(main, project)).sort((a, b) => b.written - a.written);
   if (last !== undefined) {
     const { unit, phase, topic, written } = last;
-    return { cause: 'live', unit, phase, topic, active: Math.max(0, Math.floor((Date.now() - written) / 1000)) };
+    return { cause: 'live', unit, phase, topic, active: Math.max(0, Math.floor((Date.now() - written) / 1000)), paths: null };
   }
-  const status = git(project, ['status', '--porcelain', '--', OLD_STATE]);
-  if (!status.ok) throw new Error(`git status failed in ${project}: ${status.stderr.trim()}`);
-  return status.stdout.trim() === '' ? null : { cause: 'dirty', unit: null, phase: null, topic: null, active: null };
+  const paths = changedPaths(main, project);
+  return paths.length === 0 ? null : { cause: 'dirty', unit: null, phase: null, topic: null, active: null, paths };
 }
 
 module.exports = {
@@ -165,7 +190,7 @@ module.exports = {
     const main = /** @type {string} */ (mainCheckout(projectDir));
     const refused = refusal(main, projectInMain(projectDir, main));
     if (refused !== null) {
-      throw Object.assign(new Error(`the reshape's guard refused: ${refused.cause === 'live' ? 'another session is live in the project' : `${OLD_STATE}/ has uncommitted changes`}`), { refused });
+      throw Object.assign(new Error(`the reshape's guard refused: ${refused.cause === 'live' ? 'another session is live in the project' : `${OLD_STATE}/ has uncommitted changes: ${(refused.paths ?? []).join(', ')}`}`), { refused });
     }
     placeStateWorktree(main);
     reportUpdate();

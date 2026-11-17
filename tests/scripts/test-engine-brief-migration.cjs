@@ -298,6 +298,24 @@ describe('a cite of a heading held more than once', () => {
   });
 });
 
+describe('the walk of a record\'s sources', () => {
+  /** Each line the role's template does not say. @param {string} role @param {string[]} lines */
+  const unsaid = (role, lines) => lines.filter((line) => !fs.readFileSync(path.join(TEMPLATES, `${role}.md`), 'utf8').includes(line));
+  const CONFINED = 'Its sources are those the brief below lists, and no other: a record composed for another topic or unit is another agent\'s work, never verified, and never a source.';
+  const LISTED = 'section by section, as the brief below lists them: its files, its log, its brief and its experiments among them; each section of its specs it draws on, every section the record cites among them; and what the discovery sessions say of it.';
+
+  it('the composer walks its sources section by section before its check, each point carried, replaced by a later answer or not the record\'s; the verifier walks every one, its findings every gap the walk turns up, a cited section carried whole; neither reads a record composed for another topic or unit', () => {
+    assert.deepStrictEqual([
+      unsaid('migration-topic', [CONFINED, `Before you hand back, walk the record's sources ${LISTED} For each section, confirm that every point it holds is carried by an entry, replaced by a later answer, or not this record's, and carry each it misses. Then check the record.`]),
+      unsaid('migration-verifier', [
+        CONFINED,
+        `Walk every source ${LISTED} For each section, check that every point it holds is carried by an entry, replaced by a later answer, or not this record's. Walk them all: your findings are every gap the walk turns up, never a sample.`,
+        '- each section it cites is carried whole: every point of it that concerns this record is carried;',
+      ]),
+    ], [[], []]);
+  });
+});
+
 describe('the refusals, nothing stored', () => {
   it('a directive the migrations lack, a place naming no topic, a phase the records carry no topic of, a topic the unit lacks, a topic promoted, a place at a phase before the one its item is in, and the verifier\'s brief with no record composed, or an empty one', () => {
     refusedUnissued(['migration-topic', '--topic', 'fumi.discussion.licensing', '--directive', '078-move'], /^there is no directive 078-move$/);
