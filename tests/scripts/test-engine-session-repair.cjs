@@ -271,7 +271,7 @@ describe('engine session resume', () => {
   /** A second Ledger project, opted in, with the work units named — another checkout. */
   function otherProject(/** @type {string[]} */ units) {
     const other = projectWith('engine-label-other-', units);
-    fs.writeFileSync(path.join(other, '.ledger', 'manifest.json'), JSON.stringify({ defaults: { tmux_labels: true } }) + '\n');
+    fs.writeFileSync(path.join(other, '.ledger', 'manifest.json'), JSON.stringify({ defaults: { session_labels: true } }) + '\n');
     return other;
   }
 

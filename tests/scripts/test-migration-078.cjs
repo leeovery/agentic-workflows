@@ -275,7 +275,7 @@ const PROJECT_MANIFEST = {
     stale: { work_type: 'quick-fix' }, dropped: { work_type: 'quick-fix' },
     gone: { work_type: 'feature' }, shared: { work_type: 'cross-cutting' },
   },
-  defaults: { plan_format: 'sample-format', project_skills: ['.claude/skills/house-style'], linters: [{ name: 'eslint', command: 'npx eslint .' }, { name: 'swiftformat', lint_command: 'swiftformat . --lint', fix_command: 'swiftformat .' }], tmux_labels: true },
+  defaults: { plan_format: 'sample-format', project_skills: ['.claude/skills/house-style'], linters: [{ name: 'eslint', command: 'npx eslint .' }, { name: 'swiftformat', lint_command: 'swiftformat . --lint', fix_command: 'swiftformat .' }], tmux_labels: false },
   roadmap: {
     horizons: ['v1'],
     active_session: '002',
@@ -720,14 +720,14 @@ describe('migration 078: the move into the layout in .ledger/', () => {
   });
 
   describe('the project (21.5.20, 21.11.2)', () => {
-    it('8.S51, 21.S38, 21.S50: carries the manifest with the project\'s id minted first, the linters on its environment, each by its check command, the baseline\'s status gone, its skip the brownfield offer\'s answer, the plan\'s format and the project skills gone from its defaults, the rest kept, and the roadmap\'s open session the product\'s conversation\'s (22.3.1, 22.3.2)', () => {
+    it('8.S51, 21.S38, 21.S50: carries the manifest with the project\'s id minted first, the linters on its environment, each by its check command, the baseline\'s status gone, its skip the brownfield offer\'s answer, the plan\'s format and the project skills gone from its defaults, the session-label opt-in carried as \`session_labels\`, the rest kept, and the roadmap\'s open session the product\'s conversation\'s (22.3.1, 22.3.2)', () => {
       const project = JSON.parse(read('manifest.json'));
       assert.match(project.project_id, /^[0-9A-Za-z]{21}$/);
       const { items } = PROJECT_MANIFEST.roadmap;
       assert.deepStrictEqual(project, {
         project_id: project.project_id,
         work_units: PROJECT_MANIFEST.work_units,
-        defaults: { tmux_labels: true },
+        defaults: { session_labels: false },
         roadmap: {
           horizons: ['v1'],
           items: {

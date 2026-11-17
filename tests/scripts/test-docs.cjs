@@ -8,7 +8,9 @@
 // recommended minimum effort, medium, is stated (23.S13). The README's
 // pipeline table is the engine's own pipelines, so it names no retired
 // phase (23.S14). None of the author's own products and projects is named
-// in the docs or the README (23.S12, 23.4.6). The docs, the README, help
+// in the docs or the README (23.S12, 23.4.6), but Portal, on the lines of
+// the configuration chapter's section that presents the multiplexers a
+// session is labelled in. The docs, the README, help
 // and the glossary call the product Ledger, never the name it was built
 // under, but where history tells of it or the glossary's avoid line names
 // it (23.S19, 23.1.4). The skills, the briefs, the agents, the engine, the
@@ -77,6 +79,20 @@ const OWN_NAMES = [
   /\b(?:SitRep|Switchboard|Turnstile|DocMan|Folio|Portal|rootshell|Fumi|Evvi|Codeintel|quiz-biz|Goosemates)\b/i,
   /\b(?:Harness|Fabric|Kit|Stitch|Mint|Pigeon|Galley|Nod)\b/,
 ];
+/**
+ * Where an own name may stand: the configuration chapter's section on
+ * session labels, which presents the multiplexers Ledger labels a session in,
+ * Portal among them — that name alone, and only on a line between the
+ * section's heading and the next.
+ */
+const LABEL_WAYS = { chapter: path.join('docs', 'configuration.md'), heading: '## Session labels', name: /\bPortal\b/g };
+/** The exception over the chapter as `text` reads. @param {(rel: string) => string} text */
+const presentsAMultiplexer = (text) => (/** @type {string} */ rel, /** @type {string} */ line, /** @type {number} */ at) => {
+  if (rel !== LABEL_WAYS.chapter) return false;
+  const { start, end } = sectionLines(text(rel), LABEL_WAYS.heading);
+  return at > start && at < end && !OWN_NAMES.some((names) => names.test(line.replace(LABEL_WAYS.name, '')));
+};
+const PRESENTS_A_MULTIPLEXER = presentsAMultiplexer((rel) => read(rel));
 /** The name the product was built under (23.1.4). */
 const OLD_NAMES = /\bLeeway\b/;
 const PRODUCT = /\bLedger\b/;
@@ -174,14 +190,28 @@ const docsFiles = () => filesUnder(['docs']).filter((rel) => rel.endsWith('.md')
 
 /**
  * Each line of `files` that `pattern` finds, as `{file}:{line}: {match}`, but
- * those `passes` lets stand.
- * @param {string[]} files @param {RegExp} pattern @param {(rel: string, line: string) => boolean} [passes]
+ * those `passes` lets stand, given the line and its index.
+ * @param {string[]} files @param {RegExp} pattern @param {(rel: string, line: string, at: number) => boolean} [passes]
  */
 function linesNaming(files, pattern, passes = () => false) {
   return files.flatMap((rel) => read(rel).split('\n').flatMap((line, i) => {
     const found = pattern.exec(line);
-    return found && !passes(rel, line) ? [`${rel}:${i + 1}: ${found[0]}`] : [];
+    return found && !passes(rel, line, i) ? [`${rel}:${i + 1}: ${found[0]}`] : [];
   }));
+}
+
+/**
+ * Where a chapter's section under `heading` sits, by line index: its heading,
+ * and the next heading of its level or the chapter's end.
+ * @param {string} text @param {string} heading @returns {{start: number, end: number}}
+ */
+function sectionLines(text, heading) {
+  const lines = text.split('\n');
+  const start = lines.indexOf(heading);
+  assert.ok(start >= 0, `the chapter has ${heading}`);
+  const level = /^#+ /.exec(heading)?.[0] ?? '## ';
+  const end = lines.findIndex((line, i) => i > start && line.startsWith(level));
+  return { start, end: end < 0 ? lines.length : end };
 }
 
 /** A chapter's section under `heading`, to the next heading of its level. @param {string} text @param {string} heading */
@@ -252,8 +282,25 @@ describe('the user docs (23.4)', () => {
     assert.match(read('docs/configuration.md'), /\brecommends a minimum of \*\*medium\*\*/);
   });
 
-  it('23.S12: none of the author\'s own products and projects is named in the docs or the README', () => {
-    assert.deepStrictEqual(OWN_NAMES.flatMap((names) => linesNaming([...docsFiles(), 'README.md'], names)), []);
+  it('23.S12: none of the author\'s own products and projects is named in the docs or the README, but Portal where the configuration chapter presents the multiplexers that label a session', () => {
+    assert.deepStrictEqual(OWN_NAMES.flatMap((names) => linesNaming([...docsFiles(), 'README.md'], names, PRESENTS_A_MULTIPLEXER)), []);
+  });
+
+  it('the session labels\' exception holds Portal between that section\'s heading and the next alone: in any other chapter, elsewhere in the configuration chapter, or beside another own name, it is named', () => {
+    const lines = read(LABEL_WAYS.chapter).split('\n');
+    const { start, end } = sectionLines(lines.join('\n'), LABEL_WAYS.heading);
+    const naming = lines.map((line, at) => ({ line, at })).filter(({ line, at }) => at > start && at < end && /\bPortal\b/.test(line));
+    assert.ok(naming.length > 0, 'the section presents Portal');
+    for (const { line, at } of naming) assert.ok(PRESENTS_A_MULTIPLEXER(LABEL_WAYS.chapter, line, at));
+    const [{ line, at }] = naming;
+    assert.ok(!PRESENTS_A_MULTIPLEXER(path.join('docs', 'the-build.md'), line, at), 'the same line in another chapter');
+    assert.ok(!PRESENTS_A_MULTIPLEXER('README.md', line, at), 'the same line in the README');
+    assert.ok(!PRESENTS_A_MULTIPLEXER(LABEL_WAYS.chapter, line, start), 'on the section\'s heading');
+    assert.ok(!PRESENTS_A_MULTIPLEXER(LABEL_WAYS.chapter, line, end), 'at the next heading, past the section');
+    assert.ok(!PRESENTS_A_MULTIPLEXER(LABEL_WAYS.chapter, line, start - 1), 'before the section');
+    const withBeside = presentsAMultiplexer(() => `${LABEL_WAYS.heading}\n${line}\n${line} SitRep\n`);
+    assert.ok(withBeside(LABEL_WAYS.chapter, line, 1), 'a section holding both still passes Portal alone');
+    assert.ok(!withBeside(LABEL_WAYS.chapter, `${line} SitRep`, 2), 'another own name beside it, on a line of the section');
   });
 
   it('23.S19: the docs, the README, help and the glossary call the product Ledger, never an old name but where history tells of it or the glossary\'s avoid line names it', () => {

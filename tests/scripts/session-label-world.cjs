@@ -5,7 +5,9 @@
 // test-engine-session-label-config.cjs, test-engine-session-cleanup.cjs,
 // test-engine-session-repair.cjs): a git project, its state set up, with one
 // work unit, `pay`, made fresh for each test; the shared tmux stub
-// (`tmux-stub.cjs`), modelling one session, on the engine's PATH; a system
+// (`tmux-stub.cjs`), modelling one session, on the engine's PATH, and where a
+// test runs inside Portal the Portal stub (`portal-stub.cjs`) on a pinned
+// PATH, modelling the one session `$ZMX_SESSION` names; a system
 // config folder of the test's own; and the reads of what a label left — the
 // stash, the conversation's position, the settings and commits of the opt-in.
 // ---------------------------------------------------------------------------
@@ -16,6 +18,7 @@ const path = require('path');
 const assert = require('node:assert');
 const { processStartTime } = require('../../skills/ledger-engine/scripts/kernel/process.cjs');
 const { installTmuxStub, tmuxStubEnv, tmuxStubName, setTmuxStubName, setTmuxStubId } = require('./tmux-stub.cjs');
+const { installPortalStub, portalStubEnv, portalStubLabel, setPortalStubLabel, portalStubCalls, pinnedPath } = require('./portal-stub.cjs');
 const harness = require('./engine-harness.cjs');
 
 const { engineHook, LEDGER_HOOKS, LAYOUT_GROUP, GUARD_GROUPS } = harness;
@@ -38,10 +41,13 @@ const RESUME_STDIN = (/** @type {string} */ id) => JSON.stringify({ session_id: 
 /**
  * The world a test runs in, set by `setup` and gone at `teardown`: its
  * project root, with its state, since recording the opt-in commits; the
- * folder holding the tmux stub and its state and log files; and its own
+ * folder holding the tmux stub and its state and log files; the Portal
+ * stub's, where the test runs inside Portal (`inPortal`); and its own
  * system config folder, where the conversations' folders sit.
  */
-const world = { dir: '', stubDir: '', configDir: '' };
+const world = { dir: '', stubDir: '', portalDir: '', configDir: '' };
+/** The Portal session's name every Portal test runs in. */
+const ZMX_NAME = 'proj-x1';
 let pinnedConfigDir; // the suite's own, put back after
 
 /** Git in the code tree. @param {string[]} args */
@@ -71,21 +77,36 @@ function setup() {
 
 function teardown() {
   process.env.LEDGER_CONFIG_DIR = pinnedConfigDir;
-  for (const d of [world.dir, world.stubDir, world.configDir]) harness.cleanupFixture(d);
+  for (const d of [world.dir, world.stubDir, world.portalDir, world.configDir].filter(Boolean)) harness.cleanupFixture(d);
+  world.portalDir = '';
+}
+
+/** Run the test inside a Portal session, its label `label` to begin with. @param {string} [label] */
+function inPortal(label = ZMX_NAME) {
+  world.portalDir = installPortalStub(label);
 }
 
 /**
  * Run the engine with a controlled environment: tmux stub on PATH, tmux
- * identity present unless `noTmux`. The suite's own pid plays the owning
+ * identity present unless `noTmux`; inside the Portal session where the test
+ * runs in one (`inPortal`) unless `noZmx`, the Portal stub first on a pinned
+ * PATH, or none on it with `noPortal`. The suite's own pid plays the owning
  * Claude process (`claudePid: null` withholds identity — the record shape
  * a call with no CLAUDE_PID writes). `response: 'stderr'` reads the answer
  * from stderr and holds stdout empty — the SessionStart hook's channel.
  */
-function engine(args, { noTmux = false, sessionId = 'sess-1', claudePid = process.pid, fail = false, failRename = false, failLs = false, expectFail = false, cwd = null, projectDir = null, input = undefined, extraEnv = {}, response = 'stdout' } = {}) {
+function engine(args, { noTmux = false, noZmx = false, noPortal = false, portalFail = false, portalFailRename = false, sessionId = 'sess-1', claudePid = process.pid, fail = false, failRename = false, failLs = false, expectFail = false, cwd = null, projectDir = null, input = undefined, extraEnv = {}, response = 'stdout' } = {}) {
+  const portal = world.portalDir && !noZmx
+    ? { ...portalStubEnv(world.portalDir, ZMX_NAME), ...(noPortal ? { PATH: pinnedPath(null) } : {}), PORTAL_STUB_FAIL: portalFail ? '1' : undefined, PORTAL_STUB_FAIL_RENAME: portalFailRename ? '1' : undefined }
+    : { ZMX_SESSION: undefined };
   // An overlay, where `undefined` takes a key away: what the engine sees is
   // the identity this call declares and nothing the host environment carries.
+  // The Portal session and its pinned PATH win over the caller's, so no call
+  // inside Portal reaches a `portal` but the stub.
   const env = {
+    ...portal,
     ...extraEnv,
+    ZMX_SESSION: portal.ZMX_SESSION,
     TMUX: noTmux ? undefined : '/fake/sock,123,7',
     TMUX_PANE: noTmux ? undefined : '%3',
     TMUX_STUB_FAIL: fail ? '1' : undefined,
@@ -94,7 +115,7 @@ function engine(args, { noTmux = false, sessionId = 'sess-1', claudePid = proces
     CLAUDE_CODE_SESSION_ID: sessionId || undefined,
     CLAUDE_PID: claudePid ? String(claudePid) : undefined,
     CLAUDE_PROJECT_DIR: projectDir || undefined,
-    ...tmuxStubEnv(world.stubDir, extraEnv.PATH || process.env.PATH),
+    ...tmuxStubEnv(world.stubDir, portal.PATH || extraEnv.PATH || process.env.PATH),
   };
   if (expectFail) return harness.refuses(cwd || world.dir, args, { env, stdin: input });
   const r = harness.call(cwd || world.dir, args, { env, stdin: input });
@@ -128,6 +149,26 @@ function setTmuxName(name) {
 /** Simulate a tmux server restart: the session keeps its name, renumbered. */
 function setTmuxId(id) {
   setTmuxStubId(world.stubDir, id);
+}
+
+/** The Portal session's label now. */
+function portalLabel() {
+  return portalStubLabel(world.portalDir);
+}
+
+/** A label set outside the engine — the person's own. @param {string} label */
+function setPortalLabel(label) {
+  setPortalStubLabel(world.portalDir, label);
+}
+
+/** Every call the Portal stub was asked for. */
+function portalCalls() {
+  return portalStubCalls(world.portalDir);
+}
+
+/** The Portal session's stash record, or null where there is none. */
+function portalStash() {
+  try { return JSON.parse(fs.readFileSync(path.join(stashStore(), 'portal', `${ZMX_NAME}.json`), 'utf8')); } catch { return null; }
 }
 
 function stashStore() {
@@ -222,4 +263,4 @@ const CHOICE = {
   code: { subject: 'chore: record session-label choice', files: ['.claude/settings.json'] },
 };
 
-module.exports = { world, LAYOUT_GROUP, GUARD_GROUPS, SESSION_HOOK, RESUME_HOOK, PRESENCE_HOOK, END_HOOK, LABELS_ON, LABELS_OFF, RESUME_STDIN, git, stateGit, projectWith, setup, teardown, engine, resume, tmuxName, renameCount, setTmuxName, setTmuxId, stashFile, stashRecords, writeStash, conversationsRoot, conversation, position, writePosition, ownStartTime, peerIdentity, optIn, projectManifest, settingsPath, settings, writeSettings, head, CHOICE };
+module.exports = { world, ZMX_NAME, inPortal, portalLabel, setPortalLabel, portalCalls, portalStash,LAYOUT_GROUP, GUARD_GROUPS, SESSION_HOOK, RESUME_HOOK, PRESENCE_HOOK, END_HOOK, LABELS_ON, LABELS_OFF, RESUME_STDIN, git, stateGit, projectWith, setup, teardown, engine, resume, tmuxName, renameCount, setTmuxName, setTmuxId, stashFile, stashRecords, writeStash, conversationsRoot, conversation, position, writePosition, ownStartTime, peerIdentity, optIn, projectManifest, settingsPath, settings, writeSettings, head, CHOICE };

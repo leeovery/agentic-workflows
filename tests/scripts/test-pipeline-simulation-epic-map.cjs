@@ -260,7 +260,7 @@ describe('pipeline simulation: epic map', () => {
     // cleanup` and `conversation end` every project's SessionEnd hook
     // carries, plus a SessionStart `session resume` matched to resume,
     // committed together) but outside tmux (the sim strips the identity)
-    // answers no-tmux; an unknown phase refuses; a hand-stamped manifest
+    // answers no-multiplexer; an unknown phase refuses; a hand-stamped manifest
     // false disables; the SessionEnd restore sweep answers with nothing to
     // restore and the SessionStart resume — on stderr, its stdout being
     // conversation context — with nothing to resume; opting out takes
@@ -274,7 +274,7 @@ describe('pipeline simulation: epic map', () => {
     assert.deepStrictEqual(label0, { ok: true, labelled: false, reason: 'disabled' });
     sim.refuses(['session', 'label', wu, 'deploying', 'alpha'], /unknown phase/);
     sim.run(['session', 'label-config', 'true']);
-    assert.strictEqual(sim.read(['manifest', 'get', 'project.defaults.tmux_labels']), 'true');
+    assert.strictEqual(sim.read(['manifest', 'get', 'project.defaults.session_labels']), 'true');
     const verbOf = (/** @type {{command: string}} */ h) => h.command.slice(h.command.indexOf('engine.cjs"'));
     const hookVerbs = () => Object.fromEntries(
       Object.entries(JSON.parse(fs.readFileSync(path.join(sim.dir, '.claude', 'settings.json'), 'utf8')).hooks)
@@ -290,26 +290,26 @@ describe('pipeline simulation: epic map', () => {
     assert.strictEqual(git(sim.dir, ['log', '-1', '--pretty=%s']).trim(), 'chore: record session-label choice',
       'and the hooks it synced are the code tree\'s');
     const label1 = sim.run(['session', 'label', wu, 'discussion', 'alpha']);
-    assert.deepStrictEqual(label1, { ok: true, labelled: false, reason: 'no-tmux' });
+    assert.deepStrictEqual(label1, { ok: true, labelled: false, reason: 'no-multiplexer' });
     sim.refuses(['session', 'label', wu, 'deploying', 'alpha'], /unknown phase/);
     // The arrival forms, enabled and outside tmux: a work unit and the two
     // project identities (no directory behind them) validate and answer
-    // no-tmux; a phase without its topic, a name that is neither, and an
+    // no-multiplexer; a phase without its topic, a name that is neither, and an
     // identity carrying a phase refuse.
     for (const name of [wu, 'roadmap', 'product']) {
-      assert.deepStrictEqual(sim.run(['session', 'label', name]), { ok: true, labelled: false, reason: 'no-tmux' });
+      assert.deepStrictEqual(sim.run(['session', 'label', name]), { ok: true, labelled: false, reason: 'no-multiplexer' });
     }
     sim.refuses(['session', 'label', wu, 'discussion'], /Usage: engine session label <name> \[<phase> <topic>\]/);
     sim.refuses(['session', 'label', 'ghost'], /no work unit directory/);
     sim.refuses(['session', 'label', 'roadmap', 'discovery', 'roadmap'], /no work unit directory/);
-    sim.run(['manifest', 'set', 'project.defaults.tmux_labels', 'false']);
+    sim.run(['manifest', 'set', 'project.defaults.session_labels', 'false']);
     assert.deepStrictEqual(sim.run(['session', 'label', wu, 'discussion', 'alpha']),
       { ok: true, labelled: false, reason: 'disabled' });
-    sim.run(['manifest', 'delete', 'project.defaults.tmux_labels']);
+    sim.run(['manifest', 'delete', 'project.defaults.session_labels']);
     assert.deepStrictEqual(sim.run(['session', 'cleanup', 'sim-sess']), { ok: true, restored: false });
     assert.deepStrictEqual(sim.runOnStderr(['session', 'resume', 'sim-sess']), { ok: true, resumed: false });
     sim.run(['session', 'label-config', 'false']);
-    assert.strictEqual(sim.read(['manifest', 'get', 'project.defaults.tmux_labels']), 'false');
+    assert.strictEqual(sim.read(['manifest', 'get', 'project.defaults.session_labels']), 'false');
     assert.deepStrictEqual(hookVerbs(), {
       SessionEnd: ['engine.cjs" presence cleanup', 'engine.cjs" conversation end'],
       PreToolUse: guardVerbs,

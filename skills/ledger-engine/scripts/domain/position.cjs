@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 // Domain ring: the conversation's position — where in Ledger a
 // conversation is working, kept as `position.json` in its folder
-// (conversation.cjs) for whatever carries the conversation on: the tmux
+// (conversation.cjs) for whatever carries the conversation on: the session
 // label's resume (session-label.cjs), the gate mod's spinner, and
 // `conversation position`, the note the gate mod appends to a compaction,
 // naming what to re-read to carry on there.

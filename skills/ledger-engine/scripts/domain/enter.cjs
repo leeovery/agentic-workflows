@@ -13,7 +13,7 @@
 // ahead of its opening (9.3.1), and commits that start — discussion's entry
 // at a feature's topic closed into its spec voiding that close, the
 // discussion going on (9.7.9), in the same commit; records where the
-// conversation is working — its position, the tmux label and the place's
+// conversation is working — its position, the session label and the place's
 // presence, as `session label` does — and when it entered the place
 // (place-entry.cjs); and answers what the phase needs to begin or resume,
 // in sections: any question first, then a DATA naming what to read, as

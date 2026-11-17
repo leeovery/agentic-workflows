@@ -367,9 +367,11 @@ describe('pipeline simulation: workunit', () => {
     sim.refuses(['workunit', 'create', 'project', 'feature', '--description', 'Nope', '--session-log-file', draft], /is reserved/);
     sim.refuses(['workunit', 'create', 'roadmap', 'feature', '--description', 'Nope', '--session-log-file', draft], /is reserved/);
 
-    // Start's gates render at any state, each at its own moment.
+    // Start's gates render at any state, each at its own moment — the label
+    // opt-in only inside a multiplexer, where boot offers it.
     assert.match(sim.render(['migration-gate'], { expect: 'content' }), /Ready to continue\?/);
-    assert.match(sim.render(['label-gate'], { expect: 'content' }), /Label your tmux session/);
+    assert.match(sim.render(['label-gate'], { expect: 'content', identity: { TMUX: '/fake/sock,123,7' } }), /Label your tmux session/);
+    sim.refuses(['render', 'label-gate'], /inside neither tmux nor Portal/);
     assert.match(sim.render(['knowledge-gate'], { expect: 'content' }), /How should this project's knowledge base work\?/);
     assert.match(sim.render(['knowledge-gate', '--variant', 'deviate'], { expect: 'content' }), /How should this project deviate\?/);
     assert.match(sim.render(['knowledge-gate', '--variant', 'retry', '--provider', 'openai', '--model', 'text-embedding-3-small'], { expect: 'content' }), /No OpenAI API key was found[\s\S]*Ready to retry\?/);

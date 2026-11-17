@@ -5,14 +5,15 @@
 // Claude Code config directory, an empty gh config directory and no gh token
 // or host, no provider key, no gate surface or handoff announcement, no
 // Claude Code session, no user or system git config, no ssh command of the
-// developer's, a fixed display width, and a stub for the `claude` binary. A
+// developer's, no tmux or Portal session, a fixed display width, and a stub
+// for the `claude` binary. A
 // test never reads the developer's config or credentials, never writes
 // their Claude Code settings, never reaches an embedding provider — every
 // knowledge store a test builds is keyword-only — never reaches a real
 // Claude, never reaches GitHub through the developer's gh login, never
 // reaches a remote through the developer's ssh, never renders a gate or
-// handoff payload it did not announce itself, and never marks a
-// conversation it did not name itself.
+// handoff payload it did not announce itself, never marks a conversation it
+// did not name itself, and never labels the developer's terminal session.
 //
 // Every `tests/scripts/test-*.cjs` requires this before anything else, and a
 // caller composing an explicit child environment spreads the exported
@@ -68,6 +69,9 @@ function pinnedDir(name, meetsPin, prefix) {
 /** What reaches a gh login besides its config directory. */
 const GH_LOGIN = Object.freeze(['GH_TOKEN', 'GITHUB_TOKEN', 'GH_ENTERPRISE_TOKEN', 'GITHUB_ENTERPRISE_TOKEN', 'GH_HOST']);
 
+/** What names the terminal multiplexer's session: tmux's, and Portal's. */
+const MULTIPLEXER = Object.freeze(['TMUX', 'TMUX_PANE', 'ZMX_SESSION', 'ZMX_DIR']);
+
 const HERMETIC_ENV = Object.freeze({
   LEDGER_CONFIG_DIR: pinnedDir('LEDGER_CONFIG_DIR', isEmptyConfigDir, 'wf-config-'),
   // The released migrations' name for the user-level folder.
@@ -106,5 +110,8 @@ delete process.env.GIT_SSH;
 // A token or host for gh wins over its config directory, as the provider
 // key does over stored credentials.
 for (const name of GH_LOGIN) delete process.env[name];
+// Session labels read the terminal's multiplexer from these: a suite that
+// inherited them would relabel the developer's own session.
+for (const name of MULTIPLEXER) delete process.env[name];
 
 module.exports = HERMETIC_ENV;

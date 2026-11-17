@@ -140,7 +140,7 @@ describe('engine boot (real scripts)', () => {
 
   it('a project carrying the function-hooks flag an earlier version wrote has it taken out by the migrations, the hook sync beside it — boot commits neither, and the reviewed migration commit records both', () => {
     legacyLayout(project);
-    writeState(project, layout.projectManifest, JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
+    writeState(project, layout.projectManifest, JSON.stringify({ defaults: { session_labels: true } }, null, 2) + '\n');
     createFile(project, '.claude/settings.json', JSON.stringify({ hooks: OWN_HOOKS, env: { [FLAG]: '1' } }, null, 2) + '\n');
     commitAll(project, 'labels on, the flag in the project');
     const before = git(project, ['rev-parse', 'HEAD']).trim();

@@ -93,7 +93,7 @@ describe('engine boot', () => {
   });
 
   it('while a reviewed migration commit follows, boot\'s settings write rides it — a confined commit would carry the migration\'s edit of the same file past the review', () => {
-    writeState(fix.project, layout.projectManifest, JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
+    writeState(fix.project, layout.projectManifest, JSON.stringify({ defaults: { session_labels: true } }, null, 2) + '\n');
     commitAll(fix.project, 'labels on');
     const codeHead = git(fix.project, ['rev-parse', 'HEAD']).trim();
 
@@ -246,7 +246,7 @@ describe('engine boot', () => {
     // project settings sync — must take their own paths and nothing else,
     // staged peer content included.
     writeState(fix.project, layout.brief('payments', 'topic-a'), '# Topic A\n');
-    writeState(fix.project, layout.projectManifest, JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
+    writeState(fix.project, layout.projectManifest, JSON.stringify({ defaults: { session_labels: true } }, null, 2) + '\n');
     commitAll(fix.project, 'a peer topic');
     writeState(fix.project, layout.brief('payments', 'topic-a'), '# Topic A\nhalf a turn\n');
     stateGit(fix.project, ['add', '--', layout.brief('payments', 'topic-a')]);

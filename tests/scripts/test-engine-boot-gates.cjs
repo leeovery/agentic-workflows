@@ -20,14 +20,14 @@ const { gatesDue } = require('../../skills/ledger-engine/scripts/domain/boot-rou
 /** Boot's facts where no gate is due. */
 const SETTLED = Object.freeze({
   migrations: { changed: false, verify: [], notices: [] },
-  knowledge: 'ready', mod: 'running', effort: null, walkthrough: 'walked', tmux_labels: 'no-tmux',
+  knowledge: 'ready', mod: 'running', effort: null, walkthrough: 'walked', session_labels: 'no-multiplexer',
   brownfield_offer: 'native', github_rule_offer: false, github_squash_offer: false,
 });
 
 /** Boot's facts where every gate is due. */
 const ALL_DUE = Object.freeze({
   migrations: { changed: true, verify: [], notices: [] },
-  knowledge: 'not-ready', mod: 'could', effort: 'low', walkthrough: 'none', tmux_labels: 'prompt',
+  knowledge: 'not-ready', mod: 'could', effort: 'low', walkthrough: 'none', session_labels: 'prompt',
   brownfield_offer: 'none', github_rule_offer: true, github_squash_offer: true,
 });
 

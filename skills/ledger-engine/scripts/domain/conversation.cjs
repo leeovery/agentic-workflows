@@ -27,7 +27,7 @@
 //                  in implementation every task in flight with its builder's
 //                  agent id and its pair's, the worktree it is built in, and
 //                  when its builder stopped (position.cjs), written under
-//                  the lock beside it — what the tmux label's resume
+//                  the lock beside it — what the session label's resume
 //                  re-applies, the gate mod's spinner says, the commit door
 //                  and the hook before Bash check a commit against, `verify`
 //                  attributes a run by, a call in a task's worktree is that

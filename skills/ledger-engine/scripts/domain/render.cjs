@@ -41,6 +41,7 @@ const { detectSystemConfig } = require('./boot.cjs');
 const { pickRows } = require('./boot-route.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { githubSquashNested } = require('./github-setup.cjs');
+const { multiplexerHere } = require('./session-label.cjs');
 const { beatQuietly } = require('./presence.cjs');
 const { roadmapState, hasRoadmapNode } = require('./roadmap.cjs');
 const { putBackBy, stillToAsk, thenArgs, ontoMenu } = require('./topic-leave.cjs');
@@ -751,6 +752,17 @@ function repoStopSurface(cwd) {
   return repoStop(folder);
 }
 
+/**
+ * The one-time session-label opt-in, naming the multiplexer this session
+ * runs in; refused inside none, where boot never offers it.
+ * @returns {string}
+ */
+function labelGateSurface() {
+  const multiplexer = multiplexerHere();
+  if (multiplexer === null) throw new Error('render label-gate: the session runs inside neither tmux nor Portal — boot offers session labels only inside one');
+  return labelGate(multiplexer);
+}
+
 const GUARD_FACTS = Object.freeze(['unit', 'phase', 'topic', 'active']);
 
 /**
@@ -957,7 +969,7 @@ const SURFACES = {
   'repo-stop': repoStopSurface,
   'github-rule-gate': (cwd) => githubRuleGate(projectName(cwd)),
   'github-squash-gate': (cwd) => githubSquashGate(projectName(cwd), githubSquashNested(cwd)),
-  'label-gate': () => labelGate(),
+  'label-gate': () => labelGateSurface(),
   'knowledge-gate': knowledgeGateSurface,
   'knowledge-ask': knowledgeAskSurface,
   'knowledge-done': knowledgeDoneSurface,

@@ -74,7 +74,7 @@ Follow the back's `next`.
 
 Derive `{dir}` = `.ledger/{work_unit}/topics/{topic}/experiments/{id}-{slug}`.
 
-Record where this session is working — the call also labels the tmux session where the user opted in:
+Record where this session is working — the call also labels the session where the user opted in:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs session label {work_unit} experiment {topic}

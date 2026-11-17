@@ -113,8 +113,8 @@ class Sim {
     // Hermetic environment, as a delta from this process's — the engine runs
     // in-process and holds these keys for the call's duration: the system
     // config dir pins into the sandbox (the knowledge base reads it) and the
-    // tmux identity is taken away, so `session label` can never rename the
-    // developer's real session.
+    // tmux and Portal identities are taken away, so `session label` can never
+    // relabel the developer's real session.
     // A real session always carries its identity, and presence reads it to
     // tell its own holds from a peer's — pin one so the sim never gates
     // against itself, whatever the host environment carries.
@@ -126,6 +126,8 @@ class Sim {
       CLAUDE_PID: String(process.pid),
       TMUX: undefined,
       TMUX_PANE: undefined,
+      ZMX_SESSION: undefined,
+      ZMX_DIR: undefined,
     };
     // The conversation the sim opens on has booted, as the start skill's
     // first step does before anything else runs.
@@ -469,14 +471,14 @@ function carryOn(sim, identity = null) {
 // Every place labels itself on arrival: the start and the roadmap label the
 // place alone (`arrive`), the epic's menu by drawing
 // itself (`epicMenuAt`), and every phase skill's Step 0 records its place
-// before anything else (`handoffEntry`). The sim strips the tmux identity and
-// pins an empty config dir, so the tmux rename is the disabled or no-tmux
-// no-op; what the sim pins is the call sequence, that every name and phase
+// before anything else (`handoffEntry`). The sim strips the multiplexers'
+// identities and pins an empty config dir, so the label is the disabled or
+// no-multiplexer no-op; what the sim pins is the call sequence, that every name and phase
 // literal the prose passes validates, and the conversation's position each
 // arrival records.
 function arrive(sim, name) {
   const res = sim.run(['session', 'label', name]);
-  assert.strictEqual(res.labelled, false, `the sim labels no tmux session (${name})`);
+  assert.strictEqual(res.labelled, false, `the sim labels no session (${name})`);
   arrived(sim, name);
 }
 
@@ -514,7 +516,7 @@ function menuEntry(sim, wu) {
 function handoffEntry(sim, wu, phase, topic) {
   sim.handOver();
   const res = sim.run(['session', 'label', wu, phase, topic]);
-  assert.strictEqual(res.labelled, false, `the sim labels no tmux session (${phase})`);
+  assert.strictEqual(res.labelled, false, `the sim labels no session (${phase})`);
   const here = carryOn(sim);
   assert.deepStrictEqual(here.position, { name: wu, phase, topic }, `the phase skill records its place (${phase})`);
   assert.strictEqual(here.skill, path.join(sim.dir, '.claude/skills', /** @type {string} */ (skillAt(wu, phase, sim.manifest(wu).work_type)), 'SKILL.md'),

@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // The project's session hooks at boot (ledger-engine/scripts/domain/boot.cjs
-// with domain/session-label.cjs): the tmux label choice reported, the
+// with domain/session-label.cjs): the label choice reported, in tmux or Portal, the
 // calling conversation's position dropped, Ledger's own hooks and the
 // label hooks installed or taken out, the sync under the writer lock, and
 // the person's settings kept; and the guards as installed, run by a later
@@ -24,6 +24,7 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { installTmuxStub, tmuxStubEnv, tmuxStubName } = require('./tmux-stub.cjs');
+const { installPortalStub, portalStubEnv } = require('./portal-stub.cjs');
 const harness = require('./engine-harness.cjs');
 const { git, stateGit, commitAll, statePath, layout, writeState, LEDGER_HOOKS, LAYOUT_GROUP, GUARD_GROUPS, OWN_HOOKS, hooked } = harness;
 const REAL_SCRIPTS = path.dirname(harness.ENGINE);
@@ -41,24 +42,35 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
 
   /** Stamp the label choice on the project manifest and commit it, so boot's only new dirt is its own. */
   function recordChoice(value) {
-    writeState(fix.project, layout.projectManifest, JSON.stringify({ defaults: { tmux_labels: value } }, null, 2) + '\n');
+    writeState(fix.project, layout.projectManifest, JSON.stringify({ defaults: { session_labels: value } }, null, 2) + '\n');
     commitAll(fix.project, 'record the defaults');
   }
 
-  it('reports no-tmux outside tmux regardless of the recorded choice', () => {
+  it('reports no-multiplexer outside tmux and Portal regardless of the recorded choice', () => {
     recordChoice(true);
-    assert.strictEqual(bootWith({ tmux: false }).tmux_labels, 'no-tmux');
+    assert.strictEqual(bootWith({ tmux: false }).session_labels, 'no-multiplexer');
   });
 
   it('reports prompt in tmux when never recorded', () => {
-    assert.strictEqual(bootWith({ tmux: true }).tmux_labels, 'prompt');
+    assert.strictEqual(bootWith({ tmux: true }).session_labels, 'prompt');
+  });
+
+  it('reports prompt inside Portal when never recorded — the one-time question asked there as in tmux — and a Portal that does not answer is none', () => {
+    const stub = installPortalStub('proj-x1');
+    try {
+      const portal = portalStubEnv(stub, 'proj-x1');
+      assert.strictEqual(bootWith({ env: portal }).session_labels, 'prompt');
+      assert.strictEqual(bootWith({ env: { ...portal, PORTAL_STUB_FAIL: '1' } }).session_labels, 'no-multiplexer');
+    } finally {
+      fs.rmSync(stub, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    }
   });
 
   it('reports on/off in tmux from the project manifest', () => {
     recordChoice(true);
-    assert.strictEqual(bootWith({ tmux: true }).tmux_labels, 'on');
+    assert.strictEqual(bootWith({ tmux: true }).session_labels, 'on');
     recordChoice(false);
-    assert.strictEqual(bootWith({ tmux: true }).tmux_labels, 'off');
+    assert.strictEqual(bootWith({ tmux: true }).session_labels, 'off');
   });
 
   it('label_repaired is true when this session\'s own label is on the terminal — the start menu is the original name', () => {
@@ -250,7 +262,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     const attempts = harness.lockAttempts(t, lock, (taken) => {
       written.push(fs.existsSync(settingsFile));
       if (taken < 2) return;
-      writeState(fix.project, layout.projectManifest, JSON.stringify({ defaults: { tmux_labels: true } }, null, 2) + '\n');
+      writeState(fix.project, layout.projectManifest, JSON.stringify({ defaults: { session_labels: true } }, null, 2) + '\n');
       stateGit(fix.project, ['add', '--', layout.projectManifest]);
       stateGit(fix.project, ['commit', '-q', '-m', 'labels on']);
       unlink(lock);
