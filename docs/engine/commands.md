@@ -425,7 +425,7 @@ workunit retire <work-unit>
 workunit position <work-unit> auto|step
 ```
 
-Work-unit lifecycle. Each verb is one transaction: its manifest writes, the knowledge base's sync (a failure a warning) and a commit of what it touched. Each answers `work_unit`, `committed` and `warnings`, but `absorb`, `position` and `move`, whose answers are their own.
+Work-unit lifecycle. Each verb is one transaction: its manifest writes, the knowledge base's sync (a failure a warning) and a commit of what it touched. Each answers `work_unit`, `committed` and `warnings`, but `absorb`, `position` and `move`, whose answers are their own. `cancel`, `reactivate`, `pivot` and `absorb` print their receipt after the JSON line, drawn from what the verb answered and the state it left: `DISPLAY: confirmation`, and above it `DISPLAY: kb warning` where the answer carried `warnings`. The receipt is drawn before either is printed, so one that cannot be drawn leaves the one refusal.
 
 - **`create`** — the work-type commit at start this work: writes `.ledger/{wu}/manifest.json` and the unit's row on the project manifest, moves each `--seed` (a live inbox path) into `{wu}/seeds/`, and installs the session log verbatim as `{wu}/discovery/session-001.md`. Answers `work_type`, `seeds` (`[{path, source}]`, `source` the inbox folder's tag) and `session_log`. A name a unit already holds is refused, nothing moved: derive another.
 - **`cancel`** — sets `status: cancelled`. First it leaves the unit's code: a quick-fix's uncommitted fix set aside at `refs/ledger/aside/{wu}/{task}` and its checkout taken back, every pull request open on the unit's branches closed (`closed_by_cancel`), the branches kept for a reactivate. It abandons open experiments, moves waiting mail to the inbox as ideas, returns joined roadmap items to waiting, and removes the unit's chunks and cache. Answers `status`, `pull_requests_closed`, and where they apply `checkout`, `abandoned`, `inbox`, `roadmap_reverted`, `roadmap_horizon_gone` and `next` (the horizon pick for each item put back on none, then the start menu from inside the unit, else `continue`). Refused while the checkout holds the person's uncommitted changes, or the host cannot be reached: cancel again once settled.
@@ -1069,7 +1069,7 @@ inbox capture <idea|bug|quick-fix> [--project <folder>]
 
 The inbox, `.ledger/.inbox/{ideas|bugs|quickfixes}/`, its archived items under `.inbox/.archived/`. A name is taken across every kind, live or archived, and the product's notes. Each verb validates every path before anything moves and makes one commit.
 
-- **`archive`**, **`restore`**, **`delete`** — move live items to the archive, back, or delete archived ones. Answer `archived`, `restored` or `deleted`, and `committed`. `restore` takes the item's `Resolved:` line out of the build log of the unit that closed it, answering `unclaimed: [{path, unit}]`.
+- **`archive`**, **`restore`**, **`delete`** — move live items to the archive, back, or delete archived ones. Answer `archived`, `restored` or `deleted`, and `committed`, then the receipt, `DISPLAY: confirmation`: the archive names one item by its title and several by their count; the restore and the delete a line an item, the delete's title read from git's last copy of the file. `restore` takes the item's `Resolved:` line out of the build log of the unit that closed it, answering `unclaimed: [{path, unit}]`.
 - **`close`** — archives live items and records who resolved each on the project manifest (`inbox_closed`): the unit whose work resolved it, or `none` for one the person fixed straight away. Answers `{closed, unit, committed}`.
 - **`capture`** — the capture skills' one line: the item's text on stdin, titled by its first `# Title`, written at `.inbox/{folder}/{date}--{slug}.md`, committed and pushed. `--project` captures into another project's folder. Answers `{captured, committed}`, then a one-line `DISPLAY`, `Logged {kind}: "{title}"`. A failed commit is noted with its retry, `engine commit --inbox`. Refuses a folder with no Ledger state and a text with no title.
 - **`file`** — files a review finding out of scope, or a quick-fix's note at its close, from `{kind, text, call}`, `call` Claude's filing decision at `{unit}.review` (`{unit}.implementation` at the close). Answers `{filed, committed}`. Refuses an item filed already at that path (group the finding with it, or title it apart).
@@ -1121,16 +1121,12 @@ render experiment-spawn-gate <wu.discussion.topic> --id <E{n}>
 render phase-note        <wu.phase.topic> --verb <Word> [--noun <word>]
 render cancel-gate       <wu.discovery.name> | <wu>
 render postpone-gate     <wu.discovery.topic> --horizon "<horizon>"
-render workunit-receipt  <wu> --verb cancel|reactivate|pivot [--warn] [--inbox <n>]
 render topic-receipt     <wu.discovery.name> --verb cancel|reactivate [--warn] [--inbox <n>]
 render topic-receipt     <wu.discovery.topic> --verb postpone|restore [--warn]
-render absorb-receipt    <epic> --topic <name> [--moved seeds,assets,spikes] [--experiments <N>] [--renamed <from>:<to>[,…]] [--warn]
 render import-reprompt   --file <payload.json>   # {"missing": ["path", …]} — the re-prompt after a landing refused
 render absorb-target     <feature>
 render absorb-confirm-gate <feature> --into <epic> --topic <name> --summary <text> [--description <text>]
 render archived-delete-gate --path <archived path> [--file <pick.json>]
-render inbox-restore-receipt --path <live path> [--unclaimed <wu>]
-render inbox-delete-receipt --path <archived path>
 render horizon-pick      <wu.discovery.topic> | --park <name>[,<name>…] | --back <name> --from <wu>|<wu>.discovery.<topic> [--then <item>,…]
 render banner
 render work-pick --matches <unit>[/<topic>],…
@@ -1237,7 +1233,7 @@ The authority gates, each drawn from Claude's staged payload (`--file`), its yes
 - **`ready-to-build`** — the spec's gate: outline, phase cut, position; `--page` the review page's row.
 - **`finish`** — finish's gate, or a quick-fix's close.
 
-Confirms and receipts — a lifecycle verb answers its JSON alone, and its receipt comes from these, `--warn` adding the knowledge advisory where its JSON carried `warnings`: **`cancel-gate`**, **`postpone-gate`**, **`workunit-receipt`**, **`topic-receipt`**, **`absorb-target`**, **`absorb-confirm-gate`**, **`absorb-receipt`**, **`import-reprompt`** (after an import refused paths), **`archived-delete-gate`**, **`inbox-restore-receipt`** and **`inbox-delete-receipt`**.
+Confirms and receipts — a topic's lifecycle verb answers its JSON alone, and its receipt is **`topic-receipt`**, `--warn` adding the knowledge advisory where its JSON carried `warnings`; a work unit's and the inbox's print their own. The confirms: **`cancel-gate`**, **`postpone-gate`**, **`absorb-target`**, **`absorb-confirm-gate`**, **`import-reprompt`** (after an import refused paths) and **`archived-delete-gate`**.
 
 The investigation, each a learned gate:
 
