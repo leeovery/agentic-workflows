@@ -24,7 +24,7 @@
 // it, its default, its template
 // saying a wrong comment is returned as a nit and giving the report's
 // grammar, its example reading by it (13.5.11); every reviewer's template,
-// and never the builder's, returning a reference to Ledger in the work as
+// and never the builder's, returning one of Ledger's own references in the work as
 // a nit (13.S20); the fix round's brief, from a conversation that briefed
 // the task's builder, each reviewer's report of the
 // task's last round verbatim under its label and nothing else (6.S17),

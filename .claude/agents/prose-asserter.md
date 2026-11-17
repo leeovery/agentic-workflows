@@ -253,7 +253,7 @@ Return exactly this and nothing else:
      wandering is noise; the same wander recurring on the same step is
      prose that reads misleadingly however correct it is.
    - `INERT:` — recorded-but-unnarrated activity that touched no
-     workflow state (orientation reads, `ls`, `mkdir`, re-reads).
+     Ledger state (orientation reads, `ls`, `mkdir`, re-reads).
      Group these into one line; they are hygiene, not findings.
    - `NOTE:` — anything else worth a human's eye that fits none of
      the above (record-internal discrepancies, fixture observations).

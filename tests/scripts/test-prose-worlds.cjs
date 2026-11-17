@@ -97,7 +97,7 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
     fs.writeFileSync(file, JSON.stringify(settings, null, 2) + '\n');
   }
   const [PRESENCE_HOOK] = harness.LEDGER_HOOKS.map((h) => h.command);
-  const LEDGER_HOOKS = [...harness.LEDGER_HOOKS, ...harness.GUARD_GROUPS.flatMap((g) => g.hooks)].map((h) => h.command);
+  const OWN_COMMANDS = [...harness.LEDGER_HOOKS, ...harness.GUARD_GROUPS.flatMap((g) => g.hooks)].map((h) => h.command);
   const SESSION_HOOK = harness.engineHook('session cleanup').command;
   const FOREIGN_HOOK = { type: 'command', command: 'say goodbye' };
   const PERMISSIONS = { allow: ['Edit(.workflows/**)'] };
@@ -191,7 +191,7 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
       const stamped = worlds.stampHarnessState(dir);
       assert.strictEqual(stamped.settings_created, true);
       const settings = settingsOf(worlds.collectTree(dir));
-      assert.deepStrictEqual(hooksOf(settings), LEDGER_HOOKS, 'Ledger\'s own, never session cleanup under the label kill');
+      assert.deepStrictEqual(hooksOf(settings), OWN_COMMANDS, 'Ledger\'s own, never session cleanup under the label kill');
       assert.deepStrictEqual(Object.keys(settings), ['hooks'], 'and nothing the harness invented');
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
@@ -206,7 +206,7 @@ describe('the harness stamp: what materialise adds, the differ strips — and no
       assert.strictEqual(stamped.settings_created, false);
       const settings = settingsOf(worlds.collectTree(dir));
       assert.deepStrictEqual(settings.permissions, PERMISSIONS);
-      assert.deepStrictEqual(hooksOf(settings), LEDGER_HOOKS);
+      assert.deepStrictEqual(hooksOf(settings), OWN_COMMANDS);
       assert.deepStrictEqual(settings.env, { EDITOR: 'vim' });
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });

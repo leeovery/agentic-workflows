@@ -665,8 +665,8 @@ function checkInertLoadChrome(files) {
 // or an @if/@foreach directive) is refused: what has a shape of its own or
 // reads state renders from the engine, and a plain line naming values the
 // conversation holds is Claude's own, said inline, never fenced. The capture
-// skills (`ledger-log-*`) are exempt: they are not Ledger skills, and
-// deliberately structureless.
+// skills (`ledger-log-*`) are exempt: they are no flow of Ledger's: no
+// steps, deliberately structureless.
 // ---------------------------------------------------------------------------
 
 // The capture skills, read from the folder directly under the corpus root's
@@ -1910,7 +1910,7 @@ test('check 8 (H1 category) — enforces the processing/backbone split', () => {
     const procNoH1 = write(dir, 'skills/ledger-foo-process/SKILL.md', 'One-liner purpose.\n\n## Step 0\n');
     assert.strictEqual(checkH1Category([procNoH1]).length, 1, 'processing backbone without H1 must be caught');
 
-    const startWithH1 = write(dir, 'skills/ledger/SKILL.md', '# Workflow Start\n\nOne-liner.\n');
+    const startWithH1 = write(dir, 'skills/ledger/SKILL.md', '# Ledger Start\n\nOne-liner.\n');
     assert.strictEqual(checkH1Category([startWithH1]).length, 1, 'start backbone with H1 must be caught');
 
     const navWithH1 = write(dir, 'skills/ledger-continue-foo/SKILL.md', '# Continue Foo\n\nOne-liner.\n');

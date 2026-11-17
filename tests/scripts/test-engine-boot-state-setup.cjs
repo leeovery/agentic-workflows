@@ -42,7 +42,7 @@ const { TODAYS_HOOKS_UNLABELLED, sessionEndAsInstalled } = require('./boot-world
 
 const world = useWorld();
 
-/** A project on the layout before Ledger's, its `.workflows/` and its hooks committed: its main checkout. */
+/** A project on the layout before Ledger's, its `.workflows/` and Ledger's own hooks committed: its main checkout. */
 function owingProject() {
   const main = projectInWorld();
   createFile(main, '.workflows/payments/manifest.json', '{}\n');
