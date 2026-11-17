@@ -30,8 +30,8 @@ describe('engine session label-config', () => {
     fs.writeFileSync(path.join(world.dir, '.ledger', 'pay', 'spec.md'), 'a peer session\'s state\n');
     const before = projectManifest();
     const res = engine(['session', 'label-config', 'true']);
-    assert.deepStrictEqual(res, { ok: true, tmux_labels: true });
-    assert.deepStrictEqual(projectManifest(), { ...before, defaults: { tmux_labels: true } });
+    assert.deepStrictEqual(res, { ok: true, session_labels: true });
+    assert.deepStrictEqual(projectManifest(), { ...before, defaults: { session_labels: true } });
     assert.deepStrictEqual(settings(), LABELS_ON);
     assert.deepStrictEqual({ state: head(stateGit), code: head(git) }, CHOICE);
     assert.match(git(['status', '--porcelain']), /\?\? peer-dirt\.txt/, 'the code commit takes its own path and nothing else');
@@ -44,7 +44,7 @@ describe('engine session label-config', () => {
     engine(['session', 'label-config', 'true']);
     assert.deepStrictEqual(projectManifest(), {
       work_units: { pay: { work_type: 'feature' } },
-      defaults: { plan_format: 'tick', tmux_labels: true },
+      defaults: { plan_format: 'tick', session_labels: true },
     });
     assert.strictEqual(fs.readFileSync(path.join(world.dir, '.ledger', 'manifest.json'), 'utf8').slice(-2), '}\n', 'the manifest\'s own formatting');
   });
@@ -52,15 +52,15 @@ describe('engine session label-config', () => {
   it('opting out records false, takes `session cleanup` out, leaves Ledger\'s own hooks standing, and commits both', () => {
     engine(['session', 'label-config', 'true']);
     const res = engine(['session', 'label-config', 'false']);
-    assert.deepStrictEqual(res, { ok: true, tmux_labels: false });
-    assert.strictEqual(projectManifest().defaults.tmux_labels, false);
+    assert.deepStrictEqual(res, { ok: true, session_labels: false });
+    assert.strictEqual(projectManifest().defaults.session_labels, false);
     assert.deepStrictEqual(settings(), LABELS_OFF, 'Ledger\'s own hooks are no label preference');
     assert.deepStrictEqual({ state: head(stateGit), code: head(git) }, CHOICE);
   });
 
   it('declining on a project the hooks never reached still installs Ledger\'s own hooks', () => {
     const res = engine(['session', 'label-config', 'false']);
-    assert.deepStrictEqual(res, { ok: true, tmux_labels: false });
+    assert.deepStrictEqual(res, { ok: true, session_labels: false });
     assert.deepStrictEqual(settings(), LABELS_OFF);
     assert.deepStrictEqual({ state: head(stateGit), code: head(git) }, CHOICE);
   });
@@ -85,7 +85,7 @@ describe('engine session label-config', () => {
   it('a settings file that does not parse is left alone — the choice is recorded and the hooks reported', () => {
     writeSettings('{not json');
     const res = engine(['session', 'label-config', 'true']);
-    assert.strictEqual(res.tmux_labels, true);
+    assert.strictEqual(res.session_labels, true);
     assert.strictEqual(res.warnings.length, 1);
     assert.match(res.warnings[0], /session hooks not synced: \.claude\/settings\.json is not valid JSON/);
     assert.strictEqual(fs.readFileSync(settingsPath(), 'utf8'), '{not json');
@@ -99,10 +99,10 @@ describe('engine session label-config', () => {
     fs.writeFileSync(path.join(hooksDir, 'pre-commit'), '#!/bin/sh\nexit 1\n', { mode: 0o755 });
     const res = engine(['session', 'label-config', 'true']);
     assert.strictEqual(res.ok, true);
-    assert.strictEqual(res.tmux_labels, true);
+    assert.strictEqual(res.session_labels, true);
     assert.strictEqual(res.warnings.length, 1);
     assert.match(res.warnings[0], /^commit failed, and the next boot tries again: /);
-    assert.deepStrictEqual(projectManifest().defaults, { tmux_labels: true });
+    assert.deepStrictEqual(projectManifest().defaults, { session_labels: true });
     assert.deepStrictEqual(settings(), LABELS_ON);
     assert.strictEqual(git(['log', '-1', '--pretty=%s']).trim(), 'ignore the state', 'nothing landed in the code tree');
     assert.match(git(['status', '--porcelain']), /\.claude\//, 'the settings wait, uncommitted');
@@ -112,9 +112,9 @@ describe('engine session label-config', () => {
   it('while git holds an operation open in the code tree, records the choice and says the hooks wait for the next boot — the settings file left alone', () => {
     fs.mkdirSync(path.join(world.dir, '.git', 'rebase-merge'));
     const res = engine(['session', 'label-config', 'true']);
-    assert.strictEqual(res.tmux_labels, true);
+    assert.strictEqual(res.session_labels, true);
     assert.deepStrictEqual(res.warnings, ['session hooks not written: a rebase is in progress in the code tree — the next boot writes them']);
-    assert.deepStrictEqual(projectManifest().defaults, { tmux_labels: true });
+    assert.deepStrictEqual(projectManifest().defaults, { session_labels: true });
     assert.ok(!fs.existsSync(settingsPath()), 'no settings write inside the rebase');
     assert.deepStrictEqual(head(stateGit), CHOICE.state);
   });

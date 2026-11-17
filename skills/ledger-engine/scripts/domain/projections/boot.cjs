@@ -312,18 +312,20 @@ function githubSquashGate(project, nested) {
 }
 
 /**
- * The one-time tmux session-label opt-in, saying what labels do; each answer
- * leads to the verb that records it.
+ * The one-time session-label opt-in, naming the multiplexer the session
+ * runs in and saying what labels do; each answer leads to the verb that
+ * records it.
+ * @param {string} multiplexer as the person knows it: `tmux`, `Portal`
  * @returns {string}
  */
-function labelGate() {
+function labelGate(multiplexer) {
   const body = menu(
-    "You're running inside tmux. Ledger can rename your tmux session to show where you're working — `myproject · payments · discussion · auth-flow` inside a phase, `myproject · payments` at its menu — putting the original name back at the start menu and when the session ends, and bringing the label back when you resume the session. You're asked once per project.",
+    `You're running inside ${multiplexer}. Ledger can label your session to show where you're working — \`myproject · payments · discussion · auth-flow\` inside a phase, \`myproject · payments\` at its menu — putting the original back at the start menu and when the session ends, and bringing the label back when you resume the session. You're asked once per project.`,
     [
       cmdOption('y', 'yes', 'Turn session labels on', { next: { kind: 'engine', argv: ['session', 'label-config', 'true'] } }),
       cmdOption('n', 'no', 'Leave session names alone', { next: { kind: 'engine', argv: ['session', 'label-config', 'false'] } }),
     ],
-    { question: 'Label your tmux session as you work?' },
+    { question: `Label your ${multiplexer} session as you work?` },
   );
   return section('MENU: label gate', MENU_INSTRUCTION, body);
 }

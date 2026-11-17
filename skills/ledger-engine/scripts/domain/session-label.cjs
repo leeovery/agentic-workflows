@@ -1,28 +1,33 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: tmux session labels — an opt-in rename of the user's tmux
-// session to show where the Ledger session is working. Every place labels
-// itself on arrival: a phase's entry — `enter`, or a process skill's Step 0
-// where the phase is not entered through it — applies `{original} ·
-// {work-unit} · {phase} · {topic}`, the topic left out where it is the
-// work unit, the product's conversation's entry `{original} · product`, the
-// epic's menu, as its render draws it (menus.cjs), `{original} ·
-// {work-unit}`, the roadmap `{original} · roadmap`, and the start skill puts the
-// original back through boot's `repair`. Leaving a place is never an event: the name changes on arrival,
-// and at session end, where `session cleanup` restores it. A resumed
-// session gets its label back: `session resume`, a SessionStart hook fired
-// on `claude --resume`, re-applies the conversation's position
-// (position.cjs — recorded by the same arrivals, labels on or off, and
-// outliving the session) where the project has its work unit. The feature
-// is a display courtesy, never state: for the user who has not opted in, or
-// outside tmux, or on any tmux error, every path degrades to a no-op JSON
-// response and the label never gates a flow. (A place the project lacks
-// fails loudly whatever the opt-in — that is an authoring bug, not an
-// environment condition.)
+// Domain ring: session labels — an opt-in label on the user's terminal
+// session, showing where the Ledger session is working, put there by the
+// multiplexer the session runs in: Portal where `$ZMX_SESSION` is set and
+// `portal current` answers (session-label-portal.cjs), else tmux where
+// `$TMUX` is set (session-label-tmux.cjs). Each labeller reads its session,
+// applies a label, and puts the original back; its own module says how.
+// Every place labels itself on arrival: a phase's entry — `enter`, or a
+// process skill's Step 0 where the phase is not entered through it —
+// applies `{own} · {work-unit} · {phase} · {topic}`, `{own}` the label's
+// own part as its labeller keeps it, the topic left out where it is the
+// work unit, the product's conversation's entry `{own} · product`, the
+// epic's menu, as its render draws it (menus.cjs), `{own} · {work-unit}`,
+// the roadmap `{own} · roadmap`, and the start skill puts the original back
+// through boot's `repair`. Leaving a place is never an event: the label
+// changes on arrival, and at session end, where `session cleanup` restores
+// it. A resumed session gets its label back: `session resume`, a
+// SessionStart hook fired on `claude --resume`, re-applies the
+// conversation's position (position.cjs — recorded by the same arrivals,
+// labels on or off, and outliving the session) where the project has its
+// work unit. The feature is a display courtesy, never state: for the user
+// who has not opted in, or inside no multiplexer, or on any error of one,
+// every path degrades to a no-op JSON response and the label never gates a
+// flow. (A place the project lacks fails loudly whatever the opt-in — that
+// is an authoring bug, not an environment condition.)
 //
-// Opt-in is the project manifest's `defaults.tmux_labels` boolean — absent
-// means never asked, which is what ledger's one-time prompt keys on
+// Opt-in is the project manifest's `defaults.session_labels` boolean —
+// absent means never asked, which is what ledger's one-time prompt keys on
 // (boot reports it via `labelConfigStatus`).
 //
 // The hooks live in the project's committed `.claude/settings.json`, where
@@ -40,35 +45,12 @@
 // the hooks (`recordLabelChoice`) and every boot re-syncs them
 // (`syncSessionHooks`), a hook of ours whose command is not the one the
 // sync writes rewritten to it where it stands.
-//
-// The original name is stashed in the state's cache (`.cache/.session-labels/`,
-// keyed by tmux socket + session id), git-ignored, so no other clone's engine
-// ever reads a record. Re-labels across phases recompose from the true
-// original instead of compounding suffixes. A user rename mid-flight is
-// adopted as the new original at the next label; restore only ever renames a
-// session whose current name is exactly a name we applied.
-//
-// The stash key is not stable: tmux session ids renumber when the server
-// restarts, and name-restoring setups (tmux-resurrect, Portal) carry a
-// still-labelled name across the restart under a new id. Every original
-// lookup therefore resolves by exact applied-name match across the
-// checkout's records for the socket — chained, because a record written
-// against a stranded label
-// carries that label inside its own `original` — and only a name matching
-// no record is adopted as the user's own. Records carry their owning
-// Claude process's identity (pid + start time, the presence discipline):
-// a dead owner marks a label as stranded — repairable at boot and
-// sweepable by any session — while a live owner's label is never stripped
-// outside an explicit relabel.
 // ---------------------------------------------------------------------------
 
-const crypto = require('crypto');
 const fs = require('fs');
-const path = require('path');
-const { execFileSync } = require('../kernel/spawn.cjs');
-const { handedSession, processStartTime, ownerAlive, ownsRow } = require('../kernel/process.cjs');
+const { handedSession } = require('../kernel/process.cjs');
 const { readProjectManifest, withProjectLock, writeProjectManifestAtomic } = require('../kernel/manifest.cjs');
-const { isObject, jsonText, writeJsonAtomic } = require('../kernel/manifest-io.cjs');
+const { isObject, jsonText } = require('../kernel/manifest-io.cjs');
 const { operationInProgress } = require('../kernel/git.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { commitStateTail, commitOwnChange, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
@@ -80,6 +62,8 @@ const { topicTitles, itemName } = require('./derivations.cjs');
 const { LAYOUT_HOOK_TOOLS } = require('./layout-hook.cjs');
 const { BRIEF_HOOK_TOOLS } = require('./brief-guard.cjs');
 const { SHELL_HOOK_TOOLS } = require('./shell-guard.cjs');
+const portalLabeller = require('./session-label-portal.cjs');
+const tmuxLabeller = require('./session-label-tmux.cjs');
 
 const HOOK_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/ledger-engine/scripts/engine.cjs"';
 const SESSION_CLEANUP_COMMAND = `${HOOK_ENGINE} session cleanup`;
@@ -98,7 +82,7 @@ const hookMark = (/** @type {string} */ command) => command.slice(command.indexO
 const HOOK_MARKS = wantedGroups({ session: true, ledger: true }).flatMap((g) => g.commands.map(hookMark));
 
 /**
- * The opt-in for this project — `defaults.tmux_labels` when it is a
+ * The opt-in for this project — `defaults.session_labels` when it is a
  * boolean; null when never asked, or when the project manifest is absent,
  * unreadable, or carries no defaults.
  * @param {string} cwd @returns {boolean|null}
@@ -106,28 +90,28 @@ const HOOK_MARKS = wantedGroups({ session: true, ledger: true }).flatMap((g) => 
 function resolveEnabled(cwd) {
   try {
     const parsed = JSON.parse(fs.readFileSync(statePath(cwd, 'manifest.json'), 'utf8'));
-    const v = isObject(parsed) && isObject(parsed.defaults) ? parsed.defaults.tmux_labels : undefined;
+    const v = isObject(parsed) && isObject(parsed.defaults) ? parsed.defaults.session_labels : undefined;
     if (typeof v === 'boolean') return v;
   } catch { /* no project manifest */ }
   return null;
 }
 
 /**
- * Record the opt-in as the project manifest's `defaults.tmux_labels`,
+ * Record the opt-in as the project manifest's `defaults.session_labels`,
  * every other key preserved — under the project lock, the manifest's own
  * atomic write. A manifest that does not parse refuses loudly through the
  * kernel read: silently replacing it would drop every registered work unit.
  * @param {string} cwd @param {boolean} value
- * @returns {{tmux_labels: boolean}}
+ * @returns {{session_labels: boolean}}
  */
 function setLabelConfig(cwd, value) {
   withProjectLock(cwd, () => {
     const manifest = readProjectManifest(cwd);
     const defaults = isObject(manifest.defaults) ? manifest.defaults : {};
-    manifest.defaults = { ...defaults, tmux_labels: value };
+    manifest.defaults = { ...defaults, session_labels: value };
     writeProjectManifestAtomic(cwd, manifest);
   });
-  return { tmux_labels: value };
+  return { session_labels: value };
 }
 
 /** The mark a hook of ours carries, or null for a foreign one. @param {unknown} hook */
@@ -324,7 +308,7 @@ function commitSessionHooks(cwd, want, message, failure, warnings) {
  * open, or a commit git refused, comes back as a warning — boot re-syncs,
  * and the state is saved.
  * @param {string} cwd @param {boolean} value
- * @returns {{tmux_labels: boolean, warnings?: string[]}}
+ * @returns {{session_labels: boolean, warnings?: string[]}}
  */
 function recordLabelChoice(cwd, value) {
   setLabelConfig(cwd, value);
@@ -336,165 +320,77 @@ function recordLabelChoice(cwd, value) {
   if (sync.waiting) warnings.push(`session hooks not written: ${sync.waiting} is in progress in the code tree — the next boot writes them`);
   commitStateTail(cwd, PROJECT_MANIFEST_SPEC, 'chore: record session-label choice', warnings);
   if (!sync.error) commitSessionHooks(cwd, want, 'chore: record session-label choice', 'commit failed', warnings);
-  return warnings.length > 0 ? { tmux_labels: value, warnings } : { tmux_labels: value };
+  return warnings.length > 0 ? { session_labels: value, warnings } : { session_labels: value };
 }
 
 /**
- * Boot's report for ledger's one-time prompt: `no-tmux` (never
+ * @typedef {{labelled: true, name: string} | {labelled: false, reason: 'disabled'|'no-multiplexer'|'tmux-error'|'portal-error'|'stash-error'}} LabelResult
+ */
+
+/**
+ * @typedef {object} Labeller
+ * @property {string} name   the multiplexer, in a reason's prefix
+ * @property {string} title  the multiplexer as the prompt names it
+ * @property {() => boolean} present whether the session runs inside it
+ * @property {() => any} read the session as it stands — null where there is none, a throw where the multiplexer errors
+ * @property {(cwd: string, ctx: any, place: string) => LabelResult} apply label the session read with the place
+ * @property {(cwd: string, sessionId: string) => boolean} restore the SessionEnd pass
+ * @property {(cwd: string, ctx: any) => boolean} repair boot's pass over the session read
+ */
+
+/** @type {Labeller[]} */
+const LABELLERS = [portalLabeller, tmuxLabeller];
+
+/**
+ * @typedef {object} Found
+ * @property {Labeller} labeller
+ * @property {() => any} read the session as it stands — null where the multiplexer errors
+ */
+
+/**
+ * The multiplexer labelling this terminal: Portal where `$ZMX_SESSION` is
+ * set and `portal current` answers, its answer kept as the session read;
+ * then tmux where `$TMUX` is set, its session read only when asked for.
+ * Null outside both.
+ * @returns {Found|null}
+ */
+function detect() {
+  if (portalLabeller.present()) {
+    try {
+      const ctx = portalLabeller.read();
+      return { labeller: portalLabeller, read: () => ctx };
+    } catch { /* Portal did not answer */ }
+  }
+  if (!tmuxLabeller.present()) return null;
+  return {
+    labeller: tmuxLabeller,
+    read: () => { try { return tmuxLabeller.read(); } catch { return null; } },
+  };
+}
+
+/**
+ * The multiplexer this terminal runs in, as the label prompt names it —
+ * null outside both.
+ * @returns {string|null}
+ */
+function multiplexerHere() {
+  const found = detect();
+  return found === null ? null : found.labeller.title;
+}
+
+/**
+ * Boot's report for ledger's one-time prompt: `no-multiplexer` (never
  * prompt, never label), `on`/`off` (recorded on the project manifest),
- * `prompt` (in tmux and never asked).
+ * `prompt` (inside tmux or Portal, and never asked).
  * @param {string} cwd
- * @returns {'no-tmux'|'on'|'off'|'prompt'}
+ * @returns {'no-multiplexer'|'on'|'off'|'prompt'}
  */
 function labelConfigStatus(cwd) {
-  if (!process.env.TMUX) return 'no-tmux';
+  if (detect() === null) return 'no-multiplexer';
   const v = resolveEnabled(cwd);
   if (v === true) return 'on';
   if (v === false) return 'off';
   return 'prompt';
-}
-
-/**
- * @param {string[]} args
- * @param {string|null} socket explicit server socket — restore runs from a
- *   SessionEnd hook whose env may lack `$TMUX`
- */
-function tmux(args, socket) {
-  const full = socket ? ['-S', socket, ...args] : args;
-  return execFileSync('tmux', full, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).replace(/\n$/, '');
-}
-
-/**
- * The attached tmux session's identity, pinned via `$TMUX_PANE` when
- * present. Null outside tmux; throws when tmux itself errors.
- * @returns {{socket: string|null, id: string, name: string}|null}
- */
-function tmuxContext() {
-  const env = process.env.TMUX;
-  if (!env) return null;
-  const socket = env.split(',')[0] || null;
-  const args = ['display-message', '-p'];
-  if (process.env.TMUX_PANE) args.push('-t', process.env.TMUX_PANE);
-  args.push('#{session_id}|#{session_name}');
-  const out = tmux(args, socket);
-  const sep = out.indexOf('|');
-  if (sep === -1) return null;
-  return { socket, id: out.slice(0, sep), name: out.slice(sep + 1) };
-}
-
-/** The checkout's stash store, under its gitignored cache. @param {string} cwd */
-function stashDir(cwd) {
-  return statePath(cwd, '.cache', '.session-labels');
-}
-
-/** @param {string} cwd @param {string|null} socket @param {string} tmuxId */
-function stashPath(cwd, socket, tmuxId) {
-  const server = crypto.createHash('sha256').update(socket || '').digest('hex').slice(0, 8);
-  return path.join(stashDir(cwd), `${server}-${tmuxId.replace(/[^A-Za-z0-9_-]/g, '')}.json`);
-}
-
-/** A record written whole through the kernel's atomic write, its directory made first. @param {string} file @param {object} record */
-function writeRecord(file, record) {
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  writeJsonAtomic(file, record);
-}
-
-/**
- * @typedef {object} LabelStash
- * @property {string} tmux_id     tmux session id at apply time (`$N` — renumbered by a server restart)
- * @property {string|null} socket server socket at apply time
- * @property {string} original    the name to restore
- * @property {string} applied     the name we set
- * @property {string|null} session_id owning conversation (CLAUDE_CODE_SESSION_ID)
- * @property {number|null} [pid]       owning Claude process (CLAUDE_PID at apply)
- * @property {string|null} [pid_start] its start time — recycled-pid guard
- */
-
-/** Parse a stash file; null for unreadable or non-object content. @param {string} file @returns {LabelStash|null} */
-function readStash(file) {
-  try {
-    const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
-    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed;
-  } catch { /* absent or unreadable */ }
-  return null;
-}
-
-/**
- * Every complete stash record, with its file path. Incomplete or
- * unreadable files are left for the sweeps to drop.
- * @param {string} cwd
- * @returns {(LabelStash & {file: string})[]}
- */
-function allStashRecords(cwd) {
-  /** @type {(LabelStash & {file: string})[]} */
-  const records = [];
-  /** @type {string[]} */
-  let files = [];
-  try { files = fs.readdirSync(stashDir(cwd)).filter((f) => f.endsWith('.json')).sort(); } catch { return records; }
-  for (const f of files) {
-    const file = path.join(stashDir(cwd), f);
-    const stash = readStash(file);
-    if (stash && stash.tmux_id && stash.applied && stash.original) records.push({ ...stash, file });
-  }
-  return records;
-}
-
-/**
- * This checkout's stash records on one socket — the chain-resolution set.
- * @param {string} cwd @param {string|null} socket
- * @returns {(LabelStash & {file: string})[]}
- */
-function listStashes(cwd, socket) {
-  return allStashRecords(cwd).filter((r) => (r.socket || null) === (socket || null));
-}
-
-/**
- * The true original behind a session name: a name matching a record's
- * `applied` is a label this module put there, so its `original` is one hop
- * closer to the user's own — and a record written against a stranded label
- * chains further, because that record's `original` is itself an applied
- * name. Exact match only; a name matching no record is the user's own.
- * @param {(LabelStash & {file: string})[]} records same-socket records
- * @param {string} name
- * @returns {{original: string, visited: string[]}} visited = record files the chain consumed
- */
-function chainOriginal(records, name) {
-  /** @type {Map<string, LabelStash & {file: string}>} */
-  const byApplied = new Map();
-  for (const r of records) if (!byApplied.has(r.applied)) byApplied.set(r.applied, r);
-  /** @type {string[]} */
-  const visited = [];
-  const seen = new Set();
-  let current = name;
-  while (byApplied.has(current) && !seen.has(current)) {
-    seen.add(current);
-    const r = /** @type {LabelStash & {file: string}} */ (byApplied.get(current));
-    visited.push(r.file);
-    current = r.original;
-  }
-  return { original: current, visited };
-}
-
-/** Is the record's owning Claude process gone — the kernel's liveness rule, negated? @param {LabelStash} stash */
-function ownerDead(stash) {
-  return !ownerAlive(stash);
-}
-
-/**
- * Every live session on a socket. Null when the server is unreachable —
- * distinct from an empty list, because an unverifiable server proves
- * nothing about its names.
- * @param {string|null} socket
- * @returns {{id: string, name: string}[]|null}
- */
-function liveSessions(socket) {
-  try {
-    const out = tmux(['list-sessions', '-F', '#{session_id}|#{session_name}'], socket);
-    return out.split('\n').filter(Boolean).flatMap((line) => {
-      const sep = line.indexOf('|');
-      return sep === -1 ? [] : [{ id: line.slice(0, sep), name: line.slice(sep + 1) }];
-    });
-  } catch { return null; }
 }
 
 /**
@@ -509,64 +405,34 @@ function shownTopic(cwd, name, phase, topic) {
 }
 
 /**
- * Rename the tmux session to carry the working position: `{name}` alone
- * on arrival at a work unit's menu or a project-level place, `{name} ·
- * {phase} · {topic}` inside a phase (topic collapsed when it equals the
- * work unit, a renamed topic by the name it goes by). The arguments name a place the project has — a work-unit
- * directory, or in the name-only form a project identity, `roadmap` or
- * `product`, which has no directory and no phase — checked by the caller
- * before anything is labelled (position.cjs `assertPlace`). No-op JSON
- * when the feature is off for the project, the session runs outside tmux,
- * tmux errors, or the stash cannot be written — the label never blocks a
- * flow.
+ * Label the session to carry the working position: `{name}` alone on
+ * arrival at a work unit's menu or a project-level place, `{name} · {phase}
+ * · {topic}` inside a phase (topic collapsed when it equals the work unit,
+ * a renamed topic by the name it goes by), after the label's own part —
+ * tmux's original name, Portal's base. The arguments name a place the
+ * project has — a work-unit directory, or in the name-only form a project
+ * identity, `roadmap` or `product`, which has no directory and no phase —
+ * checked by the caller before anything is labelled (position.cjs
+ * `assertPlace`). No-op JSON when the feature is off for the project, the
+ * session runs inside no multiplexer, the multiplexer errors, or the stash
+ * cannot be written — the label never blocks a flow.
  * @param {string} cwd @param {string} name @param {string} [phase] @param {string} [topic]
+ * @returns {LabelResult}
  */
 function applySessionLabel(cwd, name, phase, topic) {
   if (resolveEnabled(cwd) !== true) return { labelled: false, reason: 'disabled' };
-  /** @type {ReturnType<typeof tmuxContext>} */
-  let ctx = null;
-  try { ctx = tmuxContext(); } catch { /* tmux errored */ }
-  if (!ctx) return { labelled: false, reason: process.env.TMUX ? 'tmux-error' : 'no-tmux' };
-
-  const file = stashPath(cwd, ctx.socket, ctx.id);
-  // Resolve the original by applied-name chain, not by the id-keyed stash
-  // alone: a server restart renumbers the id, so a stranded label's record
-  // sits under a key this session will never look up directly.
-  const { original, visited } = chainOriginal(listStashes(cwd, ctx.socket), ctx.name);
-  const position = placeLine({ name, phase, topic: shownTopic(cwd, name, phase, topic) }, ' · ');
-  const applied = `${original} · ${position}`;
-  const pid = Number(process.env.CLAUDE_PID) || null;
-  // Stash before rename: a rename with no restore record strands the label,
-  // while a stash whose `applied` never landed is inert (restore skips it,
-  // the next label re-adopts the live name).
-  /** @type {LabelStash} */
-  const record = {
-    tmux_id: ctx.id,
-    socket: ctx.socket,
-    original,
-    applied,
-    session_id: handedSession(),
-    pid,
-    pid_start: pid ? processStartTime(pid) : null,
-  };
-  try { writeRecord(file, record); } catch { return { labelled: false, reason: 'stash-error' }; }
-  if (applied !== ctx.name) {
-    try { tmux(['rename-session', '-t', ctx.id, applied], ctx.socket); }
-    catch { return { labelled: false, reason: 'tmux-error' }; }
-  }
-  // The chain's links are spent — the new id-keyed record holds the true
-  // original. Only after the rename lands: a failed attempt keeps them for
-  // the retry.
-  for (const f of visited) {
-    if (f !== file) { try { fs.unlinkSync(f); } catch { /* raced away */ } }
-  }
-  return { labelled: true, name: applied };
+  const found = detect();
+  if (found === null) return { labelled: false, reason: 'no-multiplexer' };
+  const ctx = found.read();
+  if (!ctx) return { labelled: false, reason: /** @type {'tmux-error'|'portal-error'} */ (`${found.labeller.name}-error`) };
+  const place = placeLine({ name, phase, topic: shownTopic(cwd, name, phase, topic) }, ' · ');
+  return found.labeller.apply(cwd, ctx, place);
 }
 
 /**
  * Arrive at a place — `session label`'s, and the entry's (enter.cjs): a
  * place this project lacks refused before anything is labelled or recorded,
- * then the tmux session labelled and the conversation's position recorded,
+ * then the session labelled and the conversation's position recorded,
  * labels on or off. Answers the label's own answer.
  * @param {string} cwd @param {string} name @param {string} [phase] @param {string} [topic]
  */
@@ -581,8 +447,8 @@ function arriveAt(cwd, name, phase, topic) {
  * Bring a resumed session's label back — `session resume`, the SessionStart
  * hook's target on `claude --resume`. The conversation's position is
  * re-applied through `applySessionLabel`, so the gates are `label`'s own
- * (disabled, no tmux, a tmux error all no-op), the stash records the
- * resuming process's identity, and a name already worn costs no rename. A
+ * (disabled, no multiplexer, its error all no-op), the stash records the
+ * resuming process's identity, and a label already worn costs no rename. A
  * position naming a place this project does not have — the conversation
  * resumed in another checkout, or its unit gone — labels nothing and is
  * kept: its folder's tidy-up owns its lifetime. Never throws: a hook must
@@ -603,139 +469,44 @@ function resumeSessionLabel(cwd, sessionId) {
 }
 
 /**
- * Put the original tmux session name back — `session cleanup`, the
- * SessionEnd sweep over the checkout's stash store. Without a session id
- * nothing is touched (an id-less sweep could take a live peer's label —
- * the presence sweep refuses the same way). Sweeps stashes the named
- * session owns (an ownerless stash counts) plus any whose owning process
- * is dead — a stranding no other sweep would ever reach. A session is
- * renamed only when its current name is exactly the one we applied — found
- * by the stash's id or, after a server restart renumbered it, by exact
- * name across the socket's live sessions — and always back to the
- * chain-resolved true original, never a polluted intermediate. A manual
- * rename is never clobbered. A restored or inapplicable stash is dropped;
- * one whose rename failed is kept for the next sweep, as is a link a live
- * session's name still chains through — dropping it would strand that
- * session's own recomposition. Never throws: a hook must exit clean.
+ * Put the original back — `session cleanup`, the SessionEnd hook's target:
+ * every labeller's pass is run, since the hook's environment may lack what
+ * detection reads (session-label-tmux.cjs, session-label-portal.cjs).
+ * Without a session id nothing is touched (an id-less sweep could take a
+ * live peer's label — the presence sweep refuses the same way). Never
+ * throws: a hook must exit clean.
  * @param {string} cwd @param {string|null} sessionId
  * @returns {{restored: boolean}}
  */
 function restoreSessionLabel(cwd, sessionId) {
   if (!sessionId) return { restored: false };
-  /** @type {string} */
-  let dir;
-  /** @type {string[]} */
-  let files = [];
-  try {
-    dir = stashDir(cwd);
-    files = fs.readdirSync(dir).filter((f) => f.endsWith('.json'));
-  } catch { return { restored: false }; }
-  let restored = false;
-  /** @type {Map<string, {id: string, name: string}[]|null>} */
-  const liveCache = new Map();
-  const liveOn = (/** @type {string|null} */ socket) => {
-    const key = socket || '';
-    if (!liveCache.has(key)) liveCache.set(key, liveSessions(socket));
-    return /** @type {{id: string, name: string}[]|null} */ (liveCache.get(key));
-  };
-  for (const f of files) {
-    const p = path.join(dir, f);
-    const stash = readStash(p);
-    if (stash && stash.session_id && stash.session_id !== sessionId && !ownerDead(stash)) continue;
-    let drop = true;
-    if (stash && stash.tmux_id && stash.original && stash.applied) {
-      const socket = stash.socket || null;
-      /** @type {string|null} */
-      let targetId = null;
-      try {
-        const current = tmux(['display-message', '-p', '-t', stash.tmux_id, '#{session_name}'], socket);
-        if (current === stash.applied) targetId = stash.tmux_id;
-      } catch { /* session gone under this id — it may live under a renumbered one */ }
-      if (!targetId) {
-        const live = liveOn(socket);
-        const wearer = live ? live.find((s) => s.name === stash.applied) : null;
-        if (wearer) targetId = wearer.id;
-      }
-      if (targetId) {
-        const { original, visited } = chainOriginal(listStashes(cwd, socket), stash.applied);
-        try {
-          tmux(['rename-session', '-t', targetId, original], socket);
-          restored = true;
-          liveCache.delete(socket || ''); // names changed — re-list before the next protection check
-          for (const v of visited) {
-            if (v !== p) { try { fs.unlinkSync(v); } catch { /* raced away */ } }
-          }
-        } catch {
-          drop = false; // transient rename failure — keep the record for the next sweep
-        }
-      } else {
-        const live = liveOn(socket);
-        if (live && live.some((s) => chainOriginal(listStashes(cwd, socket), s.name).visited.includes(p))) {
-          drop = false; // a live name still chains through this record
-        }
-      }
-    }
-    if (drop) {
-      try { fs.unlinkSync(p); } catch { /* raced away */ }
-    }
-  }
-  return { restored };
+  const restored = LABELLERS.map((labeller) => labeller.restore(cwd, sessionId));
+  return { restored: restored.includes(true) };
 }
 
 /**
  * Boot's pass over the current terminal — the start skill is the place
- * whose label is the original name, and no position: the calling
- * conversation's own position comes off first, labels on or off — its tasks
- * in flight kept at the place left (position.cjs) — while a dead owner's
- * stays — that session may yet be resumed. When the tmux
- * session's name is a name this module applied and the label is the
- * calling session's own (`ownsRow`: its session id, or its pid for a later
- * conversation in the same process) or its owner is gone — a session that
- * never restored, a restart that carried the label across — put the true
- * original back, then prune the spent and orphaned records. Gated exactly
- * like `label` (a disabled project must never touch the terminal), no-op
- * outside tmux or on any tmux error, and a peer's label whose owning
- * process still runs is live — left alone. Prune keeps every record a live
- * session's name still chains through, touches nothing on an unreachable
- * server (an unverifiable name proves nothing).
+ * whose label is the original, and no position: the calling conversation's
+ * own position comes off first, labels on or off — its tasks in flight kept
+ * at the place left (position.cjs) — while a dead owner's stays — that
+ * session may yet be resumed. Then the multiplexer's own pass puts back a
+ * label of the calling session's or of a gone owner's. Gated exactly like
+ * `label` (a disabled project must never touch the terminal), no-op inside
+ * no multiplexer or on its error, and a peer's label whose owning process
+ * still runs is live — left alone.
  * @param {string} cwd
  * @returns {{repaired: boolean}}
  */
 function repairSessionLabels(cwd) {
   dropPosition(handedSession());
   if (resolveEnabled(cwd) !== true) return { repaired: false };
-  /** @type {ReturnType<typeof tmuxContext>} */
-  let ctx = null;
-  try { ctx = tmuxContext(); } catch { /* tmux errored */ }
-  if (!ctx) return { repaired: false };
-  let repaired = false;
-  const records = listStashes(cwd, ctx.socket);
-  const head = records.find((r) => r.applied === ctx.name);
-  const own = head !== undefined && ownsRow(head);
-  if (head && (own || ownerDead(head))) {
-    const { original, visited } = chainOriginal(records, ctx.name);
-    try {
-      tmux(['rename-session', '-t', ctx.id, original], ctx.socket);
-      repaired = true;
-      for (const f of visited) { try { fs.unlinkSync(f); } catch { /* raced away */ } }
-    } catch { /* tmux errored — the records keep the repair available */ }
-  }
-  /** @type {Map<string, {id: string, name: string}[]|null>} */
-  const liveCache = new Map();
-  for (const r of allStashRecords(cwd)) {
-    if (!ownerDead(r)) continue;
-    const key = r.socket || '';
-    if (!liveCache.has(key)) liveCache.set(key, liveSessions(r.socket || null));
-    const live = liveCache.get(key);
-    if (!live) continue; // server unreachable — keep, nothing is verifiable
-    const sameSocket = listStashes(cwd, r.socket || null);
-    const needed = live.some((s) => chainOriginal(sameSocket, s.name).visited.includes(r.file));
-    if (!needed) { try { fs.unlinkSync(r.file); } catch { /* raced away */ } }
-  }
-  return { repaired };
+  const found = detect();
+  const ctx = found === null ? null : found.read();
+  if (found === null || !ctx) return { repaired: false };
+  return { repaired: found.labeller.repair(cwd, ctx) };
 }
 
 module.exports = {
   arriveAt, restoreSessionLabel, repairSessionLabels, resumeSessionLabel,
-  resolveEnabled, labelConfigStatus, syncSessionHooks, commitSessionHooks, carriesOurHooks, recordLabelChoice,
+  resolveEnabled, labelConfigStatus, multiplexerHere, syncSessionHooks, commitSessionHooks, carriesOurHooks, recordLabelChoice,
 };

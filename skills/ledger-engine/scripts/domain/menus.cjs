@@ -18,7 +18,7 @@
 //   shows above its question as a text block, and its MENU — the statement
 //   it makes under the rule, where it makes one, wrapped to the pane as its
 //   rows are, over its question — then leaves the conversation
-//   where the registry says — its position dropped and its tmux label put
+//   where the registry says — its position dropped and its session label put
 //   back as `session repair` does, or arrived at as `session label` arrives,
 //   with no writer lock either way: what it writes is the conversation's
 //   own. Every row carries what answering it leads to, recorded with the

@@ -8,7 +8,9 @@
 // recommended minimum effort, medium, is stated (23.S13). The README's
 // pipeline table is the engine's own pipelines, so it names no retired
 // phase (23.S14). None of the author's own products and projects is named
-// in the docs or the README (23.S12, 23.4.6). The docs, the README, help
+// in the docs or the README (23.S12, 23.4.6), but Portal, on the lines of
+// the configuration chapter's section that presents the multiplexers a
+// session is labelled in. The docs, the README, help
 // and the glossary call the product Ledger, never the name it was built
 // under, but where history tells of it or the glossary's avoid line names
 // it (23.S19, 23.1.4). The skills, the briefs, the agents, the engine, the
@@ -77,6 +79,17 @@ const OWN_NAMES = [
   /\b(?:SitRep|Switchboard|Turnstile|DocMan|Folio|Portal|rootshell|Fumi|Evvi|Codeintel|quiz-biz|Goosemates)\b/i,
   /\b(?:Harness|Fabric|Kit|Stitch|Mint|Pigeon|Galley|Nod)\b/,
 ];
+/**
+ * Where an own name may stand: the configuration chapter's section on
+ * session labels, which presents the multiplexers Ledger labels a session in,
+ * Portal among them — that name alone, and only on a line of that section.
+ */
+const LABEL_WAYS = { chapter: path.join('docs', 'configuration.md'), heading: '## Session labels', name: /\bPortal\b/g };
+/** The exception over the chapter as `text` reads. @param {(rel: string) => string} text */
+const presentsAMultiplexer = (text) => (/** @type {string} */ rel, /** @type {string} */ line) => rel === LABEL_WAYS.chapter
+  && sectionOf(text(rel), LABEL_WAYS.heading).split('\n').includes(line)
+  && !OWN_NAMES.some((names) => names.test(line.replace(LABEL_WAYS.name, '')));
+const PRESENTS_A_MULTIPLEXER = presentsAMultiplexer((rel) => read(rel));
 /** The name the product was built under (23.1.4). */
 const OLD_NAMES = /\bLeeway\b/;
 const PRODUCT = /\bLedger\b/;
@@ -252,8 +265,22 @@ describe('the user docs (23.4)', () => {
     assert.match(read('docs/configuration.md'), /\brecommends a minimum of \*\*medium\*\*/);
   });
 
-  it('23.S12: none of the author\'s own products and projects is named in the docs or the README', () => {
-    assert.deepStrictEqual(OWN_NAMES.flatMap((names) => linesNaming([...docsFiles(), 'README.md'], names)), []);
+  it('23.S12: none of the author\'s own products and projects is named in the docs or the README, but Portal where the configuration chapter presents the multiplexers that label a session', () => {
+    assert.deepStrictEqual(OWN_NAMES.flatMap((names) => linesNaming([...docsFiles(), 'README.md'], names, PRESENTS_A_MULTIPLEXER)), []);
+  });
+
+  it('the session labels\' exception holds Portal on a line of that section alone: in any other chapter, elsewhere in the configuration chapter, or beside another own name, it is named', () => {
+    const section = sectionOf(read(LABEL_WAYS.chapter), LABEL_WAYS.heading).split('\n');
+    const naming = section.filter((line) => /\bPortal\b/.test(line));
+    assert.ok(naming.length > 0, 'the section presents Portal');
+    for (const line of naming) assert.ok(PRESENTS_A_MULTIPLEXER(LABEL_WAYS.chapter, line));
+    assert.ok(!PRESENTS_A_MULTIPLEXER(path.join('docs', 'the-build.md'), naming[0]), 'the same line in another chapter');
+    assert.ok(!PRESENTS_A_MULTIPLEXER('README.md', naming[0]), 'the same line in the README');
+    assert.ok(!PRESENTS_A_MULTIPLEXER(LABEL_WAYS.chapter, 'Portal keeps its settings here too.'), 'a line outside the section');
+    const beside = `${naming[0]} SitRep`;
+    const withBeside = presentsAMultiplexer(() => `\n${LABEL_WAYS.heading}\n${naming[0]}\n${beside}\n`);
+    assert.ok(withBeside(LABEL_WAYS.chapter, naming[0]), 'a section holding both still passes Portal alone');
+    assert.ok(!withBeside(LABEL_WAYS.chapter, beside), 'another own name beside it, on a line of the section');
   });
 
   it('23.S19: the docs, the README, help and the glossary call the product Ledger, never an old name but where history tells of it or the glossary\'s avoid line names it', () => {

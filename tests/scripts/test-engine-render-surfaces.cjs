@@ -24,7 +24,8 @@ const { topicReceiptOf } = require('../../skills/ledger-engine/scripts/domain/re
 const { systemConfigPath } = require('../../skills/ledger-engine/scripts/kernel/knowledge/config.cjs');
 const { titlecase } = require('../../skills/ledger-engine/scripts/domain/conventions.cjs');
 const { renderSurface, NB, unwrap, setup, teardown, writeManifest, writePayload } = require('./render-surfaces-world.cjs');
-const { output } = require('./engine-harness.cjs');
+const { output, withEnv } = require('./engine-harness.cjs');
+const { installPortalStub, portalStubEnv } = require('./portal-stub.cjs');
 const { fixture } = require('./board-world.cjs');
 
 describe('cancel-gate', () => {
@@ -604,20 +605,36 @@ describe('the boot and knowledge gate surfaces', () => {
     }
   });
 
-  it('the setup screens\' rows each lead to the verb that records their answer: the migration confirm\'s yes its commit, the tmux label opt-in saying what labels do', () => {
+  it('the setup screens\' rows each lead to the verb that records their answer: the migration confirm\'s yes its commit, the session-label opt-in saying what labels do', () => {
     const migration = renderSurface(dir, 'migration-gate', {});
     assert.match(migration, /=== MENU: migration gate/);
     assert.match(migration, /\*\*`◆ Ready to continue\?`\*\*/);
     assert.match(migration, /\*\*`y\/yes`\*\*\s+→ Proceed/);
     assert.match(unwrap(migration), /\*\*Ask\*\*\s+→ Ask questions about the changes/);
     assert.deepStrictEqual(rowsLeadTo(), [['y', ['commit', '--migrations', '-m', "chore: apply Ledger's migrations"]]]);
-    const label = renderSurface(dir, 'label-gate', {});
+    const label = withEnv({ TMUX: '/fake/sock,123,7' }, () => renderSurface(dir, 'label-gate', {}));
     assert.match(label, /=== MENU: label gate/);
-    assert.ok(unwrap(label).includes("You're running inside tmux. Ledger can rename your tmux session to show where you're working"), label);
+    assert.ok(unwrap(label).includes("You're running inside tmux. Ledger can label your session to show where you're working"), label);
     assert.match(label, /\*\*`◆ Label your tmux session as you work\?`\*\*/);
     assert.match(label, /\*\*`y\/yes`\*\* → Turn session labels on/);
     assert.match(unwrap(label), /\*\*`n\/no`\*\*\s+→ Leave session names alone/);
     assert.deepStrictEqual(rowsLeadTo(), [['y', ['session', 'label-config', 'true']], ['n', ['session', 'label-config', 'false']]]);
+  });
+
+  it('the session-label opt-in names the multiplexer the session runs in, Portal before tmux, and is refused inside neither', () => {
+    const stub = installPortalStub('proj-x1');
+    try {
+      const inside = (/** @type {Record<string, string|undefined>} */ env) => unwrap(withEnv(env, () => renderSurface(dir, 'label-gate', {})));
+      const portal = portalStubEnv(stub, 'proj-x1');
+      const tmux = { TMUX: '/fake/sock,123,7' };
+      assert.match(inside(tmux), /You're running inside tmux\. Ledger can label your session[\s\S]*Label your tmux session as you work\?/);
+      assert.match(inside({ ...portal, ...tmux }), /You're running inside Portal\. Ledger can label your session[\s\S]*Label your Portal session as you work\?/);
+      assert.match(inside({ ...portal, ...tmux, PORTAL_STUB_FAIL: '1' }), /Label your tmux session/, 'a Portal that does not answer is not where the session runs');
+      assert.throws(() => inside({ ...portal, PORTAL_STUB_FAIL: '1' }), /render label-gate: the session runs inside neither tmux nor Portal/);
+      assert.throws(() => inside({}), /render label-gate: the session runs inside neither tmux nor Portal/);
+    } finally {
+      fs.rmSync(stub, { recursive: true, force: true });
+    }
   });
 
   it('the brownfield offer: a yes/no gate drawn only while nothing is recorded, each row recording its answer — any answer refuses it (8.12.11)', () => {

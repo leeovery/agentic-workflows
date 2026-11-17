@@ -1318,24 +1318,24 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: set and get project.defaults.tmux_labels${NC}"
+echo -e "${YELLOW}Test: set and get project.defaults.session_labels${NC}"
 setup_fixture
 create_wu my-proj feature "Setup"
-run_cli set project.defaults.tmux_labels true >/dev/null 2>&1
+run_cli set project.defaults.session_labels true >/dev/null 2>&1
 
-output=$(run_cli_stdout get project.defaults.tmux_labels)
-assert_equals "$output" "true" "Get project default tmux_labels"
+output=$(run_cli_stdout get project.defaults.session_labels)
+assert_equals "$output" "true" "Get project default session_labels"
 
 echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: exists project.defaults.tmux_labels${NC}"
+echo -e "${YELLOW}Test: exists project.defaults.session_labels${NC}"
 setup_fixture
 create_wu ex-proj feature "Setup"
-run_cli set project.defaults.tmux_labels false >/dev/null 2>&1
+run_cli set project.defaults.session_labels false >/dev/null 2>&1
 
-output=$(run_cli_stdout exists project.defaults.tmux_labels)
+output=$(run_cli_stdout exists project.defaults.session_labels)
 assert_equals "$output" "true" "Exists returns true for set default"
 
 output=$(run_cli_stdout exists project.defaults.nonexistent)
@@ -1345,13 +1345,13 @@ echo ""
 
 # ----------------------------------------------------------------------------
 
-echo -e "${YELLOW}Test: delete project.defaults.tmux_labels${NC}"
+echo -e "${YELLOW}Test: delete project.defaults.session_labels${NC}"
 setup_fixture
 create_wu del-proj feature "Setup"
-run_cli set project.defaults.tmux_labels true >/dev/null 2>&1
-run_cli delete project.defaults.tmux_labels >/dev/null 2>&1
+run_cli set project.defaults.session_labels true >/dev/null 2>&1
+run_cli delete project.defaults.session_labels >/dev/null 2>&1
 
-output=$(run_cli_stdout exists project.defaults.tmux_labels)
+output=$(run_cli_stdout exists project.defaults.session_labels)
 assert_equals "$output" "false" "Deleted project default no longer exists"
 
 echo ""
@@ -1411,9 +1411,9 @@ echo -e "${YELLOW}Test: get project.defaults returns empty when not set${NC}"
 setup_fixture
 create_wu err-proj feature "Error test"
 
-output=$(run_cli_stdout get project.defaults.tmux_labels)
+output=$(run_cli_stdout get project.defaults.session_labels)
 assert_equals "$output" "" "Missing project default returns empty stdout"
-run_cli_stdout get project.defaults.tmux_labels >/dev/null
+run_cli_stdout get project.defaults.session_labels >/dev/null
 assert_equals "$?" "0" "Missing project default exits 0"
 
 echo ""
@@ -1422,7 +1422,7 @@ echo ""
 
 echo -e "${YELLOW}Test: set project.defaults without value errors${NC}"
 setup_fixture
-output=$(run_cli set project.defaults.tmux_labels 2>&1 || true)
+output=$(run_cli set project.defaults.session_labels 2>&1 || true)
 assert_contains "$output" "Usage" "Set without value shows usage"
 
 echo ""
@@ -1431,8 +1431,8 @@ echo ""
 
 echo -e "${YELLOW}Test: project set does not require work unit to exist${NC}"
 setup_fixture
-run_cli set project.defaults.tmux_labels true >/dev/null 2>&1
-output=$(run_cli_stdout get project.defaults.tmux_labels)
+run_cli set project.defaults.session_labels true >/dev/null 2>&1
+output=$(run_cli_stdout get project.defaults.session_labels)
 assert_equals "$output" "true" "Can set project default without any work units"
 
 echo ""

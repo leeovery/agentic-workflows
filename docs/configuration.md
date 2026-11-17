@@ -28,7 +28,7 @@ Your first `/ledger` in a project sets up what it needs as it goes, asking only 
 - **The walkthrough.** A first session offers a short walk through how Ledger works, once; it stays on the start menu's help.
 - **An existing codebase.** On a project whose code predates Ledger, the first session offers to have a researcher read the code before the product's first conversation, landing what the code shows as findings and bringing what it leaves open to you as questions. Declining is recorded, and the offer never repeats. A project that grew up on Ledger is never asked: the first session reads the repository's history and records that verdict once.
 - **On GitHub**, setup offers a rule refusing the state branch's deletion or any push to it that isn't a fast-forward, for anything run outside Claude Code, and, where the project lands through GitHub, the squash default each task's pull request lands by. Each is set only on your yes, and your answer is recorded, so it is never offered again on any clone.
-- **Session labels**, if you work inside tmux: see [below](#session-labels).
+- **Session labels**, if you work inside a terminal multiplexer: see [below](#session-labels).
 
 ## The drivers
 
@@ -72,7 +72,12 @@ A conversation's folder is found wherever the conversation runs. It lasts as lon
 
 ## Session labels
 
-If you work inside tmux, your first session in a project asks once whether Ledger may rename your tmux session to show where you are — `myproject · payments · discussion · auth-flow` inside a phase, `myproject · payments` at a work unit's menu, `myproject · roadmap` on the roadmap — and put the original name back at the start menu and when the session ends. The label comes back when you resume a session. Outside tmux nothing is renamed and the question is never asked.
+If you work inside a terminal multiplexer, your first session in a project asks once whether Ledger may label your session to show where you are — `myproject · payments · discussion · auth-flow` inside a phase, `myproject · payments` at a work unit's menu, `myproject · roadmap` on the roadmap — and put the original back at the start menu and when the session ends. The label comes back when you resume a session. Ledger labels a session in one of two ways:
+
+- **Portal** — inside a Portal session, Ledger sets the label Portal shows beside the session's name, which never changes. The label keeps its first part, the part before any ` · `, and Ledger's place follows it; the label you had is put back, and where you had none Portal shows the session's name again.
+- **tmux** — inside tmux, Ledger renames the tmux session, its own name first.
+
+Where both apply, Portal labels the session. Outside both nothing is labelled and the question is never asked.
 
 ## Buttons above the prompt
 

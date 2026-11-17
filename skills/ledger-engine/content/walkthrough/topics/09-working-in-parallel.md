@@ -12,6 +12,6 @@ Code is different. The build runs its tasks side by side, each in a worktree of 
    the checkout      one build, review or quick-fix at a time
 ```
 
-Where the Claude Code mod runs, a board beside the conversation shows what is happening now — the build's tasks, a topic's map, the questions waiting — without reprinting it into the transcript. If you work in tmux, Ledger can also rename your tmux session to show where each one is working; it asks once per project.
+Where the Claude Code mod runs, a board beside the conversation shows what is happening now — the build's tasks, a topic's map, the questions waiting — without reprinting it into the transcript. If you work in tmux or Portal, Ledger can also label each session to show where it is working; it asks once per project.
 
 Everything a session produces is committed to git as it goes, Ledger's records on a branch of their own, confined to what each action wrote, so parallel sessions never sweep up one another's changes and any session can end at any moment and be resumed from disk.

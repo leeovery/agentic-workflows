@@ -40,7 +40,7 @@ describe('engine session label', () => {
   it('no-ops outside tmux even when opted in', () => {
     optIn();
     const res = engine(['session', 'label', 'pay', 'discussion', 'alpha'], { noTmux: true });
-    assert.deepStrictEqual(res, { ok: true, labelled: false, reason: 'no-tmux' });
+    assert.deepStrictEqual(res, { ok: true, labelled: false, reason: 'no-multiplexer' });
   });
 
   it('reports tmux-error without failing when tmux itself errors', () => {
@@ -335,20 +335,20 @@ describe('engine session label — the manifest stamp', () => {
 
   it('a manifest stamped false is disabled, whatever was recorded before', () => {
     optIn();
-    writeProjectManifest({ tmux_labels: false });
+    writeProjectManifest({ session_labels: false });
     const res = engine(['session', 'label', 'pay', 'discussion', 'alpha']);
     assert.deepStrictEqual(res, { ok: true, labelled: false, reason: 'disabled' });
     assert.strictEqual(tmuxName(), 'proj-abc');
   });
 
   it('a manifest stamped true enables without label-config having run', () => {
-    writeProjectManifest({ tmux_labels: true });
+    writeProjectManifest({ session_labels: true });
     const res = engine(['session', 'label', 'pay', 'discussion', 'alpha']);
     assert.strictEqual(res.labelled, true);
   });
 
   it('only a boolean counts — anything else reads as never asked', () => {
-    writeProjectManifest({ tmux_labels: 'true' });
+    writeProjectManifest({ session_labels: 'true' });
     const res = engine(['session', 'label', 'pay', 'discussion', 'alpha']);
     assert.deepStrictEqual(res, { ok: true, labelled: false, reason: 'disabled' });
   });
@@ -364,7 +364,7 @@ describe('engine session label — the manifest stamp', () => {
   it('the opt-in is the manifest alone — a system config carrying one is never read', () => {
     const ownConfig = path.join(world.dir, '.wf-config');
     fs.mkdirSync(ownConfig, { recursive: true });
-    fs.writeFileSync(path.join(ownConfig, 'config.json'), JSON.stringify({ session: { tmux_labels: true } }) + '\n');
+    fs.writeFileSync(path.join(ownConfig, 'config.json'), JSON.stringify({ session: { session_labels: true } }) + '\n');
     const res = engine(['session', 'label', 'pay', 'discussion', 'alpha'], { extraEnv: { LEDGER_CONFIG_DIR: ownConfig } });
     assert.deepStrictEqual(res, { ok: true, labelled: false, reason: 'disabled' });
   });

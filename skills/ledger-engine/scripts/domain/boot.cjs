@@ -376,7 +376,7 @@ function sessionEffort() {
  * @property {boolean} compacted
  * @property {string|null} migrations_committed short sha of the migrations record's commit, or null when nothing was committed — set only where no reviewed migration commit follows, whatever boot left the record dirty
  * @property {string[]} warnings non-blocking failures (a knowledge config setting the load ignores, knowledge index, compaction, a provider key that does not resolve, a vector fill that fell short, the migrations record's commit, the session hooks, an unreadable report block, the late one-decision check not launched, the ledger's copies not rendered, the trust log's waiting events not appended)
- * @property {'no-tmux'|'on'|'off'|'prompt'} tmux_labels session-label opt-in state — `prompt` means in tmux and never asked, ledger's one-time prompt
+ * @property {'no-multiplexer'|'on'|'off'|'prompt'} session_labels session-label opt-in state — `prompt` means inside tmux or Portal and never asked, ledger's one-time prompt
  * @property {boolean} label_repaired a session label on this terminal — this session's own, arriving at the start menu, or a stranded one whose owner is gone — was put back to the original name
  * @property {boolean} session_hooks_installed this boot wrote the session hooks into `.claude/settings.json` — SessionEnd's `presence cleanup` and `conversation end`, and PreToolUse's layout hook (`layout guard`, matcher `Write|Edit|NotebookEdit`), brief hook (`brief guard`, matcher `Agent|SendMessage`) and shell hook (`shell guard`, matcher `Bash`), for every project, `session cleanup` and SessionStart's `session resume` (matcher `resume`) while labels are on; false when the file already carried exactly those
  * @property {Mod} mod the gate mod, which boot writes nothing for: `running`, its announcement in boot's own environment; `could`, where it can run and is not running — the start's notice; `cannot`, where it cannot run here (Claude Code on the web, another entrypoint than the terminal app, the mod not installed, a version that does not read, or one older than the floor, which the `claude-code-floor` gate stops on)
@@ -520,7 +520,7 @@ function boot(cwd, { startAgain = false, words = '' } = {}) {
   launchLateCheck(root, warnings);
 
   const surface = gateSurface(cwd);
-  const facts = { migrations, knowledge, indexed, compacted, migrations_committed: migrationsCommitted, warnings, tmux_labels: labelConfigStatus(cwd), label_repaired: repairSessionLabels(cwd).repaired, session_hooks_installed: sessionHooksInstalled, mod: MOD[surface], effort: sessionEffort(), brownfield_offer: brownfieldOffer(cwd), walkthrough: walkthroughState(cwd).status, github_rule_offer: githubRuleOffered(cwd), github_squash_offer: githubSquashOffered(cwd) };
+  const facts = { migrations, knowledge, indexed, compacted, migrations_committed: migrationsCommitted, warnings, session_labels: labelConfigStatus(cwd), label_repaired: repairSessionLabels(cwd).repaired, session_hooks_installed: sessionHooksInstalled, mod: MOD[surface], effort: sessionEffort(), brownfield_offer: brownfieldOffer(cwd), walkthrough: walkthroughState(cwd).status, github_rule_offer: githubRuleOffered(cwd), github_squash_offer: githubSquashOffered(cwd) };
   const entry = entryOf(cwd, words);
   const restarted = placed.made === 'restarted';
   /** @type {BootResult} */

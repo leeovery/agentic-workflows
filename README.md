@@ -112,7 +112,7 @@ A feature that outgrows its scope pivots into an epic. A feature that belongs in
 - **Nothing falls on the floor.** A point raised in the wrong topic is sent as mail to the topic it belongs to, and waits there until read.
 - **Many sessions, one checkout.** Talk through as many topics in parallel as you like; a commit takes what its own action wrote and the conversation logs written since, never another session's half-made change. A build, the review phase and a quick-fix take turns in the checkout.
 - **Recovers from anything.** After a compaction, a crash or a new session, the work re-reads its record and carries on where it was, with no recap.
-- **tmux session labels.** Opt in per project and your tmux session renames to show where you're working — `myproject · payments · discussion · auth-flow` — restoring the original name on exit.
+- **Session labels.** Opt in per project and your terminal session's label shows where you're working — `myproject · payments · discussion · auth-flow` — the original put back on exit, in the terminal multiplexers [configuration](docs/configuration.md#session-labels) lists.
 - **Zero-maintenance upgrades.** Updates migrate existing projects in place on the next run, including a project from before Ledger.
 
 ## Documentation

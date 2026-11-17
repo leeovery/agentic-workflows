@@ -542,7 +542,7 @@ const SUBJECTS = [
   { manifest: 'project', at: [ENVIRONMENT, 'linters'], noun: 'linter', asWritten: true },
 ];
 
-/** A key as words: `tmux_labels` → `tmux labels`. @param {string} key */
+/** A key as words: `session_labels` → `session labels`. @param {string} key */
 function words(key) {
   return key.replace(/[-_]+/g, ' ').trim();
 }

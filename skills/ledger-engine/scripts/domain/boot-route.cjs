@@ -266,7 +266,7 @@ function pickRows(cwd, matches) {
  * @property {'running'|'could'|'cannot'} mod
  * @property {string|null} effort
  * @property {string} walkthrough
- * @property {string} tmux_labels
+ * @property {string} session_labels
  * @property {string} knowledge
  * @property {string} brownfield_offer
  * @property {boolean} github_rule_offer
@@ -295,7 +295,7 @@ function gatesDue(facts, { bare, outdated, restarted }) {
     ['mod-notice', facts.mod === 'could', bare],
     ['effort', facts.effort !== null, bare],
     ['walkthrough', facts.walkthrough === 'none', bare],
-    ['session-labels', facts.tmux_labels === 'prompt', bare],
+    ['session-labels', facts.session_labels === 'prompt', bare],
     ['brownfield', facts.brownfield_offer === 'none', bare || restarted],
     ['github-rule', facts.github_rule_offer, bare],
     ['github-squash', facts.github_squash_offer, bare],

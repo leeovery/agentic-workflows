@@ -50,7 +50,7 @@ describe('engine boot', () => {
       compacted: true,
       migrations_committed: null,
       warnings: [],
-      tmux_labels: 'prompt',
+      session_labels: 'prompt',
       label_repaired: false,
       session_hooks_installed: false,
       mod: 'cannot',

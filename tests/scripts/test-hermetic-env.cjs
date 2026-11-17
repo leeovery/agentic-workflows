@@ -172,6 +172,14 @@ describe('hermetic environment — the pins', () => {
     assert.deepStrictEqual(JSON.parse(res.stdout), [null, null]);
   });
 
+  it('no multiplexer\'s session reaches a test — a session label would relabel the developer\'s own tmux or Portal session', () => {
+    const named = ['TMUX', 'TMUX_PANE', 'ZMX_SESSION', 'ZMX_DIR'];
+    const res = spawnSync('node', ['-e', `require(${JSON.stringify(require.resolve(HERMETIC_MODULE))}); console.log(JSON.stringify(${JSON.stringify(named)}.filter((name) => process.env[name] !== undefined)))`],
+      { encoding: 'utf8', env: { ...process.env, ...Object.fromEntries(named.map((name) => [name, 'the-developers'])) } });
+    assert.strictEqual(res.status, 0, res.stderr);
+    assert.deepStrictEqual(JSON.parse(res.stdout), []);
+  });
+
   it('gh reaches no login of the developer\'s — its config directory an empty one of the suite\'s, and no token or host it would take over that', () => {
     const login = ['GH_TOKEN', 'GITHUB_TOKEN', 'GH_ENTERPRISE_TOKEN', 'GITHUB_ENTERPRISE_TOKEN', 'GH_HOST'];
     const mine = path.join(os.homedir(), '.config', 'gh');

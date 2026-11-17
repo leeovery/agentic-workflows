@@ -350,6 +350,9 @@ const ROADMAP_NOTE = /^notes\/(?:ideas|bugs|quickfixes)\/([0-9]{4}-[0-9]{2}-[0-9
 const BROWNFIELD_ANSWERS = ['native', 'skipped', 'completed'];
 // The project's defaults first use no longer asks for (22.3.1, 22.3.2).
 const RETIRED_DEFAULTS = ['plan_format', 'project_skills'];
+// The session-label opt-in, under the name it keeps now that tmux is not
+// the only multiplexer labelling a session.
+const RENAMED_DEFAULTS = [['tmux_labels', 'session_labels']];
 
 // The marker each stopped operation leaves in the git directory, as the engine reads them.
 const OPERATION_MARKERS = [
@@ -1638,7 +1641,8 @@ function moveProduct(from, state, plan, relocations, places) {
  * `native`, `skipped` or `completed` kept as the brownfield offer's answer
  * (21.11.1, 21.11.2); less the defaults first use no longer asks for, the
  * plan's format and the project skills (22.3.1, 22.3.2), the `defaults`
- * object with them once empty, and no driver's setting written, so each
+ * object with them once empty; the session-label opt-in as
+ * `session_labels`; and no driver's setting written, so each
  * resolves to its default at first need (22.4.3, 7.1.11); each roadmap
  * item's sources following their files, once each; the roadmap's `imports`
  * index dropped, its files the product's assets (21.5.7); the roadmap's open
@@ -1656,6 +1660,11 @@ function reshapedProject(project, relocations, unfoldered, mistyped) {
   if (BROWNFIELD_ANSWERS.includes(answer)) out.brownfield_offer = answer;
   if (isObject(out.defaults)) {
     for (const field of RETIRED_DEFAULTS) delete out.defaults[field];
+    for (const [was, is] of RENAMED_DEFAULTS) {
+      if (!Object.hasOwn(out.defaults, was)) continue;
+      out.defaults[is] = out.defaults[was];
+      delete out.defaults[was];
+    }
     if (Object.keys(out.defaults).length === 0) delete out.defaults;
   }
   const roadmap = isObject(out.roadmap) ? out.roadmap : {};
@@ -2025,7 +2034,7 @@ function move(projectDir, reportUpdate, reportSkip) {
 module.exports = {
   id: '078',
   description: 'move the project from .workflows/ into the layout in .ledger/, the state worktree on an unborn ledger-state — each topic\'s log, mail, brief and experiments in its own folder, imports as assets, plans, specs and reviews as reference, the retired state dropped; the roadmap as the product, the baseline docs as its assets, the tracker\'s store and the knowledge config in the state, the user-level folder to ~/.config/ledger/, and the project\'s files to the new names',
-  info: 'The reshape moves the project\'s state out of .workflows/ into .ledger/, a worktree of its own unborn branch, ledger-state, committing nothing. Each topic\'s research, discussion and investigation become its log, its mail one sequence in its own folder, a cancelled topic\'s mail ideas in the inbox; research feeding several topics goes to a discovery session of the migration\'s, and a legacy split\'s superseded copies to the unit\'s assets as reference; imports become assets; every moved document\'s links follow the files they name; plans, reviews and specs not yet built become reference assets, a completed quick-fix\'s spec its summary, a quick-fix whose scoping, implementation and review all completed counting as completed; a unit whose name breaks the kebab-case rule by its case alone is carried under its lowercase name, every reference the move writes following; the old engine\'s caches and the retired manifest state go, and every file with no place of its own, implementation folders and the reviews\' tracking files among them, is kept as it was under its unit\'s assets/legacy/, or the product\'s. A registry entry typed otherwise than its unit\'s manifest takes the manifest\'s type, listed among the review\'s corrections. The roadmap becomes .product/, its imports its assets, its sessions naming them there, and its items\' sources following their files; the baseline docs become reference in .product/assets/baseline/, a native, skipped or completed baseline remembered as the brownfield offer\'s answer; the plan format and project skills defaults go, and no driver is set, so the defaults serve; the tracker\'s store and the checkout\'s knowledge config are carried into the state, the knowledge store left for the next boot to build. The user-level folder moves to ~/.config/ledger/, a link to it left in its place for projects still on today\'s skills. The code tree\'s .gitignore gains .ledger/, the settings hooks name the engine\'s new path, and .worktreeinclude loses its .workflows/ lines, none of it staged. .workflows/ and the tracker\'s store are left as they are until the migration\'s commit.',
+  info: 'The reshape moves the project\'s state out of .workflows/ into .ledger/, a worktree of its own unborn branch, ledger-state, committing nothing. Each topic\'s research, discussion and investigation become its log, its mail one sequence in its own folder, a cancelled topic\'s mail ideas in the inbox; research feeding several topics goes to a discovery session of the migration\'s, and a legacy split\'s superseded copies to the unit\'s assets as reference; imports become assets; every moved document\'s links follow the files they name; plans, reviews and specs not yet built become reference assets, a completed quick-fix\'s spec its summary, a quick-fix whose scoping, implementation and review all completed counting as completed; a unit whose name breaks the kebab-case rule by its case alone is carried under its lowercase name, every reference the move writes following; the old engine\'s caches and the retired manifest state go, and every file with no place of its own, implementation folders and the reviews\' tracking files among them, is kept as it was under its unit\'s assets/legacy/, or the product\'s. A registry entry typed otherwise than its unit\'s manifest takes the manifest\'s type, listed among the review\'s corrections. The roadmap becomes .product/, its imports its assets, its sessions naming them there, and its items\' sources following their files; the baseline docs become reference in .product/assets/baseline/, a native, skipped or completed baseline remembered as the brownfield offer\'s answer; the plan format and project skills defaults go, the session-label opt-in is renamed session_labels, and no driver is set, so the defaults serve; the tracker\'s store and the checkout\'s knowledge config are carried into the state, the knowledge store left for the next boot to build. The user-level folder moves to ~/.config/ledger/, a link to it left in its place for projects still on today\'s skills. The code tree\'s .gitignore gains .ledger/, the settings hooks name the engine\'s new path, and .worktreeinclude loses its .workflows/ lines, none of it staged. .workflows/ and the tracker\'s store are left as they are until the migration\'s commit.',
   run({ projectDir, reportUpdate, reportSkip }) {
     return move(projectDir, reportUpdate, reportSkip);
   },
