@@ -350,6 +350,10 @@ describe('the directive\'s ways on', () => {
     ], [[], [], []]);
   });
 
+  it('says only a `## Research:` heading naming a research file opens a source, any other under one part of the source above it, as the check reads them', () => {
+    assert.deepStrictEqual(unstated(['Only such a heading naming a research file opens a source: any other under it, a `## Research:` heading the research\'s own title made among them, is part of the source above it.']), []);
+  });
+
   it('a link the cut refuses that still holds: a task of the unit\'s on another unit\'s, the link off and the phase relying on that unit; on a later phase of its own plan, the person\'s choice of a note or a correction; on another plan\'s, or another unit\'s task on one of the unit\'s, a known edge', () => {
     assert.deepStrictEqual(unstated([
       '- **It holds, a task of this unit\'s on another unit\'s.** Take the link off as above; the waiting task\'s phase relies on that unit instead',

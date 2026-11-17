@@ -181,7 +181,7 @@ Write each `Settled:` ruling above, a task of this unit's on another unit's and 
 
 ## An Epic's Research
 
-The move kept research that fed several topics on the epic's discovery log, in a session of its own, `{unit}/discovery/session-{NNN}.md`, opening on the migration's line, each source under `## Research: {source}`, `{source}` the name of the research file it came from. Place each source by judgment:
+The move kept research that fed several topics on the epic's discovery log, in a session of its own, `{unit}/discovery/session-{NNN}.md`, opening on the migration's line, each source under `## Research: {source}`, `{source}` the name of the research file it came from. Only such a heading naming a research file opens a source: any other under it, a `## Research:` heading the research's own title made among them, is part of the source above it. Place each source by judgment:
 
 - **Where it bears.** A topic it bears on is one whose conversation needs what the section holds to be had: its decisions turn on it, or it answers that topic's questions. A section bearing on one theme of the epic goes to that topic; one bearing on several goes to each.
 - **Epic-wide.** A section that bears on the epic as a whole, or on no topic more than another, stays where it is: the records step carried what it holds on the epic's own record.

@@ -137,6 +137,13 @@ describe('a topic\'s record carried (21.6, 21.10.9)', () => {
     assert.ok(stateUnborn(dir));
   });
 
+  it('21.9.1: renders and indexes nothing for the knowledge base, which the finish does, so a store it cannot build says nothing mid-migration', () => {
+    writeState(dir, layout.knowledge('config.json'), '{"knowledge":{}}\n');
+    const res = carry(LICENSING, [QUESTION, DECISION, FINDING]);
+
+    assert.deepStrictEqual([res.warnings, fs.readdirSync(statePath(dir, layout.knowledge())).sort()], [undefined, ['config.json']]);
+  });
+
   it('21.S44: a cancelled unit\'s topic is carried as any other, its entries in the ledger', () => {
     carry('gone.discussion.gone', [{ ref: 'q1', event: 'asked', text: 'What caused it?', by: 'claude', map_item: 'cause', cites: [{ path: 'gone/topics/gone/log.md', section: 'Cause' }], assets: [{ path: 'gone/assets/notes.md', status: 'reference' }] }]);
 

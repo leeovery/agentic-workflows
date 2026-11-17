@@ -9,7 +9,9 @@
 //
 // - When: only while the migration runs (state-worktree.cjs's
 //   `migrationRuns`), so its commit is held for the migration's, and the
-//   trust log is told nothing (21.1.5, 21.9.3).
+//   trust log is told nothing (21.1.5, 21.9.3). It renders no copies for
+//   the knowledge base, nor indexes them: boot does both at the finish,
+//   where the knowledge question is asked (21.9.1).
 // - Where: a topic of a unit, holding an item in the phase named, one of the
 //   phases the records directive carries a topic of (079's check), live or
 //   not: a cancelled unit's topics and a cancelled topic get their records
@@ -110,7 +112,6 @@ const { newId, shortIds } = require('./ledger-ids.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { withStateLock, assertMigrationRuns } = require('./state-worktree.cjs');
 const { HELD_NOTE } = require('./commit.cjs');
-const { refreshLedgerCopies } = require('./ledger-copies.cjs');
 const { WRITES, contentFaults, saidFaults, unsealedFaults, decisionGiven } = require('./ledger-write.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { directiveOf } = require('./directives.cjs');
@@ -723,7 +724,6 @@ function carryRecord(cwd, args) {
       };
     });
     clearBeside(place);
-    if (lines.length > 0) refreshLedgerCopies(cwd, warnings);
     return {
       carried: kept.length,
       ids: Object.fromEntries(kept.map(({ ref, id }) => [ref, short.get(id)])),
