@@ -26,8 +26,8 @@
 - For each link in the tracker the cut refuses that the sources do not
   settle: whether it still holds; and for one that holds on a later phase
   of its own old plan, which way on.
-- For a point a verifier reverses that the sources do not settle: how it
-  stands.
+- For a point the sources do not settle that a verifier reverses, or
+  that a finding of the third round or a later one raises: how it stands.
 - Nothing else.
 
 ## What It Does

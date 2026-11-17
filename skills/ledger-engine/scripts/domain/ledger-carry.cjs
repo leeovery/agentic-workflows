@@ -58,7 +58,8 @@
 // - Verified, in its unit's order: a record is carried only once no
 //   finding its composer handed back to the session stands unsettled
 //   beside it (`handedBack`), and once its verifier has passed it, the
-//   findings beside it an empty file (079's check, `unverified`) — the
+//   findings beside it an empty file, or the session settled a late
+//   round's findings (ledger-settle.cjs; 079's check, `unverified`) — the
 //   carry clears them, and a record is carried once, so a finding left
 //   standing would never be answered — the record unchanged since that
 //   verifier's brief was issued on it (`briefedOn`), and its verdicts
@@ -223,6 +224,9 @@ const BESIDE_FINDINGS = Object.freeze([
   Object.freeze({ heading: '### Checked', rel: checkedPath }),
 ]);
 
+/** How many rounds are kept at `rounds`. @param {string} rounds */
+const roundsKept = (rounds) => (fs.existsSync(rounds) ? [...fs.readFileSync(rounds, 'utf8').matchAll(ROUND)].length : 0);
+
 /**
  * The last verifier's findings, at `findings`, as the round after those kept
  * at `rounds`, under its heading — an empty file its pass — and beneath
@@ -232,7 +236,7 @@ const BESIDE_FINDINGS = Object.freeze([
  */
 function lastRound(rounds, findings, beside = []) {
   if (!fs.existsSync(findings)) return null;
-  const kept = fs.existsSync(rounds) ? [...fs.readFileSync(rounds, 'utf8').matchAll(ROUND)].length : 0;
+  const kept = roundsKept(rounds);
   const text = fs.readFileSync(findings, 'utf8').trim();
   const written = beside.flatMap(({ heading, file }) => {
     const said = fs.existsSync(file) ? fs.readFileSync(file, 'utf8').trim() : '';
@@ -407,20 +411,21 @@ function argsOf(args) {
 }
 
 /**
- * The topic's record's entries, read where it is composed. Refuses a file
- * that cannot be read, and one holding no record.
- * @param {Place} place @returns {Record<string, any>[]}
+ * The topic's record's entries, read where it is composed. Refuses, in the
+ * words of `said`, the command asking, a file that cannot be read, and one
+ * holding no record.
+ * @param {Place} place @param {string} [said] @returns {Record<string, any>[]}
  */
-function readRecord({ root, unit, topic }) {
+function readRecord({ root, unit, topic }, said = SAID) {
   const file = composedPath(unit, topic);
   let record;
   try {
     record = JSON.parse(fs.readFileSync(path.join(root, file), 'utf8'));
   } catch (err) {
-    throw new Error(`${SAID}: the record could not be read from ${file}: ${messageOf(err)}`);
+    throw new Error(`${said}: the record could not be read from ${file}: ${messageOf(err)}`);
   }
   if (!isObject(record) || Object.keys(record).length !== 1 || !Array.isArray(record.entries) || !record.entries.every(isObject)) {
-    throw new Error(`${SAID}: ${file} holds no record — a record is {"entries": [...]}, each entry an object`);
+    throw new Error(`${said}: ${file} holds no record — a record is {"entries": [...]}, each entry an object`);
   }
   return record.entries;
 }
@@ -731,4 +736,4 @@ function carryRecord(cwd, args) {
   }
 }
 
-module.exports = { CARRY_VERB, CARRY_USAGE, DRY_RUN, placePath, recordName, carriedPath, composedPath, findingsPath, rulingsPath, handbackPath, handedBack, checkedPath, verifyingPath, noteVerifying, briefedOn, lastVerdicts, uncheckedRound, unsettledRound, lastRound, keepRound, keepRecordRound, besideFindings, refusedPath, roundsPath, settledPath, topicPlace, carryRecord };
+module.exports = { CARRY_VERB, CARRY_USAGE, DRY_RUN, placePath, recordName, readRecord, recordHash, roundsKept, carriedPath, composedPath, findingsPath, rulingsPath, handbackPath, handedBack, checkedPath, verifyingPath, noteVerifying, briefedOn, lastVerdicts, uncheckedRound, unsettledRound, lastRound, keepRound, keepRecordRound, besideFindings, refusedPath, roundsPath, settledPath, topicPlace, carryRecord };

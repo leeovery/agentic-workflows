@@ -84,7 +84,9 @@
 // joined spec, each whose part holds it, any section outside the parts
 // every topic's of the spec — and asks no composer for an entry. A record
 // is carried once its verifier has passed it, the findings beside it as
-// composed an empty file (`unverified`, which `ledger carry` asks); and
+// composed an empty file, or the session has settled a late round's
+// findings, the note beside it marked so (`unverified`, which `ledger
+// carry` asks); and
 // until each topic of a unit drawing on an approved spec has its record so
 // passed, and no such section is named, none of its topics is carried
 // (`unitWaits`): a topic carried could take no section found later. A
@@ -782,14 +784,25 @@ const carriedOf = (project, unit, topic) => readJson(path.join(project.stateDir,
 /**
  * Why a record has not passed its verifier, null where it has: the
  * verifier's findings beside it as composed, an empty file its pass, none
- * where no verifier has written.
+ * where no verifier has written since — but where the session settled a
+ * late round's findings, the note beside the record marked so, its pass
+ * (`ledger settle`).
  * @param {string} stateDir @param {string} unit @param {string|null} topic @returns {string|null}
  */
 function unverified(stateDir, unit, topic) {
   const findings = recordFile(COMPOSED, unit, topic, '.findings.txt');
   const text = readText(path.join(stateDir, findings));
-  if (text === null) return `${findings} is no file`;
+  if (text === null) return settledBySession(stateDir, unit, topic) ? null : `${findings} is no file`;
   return text.trim() === '' ? null : `its findings stand in ${findings}`;
+}
+
+/** Whether the note beside a record marks it as the session settled it. @param {string} stateDir @param {string} unit @param {string|null} topic */
+function settledBySession(stateDir, unit, topic) {
+  try {
+    return readJson(path.join(stateDir, recordFile(COMPOSED, unit, topic, '.verifying.json')))?.settled === true;
+  } catch {
+    return false;
+  }
 }
 
 /** The sections of the unit's specs the session marked as holding no topic's decision, from the state's folder. @param {string} unit */

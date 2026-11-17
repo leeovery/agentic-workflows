@@ -67,6 +67,7 @@ const { LEDGER_READ_USAGE, READ_VERBS, readLedgerVerb } = require('./domain/ledg
 const { LATE_CHECK_VERB, LATE_CHECK_USAGE, lateCheck } = require('./domain/ledger-late-check.cjs');
 const { ASSET_USAGE, runAssetVerb } = require('./domain/asset.cjs');
 const { CARRY_VERB, CARRY_USAGE, carryRecord } = require('./domain/ledger-carry.cjs');
+const { SETTLE_VERB, SETTLE_USAGE, settleRecord } = require('./domain/ledger-settle.cjs');
 const { VERDICT_USAGE, runVerdictVerb } = require('./domain/verdict.cjs');
 const { PERSON_USAGE, runPersonVerb } = require('./domain/person-verbs.cjs');
 const { CONVERGENCE_USAGE, runConvergenceVerb } = require('./domain/convergence.cjs');
@@ -275,6 +276,7 @@ ${LEDGER_USAGE.replace(/^/gm, '  ')}
 ${LEDGER_READ_USAGE.replace(/^/gm, '  ')}
   ${LATE_CHECK_USAGE}
   ${CARRY_USAGE}
+  ${SETTLE_USAGE}
 ${ASSET_USAGE.replace(/^/gm, '  ')}
 ${VERDICT_USAGE.replace(/^/gm, '  ')}
 ${PERSON_USAGE.replace(/^/gm, '  ')}
@@ -540,7 +542,9 @@ function runManifest(call, argv) {
 // cache. The late one-decision check (domain/ledger-late-check.cjs) is
 // boot's detached job, taking the lock for each result it records. `carry`
 // (domain/ledger-carry.cjs) is the migration's, a topic's whole record
-// appended in one write under the lock it takes itself.
+// appended in one write under the lock it takes itself; so is `settle`
+// (domain/ledger-settle.cjs), the session passing a record a late verifier
+// round still finds against, which writes beside the record alone.
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */
@@ -551,7 +555,8 @@ function runLedger(call, argv) {
     else if (WRITE_VERBS.includes(verb)) respond(call, writeLedger(call.cwd, verb, rest, call.stdin));
     else if (verb === LATE_CHECK_VERB) respond(call, lateCheck(call.cwd, rest));
     else if (verb === CARRY_VERB) respond(call, carryRecord(call.cwd, rest));
-    else throw new Error(`Usage: engine ledger <${[...WRITE_VERBS, ...READ_VERBS, LATE_CHECK_VERB, CARRY_VERB].join('|')}> …\n${LEDGER_USAGE}\n${LEDGER_READ_USAGE}\n${LATE_CHECK_USAGE}\n${CARRY_USAGE}`);
+    else if (verb === SETTLE_VERB) respond(call, settleRecord(call.cwd, rest, call.stdin));
+    else throw new Error(`Usage: engine ledger <${[...WRITE_VERBS, ...READ_VERBS, LATE_CHECK_VERB, CARRY_VERB, SETTLE_VERB].join('|')}> …\n${LEDGER_USAGE}\n${LEDGER_READ_USAGE}\n${LATE_CHECK_USAGE}\n${CARRY_USAGE}\n${SETTLE_USAGE}`);
   } catch (err) {
     failJson(call, err);
   }

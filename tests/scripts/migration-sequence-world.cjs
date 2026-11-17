@@ -15,7 +15,8 @@
 // it; `migrateWhole` takes it through the whole sequence as the start skill
 // runs it, boot by boot: the guard and the chain to the records directive,
 // whose work is scripted — each topic's record the fixture's, checked by
-// the carry's dry run, then carried —
+// the carry's dry run, one settled by the session past its third verifier
+// round, then carried —
 // then the cut and the merges', scripted too — the cross-cutting unit
 // retired, the feature's phase still to build composed and joined into its
 // cut — then the finish, the review's summary and gate, and the yes's
@@ -41,7 +42,7 @@ const { listOld } = require('./migration-audit.cjs');
 
 const SCRIPTS = path.dirname(harness.ENGINE);
 const { jsonText } = require(path.join(SCRIPTS, 'kernel/manifest-io.cjs'));
-const { composedPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
+const { composedPath, findingsPath, checkedPath, roundsPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
 const { passedBeside } = require('./migration-world.cjs');
 
 const PROJECT = 'fumi';
@@ -205,6 +206,24 @@ const SHARING_PIECE = Object.freeze({
 });
 
 /**
+ * A topic's record a third verifier round still found against, settled by
+ * the session in a fresh verifier's place: two rounds kept, the third's
+ * verifier briefed on the record, its finding ruled out.
+ * @param {string} dir @param {{env: Record<string, string>}} opts @param {string} place
+ */
+function settleLate(dir, opts, place) {
+  const [unit, , topic] = place.split('.');
+  const { entries } = JSON.parse(fs.readFileSync(harness.statePath(dir, composedPath(unit, topic)), 'utf8'));
+  for (const [rel] of passedBeside(unit, topic, entries)) fs.rmSync(harness.statePath(dir, rel));
+  writeState(dir, roundsPath(unit, topic), '## Round 1\n\n- The format is unnamed.\n\n## Round 2\n\n- The format is still unnamed.\n');
+  harness.ok(dir, ['brief', 'migration-verifier', '--topic', place, '--directive', RECORDS], opts);
+  writeState(dir, findingsPath(unit, topic), '- The format is unnamed yet.\n');
+  writeState(dir, checkedPath(unit, topic), entries.map(({ ref }) => `${ref}: see finding\n`).join(''));
+  const settled = { findings: [{ finding: 'The format is unnamed', settled: 'ruled-out', why: 'The log leaves it open, and the record asks it.' }] };
+  assert.strictEqual(harness.ok(dir, ['ledger', 'settle', place], { ...opts, stdin: JSON.stringify(settled) }).round, 4);
+}
+
+/**
  * The directive boot stopped at, worked as its session would: the check's
  * pieces done by the fixture's work, then the check passing and its
  * checklist closed.
@@ -234,6 +253,7 @@ function workDirective(dir, env, directive) {
       'a joined spec\'s section is named on the topic whose part holds it, a part\'s front matter holding none of its text: a cite counts in its topic\'s part alone, and a mark in its own');
     compose('shop.discussion.cart', cart);
     compose('shop.discussion.pay', RECORDS_COMPOSED['shop.discussion.pay']);
+    settleLate(dir, opts, 'exports.discussion.exports');
     for (const place of Object.keys(RECORDS_COMPOSED)) harness.ok(dir, ['ledger', 'carry', place], opts);
   } else {
     harness.ok(dir, ['workunit', 'retire', 'caching'], opts);
