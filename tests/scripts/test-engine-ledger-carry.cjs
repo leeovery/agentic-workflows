@@ -18,7 +18,9 @@
 // refusal — each entry's, each check of an entry whichever others break,
 // and the directive's rules; a map item and a thread a name or a list of
 // names. The dry run answers the same faults, none for a record the carry
-// takes, writing nothing, and needs no session. The rules the records
+// takes, writing nothing. Every line it writes carries the migration's
+// mark, the session `migration`, whoever made it, and needs no session
+// handed; `ledger record` shows it. The rules the records
 // directive holds a record to are test-migration-079.cjs's.
 //
 // Layer: verb, the kill spawned. World: the records directive's
@@ -89,8 +91,8 @@ const mend = (entries) => mendFile({ entries: [...entries, KEEPS] });
 /** The refusal of licensing's record, naming every fault. @param {string[]} faults */
 const broken = (...faults) => `ledger carry: fumi's licensing breaks the records directive's rules, so nothing is carried — ${faults.join('; ')}`;
 
-/** @param {string} dotpath @param {unknown[]} entries */
-const carry = (dotpath, entries) => ok(dir, composed(dotpath, { entries }), { env: SESSION });
+/** A record carried, as the migration's session runs it, with no session handed. @param {string} dotpath @param {unknown[]} entries */
+const carry = (dotpath, entries) => ok(dir, composed(dotpath, { entries }), { env: {} });
 
 /**
  * The note a verifier's brief writes beside licensing's record of its
@@ -113,11 +115,11 @@ describe('a topic\'s record carried (21.6, 21.10.9)', () => {
   beforeEach(() => { dir = world(); });
   afterEach(() => cleanupFixture(path.dirname(dir)));
 
-  it('appended as one: each entry tagged, its content and its links by id, moving no one, a decision unchecked, its asset links after it; what was carried kept; the commit held', () => {
+  it('appended as one: each line tagged, its session the migration\'s mark, whoever made it, no session handed; its content and its links by id, moving no one, a decision unchecked, its asset links after it; what was carried kept; the commit held', () => {
     const res = carry(LICENSING, [QUESTION, DECISION, FINDING]);
     const entries = ledgerEntries(statePath(dir));
     const [q, d, , f] = entries;
-    const tags = { v: 1, unit: 'fumi', topic: 'licensing', phase: 'discussion', session: SESSION.CLAUDE_CODE_SESSION_ID };
+    const tags = { v: 1, unit: 'fumi', topic: 'licensing', phase: 'discussion', session: 'migration' };
 
     assert.deepStrictEqual(res, { ok: true, carried: 3, ids: { q1: q.id.slice(0, res.ids.q1.length), d1: d.id.slice(0, res.ids.d1.length), f1: f.id.slice(0, res.ids.f1.length) }, committed: null, note: 'held for the migration\'s commit' });
     assert.deepStrictEqual(lines(), [
@@ -135,6 +137,7 @@ describe('a topic\'s record carried (21.6, 21.10.9)', () => {
       unit: 'fumi', phase: 'discussion', topic: 'licensing', entries: [{ ref: 'q1', id: q.id }, { ref: 'd1', id: d.id }, { ref: 'f1', id: f.id }], record: { entries: [QUESTION, DECISION, FINDING] },
     });
     assert.ok(stateUnborn(dir));
+    assert.deepStrictEqual(ok(dir, ['ledger', 'record', 'fumi', 'licensing'], { env: SESSION }).decisions.map(({ session }) => session), ['migration'], 'ledger record shows the mark');
   });
 
   it('21.9.1: renders and indexes nothing for the knowledge base, which the finish does, so a store it cannot build says nothing mid-migration', () => {
@@ -365,10 +368,9 @@ describe('the refusals, nothing written', () => {
   before(() => { dir = world(); });
   after(() => cleanupFixture(path.dirname(dir)));
 
-  it('no session, argv of another shape, and a place naming no topic, writing nothing; no record composed, or a file holding none, writing its refusal beside the record', () => {
+  it('argv of another shape, and a place naming no topic, writing nothing; no record composed, or a file holding none, writing its refusal beside the record', () => {
     const usage = 'Usage: engine ledger carry <work-unit>.<phase>.<topic>|<work-unit>.discovery [--dry-run]   (the record as JSON, {"entries": [...]}, composed at .cache/migrate/records/{unit}/{topic}.json in the state, a unit\'s own at .cache/migrate/records/{unit}.json)';
     assert.deepStrictEqual([
-      untouched(['ledger', 'carry', LICENSING], { env: {} }),
       untouched(['ledger', 'carry']),
       untouched(['ledger', 'carry', '--dry-run']),
       untouched(['ledger', 'carry', '--file', 'record.json']),
@@ -385,7 +387,6 @@ describe('the refusals, nothing written', () => {
       mendFile({ entries: [QUESTION], more: true }),
       mendFile({ entries: ['q1'] }),
     ], [
-      'ledger carry: no session to tag the entries with — CLAUDE_CODE_SESSION_ID is not set',
       usage,
       usage,
       usage,

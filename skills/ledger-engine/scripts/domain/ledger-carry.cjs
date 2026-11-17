@@ -40,7 +40,10 @@
 //   out, its alternatives and evidence — never name another entry by its
 //   ref, which the record alone reads: the ledger links by id, so a
 //   drafting label left in them means nothing there, and the carry refuses
-//   it, naming it. Every entry moves no one; a decision lands unchecked, for
+//   it, naming it. Every line it writes is tagged with the session
+//   `migration` (ledger-events.cjs, `CARRIED_SESSION`), whoever made the entry, no
+//   conversation's: the mark of an entry from before Ledger, which needs no
+//   session handed. Every entry moves no one; a decision lands unchecked, for
 //   the late one-decision check after the migration, and unlabelled, its
 //   kind and hard-to-undo mark null: no call is made while the migration
 //   runs.
@@ -91,8 +94,8 @@
 //   taking them while 079 can run. The check rests on those two things
 //   alone: the carried file's record, and each of its ids standing as a
 //   line's `id` in the ledger, never another field of a line.
-// - It refuses, carrying nothing: outside the migration; no session, but on
-//   a dry run, which tags nothing; argv of another shape; a place of
+// - It refuses, carrying nothing: outside the migration; argv of another
+//   shape; a place of
 //   another shape, a phase the directive carries no topic of, a unit the
 //   project lacks, a topic with no item in the phase, one whose item is in
 //   a later phase, a topic promoted. And what the record's composer
@@ -108,13 +111,13 @@ const path = require('path');
 const { messageOf } = require('../kernel/call.cjs');
 const { isObject } = require('../kernel/manifest-io.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
-const { handedSession } = require('../kernel/process.cjs');
 const { appendEntries, withLedger, carrying, commitLedger } = require('./ledger.cjs');
 const { newId, shortIds } = require('./ledger-ids.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { withStateLock, assertMigrationRuns } = require('./state-worktree.cjs');
 const { HELD_NOTE } = require('./commit.cjs');
 const { WRITES, contentFaults, saidFaults, unsealedFaults, decisionGiven } = require('./ledger-write.cjs');
+const { CARRIED_SESSION } = require('./ledger-events.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { directiveOf } = require('./directives.cjs');
 
@@ -581,14 +584,14 @@ function labelFaults(entries) {
  * entry whose words name another by its ref, each question marked to raise
  * that a decision of the record answers, which `raise` would refuse, and
  * what it breaks of the records directive's rules.
- * @param {string} cwd @param {Place} place @param {Record<string, any>[]} entries @param {string|null} session
+ * @param {string} cwd @param {Place} place @param {Record<string, any>[]} entries
  * @returns {Drawn}
  */
-function drawnRecord(cwd, place, entries, session) {
+function drawnRecord(cwd, place, entries) {
   const { root, unit, phase, topic } = place;
   /** @type {Map<string, Earlier>} */
   const before = new Map();
-  const tags = { unit, topic, phase, session };
+  const tags = { unit, topic, phase, session: CARRIED_SESSION };
   const drawn = entries.map((entry, at) => entryLines(place, entry, at, before, tags));
   const answered = new Set(entries.filter(({ event }) => event === 'decided').map(({ answers }) => answers));
   const settled = [...before].filter(([ref, { raised }]) => raised && answered.has(ref))
@@ -637,12 +640,12 @@ function keepCarried({ root, unit, phase, topic }, entries, kept) {
 /**
  * The record read and drawn; where the composer must answer something, the
  * refusal, naming every fault, written beside the record.
- * @param {string} cwd @param {Place} place @param {string} session
+ * @param {string} cwd @param {Place} place
  */
-function composedRecord(cwd, place, session) {
+function composedRecord(cwd, place) {
   try {
     const entries = readRecord(place);
-    const { lines, kept, faults } = drawnRecord(cwd, place, entries, session);
+    const { lines, kept, faults } = drawnRecord(cwd, place, entries);
     if (faults.length > 0) throw new Error(`${SAID}: ${recordName(place)} breaks the records directive's rules, so nothing is carried — ${faults.join('; ')}`);
     return { entries, lines, kept };
   } catch (err) {
@@ -693,7 +696,7 @@ function clearBeside({ root, unit, topic }) {
  */
 function dryRun(cwd, dotpath) {
   const place = topicPlace(cwd, dotpath, SAID);
-  return { faults: drawnRecord(cwd, place, readRecord(place), null).faults };
+  return { faults: drawnRecord(cwd, place, readRecord(place)).faults };
 }
 
 /**
@@ -711,10 +714,8 @@ function carryRecord(cwd, args) {
     assertMigrationRuns(stateRoot(cwd), SAID, 'a topic\'s record is carried into the ledger');
     const { dotpath, dry } = argsOf(args);
     if (dry) return dryRun(cwd, dotpath);
-    const session = handedSession();
-    if (session === null) throw new Error(`${SAID}: no session to tag the entries with — CLAUDE_CODE_SESSION_ID is not set`);
     const place = topicPlace(cwd, dotpath, SAID);
-    const { entries, lines, kept } = composedRecord(cwd, place, session);
+    const { entries, lines, kept } = composedRecord(cwd, place);
     const { outcome, short } = withStateLock(place.root, () => {
       const beside = idsBeside(place, warnings);
       refuseUnsettled(cwd, place);
