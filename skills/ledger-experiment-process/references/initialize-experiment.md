@@ -34,7 +34,7 @@ Then the linked inputs:
 
 ## C. Route
 
-The inputs just read are inherited ground, not a list of questions to re-ask — the laboratory asks the user its own questions where the design needs them. No registration and no commit here: the spawn created the record, and the first write commits from the leg that makes it.
+The inputs just read are inherited ground, not a list of questions to re-ask — the laboratory asks the user its own questions where the design needs them.
 
 #### If `record_status` is `conceived`
 

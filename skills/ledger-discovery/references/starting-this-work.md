@@ -39,4 +39,4 @@ Stage it and draw the screen, emitting its sections verbatim per their markers:
 node .claude/skills/ledger-engine/scripts/engine.cjs render start-this-work --file .ledger/.cache/product/discovery/product/start-this-work-payload.json
 ```
 
-A refusal names what to fix: fix the payload and stage it again. The answer goes to `gate`; follow its `next`, and then the `next` of what it ran. For an epic that carries the conversation into the epic's own discovery: read its DATA as on entering — `{home}` is now the epic — and shape its topics there. For a quick-fix it invokes the quick-fix's skill in this conversation, and its fixes start there. Keep shaping takes the person's word back into the conversation.
+A refusal names what to fix: fix the payload and stage it again. At the gate, follow the `next` of what the answer ran. For an epic that carries the conversation into the epic's own discovery: read its DATA as on entering — `{home}` is now the epic — and shape its topics there. Keep shaping takes the person's word back into the conversation.

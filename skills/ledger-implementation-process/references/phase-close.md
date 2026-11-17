@@ -4,7 +4,7 @@
 
 ---
 
-Phase {N} closes once every task of it is done or closed: its notes for later consolidated, one phase review over its whole change, its stack merged, and its close checklist closed. Its checklist holds the order of what is left — every item is the engine's, and each open one names what stands in the way:
+Phase {N} closes once every task of it is done or closed: its notes for later consolidated, one phase review over its whole change, its stack merged, and its close checklist closed. Its checklist holds the order of what is left:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs checklist show phase-close {work_unit} {N}
@@ -12,7 +12,7 @@ node .claude/skills/ledger-engine/scripts/engine.cjs checklist show phase-close 
 
 ## The Notes
 
-While `notes-consolidated` is open, brief the consolidation agent, then make the Agent call — its `subagent_type` the agent `brief` answers, its prompt the pointer alone — and wait for its status:
+While `notes-consolidated` is open, brief the consolidation agent, then make the Agent call and wait for its status:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs brief consolidation {work_unit} {N}
@@ -44,10 +44,10 @@ Fetch the phase's merge gate:
 node .claude/skills/ledger-engine/scripts/engine.cjs render phase-merge-gate {work_unit} {N}
 ```
 
-It is refused where the build runs in auto, where the stack merges with no gate: merge it, `land phase {work_unit} {N}`. Otherwise emit its sections verbatim per their markers, which ends the turn, and take the person's answer to `gate "phase merge"`: its yes's `next` merges the stack. A Comment's change, once confirmed, is a task of the phase through the task loop, and the gate comes again once it is done. A merge refused after the yes names its way on: take it, then run `land phase {work_unit} {N}` again.
+It is refused where the build runs in auto, where the stack merges with no gate: merge it, `land phase {work_unit} {N}`. Otherwise emit its sections verbatim per their markers, which ends the turn, and take the person's answer to `gate "phase merge"`. A Comment's change, once confirmed, is a task of the phase through the task loop, and the gate comes again once it is done. A merge refused after the yes names its way on: take it, then run `land phase {work_unit} {N}` again.
 
 ## The Close
 
-Close the checklist, `checklist close phase-close {work_unit} {N}`. The first phase's close is refused until the verify setup is recorded: the product running and drivable is that phase's to build.
+Close the checklist, `checklist close phase-close {work_unit} {N}`.
 
 Then write in the build's log what the phase left for the next.

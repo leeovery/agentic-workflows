@@ -4,11 +4,11 @@
 
 ---
 
-The closing pass has two readers: a fresh agent, unanchored by the conversation, and you, who were in it. Mark each item as it holds, `checklist done decided {work_unit} {topic} {item}`, or skip it with its reason, `checklist skip decided {work_unit} {topic} {item} --reason "{reason}"`; a skip shows on the screen that shows the close.
+The closing pass has two readers: a fresh agent, unanchored by the conversation, and you, who were in it. Mark each item as it holds, `checklist done decided {work_unit} {topic} {item}`, or skip it with its reason, `checklist skip decided {work_unit} {topic} {item} --reason "{reason}"`.
 
 ## The Fresh Reader
 
-Dispatch it, brief it, then make the Agent call — its `subagent_type` the agent `brief` answers, its prompt the pointer alone. Its brief says whether a gap review has run since the topic's last decision; where none has, the reader runs one too. Do your own reads while it works: the close waits on its report.
+Dispatch it, brief it, then make the Agent call. Do your own reads while it works: the close waits on its report.
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs agent dispatch {work_unit} discussion {topic} --kind closing-pass

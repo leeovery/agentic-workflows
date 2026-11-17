@@ -20,14 +20,12 @@ Record it under a kebab-case slug drawn from the problem:
 node .claude/skills/ledger-engine/scripts/engine.cjs experiment create {work_unit} {topic} --slug {slug} --from discussion --problem .ledger/.cache/{work_unit}/discussion/{topic}/problem.md --question {question}
 ```
 
-The create installs the problem statement, holds the question open, waiting on the experiment, and commits the record. A refusal records nothing and keeps the scratch: say why in a line. Otherwise its `id` is the experiment.
+A refused create: say why in a line. Otherwise its `id` is the experiment.
 
 ## Now or Later
 
-Yes leaves the topic. Bring the log up to date, then fetch `render wait-agents {work_unit}.{topic}`; where it draws a MENU, emit it verbatim per its marker and follow the answer's `next`. Then fetch the gate and emit its MENU section verbatim per its marker:
+Yes leaves the topic. Bring the log up to date, then fetch `render wait-agents {work_unit}.{topic}`; where it draws a MENU, emit it verbatim per its marker. Then fetch the gate and emit its MENU section verbatim per its marker:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render experiment-spawn-gate {work_unit}.discussion.{topic} --id {id}
 ```
-
-The answer goes to `gate`; follow its `next`. Yes pauses the conversation and opens the laboratory; later carries it on, the question waiting for the result unless the person answers it first.

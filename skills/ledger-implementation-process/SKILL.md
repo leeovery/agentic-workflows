@@ -30,7 +30,7 @@ Every engine call is `node .claude/skills/ledger-engine/scripts/engine.cjs {verb
 node .claude/skills/ledger-engine/scripts/engine.cjs enter implementation {work_unit}
 ```
 
-A refusal names the way on: say it in a line. Where another session holds the checkout's code or the unit's build, the entry asks first: emit its sections verbatim per their markers and follow the answer's `next`; carrying on from it ends the turn.
+A refusal names the way on: say it in a line. Where another session holds the checkout's code or the unit's build, the entry asks first: emit its sections verbatim per their markers; carrying on from it ends the turn.
 
 Then read what the DATA names: the unit's `record` and its `affected` entries, by running each call, and the `build log`, beside the ledger. Each affected entry is confirmed (`ledger hold`) or replaced before the work resting on it goes on. The rest of the DATA is where the build stands:
 - Each `phase` line, and the `fixes owed` beneath one, say where the phase is.
@@ -49,9 +49,9 @@ The phases run in the cut's order, each through three stretches:
 2. **Its tasks** — each built, reviewed and landed: load **[the-task-loop.md](references/the-task-loop.md)** and follow its instructions as written, with place = `implementation` and N = the phase's number.
 3. **Its close** — its notes consolidated, its phase review, its stack merged and its close checklist closed: load **[phase-close.md](references/phase-close.md)** and follow its instructions as written, with N = `{N}`.
 
-Phases overlap where they can. A phase relying on nothing unfinished may start whenever you schedule it — usually as the one before goes into its phase review — and a phase relying on another waits for that one's merge. Its start checklist says which: `relies-on-done` stays open until what it relies on is done. Plan ahead and pull work forward through the tracker as you see fit; the tasks' links and the checklists hold the order.
+Phases overlap where they can. A phase relying on nothing unfinished may start whenever you schedule it — usually as the one before goes into its phase review. Plan ahead and pull work forward through the tracker as you see fit; the tasks' links and the checklists hold the order.
 
-Nothing is finished while the cut holds a phase not yet written: no task ready with a phase still to start means that phase starts next.
+No task ready with a phase still to start means that phase starts next.
 
 ### The Person
 
@@ -111,6 +111,6 @@ The person puts an idea, a bug or a fix aside — "roadmap it", "inbox it", "bac
 
 ## Cancelling the Work
 
-The person calls the work off. Bring the build's log up to date, then fetch the confirm, `render cancel-gate {work_unit}`, emit its MENU verbatim per its marker and follow the answer's `next`. A refusal names what holds the unit: say it in a line.
+The person calls the work off. Bring the build's log up to date, then fetch the confirm, `render cancel-gate {work_unit}`, and emit its MENU verbatim per its marker. A refusal names what holds the unit: say it in a line.
 
 The cancel takes the unit's cache, its agents' rows with it: stop every agent you dispatched with the TaskStop tool. The cancel answers its receipt: emit its sections verbatim per their markers, then follow the cancel's `next`.

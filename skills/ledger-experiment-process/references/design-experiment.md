@@ -6,7 +6,7 @@
 
 Author `{dir}/design.md` with the user — load **[design-template.md](design-template.md)** for the skeleton and the conditional sections. The conversation does the designing: what exactly is the question and the decision it feeds, what do we predict and why, what rule settles it, how will we measure — method, instruments and their versions, sample, environment. The setup names the execution shape the run will take (see the run leg's shapes) — the shape of the experiment follows the shape of the problem, proposed here.
 
-Depth scales with the shape — a ten-minute local test writes four lines per section; a multi-day run writes pages — but the skeleton never scales away, and one primary question is the width limit: anything else measured is explicitly secondary.
+Depth scales with the shape — a ten-minute local test writes four lines per section; a multi-day run writes pages — but the skeleton never scales away.
 
 #### If the user abandons the experiment before the design settles
 
@@ -16,7 +16,7 @@ Depth scales with the shape — a ten-minute local test writes four lines per se
 
 #### Otherwise
 
-When the design is written, record the step and commit — the commit carries the design file and the manifest together:
+When the design is written, record the step and commit:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs experiment advance {work_unit} {topic} {id}

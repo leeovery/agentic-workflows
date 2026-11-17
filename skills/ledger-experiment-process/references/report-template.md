@@ -42,8 +42,7 @@ sub-experiments' verdicts.}
 
 ## Notes
 
-- **Corrections are append-only.** A flaw found after writing gets a dated entry in a `## Corrections` section appended at the end — nothing above it is rewritten, and old data is never re-scored under new rules; the fixed design is the next experiment's.
-- Where the output is scoreable, the mechanical score lands in Results and the close read of the actual output lands in Reading — both, always; the score summarises, the read sees.
-- Experiment status and the verdict line are tracked in the work unit manifest, not in the document.
+- **Corrections are append-only.** A flaw found after writing gets a dated entry in a `## Corrections` section appended at the end.
+- Where the output is scoreable, the mechanical score lands in Results and the close read of the actual output lands in Reading.
 
 → Return to caller.

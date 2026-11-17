@@ -84,7 +84,7 @@ Store the record's id as `{id}`, its `status` as `{record_status}`, and its `slu
 
 ## C. Announce the Record
 
-Branch on `{record_status}` — no re-read. The note is the record's one announce, and rendering it claims the topic's slot.
+Branch on `{record_status}` — no re-read.
 
 #### If status is `conceived`
 

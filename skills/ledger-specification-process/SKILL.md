@@ -30,7 +30,7 @@ Every engine call is `node .claude/skills/ledger-engine/scripts/engine.cjs {verb
 node .claude/skills/ledger-engine/scripts/engine.cjs enter specification {work_unit}
 ```
 
-A refusal names the way on: say it in a line. Otherwise read what the DATA names: each `record`, by running its call, the unit's own among them; each `topic log` and `asset`; and those the spec has once it is under way — the `spec`, the `cut` by its call, and while the person's review page is open, its `review page` and the `read back` file its marks go to. Close each `lost` agent with `agent incorporate`; each `landed` report is a review pass's: load **[writing-and-review.md](references/writing-and-review.md)** and follow its instructions as written, from **A Pass's Report**. A `running` pass is one this conversation sent, still reviewing: its report lands in the unit's store, and once it does, load **[writing-and-review.md](references/writing-and-review.md)** and follow its instructions as written, from **A Pass's Report**. A pass an earlier conversation left running was abandoned as you entered, and the review sends another. An `approve the map` call is the sweep's candidates waiting on the person: load **[the-sweep.md](references/the-sweep.md)** and follow its instructions as written, from **Approve the Map**.
+A refusal names the way on: say it in a line. Otherwise read what the DATA names. Close each `lost` agent with `agent incorporate`; each `landed` report is a review pass's: load **[writing-and-review.md](references/writing-and-review.md)** and follow its instructions as written, from **A Pass's Report**. A `running` pass is one this conversation sent, still reviewing: its report lands in the unit's store, and once it does, load **[writing-and-review.md](references/writing-and-review.md)** and follow its instructions as written, from **A Pass's Report**. An `approve the map` call is the sweep's candidates waiting on the person: load **[the-sweep.md](references/the-sweep.md)** and follow its instructions as written, from **Approve the Map**.
 
 Then fetch `checklist show ready-to-build {work_unit}`: its open items say where the spec stands, and **The Spec** takes it on from there. In your own words, say in a line what comes first.
 
@@ -41,7 +41,7 @@ The work runs in order, each piece once the one before it holds:
 2. **Writing and review** — the writer writes the spec, `spec land` takes it, and review passes read it until one changes nothing (`statements-traced`, `review-settled`): load **[writing-and-review.md](references/writing-and-review.md)** and follow its instructions as written.
 3. **The cut** — once the review has settled: load **[phase-cut.md](references/phase-cut.md)** and follow its instructions as written.
 
-A land after the cut — a gap answered, a split — goes through the review's next pass; where `phases-complete` is open again — the cut no longer holding against the spec, or a decision made at the spec since its brief waiting for it — the cut is made again.
+A land after the cut — a gap answered, a split — goes through the review's next pass; where `phases-complete` is open again, the cut is made again.
 
 The person meets this phase at approve the map after the sweep, at a gap the matrix sends them, and at ready to build. Between those the work runs on: say in a line where it has got to whenever you wait on an agent.
 
@@ -60,13 +60,13 @@ The person meets this phase at approve the map after the sweep, at a gap the mat
 
 ## Closing
 
-Once the cut has landed, ready to build closes on its checklist; `checklist show ready-to-build {work_unit}` lists its items, and the engine checks most of them. Yours:
+Once the cut has landed, ready to build closes on its checklist; `checklist show ready-to-build {work_unit}` lists its items. Yours:
 - `replacements-checked` — each replacement made at the spec holds up against what it replaced, its why says why, and every entry that relied on what it replaced has been confirmed (`ledger hold`) or replaced.
 - `invariants-checked` — each invariant in the spec names the hard check that enforces it, or says no check can. One that does neither is a gap (**[writing-and-review.md](references/writing-and-review.md)**).
 
 Mark each as it holds, `checklist done ready-to-build {work_unit} {item}`, or skip it with its reason, `checklist skip ready-to-build {work_unit} {item} --reason "{reason}"`.
 
-The engine's `environment-recorded` stays open until the project's environment setup is asked, once, at its first ready to build. While it is open:
+While `environment-recorded` is open:
 
 Load **[environment-setup.md](../ledger-shared/references/environment-setup.md)** and follow its instructions as written, with from = `ready to build`.
 
@@ -78,7 +78,7 @@ The person puts an idea, a bug or a fix aside — "roadmap it", "inbox it", "bac
 
 ## Cancelling the Work
 
-The person calls the work off. Fetch the confirm, `render cancel-gate {work_unit}`, emit its MENU verbatim per its marker and follow the answer's `next`. A refusal names what holds the unit: say it in a line.
+The person calls the work off. Fetch the confirm, `render cancel-gate {work_unit}`, and emit its MENU verbatim per its marker. A refusal names what holds the unit: say it in a line.
 
 The cancel takes the unit's cache, its agents' rows with it: stop every agent you dispatched with the TaskStop tool. The cancel answers its receipt: emit its sections verbatim per their markers, then follow the cancel's `next`.
 
