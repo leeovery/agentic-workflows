@@ -3,11 +3,39 @@
 // ---------------------------------------------------------------------------
 // Domain ring: shared render-surface primitives — the single builder every engine-rendered
 // menu, callout, and content frame flows through. The skill-visible formatting
-// rules (CONVENTIONS.md: The Design System — Forms, Menus, Callouts and
-// blockers) exist in code exactly once, here; restyling a surface class is a
+// rules (CONVENTIONS.md: The Design System — Forms, Callouts and blockers)
+// exist in code exactly once, here; restyling a surface class is a
 // one-place change.
 // Drawn borders never frame content — markdown and fences re-flow with the
 // terminal; fixed-width borders cannot.
+// The rules of what the engine alone draws:
+// - Markers. Every TITLE, DISPLAY and MENU marker's instruction opens
+//   `emit verbatim as ` and its form, then any behaviour clause (`, then
+//   STOP for the user's response`); the render sweep in
+//   tests/scripts/gate-audit.cjs holds it. The fence decides how demoted
+//   content reads: italic in a menu, a `↳` line in a fenced display.
+// - Menus. A dot rule opens the menu, and none closes it. Every menu asks
+//   one question, glyphed `◆` (sixty characters or fewer, ending in `?`);
+//   anything to say first is a plain statement above it. Rows are
+//   `**`k/word`** → Label`, arrows aligned as rendered. A label says what
+//   choosing it does, naming a hard-to-reverse consequence plainly. Command
+//   rows come first and one prompt row last, whose label tells the person
+//   what to say (`**Comment** → Tell me what to change`). A yes is `y/yes`,
+//   never a synonym; `n/no` is for plain refusal only. A bare yes/no pair
+//   carries no labels. The same action keeps the same key on every menu:
+//   `a` archive, `w` work, `b` back, `h` help. `b/back` draws the surface
+//   before it; it never re-invokes a skill and never exits. Every menu has
+//   `h` help; gates and raises do not. Anything with a fixed shape is its
+//   own row, and typing stays open for a question. Items appear once, in
+//   the menu; a row's metadata tail reads italic. With one item to act on,
+//   the auto-select line stands in for the menu.
+// - Lists. `•` bullets for a flat list, and `·` for quiet sub-detail within
+//   an item. A tree, `├─` for each child and `└─` for the last, for items
+//   with child data, a blank line between top-level items. A status sits
+//   in a right-aligned `[term]` column, or on a `↳` line beneath a row with
+//   a body.
+// - Inside a display, `── Title ──` divides grouped content. A key sits
+//   under the display it explains, listing only what that display shows.
 // A learned process gate's MENU (learned-gates.cjs) is drawn with the step
 // the decision point gave it for that gate (decision-point.cjs, `gateStep`),
 // and refused without one or with another gate's; shown, the gate shown
@@ -42,8 +70,7 @@ function glyphed(ask) {
 // the column itself is stable at any width. The label after the arrow is the
 // half that consults the terminal: a long label wraps at the display width
 // with continuations aligned under the label column, so the key column and
-// the label column never bleed into one another (CONVENTIONS.md: The
-// Design System, Menus).
+// the label column never bleed into one another (Menus, above).
 const OPTION = /^(\*\*.+?\*\*) → (.*)$/;
 
 // Continuation indents are non-breaking spaces — menus are markdown-emitted,
@@ -735,7 +762,7 @@ function menu(label, options, { question } = {}) {
 
 /**
  * Command option line — a discrete input the user types verbatim
- * (CONVENTIONS.md: The Design System, Menus): key and word share one code
+ * (Menus, in the header): key and word share one code
  * span, the arrow separates it from the label. The word is omitted for bare-key
  * options (numbered entries). Arrows are aligned by the enclosing frame.
  * `next` is what answering the row leads to (gate.cjs).
@@ -751,7 +778,7 @@ function cmdOption(key, word, label, { next } = {}) {
 
 /**
  * Bare command option — key and word, no arrow and no label. The shape a
- * yes/no gate takes (CONVENTIONS.md: The Design System, Menus): the
+ * yes/no gate takes (Menus, in the header): the
  * question above the options already says what yes means, so a label would
  * only repeat it.
  * Carries no arrow, so the enclosing frame passes it through unaligned.

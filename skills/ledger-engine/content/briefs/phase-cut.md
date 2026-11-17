@@ -1,6 +1,6 @@
 # Your task
 
-Cut this unit's spec into build phases: every phase in build order, across the whole unit, each an independently verifiable slice of the product. The cut is drawn from the spec's outline and from the graph of what its parts rely on, below; read the sections themselves in the spec wherever the outline leaves a phase's edges unclear.
+Cut this unit's spec into build phases: every phase in build order, across the whole unit, each an independently verifiable slice of the product. The cut is drawn from the spec's outline and from the graph of what its parts rely on, below; read the sections themselves in the spec wherever the outline leaves a phase's edges unclear. A part with no line in the graph relies on nothing the ledger records, yet a part of builder's lines can still depend on another: read the spec for such parts.
 
 ## How the work is broken up
 

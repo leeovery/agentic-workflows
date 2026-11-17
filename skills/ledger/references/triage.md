@@ -4,7 +4,7 @@
 
 ---
 
-Triage works through the inbox: the person picks items, and what's picked is worked now as one piece of work, put on the roadmap or archived. Its answers, and those of the screens its rows draw, go to `gate`; follow each `next`. What follows a row that carries on in the conversation, or a `next` that runs an inbox verb, is below.
+Triage works through the inbox: the person picks items, and what's picked is worked now as one piece of work, put on the roadmap or archived. What follows a row that carries on in the conversation, or a `next` that runs an inbox verb, is below.
 
 ## Picking
 

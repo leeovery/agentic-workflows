@@ -1,6 +1,6 @@
 # Your task
 
-The phase's tasks are built. Read the notes for later below against the phase's finished code, as it stands at the range's tip: group them, and take out the duplicates. Drop each note the code already settled, saying how; what remains becomes tasks of this phase, built and reviewed as any task is.
+The phase's tasks are built. Read the notes for later below against the phase's finished code, as it stands at the range's tip, reading the diff itself there: group them, and take out the duplicates. Drop each note the code already settled, saying how; what remains becomes tasks of this phase, built and reviewed as any task is.
 
 A note proposing a check — a finding the reviews raised in two tasks — becomes the task that adds that check: a test, a lint, an architecture or import-graph rule, where one can catch it, or else a rule in the project's skills.
 

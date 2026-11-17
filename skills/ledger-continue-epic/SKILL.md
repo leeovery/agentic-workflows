@@ -7,8 +7,6 @@ allowed-tools: Bash(node .claude/skills/ledger-engine/scripts/engine.cjs *)
 
 An epic's menu: what waits on the person in it, its topics, and the way on.
 
-> **⚠️ ZERO OUTPUT RULE**: Do not narrate your processing. Produce no output until a step or reference file explicitly specifies display content. No "proceeding with...", no discovery summaries, no routing decisions, no transition text. Your first output must be content explicitly called for by the instructions.
-
 ## Arguments
 
 - `$0` — **work_unit**: the epic.
@@ -27,7 +25,7 @@ node .claude/skills/ledger-engine/scripts/engine.cjs render epic-menu {work_unit
 
 A refusal names the way on: say it in a line.
 
-The answer goes to `gate`; follow its `next`. The legacy files' row leads to `asset legacy {work_unit}`. Run it, then sort them:
+The legacy files' row leads to `asset legacy {work_unit}`. Run it, then sort them:
 
 Load **[legacy-files.md](../ledger-shared/references/legacy-files.md)** and follow its instructions as written.
 

@@ -10,6 +10,4 @@ The feature becomes a topic of the epic, under the feature's own name, `{topic}`
 node .claude/skills/ledger-engine/scripts/engine.cjs render absorb-confirm-gate {work_unit} --into {epic} --topic {topic} --summary "{summary}" [--description "{description}"]
 ```
 
-A refusal ending `— pick a different name` means the epic holds the name already: derive another kebab-case name from the feature's, set `{topic}` to it, and fetch the confirm again. Any other refusal: say it in a line.
-
-The answer goes to `gate`; follow its `next`. The absorb answers its receipt.
+A refusal asking for a different name: set `{topic}` to another, drawn from the feature's, and fetch the confirm again. Any other refusal: say it in a line.

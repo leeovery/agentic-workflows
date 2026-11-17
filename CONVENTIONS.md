@@ -49,15 +49,13 @@ A phase skill holds five things:
 
 ### Entered and Left Through Gates
 
-Every phase is entered and left through gates. The gates are the engine's: its kind, whether it stops, what it shows and what each row leads to. An authority gate always stops. A product question goes through `raise`, and the ask rule decides whether it reaches the person. A process gate is learned: once the person always answers it alike, it runs as an automatic step whose surface draws a one-line report in place of the menu — except in the build's step position, where every process gate stops. The prose never says whether a gate stops, and never carries a branch for a position.
+Every phase is entered and left through gates, each the engine's. The prose never says whether a gate stops, and never carries a branch for a position.
 
-**Entering.** A phase is moved into by a handoff, from a gate or a menu pick, except a move between discovery's levels, which carries the conversation on (Handoffs and Recovery). Its entry is one engine call, shared by every phase: the engine refuses what cannot be entered, records where the conversation is working, and answers what the phase needs to begin or resume. The skill does what the answer says and branches on no status of its own. A question whose answer may discard a record — whether to carry on or start again — comes before the reading: a gate needs only what the engine holds, and the record and log are read after the answer.
+**Entering.** A phase is moved into by a handoff, from a gate or a menu pick, except a move between discovery's levels, which carries the conversation on (Handoffs and Recovery). Its entry is one engine call, shared by every phase. The skill does what the answer says and branches on no status of its own. A question whose answer may discard a record — whether to carry on or start again — comes before the reading: a gate needs only what the engine holds, and the record and log are read after the answer.
 
-**Leaving.** The phase is left at its closing point. Claude works the checklist (`checklist show`, `done`, `skip` with a reason) in the order it likes, closes it (`checklist close` refuses while any item is open), and fetches the gate that follows, where one does — a phase's start in the build has none. The skill emits the gate's sections verbatim per their markers, and the marker decides whether the turn ends:
-- **The gate stops.** Its MENU's marker ends the turn. The person's answer goes to `gate`, which logs it and returns `next` — an engine call to run, a handoff to make, or carry on — and the skill does what `next` says.
-- **The gate runs as an automatic step.** Its surface draws the one-line report in place of the menu, under a marker that says not to stop. Nothing goes to `gate`, and the skill carries on along the answer the step ran, which the report names.
+**Leaving.** The phase is left at its closing point. Claude works the checklist (`checklist show`, `done`, `skip` with a reason) in the order it likes, closes it, and fetches the gate that follows, where one does — a phase's start in the build has none.
 
-**Answering.** A gate is answered by its command rows. The prompt row (**Comment**, **Ask**) is for a question or feedback, never the answer. A reply that picks no row still goes to `gate "{name}" --typed`, which logs that the answer was free text, and then the gate is set aside; the framework says how it comes back. A Comment that changes what happens next is confirmed with the person before anything acts on it; the framework holds that rule too.
+**Answering.** The framework holds how a gate is answered.
 
 ### Fields and Corridors
 
@@ -162,11 +160,9 @@ Skill and reference files are instructions loaded into Claude's context. Write t
 ```
 {name}                                    — raw value, output as-is
 {name:[option1|option2|option3]}          — enumerated options (pick one)
-{name:(casing)}                           — with casing hint
-{name:[option1|option2]:(casing)}         — options and casing
 ```
 
-Casing hints are `titlecase`, `lowercase` and `kebabcase`. A placeholder never wraps across lines, and a flag carrying the person's words is quoted, `--summary "{summary}"` (lint check 22).
+A placeholder never wraps across lines, and a flag carrying the person's words is quoted, `--summary "{summary}"` (lint check 22).
 
 ## Agents and Briefs
 
@@ -223,14 +219,11 @@ A skill never says how a section is emitted: the framework follows each marker, 
 
 ### The Design System
 
-Every screen the engine draws keeps to the existing design system; a new screen or variant fits it, and the menu frame in `domain/projections/surfaces.cjs` refuses some breaks outright.
+Every screen the engine draws keeps to the existing design system; a new screen or variant fits it. Its menus, lists and displays are drawn by `domain/projections/surfaces.cjs`, whose header holds their rules, and whose menu frame refuses some breaks outright.
 - **Glyphs.** Squares are structure: `■` a title, `□` a step, `▪` a sub-step. Circles and arrows are an item's state: `○ ◐ ● ◌ → ✓ ⊙ ⊘ ⊖`. `◆` is a decision, `⚑` an alert; `⏺` is the host's own.
 - **Chrome.** A title is `# **`■ Title`**`, one per skill invocation. A marker is `**`□ Name`**` or `**`▪ Name`**`: no numbers, a loop's count in parentheses (`(3 of 12)`, `(cycle 2)`). A marker whose text varies — a count, a position — is the engine's; a fixed one Claude says itself, inline. A marker shows only where something follows it before the next one. A signpost is a markdown blockquote of one to three sentences, one authored line per paragraph.
-- **Forms.** A section's marker names one of four forms: markdown (not a code block), for chrome, menus and anything that needs rendered formatting; a text code block (```text fence), for layout — trees, columns, aligned lists; a properties code block (```properties fence), for a blocker and the banner — the product's name drawn in ASCII art at the head of the start menu; a diff code block (```diff fence), for change content. Every `TITLE`, `DISPLAY` and `MENU` marker's instruction opens `emit verbatim as ` and its form, then any behaviour clause (`, then STOP for the user's response`); the render sweep in `tests/scripts/gate-audit.cjs` holds it. The fence decides how demoted content reads: italic in a menu, a `↳` line in a fenced display.
-- **Menus.** A dot rule, `· · · · · · · · · · · ·`, opens the menu, and none closes it. Every menu asks one question, glyphed `**`◆ Question?`**` (sixty characters or fewer, ending in `?`); anything to say first is a plain statement above it. Rows are `**`k/word`** → Label`, arrows aligned as rendered. A label says what choosing it does, naming a hard-to-reverse consequence plainly. Command rows come first and one prompt row last, whose label tells the person what to say (`**Comment** → Tell me what to change`). A yes is `y/yes`, never a synonym; `n/no` is for plain refusal only. A bare yes/no pair carries no labels: the question above it already says what yes means. The same action keeps the same key on every menu: `a` archive, `w` work, `b` back, `h` help. `b/back` draws the surface before it; it never re-invokes a skill and never exits. Every menu has `h` help; gates and raises do not. Anything with a fixed shape is its own row, and typing stays open for a question. Items appear once, in the menu; a row's metadata tail reads italic. With one item to act on, the auto-select line stands in for the menu.
-- **Lists.** `•` bullets for a flat list, and `·` for quiet sub-detail within an item. A tree, `├─` for each child and `└─` for the last, for items with child data, a blank line between top-level items. A status sits in a right-aligned `[term]` column, or on a `↳` line beneath a row with a body.
+- **Forms.** A section's marker names one of four forms: markdown (not a code block), for chrome, menus and anything that needs rendered formatting; a text code block (```text fence), for layout — trees, columns, aligned lists; a properties code block (```properties fence), for a blocker and the banner — the product's name drawn in ASCII art at the head of the start menu; a diff code block (```diff fence), for change content.
 - **Callouts and blockers.** An advisory inside a display opens on `⚑` and stays plain. A state the person cannot proceed past renders red, in its own properties fence, one logical line with the flag at column zero, guidance beneath it as a signpost. Red is for a blocked state and the strongest advisory only.
-- **Inside a display**, `── Title ──` divides grouped content. No drawn border frames content. A key sits under the display it explains, listing only what that display shows.
 
 ## Files
 
@@ -242,17 +235,10 @@ The capture skills (`ledger-log-*`) write to the inbox and nothing else. They ru
 - A `description` is all Claude sees of a skill until it is invoked. The start skill's opens with its trigger, short: what Claude reaches for Ledger on, and what goes straight through. Every other skill a handoff lands on (`HANDOFF_TARGETS`) says it is reached only through a Ledger handoff, never invoked directly (lint check 37). Invocability stays as it is: without the gate mod, a handoff invokes the next skill in the same conversation.
 - No `effort:` and no `model:`: the conversation runs at the person's own effort. An agent's definition fixes its own.
 - Every `allowed-tools` Bash grant carries a `*`; a grant for Ledger's own script ends in ` *` (lint check 28).
-- No `SessionEnd` hook: Claude Code never fires one declared in a skill. Session-end work is the settings hook the engine installs (lint check 18).
 
 ### Headings
 
 One H1 per file, its title — except the skills that only hand the work on, the start skill and the menus of the epic and the roadmap, which open on their frontmatter alone (lint check 8). Discovery is a phase that talks: it takes an H1, and lint check 8's sets change with its rewrite. H2 for sections, H3 within them. Sections are named for what they cover: no step numbers, no lettered sections, and no heading that routes.
-
-A skill that only hands the work on carries this blockquote, byte for byte (lint check 9); a phase that talks, discovery among them, carries none:
-
-```
-> **⚠️ ZERO OUTPUT RULE**: Do not narrate your processing. Produce no output until a step or reference file explicitly specifies display content. No "proceeding with...", no discovery summaries, no routing decisions, no transition text. Your first output must be content explicitly called for by the instructions.
-```
 
 ### The Framework Load
 

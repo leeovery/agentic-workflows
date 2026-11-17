@@ -48,6 +48,4 @@ Record that the brief (or its fallback) has been read:
 node .claude/skills/ledger-engine/scripts/engine.cjs manifest set {work_unit}.discovery.{topic} brief_incorporated true
 ```
 
-No commit — this folds into the calling phase's next commit.
-
 → Return to caller.

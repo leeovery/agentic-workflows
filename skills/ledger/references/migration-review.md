@@ -39,6 +39,6 @@ Files were updated, a migration handed over checks its code could not perform, a
 node .claude/skills/ledger-engine/scripts/engine.cjs render migrations-applied --file {state}/.cache/migrations-applied.json
 ```
 
-5. Work the screen `migration-gate` as the start's **A Setup Screen** says: its yes commits the migration's changes, one commit on each side that changed, or, for the migration into Ledger, each commit `reshape` named in `commits`.
+5. Work the screen `migration-gate` as the start's **A Setup Screen** says.
 
    → Return to caller.

@@ -8,8 +8,6 @@ The framework loads once per conversation. Where this conversation has loaded it
 
 Load **[instructions.md](instructions.md)** and follow its instructions as written.
 
-Load **[casing-conventions.md](casing-conventions.md)** and follow its instructions as written.
-
 Load **[voice.md](voice.md)** and follow its instructions as written.
 
 Load **[altitude.md](altitude.md)** and follow its instructions as written.

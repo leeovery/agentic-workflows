@@ -1,6 +1,6 @@
 # Your task
 
-Review this unit's spec for its gaps: what a build working from it would meet undecided, or decided wrongly. Read the sections below — every section on the review's first pass, then only those changed since the last pass — against the records below, and against the code.
+Review this unit's spec for its gaps: what a build working from it would meet undecided, or decided wrongly. Read the sections below — every section on the review's first pass, then only those changed since the last pass — against the records below, and against the code. Read a section outside them only where a changed one leans on it.
 
 ## What you hunt
 

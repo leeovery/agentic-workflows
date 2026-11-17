@@ -42,8 +42,6 @@ The instruction says put it aside and no more — "backlog it", "later", "not no
 node .claude/skills/ledger-engine/scripts/engine.cjs render backlog-gate {work_unit}.{phase}.{topic} --file .ledger/.cache/{work_unit}/{phase}/{topic}/backlog.json
 ```
 
-**STOP.** Wait for user response.
-
 **If `roadmap`:**
 
 → Proceed to **B. The Horizon**.
@@ -73,7 +71,7 @@ Name the item first, as **C. Park** says.
 
 A source is recorded only once it is on disk. Before this session's record exists (a specification session before its first write), the park carries none: leave `[--source {source}]` out.
 
-Park it — the verb validates, births the map and any new horizon, and self-commits, so no commit call follows:
+Park it:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs roadmap add {name} --kind {kind} --horizon "{horizon}" --summary "{summary}" --origin park:{work_unit} [--source {source}]

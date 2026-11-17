@@ -16,4 +16,4 @@ A refusal carrying `missing_imports` landed nothing. Write `{"missing": ["{path}
 node .claude/skills/ledger-engine/scripts/engine.cjs render import-reprompt --file .ledger/.cache/{home}/{phase}/{home}/import-reprompt.json
 ```
 
-The answer goes to `gate`. Corrected paths land with the ones the refusal did not name; `skip` lands only those. Read what landed — markdown as prose, an image by looking at it, anything else named to the person rather than opened — and link each path the import answered where the caller says. A design living in an outside tool is kept as its exported image and its live link.
+Corrected paths land with the ones the refusal did not name; `skip` lands only those. Read what landed — markdown as prose, an image by looking at it, anything else named to the person rather than opened — and link each path the import answered where the caller says. A design living in an outside tool is kept as its exported image and its live link.

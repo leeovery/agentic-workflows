@@ -443,12 +443,11 @@ describe('discussion\'s agents and templates (26.1, 26.5)', () => {
     assert.deepStrictEqual([...definition.matchAll(/^- \*\*([a-z]+)\*\* — /gm)].map(([, kind]) => kind), [...DIVE_KINDS]);
   });
 
-  it('26.S15: the closing-pass reader\'s definition names every part of its brief — the gap review and what the person struck among them — and looks for work no topic owns', () => {
+  it('26.S15: the closing-pass reader\'s brief carries the gap review and what the person struck, and its definition looks for work no topic owns, never proposing a name struck', () => {
     const definition = fs.readFileSync(path.join(AGENTS, 'ledger-closing-pass-reader.md'), 'utf8');
     const parts = [...template('closing-pass-reader').matchAll(/^# (.+)$/gm)].map(([, part]) => part);
 
-    assert.deepStrictEqual(parts.filter((part) => !definition.includes(`- **${part}** — `)), []);
-    assert.deepStrictEqual([parts.includes('The gap review'), parts.includes('What the person struck or removed'), /^3\. \*\*Work the decisions create that no topic owns\.\*\*$/m.test(definition)], [true, true, true]);
+    assert.deepStrictEqual([parts.includes('The gap review'), parts.includes('What the person struck or removed'), /^3\. \*\*Work the decisions create that no topic owns\.\*\* A name the person struck or removed is their answer: never propose one\.$/m.test(definition)], [true, true, true]);
   });
 
   it('the closing-pass reader marks a line for the product record as a lane of its own', () => {

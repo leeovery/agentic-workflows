@@ -1,6 +1,6 @@
 # Your task
 
-Write this unit's spec, `spec.md`, at the path under "Where the spec goes": one spec for the whole unit, in sections by area, each assembled from the records below. It is the document the build reads and the person reviews line by line, so every statement says what the product does, for someone building it who has read nothing else.
+Write this unit's spec, `spec.md`, at the path under "Where the spec goes": one spec for the whole unit, in sections by area, each assembled from the records below, and a topic's log read where a statement needs a why. It is the document the build reads and the person reviews line by line, so every statement says what the product does, for someone building it who has read nothing else.
 
 Where no spec is written yet, write it whole. Where one is, rewrite from what is recorded below, and leave every other line as it stands:
 

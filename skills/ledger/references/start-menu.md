@@ -12,7 +12,7 @@ Fetch the start menu:
 node .claude/skills/ledger-engine/scripts/engine.cjs render start-menu
 ```
 
-The answer goes to `gate`; follow its `next`. A `next` that moves into work — a handoff, or a unit's Continue, `handoff unit {work_unit}` — goes through the handoff:
+A `next` that moves into work — a handoff, or a unit's Continue, `handoff unit {work_unit}` — goes through the handoff:
 
 Load **[handing-off.md](../../ledger-shared/references/handing-off.md)** with route = `/{skill} {args}` for a handoff, or `unit {work_unit}` for a Continue.
 
@@ -46,7 +46,7 @@ Once triage is drawn: Load **[triage.md](triage.md)** and follow its instruction
 
 ## The Environment Setup
 
-Manage's `s/setup` draws the project's environment setup, and its answer goes to `gate` as any screen's does. A Comment on it says what's different:
+Manage's `s/setup` draws the project's environment setup. A Comment on it says what's different:
 
 Load **[environment-setup.md](../../ledger-shared/references/environment-setup.md)** and follow its instructions as written, with from = `manage`.
 
