@@ -693,7 +693,7 @@ describe('a learned gate\'s MENU, drawn as its step says (surfaces.cjs)', () => 
       ['plan gate', 'y', continues],
       ['check-in gate', 'y', continues],
       ['conclude gate', 'y', { kind: 'engine', argv: ['investigation', 'conclude', 'crash'] }],
-      ['experiment spawn gate', 'y', { kind: 'handoff', skill: 'ledger-experiment-process', args: ['epic', 'lab', 'timing'] }],
+      ['experiment spawn gate', 'y', { kind: 'handoff', skill: 'ledger-experiment-process', args: ['epic', 'lab', 'timing', 'E1'] }],
       ['experiment spawn gate', 'l', continues],
     ].map(([gate, row, next]) => ({ gate, row, step: automatic(String(gate), String(row), next), menu: false, shown: null, stepped: true })));
   });
