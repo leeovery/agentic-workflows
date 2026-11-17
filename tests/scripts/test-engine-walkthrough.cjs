@@ -99,14 +99,14 @@ describe('engine walkthrough record', () => {
     assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'chore(help): walkthrough skipped');
   });
 
-  it('refuses any other value, and refuses once anything is recorded — the offer is answered once', () => {
+  it('refuses any other value, and refuses once anything is recorded — the offer is answered once, the refusal naming carrying on with the start as its way on', () => {
     refuses(dir, ['walkthrough', 'record', 'bananas'], /one of walked, skipped — got "bananas"/);
     refuses(dir, ['walkthrough', 'record'], /Usage: engine walkthrough record/);
     refuses(dir, ['walkthrough', 'record', 'walked', 'skipped'], /Usage: engine walkthrough record/);
     assert.strictEqual(projectManifest(dir).walkthrough, undefined, 'a refused answer writes nothing');
 
     run(dir, ['walkthrough', 'record', 'walked']);
-    refuses(dir, ['walkthrough', 'record', 'skipped'], /the walkthrough is "walked" — the answer is recorded once/);
+    refuses(dir, ['walkthrough', 'record', 'skipped'], /the walkthrough is "walked" — the answer is recorded once, while nothing is recorded\n {2}The way on: carry on with the start\.$/);
     refuses(dir, ['walkthrough', 'record', 'walked'], /recorded once/);
     setProjectManifest(dir, (m) => { m.walkthrough = { status: 'skipped' }; });
     refuses(dir, ['walkthrough', 'record', 'walked'], /the walkthrough is "skipped"/);

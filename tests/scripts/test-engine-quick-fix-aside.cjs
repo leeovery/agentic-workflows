@@ -33,7 +33,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  ok, okSections, okSectionsAsync, refusesAsync, refuses, output, sectionOf, git, createFile, commitAll, fixtureFrom, cleanupFixture,
+  ok, okSections, okSectionsAsync, refusesAsync, refuses, sectionOf, git, createFile, commitAll, fixtureFrom, cleanupFixture,
 } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 const { MADE, ledgerHelpers } = require('./ledger-world.cjs');

@@ -6,17 +6,19 @@
 // answered and the state it left — so a warning, a count or an item left
 // where it stands reaches the person with no caller carrying it across: a
 // work unit cancelled, reactivated or pivoted, a feature absorbed into an
-// epic, and inbox items archived, restored or deleted.
+// epic, a topic cancelled, reactivated, postponed or pulled forward, and
+// inbox items archived, restored or deleted.
 // ---------------------------------------------------------------------------
 
 const { loadWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { keptAside, keptWords } = require('./fix-aside.cjs');
 const { cancelKept } = require('./fix-branch.cjs');
 const { lastClosed } = require('./cancel-closed.cjs');
-const { quickFixBuild } = require('./derivations.cjs');
+const { quickFixBuild, liveUnitItems, itemTitle, topicTitles, postponedItem } = require('./derivations.cjs');
+const { loadProjectManifest } = require('./reads.cjs');
 const { roadmapState } = require('./roadmap.cjs');
 const { liveItem, archivedOne, deletedItemTitle } = require('./inbox-set.cjs');
-const { workunitReceipt, absorbReceipt, inboxArchiveReceipt, inboxRestoreReceipt, inboxDeleteReceipt } = require('./projections/transactions.cjs');
+const { workunitReceipt, topicReceipt, absorbReceipt, inboxArchiveReceipt, inboxRestoreReceipt, inboxDeleteReceipt } = require('./projections/transactions.cjs');
 
 /** @typedef {import('./projections/transactions.cjs').Stayed} Stayed */
 
@@ -64,6 +66,37 @@ function unitReceipt(cwd, verb, answered) {
 }
 
 /**
+ * A topic's cancel, reactivate, postpone or pull forward receipt, from the
+ * verb's answer and the epic as it left it: the topic by its title, the
+ * waiting messages a cancel moved to the inbox, the horizon a postpone left
+ * it waiting under, the statuses a reactivate or a return from the roadmap
+ * gave its items back, and the roadmap items a reactivate left where they
+ * stand. A pull forward that lands a new topic restores nothing.
+ * @param {string} cwd @param {'cancel'|'reactivate'|'postpone'|'restore'} verb @param {string} workUnit
+ * @param {{topic: string, warnings?: string[], inbox?: string[], roadmap_stayed?: string[], restored?: unknown[]}} answered
+ * @returns {string}
+ */
+function topicReceiptOf(cwd, verb, workUnit, answered) {
+  const { topic } = answered;
+  const manifest = loadWorkUnitManifest(cwd, workUnit);
+  const name = itemTitle(topicTitles(manifest), 'discovery', topic);
+  const warn = warned(answered);
+  if (verb === 'cancel') return topicReceipt(verb, name, { warn, inbox: (answered.inbox ?? []).length });
+  if (verb === 'postpone') return topicReceipt(verb, name, { warn, horizon: postponedItem(loadProjectManifest(cwd), workUnit, topic)?.horizon ?? null });
+  const restored = verb === 'restore' && answered.restored === undefined ? [] : unitStatuses(manifest, topic);
+  return topicReceipt(verb, name, { warn, restored, stayed: stayedWhere(cwd, answered.roadmap_stayed ?? []) });
+}
+
+/**
+ * The statuses a topic's live items stand at, phase by phase.
+ * @param {object} manifest @param {string} topic
+ * @returns {{phase: string, status: string}[]}
+ */
+function unitStatuses(manifest, topic) {
+  return liveUnitItems(manifest, 'discovery', topic).map(({ phase, item }) => ({ phase, status: item.status }));
+}
+
+/**
  * An absorb's receipt: what moved into the epic, the experiments counted by
  * their top-level records — a split is worked inside its parent — and what
  * a collision renamed.
@@ -99,7 +132,7 @@ function archivedReceipt(cwd, { archived }) {
 function restoredReceipt(cwd, { restored, unclaimed = [] }) {
   return inboxRestoreReceipt(restored.map((at) => ({
     title: liveItem(cwd, at).title,
-    unclaimed: unclaimed.find((claim) => claim.path === at)?.unit ?? null,
+    unclaimedFrom: unclaimed.find((claim) => claim.path === at)?.unit ?? null,
   })));
 }
 
@@ -112,4 +145,4 @@ function deletedReceipt(cwd, { deleted }) {
   return inboxDeleteReceipt(deleted.map((at) => deletedItemTitle(cwd, at)));
 }
 
-module.exports = { stayedWhere, unitReceipt, absorbedReceipt, archivedReceipt, restoredReceipt, deletedReceipt };
+module.exports = { unitReceipt, topicReceiptOf, absorbedReceipt, archivedReceipt, restoredReceipt, deletedReceipt };

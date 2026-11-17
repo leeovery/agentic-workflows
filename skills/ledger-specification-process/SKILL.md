@@ -54,7 +54,7 @@ The person meets this phase at approve the map after the sweep, at a gap the mat
 - The cut → `cut {work_unit}`.
 - The review page → `spec page|published|marks|push {work_unit}`.
 - The close → `checklist show|done|skip|close ready-to-build {work_unit}`, then `render ready-to-build {work_unit} [--page]`, whose picks run `ready-to-build yes`; a feature's topic close, restaged → `decided stage|unstrike {work_unit} {work_unit}`.
-- The split → `render horizon-pick|postpone-gate {work_unit}.discovery.{topic}`, then `topic postpone` as the confirm's yes runs it, and `render topic-receipt`.
+- The split → `render horizon-pick|postpone-gate {work_unit}.discovery.{topic}`, then `topic postpone` as the confirm's yes runs it, which answers its receipt.
 - The work leaving → `render cancel-gate {work_unit}`, whose `next` runs `workunit cancel`, which answers its receipt.
 - A gate's answer → `gate "{name}" --pick {key}`, or `--typed {key}` for a typed row such as a Comment.
 

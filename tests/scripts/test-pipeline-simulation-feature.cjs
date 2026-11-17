@@ -26,7 +26,6 @@ const path = require('path');
 const ROOT = path.join(__dirname, '../..');
 const { KNOWLEDGE_DIR, knowledgeFiles } = require(path.join(ROOT, 'skills/ledger-engine/scripts/kernel/knowledge/files.cjs'));
 const { readMetadata } = require(path.join(ROOT, 'skills/ledger-engine/scripts/kernel/knowledge/store.cjs'));
-const { knowledgeReady } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/projections/boot.cjs'));
 const { statePath } = require(path.join(ROOT, 'skills/ledger-engine/scripts/kernel/state-root.cjs'));
 const { sectionOf } = require('./engine-harness.cjs');
 const {
@@ -117,7 +116,7 @@ describe('pipeline simulation: feature', () => {
     assert.deepStrictEqual([sim.manifest(wu).phases.discussion.items[wu].status, Object.keys(sim.manifest(wu).phases)], ['completed', ['discussion']],
       '19.S29: the topic decided at the one screen, and no phase ran but the pipeline\'s — no experiment the discussion did not call, no investigation');
     assert.ok(fs.existsSync(statePath(sim.dir, KNOWLEDGE_DIR, 'store.bin')), 'the completion built the store');
-    assert.match(knowledgeReady(readMetadata(knowledgeFiles(statePath(sim.dir)).metadata)), /^Knowledge base ready — keyword-only\.$/m);
+    assert.strictEqual(readMetadata(knowledgeFiles(statePath(sim.dir)).metadata).provider, null, 'the store built keyword-only');
     // The engine's own door reads back what the close indexed in process: the
     // records — the topic's, and the unit's own, which holds the line.
     assert.deepStrictEqual(sim.engine(['knowledge', 'check']), { stdout: 'ready\n', stderr: '', code: 0 });

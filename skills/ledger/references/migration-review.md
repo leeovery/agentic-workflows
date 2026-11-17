@@ -40,3 +40,5 @@ node .claude/skills/ledger-engine/scripts/engine.cjs render migrations-applied -
 ```
 
 5. Work the screen `migration-gate` as the start's **A Setup Screen** says: its yes commits the migration's changes, one commit on each side that changed, or, for the migration into Ledger, each commit `reshape` named in `commits`.
+
+   → Return to caller.

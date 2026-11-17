@@ -25,7 +25,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { ok, output, refusedPristine, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
+const { ok, okSections, output, refusedPristine, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest, readManifest, writeState, statePath, layout } = require('./discovery-test-utils.cjs');
 const { SESSION, MADE, row } = require('./ledger-world.cjs');
 const { markAllButTheClosingPass } = require('./decided-world.cjs');
@@ -252,10 +252,9 @@ describe('every other verb, render and entry that names a topic takes its title,
       ok(dir, ['roadmap', 'add', 'offline-notes', '--horizon', 'later', '--summary', 'Notes offline']);
       return answered(['horizon-pick', `${UNIT}.discovery.${NAME}`], 'horizon pick', '1').join(' ');
     }, `render postpone-gate ${UNIT}.discovery.${KEY} --horizon later`],
-    ['render topic-receipt', () => {
+    ['topic cancel, its receipt', () => {
       without(dir, 'specification');
-      ok(dir, ['topic', 'cancel', UNIT, 'discovery', KEY]);
-      return lineOf(output(dir, ['render', 'topic-receipt', `${UNIT}.discovery.${NAME}`, '--verb', 'cancel']), /^Cancelled /);
+      return lineOf(okSections(dir, ['topic', 'cancel', UNIT, 'discovery', NAME]).sections, /^Cancelled /);
     }, `Cancelled "${TITLE}".`],
     ['render map', () => lineOf(output(dir, ['render', 'map', `${UNIT}.${NAME}`]), /^Map — /), `Map — ${TITLE}`],
     ['render convergence', () => refusedPristine(dir, ['render', 'convergence', `${UNIT}.${NAME}`, '--asked'], { env: SESSION }).error, `render convergence: nothing is open on ${TITLE} to settle`],
@@ -322,7 +321,7 @@ describe('every screen names a topic through one helper', () => {
       'projections/transactions.cjs › absorbReceipt › epic',
       'projections/transactions.cjs › absorbSummary › epic',
       'projections/transactions.cjs › absorbSummary › feature',
-      'projections/transactions.cjs › inboxRestoreReceipt › unclaimed',
+      'projections/transactions.cjs › inboxRestoreReceipt › unclaimedFrom',
       'projections/transactions.cjs › stayedLines › unit',
       'projections/transactions.cjs › workunitReceipt › workUnit',
       'render.cjs › workUnitCancel › workUnit',

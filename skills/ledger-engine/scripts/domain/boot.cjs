@@ -776,4 +776,4 @@ function installSessionHooks(cwd, commit, warnings) {
   return sync.changed;
 }
 
-module.exports = { BOOT_STOPS, STOPS, boot };
+module.exports = { BOOT_STOPS, STOPS, boot, detectSystemConfig };

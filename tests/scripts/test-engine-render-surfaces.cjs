@@ -20,14 +20,12 @@ const fs = require('fs');
 const path = require('path');
 
 const { DOTS, gateShown } = require('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs');
+const { topicReceiptOf } = require('../../skills/ledger-engine/scripts/domain/receipts.cjs');
 const { systemConfigPath } = require('../../skills/ledger-engine/scripts/kernel/knowledge/config.cjs');
 const { titlecase } = require('../../skills/ledger-engine/scripts/domain/conventions.cjs');
 const { renderSurface, NB, unwrap, setup, teardown, writeManifest, writePayload } = require('./render-surfaces-world.cjs');
 const { output } = require('./engine-harness.cjs');
 const { fixture } = require('./board-world.cjs');
-
-/** A string matched literally inside a regular expression. */
-const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 describe('cancel-gate', () => {
   let dir;
@@ -218,12 +216,14 @@ describe('postpone-gate', () => {
   });
 });
 
-describe('topic-receipt — the postpone verb', () => {
+describe('the topic receipts the lifecycle verbs draw', () => {
   let dir;
   beforeEach(() => { dir = setup(); });
   afterEach(() => { teardown(dir); });
 
-  function writeWorld(postponed) {
+  const WARNED = { warnings: ['knowledge remove failed: the store'] };
+
+  it('a postpone names the horizon the topic waits under, the removal advisory above it where the postpone warned', () => {
     fs.mkdirSync(path.join(dir, '.ledger'), { recursive: true });
     fs.writeFileSync(path.join(dir, '.ledger', 'manifest.json'), JSON.stringify({
       work_units: {},
@@ -233,88 +233,39 @@ describe('topic-receipt — the postpone verb', () => {
     }, null, 2));
     writeManifest(dir, 'pay', {
       phases: {
-        discovery: { items: { auth: { source: 'discovery', ...(postponed ? { postponed: true } : {}) } } },
-        discussion: { items: { auth: { status: postponed ? 'postponed' : 'in-progress', ...(postponed ? { previous_status: 'in-progress' } : {}) } } },
+        discovery: { items: { auth: { source: 'discovery', postponed: true } } },
+        discussion: { items: { auth: { status: 'postponed', previous_status: 'in-progress' } } },
       },
     });
-  }
-
-  it('names the horizon the topic waits under, the removal advisory riding --warn', () => {
-    writeWorld(true);
-    assert.match(renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.auth', verb: 'postpone' }),
-      /Postponed "Auth" → next\.\n/);
-    assert.match(renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.auth', verb: 'postpone', warn: '1' }),
-      /⚑ Knowledge removal warning[\s\S]*Postponed "Auth" → next\.\n/);
+    assert.match(topicReceiptOf(dir, 'postpone', 'pay', { topic: 'auth' }), /^=== DISPLAY: confirmation [^\n]*===\nPostponed "Auth" → next\.\n$/);
+    assert.match(topicReceiptOf(dir, 'postpone', 'pay', { topic: 'auth', ...WARNED }), /⚑ Knowledge removal warning[\s\S]*Postponed "Auth" → next\.\n/);
   });
 
-  it('refuses a topic that is not postponed, a non-Discovery address, and a dead name', () => {
-    writeWorld(false);
-    assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.auth', verb: 'postpone' }),
-      /"auth" is not postponed — the postpone has not run/);
-    assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discussion.auth', verb: 'postpone' }),
-      /--verb postpone addresses the Discovery unit — <work_unit>\.discovery\.<topic>, got phase "discussion"/);
-    assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.ghost', verb: 'postpone' }),
-      /render topic-receipt: no topic "ghost" — the map's topics are auth$/);
-  });
-});
-
-describe('topic-receipt — the restore verb', () => {
-  let dir;
-  beforeEach(() => { dir = setup(); });
-  afterEach(() => { teardown(dir); });
-
-  it('names the statuses the pull forward returned the unit to, the indexing advisory riding --warn', () => {
+  it('a pull forward names the statuses a return gave the topic back, a new topic none, the indexing advisory above it where it warned', () => {
     writeManifest(dir, 'pay', {
       phases: {
         discovery: { items: { auth: { source: 'discovery' }, fresh: { source: 'discovery' } } },
         discussion: { items: { auth: { status: 'in-progress' } } },
       },
     });
-    assert.match(renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.auth', verb: 'restore' }),
-      /Pulled "Auth" forward\. Restored discussion \[in-progress\]\.\n/);
-    assert.match(renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.auth', verb: 'restore', warn: '1' }),
-      /⚑ Knowledge indexing warning[\s\S]*Pulled "Auth" forward\./);
-    // A topic that never started comes back with nothing to name.
-    assert.match(renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.fresh', verb: 'restore' }),
-      /Pulled "Fresh" forward\.\n/);
+    const returned = { topic: 'auth', restored: [{ phase: 'discussion', status: 'in-progress' }] };
+    assert.match(topicReceiptOf(dir, 'restore', 'pay', returned), /Pulled "Auth" forward\. Restored discussion \[in-progress\]\.\n/);
+    assert.match(topicReceiptOf(dir, 'restore', 'pay', { ...returned, ...WARNED }), /⚑ Knowledge indexing warning[\s\S]*Pulled "Auth" forward\./);
+    assert.match(topicReceiptOf(dir, 'restore', 'pay', { topic: 'fresh' }), /Pulled "Fresh" forward\.\n/);
   });
 
-  it('refuses a topic still postponed, a non-Discovery address, and a dead name', () => {
+  it('a cancel and a reactivate read the unit, each advisory above its line where the verb warned; a never-started topic restores nothing', () => {
     writeManifest(dir, 'pay', {
       phases: {
-        discovery: { items: { auth: { source: 'discovery', postponed: true } } },
-        discussion: { items: { auth: { status: 'postponed', previous_status: 'in-progress' } } },
-      },
-    });
-    assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.auth', verb: 'restore' }),
-      /"auth" is still postponed — the pull forward has not run/);
-    assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discussion.auth', verb: 'restore' }),
-      /--verb restore addresses the Discovery unit — <work_unit>\.discovery\.<topic>, got phase "discussion"/);
-    assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.ghost', verb: 'restore' }),
-      /render topic-receipt: no topic "ghost" — the map has no live topics$/);
-  });
-});
-
-describe('topic-receipt — the unit addresses', () => {
-  let dir;
-  beforeEach(() => { dir = setup(); });
-  afterEach(() => { teardown(dir); });
-
-  it('cancel and reactivate read the unit; a never-started topic restores nothing', () => {
-    writeManifest(dir, 'pay', {
-      phases: {
-        discovery: { items: { gone: { source: 'discovery', cancelled: true }, back: { source: 'discovery' } } },
+        discovery: { items: { gone: { source: 'discovery', cancelled: true }, back: { source: 'discovery' }, fresh: { source: 'discovery' } } },
         discussion: { items: { back: { status: 'in-progress' } } },
       },
     });
-    assert.match(renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.gone', verb: 'cancel' }), /Cancelled "Gone"\.\n/);
-    assert.match(renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.back', verb: 'reactivate' }),
-      /Reactivated "Back"\. Restored discussion \[in-progress\]\.\n/);
-    assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.back', verb: 'cancel' }), /"back" is not cancelled — the cancel has not run/);
-    assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discussion.back', verb: 'reactivate' }),
-      /--verb reactivate addresses the Discovery unit — <work_unit>\.discovery\.<topic>, got phase "discussion"/);
-    assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.ghost', verb: 'cancel' }), /no topic "ghost"/);
-    assert.throws(() => renderSurface(dir, 'topic-receipt', { dotpath: 'pay.discovery.back', verb: 'bogus' }), /--verb must be cancel, reactivate, postpone, or restore/);
+    assert.match(topicReceiptOf(dir, 'cancel', 'pay', { topic: 'gone', inbox: [] }), /^=== DISPLAY: confirmation [^\n]*===\nCancelled "Gone"\.\n$/);
+    assert.match(topicReceiptOf(dir, 'cancel', 'pay', { topic: 'gone', inbox: [], ...WARNED }), /⚑ Knowledge removal warning[\s\S]*Cancelled "Gone"\.\n/);
+    assert.match(topicReceiptOf(dir, 'reactivate', 'pay', { topic: 'back' }), /Reactivated "Back"\. Restored discussion \[in-progress\]\.\n/);
+    assert.match(topicReceiptOf(dir, 'reactivate', 'pay', { topic: 'back', ...WARNED }), /⚑ Knowledge indexing warning[\s\S]*Reactivated "Back"\./);
+    assert.match(topicReceiptOf(dir, 'reactivate', 'pay', { topic: 'fresh' }), /Reactivated "Fresh"\.\n/);
   });
 });
 
@@ -821,7 +772,7 @@ describe('the boot and knowledge gate surfaces', () => {
     assert.deepStrictEqual(rowsLeadTo()[0], ['y', ['knowledge', 'setup', '--from-system']]);
   });
 
-  it('the knowledge gate\'s wizard wait: the command to run above a gate that asks whether it completed, its yes boot run again', () => {
+  it('the knowledge gate\'s wizard wait: the command to run above a gate that asks whether it completed, its yes the check that the knowledge base is ready', () => {
     assert.strictEqual(renderSurface(dir, 'knowledge-gate', { variant: 'wizard' }), [
       '=== DISPLAY: knowledge wizard (emit verbatim as a text code block (```text fence), directly above the menu) ===',
       'Run the wizard in your terminal:',
@@ -840,7 +791,18 @@ describe('the boot and knowledge gate surfaces', () => {
       '**`y/yes`** → It completed — check the knowledge base again',
       '',
     ].join('\n'));
-    assert.deepStrictEqual(rowsLeadTo(), [['y', ['boot']]]);
+    assert.deepStrictEqual(rowsLeadTo(), [['y', ['render', 'knowledge-done']]]);
+  });
+
+  it('the wizard said done while the checkout has no knowledge base says it did not complete, over the gate\'s opening again', () => {
+    systemConfig({ provider: null });
+    const out = renderSurface(dir, 'knowledge-done', {});
+    assert.ok(out.startsWith([
+      '=== DISPLAY: knowledge not done (emit verbatim as a text code block (```text fence), directly above the menu) ===',
+      'The wizard did not complete — the knowledge base is not set up in this checkout yet.',
+      '',
+      '=== MENU: knowledge reuse gate ',
+    ].join('\n')), out);
   });
 
   it('a provider\'s questions are asked in words, the DATA naming the setup the reply runs', () => {

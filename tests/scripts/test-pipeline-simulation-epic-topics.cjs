@@ -47,14 +47,14 @@ describe('pipeline simulation: epic-topics', () => {
     assert.deepStrictEqual([marked.cancelled, marked.abandoned, marked.released_waits], [[], [], []]);
     assert.deepStrictEqual(sim.manifest(wu).phases.discovery.items.export,
       { source: 'discovery', summary: 'Data export', cancelled: true, previous_order: 1 });
-    assert.match(sim.render(['topic-receipt', `${wu}.discovery.export`, '--verb', 'cancel'], { expect: 'content' }), /Cancelled "Export"\./);
+    assert.match(sim.sections, /Cancelled "Export"\./);
     assert.deepStrictEqual(setAside(), ['└─ Export — cancelled']);
     sim.refuses(['topic', 'remove', wu, 'export'], /^"export" can't be removed — it is cancelled and stays on the map as record; reactivate it first: topic reactivate cuts discovery export$/);
     sim.refuses(['topic', 'cancel', wu, 'discovery', 'export'], /"export" is already cancelled/);
     const returned = sim.run(['topic', 'reactivate', wu, 'discovery', 'export']);
     assert.deepStrictEqual(returned.restored, []);
     assert.deepStrictEqual(sim.manifest(wu).phases.discovery.items.export, { source: 'discovery', summary: 'Data export', order: 1 });
-    assert.match(sim.render(['topic-receipt', `${wu}.discovery.export`, '--verb', 'reactivate'], { expect: 'content' }), /Reactivated "Export"\.\n/);
+    assert.match(sim.sections, /Reactivated "Export"\.\n/);
     assert.deepStrictEqual(setAside(), []);
 
     // A started topic: a discussion in flight with a spawned experiment and
@@ -78,8 +78,7 @@ describe('pipeline simulation: epic-topics', () => {
     assert.deepStrictEqual(taken.abandoned, ['E1']);
     // Its waiting message went to the inbox as an idea, and the receipt says so.
     assert.deepStrictEqual([taken.inbox.length, JSON.parse(sim.read(['topic', 'mailbox', wu, 'auth'])).count], [1, 0]);
-    assert.match(sim.render(['topic-receipt', `${wu}.discovery.auth`, '--verb', 'cancel', '--inbox', String(taken.inbox.length)], { expect: 'content' }),
-      /Cancelled "Auth"\. Its 1 waiting message went to the inbox as an idea\./);
+    assert.match(sim.sections, /Cancelled "Auth"\. Its 1 waiting message went to the inbox as an idea\./);
     const m = sim.manifest(wu);
     assert.deepStrictEqual(m.phases.discussion.items.auth, { status: 'cancelled', previous_status: 'in-progress' });
     assert.strictEqual(m.phases.experiment.items.auth.status, 'completed', 'the series settles over its abandoned record');
@@ -93,8 +92,7 @@ describe('pipeline simulation: epic-topics', () => {
     // its open question answered, the topic is decided.
     const back = sim.run(['topic', 'reactivate', wu, 'discovery', 'auth']);
     assert.deepStrictEqual(back.restored, [{ phase: 'discussion', status: 'in-progress' }]);
-    assert.match(sim.render(['topic-receipt', `${wu}.discovery.auth`, '--verb', 'reactivate'], { expect: 'content' }),
-      /Reactivated "Auth"\. Restored discussion \[in-progress\]\./);
+    assert.match(sim.sections, /Reactivated "Auth"\. Restored discussion \[in-progress\]\./);
     enterEntry(sim, wu, 'discussion', 'auth');
     const claudes = { by: 'claude', who_moved_whom: 'none' };
     sim.run(['ledger', 'decide', `${wu}.discussion.auth`, '--answers', latency], null, JSON.stringify({ ...claudes, text: 'Under 200 ms.', why: 'The abandoned experiment left the budget as it stood.' }));

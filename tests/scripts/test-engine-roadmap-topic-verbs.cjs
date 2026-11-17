@@ -498,8 +498,9 @@ describe('engine CLI: the cancel-revert hop', () => {
     engineOk(['topic', 'cancel', 'mvp', 'discovery', 'ordering']);
     const row = () => JSON.parse(fs.readFileSync(path.join(dir, '.ledger', 'mvp', 'manifest.json'), 'utf8')).phases.discovery.items.ordering;
     assert.deepStrictEqual(row().roadmap_put_back, [{ item: 'ordering', topic: 'ordering' }]);
-    const res = engineOk(['topic', 'reactivate', 'mvp', 'discovery', 'ordering']);
+    const { res, sections } = okSections(dir, ['topic', 'reactivate', 'mvp', 'discovery', 'ordering']);
     assert.deepStrictEqual([res.roadmap_rejoined, 'roadmap_stayed' in res], [['ordering'], false]);
+    assert.match(sections, /^Reactivated "Ordering"\. Restored discussion \[in-progress\]\.$/m, 'an item taken back stayed nowhere');
     assert.deepStrictEqual(readProject(dir).roadmap.items.ordering.pulled_to, { work_unit: 'mvp', topic: 'ordering' });
     assert.deepStrictEqual(['roadmap_put_back' in row(), projectStaged()], [false, true]);
     assert.strictEqual(runOk(dir, ['state']).items.find((i) => i.name === 'ordering').state, 'in-flight');
@@ -516,6 +517,14 @@ describe('engine CLI: the cancel-revert hop', () => {
     assert.match(sections, /^"Mvp" reactivated\.$/m, 'an item taken back stayed nowhere');
   });
 
+  it('an item archived since the topic\'s cancel stays archived through its reactivate, and its receipt says so, with no flag carried (18.8.20)', () => {
+    engineOk(['topic', 'cancel', 'mvp', 'discovery', 'ordering']);
+    runOk(dir, ['archive', 'ordering']);
+    const { res, sections } = okSections(dir, ['topic', 'reactivate', 'mvp', 'discovery', 'ordering']);
+    assert.deepStrictEqual(res.roadmap_stayed, ['ordering']);
+    assert.match(sections, /^Reactivated "Ordering"\. Restored discussion \[in-progress\]\. "Ordering" stays archived\.$/m);
+  });
+
   it('an item other work took meanwhile, or archived, stays where it is through the reactivate, and its receipt says where (18.8.20)', () => {
     engineOk(['workunit', 'cancel', 'mvp']);
     createManifest(dir, 'beta', { work_type: 'epic', status: 'in-progress', phases: { discovery: { items: {} } } });
@@ -528,8 +537,5 @@ describe('engine CLI: the cancel-revert hop', () => {
     assert.strictEqual(projectStaged(), false, 'nothing taken back, the project manifest untouched');
     const said = sections.match(/^"Mvp" reactivated\. (.*)$/m)?.[1].split(/(?<=\.) /).sort();
     assert.deepStrictEqual(said, ['"Menus" stays archived.', '"Ordering" stays with "Beta", which took it meanwhile.'], 'each item it left, said where it stands, with no flag carried');
-    runOk(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 's']);
-    assert.match(refuses(dir, ['render', 'topic-receipt', 'mvp.discovery.ordering', '--verb', 'reactivate', '--stayed', 'loyalty']).error, /"loyalty" stayed nowhere — the reactivate takes back every item still waiting$/);
-    assert.match(refuses(dir, ['render', 'topic-receipt', 'mvp.discovery.ordering', '--verb', 'cancel', '--stayed', 'menus']).error, /--stayed names what a reactivate left where it stands — it takes --verb reactivate$/);
   });
 });

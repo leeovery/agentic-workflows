@@ -45,8 +45,11 @@ const madeSince = (dir, before) => calls(dir).slice(before).map((call) => call.s
 /** The record of what each cancel closed, each repository's numbers in order. @param {string} dir */
 const recorded = (dir) => (readManifest(dir, UNIT).closed_by_cancel ?? []).map((/** @type {Record<string, string[]>} */ closes) => Object.fromEntries(Object.entries(closes).map(([repo, names]) => [repo, [...names].sort()])));
 
-/** The unit cancelled, and the line of the receipt the cancel answers naming the pull requests it closed. @param {string} dir */
-const closedLine = (dir) => sectionOf(okSections(dir, ['workunit', 'cancel', UNIT], { env: GH_ENV }).sections, 'DISPLAY: confirmation').split('\n').find((line) => line.includes('pull requests were closed'));
+/** The unit cancelled, its receipt's sections after its JSON. @param {string} dir */
+const cancelled = (dir) => okSections(dir, ['workunit', 'cancel', UNIT], { env: GH_ENV }).sections;
+
+/** The line of a cancel's receipt naming the pull requests it closed. @param {string} sections */
+const closedLine = (sections) => sectionOf(sections, 'DISPLAY: confirmation').split('\n').find((line) => line.includes('pull requests were closed'));
 
 /** The pull requests on GitHub, `{number}: {state} {task}`. @param {string} dir */
 const pulls = (dir) => github(dir).pulls.map(({ number, state, head }) => `${number}: ${state} ${head}`);
@@ -78,11 +81,11 @@ describe('GitHub\'s landing driver and a unit\'s cancel (18.3.9)', () => {
     stacked(dir);
     const before = calls(dir).length;
 
-    const line = closedLine(dir);
+    const line = closedLine(cancelled(dir));
     const first = { made: madeSince(dir, before), line };
     ok(dir, ['workunit', 'reactivate', UNIT]);
     for (const task of [total, card]) ok(dir, openArgs(task));
-    const second = closedLine(dir);
+    const second = closedLine(cancelled(dir));
     ok(dir, ['workunit', 'reactivate', UNIT]);
     const opened = [total, card].map((task) => ok(dir, openArgs(task)).already === true);
     const says = () => output(dir, ['render', 'cancel-gate', UNIT], { env: GH_ENV }).includes('It closes its open pull requests');

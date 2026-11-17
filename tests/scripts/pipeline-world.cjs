@@ -55,7 +55,12 @@ const MAP_VERBS = Object.freeze(['add', 'add-batch', 'edit', 'rename', 'remove',
 // The raise commands that draw nothing: an answer, a question set aside, the questions waiting.
 const RAISE_ANSWERS = Object.freeze(['answer', 'aside', 'waiting']);
 // The verbs that print their screen or their receipt after their JSON, by group.
-const RECEIPTED = Object.freeze({ workunit: ['move', 'cancel', 'reactivate', 'pivot', 'absorb'], inbox: ['capture', 'archive', 'restore', 'delete'] });
+const RECEIPTED = Object.freeze({
+  workunit: ['move', 'cancel', 'reactivate', 'pivot', 'absorb'],
+  inbox: ['capture', 'archive', 'restore', 'delete'],
+  topic: ['cancel', 'reactivate', 'postpone'],
+  roadmap: ['pull-forward'],
+});
 // What a blind question's answer draws: its reveal (16.17.7).
 const REVEAL = '=== DISPLAY: blind question revealed ';
 
@@ -149,15 +154,17 @@ class Sim {
   // the entry, whose sections are what the phase
   // reads on arrival; a unit's move, whose sections are start this work's
   // screen it stages; the capture line, whose section is the one line it
-  // draws; a unit's cancel, reactivate, pivot and absorb and the inbox's
+  // draws; a unit's cancel, reactivate, pivot and absorb, a topic's cancel,
+  // reactivate and postpone, a roadmap item's pull forward, and the inbox's
   // archive, restore and delete, whose sections are their receipts; and
   // Claude's proposal for the record of the person, whose
   // sections are the screen it is proposed on.
   /** @param {string[]} args @param {string} sections @param {boolean} [blind] */
   static carriesSections([group, verb], sections, blind = false) {
-    return group === 'presence' || group === 'enter' || (group === 'raise' && !RAISE_ANSWERS.includes(verb)) || (group === 'topic' && MAP_VERBS.includes(verb))
+    return group === 'presence' || group === 'enter' || (group === 'raise' && !RAISE_ANSWERS.includes(verb)) || (group === 'topic' && (MAP_VERBS.includes(verb) || RECEIPTED.topic.includes(verb)))
       || (group === 'raise' && verb === 'answer' && blind && sections.startsWith(REVEAL))
-      || (group === 'workunit' && RECEIPTED.workunit.includes(verb)) || (group === 'inbox' && RECEIPTED.inbox.includes(verb)) || (group === 'person' && verb === 'propose');
+      || (group === 'workunit' && RECEIPTED.workunit.includes(verb)) || (group === 'inbox' && RECEIPTED.inbox.includes(verb))
+      || (group === 'roadmap' && RECEIPTED.roadmap.includes(verb)) || (group === 'person' && verb === 'propose');
   }
 
   /**

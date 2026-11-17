@@ -192,17 +192,22 @@ describe('pipeline simulation: sessions', () => {
     assert.deepStrictEqual(['knowledge', 'walkthrough', 'brownfield'].map((gate) => bare.gates.includes(gate)), [true, true, true], bare.gates.join(', '));
 
     // The knowledge gate opens on the search-mode pick, no system
-    // configuration to reuse; keyword-only runs its setup, which draws the
-    // gate's closing line, and the next is none.
+    // configuration to reuse. The wizard said done while it is not draws
+    // that it did not complete over the pick again; keyword-only runs its
+    // setup, which draws the gate's closing line, the next none; and the
+    // wizard's yes once the knowledge base is ready draws that same line.
+    const READY = '=== DISPLAY: knowledge ready (emit verbatim as a text code block (```text fence) — do not stop; continue as the skill instructs) ===\nKnowledge base ready — keyword-only.\n';
     assert.match(sim.render(['knowledge-gate'], { expect: 'content' }), /=== MENU: knowledge mode gate/);
+    /** The screen a gate's row draws next. @param {string} gate @param {string} key */
+    const drawnBy = (gate, key) => sim.render(answerGate(sim, gate, '--pick', key).next.argv.slice(1), { expect: 'content' });
+    drawnBy('knowledge mode gate', 't');
+    const notDone = drawnBy('knowledge wizard gate', 'y');
+    assert.match(notDone, /^=== DISPLAY: knowledge not done [^\n]*===\nThe wizard did not complete — the knowledge base is not set up in this checkout yet\.\n\n=== MENU: knowledge mode gate /);
     const setup = await sim.engineAsync(answerGate(sim, 'knowledge mode gate', '--pick', 'k').next.argv);
     assert.strictEqual(setup.code, 0, setup.stderr);
-    assert.ok(setup.stdout.endsWith('=== DISPLAY: knowledge ready (emit verbatim as a text code block (```text fence) — do not stop; continue as the skill instructs) ===\nKnowledge base ready — keyword-only.\n'), setup.stdout);
-    // Its wizard's yes runs boot again, words and all: run with the
-    // person's words it goes where they say, the knowledge base ready now.
+    assert.ok(setup.stdout.endsWith(READY), setup.stdout);
     sim.render(['knowledge-gate', '--variant', 'wizard'], { expect: 'content' });
-    const again = sim.run(answerGate(sim, 'knowledge wizard gate', '--pick', 'y').next.argv, null, `carry on with ${wu}`);
-    assert.deepStrictEqual([again.knowledge, again.gates.includes('knowledge'), again.go, again.route.kind], ['ready', false, 'route', 'unit']);
+    assert.strictEqual(drawnBy('knowledge wizard gate', 'y'), READY);
 
     // The walkthrough's yes records the walk and carries on into it.
     sim.render(['walkthrough-offer'], { expect: 'content' });

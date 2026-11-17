@@ -41,9 +41,6 @@ describe('pipeline simulation: the epic menu\'s doors', () => {
     return shown[0];
   };
 
-  /** A topic's receipt, `flags` given. @param {string} wu @param {string} topic @param {string[]} flags */
-  const receipt = (wu, topic, flags) => oneLine(sim.render(['topic-receipt', `${wu}.discovery.${topic}`, ...flags], { expect: 'content' }));
-
   /** A message sent from one topic to another, and the sending session's report of it. @param {string} wu @param {string} to @param {string} from @param {string} slug */
   function sent(wu, to, from, slug) {
     const res = send(sim, wu, to, from, slug);
@@ -69,24 +66,24 @@ describe('pipeline simulation: the epic menu\'s doors', () => {
     assert.strictEqual(oneLine(sim.sections), 'Added "Delta" to the map.');
 
     sim.run(['topic', 'postpone', wu, 'alpha', '--horizon', 'next']);
-    assert.match(receipt(wu, 'alpha', ['--verb', 'postpone']), /^Postponed "Alpha" → next\.$/);
+    assert.match(oneLine(sim.sections), /^Postponed "Alpha" → next\.$/);
     const held = sent(wu, 'alpha', 'gamma', 'while-away');
     assert.ok(held.res.message_path.includes(`/${wu}/topics/alpha/mail/`), '10.S13: a postponed topic\'s message waits in its mailbox');
     assert.ok(screenOf(held.report, 'DISPLAY: send report').includes('  ↳ Postponed — waiting in its mailbox for its return'), held.report);
     const back = sim.run(['roadmap', 'pull-forward', 'alpha', '--into', wu]);
     assert.deepStrictEqual(back.restored, [], 'never started, it returns to the map alone');
-    assert.match(receipt(wu, 'alpha', ['--verb', 'restore']), /^Pulled "Alpha" forward\.$/);
+    assert.match(oneLine(sim.sections), /^Pulled "Alpha" forward\.$/);
 
     assert.match(sim.render(['cancel-gate', `${wu}.discovery.gamma`], { expect: 'content' }), /^=== MENU: cancel gate /m);
     const { next } = answerGate(sim, 'cancel gate', '--pick', 'y');
     assert.deepStrictEqual(next, { kind: 'engine', argv: ['topic', 'cancel', wu, 'discovery', 'gamma'] });
     const cancelled = sim.run(next.argv);
     assert.deepStrictEqual([cancelled.inbox.length, JSON.parse(sim.read(['topic', 'mailbox', wu, 'gamma'])).count], [2, 0], '18.S18: both waiting messages land in the inbox');
-    assert.match(receipt(wu, 'gamma', ['--verb', 'cancel', '--inbox', '2']), /^Cancelled "Gamma"\. Its 2 waiting messages went to the inbox as ideas\.$/);
+    assert.match(oneLine(sim.sections), /^Cancelled "Gamma"\. Its 2 waiting messages went to the inbox as ideas\.$/);
     assert.strictEqual(oneLine(sent(wu, 'gamma', 'beta', 'too-late').report), 'Gamma is cancelled, so the message went to the inbox as an idea',
       '10.S13: a cancelled topic\'s message goes to the inbox, the sending session saying so in a line');
     sim.run(['topic', 'reactivate', wu, 'discovery', 'gamma']);
-    assert.match(receipt(wu, 'gamma', ['--verb', 'reactivate']), /^Reactivated "Gamma"\./);
+    assert.match(oneLine(sim.sections), /^Reactivated "Gamma"\./);
 
     const reopened = sent(wu, 'beta', 'gamma', 'think-again');
     assert.strictEqual(reopened.res.reopened, true, 'a decided topic is reopened by a message');

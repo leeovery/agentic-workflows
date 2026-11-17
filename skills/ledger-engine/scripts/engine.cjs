@@ -110,7 +110,7 @@ const { ENTER_USAGE, enter } = require('./domain/enter.cjs');
 const { createWorkUnit } = require('./domain/workunit-create.cjs');
 const { cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit } = require('./domain/workunit-lifecycle.cjs');
 const { absorbWorkUnit } = require('./domain/workunit-absorb.cjs');
-const { unitReceipt, absorbedReceipt, archivedReceipt, restoredReceipt, deletedReceipt } = require('./domain/receipts.cjs');
+const { unitReceipt, topicReceiptOf, absorbedReceipt, archivedReceipt, restoredReceipt, deletedReceipt } = require('./domain/receipts.cjs');
 const { stageMove } = require('./domain/workunit-move.cjs');
 const { splitWorkUnit } = require('./domain/workunit-split.cjs');
 const { retireWorkUnit } = require('./domain/workunit-retire.cjs');
@@ -154,6 +154,20 @@ function respond(call, obj) {
  */
 function respondOnStderr(call, obj) {
   call.err(JSON.stringify({ ok: true, ...obj }) + '\n');
+}
+
+/**
+ * An answer the start's setup screens record — the walkthrough's, the
+ * brownfield offer's, the session labels' — its refusal naming the start
+ * carried on as its way on: an answer not recorded holds no work back.
+ * @template T @param {() => T} record @returns {T}
+ */
+function startAnswer(record) {
+  try {
+    return record();
+  } catch (err) {
+    throw new Error(`${messageOf(err)}\n  The way on: carry on with the start.`);
+  }
 }
 
 /**
@@ -402,8 +416,6 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render phase-note        <wu.phase.topic> --verb <Word> [--noun <word>]
   render cancel-gate       <wu.discovery.name> | <wu>
   render postpone-gate     <wu.discovery.topic> --horizon "<horizon>"
-  render topic-receipt     <wu.discovery.name> --verb cancel|reactivate [--warn] [--inbox <n>]
-  render topic-receipt     <wu.discovery.topic> --verb postpone|restore [--warn]
   render import-reprompt   --file <payload.json>   # {"missing": ["path", …]} — the re-prompt after a landing refused
   render absorb-target     <feature>
   render absorb-confirm-gate <feature> --into <epic> --topic <name> --summary <text> [--description <text>]
@@ -449,6 +461,7 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render label-gate
   render knowledge-gate [--variant deviate|wizard | --variant retry (--from-system | --provider <name> --model <name> [--base-url <url>] [--dimensions <n>])]
   render knowledge-ask --provider openai|openai-compatible
+  render knowledge-done
   render state-merge-gate
   render ledger-stop
   render directive-stop --directive <id>
@@ -917,8 +930,9 @@ function runInvestigation(call, argv) {
 // started by `enter`, and closes through its phase's own door. send commits
 // its own delivery. cancel/reactivate act on a topic's unit, `discovery` (the
 // map row with its discussion and experiments) — one transaction per call:
-// the manifest write and a scoped commit.
-// The JSON response reports what happened — no follow-up read needed.
+// the manifest write and a scoped commit. cancel, reactivate and postpone
+// print their receipt after the JSON (domain/receipts.cjs), as the map's
+// verbs print theirs.
 //
 // Heartbeats ride the self-referential verbs — the session acting on its own
 // topic: `answered` (taking a message out of its own mailbox), and `mailbox`
@@ -930,7 +944,7 @@ function runInvestigation(call, argv) {
 // ---------------------------------------------------------------------------
 
 /** The unit verbs, whose phase argument names a topic's unit, `discovery`. */
-const UNIT_VERBS = { cancel: cancelTopic, reactivate: reactivateTopic };
+const UNIT_VERBS = ['cancel', 'reactivate'];
 
 /**
  * A session hook target's session id: the argument when given, else the
@@ -997,7 +1011,7 @@ function runSession(call, argv) {
       if (rest.length !== 1 || (value !== 'true' && value !== 'false')) {
         throw new Error('Usage: engine session label-config <true|false>');
       }
-      respond(call, recordLabelChoice(call.cwd, value === 'true'));
+      respond(call, startAnswer(() => recordLabelChoice(call.cwd, value === 'true')));
       return;
     }
     if (command === 'repair') {
@@ -1132,7 +1146,7 @@ function runTopic(call, argv) {
         throw new Error('Usage: engine topic postpone <work-unit> <topic> --horizon "<horizon>"');
       }
       const postponed = postponeTopic(call.cwd, workUnit, topic, { horizon: opts.horizon });
-      respond(call, { ...postponed, next: leaveNext(workUnit, postponed.topic) });
+      respondWithReceipt(call, { ...postponed, next: leaveNext(workUnit, postponed.topic) }, topicReceiptOf(call.cwd, 'postpone', workUnit, postponed));
       return;
     }
     if (Object.hasOwn(MAP_VERBS, command)) {
@@ -1141,7 +1155,7 @@ function runTopic(call, argv) {
       respondSections(call, mapReceipt(change));
       return;
     }
-    if (!Object.hasOwn(UNIT_VERBS, command)) {
+    if (!UNIT_VERBS.includes(command)) {
       throw new Error(`Usage: engine topic <send|cancel|reactivate|postpone|mailbox|answered|${Object.keys(MAP_VERBS).join('|')}> <work-unit> …`);
     }
     const [workUnit, phase, topic] = rest;
@@ -1150,10 +1164,11 @@ function runTopic(call, argv) {
     }
     if (command === 'cancel') {
       const cancelled = cancelTopic(call.cwd, workUnit, phase, topic);
-      respond(call, { ...cancelled, next: putBackNext(call.cwd, `${workUnit}.discovery.${cancelled.topic}`, homelessNames(cancelled)) });
+      respondWithReceipt(call, { ...cancelled, next: putBackNext(call.cwd, `${workUnit}.discovery.${cancelled.topic}`, homelessNames(cancelled)) }, topicReceiptOf(call.cwd, 'cancel', workUnit, cancelled));
       return;
     }
-    respond(call, UNIT_VERBS[/** @type {keyof typeof UNIT_VERBS} */ (command)](call.cwd, workUnit, phase, topic));
+    const reactivated = reactivateTopic(call.cwd, workUnit, phase, topic);
+    respondWithReceipt(call, reactivated, topicReceiptOf(call.cwd, 'reactivate', workUnit, reactivated));
   } catch (err) {
     failJson(call, err);
   }
@@ -1679,7 +1694,8 @@ function runBrownfield(call, argv) {
   try {
     if (command === 'record') {
       if (rest.length !== 1) throw new Error(BROWNFIELD_USAGE);
-      respond(call, brownfield.recordBrownfield(cwd, rest[0]));
+      const [answer] = rest;
+      respond(call, answer === 'completed' ? brownfield.recordBrownfield(cwd, answer) : startAnswer(() => brownfield.recordBrownfield(cwd, answer)));
       return;
     }
     throw new Error(BROWNFIELD_USAGE);
@@ -1701,7 +1717,7 @@ function runWalkthrough(call, argv) {
   try {
     if (command === 'record') {
       if (rest.length !== 1) throw new Error(WALKTHROUGH_USAGE);
-      respond(call, walkthrough.recordWalkthrough(cwd, rest[0]));
+      respond(call, startAnswer(() => walkthrough.recordWalkthrough(cwd, rest[0])));
       return;
     }
     throw new Error(WALKTHROUGH_USAGE);
@@ -1717,7 +1733,8 @@ function runWalkthrough(call, argv) {
 // transaction under the project lock with its own pathspec commit of the
 // project manifest — no work-unit cadence covers it, and a park fired
 // mid-session must be durable immediately. `state` is the derived read every
-// consumer shares.
+// consumer shares. A pull forward prints its topic's receipt after the JSON
+// (domain/receipts.cjs).
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */
@@ -1812,10 +1829,8 @@ function runRoadmap(call, argv) {
       if (positional.length !== 1 || !opts.into) {
         throw new Error('Usage: engine roadmap pull-forward <name> --into <epic> [--force-dismissed]');
       }
-      respond(call, roadmap.pullForwardItem(cwd, positional[0], {
-        into: opts.into,
-        forceDismissed: flags.has('force-dismissed'),
-      }));
+      const pulled = roadmap.pullForwardItem(cwd, positional[0], { into: opts.into, forceDismissed: flags.has('force-dismissed') });
+      respondWithReceipt(call, pulled, topicReceiptOf(cwd, 'restore', opts.into, /** @type {{topic: string}} */ (pulled)));
     } else {
       throw new Error('Usage: engine roadmap <state|add|add-batch|edit|rename|move|archive|pull-forward|horizon> …');
     }

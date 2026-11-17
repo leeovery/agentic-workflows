@@ -171,16 +171,14 @@ describe('pipeline simulation: epic map', () => {
 
     enterEntry(sim, wu, 'discussion', 'gamma-prime');
     sim.run(['topic', 'cancel', wu, 'discovery', 'gamma-prime']);
-    assert.match(sim.render(['topic-receipt', `${wu}.discovery.gamma-prime`, '--verb', 'cancel'], { expect: 'content' }),
-      /Cancelled "Gamma Prime"\./, 'topic cancel receipt renders from the cancelled unit');
+    assert.match(sim.sections, /Cancelled "Gamma Prime"\./, 'the topic cancel answers its receipt');
     const cancelled = sim.manifest(wu).phases.discovery.items['gamma-prime'];
     assert.strictEqual(cancelled.cancelled, true, 'the map row carries the marker');
     assert.ok(!('order' in cancelled), 'cancel stashes the map order');
     assert.strictEqual(cancelled.previous_order, 3);
     assert.strictEqual(sim.manifest(wu).phases.discussion.items['gamma-prime'].status, 'cancelled', 'the discussion goes with the topic');
     sim.run(['topic', 'reactivate', wu, 'discovery', 'gamma-prime']);
-    assert.match(sim.render(['topic-receipt', `${wu}.discovery.gamma-prime`, '--verb', 'reactivate'], { expect: 'content' }),
-      /Reactivated "Gamma Prime"\. Restored discussion \[in-progress\]\./, 'topic reactivate receipt names what returned');
+    assert.match(sim.sections, /Reactivated "Gamma Prime"\. Restored discussion \[in-progress\]\./, 'the topic reactivate\'s receipt names what returned');
     assert.strictEqual(sim.manifest(wu).phases.discovery.items['gamma-prime'].order, 3,
       'reactivate restores the map order');
     assert.strictEqual(sim.manifest(wu).phases.discovery.items['gamma-prime'].cancelled, undefined, 'the marker is gone');

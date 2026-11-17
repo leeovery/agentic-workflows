@@ -198,6 +198,16 @@ describe('walkthrough surfaces', () => {
     ].join('\n'));
   });
 
+  it('the offer\'s yes records the walk and its skip the skip, each the call its row runs', () => {
+    renderSurface(dir, 'walkthrough-offer', {});
+    const { options } = /** @type {import('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs').GateShown} */ (gateShown());
+
+    assert.deepStrictEqual(options.map(({ key, next }) => [key, next]), [
+      ['y', { kind: 'engine', argv: ['walkthrough', 'record', 'walked'] }],
+      ['s', { kind: 'engine', argv: ['walkthrough', 'record', 'skipped'] }],
+    ]);
+  });
+
   it('walkthrough-offer --menu-only is the menu alone — the return from a question', () => {
     const menuOnly = renderSurface(dir, 'walkthrough-offer', { 'menu-only': '1' });
     assert.deepStrictEqual(markers(menuOnly), ['MENU: walkthrough offer']);

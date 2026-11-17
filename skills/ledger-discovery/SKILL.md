@@ -97,7 +97,7 @@ The DATA's `log` is the record everything here comes back to, and nothing talked
 - In an epic, a direction dropped, a view of the product, what a spike showed → `discovery-log not-taken {home} --direction '…' --why '…'`, `discovery-log view {home} --text '…'`, `discovery-log spike {home} {spike} --tool '…' --showed '…' [--link {live link}]`, each value single-quoted, a single quote inside one written `'\''`.
 - The work committed to → `render start-this-work --file`, then `gate`.
 - The waiting roadmap items → `roadmap state`.
-- The map as it stands → `render discovery-map {home}`; changed at the person's word → `topic add|add-batch|edit|rename|remove|order|brief`, `topic postpone|reactivate`, `roadmap pull-forward`, `render cancel-gate`, `render topic-receipt`.
+- The map as it stands → `render discovery-map {home}`; changed at the person's word → `topic add|add-batch|edit|rename|remove|order|brief`, `topic postpone|reactivate`, `roadmap pull-forward`, `render cancel-gate`; each lifecycle verb answers its receipt.
 - The map approved → `render approve-map {home} --file`, then `gate`; a park's horizon → `render horizon-pick --park {name}`.
 - A message to a topic → `topic send`, `render send-report`.
 - Something put on the roadmap → `roadmap add`; into the inbox → `inbox capture {kind}`, its text on stdin.

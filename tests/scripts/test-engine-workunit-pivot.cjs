@@ -183,6 +183,9 @@ describe('engine workunit pivot — happy path', () => {
     assert.match(res.warnings[1], /^knowledge index failed: loadStore: corrupted store file at /);
     assert.strictEqual(readManifest(fix, 'auth-flow').work_type, 'epic');
     assert.strictEqual(res.committed, shortHead(fix));
+    // Its receipt carries the advisory above the confirmation, drawn from
+    // the warnings it answered — no flag carried.
+    assert.match(engine.lastSections, /^=== DISPLAY: kb warning [^\n]*===\n {2}⚑ Knowledge indexing warning\n {4}The pivot is complete\. The next start retries the indexing\.\n\n=== DISPLAY: confirmation /);
   });
 });
 

@@ -28,13 +28,15 @@ const { section, dataSection, CONTINUE_INSTRUCTION, menu, cmdOption, promptOptio
 const { quickFixBranch } = require('./landing-names.cjs');
 const { mayHoldOpen } = require('./landing.cjs');
 const { topicReceipt, importReprompt } = require('./projections/transactions.cjs');
-const { stayedWhere } = require('./receipts.cjs');
 const { brownfieldOffer } = require('./brownfield.cjs');
 const {
   ORIGINS: WALKTHROUGH_ORIGINS, loadScreen, loadCard, walkthroughOffer, walkthroughScreen, walkthroughTopic,
 } = require('./projections/walkthrough.cjs');
 const { helpTopicsSurface } = require('./projections/help-topics.cjs');
-const { migrationsApplied, migrationGate, stateLostGate, repoStop, migrationGuardStop, migrationChecksStop, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, banner, workPick, knowledgeGate, knowledgeAsk, KEY_PROVIDERS } = require('./projections/boot.cjs');
+const { migrationsApplied, migrationGate, stateLostGate, repoStop, migrationGuardStop, migrationChecksStop, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, banner, workPick, knowledgeGate, knowledgeAsk, knowledgeReady, knowledgeNotDone, KEY_PROVIDERS } = require('./projections/boot.cjs');
+const { readiness } = require('./knowledge/status.cjs');
+const { knowledgeFiles } = require('../kernel/knowledge/files.cjs');
+const { readMetadata } = require('../kernel/knowledge/store.cjs');
 const { detectSystemConfig } = require('./boot.cjs');
 const { pickRows } = require('./boot-route.cjs');
 const { messageOf } = require('../kernel/call.cjs');
@@ -49,8 +51,8 @@ const { lastShown } = require('./gate.cjs');
 const { compareExperimentIds, isParentExperimentId, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, TOPIC_PHASES, assertLegalName } = require('../kernel/manifest-schema.cjs');
 const {
   computeTopicLifecycle, awaitedExperiments, itemOf,
-  UNIT_PHASES, liveUnitItems, discoveryUnitExists, cancelPlan, unitOpenRecords,
-  postponePlan, postponeTarget, postponedItem, openExperiments,
+  UNIT_PHASES, discoveryUnitExists, cancelPlan, unitOpenRecords,
+  postponePlan, postponeTarget, openExperiments,
   topicTitle, topicTitles, itemTitle, goesBy, dismissedNames, topicKey, noTopicRefusal, briefFile, buildDiscoveryMap, quickFixBuild, fixesBegun,
 } = require('./derivations.cjs');
 const { sendReportOf } = require('./mail.cjs');
@@ -571,113 +573,6 @@ function phaseNote(cwd, { dotpath, verb, noun }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// The topic receipts — fetched by the calling flow right after a topic's
-// lifecycle verb, so the verb's stdout stays one JSON line. The surface
-// validates that the state it renders from matches the verb it receipts:
-// a receipt fetched out of place refuses loudly. `--warn` prepends the
-// knowledge advisory — the caller sets it when the transaction's JSON
-// carried `warnings`. A work unit's lifecycle verbs, the absorb and the
-// inbox's draw their own (receipts.cjs).
-// ---------------------------------------------------------------------------
-
-/**
- * How many waiting messages a cancel moved to the inbox, as `--inbox <n>`
- * carries it from the cancel's `inbox` — none where it is not given;
- * refused for another verb, and for a value that is no count.
- * @param {string} surface @param {string|undefined} verb @param {string|undefined} inbox
- * @returns {number}
- */
-function inboxCount(surface, verb, inbox) {
-  if (inbox === undefined) return 0;
-  if (verb !== 'cancel') throw new Error(`render ${surface}: --inbox counts what a cancel moved to the inbox — it takes --verb cancel`);
-  if (!/^(0|[1-9][0-9]*)$/.test(inbox)) throw new Error(`render ${surface}: --inbox takes how many messages the cancel moved, got "${inbox}"`);
-  return Number(inbox);
-}
-
-/**
- * Where each roadmap item a reactivate left stands (18.8.20), as `--stayed
- * <items>` carries them from its `roadmap_stayed`, comma-joined — none where
- * it is not given; refused for another verb, and for an item still waiting
- * or with the unit reactivated, which the reactivate took back.
- * @param {string} cwd @param {string} surface @param {string} unit @param {string|undefined} verb @param {string|undefined} stayed
- * @returns {import('./projections/transactions.cjs').Stayed[]}
- */
-function stayedItems(cwd, surface, unit, verb, stayed) {
-  if (stayed === undefined) return [];
-  if (verb !== 'reactivate') throw new Error(`render ${surface}: --stayed names what a reactivate left where it stands — it takes --verb reactivate`);
-  const names = stayed.split(',');
-  const taken = roadmapState(cwd).items.find((row) => names.includes(row.name) && (row.work_unit === undefined || row.work_unit === unit));
-  if (taken !== undefined) throw new Error(`render ${surface}: "${taken.name}" stayed nowhere — the reactivate takes back every item still waiting`);
-  return stayedWhere(cwd, names);
-}
-
-/**
- * The statuses a topic's live items stand at — what a reactivate or a pull
- * forward returned them to.
- * @param {object} manifest @param {string} name
- */
-function unitStatuses(manifest, name) {
-  return liveUnitItems(manifest, 'discovery', name).map(({ phase, item }) => ({ phase, status: item.status }));
-}
-
-/**
- * The Discovery unit a unit receipt addresses, refused when the dotpath
- * names another phase or no unit of the name.
- * @param {object} manifest @param {string} phase @param {string} topic @param {string} verb
- */
-function assertDiscoveryUnitAddress(manifest, phase, topic, verb) {
-  if (phase !== 'discovery') {
-    throw new Error(`render topic-receipt: --verb ${verb} addresses the Discovery unit — <work_unit>.discovery.<topic>, got phase "${phase}"`);
-  }
-  if (!discoveryUnitExists(manifest, topic)) {
-    throw new Error(`render topic-receipt: ${noTopicRefusal(manifest, topic)}`);
-  }
-}
-
-/**
- * The topic receipts: `cancel`, `reactivate`, `postpone` and `restore`
- * address the unit, `<wu>.discovery.<topic>`, and read its state after the
- * verb ran.
- * @param {string} cwd @param {{dotpath: string, verb?: string, warn?: string, inbox?: string, stayed?: string}} args @returns {string}
- */
-function topicReceiptSurface(cwd, args) {
-  const { workUnit, phase, topic, manifest } = resolveAddress(cwd, args.dotpath, 'topic-receipt');
-  const verb = args.verb;
-  const warn = args.warn === '1';
-  const inbox = inboxCount('topic-receipt', verb, args.inbox);
-  const stayed = stayedItems(cwd, 'topic-receipt', workUnit, verb, args.stayed);
-  const name = itemTitle(topicTitles(manifest), phase, topic);
-  if (verb === 'postpone') {
-    assertDiscoveryUnitAddress(manifest, phase, topic, verb);
-    if (computeTopicLifecycle(manifest, topic).lifecycle !== 'postponed') {
-      throw new Error(`render topic-receipt: "${topic}" is not postponed — the postpone has not run`);
-    }
-    const waiting = postponedItem(loadProjectManifest(cwd), workUnit, topic);
-    return topicReceipt(verb, name, { warn, horizon: waiting ? waiting.horizon : null });
-  }
-  if (verb === 'restore') {
-    assertDiscoveryUnitAddress(manifest, phase, topic, verb);
-    if (computeTopicLifecycle(manifest, topic).lifecycle === 'postponed') {
-      throw new Error(`render topic-receipt: "${topic}" is still postponed — the pull forward has not run`);
-    }
-    return topicReceipt(verb, name, { warn, restored: unitStatuses(manifest, topic) });
-  }
-  if (verb !== 'cancel' && verb !== 'reactivate') {
-    throw new Error(`render topic-receipt: --verb must be cancel, reactivate, postpone, or restore, got "${verb}"`);
-  }
-  assertDiscoveryUnitAddress(manifest, phase, topic, verb);
-  const cancelled = computeTopicLifecycle(manifest, topic).lifecycle === 'cancelled';
-  if (verb === 'cancel') {
-    if (!cancelled) throw new Error(`render topic-receipt: "${topic}" is not cancelled — the cancel has not run`);
-    return topicReceipt(verb, name, { warn, inbox });
-  }
-  if (cancelled) {
-    throw new Error(`render topic-receipt: "${topic}" is still cancelled — the reactivate has not run`);
-  }
-  return topicReceipt(verb, name, { warn, restored: unitStatuses(manifest, topic), stayed });
-}
-
 // import-reprompt — the re-prompt after a landing refused on `missing_imports`,
 // a learned gate (8.8.12). No address: the refusal names paths, and the work
 // unit it was aimed at may not exist yet (the work-type commit's own landing
@@ -978,12 +873,28 @@ function knowledgeGateSurface(_cwd, args) {
   const given = [...PROVIDER_FORM_FLAGS, 'from-system'].filter((flag) => args[flag] !== undefined);
   if (variant === 'retry') return knowledgeGate('retry', retrySetup(args, given));
   if (given.length > 0) throw new Error(`render knowledge-gate: --${given[0]} names the setup the retry variant runs again — it takes --variant retry`);
-  if (variant === undefined) {
-    const system = detectSystemConfig();
-    return system.status === 'valid' ? knowledgeGate('reuse', system) : knowledgeGate('mode');
-  }
+  if (variant === undefined) return knowledgeOpening();
   if (!KNOWLEDGE_VARIANTS.includes(variant)) throw new Error(`render knowledge-gate: --variant must be one of ${KNOWLEDGE_VARIANTS.join(', ')}, or none to open the gate, got "${variant}"`);
   return knowledgeGate(variant);
+}
+
+/** The knowledge gate's opening: the system configuration reused where one is valid, else the search-mode pick. @returns {string} */
+function knowledgeOpening() {
+  const system = detectSystemConfig();
+  return system.status === 'valid' ? knowledgeGate('reuse', system) : knowledgeGate('mode');
+}
+
+/**
+ * The check once the person says the terminal wizard completed: the
+ * configuration the checkout's store was built with where it is ready, as an
+ * in-chat setup says it; else that the wizard did not complete, over the
+ * gate's opening again.
+ * @param {string} cwd @returns {string}
+ */
+function knowledgeDoneSurface(cwd) {
+  const root = stateRoot(cwd);
+  if (readiness(root, () => {}) === 'ready') return knowledgeReady(readMetadata(knowledgeFiles(root).metadata));
+  return [knowledgeNotDone(), knowledgeOpening()].join('\n');
 }
 
 /**
@@ -1028,7 +939,6 @@ const SURFACES = {
   'phase-note': phaseNote,
   'cancel-gate': cancelGate,
   'postpone-gate': postponeGate,
-  'topic-receipt': topicReceiptSurface,
   'import-reprompt': importRepromptSurface,
   'absorb-target': (cwd, { dotpath }) => absorbTargetSurface(cwd, dotpath),
   'absorb-confirm-gate': absorbConfirmSurface,
@@ -1050,6 +960,7 @@ const SURFACES = {
   'label-gate': () => labelGate(),
   'knowledge-gate': knowledgeGateSurface,
   'knowledge-ask': knowledgeAskSurface,
+  'knowledge-done': knowledgeDoneSurface,
   'state-merge-gate': stateMergeGateSurface,
   'ledger-stop': ledgerStopSurface,
   'directive-stop': directiveStopSurface,

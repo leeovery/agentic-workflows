@@ -2,9 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: transaction receipts — the DISPLAY/MENU blocks a lifecycle
-// or inbox verb prints after its one-line JSON (receipts.cjs), and that the
-// topic receipt surface serves after a topic's (`render topic-receipt`).
-// The JSON is the machine contract; the receipt is emitted verbatim.
+// or inbox verb prints after its one-line JSON (receipts.cjs). The JSON is the machine contract; the receipt is emitted verbatim.
 // Warnings render as a state-class advisory above the confirmation — the
 // failure detail itself stays in the JSON line, on screen above it. The
 // map's `topic` verbs print their one line themselves, after their JSON.
@@ -305,11 +303,11 @@ function inboxArchiveReceipt(titles) {
 /**
  * The restore's receipt, a line an item, naming the unit whose build log the
  * restore took its claim out of, where it took one.
- * @param {{title: string, unclaimed: string|null}[]} items @returns {string}
+ * @param {{title: string, unclaimedFrom: string|null}[]} items @returns {string}
  */
 function inboxRestoreReceipt(items) {
-  return confirmation(items.map(({ title, unclaimed }) => {
-    const claim = unclaimed === null ? '' : `, its Resolved: line taken out of ${titlecase(unclaimed)}'s build log`;
+  return confirmation(items.map(({ title, unclaimedFrom }) => {
+    const claim = unclaimedFrom === null ? '' : `, its Resolved: line taken out of ${titlecase(unclaimedFrom)}'s build log`;
     return `Restored "${title}" to the inbox${claim}.`;
   }).join('\n'));
 }

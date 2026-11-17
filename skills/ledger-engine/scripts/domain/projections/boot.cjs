@@ -452,8 +452,8 @@ const TO_WIZARD = knowledgeScreen('knowledge-gate', '--variant', 'wizard');
 // search-mode pick with no system configuration to lean on, retry = the
 // setup run again once the provider's missing key is stored (its display
 // says how), wizard = the wait while the terminal wizard runs (its display
-// names the command), its yes boot run again. Each row leads to the setup,
-// the screen or the boot it runs.
+// names the command), its yes the check that the knowledge base is ready.
+// Each row leads to the setup or the screen it runs.
 /** @type {Record<string, (config: KnowledgeConfig) => KnowledgeMenu>} */
 const KNOWLEDGE_GATES = {
   reuse: ({ provider, model }) => ({
@@ -503,7 +503,7 @@ const KNOWLEDGE_GATES = {
     lead: 'The interactive wizard runs in your terminal. It walks provider choice, key entry (input hidden), and project store setup.',
     question: 'Has the wizard completed?',
     options: [
-      cmdOption('y', 'yes', 'It completed — check the knowledge base again', { next: { kind: 'engine', argv: ['boot'] } }),
+      cmdOption('y', 'yes', 'It completed — check the knowledge base again', { next: knowledgeScreen('knowledge-done') }),
     ],
   }),
 };
@@ -559,4 +559,9 @@ function knowledgeReady(store) {
   return section('DISPLAY: knowledge ready', CONTINUE_INSTRUCTION, `Knowledge base ready — ${configurationName(store)}.`);
 }
 
-module.exports = { migrationsApplied, migrationGate, stateLostGate, gitFloorStop, repoStop, migrationGuardStop, migrationChecksStop, directiveStop, leavingQuestion, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, banner, workPick, knowledgeGate, knowledgeAsk, knowledgeReady, KEY_PROVIDERS };
+/** That the terminal wizard did not complete, above the gate drawn again. @returns {string} */
+function knowledgeNotDone() {
+  return section('DISPLAY: knowledge not done', ABOVE_MENU_INSTRUCTION, 'The wizard did not complete — the knowledge base is not set up in this checkout yet.');
+}
+
+module.exports = { migrationsApplied, migrationGate, stateLostGate, gitFloorStop, repoStop, migrationGuardStop, migrationChecksStop, directiveStop, leavingQuestion, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, banner, workPick, knowledgeGate, knowledgeAsk, knowledgeReady, knowledgeNotDone, KEY_PROVIDERS };

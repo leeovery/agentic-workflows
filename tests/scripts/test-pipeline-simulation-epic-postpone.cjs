@@ -49,15 +49,14 @@ describe('pipeline simulation: epic postpone', () => {
     sim.render(['postpone-gate', `${wu}.discovery.fresh-one`, '--horizon', 'next'], { expect: 'content' });
     const first = sim.run(['topic', 'postpone', wu, 'fresh-one', '--horizon', 'next']);
     assert.deepStrictEqual(first.roadmap, { name: 'fresh-one', horizon: 'next', born_map: true, born_horizon: true, reverted_join: false, from_archive: false });
-    assert.match(sim.render(['topic-receipt', `${wu}.discovery.fresh-one`, '--verb', 'postpone'], { expect: 'content' }),
-      /Postponed "Fresh One" → next\./);
+    assert.match(sim.sections, /Postponed "Fresh One" → next\./);
     // From the epic's discovery, the person names no horizon: the pick offers
     // the roadmap's, the new one they name carries on, and the postpone takes it.
     assert.match(sim.render(['horizon-pick', '--park', 'talking'], { expect: 'content' }), /Putting "Talking" on the roadmap\.[\s\S]*→ next — \*1 waiting\*/);
     assert.deepStrictEqual(answerGate(sim, 'horizon pick', '--pick', 'n').next, { kind: 'continue' });
     const second = sim.run(['topic', 'postpone', wu, 'talking', '--horizon', 'later']);
     assert.deepStrictEqual(second.roadmap, { name: 'talking', horizon: 'later', born_map: false, born_horizon: true, reverted_join: false, from_archive: false });
-    assert.match(sim.render(['topic-receipt', `${wu}.discovery.talking`, '--verb', 'postpone'], { expect: 'content' }), /Postponed "Talking" → later\./);
+    assert.match(sim.sections, /Postponed "Talking" → later\./);
     assert.deepStrictEqual(second.postponed, [{ phase: 'discussion', previous_status: 'in-progress' }]);
     sim.run(['topic', 'postpone', wu, 'decided', '--horizon', 'later']);
 
@@ -93,8 +92,7 @@ describe('pipeline simulation: epic postpone', () => {
     // The pull is the return: the same epic restores the unit it postponed.
     const back = sim.run(['roadmap', 'pull-forward', 'talking', '--into', wu]);
     assert.deepStrictEqual(back.restored, [{ phase: 'discussion', status: 'in-progress' }]);
-    assert.match(sim.render(['topic-receipt', `${wu}.discovery.talking`, '--verb', 'restore'], { expect: 'content' }),
-      /Pulled "Talking" forward\. Restored discussion \[in-progress\]\./);
+    assert.match(sim.sections, /Pulled "Talking" forward\. Restored discussion \[in-progress\]\./);
     assert.strictEqual(sim.manifest(wu).phases.discovery.items.talking.order, 2, 'the map order returns');
     assert.strictEqual(sim.manifest(wu).phases.discussion.items.talking.status, 'in-progress');
     enterEntry(sim, wu, 'discussion', 'talking');
