@@ -306,7 +306,7 @@ describe('engine code diff and status: the change not yet committed', () => {
     assert.deepStrictEqual(harness.ok(dir, ['commit', '--paths', 'src/charge.js', '-m', 'feat(payments): the charge', ...FOR_TASK], building).left_dirty, named);
   });
 
-  it('a repo inside the project\'s .ledger/ is the workflows\' own — never a repo of the project, its dirt and commits never code', () => {
+  it('a repo inside the project\'s .ledger/ is Ledger\'s own — never a repo of the project, its dirt and commits never code', () => {
     const imported = initRepo(statePath(dir, layout.assets('pay', 'checkout')));
     createFile(imported, 'lib.js', '1\n');
     commitAll(imported, `${PREFIX}1 — an imported checkout`);

@@ -14,8 +14,8 @@
 // conversation refused, and the next boot stamps it.
 //
 // Layer: verb, with one process test, the boot killed as it stamps. World:
-// the project fixture, a git repository with its state worktree and the
-// workflows' hooks in its settings, made once per run and copied for
+// the project fixture, a git repository with its state worktree and
+// Ledger's hooks in its settings, made once per run and copied for
 // each test, beside it a second project where a test needs one; each test
 // under a system config of its own, every call made in a conversation the
 // harness stamps nothing for (`unbooted`); boot runs the repo's real
@@ -31,7 +31,7 @@ const path = require('path');
 
 const {
   call, callAsync, ok, refusedPristine, fixtureFrom, git, commitAll, createFile, stateGit, stampBooted, killedAt,
-  failingStateCommits, engineHook, WORKFLOW_HOOKS, GUARD_GROUPS, hooked,
+  failingStateCommits, engineHook, LEDGER_HOOKS, GUARD_GROUPS, hooked,
 } = require('./engine-harness.cjs');
 const { useTempFolder, createManifest } = require('./discovery-test-utils.cjs');
 const { COMMANDS, BOOT_EXEMPT } = require('../../skills/ledger-engine/scripts/engine.cjs');
@@ -49,11 +49,11 @@ const refusedUnbooted = (res) => res.code === 1 && /has not booted Ledger/.test(
 const WORK = Object.freeze(['brownfield', 'record', 'native']);
 
 /**
- * A project: its state worktree, the workflows' hooks committed in its
+ * A project: its state worktree, Ledger's hooks committed in its
  * settings, so boot writes nothing of its own there. Made once per run.
  */
 const projectWorld = fixtureFrom('engine-boot-stamp-', (dir) => {
-  createFile(dir, '.claude/settings.json', hooked(WORKFLOW_HOOKS));
+  createFile(dir, '.claude/settings.json', hooked(LEDGER_HOOKS));
   createFile(dir, 'src/app.js', '// the code\n');
   commitAll(dir, 'init');
 });
@@ -215,7 +215,7 @@ describe('what goes through before boot has run (BOOT_EXEMPT)', () => {
   });
 
   it('every hook boot installs runs in a conversation boot has not run in, so a fresh conversation\'s first tool call meets no refusal', () => {
-    const hooks = [...WORKFLOW_HOOKS, ...GUARD_GROUPS.flatMap((group) => group.hooks), engineHook('session cleanup'), engineHook('session resume')];
+    const hooks = [...LEDGER_HOOKS, ...GUARD_GROUPS.flatMap((group) => group.hooks), engineHook('session cleanup'), engineHook('session resume')];
     const argvs = hooks.map(({ command }) => command.slice(command.indexOf('engine.cjs" ') + 'engine.cjs" '.length).split(' '));
 
     assert.deepStrictEqual(argvs.filter((argv) => refusedUnbooted(call(dir, argv, { env, stdin: JSON.stringify({ session_id: SESSION, cwd: dir }), unbooted: true }))).map((argv) => argv.join(' ')), []);

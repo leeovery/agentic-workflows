@@ -1066,13 +1066,13 @@ if (!process.env.STUB_MIGRATE_NO_REPORT) {
 }
 `;
 
-// The workflows' own hooks, as boot installs them in a project's
+// Ledger's own hooks, as boot installs them in a project's
 // `.claude/settings.json`.
 const HOOK_ENGINE = 'node "$CLAUDE_PROJECT_DIR/.claude/skills/ledger-engine/scripts/engine.cjs"';
 /** A hook running an engine verb. @param {string} verb */
 const engineHook = (verb) => ({ type: 'command', command: `${HOOK_ENGINE} ${verb}` });
-/** The workflows' own SessionEnd hooks, in every project whatever the label choice. */
-const WORKFLOW_HOOKS = [engineHook('presence cleanup'), engineHook('conversation end')];
+/** Ledger's own SessionEnd hooks, in every project whatever the label choice. */
+const LEDGER_HOOKS = [engineHook('presence cleanup'), engineHook('conversation end')];
 /** The layout hook's group, before every write, in every project whatever the label choice. */
 const LAYOUT_GROUP = { matcher: 'Write|Edit|NotebookEdit', hooks: [engineHook('layout guard')] };
 /** The brief hook's group, before every dispatch, in every project whatever the label choice. */
@@ -1081,8 +1081,8 @@ const BRIEF_GROUP = { matcher: 'Agent|SendMessage', hooks: [engineHook('brief gu
 const SHELL_GROUP = { matcher: 'Bash', hooks: [engineHook('shell guard')] };
 /** The PreToolUse groups, in the order boot installs them. */
 const GUARD_GROUPS = [LAYOUT_GROUP, BRIEF_GROUP, SHELL_GROUP];
-/** The workflows' own hooks by event, as boot installs them. */
-const OWN_HOOKS = { SessionEnd: [{ hooks: WORKFLOW_HOOKS }], PreToolUse: GUARD_GROUPS };
+/** Ledger's own hooks by event, as boot installs them. */
+const OWN_HOOKS = { SessionEnd: [{ hooks: LEDGER_HOOKS }], PreToolUse: GUARD_GROUPS };
 
 /**
  * Settings as boot leaves a project the mod cannot run in: `rest`, then
@@ -1167,7 +1167,7 @@ function startItem(dir, workUnit, phase, topic) {
 }
 
 module.exports = {
-  ENGINE, STAND_INS, harness, stubEngine, engineHook, WORKFLOW_HOOKS, LAYOUT_GROUP, GUARD_GROUPS, OWN_HOOKS, hooked,
+  ENGINE, STAND_INS, harness, stubEngine, engineHook, LEDGER_HOOKS, LAYOUT_GROUP, GUARD_GROUPS, OWN_HOOKS, hooked,
   call, callAsync, ok, okSections, okSectionsAsync, refuses, refusesAsync, refusedPristine, output, sectionOf, screenOf, holdLock, lockAttempts, contend, killedAt,
   FROZEN_MS, FROZEN_AT, withFrozenClock, withEnv, datedAt,
   keywordOnlyKnowledge, unreadableKnowledge, hasStore, indexedFiles,

@@ -268,7 +268,7 @@ describe('engine session resume', () => {
     assert.strictEqual(tmuxName(), 'proj-abc');
   });
 
-  /** A second workflows project, opted in, with the work units named — another checkout. */
+  /** A second Ledger project, opted in, with the work units named — another checkout. */
   function otherProject(/** @type {string[]} */ units) {
     const other = projectWith('engine-label-other-', units);
     fs.writeFileSync(path.join(other, '.ledger', 'manifest.json'), JSON.stringify({ defaults: { tmux_labels: true } }) + '\n');

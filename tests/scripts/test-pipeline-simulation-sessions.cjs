@@ -130,7 +130,7 @@ describe('pipeline simulation: sessions', () => {
     decideTopic(sim, wu, 'alpha');
   });
 
-  it('the migration gate\'s yes: one commit lands every path the workflows own, and a code session\'s staging stays out', () => {
+  it('the migration gate\'s yes: one commit lands every path Ledger owns, and a code session\'s staging stays out', () => {
     const wu = 'upgraded';
     sim.run(['workunit', 'create', wu, 'feature', '--description', 'Carried through an upgrade', '--session-log-file', sessionLog(sim, wu)]);
     enterEntry(sim, wu, 'discussion', wu);

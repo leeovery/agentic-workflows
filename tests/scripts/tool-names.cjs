@@ -11,7 +11,7 @@
 // of the binary, whether or not it runs onto the next line, a constant
 // holding it, an install of it and, where it collides with nothing, the
 // binary quoted bare. `toolNamesIn` reads one text; `shippedFiles` lists
-// every file of the workflows the rule holds over: the skills, the
+// every file of Ledger's that the rule holds over: the skills, the
 // references, the agent definitions, the engine's code and the migrations,
 // outside the drivers and test fixtures, the places 7.1.10 names. 7.1.10
 // lets a released migration name a tool too, but none does in a form the

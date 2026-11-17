@@ -32,7 +32,7 @@ const path = require('path');
 const { execFileSync, spawn, spawnSync } = require('child_process');
 const harness = require('./engine-harness.cjs');
 const { TEMPLATE_DATE, createFile, readFile } = require('./discovery-test-utils.cjs');
-const { git, commitCode, initRepo, tip, remoteTip, lockAttempts, STATE_DIR_NAME, statePath, layout, hooked, WORKFLOW_HOOKS } = harness;
+const { git, commitCode, initRepo, tip, remoteTip, lockAttempts, STATE_DIR_NAME, statePath, layout, hooked, LEDGER_HOOKS } = harness;
 
 const SCRIPTS = path.dirname(harness.ENGINE);
 const { STATE_BRANCH, STATE_GITIGNORE } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
@@ -42,7 +42,7 @@ const { TODAYS_HOOKS_UNLABELLED, sessionEndAsInstalled } = require('./boot-world
 
 const world = useWorld();
 
-/** A project on the layout before Ledger's, its `.workflows/` and the workflows' hooks committed: its main checkout. */
+/** A project on the layout before Ledger's, its `.workflows/` and its hooks committed: its main checkout. */
 function owingProject() {
   const main = projectInWorld();
   createFile(main, '.workflows/payments/manifest.json', '{}\n');
@@ -148,7 +148,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     assert.strictEqual(readFile(main, '.gitignore'), '.ledger/\n');
   });
 
-  it('reads only the person\'s own commits as the history before the workflows — never the setup\'s ignore line and hooks', () => {
+  it('reads only the person\'s own commits as the history before Ledger — never the setup\'s ignore line and hooks', () => {
     const main = projectInWorld();
 
     const { brownfield_signal: signal } = boot(main);
@@ -374,7 +374,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
 
     assert.strictEqual(boot(code, { STUB_MIGRATE_MODE: 'reshape' }).state, 'finish');
 
-    assert.deepStrictEqual([main, code].map((at) => [readFile(at, '.claude/settings.json'), git(at, ['status', '--porcelain', '--', '.claude']).trim()]), [main, code].map(() => [hooked(WORKFLOW_HOOKS), 'M .claude/settings.json']));
+    assert.deepStrictEqual([main, code].map((at) => [readFile(at, '.claude/settings.json'), git(at, ['status', '--porcelain', '--', '.claude']).trim()]), [main, code].map(() => [hooked(LEDGER_HOOKS), 'M .claude/settings.json']));
     assert.deepStrictEqual(heads(), before);
     assert.deepStrictEqual(sessionEndAsInstalled(code, 'ending'), [0, 0]);
   });

@@ -91,7 +91,7 @@ describe('finish yes (14.5.1, 24.1.2)', () => {
     unreadableKnowledge(dir);
     const project = JSON.parse(readState(dir, layout.projectManifest));
     writeState(dir, layout.projectManifest, JSON.stringify({ ...project, drivers: { ...project.drivers, landing: 'carrier-pigeon' } }, null, 2));
-    commitAll(dir, 'a landing driver the workflows lack');
+    commitAll(dir, 'a landing driver Ledger lacks');
     const { error, warnings } = refusedPristine(dir, ['finish', 'yes', UNIT], { env: env() });
 
     assert.match(error, /^finish yes: .*carrier-pigeon/);

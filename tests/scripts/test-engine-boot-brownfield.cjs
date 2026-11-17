@@ -5,11 +5,11 @@
 // (ledger-engine/scripts/domain/boot.cjs): the brownfield offer's answer —
 // the one the reshape's move (078) carried from a project's baseline among
 // them — the walkthrough's recorded answer, and the brownfield signal — the
-// code history from before the workflows arrived; and no worktree include
+// code history from before Ledger arrived; and no worktree include
 // written.
 //
 // Layer: verb. World: the project fixture (boot-world.cjs), a git repository
-// with its state worktree and the workflows' hooks, made once per run and
+// with its state worktree and Ledger's hooks, made once per run and
 // copied; boot runs from a copy of the engine beside a stand-in migration
 // runner whose behaviour the test picks through the environment. The move
 // runs in a scratch repository beside it, the user-level folders its own.
@@ -23,7 +23,7 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const harness = require('./engine-harness.cjs');
-const { git, statePath, layout, WORKFLOW_HOOKS, hooked } = harness;
+const { git, statePath, layout, LEDGER_HOOKS, hooked } = harness;
 const REAL_SCRIPTS = path.dirname(harness.ENGINE);
 const { createState } = require(path.join(REAL_SCRIPTS, 'domain/state-worktree.cjs'));
 const { datedAt, createFile, withEnv } = require('./discovery-test-utils.cjs');
@@ -102,7 +102,7 @@ describe('engine boot', () => {
   /**
    * A scratch repo beside the fixture, hermetic like it, with dated
    * commits and the state arriving on a date of the test's choosing. From
-   * the first commit on, its settings carry the workflows' own hooks, like
+   * the first commit on, its settings carry Ledger's own hooks, like
    * the fixture's; its `.gitignore` names the state, as boot keeps it, held
    * out of the history by its own exclude: the history under test is the
    * project's own.
@@ -111,7 +111,7 @@ describe('engine boot', () => {
     const project = harness.initRepo(path.join(fix.root, name));
     fs.appendFileSync(path.join(project, '.git/info/exclude'), '.gitignore\n');
     createFile(project, '.gitignore', '.ledger/\n');
-    createFile(project, '.claude/settings.json', hooked(WORKFLOW_HOOKS));
+    createFile(project, '.claude/settings.json', hooked(LEDGER_HOOKS));
     const at = (date) => (date.includes('T') ? date : `${date}T12:00:00Z`);
     const commit = (msg, date) => {
       execFileSync('git', ['add', '-A'], { cwd: project });
@@ -121,9 +121,9 @@ describe('engine boot', () => {
     return { project, commit, arrive };
   }
 
-  it('brownfield_signal: a codebase committed before `.ledger/` arrived reads as history that predates the workflows — as commits and a tree, not a count', () => {
+  it('brownfield_signal: a codebase committed before `.ledger/` arrived reads as history that predates Ledger — as commits and a tree, not a count', () => {
     // A brownfield repo: two commits of code (the skills install beside it,
-    // which never counts as project code), then the workflows land.
+    // which never counts as project code), then Ledger lands.
     const { project, commit, arrive } = scratchRepo('brownfield');
     createFile(project, 'src/app.js', 'export default 1;\n');
     createFile(project, 'README.md', '# App\n');
@@ -131,7 +131,7 @@ describe('engine boot', () => {
     createFile(project, 'src/lib.js', 'export const x = 2;\n');
     commit('more code', '2025-06-15');
 
-    // No state yet — the workflows arriving now: the whole history predates
+    // No state yet — Ledger arriving now: the whole history predates
     // them, and the tree is HEAD's.
     const { brownfieldSignal } = require(path.join(REAL_SCRIPTS, 'domain/brownfield.cjs'));
     assert.deepStrictEqual(brownfieldSignal(project), {
@@ -144,7 +144,7 @@ describe('engine boot', () => {
     // commit are the history, and the tree is the one it arrived into.
     arrive('2025-09-01');
     createFile(project, 'src/later.js', 'export const y = 3;\n');
-    commit('after the workflows', '2025-10-01');
+    commit('after Ledger', '2025-10-01');
     const res = runEngine(stubbed, project, ['boot']);
     assert.strictEqual(res.brownfield_offer, 'none');
     assert.deepStrictEqual(res.brownfield_signal, {
@@ -154,7 +154,7 @@ describe('engine boot', () => {
     });
   });
 
-  it('brownfield_signal: the workflows arriving with the codebase\'s first commit report the tree they arrived into — a legacy codebase put under git at install is not a fresh start', () => {
+  it('brownfield_signal: Ledger arriving with the codebase\'s first commit reports the tree it arrived into — a legacy codebase put under git at install is not a fresh start', () => {
     const { project, commit, arrive } = scratchRepo('legacy');
     for (const f of ['app/models/user.rb', 'app/models/order.rb', 'app/controllers/orders.rb', 'config/routes.rb', 'Gemfile']) createFile(project, f, '# code\n');
     commit('import', '2025-01-01');

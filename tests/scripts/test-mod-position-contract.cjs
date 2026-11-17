@@ -1,7 +1,7 @@
 'use strict';
 
 // What the mods read of `conversation position` is what the engine writes:
-// the gate mod knows a workflow conversation by the engine's mark, finds the
+// the gate mod knows a Ledger conversation by the engine's mark, finds the
 // answer by its POSITION section marker and reads the keys of its one line of
 // JSON, the rows mod knows a compaction's note by the engine's opening words,
 // and both name the record of the notes handed up alike; the gate mod's
@@ -94,7 +94,7 @@ afterEach(() => {
 });
 
 describe('the mods read conversation position as the engine writes it', () => {
-  it('the gate mod knows a workflow conversation by the file the engine marks it with', () => {
+  it('the gate mod knows a Ledger conversation by the file the engine marks it with', () => {
     answer();
     const mark = literal('skills/ledger-gates/hooks/folder.ts', 'MARKER');
     assert.ok(fs.existsSync(path.join(config, 'conversations', 'sess-1', mark)), `the engine marks the conversation "${mark}"`);

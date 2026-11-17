@@ -5,7 +5,7 @@
 // branch — `engine commit --topic`, `--discovery`, `--product` and `--state`
 // — each taking its own scope and nothing beside it, a topic's in no more
 // git commands than its own reads need — and `--migrations`, the state with
-// the paths the workflows own in the code tree.
+// the paths Ledger owns in the code tree.
 //
 // Layer: git. World: the project world and its code projects, built once and
 // copied (engine-harness.cjs), the commit door's epic over them
@@ -287,7 +287,7 @@ describe('engine commit --state: the files only the engine writes, the unit\'s a
   });
 });
 
-describe('engine commit --migrations: the state and the paths the workflows own', () => {
+describe('engine commit --migrations: the state and the paths Ledger owns', () => {
   const setup = fixtureFrom('engine-commit-migrations-', (at) => {
     writeState(at, layout.manifest('payments'), '{"name":"payments"}\n');
     createFile(at, '.claude/settings.json', '{}\n');

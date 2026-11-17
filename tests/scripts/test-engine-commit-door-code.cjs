@@ -140,7 +140,7 @@ describe('engine commit --paths: the code commit', () => {
     assert.strictEqual(git(dir, ['diff', '--cached', '--name-only']).trim(), '', 'a refusal stages nothing');
   });
 
-  it('refuses escapes, workflow artifacts, and a missing target', () => {
+  it('refuses escapes, the state\'s files, and a missing target', () => {
     assert.match(refuses(dir, ['commit', '--paths', '../elsewhere.js', '-m', 'x', ...FOR_TASK], building).error, /resolves outside the project/);
     assert.match(refuses(dir, ['commit', '--paths', '/etc/hosts', '-m', 'x', ...FOR_TASK], building).error, /resolves outside the project/);
     assert.strictEqual(refuses(dir, ['commit', '--paths', '.ledger/payments/topics/topic-a/log.md', '-m', 'x', ...FOR_TASK], building).error,

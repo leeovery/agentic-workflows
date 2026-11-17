@@ -18,7 +18,7 @@ held call rather than the case.
 
 === world ===
 Project directory — your cwd for EVERY command: {{world_dir}}
-The workflow skills are installed at .claude/skills/ inside that project.
+The Ledger skills are installed at .claude/skills/ inside that project.
 Mutations are expected and safe: the project is a disposable test world.
 
 === situation ===

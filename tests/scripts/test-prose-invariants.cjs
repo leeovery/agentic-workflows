@@ -38,7 +38,7 @@ describe('engine_before_write — the skip-to-the-end detector', () => {
     assert.equal(invariants.check(rows, declared)[0].ok, true);
   });
 
-  it('fails a walk that wrote workflow state having never called the engine', () => {
+  it('fails a walk that wrote the state having never called the engine', () => {
     const rows = [
       read('./.claude/skills/ledger-implementation-process/SKILL.md'),
       wrote('./.workflows/pay/discussion/pay.md'),
@@ -80,7 +80,7 @@ describe('engine_before_write — the skip-to-the-end detector', () => {
     assert.match(result.detail, /never called the engine/);
   });
 
-  it('counts tee, cp and mv into the workflow directory', () => {
+  it('counts tee, cp and mv into the state directory', () => {
     for (const command of [
       'cd . && echo x | tee .workflows/a.md',
       'cd . && cp /tmp/a.md .workflows/a.md',
@@ -90,7 +90,7 @@ describe('engine_before_write — the skip-to-the-end detector', () => {
     }
   });
 
-  it('does not mistake reading workflow state for writing it', () => {
+  it('does not mistake reading the state for writing it', () => {
     const rows = [
       bash('cd . && cat .workflows/pay/manifest.json 2>&1'),
       bash('cd . && grep -r pay .workflows/ | head -5'),
@@ -98,7 +98,7 @@ describe('engine_before_write — the skip-to-the-end detector', () => {
     assert.equal(invariants.check(rows, declared)[0].ok, true);
   });
 
-  it('does not let a heredoc body that names workflow state count as a write into it', () => {
+  it('does not let a heredoc body that names the state count as a write into it', () => {
     const rows = [bash("cd . && cat > /tmp/notes.txt << 'EOF' see .workflows/pay/manifest.json EOF")];
     assert.equal(invariants.check(rows, declared)[0].ok, true);
   });

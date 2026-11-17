@@ -8,7 +8,7 @@
 // failing migrate.cjs a hard error.
 //
 // Layer: verb. World: the project fixture (boot-world.cjs), a git repository
-// with its state worktree and the workflows' hooks, made once per run and
+// with its state worktree and Ledger's hooks, made once per run and
 // copied; boot runs from a copy of the engine beside a stand-in migration
 // runner whose behaviour the test picks through the environment.
 // ---------------------------------------------------------------------------
@@ -20,7 +20,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
-const { git, stateGit, commitAll, statePath, layout, writeState, WORKFLOW_HOOKS, hooked } = harness;
+const { git, stateGit, commitAll, statePath, layout, writeState, LEDGER_HOOKS, hooked } = harness;
 const REAL_SCRIPTS = path.dirname(harness.ENGINE);
 const { OWNED_PATHS } = require(path.join(REAL_SCRIPTS, 'domain/commit.cjs'));
 
@@ -69,7 +69,7 @@ describe('engine boot', () => {
   it('a migration touching config files commits none of them — the reviewed commit takes them with the rest', () => {
     const res = runEngine(stubbed, fix.project, ['boot'], {
       STUB_MIGRATE_MODE: 'update-config',
-      STUB_MIGRATE_SETTINGS: hooked(WORKFLOW_HOOKS, { permissions: {} }),
+      STUB_MIGRATE_SETTINGS: hooked(LEDGER_HOOKS, { permissions: {} }),
     });
 
     assert.strictEqual(res.ok, true);
@@ -99,7 +99,7 @@ describe('engine boot', () => {
 
     const res = runEngine(stubbed, fix.project, ['boot'], {
       STUB_MIGRATE_MODE: 'update-config',
-      STUB_MIGRATE_SETTINGS: hooked(WORKFLOW_HOOKS, { permissions: {} }),
+      STUB_MIGRATE_SETTINGS: hooked(LEDGER_HOOKS, { permissions: {} }),
     });
 
     assert.strictEqual(res.migrations.changed, true);
@@ -122,10 +122,10 @@ describe('engine boot', () => {
 
   it('no migrations ran: dirty config files are left untouched, never committed by boot', () => {
     // Track a config baseline, then dirty both files with no migration running.
-    createFile(fix.project, '.claude/settings.json', hooked(WORKFLOW_HOOKS, { permissions: {} }));
+    createFile(fix.project, '.claude/settings.json', hooked(LEDGER_HOOKS, { permissions: {} }));
     createFile(fix.project, '.gitignore', '.ledger/\nnode_modules\n');
     commitAll(fix.project, 'config baseline');
-    createFile(fix.project, '.claude/settings.json', hooked(WORKFLOW_HOOKS, { permissions: { allow: ['x'] } }));
+    createFile(fix.project, '.claude/settings.json', hooked(LEDGER_HOOKS, { permissions: { allow: ['x'] } }));
     createFile(fix.project, '.gitignore', '.ledger/\nnode_modules\n.DS_Store\n');
 
     const res = runEngine(stubbed, fix.project, ['boot']);

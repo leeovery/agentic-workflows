@@ -24,7 +24,7 @@
 // it, its default, its template
 // saying a wrong comment is returned as a nit and giving the report's
 // grammar, its example reading by it (13.5.11); every reviewer's template,
-// and never the builder's, returning a workflows reference in the work as
+// and never the builder's, returning a reference to Ledger in the work as
 // a nit (13.S20); the fix round's brief, from a conversation that briefed
 // the task's builder, each reviewer's report of the
 // task's last round verbatim under its label and nothing else (6.S17),
@@ -32,7 +32,7 @@
 // holds one that does not read, or the last round passed (13.S4); the
 // product researcher's brief in a project with no unit; the fill under the
 // writer lock; every refusal writing nothing, no brief and no record among
-// it; every role's agent named as the workflows' are, and defined on the
+// it; every role's agent named as Ledger's are, and defined on the
 // roster fixing Opus at medium; a template's slots held to its role; a
 // brief and its record never stored over another's; and a builder's or a
 // fix round's brief taking off the stop the conversation holds against
@@ -715,7 +715,7 @@ describe('the templates and the store', () => {
     fs.rmSync(conversationDir(SESSION_ID), { recursive: true, force: true });
   });
 
-  it('every role is dispatched as an agent named as the workflows\' are, so the hook stands before each', () => {
+  it('every role is dispatched as an agent named as Ledger\'s are, so the hook stands before each', () => {
     assert.strictEqual(OURS, 'ledger-');
     for (const [role, { agent }] of Object.entries(ROLES)) assert.ok(agent.startsWith(OURS) && agent.length > OURS.length, `${role}: ${agent}`);
   });

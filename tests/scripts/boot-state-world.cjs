@@ -5,7 +5,7 @@
 // remote the test names, from the library's project worlds; a project boot
 // has set up, made once per run and copied (`setUp`); boot run from the
 // library's stub engine (`engine`, `STUB_ENGINE`), its migration runner a
-// stand-in; the workflows' own hooks as boot installs them; and the reads
+// stand-in; Ledger's own hooks as boot installs them; and the reads
 // the assertions make: the state worktree in place, what a stopped boot
 // leaves, a boot with nothing to do.
 
@@ -15,7 +15,7 @@ const assert = require('node:assert');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
-const { git, readState, statePath, traced, folderFrom, WORKFLOW_HOOKS, hooked } = harness;
+const { git, readState, statePath, traced, folderFrom, LEDGER_HOOKS, hooked } = harness;
 
 const SCRIPTS = path.dirname(harness.ENGINE);
 const { STATE_BRANCH, STATE_LOCK_REASON, inspectState } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
@@ -29,8 +29,8 @@ function useWorld() {
   return world;
 }
 
-/** The project settings boot installs: the workflows' own hooks. */
-const OWN_SETTINGS = hooked(WORKFLOW_HOOKS);
+/** The project settings boot installs: Ledger's own hooks. */
+const OWN_SETTINGS = hooked(LEDGER_HOOKS);
 
 const engine = harness.stubEngine();
 const STUB_ENGINE = engine.path;

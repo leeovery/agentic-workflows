@@ -275,7 +275,7 @@ describe('pipeline simulation: discovery\'s entry', () => {
     assert.strictEqual(sim.conversations, conversation);
   });
 
-  it('code that predates the workflows: the offer accepted, the research owed at each opening of the product\'s conversation until the product researcher\'s findings land, then completed and never owed again (8.S37, 8.S78, 8.12.4, 8.12.13)', () => {
+  it('code that predates Ledger: the offer accepted, the research owed at each opening of the product\'s conversation until the product researcher\'s findings land, then completed and never owed again (8.S37, 8.S78, 8.12.4, 8.12.13)', () => {
     assert.strictEqual(sim.run(['boot']).brownfield_offer, 'none', 'the judgment is made');
     sim.render(['brownfield-offer-gate'], { expect: 'content' });
     sim.run(['brownfield', 'record', 'accepted']);

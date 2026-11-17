@@ -608,7 +608,7 @@ describe('the boot and knowledge gate surfaces', () => {
 
   it('migrations-applied: each notice the run handed back stands beneath the summary, above the counts', () => {
     const told = writePayload(dir, '.ledger/.cache/migrations-applied.json', {
-      summary: 'Removed a setting the workflows no longer use.',
+      summary: 'Removed a setting Ledger no longer uses.',
       notices: ['Removed `showClearContextOnPlanAccept` — add it back if you want it. ', 'A second thing to know.'],
       migrations: 1,
       files: 1,
@@ -616,7 +616,7 @@ describe('the boot and knowledge gate surfaces', () => {
     assert.ok(renderSurface(dir, 'migrations-applied', { file: told }).endsWith([
       '**Migrations Applied**',
       '',
-      'Removed a setting the workflows no longer use.',
+      'Removed a setting Ledger no longer uses.',
       '',
       'Removed `showClearContextOnPlanAccept` — add it back if you want it.',
       '',

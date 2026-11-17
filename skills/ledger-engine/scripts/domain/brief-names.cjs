@@ -37,7 +37,7 @@ const ID = '[0-9A-Za-z]+';
 /** A pointer anywhere in a text, its id captured. */
 const POINTED = new RegExp(`${POINTER}(${ID})`);
 
-/** How the workflows' agents are named: the hook acts on every agent so named, and on no other. */
+/** How Ledger's agents are named: the hook acts on every agent so named, and on no other. */
 const OURS = 'ledger-';
 
 /** The roles whose brief sends a task's builder to build it: its own, and a fix round's. */

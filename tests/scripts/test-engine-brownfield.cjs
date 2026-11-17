@@ -6,7 +6,7 @@
 // the project manifest — native, skipped or accepted once, while nothing is
 // recorded, and completed once an accepted offer's research has landed
 // (8.12.11, 8.12.13) — and the brownfield signal, the code history from before
-// the workflows arrived, read across the project's repos (8.12.10).
+// Ledger arrived, read across the project's repos (8.12.10).
 //
 // Layer: git. World: the project fixture for the verb; plain repositories
 // the test commits into, with dated commits and a state begun at a date, for
@@ -102,7 +102,7 @@ describe('engine brownfield record', () => {
 });
 
 /**
- * The workflows arriving in the repo at `dir` on `date`: its state begun by
+ * Ledger arriving in the repo at `dir` on `date`: its state begun by
  * the machinery, the state's first commit carrying that date.
  * @param {string} dir @param {string} date
  */
@@ -143,9 +143,9 @@ describe('the brownfield signal across the project\'s repos', () => {
     commitOn(api, 'api: billing', '2025-05-01');
     beginState(dir, '2025-09-01');
     writeFile(api, 'src/d.js', 'd\n');
-    commitOn(api, 'api: built on the workflows', '2025-10-01');
+    commitOn(api, 'api: built on Ledger', '2025-10-01');
     writeFile(dir, 'src/e.js', 'e\n');
-    commitOn(dir, 'built on the workflows', '2025-11-01');
+    commitOn(dir, 'built on Ledger', '2025-11-01');
 
     assert.deepStrictEqual(brownfieldSignal(dir), {
       root_date: '2025-01-15', ledger_date: '2025-09-01', commits_total: 5, commits_before: 3,
@@ -245,7 +245,7 @@ describe('the brownfield signal of a project inside a larger repository', () => 
     writeFile(dir, 'tools/deploy.sh', 'deploy\n');
     commitOn('tools: deploy', '2025-05-01');
     writeFile(project, 'src/app.js', '2\n');
-    commitOn('web: built on the workflows', '2025-06-01');
+    commitOn('web: built on Ledger', '2025-06-01');
 
     assert.deepStrictEqual(brownfieldSignal(project), {
       root_date: '2025-02-01', ledger_date: '2025-04-01', commits_total: 2, commits_before: 1,

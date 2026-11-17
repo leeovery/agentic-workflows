@@ -3,8 +3,8 @@
 // ---------------------------------------------------------------------------
 // The brief hook (ledger-engine/scripts/domain/brief-guard.cjs): `engine
 // brief guard`, Claude Code's hook before Agent and SendMessage, fed its
-// JSON on stdin as Claude Code sends it. A call reaching none of the
-// workflows' agents — Claude's own subagents, an agent of another's, a
+// JSON on stdin as Claude Code sends it. A call reaching none of
+// Ledger's agents — Claude's own subagents, an agent of another's, a
 // message to one, a recipient with no record, input it cannot read — passes
 // untouched: exit 0, nothing said, nothing recorded (6.5.8). A call of one,
 // named `ledger-*` — by Agent's `subagent_type`, or by the agent type a
@@ -177,7 +177,7 @@ function assertRefused(res, line, at = {}) {
 
 const pointer = (/** @type {string} */ id) => `brief:${id}`;
 
-describe('a call reaching none of the workflows\' agents, untouched (6.5.8)', () => {
+describe('a call reaching none of Ledger\'s agents, untouched (6.5.8)', () => {
   it('Claude\'s own subagents — Explore, general-purpose, an agent of another\'s — and a message to one pass: exit 0, nothing said, nothing recorded, whatever the text carries, the calling conversation left unmarked', () => {
     const unmarked = { CLAUDE_CODE_SESSION_ID: 'unmarked-session' };
     for (const type of ['Explore', 'general-purpose', 'task-executor', 'my-ledger-x', 'ledger']) {
@@ -188,7 +188,7 @@ describe('a call reaching none of the workflows\' agents, untouched (6.5.8)', ()
     assert.ok(!fs.existsSync(conversationDir('unmarked-session')), 'a hook target never marks the conversation');
   });
 
-  it('a call the hook cannot tell is of one of the workflows\' agents passes: a recipient with no record, or a torn one, no transcript, no tool input, input that is no JSON', () => {
+  it('a call the hook cannot tell is of one of Ledger\'s agents passes: a recipient with no record, or a torn one, no transcript, no tool input, input that is no JSON', () => {
     assertUntouched(guard('SendMessage', messageCall('a9unknown', 'Carry on.')), 'a recipient with no record');
     assertUntouched(guard('SendMessage', messageCall('a4torn', 'Carry on.')), 'a recipient whose record is torn');
     assertUntouched(guard('SendMessage', messageCall('a1builder', 'Carry on.'), { transcript_path: undefined }), 'no transcript');
@@ -269,14 +269,14 @@ describe('6.S16: the builder\'s brief', () => {
     });
   });
 
-  it('one of the workflows\' agents no role is dispatched as is refused and recorded, whatever it carries', () => {
+  it('one of Ledger\'s agents no role is dispatched as is refused and recorded, whatever it carries', () => {
     assertRefused(guard('Agent', agentCall('ledger-scribe', pointer(briefs.builder.id))), {
       tool: 'Agent', agent: 'ledger-scribe', brief: null, reason: 'no-template',
       detail: 'ledger-scribe is named as one of Ledger\'s agents, and no role is dispatched as ledger-scribe — there is no template to brief it from',
     });
   });
 
-  it('a failure checking one of the workflows\' agents refuses and is recorded: no session id, before any brief is read; a brief issued as no agent, its id kept', () => {
+  it('a failure checking one of Ledger\'s agents refuses and is recorded: no session id, before any brief is read; a brief issued as no agent, its id kept', () => {
     const line = { tool: 'Agent', agent: 'ledger-builder', brief: null, reason: 'error' };
     const torn = 'Torn00000000000000000';
     fs.writeFileSync(briefPath(SESSION_ID, torn), briefs.builder.text);

@@ -28,7 +28,7 @@ const { describe, it, before, after, beforeEach, afterEach } = require('node:tes
 const assert = require('node:assert');
 const fs = require('fs');
 const { spawnSync } = require('child_process');
-const { fixtureFrom, commitAll, WORKFLOW_HOOKS, hooked } = require('./engine-harness.cjs');
+const { fixtureFrom, commitAll, LEDGER_HOOKS, hooked } = require('./engine-harness.cjs');
 const { createFile, createManifest } = require('./discovery-test-utils.cjs');
 const { stubbed, readyKnowledge } = require('./boot-world.cjs');
 const { entryOf } = require('../../skills/ledger-engine/scripts/domain/boot-route.cjs');
@@ -37,7 +37,7 @@ const { entryOf } = require('../../skills/ledger-engine/scripts/domain/boot-rout
 const row = (order, marks = {}) => ({ order, summary: `Topic ${order}`, source: 'discovery', ...marks });
 
 const routeWorld = fixtureFrom('engine-boot-route-', (project) => {
-  createFile(project, '.claude/settings.json', hooked(WORKFLOW_HOOKS));
+  createFile(project, '.claude/settings.json', hooked(LEDGER_HOOKS));
   createManifest(project, 'billing', {
     work_type: 'epic',
     phases: {

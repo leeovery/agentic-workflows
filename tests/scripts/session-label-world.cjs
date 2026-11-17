@@ -18,10 +18,10 @@ const { processStartTime } = require('../../skills/ledger-engine/scripts/kernel/
 const { installTmuxStub, tmuxStubEnv, tmuxStubName, setTmuxStubName, setTmuxStubId } = require('./tmux-stub.cjs');
 const harness = require('./engine-harness.cjs');
 
-const { engineHook, WORKFLOW_HOOKS, LAYOUT_GROUP, GUARD_GROUPS } = harness;
+const { engineHook, LEDGER_HOOKS, LAYOUT_GROUP, GUARD_GROUPS } = harness;
 const SESSION_HOOK = engineHook('session cleanup');
 const RESUME_HOOK = engineHook('session resume');
-const [PRESENCE_HOOK, END_HOOK] = WORKFLOW_HOOKS;
+const [PRESENCE_HOOK, END_HOOK] = LEDGER_HOOKS;
 // The settings a project reaches with labels on — one group per matcher,
 // ours alone — and with them off.
 const LABELS_ON = {
@@ -54,7 +54,7 @@ function stateGit(args) {
   return harness.stateGit(world.dir, args);
 }
 
-/** A workflows project with the named work units — this checkout, or another. @param {string} prefix @param {string[]} units */
+/** A Ledger project with the named work units — this checkout, or another. @param {string} prefix @param {string[]} units */
 function projectWith(prefix, units) {
   const root = harness.setupGitFixture(prefix);
   for (const unit of units) fs.mkdirSync(path.join(root, '.ledger', unit), { recursive: true });

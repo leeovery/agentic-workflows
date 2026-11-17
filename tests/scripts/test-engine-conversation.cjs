@@ -6,7 +6,7 @@
 // `~/.config/ledger` — and found by the session id alone from wherever a
 // command runs: the mark every engine call leaves where Claude Code
 // handed it a session id — once, never without an id, never outside a
-// workflows project, never from the commands Claude Code's own hooks run —
+// Ledger project, never from the commands Claude Code's own hooks run —
 // `conversation end`, the SessionEnd hook's record of the transcript path as
 // the hook hands it, written only where the folder exists, and the tidy any
 // project's boot runs over every folder, looking for the transcript by its
@@ -36,7 +36,7 @@ const path = require('path');
 const harness = require('./engine-harness.cjs');
 const { tidyConversations, callerModel, readPosition, tasksInFlight, positionPath } = require('../../skills/ledger-engine/scripts/domain/conversation.cjs');
 
-let dir; // a workflows project
+let dir; // a Ledger project
 let config; // this test's system config directory
 let pinned; // the suite's own, put back after
 
@@ -52,7 +52,7 @@ function teardown() {
   for (const d of [dir, config]) fs.rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 }
 
-/** Another workflows project, removed after `fn`. @param {(other: string) => void} fn */
+/** Another Ledger project, removed after `fn`. @param {(other: string) => void} fn */
 function inOtherProject(fn) {
   const other = harness.setupGitFixture('engine-conversation-other-');
   try {
@@ -120,7 +120,7 @@ describe('the mark', () => {
     assert.ok(clean(), 'nothing lands in the project or its state');
   });
 
-  it('a call from a code worktree marks its conversation — it runs the workflows as the main checkout does', () => {
+  it('a call from a code worktree marks its conversation — it runs Ledger as the main checkout does', () => {
     const worktree = path.join(path.dirname(dir), `${path.basename(dir)}-code`);
     harness.git(dir, ['worktree', 'add', '-q', '-b', 'feature', worktree]);
     try {
@@ -179,7 +179,7 @@ describe('the mark', () => {
     assert.ok(!fs.existsSync(conversationsRoot()));
   });
 
-  it('marks only inside a workflows project — an engine call where no `.ledger/` exists makes none', () => {
+  it('marks only inside a Ledger project — an engine call where no `.ledger/` exists makes none', () => {
     inScratch((bare) => {
       harness.call(bare, ['session', 'repair'], { env: session('sess-1') });
       assert.deepStrictEqual(fs.readdirSync(bare), []);
@@ -218,7 +218,7 @@ describe('one folder, found by the id from anywhere', () => {
     assert.deepStrictEqual(fs.readdirSync(conversationsRoot()), ['sess-1']);
   });
 
-  it('a call from another workflows project marks nothing new — the conversation\'s folder is already there', () => {
+  it('a call from another Ledger project marks nothing new — the conversation\'s folder is already there', () => {
     harness.ok(dir, ['session', 'repair'], { env: session('sess-1') });
     const past = new Date(Date.now() - 60_000);
     fs.utimesSync(marker('sess-1'), past, past);
@@ -256,7 +256,7 @@ describe('engine conversation end', () => {
     assert.strictEqual(transcriptOf('sess-2'), 'projects/p/sess-2.jsonl');
   });
 
-  it('a conversation that never ran the workflows gets nothing — no folder is made for it', () => {
+  it('a conversation that never ran Ledger gets nothing — no folder is made for it', () => {
     const res = harness.ok(dir, ['conversation', 'end'], { stdin: endInput({ session_id: 'sess-1', transcript_path: '/t/sess-1.jsonl' }) });
     assert.deepStrictEqual(res, { ok: true, recorded: false });
     assert.ok(!fs.existsSync(conversationsRoot()));

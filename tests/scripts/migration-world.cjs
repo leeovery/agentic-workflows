@@ -38,7 +38,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
-const { git, initRepo, createFile, statePath, layout, treeSnapshot, hooked, WORKFLOW_HOOKS } = harness;
+const { git, initRepo, createFile, statePath, layout, treeSnapshot, hooked, LEDGER_HOOKS } = harness;
 const { templateFolder, copyWorld, filesUnder, STATE_DIR_NAME } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.dirname(harness.ENGINE);
@@ -124,7 +124,7 @@ function directiveEngine() {
 function buildUnborn(dir, old, moved, project = '') {
   initRepo(dir);
   for (const [rel, text] of Object.entries(old)) createFile(dir, rel, text);
-  createFile(dir, path.join(project, '.claude/settings.json'), hooked(WORKFLOW_HOOKS));
+  createFile(dir, path.join(project, '.claude/settings.json'), hooked(LEDGER_HOOKS));
   git(dir, ['add', '-A']);
   git(dir, ['commit', '-q', '-m', 'the old layout']);
   fs.appendFileSync(path.join(dir, '.git/info/exclude'), `/${STATE_DIR_NAME}/\n`);

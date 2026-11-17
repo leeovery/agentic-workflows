@@ -127,7 +127,7 @@ const ready = () => ok(dir, ['task', 'ready', UNIT, '2']).tasks.map((/** @type {
 /** `task {verb}` of `task` in the conversation: its response. @param {string} verb @param {string} task @param {string[]} [more] */
 const taskVerb = (verb, task, more = []) => ok(dir, ['task', verb, UNIT, task, ...more], { env: conversation() });
 
-/** The task reopened in the tracker by the person, outside the workflows. @param {string} task */
+/** The task reopened in the tracker by the person, outside Ledger. @param {string} task */
 function reopened(task) {
   const store = path.join(statePath(dir), '.tick', 'tasks.jsonl');
   const ref = `task:${UNIT}-${task.replace('.', '-')}`;

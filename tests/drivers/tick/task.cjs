@@ -9,7 +9,7 @@
 // reopen or remove one, cancel, mark done or reopen a unit or a phase,
 // delete the store's file,
 // take away its folder's write, write a line into it that is not JSON or
-// link a task after one it does not hold; a plan the workflows wrote into
+// link a task after one it does not hold; a plan written into
 // Tick before Ledger, a task of it started, done or cancelled there, as
 // the old plan's process left it, or given as many refs as Tick keeps on
 // one, and the store's records as they stand
@@ -169,7 +169,7 @@ function linkAfterGone(root, title) {
 }
 
 /**
- * A plan as the workflows wrote it into Tick before Ledger: its root, each
+ * A plan as it was written into Tick before Ledger: its root, each
  * phase a child of it titled with its number, each task a child of its
  * phase, every one carrying the old plan's id in its refs — `{topic}`,
  * `{topic}-{N}`, `{topic}-{N}-{n}` — and each task the old type and its

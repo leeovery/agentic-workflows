@@ -99,7 +99,7 @@ function shellWriteTargets(detail) {
   return targets;
 }
 
-/** The workflow paths a recorded action writes — empty when it writes none. */
+/** The state paths a recorded action writes — empty when it writes none. */
 function writeTargets(row) {
   if (WRITE_TOOLS.has(row.tool)) return row.detail.includes(WORKFLOWS) ? [row.detail] : [];
   if (row.tool !== 'Bash') return [];
@@ -208,8 +208,8 @@ function ranMatch(command, needle) {
 
 /**
  * A write the prose could only have reached by consulting state first.
- * Reading a file is not enough — the engine is how a workflow skill
- * learns anything, so a walk that writes workflow state having never
+ * Reading a file is not enough — the engine is how a Ledger skill
+ * learns anything, so a walk that writes the state having never
  * called it did not get there by following the prose.
  */
 function engineBeforeWrite(rows) {
@@ -222,7 +222,7 @@ function engineBeforeWrite(rows) {
     // Reporting that as a pass would dress absence of coverage up as
     // coverage — which is exactly how a corpus of read-only cases came to
     // look green while enforcing nothing at all.
-    return { ok: true, vacuous: true, detail: 'no workflow state was written' };
+    return { ok: true, vacuous: true, detail: 'no state was written' };
   }
   if (firstEngine === -1) {
     return { ok: false, detail: `wrote ${rows[firstWrite].detail} having never called the engine` };
@@ -233,7 +233,7 @@ function engineBeforeWrite(rows) {
       detail: `wrote ${rows[firstWrite].detail} before any engine call`,
     };
   }
-  return { ok: true, detail: 'every workflow write followed an engine call' };
+  return { ok: true, detail: 'every write to the state followed an engine call' };
 }
 
 // The recorder caps the detail column to keep the asserter's prompt

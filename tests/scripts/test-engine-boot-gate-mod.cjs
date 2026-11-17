@@ -9,7 +9,7 @@
 // and the hook sync beside it, its commit, its file's mode and link kept.
 //
 // Layer: verb. World: the project fixture (boot-world.cjs), a git repository
-// with its state worktree and the workflows' hooks, made once per run and
+// with its state worktree and Ledger's hooks, made once per run and
 // copied; boot runs from a copy of the engine beside a stand-in migration
 // runner whose behaviour the test picks through the environment.
 // ---------------------------------------------------------------------------
@@ -21,7 +21,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
-const { git, commitAll, WORKFLOW_HOOKS, OWN_HOOKS, hooked } = harness;
+const { git, commitAll, LEDGER_HOOKS, OWN_HOOKS, hooked } = harness;
 
 const { createFile } = require('./discovery-test-utils.cjs');
 const { hookHelpers, FLAG, bootProject } = require('./boot-world.cjs');
@@ -197,7 +197,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     const res = bootTerminal();
     assert.strictEqual(res.session_hooks_installed, true);
     assert.deepStrictEqual(standing(res), COULD);
-    assert.strictEqual(projectSettingsText(), hooked(WORKFLOW_HOOKS));
+    assert.strictEqual(projectSettingsText(), hooked(LEDGER_HOOKS));
     assert.deepStrictEqual(head(), { subject: 'chore: install Ledger session hooks', files: ['.claude/settings.json'] });
   });
 
@@ -216,7 +216,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     const permissions = { allow: ['Bash(ls)'] };
     for (const [name, before, after] of [
       ['shared-settings.json', json({ permissions }), json({ permissions, ...HOOKS_ONLY })],
-      ['fresh-settings.json', null, hooked(WORKFLOW_HOOKS)],
+      ['fresh-settings.json', null, hooked(LEDGER_HOOKS)],
     ]) {
       const target = path.join(fix.root, 'shared', name);
       if (before !== null) createFile(fix.root, `shared/${name}`, before);
@@ -240,7 +240,7 @@ describe('engine boot: the project\'s session hooks, and the gate mod', () => {
     assert.strictEqual(res.session_hooks_installed, true);
     assert.strictEqual(res.warnings.length, 1);
     assert.match(res.warnings[0], /^project settings commit failed, and the next boot tries again: /);
-    assert.strictEqual(projectSettingsText(), hooked(WORKFLOW_HOOKS));
+    assert.strictEqual(projectSettingsText(), hooked(LEDGER_HOOKS));
     assert.strictEqual(head().subject, 'no settings', 'nothing landed');
   });
 });

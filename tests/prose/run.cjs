@@ -115,7 +115,7 @@ function cmdDestroy(argv) {
 }
 
 // A failed run's world holds the only copy of its evidence. Archiving
-// lifts the recorded logs and the workflow state to a directory that
+// lifts the recorded logs and the state to a directory that
 // outlives the run, so a failure can be inspected without re-walking.
 function cmdArchive(argv) {
   const c = getCase(argv[0]);
