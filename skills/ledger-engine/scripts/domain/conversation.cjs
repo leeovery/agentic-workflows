@@ -15,7 +15,7 @@
 // stamp, which the mod copies across a handoff's clear:
 //
 //   workflow       the mark that the conversation runs Ledger, which
-//                  the gate mod reads to set the workflow harness, to say the
+//                  the gate mod reads to set Ledger's harness, to say the
 //                  phase in its spinner, to answer a compaction and to
 //                  record each task's builder and reviewers — written by
 //                  every engine call that carries a session id, run in a

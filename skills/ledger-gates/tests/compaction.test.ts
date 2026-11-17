@@ -206,7 +206,7 @@ const compactionOf = (over: Partial<SessionCompactInput> = {}): SessionCompactIn
   ...over,
 })
 
-describe('a workflow conversation\'s compaction', () => {
+describe('a Ledger conversation\'s compaction', () => {
   for (const trigger of ['manual', 'auto', 'plugin'] as const) {
     test(`is Claude Code's own, the engine's note appended last — ${trigger}`, async ($, on) => {
       const calls = world(on)

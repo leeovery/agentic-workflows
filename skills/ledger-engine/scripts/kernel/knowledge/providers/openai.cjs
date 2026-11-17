@@ -153,7 +153,7 @@ const SETUP_DESCRIPTOR = {
       'or revoke it independently from other integrations.\n' +
       '\n' +
       '  1. Create a key: https://platform.openai.com/api-keys\n' +
-      '     (Suggested name: "agentic-workflows")\n' +
+      '     (Suggested name: "Ledger")\n' +
       '  2. Paste the full key (starting with "sk-") at the prompt below.\n' +
       '\n' +
       `Setting $${envVar} in your shell takes precedence and overrides the\n` +

@@ -233,7 +233,7 @@ function reviewAndCommit(dir, env) {
   fs.writeFileSync(summary, JSON.stringify({ summary: 'Moved the project into Ledger.' }));
   harness.output(dir, ['render', 'migrations-applied', '--file', summary], opts);
   harness.output(dir, ['render', 'migration-gate'], opts);
-  harness.ok(dir, ['commit', '--migrations', '-m', 'chore: apply workflow migrations'], opts);
+  harness.ok(dir, ['commit', '--migrations', '-m', "chore: apply Ledger's migrations"], opts);
 }
 
 /**

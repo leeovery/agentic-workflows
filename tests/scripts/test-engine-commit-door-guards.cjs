@@ -206,7 +206,7 @@ describe('commit door: never a code commit on the state branch', () => {
     createFile(dir, '.claude/settings.json', '{"hooks":{}}\n');
     const stateHead = stateGit(dir, ['rev-parse', 'HEAD']).trim();
 
-    const res = harness.ok(statePath(dir), ['commit', '--migrations', '-m', 'chore: apply workflow migrations']);
+    const res = harness.ok(statePath(dir), ['commit', '--migrations', '-m', "chore: apply Ledger's migrations"]);
 
     assert.deepStrictEqual(res, { ok: true, committed: null, code_committed: git(dir, ['rev-parse', '--short', 'HEAD']).trim() });
     assert.deepStrictEqual(codeHeadFiles(dir), ['.claude/settings.json']);

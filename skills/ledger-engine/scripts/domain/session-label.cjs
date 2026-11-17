@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: tmux session labels — an opt-in rename of the user's tmux
-// session to show where the workflow session is working. Every place labels
+// session to show where the Ledger session is working. Every place labels
 // itself on arrival: a phase's entry — `enter`, or a process skill's Step 0
 // where the phase is not entered through it — applies `{original} ·
 // {work-unit} · {phase} · {topic}`, the topic left out where it is the

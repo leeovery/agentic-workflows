@@ -306,7 +306,7 @@ function commitOwnChange(cwd, spec, ours, message, failure, warnings) {
   } else if (onDisk !== committedId) {
     warnings.push(
       `${spec} holds changes of yours not yet committed, so Ledger's own change to it was not committed either — ` +
-      'commit yours, and the next boot commits theirs',
+      'commit yours, and the next boot commits its own',
     );
   }
 }

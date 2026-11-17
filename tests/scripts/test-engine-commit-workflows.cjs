@@ -34,11 +34,11 @@ describe('engine commit --whole', () => {
     createFile(project, '.ledger/.state/migrations', '045\n');
     createFile(project, 'unrelated.txt', 'outside the scope\n');
 
-    const res = ok(project, ['commit', '--whole', '-m', 'chore: apply workflow migrations']);
+    const res = ok(project, ['commit', '--whole', '-m', "chore: apply Ledger's migrations"]);
 
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.committed, stateGit(project, ['rev-parse', '--short', 'HEAD']).trim());
-    assert.strictEqual(stateGit(project, ['log', '-1', '--pretty=%s']).trim(), 'chore: apply workflow migrations');
+    assert.strictEqual(stateGit(project, ['log', '-1', '--pretty=%s']).trim(), "chore: apply Ledger's migrations");
     // Everything in the state landed in the one commit, on the state branch…
     const show = stateGit(project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n').sort();
     assert.deepStrictEqual(show, [

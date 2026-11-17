@@ -14,7 +14,7 @@
 // Resolution runs most-explicit-first and degrades to the width that shipped
 // before detection existed, so the worst case is current behaviour.
 //
-// Mechanism only: this knows nothing about trees, menus, or workflow content.
+// Mechanism only: this knows nothing about trees, menus, or Ledger's content.
 // Callers ask for a number.
 // ---------------------------------------------------------------------------
 

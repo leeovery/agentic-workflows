@@ -4,18 +4,18 @@ user-invocable: false
 allowed-tools: Bash(node .claude/skills/ledger-engine/scripts/engine.cjs *)
 ---
 
-# Workflow Engine
+# Ledger Engine
 
-The platform behind the workflow skills: deterministic state, derivation, and rendering. Anything fully determined by data is computed here, in code, and consumed by Claude — never re-derived in prose.
+The platform behind Ledger's skills: deterministic state, derivation, and rendering. Anything fully determined by data is computed here, in code, and consumed by Claude — never re-derived in prose.
 
-This skill is a reference, not a flow. In normal use the workflow prose prescribes exact engine calls at exact points; consult this documentation when you need to understand how the engine works — a command's full contract, the library surface, or the architecture — rather than which call to make next.
+This skill is a reference, not a flow. In normal use Ledger's prose prescribes exact engine calls at exact points; consult this documentation when you need to understand how the engine works — a command's full contract, the library surface, or the architecture — rather than which call to make next.
 
 ## Architecture
 
 Two rings under `scripts/`:
 
 - **Kernel** (`kernel/`) — mechanism plus the manifest's on-disk contract: render primitives (the wrap budget `width − prefix` lives here once, so gutter-overflow bugs can exist in only one place), `manifest-io.cjs` (one read/parse, one atomic-write serialisation, one lock protocol — every manifest writer flows through it), `manifest-schema.cjs` (the single vocabulary of legal work types, phases, and statuses), `state-root.cjs` (where the state lives: `.ledger/` in the repository's main checkout, a worktree of its own branch, `ledger-state`), and the knowledge base's mechanism under `knowledge/` (the store's file format, word search, ranking, chunking, excerpts and outlines, the embedding providers, the config). Every engine load→mutate→save holds the state's writer lock; KB syncs run after release.
-- **Domain** (`domain/`) — the workflow ontology: transitions, queries, projections, glyph and `[tag]` composition conventions, plus the shared read side: `reads.cjs` (generic manifest/file loads, no phase semantics) and `derivations.cjs` (lifecycle joins, next-phase computation), consumed by the domain ring. Derivations may require reads; never the reverse. The knowledge base's workflow side lives under `knowledge/`: artifact identity against the manifests, indexing, the vector fill, query, status, and setup. The drivers live under `scripts/drivers/{task,landing}/{name}/`, the code behind the `task` verbs and the `land` verbs, loaded by `domain/drivers.cjs`.
+- **Domain** (`domain/`) — Ledger's ontology: transitions, queries, projections, glyph and `[tag]` composition conventions, plus the shared read side: `reads.cjs` (generic manifest/file loads, no phase semantics) and `derivations.cjs` (lifecycle joins, next-phase computation), consumed by the domain ring. Derivations may require reads; never the reverse. The knowledge base's domain side lives under `knowledge/`: artifact identity against the manifests, indexing, the vector fill, query, status, and setup. The drivers live under `scripts/drivers/{task,landing}/{name}/`, the code behind the `task` verbs and the `land` verbs, loaded by `domain/drivers.cjs`.
 
 One door, the CLI (`engine.cjs`): transactions, lifecycle, and the `manifest` field surface; and the knowledge base's one door, `knowledge`, its searches included. Called from skill prose at prescribed points, and by the hooks boot installs — the guards before a tool call (`guards.cjs`) among them.
 

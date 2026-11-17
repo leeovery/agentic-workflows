@@ -27,7 +27,7 @@ const POINTED = new RegExp(`^${POINTER}([0-9A-Za-z]+)$`)
  * Whether the session announced and the engine has marked its conversation
  * as one that runs Ledger.
  */
-async function isWorkflow($: EngineInterface): Promise<boolean> {
+async function runsLedger($: EngineInterface): Promise<boolean> {
   if ((await $.env.get('LEDGER_GATE_SURFACE')) !== '1') {
     return false
   }
@@ -44,7 +44,7 @@ async function isWorkflow($: EngineInterface): Promise<boolean> {
 /** Records the agent where the conversation runs Ledger; a record that fails costs nothing. */
 async function recordAgent($: EngineInterface, agentId: string, brief: readonly string[]) {
   try {
-    if (!(await isWorkflow($))) {
+    if (!(await runsLedger($))) {
       return
     }
 

@@ -4,7 +4,7 @@
 
 ---
 
-The knowledge base is required infrastructure — no workflow proceeds without it. Initialise it here, conversationally. The API key is the one thing that must NEVER pass through this chat: every path below keeps it in the user's terminal or shell environment, and you never ask for it, accept it, or echo it.
+The knowledge base is required infrastructure — nothing in Ledger proceeds without it. Initialise it here, conversationally. The API key is the one thing that must NEVER pass through this chat: every path below keeps it in the user's terminal or shell environment, and you never ask for it, accept it, or echo it.
 If a key appears in the conversation anyway, do not repeat, quote, or store any part of it — acknowledge without echoing, note that a key pasted into chat should be treated as exposed and rotated, and direct entry through `knowledge setup --key-only`.
 
 Read the boot response's `system_config` object: `status` (`valid`, `absent`, or `invalid`), `provider`, and `model`.
@@ -24,7 +24,7 @@ Read the boot response's `system_config` object: `status` (`valid`, `absent`, or
 > *Output the next fenced block as markdown (not a code block):*
 
 ```
-> The knowledge base powers recall across work units and within them — later phases draw on earlier work. It is required infrastructure: no workflow runs until it is initialised. Your machine already has a system configuration this project can reuse.
+> The knowledge base powers recall across work units and within them — later phases draw on earlier work. It is required infrastructure: Ledger runs nothing until it is initialised. Your machine already has a system configuration this project can reuse.
 ```
 
 Fetch the gate and emit its `MENU: knowledge reuse gate` section verbatim per its marker. When `system_config` names a provider, pass it — and its model when one is named:
@@ -267,6 +267,6 @@ The stored key is missing, revoked, or wrong for this endpoint. Keyword-only ori
 
 #### If the command failed for any other reason
 
-Surface the reported error verbatim. The knowledge base could not be initialised — the workflow cannot proceed.
+Surface the reported error verbatim. The knowledge base could not be initialised — Ledger cannot proceed.
 
 **STOP.** Do not proceed — terminal condition.

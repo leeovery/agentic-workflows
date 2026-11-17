@@ -796,7 +796,7 @@ function positionReads(cwd, sessionId) {
   const place = position === null ? null : placeLine(position, PLACE_SEPARATOR);
   /** @param {string} text @returns {PositionReads} */
   const nothing = (text) => ({ session_id: sessionId, position, place, skill: null, files: [], text });
-  if (position === null) return nothing('This conversation holds no workflow position, so there is nothing to carry on from.');
+  if (position === null) return nothing('This conversation holds no position in Ledger, so there is nothing to carry on from.');
   const isUnit = !isProjectPlace(position.name, position.phase) && illegalNameReason('work unit', position.name) === null;
   /** @type {Manifest} */
   const manifest = isUnit ? loadManifest(cwd, position.name) : null;

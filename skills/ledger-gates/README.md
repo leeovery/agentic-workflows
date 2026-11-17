@@ -1,6 +1,6 @@
 # ledger-gates
 
-A Claude Code mod that draws the workflow engine's gates in the band above the
+A Claude Code mod that draws Ledger's gates in the band above the
 prompt instead of leaving the model to reproduce them.
 
 The engine states each gate as data beside the menu it composed. This mod
@@ -168,9 +168,9 @@ only mentions the engine marks nothing. What the settings replace, the
 person's own value or none, is kept in the process's environment
 (`LEDGER_HARNESS_REPLACED`), which a reload of the mod's files keeps, and a
 `/clear` or a resume puts it back exactly — except the clear a handoff runs,
-which leads into a workflow conversation by construction and so leaves the
-workflow values on, the person's own put back as that conversation ends. A
-marked conversation gets the workflow values back when the mod next follows
+which leads into a Ledger conversation by construction and so leaves
+Ledger's values on, the person's own put back as that conversation ends. A
+marked conversation gets Ledger's values back when the mod next follows
 it, whether `claude --resume`, a restart or `/resume` in the same process
 brings it back. A plain conversation in the same project keeps Claude Code's
 defaults and the person's own settings: the mod never touches either there.
@@ -191,9 +191,9 @@ close`), never per frame. At a work unit's menu or the start
 menu it keeps Claude Code's word, and on the Desktop app a step that names
 itself (`Creating notes.md`) keeps its words.
 
-## How it compacts a workflow conversation
+## How it compacts a Ledger conversation
 
-Claude Code compacts a workflow conversation as it compacts any other — its
+Claude Code compacts a Ledger conversation as it compacts any other — its
 summary, and the recent messages it keeps as they were, the person's waiting
 message among them — and the mod appends one message last: the engine's
 `conversation position` note. It says the conversation was just compacted and

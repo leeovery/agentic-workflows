@@ -52,7 +52,7 @@ node .claude/skills/ledger-engine/scripts/engine.cjs render migration-gate
 Commit the migration changes — one commit on each side that changed, or, for the migration into Ledger, each commit `reshape` named in `commits`:
 
 ```bash
-node .claude/skills/ledger-engine/scripts/engine.cjs commit --migrations -m "chore: apply workflow migrations"
+node .claude/skills/ledger-engine/scripts/engine.cjs commit --migrations -m "chore: apply Ledger's migrations"
 ```
 
 → Return to caller.

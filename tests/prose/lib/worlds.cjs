@@ -478,7 +478,7 @@ function stampHarnessState(dir) {
   // commit, nothing in the delta. The engine's own sync does the seeding,
   // so the hooks are the ones boot recognises.
   const settingsCreated = !fs.existsSync(path.join(dir, SETTINGS));
-  const sync = syncSessionHooks(dir, { session: false, workflows: true });
+  const sync = syncSessionHooks(dir, { session: false, ledger: true });
   if (sync.error) throw new Error(`cannot seed the project settings: ${sync.error}`);
   return { brownfield_offer: brownfield, walkthrough, settings_created: settingsCreated };
 }
@@ -564,7 +564,7 @@ function unstampSettings(tree, stamped) {
     const file = path.join(scratch, SETTINGS);
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, buf);
-    const sync = syncSessionHooks(scratch, { session: false, workflows: false });
+    const sync = syncSessionHooks(scratch, { session: false, ledger: false });
     if (sync.error) throw new Error('cannot strip the session hooks: ' + sync.error);
     if (!sync.changed) return;
     const next = fs.readFileSync(file);

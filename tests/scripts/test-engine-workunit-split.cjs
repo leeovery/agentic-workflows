@@ -206,7 +206,7 @@ describe('topics leave a building unit for a new epic (21.8.9, 21.8.10)', () => 
     run(split());
     run(['topic', 'postpone', 'shop', 'wishlist', '--horizon', 'later']);
     FINISH.run({ projectDir: dir, reportUpdate: () => {}, reportSkip: () => {} });
-    run(['commit', '--migrations', '-m', 'chore: apply workflow migrations']);
+    run(['commit', '--migrations', '-m', "chore: apply Ledger's migrations"]);
     await indexed();
 
     run(['roadmap', 'pull-forward', 'wishlist', '--into', 'storefront']);

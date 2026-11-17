@@ -1,5 +1,5 @@
 /**
- * ledger-gates — the agentic-workflows engine's gates drawn above the
+ * ledger-gates — Ledger's gates drawn above the
  * prompt instead of printed by the model.
  *
  * The engine states each gate as data beside the menu it composed. This
@@ -30,13 +30,13 @@
  * doing, the person's own values of both put back as it ends. A conversation
  * the engine has not marked keeps them untouched.
  *
- * It registers the rest of what the mod does in a workflow conversation as
+ * It registers the rest of what the mod does in a Ledger conversation as
  * well: the spinner saying the phase (`spinner.ts`), the compaction — Claude
  * Code's own, the engine's note appended last (`compaction.ts`) — each
  * task's builder and reviewers recorded as they are dispatched
  * (`builder.ts`), and the board, its pane beside the conversation
  * and its banner on a line of its own beneath the band's rows
- * (`workflows-board.ts`), where the questions waiting are queued to discuss
+ * (`ledger-board.ts`), where the questions waiting are queued to discuss
  * with Claude (`discuss.ts`).
  *
  * All of it happens in Claude Code's terminal app and the Desktop app's Code
@@ -66,7 +66,7 @@ import {
 } from './layout.ts'
 import { spinner } from './spinner.ts'
 import { isAnnounced, isBandAlone } from './surface.ts'
-import { workflowsBoard } from './workflows-board.ts'
+import { ledgerBoard } from './ledger-board.ts'
 
 /** The payload's marker and the menu it sits directly above. */
 const GATE_MARKER = '=== GATE ('
@@ -651,7 +651,7 @@ type Replaced = {
 }
 
 /**
- * Puts Claude Code's harness on for a workflow session, one whose
+ * Puts Claude Code's harness on for a Ledger session, one whose
  * conversation the engine has marked in a session that announced: no
  * summary of Claude's thinking printed as if it were output, and no nudge to
  * say what it is doing. Claude Code reads both per request. What it replaces
@@ -711,7 +711,7 @@ async function harnessOff($: EngineInterface) {
  * gets the conversation the transcript holds now, with its kept gate where
  * the transcript still ends where it was kept, or none where it has moved
  * on, the kept gate dropped while the read-back is still owed. A
- * conversation the engine has marked gets the workflow harness back, again
+ * conversation the engine has marked gets Ledger's harness back, again
  * while the read-back is still owed. Nothing settles in a session that did
  * not announce, while the transcript is empty, or while it still holds the
  * conversation that ended in this process.
@@ -757,7 +757,7 @@ async function readBack(
 export const register: Register = on => {
   // First, so its banner's hook wraps the band's: the banner takes its line
   // beneath the rows, which are drawn in the rows it leaves.
-  workflowsBoard(on)
+  ledgerBoard(on)
 
   let band = emptyBand()
 
@@ -780,7 +780,7 @@ export const register: Register = on => {
   /**
    * Whether the clear under way is this module's own, for a handoff: the
    * conversation it leads into runs Ledger by construction, so the
-   * workflow harness stays on through it.
+   * Ledger's harness stays on through it.
    */
   let isClearingForHandoff = false
 
@@ -896,11 +896,11 @@ export const register: Register = on => {
   }).catch(($, e, next) => next(e))
 
   // A /clear or a resume goes on in this process as another conversation,
-  // which no gate of this one answers and which is no workflow session until
+  // which no gate of this one answers and which is no Ledger session until
   // the engine marks it or it is read back as one it has marked. What the
   // band showed is kept for this one first, stamped where its transcript
   // ends now, which can have moved since its last turn's end. The clear a
-  // handoff runs leads into a workflow conversation, so the harness stays on.
+  // handoff runs leads into a Ledger conversation, so the harness stays on.
   on('session.end', async ($, e, next) => {
     const isHandingOff = isClearingForHandoff && e.reason === 'clear'
 
@@ -983,7 +983,7 @@ export const register: Register = on => {
   }).catch(($, e, next) => next(e))
 
   // The tool waits behind ToolSearch in every session that announced,
-  // workflow or not: one answer, since a changed answer sends the tool list
+  // running Ledger or not: one answer, since a changed answer sends the tool list
   // again and spends the prompt cache.
   on('tool.describe', { tool: 'SendUserMessage' }, async ($, e, next) => {
     const described = await next(e)

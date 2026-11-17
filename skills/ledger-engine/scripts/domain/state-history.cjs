@@ -43,7 +43,8 @@ const LOOK_BACK = 60;
 /**
  * The moments the board shows, by the subject's scope — any phase's for a
  * start — and what follows the unit in it; a topic and a detail where the
- * subject names them.
+ * subject names them. The `workflow` scope keeps its old word: the state's
+ * history holds it, and git history is never rewritten.
  * @type {readonly {kind: string, scope: string|readonly string[], said: RegExp}[]}
  */
 const MOMENTS = Object.freeze([

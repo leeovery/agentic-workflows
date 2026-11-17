@@ -12,9 +12,10 @@
 // and the glossary call the product Ledger, never the name it was built
 // under or "the workflows", but where history tells of it or the
 // glossary's avoid line names it (23.S19, 23.1.4); so do the skills, the
-// briefs, the agents and the engine, never calling it the workflows, but in
-// a released migration. Every link of the book's and the README's resolves,
-// to its file and the heading it names.
+// briefs, the agents and the engine. In those, the book and the README, no
+// form of the workflows names the product, even split across a line, but
+// in history and a migration. Every link of the book's and the README's
+// resolves, to its file and the heading it names.
 //
 // Layer: unit. World: the repository's own files, read.
 
@@ -74,13 +75,24 @@ const PRODUCT = /\bLedger\b/;
 /** Where an old name may stand: history, telling of it, and the glossary's avoid lines, naming it. */
 const TELLS_OF_IT = (/** @type {string} */ rel, /** @type {string} */ line) => rel === path.join('docs', 'history.md') || line.startsWith('_Avoid_:');
 
+/** What may part two words of a name: whitespace, a line break, and a comment's, a quote's or a heading's marker. */
+const PARTS = String.raw`(?:\s|\/\/|\*|>|#)+`;
 /**
- * The workflows as the product's name, in what ships: "the workflows", a
- * workflows state or project, even where a line break and a comment's marker
- * part the words.
+ * The workflows as the product's name, even where a line break and a marker
+ * part the words: "the workflows", "workflows'", "Workflows" opening a
+ * sentence or a line, a workflow(s) state or project, and the singular before
+ * a word that only the product takes ("the workflow harness", "a workflow
+ * conversation"). The singular as an ordinary word — "the workflow around
+ * it" — passes, and so does any phrase this list does not name.
  */
-const WORKFLOWS_NAMED = /\bthe(?:\s|\/\/|\*)+workflows\b|\bworkflows?(?:\s|\/\/|\*)+(?:state|project)\b/gi;
-/** Where it stands in what ships: the released migrations, never edited, and a file whose change is in flight elsewhere. */
+const WORKFLOWS_NAMED = [
+  new RegExp(String.raw`\bthe${PARTS}workflows\b`, 'gi'),
+  new RegExp(String.raw`(?<![\w./'"\x60-])workflows'`, 'gi'),
+  new RegExp(String.raw`(?<=^[ \t>#*/]*|[.!?]\s+)Workflows\b`, 'gm'),
+  new RegExp(String.raw`\bworkflows?${PARTS}(?:state|project)\b`, 'gi'),
+  new RegExp(String.raw`\bworkflow${PARTS}(?:engine|harness|conversation|session|skill|prose|position|ontology|vocabulary|content|render|artifact|file|value)s?\b`, 'gi'),
+];
+/** Where it stands in what ships: every migration, the released ones never edited and 072–081's sweep still to come, and a file whose change is in flight elsewhere. */
 const NAMES_IT_STILL = [
   path.join('skills', 'ledger-migrate', 'scripts', 'migrations') + path.sep,
   path.join('skills', 'ledger-engine', 'scripts', 'domain', 'brief-names.cjs'),
@@ -95,16 +107,19 @@ const productFiles = () => ['skills', 'agents']
   .filter((rel) => !NAMES_IT_STILL.some((skip) => rel.startsWith(skip)) && fs.statSync(path.join(REPO, rel)).isFile());
 
 /**
- * Each place of `rel`'s that names the product the workflows, as
- * `{file}:{line}: {match}`, but on the glossary's avoid lines.
- * @param {string} rel
+ * Each place of `rel`'s that names the product the workflows: where, as
+ * `{file}:{line}: {match}`, and whether it stands, as the glossary's avoid
+ * line names it.
+ * @param {string} rel @returns {{at: string, stands: boolean}[]}
  */
 function workflowsNamed(rel) {
   const text = read(rel);
-  return [...text.matchAll(WORKFLOWS_NAMED)].flatMap((found) => {
+  return WORKFLOWS_NAMED.flatMap((pattern) => [...text.matchAll(pattern)]).map((found) => {
     const start = text.lastIndexOf('\n', found.index) + 1;
-    if (text.startsWith('_Avoid_:', start)) return [];
-    return [`${rel}:${text.slice(0, found.index).split('\n').length}: ${found[0]}`];
+    return {
+      at: `${rel}:${text.slice(0, found.index).split('\n').length}: ${found[0]}`,
+      stands: rel === GLOSSARY && text.startsWith('_Avoid_:', start),
+    };
   });
 }
 
@@ -201,8 +216,13 @@ describe('the user docs (23.4)', () => {
     assert.deepStrictEqual(linesNaming(Object.values(surfaces).flat(), OLD_NAMES, TELLS_OF_IT), []);
   });
 
-  it('the skills, the briefs, the agents and the engine call the product Ledger, never the workflows', () => {
-    assert.deepStrictEqual(productFiles().flatMap(workflowsNamed), []);
+  it('the skills, the briefs, the agents, the engine, the docs and the README call the product Ledger, never the workflows, but the glossary\'s avoid line naming it', () => {
+    const files = [...productFiles(), ...bookFiles().filter((rel) => rel !== path.join('docs', 'history.md')), 'README.md'];
+    const named = files.flatMap(workflowsNamed);
+
+    assert.ok(files.includes(GLOSSARY) && files.length > 100, 'the guard reads what ships');
+    assert.ok(named.some(({ stands }) => stands), 'the guard meets the glossary\'s avoid line');
+    assert.deepStrictEqual(named.filter(({ stands }) => !stands).map(({ at }) => at), []);
   });
 });
 

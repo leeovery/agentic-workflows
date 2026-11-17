@@ -2105,7 +2105,7 @@ function topicStatus(cwd, wu, phase, topic) {
  * Validate one declared code path. Code has no layout to derive a pathspec
  * from, so the paths are Claude's to name — each taken literally, so a
  * routing file (`app/[id]/page.tsx`) is that file and never a pattern — and
- * every one is checked before anything is staged: never a workflow artifact,
+ * every one is checked before anything is staged: never one of Ledger's artifacts,
  * which has a derived scope of its own, inside the code root, and
  * committable in the repo that owns it.
  * @param {string} cwd @param {import('./kernel/repos.cjs').Repo[]} repos @param {string} given

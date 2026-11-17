@@ -103,7 +103,7 @@ describe('engine boot (real scripts)', () => {
     // The migrations record, the only dirt, committed on the state branch — the code
     // branch takes none of it.
     assert.strictEqual(first.migrations_committed, stateGit(project, ['rev-parse', '--short', 'HEAD']).trim());
-    assert.strictEqual(stateGit(project, ['log', '-1', '--pretty=%s']).trim(), 'chore: record workflow migrations');
+    assert.strictEqual(stateGit(project, ['log', '-1', '--pretty=%s']).trim(), "chore: record Ledger's migrations");
     assert.strictEqual(git(project, ['rev-parse', 'HEAD']).trim(), codeHead);
     // No knowledge store in the fixture — the hard stop: nothing is created.
     assert.strictEqual(first.knowledge, 'not-ready');
@@ -154,7 +154,7 @@ describe('engine boot (real scripts)', () => {
     assert.ok(!('env' in JSON.parse(migrated)), 'the flag out, and env with it');
     assert.deepStrictEqual(JSON.parse(migrated).hooks, JSON.parse(LABELS_ON).hooks, 'the label hooks in');
 
-    runEngine(real, project, ['commit', '--migrations', '-m', 'chore: apply workflow migrations']);
+    runEngine(real, project, ['commit', '--migrations', '-m', "chore: apply Ledger's migrations"]);
 
     assert.strictEqual(git(project, ['show', 'HEAD:.claude/settings.json']), migrated);
     assert.strictEqual(git(project, ['status', '--porcelain', '--', '.claude']).trim(), '');

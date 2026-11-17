@@ -732,7 +732,7 @@ function carriedOn(cwd, stop, at) {
 function commitRecord(cwd, migrations, warnings) {
   if (migrations.changed) return null;
   try {
-    const committed = commitStateScoped(cwd, MIGRATIONS_RECORD, 'chore: record workflow migrations');
+    const committed = commitStateScoped(cwd, MIGRATIONS_RECORD, "chore: record Ledger's migrations");
     warnings.push(...committed.warnings);
     return committed.committed;
   } catch (err) {

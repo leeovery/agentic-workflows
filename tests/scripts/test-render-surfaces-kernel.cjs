@@ -44,9 +44,9 @@ function render(dir, args) {
 describe('surfaces primitives', () => {
   it('a timed instruction is built from its parts — the form, the moment, then the behaviour clause where there is one', () => {
     assert.strictEqual(timedInstruction('text', 'after the result summary', AUTO_GATE_CLAUSE),
-      'emit verbatim as a text code block (```text fence) after the result summary — the user set this gate to auto: do not stop; continue as the workflow instructs');
+      'emit verbatim as a text code block (```text fence) after the result summary — the user set this gate to auto: do not stop; continue as the skill instructs');
     assert.strictEqual(timedInstruction('text', 'after the receipt', CONTINUE_CLAUSE),
-      'emit verbatim as a text code block (```text fence) after the receipt — do not stop; continue as the workflow instructs');
+      'emit verbatim as a text code block (```text fence) after the receipt — do not stop; continue as the skill instructs');
     assert.strictEqual(timedInstruction('markdown', 'after the response', STOP_CLAUSE),
       "emit verbatim as markdown (not a code block) after the response, then STOP for the user's response");
     assert.strictEqual(timedInstruction('text', 'after the response'),
@@ -460,7 +460,7 @@ describe('single-source invariants', () => {
   it('the render forms, the menu\'s stop and the continuation exist in exactly one module — surfaces.cjs', () => {
     const scriptsRoot = path.join(__dirname, '..', '..', 'skills', 'ledger-engine', 'scripts');
     const { RENDER_FORMS } = require('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs');
-    const phrases = ['emit verbatim as', ...Object.values(RENDER_FORMS), "then STOP for the user's response", 'do not stop; continue as the workflow instructs'];
+    const phrases = ['emit verbatim as', ...Object.values(RENDER_FORMS), "then STOP for the user's response", 'do not stop; continue as the skill instructs'];
     /** @type {Record<string, string[]>} */
     const homes = Object.fromEntries(phrases.map((phrase) => [phrase, []]));
     (function walk(dir) {

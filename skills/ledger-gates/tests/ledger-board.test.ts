@@ -429,7 +429,7 @@ describe('showing and hiding the board', () => {
     expect(await toggleOf(await mounted($, clock))).toBe('hide board')
   })
 
-  test('"▸ show board" opens the pane, titled workflows, and reads "hide board"; pressed again, the pane closes', async ($, on) => {
+  test('"▸ show board" opens the pane, titled ledger, and reads "hide board"; pressed again, the pane closes', async ($, on) => {
     const { clock, opened, panes } = world(on)
     const ui = await mounted($, clock)
 

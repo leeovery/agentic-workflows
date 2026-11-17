@@ -111,7 +111,7 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 
 ### State
 
-Workflow state is engine-owned (CONVENTIONS.md, What the Engine Owns). Never hand-write a manifest: outside a migration (see Migrations), field reads and writes go through `engine manifest`, and lifecycle changes through their own verbs (`workunit`, `topic`, `experiment`); every verb's reference is `skills/ledger-engine/references/commands.md`.
+Ledger's state is engine-owned (CONVENTIONS.md, What the Engine Owns). Never hand-write a manifest: outside a migration (see Migrations), field reads and writes go through `engine manifest`, and lifecycle changes through their own verbs (`workunit`, `topic`, `experiment`); every verb's reference is `skills/ledger-engine/references/commands.md`.
 
 ## Tool Names (IMPORTANT)
 
@@ -145,7 +145,7 @@ The gates, run locally before every commit (`docs/contributing.md` lists what ea
 - **How a test is written** — its layer, its fixtures, its assertions, its cost — is `tests/README.md`; read it before writing a suite.
 - **The Claude Code floor** is one value written three times — the engine's `MIN_VERSION` (`skills/ledger-engine/scripts/domain/gate-surface.cjs`), the mod's `OLDEST`, and the `outdated` stop's text — held equal by `tests/scripts/test-claude-code-floor.cjs`. A change that relies on a newer Claude Code raises all three, and the docs that name the floor, in the same PR.
 - **The git floor** is one value — the engine's `GIT_FLOOR` (`skills/ledger-engine/scripts/domain/git-floor.cjs`), behind boot's stop on an older git or none — and the docs that name it, held equal by `tests/scripts/test-git-floor.cjs`. A change that runs a git command or option a newer git brought raises it, and those docs, in the same PR.
-- **Any change to Ledger's flows updates the pipeline simulation** (`tests/scripts/test-pipeline-simulation-*.cjs`, its oracle `pipeline-oracle.cjs`) — a new engine verb, a changed prose call sequence, a new phase ordering, a new manifest field. A red simulation is the design speaking: decide deliberately whether the flow or the scenario is wrong, never paper over it.
+- **Any change to Ledger updates the pipeline simulation** (`tests/scripts/test-pipeline-simulation-*.cjs`, its oracle `pipeline-oracle.cjs`) — a new engine verb, a changed prose call sequence, a new phase ordering, a new manifest field. A red simulation is the design speaking: decide deliberately whether the flow or the scenario is wrong, never paper over it.
 - **A change that moves retrieval re-pins the knowledge eval baseline** in the same PR (`node tests/scripts/knowledge-eval.cjs --pin`).
 - **Where a tool may be named** is held by `tests/scripts/test-tool-names.cjs`: a driver's tool, in the forms only it takes, nowhere outside the places Tool Names allows, and in help and the glossary not even as a word.
 - **The glossary** is held by `tests/scripts/test-glossary.cjs`: no retired term, every term the design adds, and no entry speaking in an engine verb, a path or a skill name.

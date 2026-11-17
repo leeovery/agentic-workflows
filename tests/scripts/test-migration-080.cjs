@@ -248,7 +248,7 @@ describe('research that fed several topics, placed where it bears (21.7.2)', () 
 describe('the mixed unit\'s question (21.8.9, 21.8.10)', () => {
   it('draws the building unit, how many of its topics its specs cover, and those that leave it by where each stands, each by its title; then where they go, each row carrying the directive on', () => {
     assert.strictEqual(output(dir, ['render', 'migration-leaving', 'shop', '--directive', DIRECTIVE], { env: SESSION }), [
-      '=== DISPLAY: migration leaving (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
+      '=== DISPLAY: migration leaving (emit verbatim as a text code block (```text fence) — do not stop; continue as the skill instructs) ===',
       '▪ Migration',
       '',
       'Shop is being built, and its specs cover 3 of its topics. A unit',

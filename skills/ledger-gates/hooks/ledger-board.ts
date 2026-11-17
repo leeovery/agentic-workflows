@@ -369,7 +369,7 @@ async function move($: EngineInterface, state: State, moved: Nav) {
   }
 }
 
-export function workflowsBoard(on: On) {
+export function ledgerBoard(on: On) {
   const state: State = {
     read: null,
     nav: HOME,

@@ -75,7 +75,7 @@ const BRIEF_HOOK_TOOLS = Object.keys(DISPATCHES);
 
 /**
  * Ledger's agent a call reaches; null where it reaches none of
- * theirs, or the call cannot be read.
+ * them, or the call cannot be read.
  * @param {HookInput} input @returns {string|null}
  */
 function oursReached(input) {

@@ -527,7 +527,7 @@ describe('render send-report (10.3.4)', () => {
 
   it('says where the message landed, its title beneath, and ends with the command that opens the target (10.S1, 27.S4)', () => {
     assert.strictEqual(report(`${EPIC}.commercialization`, send(EPIC, 'commercialization', 'lost-key')), [
-      '=== DISPLAY: send report (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
+      '=== DISPLAY: send report (emit verbatim as a text code block (```text fence) — do not stop; continue as the skill instructs) ===',
       'Sent to Commercialization, on Fumi',
       '  The licence window carries a "Lost your key?" link',
       '  ↳ Waiting in its mailbox, with my reasoning',

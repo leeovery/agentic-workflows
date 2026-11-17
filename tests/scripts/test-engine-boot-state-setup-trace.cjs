@@ -74,7 +74,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
 
       assert.deepStrictEqual(res.warnings, [
         '.claude/settings.json holds changes of yours not yet committed, so Ledger\'s own change to it was not committed either — ' +
-        'commit yours, and the next boot commits theirs',
+        'commit yours, and the next boot commits its own',
       ]);
       assert.strictEqual(readFile(main, '.claude/settings.json'), theirs);
       assert.strictEqual(git(main, ['ls-tree', '--name-only', 'HEAD', '--', '.claude']), '', 'nothing of the file committed');
@@ -91,7 +91,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
       assert.strictEqual(readFile(main, '.gitignore'), 'node_modules\n.ledger/\n');
       assert.ok(res.warnings.includes(
         '.gitignore holds changes of yours not yet committed, so Ledger\'s own change to it was not committed either — ' +
-        'commit yours, and the next boot commits theirs',
+        'commit yours, and the next boot commits its own',
       ));
       assert.strictEqual(git(main, ['log', '--format=%s', `${head}..main`]).trim(), 'chore: install Ledger session hooks');
     });

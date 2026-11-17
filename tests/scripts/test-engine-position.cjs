@@ -489,7 +489,7 @@ describe('conversation position', () => {
       place: null,
       skill: null,
       files: [],
-      text: 'This conversation holds no workflow position, so there is nothing to carry on from.',
+      text: 'This conversation holds no position in Ledger, so there is nothing to carry on from.',
     });
   });
 

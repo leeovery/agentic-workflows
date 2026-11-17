@@ -71,7 +71,7 @@ const SCRIPTS = path.dirname(harness.ENGINE);
 const { STATE_BRANCH, commitFirst } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 
 const engine = directiveEngine();
-const MESSAGE = 'chore: apply workflow migrations';
+const MESSAGE = "chore: apply Ledger's migrations";
 const COMMIT = ['commit', '--migrations', '-m', MESSAGE];
 const JOURNALS = '.cache/migrate';
 

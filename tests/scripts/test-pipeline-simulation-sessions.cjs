@@ -163,7 +163,7 @@ describe('pipeline simulation: sessions', () => {
     assert.match(sim.render(['migrations-applied', '--file', applied], { expect: 'content' }),
       /\*\*Migrations Applied\*\*\n\nRestored the settings and the worktree include\.\n\nA setting you may want back was removed\.\n\n1 migration\(s\), 3 file\(s\) updated\./);
     assert.match(sim.render(['migration-gate'], { expect: 'content' }), /Ready to continue\?/);
-    const landed = sim.run(['commit', '--migrations', '-m', 'chore: apply workflow migrations']);
+    const landed = sim.run(['commit', '--migrations', '-m', "chore: apply Ledger's migrations"]);
     assert.strictEqual(landed.committed, stateGit(sim.dir, ['rev-parse', '--short', 'HEAD']).trim());
     assert.strictEqual(landed.code_committed, git(sim.dir, ['rev-parse', '--short', 'HEAD']).trim());
     assert.deepStrictEqual(stateGit(sim.dir, ['show', '--name-status', '--pretty=format:', 'HEAD']).split('\n').filter(Boolean).sort(), [

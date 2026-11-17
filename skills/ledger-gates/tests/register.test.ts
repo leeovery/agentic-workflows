@@ -337,7 +337,7 @@ const SUBAGENT_BOOT = { ...BOOT_CALL, agentId: 'a1' }
 /** The switch that gives the session Claude Code's SendUserMessage tool. */
 const DISPLAY_TOOL = { name: 'CLAUDE_CODE_PEWTER_OWL_TOOL', value: 'true' }
 
-/** The settings a workflow session runs under, as the mod writes them. */
+/** The settings a Ledger session runs under, as the mod writes them. */
 const HARNESS_ON = [
   { name: 'CLAUDE_CODE_THINKING_DISPLAY_UPDATES', value: 'false' },
   { name: 'CLAUDE_CODE_SILENT_TURN_REMINDER', value: 'false' },
@@ -392,7 +392,7 @@ const HANDOFF_SECTIONS = [
   'handoff: mod',
   'skill: ledger-discussion-process',
   'args: feature note-window',
-  '=== DISPLAY: handoff (emit verbatim as a text code block (```text fence) — do not stop; continue as the workflow instructs) ===',
+  '=== DISPLAY: handoff (emit verbatim as a text code block (```text fence) — do not stop; continue as the skill instructs) ===',
   WHERE,
 ]
 
@@ -3702,7 +3702,7 @@ describe('register', () => {
     expect(await placing('Bash')).toEqual({ description: 'The Bash tool.' })
   })
 
-  test('the conversation’s own call, once the engine has marked it, sets the workflow harness; a call before the mark sets nothing (6.S28)', async ($, on) => {
+  test('the conversation’s own call, once the engine has marked it, sets Ledger’s harness; a call before the mark sets nothing (6.S28)', async ($, on) => {
     const { written, marks } = world($, on)
 
     await $.session.start(SESSION)
@@ -3895,7 +3895,7 @@ describe('register', () => {
     expect(harnessHeld(environment)).toEqual(OWN)
   })
 
-  test('a workflow conversation’s /clear puts back exactly what the person had: their value, or none (6.S28)', async ($, on) => {
+  test('a Ledger conversation’s /clear puts back exactly what the person had: their value, or none (6.S28)', async ($, on) => {
     const own = { CLAUDE_CODE_THINKING_DISPLAY_UPDATES: '1' }
     const { environment } = world($, on, '', { env: own, marked: ['s0'] })
 
@@ -3937,7 +3937,7 @@ describe('register', () => {
     })
   }
 
-  test('a conversation the engine marked gets the workflow harness back when a fresh load resumes it', async ($, on) => {
+  test('a conversation the engine marked gets Ledger’s harness back when a fresh load resumes it', async ($, on) => {
     const { written, reads } = world($, on, '', { marked: ['s0'] })
 
     reads(BOOTED)
@@ -3957,7 +3957,7 @@ describe('register', () => {
     expect(harnessIn(written)).toEqual([])
   })
 
-  test('a conversation the engine marked, resumed in this process, gets the workflow harness back at the next drawing', async ($, on) => {
+  test('a conversation the engine marked, resumed in this process, gets Ledger’s harness back at the next drawing', async ($, on) => {
     const { written, reads, resumesAs } = world($, on, '', { marked: ['s1'] })
 
     reads(MOVED_ON)
@@ -4167,7 +4167,7 @@ describe('register', () => {
     expect(askedOf(calls)).toEqual([])
   })
 
-  test('the workflow harness stays on through the clear a handoff runs, and the person’s own values come back as the new conversation ends', async ($, on) => {
+  test('Ledger’s harness stays on through the clear a handoff runs, and the person’s own values come back as the new conversation ends', async ($, on) => {
     const { written, environment, clock } = world($, on, HANDED_OFF, {
       env: OWN,
       marked: ['s0'],
