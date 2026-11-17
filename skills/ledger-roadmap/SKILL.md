@@ -35,7 +35,7 @@ Load **[choosing-a-horizon.md](../ledger-shared/references/choosing-a-horizon.md
 node .claude/skills/ledger-engine/scripts/engine.cjs roadmap add {name} --horizon "{horizon}" --summary "{summary}" [--kind {kind:[bug|quick-fix]}] --origin roadmap
 ```
 
-Say the line its response's `said` holds, then draw the roadmap again (**The Menu**).
+A name already on the roadmap takes another. Say the line its response's `said` holds, then draw the roadmap again (**The Menu**).
 
 ## Moving or Archiving an Item
 

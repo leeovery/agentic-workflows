@@ -147,7 +147,7 @@ For the roadmap, name the item — a kebab-case `{name}` and a one-line `{summar
 node .claude/skills/ledger-engine/scripts/engine.cjs roadmap add {name} --horizon "{horizon}" --summary "{summary}" [--kind {kind:[bug|quick-fix]}] --origin park:{home} --source {log}
 ```
 
-Say the line its response's `said` holds, and carry on.
+A name already on the roadmap takes another. Say the line its response's `said` holds, and carry on.
 
 For the inbox, capture it per **[backlogging.md](../ledger-shared/references/backlogging.md)** at **D. Capture**, and carry on.
 

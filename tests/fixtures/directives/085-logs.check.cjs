@@ -9,6 +9,7 @@ const path = require('path');
 module.exports = {
   counts: { one: 'unit', many: 'units' },
   done: 'have their logs',
+  partWay: 'A log it was in the middle of is written again.',
   /** @param {{projectDir: string, stateDir: string}} dirs */
   check({ stateDir }) {
     return fs.readdirSync(stateDir).filter((name) => fs.existsSync(path.join(stateDir, name, 'manifest.json'))).map((unit) => {

@@ -498,6 +498,7 @@ function plansOf(project, unit, before) {
 module.exports = {
   counts: { one: 'piece of work', many: 'pieces of work' },
   done: 'done',
+  partWay: 'A piece of work it was in the middle of is carried on from where it stood.',
   briefed: BRIEFED,
   /** @param {{projectDir: string, stateDir: string}} dirs */
   check({ projectDir, stateDir }) {

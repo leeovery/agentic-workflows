@@ -6,7 +6,7 @@
 
 A point another topic owns goes to it as a message, and that topic's session decides it in its own frame. Never visit the target: its record and log stay out of this conversation, and no agent carries the message.
 
-- **Only between topics.** A single-topic unit has no other topic: the point goes aside through the skill's **Backlogging**, or, where it needs decisions of its own, offer the pivot to an epic in a line; only the person's yes moves it. On it, load **[pivot-to-epic.md](../../ledger-shared/references/pivot-to-epic.md)** with work_unit = `{work_unit}`, then add the point to the map as a new topic, its brief drafted at `.ledger/.cache/{work_unit}/discussion/{topic}/brief-{name}.md` — what the point is, where it came up, why it matters, and its open questions —:
+- **Only between topics.** A single-topic unit has no other topic: the point goes aside through the skill's **Backlogging**, or, where it needs decisions of its own, offer the pivot to an epic in a line; only the person's yes moves it. On it, load **[pivot-to-epic.md](../../ledger-shared/references/pivot-to-epic.md)** with work_unit = `{work_unit}`, then add the point to the map as a new topic, its brief drafted at `.ledger/.cache/{work_unit}/discussion/{topic}/brief-{name}.md`, holding what the point is, where it came up, why it matters, and its open questions:
 
   ```bash
   node .claude/skills/ledger-engine/scripts/engine.cjs topic add {work_unit} {name} --summary "{summary}" --brief .ledger/.cache/{work_unit}/discussion/{topic}/brief-{name}.md

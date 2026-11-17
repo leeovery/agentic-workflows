@@ -89,7 +89,7 @@ node .claude/skills/ledger-engine/scripts/engine.cjs render step-gate {work_unit
 
 It is refused where the build runs in auto, where no gate follows a task: land it. Otherwise take the person's answer to `gate "step gate"`:
 - **yes** — land it.
-- **auto** — land the task.
+- **auto** — run its `next`, then land the task.
 - **technical** — retell the task's account from the code's side (**[technical-lens.md](../../ledger-shared/references/technical-lens.md)**), then run its `next`.
 - **show** — draw what the task built as diagrams, then run its `next`.
 - **Comment** — the person's change goes onto the task as theirs, `--by person`, before the builder goes back in; the pair reads the task again, a new account is taken, and its gate comes again once the task stands at it. Where this conversation holds no builder for the task, after a `/clear`, it goes through **The Builder** afresh, its new builder carrying on from where the work stands.

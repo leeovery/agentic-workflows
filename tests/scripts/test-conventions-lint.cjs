@@ -119,8 +119,11 @@ function firstContentIndex(lines) {
 // ---------------------------------------------------------------------------
 // Check 1 — chrome keeps its glyphs: a markdown phase title (`# **`…`**`)
 // takes ■, and a marker — the sole content line of a fence, `**`… …`**` —
-// takes □ for a step or ▪ for a sub-step, never the title's ■.
+// takes □ for a step or ▪ for a sub-step, never the title's ■. A title on
+// any other glyph CONVENTIONS lists (Glyphs) is caught.
 // ---------------------------------------------------------------------------
+
+const OTHER_GLYPHS = '□▪○◐●◌→✓⊙⊘⊖◆⚑⏺';
 
 function checkChromeGlyphs(files) {
   const out = [];
@@ -128,7 +131,7 @@ function checkChromeGlyphs(files) {
     const lines = readLines(file);
     lines.forEach((line, i) => {
       const h1 = /^# \*\*`(.)/.exec(line.trim());
-      if (h1 && '■□▪○◐✓⊙⊘◆'.includes(h1[1]) && h1[1] !== '■') {
+      if (h1 && OTHER_GLYPHS.includes(h1[1])) {
         out.push({ file, line: i + 1, message: `phase-title chrome uses ■ — found ${h1[1]}` });
       }
     });
@@ -167,6 +170,31 @@ function checkNoProseMenus(files) {
         out.push({ file, line: i + 1, message: 'a menu dot rule in prose — menus are engine-rendered: build the menu in code and serve it from a render surface' });
       } else if (MENU_ROW.test(t)) {
         out.push({ file, line: i + 1, message: 'a menu option row in prose — menus are engine-rendered: build the menu in code and serve it from a render surface' });
+      }
+    });
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Check 5 — Banned navigation verbs after an arrow: a route proceeds or
+// returns, so check 6 reads every one. It serves the step model.
+// ---------------------------------------------------------------------------
+
+const BANNED_NAV = /→\s*(Go to|Jump to|Skip to|Continue to|Enter |Proceed directly)/;
+
+function checkBannedNav(files) {
+  const out = [];
+  for (const file of files) {
+    const lines = readLines(file);
+    lines.forEach((line, i) => {
+      // Menu option lines use ` → ` as their key/label separator (option
+      // grammar), so a label that happens to open with a navigation verb is
+      // not a navigation directive.
+      if (/^\s*\*\*.+?\*\* +→ /.test(line)) return;
+      const m = line.match(BANNED_NAV);
+      if (m) {
+        out.push({ file, line: i + 1, message: `banned navigation verb "→ ${m[1].trim()}"` });
       }
     });
   }
@@ -1169,6 +1197,7 @@ function checkBackToStartLoads(files, menus = BACK_TO_START_MENUS) {
 const CHECKS = [
   ['1: chrome keeps its glyphs', checkChromeGlyphs],
   ['3: no menus in prose', checkNoProseMenus],
+  ['5: banned navigation verbs', checkBannedNav],
   ['6: internal routing-target existence', checkRouting],
   ['7: markdown link resolution', checkLinks],
   ['7b: a load is its own line, never carried mid-sentence', checkLoadLines],
@@ -1314,7 +1343,7 @@ for (const [label, fn] of CHECKS) {
 // must NOT flag the sanctioned edge cases it is designed to permit.
 // ---------------------------------------------------------------------------
 
-test('check 1 (chrome glyphs) — catches a phase title on any glyph but ■ and a marker on ■, permits ■ titles, □ and ▪ markers and a fence of more than one line', () => {
+test('check 1 (chrome glyphs) — catches a phase title on any listed glyph but ■ and a marker on ■, permits ■ titles, □ and ▪ markers and a fence of more than one line', () => {
   withTemp((dir) => {
     const good = write(dir, 'skills/x/good.md', [
       '```', '# **`■ Overview`**', '```', '',
@@ -1327,8 +1356,10 @@ test('check 1 (chrome glyphs) — catches a phase title on any glyph but ■ and
     const bad = write(dir, 'skills/x/bad.md', [
       '```', '# **`□ Overview`**', '```', '',
       '```', '**`■ Construct Specification`**', '```', '',
+      '```', '# **`● Overview`**', '```', '',
+      '```', '# **`⚑ Overview`**', '```', '',
     ].join('\n'));
-    assert.deepStrictEqual(checkChromeGlyphs([bad]).map((v) => v.line), [2, 6], `a title off ■ and a marker on ■ are caught, got ${report(checkChromeGlyphs([bad]))}`);
+    assert.deepStrictEqual(checkChromeGlyphs([bad]).map((v) => v.line).sort((a, b) => a - b), [2, 6, 10, 14], `a title off ■ — on □, ● or ⚑ — and a marker on ■ are caught, got ${report(checkChromeGlyphs([bad]))}`);
   });
 });
 
@@ -1375,6 +1406,18 @@ test('check 3 (no menus in prose) — catches dot rules and option rows anywhere
       '',
     ].join('\n'));
     assert.strictEqual(checkNoProseMenus([prose]).length, 0, 'chrome markers, definitions, inline key references, and a bullet dot are not menus');
+  });
+});
+
+test('check 5 (banned nav) — catches banned verbs, permits Proceed/Return', () => {
+  withTemp((dir) => {
+    const cases = ['→ Go to **Step 2**.', '→ Jump to **B. X**.', '→ Skip to **Step 3**.', '→ Continue to **Step 4**.', '→ Enter **Step 6**.', '→ Proceed directly to **Step 5**.'];
+    cases.forEach((c, idx) => {
+      const f = write(dir, `skills/x/${idx}.md`, c + '\n');
+      assert.strictEqual(checkBannedNav([f]).length, 1, `must catch "${c}"`);
+    });
+    const good = write(dir, 'skills/x/ok.md', '→ Proceed to **Step 2**.\n→ Return to caller.\n→ Continue with the session loop.\n');
+    assert.strictEqual(checkBannedNav([good]).length, 0, 'sanctioned navigation must pass');
   });
 });
 
@@ -1726,9 +1769,8 @@ test('check 21 (a section\'s form is its marker\'s) — catches a form stated in
     assert.strictEqual(checkSectionFormsAreTheMarkers([formless]).length, 0, `a section named or emitted with no form of its own is clean, got ${report(checkSectionFormsAreTheMarkers([formless]))}`);
 
     // Not a section's form: a neighbouring sentence on the section's line,
-    // a passive description, an emit of prose-authored content, the API
-    // reference's fenced description of a marker, and the rendering
-    // instruction of a prose-authored block.
+    // a passive description, the API reference's fenced description of a
+    // marker, and the rendering instruction of a prose-authored block.
     const others = write(dir, 'skills/x/others.md', [
       'Present the full phase structure from the planning file as rendered markdown (not a code block) — goals, ordering rationale, acceptance criteria as the designer wrote them. Emit its `MENU: phase structure gate` section.',
       '',

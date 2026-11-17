@@ -145,7 +145,7 @@ Content is one JSON object on stdin; `{place}` is `{work_unit}.investigation.{wo
 
 ## Closing
 
-The investigation has no checklist.
+The investigation closes once the root cause and the fix stand, both validated since, nothing of the person's open on the map and no mail waiting. It has no checklist.
 
 The recap names what the bug is in, for the bugs found after review:
 - `fixes` — the work unit whose code the bug is in, read from the code's history and the project's units; asked of the person where it isn't plain, and left out where no unit built that code.

@@ -53,10 +53,13 @@
 //     holding its list alone, an item wrapped onto lines indented beneath
 //     it; its instructions follow, under headings of their own. Beside it
 //     sits its check, `NNN-{slug}.check.cjs`: `module.exports = { counts,
-//     done, check({ projectDir, stateDir }) }`. `counts` names one piece of
+//     done, partWay, check({ projectDir, stateDir }) }`. `counts` names one piece of
 //     the directive's work and many, `{ one: 'topic', many: 'topics' }`, and
 //     `done` says what a piece done has ('have their records'), as the stop's
 //     screen counts them — "12 of Fumi's 19 topics have their records";
+//     `partWay` says what becomes of a piece a session left part-way, the
+//     sentence the stop draws ('A record it was in the middle of is amended
+//     from where it stood.');
 //     `check` answers an array of `{ name, problems }`, one for each piece,
 //     `problems` a sentence for each thing the piece still lacks, none once
 //     it is done. The check reads alone — the project's code tree

@@ -24,6 +24,8 @@ Every finding carries the lane that says where it goes, written under its headin
 - **gap** — no entry settles it: undecided, or two entries contradicting each other. Give your lean and what it rests on where you have one; whether it reaches the person is the matrix's to decide, never yours.
 - **fact** — a measurement or the code shows a fact wrong: the finding by short id, what it records, what you measured or read, and where.
 
+Where a refusal is recorded under "Reports refused", a report of yours was refused unread for it: write yours so it reads, every fault answered.
+
 # The sections to review
 
 {{changed-sections}}

@@ -134,4 +134,4 @@ The raise takes one JSON object on stdin, `{"question", "rows", "mechanism", "pr
 node .claude/skills/ledger-engine/scripts/engine.cjs raise {place} --answers {answers} --fact
 ```
 
-Emit its sections verbatim per their markers. Record the person's answer with `raise answer {id}`, the raise's id: a row they pick, `--pick {key}`, with `{"why"}` on stdin; their own words, `--own`, with `{"text", "why"}`. A point they leave open stays an open question on its topic.
+Record the person's answer with `raise answer {id}`, the raise's id: a row they pick, `--pick {key}`, with `{"why"}` on stdin; their own words, `--own`, with `{"text", "why"}`. A point they leave open stays an open question on its topic.

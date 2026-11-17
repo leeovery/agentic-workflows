@@ -162,7 +162,7 @@ The person puts something off for later — "roadmap it", "backlog that", "push 
 node .claude/skills/ledger-engine/scripts/engine.cjs roadmap add {name} --horizon "{horizon}" --summary "{summary}" --origin park:{work_unit} --source {work_unit}/topics/{topic}
 ```
 
-Once it lands, say the line its response's `said` holds. A question moves to the item, the move taking `{"by": "person", "who_moved_whom": "none"}` on stdin:
+A name already on the roadmap takes another. Once it lands, say the line its response's `said` holds. A question moves to the item, the move taking `{"by": "person", "who_moved_whom": "none"}` on stdin:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs ledger move {work_unit}.discussion.{topic} --question {id} --to roadmap:{name}
@@ -180,7 +180,7 @@ The postpone answers `closed_agents`: stop the task behind each one you dispatch
 
 ## Cancelling the Topic
 
-The person calls the topic off, or the conversation agrees it is not worth pursuing; a topic wanted later is postponed instead. Bring the log up to date, then fetch `render wait-agents {work_unit}.{topic}`. Then fetch the confirm — an epic's topic `render cancel-gate {work_unit}.discovery.{topic}`, a single-topic unit `render cancel-gate {work_unit}` —. A refusal names what holds the topic: say it in a line.
+The person calls the topic off, or the conversation agrees it is not worth pursuing; a topic wanted later is postponed instead. Bring the log up to date, then fetch `render wait-agents {work_unit}.{topic}`. Then fetch the confirm: an epic's topic `render cancel-gate {work_unit}.discovery.{topic}`, a single-topic unit `render cancel-gate {work_unit}`. A refusal names what holds the topic: say it in a line.
 
 An epic's cancel answers `closed_agents`: stop the task behind each one you dispatched with the TaskStop tool. It answers its receipt; say in a line which experiments went with it where the response's `abandoned` names any, and where each wait in `released_waits` stands: the point it held is open again, raised when the topic is reactivated. Then follow the cancel's `next`.
 

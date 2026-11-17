@@ -180,7 +180,7 @@ describe('engine migrate check (21.10.7)', () => {
       'migrate check: "../079" is no directive\'s id — a directive\'s id is its file\'s name, NNN-{slug}',
       'migrate check: there is no directive 078-move',
       'migrate check: 090-unchecked\'s check could not be loaded from {migrations}/090-unchecked.check.cjs: Cannot find module',
-      'migrate check: 091-shapeless\'s check exports no check() beside what it counts — it exports { counts: { one, many }, done, check({ projectDir, stateDir }) }',
+      'migrate check: 091-shapeless\'s check exports no check() beside what it counts — it exports { counts: { one, many }, done, partWay, check({ projectDir, stateDir }) }',
       'migrate check: 092-failing\'s check failed: the old manifests could not be read',
       'migrate check: 093-unanswered\'s check answered no list of { name, problems }',
       'Usage: engine migrate check <id> | engine migrate checked | engine migrate review | engine migrate join <work-unit> --directive <id> [--phase <N> --dry-run]',
@@ -392,7 +392,7 @@ describe('the stop\'s screen (21.10.11)', () => {
       '⚑ The migration stopped part-way: its records step isn\'t done',
       '',
       '=== DISPLAY: directive account (emit verbatim as markdown (not a code block)) ===',
-      '> No session works in this project until the migration is done. What it finished is kept: 2 of Fumi\'s 3 topics have their records, each checked. Any topic it was in the middle of is carried on from where it stood.',
+      '> No session works in this project until the migration is done. What it finished is kept: 2 of Fumi\'s 3 topics have their records, each checked. A record it was in the middle of is amended from where it stood.',
       '>',
       '> This session carries the migration on from its records step; the start menu follows once the migration is done and committed.',
       '',
@@ -436,11 +436,24 @@ describe('the stop\'s screen (21.10.11)', () => {
     assert.strictEqual(refusedUntouched(dir, ['render', 'directive-stop']), 'render directive-stop: --directive <id> names the directive boot stopped at');
   });
 
-  it('counts the pieces as the check names them, one and many, and says what a piece done has in its words', () => {
-    const screen = directiveStop({ project: 'Fumi', step: 'cut', progress: { done: 1, of: 4, counts: { one: 'branch', many: 'branches' }, says: 'are cut' } });
+  it('counts the pieces as the check names them, one and many, and says what a piece done has and what becomes of one left part-way in its words', () => {
+    const screen = directiveStop({ project: 'Fumi', step: 'cut', progress: { done: 1, of: 4, counts: { one: 'branch', many: 'branches' }, says: 'are cut', partWay: 'A branch it was in the middle of is cut again.' } });
 
     assert.strictEqual(screen.split('\n').filter((line) => line.startsWith('> No session'))[0],
-      '> No session works in this project until the migration is done. What it finished is kept: 1 of Fumi\'s 4 branches are cut, each checked. Any branch it was in the middle of is carried on from where it stood.');
+      '> No session works in this project until the migration is done. What it finished is kept: 1 of Fumi\'s 4 branches are cut, each checked. A branch it was in the middle of is cut again.');
+  });
+
+  it('21.10.9: says of a piece left part-way what its own directive does with it — the split plans a source again from the start, the records amend a record from where it stood', () => {
+    const accountOf = (id) => {
+      const { counts, done: says, partWay } = require(path.join(MIGRATIONS, `${id}.check.cjs`));
+      const screen = directiveStop({ project: 'Fumi', step: id.replace(/^[0-9]+-/, ''), progress: { done: 1, of: 2, counts, says, partWay } });
+      return screen.split('\n').filter((line) => line.startsWith('> No session'))[0];
+    };
+
+    assert.deepStrictEqual(['076-legacy-split', '079-records'].map(accountOf), [
+      '> No session works in this project until the migration is done. What it finished is kept: 1 of Fumi\'s 2 sources have their plans, each checked. A source it was in the middle of is planned again from the start, its plan cleared first.',
+      '> No session works in this project until the migration is done. What it finished is kept: 1 of Fumi\'s 2 topics have their records, each checked. A record it was in the middle of is amended from where it stood.',
+    ]);
   });
 
   it('says the step is ready to close where every piece is done and the close has not run', () => {

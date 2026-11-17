@@ -29,7 +29,8 @@
 // gives one (21.5.21). While the migration runs, and only then, the plan
 // the tracker held from before Ledger of a unit that built nothing is
 // closed under its root (`task close-plan`, 21.8.4, drivers.cjs), the
-// driver refusing a plan holding a task done: the tracker wins (21.8.8);
+// driver refusing a plan holding a task done: the tracker wins, and the
+// migration stops there (21.8.12);
 // the close marked in the state's cache, so the cut and the merges' check
 // tells it done (080). It never takes a unit whose spec the migration
 // joined: its cut carries its plans on. The
