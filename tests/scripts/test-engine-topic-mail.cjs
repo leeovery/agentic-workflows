@@ -52,7 +52,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  ok, output, refusedPristine, statePath, layout, writeState, readState, readManifest, stateGit, lastMessage, commitAll,
+  ok, okSections, output, refusedPristine, statePath, layout, writeState, readState, readManifest, stateGit, lastMessage, commitAll,
   fixtureFrom, cleanupFixture, holdLock, lockAttempts, withFrozenClock, FROZEN_AT,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
@@ -362,13 +362,13 @@ describe('a cancel\'s waiting mail (10.S11, 10.1.6)', () => {
     assert.match(refused(['render', 'topic-receipt', `${EPIC}.discovery.first-run`, '--verb', 'reactivate', '--inbox', '1']), /--inbox counts what a cancel moved to the inbox — it takes --verb cancel$/);
   });
 
-  it('workunit cancel moves each cancelled topic\'s waiting mail once, a postponed topic\'s left waiting for its return, and the receipt says how many', () => {
+  it('workunit cancel moves each cancelled topic\'s waiting mail once, a postponed topic\'s left waiting for its return, and its receipt says how many with no count carried', () => {
     withFrozenClock(() => { send(EPIC, 'licence', 'lost-key'); send(EPIC, 'commercialization', 'refund-window'); send(EPIC, 'widgets', 'pin-it'); });
-    const res = withFrozenClock(() => ok(dir, ['workunit', 'cancel', EPIC]));
+    const { res, sections } = withFrozenClock(() => okSections(dir, ['workunit', 'cancel', EPIC]));
     assert.deepStrictEqual([res.inbox, fs.readdirSync(at(layout.inbox('ideas', ''))).length, fs.existsSync(at(layout.mailbox(EPIC, 'widgets', '001-pin-it.md')))],
       [[at(idea('refund-window')), at(idea('lost-key'))], 2, true]);
     assert.deepStrictEqual(changed('HEAD').filter((line) => line.includes('.inbox/')).sort(), [`A\t${idea('lost-key')}`, `A\t${idea('refund-window')}`]);
-    assert.strictEqual(output(dir, ['render', 'workunit-receipt', EPIC, '--verb', 'cancel', '--inbox', '2']).split('\n')[1],
+    assert.strictEqual(sections.split('\n')[1],
       '"Fumi" marked as cancelled. Its 2 waiting messages went to the inbox as ideas.');
   });
 });

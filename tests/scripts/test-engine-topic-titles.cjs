@@ -322,7 +322,7 @@ describe('every screen names a topic through one helper', () => {
       'projections/transactions.cjs › absorbReceipt › epic',
       'projections/transactions.cjs › absorbSummary › epic',
       'projections/transactions.cjs › absorbSummary › feature',
-      'projections/transactions.cjs › inboxRestoreReceipt › unclaimedFrom',
+      'projections/transactions.cjs › inboxRestoreReceipt › unclaimed',
       'projections/transactions.cjs › stayedLines › unit',
       'projections/transactions.cjs › workunitReceipt › workUnit',
       'render.cjs › workUnitCancel › workUnit',

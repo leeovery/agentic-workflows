@@ -25,14 +25,10 @@ const path = require('path');
 const { loadManifest, loadProjectManifest } = require('./reads.cjs');
 const { titlecase } = require('./conventions.cjs');
 const { section, dataSection, CONTINUE_INSTRUCTION, menu, cmdOption, promptOption, MENU_INSTRUCTION } = require('./projections/surfaces.cjs');
-const { keptAside, keptWords } = require('./fix-aside.cjs');
-const { cancelKept } = require('./fix-branch.cjs');
 const { quickFixBranch } = require('./landing-names.cjs');
 const { mayHoldOpen } = require('./landing.cjs');
-const { lastClosed } = require('./cancel-closed.cjs');
-const { workunitReceipt, topicReceipt, ABSORB_MOVED, absorbReceipt, importReprompt, inboxRestoreReceipt, inboxDeleteReceipt } = require('./projections/transactions.cjs');
-const { liveItem, deletedItemTitle } = require('./inbox-set.cjs');
-const { logClaims } = require('./inbox.cjs');
+const { topicReceipt, importReprompt } = require('./projections/transactions.cjs');
+const { stayedWhere } = require('./receipts.cjs');
 const { brownfieldOffer } = require('./brownfield.cjs');
 const {
   ORIGINS: WALKTHROUGH_ORIGINS, loadScreen, loadCard, walkthroughOffer, walkthroughScreen, walkthroughTopic,
@@ -576,15 +572,14 @@ function phaseNote(cwd, { dotpath, verb, noun }) {
 }
 
 // ---------------------------------------------------------------------------
-// Transaction receipts — fetched by the calling flow right after its
-// lifecycle verb, so the verb's stdout stays one JSON line. Each surface
+// The topic receipts — fetched by the calling flow right after a topic's
+// lifecycle verb, so the verb's stdout stays one JSON line. The surface
 // validates that the state it renders from matches the verb it receipts:
 // a receipt fetched out of place refuses loudly. `--warn` prepends the
 // knowledge advisory — the caller sets it when the transaction's JSON
-// carried `warnings`.
+// carried `warnings`. A work unit's lifecycle verbs, the absorb and the
+// inbox's draw their own (receipts.cjs).
 // ---------------------------------------------------------------------------
-
-const WORKUNIT_RECEIPT_STATUS = { cancel: 'cancelled', reactivate: 'in-progress' };
 
 /**
  * How many waiting messages a cancel moved to the inbox, as `--inbox <n>`
@@ -611,40 +606,10 @@ function inboxCount(surface, verb, inbox) {
 function stayedItems(cwd, surface, unit, verb, stayed) {
   if (stayed === undefined) return [];
   if (verb !== 'reactivate') throw new Error(`render ${surface}: --stayed names what a reactivate left where it stands — it takes --verb reactivate`);
-  const state = roadmapState(cwd);
-  return stayed.split(',').map((name) => {
-    if (state.archived.some((row) => row.name === name)) return { name, archived: true };
-    const row = state.items.find((r) => r.name === name);
-    if (row === undefined) return { name };
-    if (row.work_unit === undefined || row.work_unit === unit) throw new Error(`render ${surface}: "${name}" stayed nowhere — the reactivate takes back every item still waiting`);
-    return { name, work_unit: row.work_unit };
-  });
-}
-
-/** @param {string} cwd @param {{dotpath: string, verb?: string, warn?: string, inbox?: string, stayed?: string}} args @returns {string} */
-function workunitReceiptSurface(cwd, args) {
-  const { manifest, workUnit } = resolveWorkUnit(cwd, args.dotpath, 'workunit-receipt');
-  const verb = args.verb;
-  if (verb !== 'cancel' && verb !== 'reactivate' && verb !== 'pivot') {
-    throw new Error(`render workunit-receipt: --verb must be cancel, reactivate, or pivot, got "${verb}"`);
-  }
-  const inbox = inboxCount('workunit-receipt', verb, args.inbox);
-  const stayed = stayedItems(cwd, 'workunit-receipt', workUnit, verb, args.stayed);
-  if (verb === 'pivot') {
-    if (manifest.work_type !== 'epic') {
-      throw new Error(`render workunit-receipt: "${workUnit}" is not an epic — nothing to receipt for a pivot`);
-    }
-  } else if (manifest.status !== WORKUNIT_RECEIPT_STATUS[verb]) {
-    throw new Error(`render workunit-receipt: "${workUnit}" is "${manifest.status}", not "${WORKUNIT_RECEIPT_STATUS[verb]}" — the ${verb} has not run`);
-  }
-  return workunitReceipt(verb, workUnit, {
-    warn: args.warn === '1',
-    inbox,
-    closed: verb === 'cancel' ? lastClosed(manifest) : {},
-    branches: verb === 'cancel' && quickFixBuild(manifest) ? cancelKept(cwd, workUnit) : [],
-    kept: verb === 'cancel' ? keptAside(cwd, workUnit).map(keptWords) : [],
-    stayed,
-  });
+  const names = stayed.split(',');
+  const taken = roadmapState(cwd).items.find((row) => names.includes(row.name) && (row.work_unit === undefined || row.work_unit === unit));
+  if (taken !== undefined) throw new Error(`render ${surface}: "${taken.name}" stayed nowhere — the reactivate takes back every item still waiting`);
+  return stayedWhere(cwd, names);
 }
 
 /**
@@ -713,42 +678,6 @@ function topicReceiptSurface(cwd, args) {
   return topicReceipt(verb, name, { warn, restored: unitStatuses(manifest, topic), stayed });
 }
 
-/** @param {string} cwd @param {{dotpath: string, topic?: string, moved?: string, experiments?: string, renamed?: string, warn?: string}} args @returns {string} */
-function absorbReceiptSurface(cwd, args) {
-  const { manifest, workUnit } = resolveWorkUnit(cwd, args.dotpath, 'absorb-receipt');
-  if (manifest.work_type !== 'epic') {
-    throw new Error(`render absorb-receipt: "${workUnit}" is not an epic`);
-  }
-  const topic = args.topic;
-  if (!topic) throw new Error('render absorb-receipt: --topic is required');
-  if (!itemOf(manifest, 'discussion', topic)) {
-    throw new Error(`render absorb-receipt: no discussion item "${topic}" on "${workUnit}" — the absorb has not run`);
-  }
-  const moved = (args.moved || '').split(',').map((s) => s.trim()).filter(Boolean);
-  const unknown = moved.filter((m) => !Object.hasOwn(ABSORB_MOVED, m));
-  if (unknown.length > 0) {
-    throw new Error(`render absorb-receipt: --moved entries must be ${Object.keys(ABSORB_MOVED).join(', ')}, got "${unknown.join(', ')}"`);
-  }
-  let experiments = 0;
-  if (args.experiments !== undefined) {
-    experiments = Number(args.experiments);
-    if (!Number.isInteger(experiments) || experiments < 1) {
-      throw new Error(`render absorb-receipt: --experiments must be a positive experiment count, got "${args.experiments}"`);
-    }
-    if (!itemOf(manifest, 'experiment', topic)) {
-      throw new Error(`render absorb-receipt: no experiment series "${topic}" on "${workUnit}" — the receipt renders what the absorb moved`);
-    }
-  }
-  const renamed = (args.renamed || '').split(',').map((s) => s.trim()).filter(Boolean).map((pair) => {
-    const [from, to, ...extra] = pair.split(':');
-    if (!from || !to || extra.length > 0) {
-      throw new Error(`render absorb-receipt: --renamed entries are <from>:<to> pairs, got "${pair}"`);
-    }
-    return { from, to };
-  });
-  return absorbReceipt(workUnit, topic, moved, { warn: args.warn === '1', experiments, renamed });
-}
-
 // import-reprompt — the re-prompt after a landing refused on `missing_imports`,
 // a learned gate (8.8.12). No address: the refusal names paths, and the work
 // unit it was aimed at may not exist yet (the work-type commit's own landing
@@ -767,45 +696,6 @@ function importRepromptSurface(cwd, { file }) {
     if (!isFilled(m)) throw new Error(`render import-reprompt: missing[${i}] must be a non-empty string`);
   });
   return importReprompt(p.missing, decisionPoint.gateStep('import reprompt', { cwd, place: { unit: null, phase: null, topic: null }, key: p.missing }));
-}
-
-/**
- * What a single-item receipt reads over the path the verb answered, after
- * an archived item is restored or deleted: a restore's item must be live
- * again, and a delete's gone from the archive — its title read from git's
- * last copy.
- * @template T
- * @param {string} cwd @param {{dotpath: string, path?: string}} args
- * @param {string} surface @param {string} what @param {(cwd: string, given: string) => T} read
- * @returns {T}
- */
-function receiptRead(cwd, { path: given }, surface, what, read) {
-  if (!isFilled(given)) throw new Error(`render ${surface}: --path is required — ${what}`);
-  try {
-    return read(cwd, /** @type {string} */ (given));
-  } catch (err) {
-    throw new Error(`render ${surface}: ${messageOf(err)}`);
-  }
-}
-
-/**
- * The restore's receipt. `--unclaimed <unit>`, from the restore's
- * `unclaimed`, names the unit whose build log it took the item's claim out
- * of: refused where that log claims the item still.
- * @param {string} cwd @param {{dotpath: string, path?: string, unclaimed?: string}} args @returns {string}
- */
-function inboxRestoreReceiptSurface(cwd, args) {
-  const item = receiptRead(cwd, args, 'inbox-restore-receipt', 'the live path `inbox restore` answered', liveItem);
-  const { unclaimed } = args;
-  if (unclaimed !== undefined && logClaims(cwd, unclaimed).includes(item.path)) {
-    throw new Error(`render inbox-restore-receipt: ${unclaimed}'s build log claims it still — the restore has not taken its Resolved: line out`);
-  }
-  return inboxRestoreReceipt(item.title, unclaimed ?? null);
-}
-
-/** @param {string} cwd @param {{dotpath: string, path?: string}} args @returns {string} */
-function inboxDeleteReceiptSurface(cwd, args) {
-  return inboxDeleteReceipt(receiptRead(cwd, args, 'inbox-delete-receipt', 'the archived path `inbox delete` answered', deletedItemTitle));
 }
 
 // ---------------------------------------------------------------------------
@@ -1138,15 +1028,11 @@ const SURFACES = {
   'phase-note': phaseNote,
   'cancel-gate': cancelGate,
   'postpone-gate': postponeGate,
-  'workunit-receipt': workunitReceiptSurface,
   'topic-receipt': topicReceiptSurface,
-  'absorb-receipt': absorbReceiptSurface,
   'import-reprompt': importRepromptSurface,
   'absorb-target': (cwd, { dotpath }) => absorbTargetSurface(cwd, dotpath),
   'absorb-confirm-gate': absorbConfirmSurface,
   'archived-delete-gate': (cwd, { path: given, file }) => archivedDeleteGateSurface(cwd, given, file),
-  'inbox-restore-receipt': inboxRestoreReceiptSurface,
-  'inbox-delete-receipt': inboxDeleteReceiptSurface,
   'horizon-pick': horizonPick,
   banner: bannerSurface,
   'work-pick': workPickSurface,

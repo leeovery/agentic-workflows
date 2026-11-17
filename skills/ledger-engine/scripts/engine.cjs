@@ -110,6 +110,7 @@ const { ENTER_USAGE, enter } = require('./domain/enter.cjs');
 const { createWorkUnit } = require('./domain/workunit-create.cjs');
 const { cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit } = require('./domain/workunit-lifecycle.cjs');
 const { absorbWorkUnit } = require('./domain/workunit-absorb.cjs');
+const { unitReceipt, absorbedReceipt, archivedReceipt, restoredReceipt, deletedReceipt } = require('./domain/receipts.cjs');
 const { stageMove } = require('./domain/workunit-move.cjs');
 const { splitWorkUnit } = require('./domain/workunit-split.cjs');
 const { retireWorkUnit } = require('./domain/workunit-retire.cjs');
@@ -153,6 +154,17 @@ function respond(call, obj) {
  */
 function respondOnStderr(call, obj) {
   call.err(JSON.stringify({ ok: true, ...obj }) + '\n');
+}
+
+/**
+ * A transaction's JSON line, then its receipt — drawn before either is
+ * printed, so a receipt that cannot be drawn leaves one refusal, never an
+ * answer and a refusal both.
+ * @param {Call} call @param {object} obj @param {string} receipt
+ */
+function respondWithReceipt(call, obj, receipt) {
+  respond(call, obj);
+  respondSections(call, receipt);
 }
 
 /**
@@ -390,16 +402,12 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render phase-note        <wu.phase.topic> --verb <Word> [--noun <word>]
   render cancel-gate       <wu.discovery.name> | <wu>
   render postpone-gate     <wu.discovery.topic> --horizon "<horizon>"
-  render workunit-receipt  <wu> --verb cancel|reactivate|pivot [--warn] [--inbox <n>]
   render topic-receipt     <wu.discovery.name> --verb cancel|reactivate [--warn] [--inbox <n>]
   render topic-receipt     <wu.discovery.topic> --verb postpone|restore [--warn]
-  render absorb-receipt    <epic> --topic <name> [--moved seeds,assets,spikes] [--experiments <N>] [--renamed <from>:<to>[,…]] [--warn]
   render import-reprompt   --file <payload.json>   # {"missing": ["path", …]} — the re-prompt after a landing refused
   render absorb-target     <feature>
   render absorb-confirm-gate <feature> --into <epic> --topic <name> --summary <text> [--description <text>]
   render archived-delete-gate --path <archived path> [--file <pick.json>]
-  render inbox-restore-receipt --path <live path> [--unclaimed <wu>]
-  render inbox-delete-receipt --path <archived path>
   render horizon-pick      <wu.discovery.topic> | --park <name>[,<name>…] | --back <name> --from <wu>|<wu>.discovery.<topic> [--then <item>,…]
   render banner
   render work-pick --matches <unit>[/<topic>],…
@@ -639,7 +647,8 @@ function runTrust(call, argv) {
 // commit.
 // cancel/reactivate are the lifecycle transactions: manifest write,
 // knowledge-base sync (warn-don't-block), scoped git commit, with an
-// engine-owned message; a unit completes at finish's yes. A cancel answers
+// engine-owned message, the receipt printed after the JSON (domain/receipts.cjs,
+// as are pivot's and absorb's); a unit completes at finish's yes. A cancel answers
 // its `next` from where the calling conversation sits (topic-leave.cjs).
 // pivot flips a feature to an epic — both manifests, the map registration
 // with the topic's summary and description, the re-index — as one
@@ -676,23 +685,26 @@ function runWorkunit(call, argv) {
       }
       if (command === 'cancel') {
         const cancelled = cancelWorkUnit(call.cwd, workUnit);
-        respond(call, { ...cancelled, next: putBackNext(call.cwd, workUnit, homelessNames(cancelled)) });
+        respondWithReceipt(call, { ...cancelled, next: putBackNext(call.cwd, workUnit, homelessNames(cancelled)) }, unitReceipt(call.cwd, 'cancel', cancelled));
         return;
       }
-      respond(call, reactivateWorkUnit(call.cwd, workUnit));
+      const reactivated = reactivateWorkUnit(call.cwd, workUnit);
+      respondWithReceipt(call, reactivated, unitReceipt(call.cwd, 'reactivate', reactivated));
     } else if (command === 'pivot') {
       const { opts, positional } = parseArgs(rest);
       if (positional.length !== 1 || opts.summary === undefined) {
         throw new Error('Usage: engine workunit pivot <work-unit> --summary <text> [--description <text>]');
       }
-      respond(call, pivotWorkUnit(call.cwd, positional[0], { summary: opts.summary, description: opts.description }));
+      const pivoted = pivotWorkUnit(call.cwd, positional[0], { summary: opts.summary, description: opts.description });
+      respondWithReceipt(call, pivoted, unitReceipt(call.cwd, 'pivot', pivoted));
     } else if (command === 'absorb') {
       const { opts, positional } = parseArgs(rest);
       const [feature] = positional;
       if (!feature || positional.length !== 1 || !opts.into || !opts.topic || opts.summary === undefined) {
         throw new Error('Usage: engine workunit absorb <feature> --into <epic> --topic <name> --summary <text> [--description <text>]');
       }
-      respond(call, absorbWorkUnit(call.cwd, feature, { into: opts.into, topic: opts.topic, summary: opts.summary, description: opts.description }));
+      const absorbed = absorbWorkUnit(call.cwd, feature, { into: opts.into, topic: opts.topic, summary: opts.summary, description: opts.description });
+      respondWithReceipt(call, absorbed, absorbedReceipt(absorbed));
     } else if (command === 'move') {
       const { opts, positional } = parseArgs(rest);
       const [workUnit] = positional;
@@ -1598,11 +1610,18 @@ function runMigrate(call, argv) {
 // ---------------------------------------------------------------------------
 // inbox — archive / restore / delete one or more inbox items as a single
 // transaction: strict path validation, file moves (or git rm), one scoped
-// commit for the whole set; close, the same archive recording who closed
-// each; file, the review phase's out-of-scope finding filed with the
-// ledger's call that filed it; and capture, the capture skills' one line
-// (domain/inbox-capture.cjs).
+// commit for the whole set, its receipt after its JSON (domain/receipts.cjs);
+// close, the same archive recording who closed each; file, the review
+// phase's out-of-scope finding filed with the ledger's call that filed it;
+// and capture, the capture skills' one line (domain/inbox-capture.cjs).
 // ---------------------------------------------------------------------------
+
+/** Each inbox move by its command: the transaction, and the receipt drawn from its answer. @type {Record<string, [(cwd: string, paths: string[]) => any, (cwd: string, answered: any) => string]>} */
+const INBOX_MOVES = {
+  archive: [archiveItems, archivedReceipt],
+  restore: [restoreItems, restoredReceipt],
+  delete: [deleteItems, deletedReceipt],
+};
 
 const INBOX_USAGE = `Usage: engine inbox <archive|restore|delete> <path> [<path> …] | engine inbox close <work-unit|none> <path> [<path> …] | engine inbox file <work-unit> --file <item.json> | engine ${CAPTURE_USAGE}`;
 
@@ -1631,10 +1650,10 @@ function runInbox(call, argv) {
       respond(call, fileItem(cwd, positional[0], opts.file));
       return;
     }
-    if (!['archive', 'restore', 'delete'].includes(command) || paths.length === 0) throw new Error(INBOX_USAGE);
-    if (command === 'archive') respond(call, archiveItems(cwd, paths));
-    else if (command === 'restore') respond(call, restoreItems(cwd, paths));
-    else respond(call, deleteItems(cwd, paths));
+    if (!Object.hasOwn(INBOX_MOVES, command) || paths.length === 0) throw new Error(INBOX_USAGE);
+    const [moved, receipt] = INBOX_MOVES[command];
+    const answered = moved(cwd, paths);
+    respondWithReceipt(call, answered, receipt(cwd, answered));
   } catch (err) {
     failJson(call, err);
   }

@@ -24,6 +24,7 @@ const path = require('path');
 
 const { git, stateGit, output, unreadableKnowledge, indexedFiles, hasStore, commitAll, fixtureFrom, layout } = require('./engine-harness.cjs');
 const { holdsWriterLock } = require('../../skills/ledger-engine/scripts/kernel/manifest-io.cjs');
+const { absorbReceipt } = require('../../skills/ledger-engine/scripts/domain/projections/transactions.cjs');
 const {
   ABSORB, WORDS, writeFile, featureManifest, epicManifest, fillFixture, setupFixture, copyFixture, engine, engineFails, inEpic, readManifest, shortHead, headFiles, treeSnapshot,
 } = require('./absorb-world.cjs');
@@ -110,9 +111,9 @@ describe('engine workunit absorb — happy path', () => {
       warnings: [],
     });
     assert.ok(!fs.existsSync(path.join(fix.project, '.ledger/.ledger.jsonl')), 'a feature holding no ledger line writes no carry, and needs no conversation');
-    assert.strictEqual(engine.lastSections, '', 'transactions answer with pure JSON');
-    const receipt = output(fix.project, ['render', 'absorb-receipt', 'payments', '--topic', 'auth', '--moved', 'seeds']);
-    assert.match(receipt, new RegExp([
+    // Its receipt after its JSON, no advisory where it warned of nothing.
+    assert.ok(!engine.lastSections.includes('DISPLAY: kb warning'), engine.lastSections);
+    assert.match(engine.lastSections, new RegExp([
       'Absorbed into Epic',
       '',
       'Topic "Auth" added to Payments\\.',
@@ -134,8 +135,6 @@ describe('engine workunit absorb — happy path', () => {
     assert.deepStrictEqual(m.phases.discussion.items, { auth: { status: 'completed' } });
     assert.strictEqual(res.experiment, undefined, 'a feature with no series reports none');
     assert.strictEqual(m.phases.experiment, undefined, 'a feature with no series lands no experiment phase');
-    assert.match(engineFails(fix, ['render', 'absorb-receipt', 'payments', '--topic', 'auth', '--experiments', '2']).error,
-      /no experiment series "auth" on "payments"/);
     assert.deepStrictEqual(m.seeds, [
       { path: 'seeds/roadmap.md', source: 'inbox:idea', seeded_at: '2026-05-01T08:00:00Z' },
       { path: 'seeds/seed.md', source: 'inbox:idea', seeded_at: '2026-06-02T10:00:00Z' },
@@ -247,11 +246,8 @@ describe('engine workunit absorb — happy path', () => {
     assert.strictEqual(hasStore(fix.project), false);
 
     // The receipt names the moved series by its top-level count — E1, E1.1,
-    // E2 is two experiments, never three; a non-count refuses.
-    const receipt = output(fix.project, ['render', 'absorb-receipt', 'payments', '--topic', 'auth', '--moved', 'seeds', '--experiments', '2']);
-    assert.match(receipt, /• Discussion: moved\n {2}• Experiments: 2 moved\n {2}• Seed: moved/);
-    assert.match(engineFails(fix, ['render', 'absorb-receipt', 'payments', '--topic', 'auth', '--experiments', '0']).error,
-      /--experiments must be a positive experiment count/);
+    // E2 is two experiments, never three.
+    assert.match(engine.lastSections, /• Discussion: moved\n {2}• Experiments: 2 moved\n {2}• Seed: moved/);
   });
 
   it('a live evidence wait travels on its holder, and the release edge keeps holding in the epic', () => {
@@ -301,9 +297,9 @@ describe('engine workunit absorb — happy path', () => {
     assert.strictEqual(res.committed, shortHead(fix));
     assert.ok(!fs.existsSync(path.join(fix.project, '.ledger/auth-flow')));
 
-    // The absorb both removes and indexes, so its advisory names neither.
-    const receipt = output(fix.project, ['render', 'absorb-receipt', 'payments', '--topic', 'auth', '--moved', 'seeds', '--warn']);
-    assert.match(receipt, /  ⚑ Knowledge warning\n    The feature is absorbed\. The next start brings the knowledge base up to date\./);
+    // The absorb both removes and indexes, so its advisory names neither —
+    // drawn from the warning it answered, no flag carried.
+    assert.match(engine.lastSections, /  ⚑ Knowledge warning\n    The feature is absorbed\. The next start brings the knowledge base up to date\./);
   });
 });
 
@@ -367,17 +363,13 @@ describe('engine workunit absorb — a renamed seed\'s links follow it', () => {
   });
 
   it('the receipt names a rename, a long name wrapping under its text column', () => {
-    setupSeeding('');
-    engine(fix, ABSORB);
-    const render = (renamed) => output(fix.project, ['render', 'absorb-receipt', 'payments', '--topic', 'auth', '--moved', 'seeds', '--renamed', renamed]);
+    const drawn = (from, to) => absorbReceipt('payments', 'auth', ['seeds'], { renamed: [{ from, to }] });
 
-    assert.match(render('flow.png:flow-2.png'), /• Seed: moved\n {2}• Renamed: flow\.png → flow-2\.png \(links rewritten\)/);
-    assert.ok(render('dockset-onboarding-permissions-ask.png:dockset-onboarding-permissions-ask-2.png').includes([
+    assert.match(drawn('flow.png', 'flow-2.png'), /• Seed: moved\n {2}• Renamed: flow\.png → flow-2\.png \(links rewritten\)/);
+    assert.ok(drawn('dockset-onboarding-permissions-ask.png', 'dockset-onboarding-permissions-ask-2.png').includes([
       '  • Renamed: dockset-onboarding-permissions-ask.png →',
       '    dockset-onboarding-permissions-ask-2.png (links rewritten)',
     ].join('\n')));
-    assert.match(engineFails(fix, ['render', 'absorb-receipt', 'payments', '--topic', 'auth', '--renamed', 'notes.md']).error,
-      /--renamed entries are <from>:<to> pairs/);
   });
 });
 
@@ -524,15 +516,14 @@ describe('engine workunit absorb — the topic folder, the assets and the spikes
     assert.strictEqual(read('payments/topics/auth/log.md'),
       '# Discussion\n\n![flow](../../assets/flow-2.png) and ../../assets/diagrams/login.svg\nThe probe: ../../spikes/001-token-probe-2/notes.md\n');
 
-    const receipt = output(fix.project, ['render', 'absorb-receipt', 'payments', '--topic', 'auth', '--moved', 'seeds,assets,spikes', '--renamed', 'flow.png:flow-2.png']);
-    assert.ok(receipt.includes([
+    assert.ok(engine.lastSections.includes([
       '  • Seed: moved',
       '  • Assets: moved',
       '  • Spikes: moved',
       '  • Renamed: flow.png → flow-2.png (links rewritten)',
-    ].join('\n')));
-    assert.match(engineFails(fix, ['render', 'absorb-receipt', 'payments', '--topic', 'auth', '--moved', 'mail']).error,
-      /--moved entries must be seeds, assets, spikes, got "mail"/);
+      '  • Renamed: 001-token-probe → 001-token-probe-2 (links',
+      '    rewritten)',
+    ].join('\n')), engine.lastSections);
   });
 
   it('a feature with no assets and no spikes moves none, and the epic gains no folder for them', () => {

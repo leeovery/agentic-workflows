@@ -1,14 +1,13 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: transaction receipts — the DISPLAY/MENU blocks the `render`
-// receipt surfaces serve after a lifecycle verb runs. The verb's one-line
-// JSON is the machine contract; the receipt is fetched by the calling flow
-// at the call site and emitted verbatim. Warnings render as a state-class
-// advisory above the confirmation (the `--warn` flag, set by the caller when
-// the transaction's JSON carried `warnings`) — the failure detail itself
-// stays in the JSON line, already on screen one tool result up. The map's
-// `topic` verbs print their one line themselves, after their JSON.
+// Domain ring: transaction receipts — the DISPLAY/MENU blocks a lifecycle
+// or inbox verb prints after its one-line JSON (receipts.cjs), and that the
+// topic receipt surface serves after a topic's (`render topic-receipt`).
+// The JSON is the machine contract; the receipt is emitted verbatim.
+// Warnings render as a state-class advisory above the confirmation — the
+// failure detail itself stays in the JSON line, on screen above it. The
+// map's `topic` verbs print their one line themselves, after their JSON.
 // ---------------------------------------------------------------------------
 
 const { titlecase, TREE_WIDTH } = require('../conventions.cjs');
@@ -298,19 +297,26 @@ function mapReceipt(change) {
   return confirmation(MAP_LINES[change.op](change));
 }
 
-/**
- * The archived item's restore receipt, naming the unit whose build log the
- * restore took its claim out of, where it took one.
- * @param {string} title @param {string|null} unclaimedFrom @returns {string}
- */
-function inboxRestoreReceipt(title, unclaimedFrom) {
-  const unclaimed = unclaimedFrom === null ? '' : `, its Resolved: line taken out of ${titlecase(unclaimedFrom)}'s build log`;
-  return confirmation(`Restored "${title}" to the inbox${unclaimed}.`);
+/** The archive's receipt: the item by its title, or several by their count. @param {string[]} titles @returns {string} */
+function inboxArchiveReceipt(titles) {
+  return confirmation(titles.length === 1 ? `Archived "${titles[0]}".` : `Archived ${titles.length} items.`);
 }
 
-/** The archived item's delete receipt. @param {string} title @returns {string} */
-function inboxDeleteReceipt(title) {
-  return confirmation(`Deleted "${title}".`);
+/**
+ * The restore's receipt, a line an item, naming the unit whose build log the
+ * restore took its claim out of, where it took one.
+ * @param {{title: string, unclaimed: string|null}[]} items @returns {string}
+ */
+function inboxRestoreReceipt(items) {
+  return confirmation(items.map(({ title, unclaimed }) => {
+    const claim = unclaimed === null ? '' : `, its Resolved: line taken out of ${titlecase(unclaimed)}'s build log`;
+    return `Restored "${title}" to the inbox${claim}.`;
+  }).join('\n'));
+}
+
+/** The delete's receipt, a line an item. @param {string[]} titles @returns {string} */
+function inboxDeleteReceipt(titles) {
+  return confirmation(titles.map((title) => `Deleted "${title}".`).join('\n'));
 }
 
 /** A capture's one line, naming the project where it is another's (18.6.1, 18.6.8). @param {string} kind @param {string} title @param {string|null} project */
@@ -318,4 +324,4 @@ function captureReceipt(kind, title, project) {
   return confirmation(`Logged ${kind}${project === null ? '' : ` in ${project}`}: "${title}"`);
 }
 
-module.exports = { workunitReceipt, topicReceipt, mapReceipt, absorbSummary, ABSORB_MOVED, absorbReceipt, importReprompt, inboxRestoreReceipt, inboxDeleteReceipt, captureReceipt };
+module.exports = { workunitReceipt, topicReceipt, mapReceipt, absorbSummary, absorbReceipt, importReprompt, inboxArchiveReceipt, inboxRestoreReceipt, inboxDeleteReceipt, captureReceipt };

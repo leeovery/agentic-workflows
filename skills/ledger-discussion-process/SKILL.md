@@ -121,7 +121,7 @@ Content is one JSON object on stdin; `{place}` is `{work_unit}.discussion.{topic
 - Earlier work → `knowledge query "{term}" …`; a search in depth after one → `brief plain-search`.
 - An experiment → `experiment create`, then `render experiment-spawn-gate`; one no one will run → `experiment abandon {work_unit} {topic} {id} --reason "{reason}"`.
 - Something put off for later → `render horizon-pick --park`, `roadmap add`, then for a question `ledger move --to roadmap:{item}`.
-- A topic leaving → `render postpone-gate|horizon-pick|cancel-gate`, whose `next` runs `topic postpone`, `topic cancel` or `workunit cancel`; then `render topic-receipt|workunit-receipt`.
+- A topic leaving → `render postpone-gate|horizon-pick|cancel-gate`, whose `next` runs `topic postpone`, `topic cancel` or `workunit cancel`; then `render topic-receipt` for a topic's, `workunit cancel` answering its own.
 - The talk moving up → `render wait-agents`, then `enter discovery {work_unit}|product --move`.
 - The close → `checklist show|done|skip|close decided {work_unit} {topic}`, `render wait-agents`, `render decided`, `decided unstrike`; a feature's → `decided stage`.
 - A gate's answer → `gate "{name}" --pick {key}`, or `--typed {key}` for a typed row such as a Comment.
@@ -192,7 +192,7 @@ An epic's cancel answers `closed_agents`: stop the task behind each one you disp
 node .claude/skills/ledger-engine/scripts/engine.cjs render topic-receipt {work_unit}.discovery.{topic} --verb cancel [--warn] [--inbox {n}]
 ```
 
-A single-topic unit's cancel takes the unit's cache, its agents' rows with it: stop every task you dispatched. Its receipt is `render workunit-receipt {work_unit} --verb cancel [--warn] [--inbox {n}]`, the flags as for an epic's; then follow the cancel's `next`.
+A single-topic unit's cancel takes the unit's cache, its agents' rows with it: stop every task you dispatched. The cancel answers its receipt: emit its sections verbatim per their markers, then follow the cancel's `next`.
 
 ## Moving Up
 

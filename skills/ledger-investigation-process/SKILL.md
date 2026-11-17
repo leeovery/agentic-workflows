@@ -140,7 +140,7 @@ Content is one JSON object on stdin; `{place}` is `{work_unit}.investigation.{wo
 - A shared file → `asset import`, `render import-reprompt`, `asset add`.
 - The close → `render conclude {work_unit} [--file {recap}]`, whose yes runs `investigation conclude {work_unit}`.
 - The work as a feature → `workunit move {work_unit} --to feature --file {payload}`, whose yes runs `start-this-work yes`.
-- The work leaving → `render cancel-gate {work_unit}`, whose `next` runs `workunit cancel`; then `render workunit-receipt`.
+- The work leaving → `render cancel-gate {work_unit}`, whose `next` runs `workunit cancel`, which answers its receipt.
 - A gate's answer → `gate "{name}" --pick {key}`, or `--typed {key}` for a typed row such as a Comment.
 
 ## Closing
@@ -173,11 +173,7 @@ The person pushes the bug back to the roadmap. The topic is the unit, so there i
 
 The person calls the bugfix off, or the conversation agrees it is not worth fixing. Bring the log up to date, then fetch the confirm, `render cancel-gate {work_unit}`, emit its MENU verbatim per its marker and follow the answer's `next`. A refusal names what holds the unit: say it in a line.
 
-The cancel takes the unit's cache, its agents' rows with it: stop every task you dispatched with the TaskStop tool. Fetch its receipt, adding `--warn` where the response carries warnings and `--inbox {n}` where its `inbox` lists the waiting messages the cancel moved, `{n}` their count, and emit its sections verbatim per their markers; then follow the cancel's `next`:
-
-```bash
-node .claude/skills/ledger-engine/scripts/engine.cjs render workunit-receipt {work_unit} --verb cancel [--warn] [--inbox {n}]
-```
+The cancel takes the unit's cache, its agents' rows with it: stop every task you dispatched with the TaskStop tool. The cancel answers its receipt: emit its sections verbatim per their markers, then follow the cancel's `next`.
 
 ## A Shared File
 

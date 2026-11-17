@@ -12,8 +12,4 @@ node .claude/skills/ledger-engine/scripts/engine.cjs render absorb-confirm-gate 
 
 A refusal ending `— pick a different name` means the epic holds the name already: derive another kebab-case name from the feature's, set `{topic}` to it, and fetch the confirm again. Any other refusal: say it in a line.
 
-The answer goes to `gate`; follow its `next`. Once the absorb has run, fetch its receipt and emit its sections verbatim per their markers. `--moved` lists whichever of `seeds`, `assets` and `spikes` the response reported non-empty, comma-joined; `--experiments` is the count of top-level ids, those with no dot, in its `experiment.experiments` where a series moved; `--renamed` is its `renamed_assets` and `renamed_spikes` as comma-joined `{from}:{to}` pairs; and `--warn` rides where its `warnings` is non-empty. Each is left out where it has nothing:
-
-```bash
-node .claude/skills/ledger-engine/scripts/engine.cjs render absorb-receipt {epic} --topic {topic} [--moved {moved}] [--experiments {n}] [--renamed {renamed}] [--warn]
-```
+The answer goes to `gate`; follow its `next`. The absorb answers its receipt: emit its sections verbatim per their markers.

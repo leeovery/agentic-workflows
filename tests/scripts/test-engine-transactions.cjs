@@ -30,7 +30,7 @@ const path = require('path');
 const harness = require('./engine-harness.cjs');
 const { computeTopicLifecycle } = require('../../skills/ledger-engine/scripts/domain/derivations.cjs');
 
-const { git, stateGit, commitAll, cleanupFixture, call, ok: engine, okSections, refuses: engineFails, completeUnit, startItem } = harness;
+const { git, stateGit, commitAll, cleanupFixture, call, ok: engine, okSections, refuses: engineFails, completeUnit, startItem, sectionOf } = harness;
 
 /** Run `engine render` expecting success; returns the whole stdout (sections). */
 const render = (dir, args) => harness.output(dir, ['render', ...args]);
@@ -490,8 +490,6 @@ describe('work-unit completion — finish\'s, in process', () => {
     // Scoped: the unrelated file stays uncommitted.
     assert.match(git(dir, ['status', '--porcelain']), /\?\? unrelated\.txt/);
     assert.strictEqual(res.work_type, 'feature');
-    assert.match(engineFails(dir, ['render', 'workunit-receipt', 'auth-flow', '--verb', 'complete']).error,
-      /--verb must be cancel, reactivate, or pivot, got "complete"/, 'finish draws its own close');
   });
 
   it('purges the work unit\'s scratch cache on complete, the old cache\'s reports the migration copied into its earlier/ with it — untracked scratch leaves no dirt', () => {
@@ -502,20 +500,11 @@ describe('work-unit completion — finish\'s, in process', () => {
     assert.strictEqual(git(dir, ['status', '--porcelain']).trim() + stateGit(dir, ['status', '--porcelain']).trim(), '', 'no stray dirt');
   });
 
-  it('reactivate renders its confirmation via the receipt surface', () => {
+  it('reactivate answers its receipt after its JSON, the indexing warning above it where the reindex warned', () => {
     engine(dir, ['workunit', 'cancel', 'auth-flow']);
-    assert.strictEqual(okSections(dir, ['workunit', 'reactivate', 'auth-flow']).sections, '',
-      'transactions answer with pure JSON');
-    assert.match(render(dir, ['workunit-receipt', 'auth-flow', '--verb', 'reactivate']), /"Auth Flow" reactivated\./);
-    assert.match(engineFails(dir, ['render', 'workunit-receipt', 'auth-flow', '--verb', 'cancel']).error,
-      /not "cancelled" — the cancel has not run/);
-  });
-
-  it('the receipt refuses an address that is no bare work unit, and a unit the project does not hold', () => {
-    assert.deepStrictEqual(['auth-flow.discussion.auth-flow', 'ghost'].map((address) => engineFails(dir, ['render', 'workunit-receipt', address, '--verb', 'cancel']).error), [
-      'render workunit-receipt: address must be a bare <work_unit>, got "auth-flow.discussion.auth-flow"',
-      'render workunit-receipt: work unit "ghost" not found',
-    ]);
+    const { res, sections } = okSections(dir, ['workunit', 'reactivate', 'auth-flow']);
+    assert.strictEqual(sectionOf(sections, 'DISPLAY: confirmation'), '"Auth Flow" reactivated.\n');
+    assert.strictEqual(sections.includes('⚑ Knowledge indexing warning'), res.warnings.length > 0);
   });
 
   it('routes a cancelled unit through reactivate and rejects an already-completed unit', () => {
@@ -565,12 +554,12 @@ describe('engine workunit cancel', () => {
     assert.strictEqual(m.status, 'cancelled');
     assert.strictEqual(m.completed_at, undefined);
     assert.strictEqual(lastMessage(dir), 'ledger(auth-flow): mark as cancelled');
-    assert.strictEqual(sections, '', 'transactions answer with pure JSON');
-    // Receipt: warning above confirmation, fetched from the cancelled state.
-    // Conventions-form callout: 2-space flag, 4-space continuation.
-    const receipt = render(dir, ['workunit-receipt', 'auth-flow', '--verb', 'cancel', '--warn']);
-    assert.match(receipt, /  ⚑ Knowledge removal warning\n    The work unit is cancelled\./);
-    assert.match(receipt, /"Auth Flow" marked as cancelled\./);
+    // Its receipt after its JSON: the warning it answered above the
+    // confirmation, with no flag carried — the conventions-form callout,
+    // 2-space flag, 4-space continuation.
+    assert.match(sections, /  ⚑ Knowledge removal warning\n    The work unit is cancelled\./);
+    assert.ok(sections.indexOf('DISPLAY: kb warning') < sections.indexOf('DISPLAY: confirmation'), sections);
+    assert.match(sectionOf(sections, 'DISPLAY: confirmation'), /^"Auth Flow" marked as cancelled\.\n$/);
   });
 
   it('rejects an already-cancelled unit, and a completed one, which stays finished', () => {

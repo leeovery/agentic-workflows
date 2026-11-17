@@ -88,10 +88,10 @@ Append to the build's log, `.ledger/{work_unit}/build/log.md`, as the work goes:
 - A question waiting → `raise waiting|draw|aside {work_unit} …`, its answer `raise answer {id} …`.
 - Earlier work → `knowledge query "{term}" …`.
 - An inbox item the work resolved → `inbox close {work_unit} {path} …`.
-- An inbox item closed wrongly, asked back → `inbox restore {path}`, its archived path.
+- An inbox item closed wrongly, asked back → `inbox restore {path}`, its archived path, which answers its receipt.
 - The close → `checklist show|done|skip|close finish {work_unit}`, then `render finish {work_unit}`, whose yes runs `finish yes` and whose review row runs `review ask`.
 - The work as a feature or a bugfix → `workunit move {work_unit} --to {type:[feature|bugfix]} --file {payload}`, whose yes runs `start-this-work yes`.
-- The work leaving → `render cancel-gate {work_unit}`, whose `next` runs `workunit cancel`; then `render workunit-receipt`.
+- The work leaving → `render cancel-gate {work_unit}`, whose `next` runs `workunit cancel`, which answers its receipt.
 - A gate's answer → `gate "{name}" --pick {key}`, or `--typed {key}` for a typed row such as an Ask.
 
 ## Closing
@@ -142,8 +142,4 @@ A refusal names what to fix. The answer goes to `gate`; follow its `next`, and t
 
 The person calls the quick-fix off. Bring the build's log up to date, then fetch the confirm, `render cancel-gate {work_unit}`, emit its MENU verbatim per its marker and follow the answer's `next`. A yes's `next` sets aside what the checkout holds not committed and takes the checkout off the quick-fix's branch: stop every agent you dispatched with the TaskStop tool before you follow it. A refusal names what holds the unit: say it in a line.
 
-Fetch the cancel's receipt, adding `--warn` where the response carries warnings and `--inbox {n}` where its `inbox` lists the waiting messages the cancel moved, `{n}` their count, and emit its sections verbatim per their markers; then follow the cancel's `next`:
-
-```bash
-node .claude/skills/ledger-engine/scripts/engine.cjs render workunit-receipt {work_unit} --verb cancel [--warn] [--inbox {n}]
-```
+The cancel answers its receipt: emit its sections verbatim per their markers, then follow the cancel's `next`.

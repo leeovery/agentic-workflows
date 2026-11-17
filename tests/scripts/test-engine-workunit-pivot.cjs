@@ -130,14 +130,8 @@ describe('engine workunit pivot — happy path', () => {
       committed: shortHead(fix),
       warnings: [],
     });
-    // The transaction is pure JSON; its receipt, the kb advisory ahead of it
-    // with --warn, is a surface of its own.
-    assert.strictEqual(engine.lastSections, '', 'pivot answers with pure JSON');
-    const receipt = output(fix.project, ['render', 'workunit-receipt', 'auth-flow', '--verb', 'pivot']);
-    assert.match(receipt, /^=== DISPLAY: confirmation [^\n]*===\n"Auth Flow" is an epic now, its discussion the first topic on its map\.\n$/);
-    const advisory = output(fix.project, ['render', 'workunit-receipt', 'auth-flow', '--verb', 'pivot', '--warn']);
-    assert.match(advisory, /=== DISPLAY: kb warning [^\n]*===\n  ⚑ Knowledge indexing warning\n    The pivot is complete\. The next start retries the indexing\.\n/);
-    assert.ok(advisory.endsWith(receipt), 'the advisory leads the receipt');
+    // Its receipt after its JSON, no advisory where it warned of nothing.
+    assert.match(engine.lastSections, /^=== DISPLAY: confirmation [^\n]*===\n"Auth Flow" is an epic now, its discussion the first topic on its map\.\n$/);
 
     const m = readManifest(fix, 'auth-flow');
     assert.strictEqual(m.work_type, 'epic');

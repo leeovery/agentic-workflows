@@ -23,7 +23,7 @@ const path = require('path');
 
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { postponeToRoadmap } = require('../../skills/ledger-engine/scripts/domain/roadmap.cjs');
-const { stateGit, commitAll, cleanupFixture: cleanup, ok, output, refuses, completeUnit, startItem, withFrozenClock } = require('./engine-harness.cjs');
+const { stateGit, commitAll, cleanupFixture: cleanup, ok, okSections, output, refuses, completeUnit, startItem, withFrozenClock } = require('./engine-harness.cjs');
 const { roadmapWorld, runOk, runFail, readProject, projectManifestText, writeSource, joinedTo, boundTo } = require('./roadmap-world.cjs');
 
 describe('engine CLI: the postpone — a topic leaves the epic for the roadmap and comes back by the pull', () => {
@@ -507,13 +507,13 @@ describe('engine CLI: the cancel-revert hop', () => {
 
   it('a unit\'s reactivate takes back every join its cancel deleted, each as it was — the unit\'s and the topic\'s (18.8.20)', () => {
     engineOk(['workunit', 'cancel', 'mvp']);
-    const res = engineOk(['workunit', 'reactivate', 'mvp']);
+    const { res, sections } = okSections(dir, ['workunit', 'reactivate', 'mvp']);
     assert.deepStrictEqual([...res.roadmap_rejoined].sort(), ['menus', 'ordering']);
     const items = readProject(dir).roadmap.items;
     assert.deepStrictEqual([items.menus.pulled_to, items.ordering.pulled_to], [{ work_unit: 'mvp' }, { work_unit: 'mvp', topic: 'ordering' }]);
     assert.deepStrictEqual(['roadmap_put_back' in JSON.parse(fs.readFileSync(path.join(dir, '.ledger', 'mvp', 'manifest.json'), 'utf8')), projectStaged()], [false, true]);
     assert.deepStrictEqual(runOk(dir, ['state']).totals, { items: 2, waiting: 0, in_flight: 2, shipped: 0, orphaned: 0 });
-    assert.match(refuses(dir, ['render', 'workunit-receipt', 'mvp', '--verb', 'reactivate', '--stayed', 'menus']).error, /"menus" stayed nowhere/, 'an item taken back stayed nowhere');
+    assert.match(sections, /^"Mvp" reactivated\.$/m, 'an item taken back stayed nowhere');
   });
 
   it('an item other work took meanwhile, or archived, stays where it is through the reactivate, and its receipt says where (18.8.20)', () => {
@@ -522,14 +522,14 @@ describe('engine CLI: the cancel-revert hop', () => {
     commitAll(dir, 'beta');
     runOk(dir, ['pull-forward', 'ordering', '--into', 'beta']);
     runOk(dir, ['archive', 'menus']);
-    const res = engineOk(['workunit', 'reactivate', 'mvp']);
+    const { res, sections } = okSections(dir, ['workunit', 'reactivate', 'mvp']);
     assert.deepStrictEqual(['roadmap_rejoined' in res, [...res.roadmap_stayed].sort()], [false, ['menus', 'ordering']]);
     assert.deepStrictEqual(readProject(dir).roadmap.items.ordering.pulled_to, { work_unit: 'beta', topic: 'ordering' });
     assert.strictEqual(projectStaged(), false, 'nothing taken back, the project manifest untouched');
-    assert.match(output(dir, ['render', 'workunit-receipt', 'mvp', '--verb', 'reactivate', '--stayed', 'ordering,menus']),
-      /^"Mvp" reactivated\. "Ordering" stays with "Beta", which took it meanwhile\. "Menus" stays archived\.$/m);
+    const said = sections.match(/^"Mvp" reactivated\. (.*)$/m)?.[1].split(/(?<=\.) /).sort();
+    assert.deepStrictEqual(said, ['"Menus" stays archived.', '"Ordering" stays with "Beta", which took it meanwhile.'], 'each item it left, said where it stands, with no flag carried');
     runOk(dir, ['add', 'loyalty', '--horizon', 'v1', '--summary', 's']);
-    assert.match(refuses(dir, ['render', 'workunit-receipt', 'mvp', '--verb', 'reactivate', '--stayed', 'loyalty']).error, /"loyalty" stayed nowhere — the reactivate takes back every item still waiting$/);
+    assert.match(refuses(dir, ['render', 'topic-receipt', 'mvp.discovery.ordering', '--verb', 'reactivate', '--stayed', 'loyalty']).error, /"loyalty" stayed nowhere — the reactivate takes back every item still waiting$/);
     assert.match(refuses(dir, ['render', 'topic-receipt', 'mvp.discovery.ordering', '--verb', 'cancel', '--stayed', 'menus']).error, /--stayed names what a reactivate left where it stands — it takes --verb reactivate$/);
   });
 });
