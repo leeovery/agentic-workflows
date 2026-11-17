@@ -15,8 +15,8 @@
 - Nothing for any one entry, but a point the record's sources do not
   settle that a verifier reverses, or that a finding of the third round or
   a later one raises.
-- At the end, each point no source settles on a live topic that has
-  started, raised one at a time: answered, or left open.
+- At the end, each point no source settles on a started topic of a unit
+  in progress, raised one at a time: answered, or left open.
 
 ## What It Does
 
@@ -60,7 +60,7 @@ Each current decision, finding and open question the topic's sources hold, and n
 - **A record at least.** A topic that draws on a spec, or whose log, brief or experiments' records — its markdown files — hold text past their headings, has an entry at least.
 - **What no one measured.** A point a source names unmeasured, untested, unverified or left to check is carried: an open question, or a finding stating that it is unmeasured. A ruling sets it aside only where a later source measured it, or made it moot.
 - **Sources at odds.** Where the sources, or the sections of one, contradict each other on a point, and no later source settles it, the record says so: the entries carrying each side name the other, or an open question names the contradiction and cites both.
-- **Points no source settles** are open questions marked `raise` `true`, for the raises at the end, and they alone: a log unclear on what was decided, with no approved spec to settle it; a draft spec at odds with its log; a spec at odds with itself. Where an approved spec settles it, it is settled. Any other open question, one its sources leave for later work to answer, is carried unmarked.
+- **Points no source settles** are open questions marked `raise` `true`, for the raises at the end, and they alone: a log unclear on what was decided, with no approved spec to settle it; a draft spec at odds with its log; a spec at odds with itself. Where an approved spec settles it, it is settled. Any other open question, one its sources leave for later work to answer, is carried unmarked. So is such a point where nothing raises it, and the carry refuses the mark there: on a topic never started, or a unit's own record, carried in discovery, where nothing is decided, for its first opening to read; of a cross-cutting unit, whose record is the product's, for the product's conversation; of a completed unit, whose code settled what it built; and of a cancelled or postponed unit, or a topic set aside, waiting with it.
 - **Nothing invented.** An entry says what a source says, and nothing more.
 
 ### Its Shape
@@ -134,12 +134,16 @@ Carrying refuses a record neither its verifier nor the session has passed, its f
 
 ## The Raises at the End
 
-Once every record is carried, the check passes, and its answer lists under `raise` each point still to raise, `{"place", "answers", "text"}`: an open question marked `raise`, on a live topic, that no raise of this conversation has drawn. Read them there whenever you need them, never from memory. Before the directive's checklist is closed, raise each, one at a time, as a fact only the person holds, at its `place`, answering its question. A point on a topic or unit that isn't live, cancelled or postponed, is not listed: it stays an open question on its topic, left open until the topic returns. Nor is a point on a topic never started, carried in discovery, where nothing is decided: it stays an open question on its topic, for its discussion to open with. Nor is a point of a unit's own record, carried in discovery too: it stays an open question of the unit's discovery. Nor is a point of a cross-cutting unit: its record is the product's, and the point stays an open question, the product's, which the product's conversation opens on.
+Once every record is carried, the check passes, and its answer lists under `raise` each point still to raise, `{"place", "answers", "text"}`: an open question marked `raise` that no raise of this conversation has drawn. Read them there whenever you need them, never from memory. Before the directive's checklist is closed, raise each, one at a time, as a decision only the person can make, at its `place`, answering its question. A point two records carry, listed twice, is raised once.
 
-The raise takes one JSON object on stdin, `{"question", "rows", "mechanism", "product_wide"}`: the point as the person reads it, cold; the rows, each `{"key", "name", "text", "notice"}`, only where the answers are few and known, else `[]`; what the sources say of it and where, as the mechanism; and whether its answer holds for the whole product, `true` or `false`.
+The raise takes one JSON object on stdin, `{"question", "rows", "mechanism", "product_wide"}`: the point as the person reads it, cold; the rows, only where the answers are few and known, else `[]`, each `{"key", "name", "text", "notice"}` — its key, a short name for the answer, the answer, and what the person would notice were it the one, each one line; what the sources say of it and where, as the mechanism; and whether its answer holds for the whole product, `true` or `false`.
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs raise {place} --answers {answers} --fact
 ```
 
-Record the person's answer with `raise answer {id}`, the raise's id: a row they pick, `--pick {key}`, with `{"why"}` on stdin; their own words, `--own`, with `{"text", "why"}`. A point they leave open stays an open question on its topic.
+Record the person's answer with `raise answer {id}`, the raise's id: a row they pick, `--pick {key}`, with `{"why"}` on stdin; their own words, `--own`, with `{"text", "why"}`. A point they leave open stays an open question on its topic. Where another record carries the point, record the answer on it too: merge its question into the answer, `{answered}` the `id` `raise answer` answered, with `{"by": "claude", "who_moved_whom": "none"}` on stdin:
+
+```bash
+node .claude/skills/ledger-engine/scripts/engine.cjs ledger merge {place} --question {answers} --into {answered}
+```

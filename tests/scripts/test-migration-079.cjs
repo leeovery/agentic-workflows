@@ -545,31 +545,68 @@ describe('a unit\'s own record, `{unit}.discovery` (21.6.2)', () => {
 });
 
 describe('the points to raise (21.6.10, 21.S25)', () => {
-  it('lists a completed unit\'s points as any live unit\'s, its topics live, at its specification where it has its spec; a cancelled unit\'s none', () => {
+  it('lists a started topic\'s points of a unit in progress alone, at its specification where it has its spec: a completed unit\'s none, its code settling what it built, nor a cancelled unit\'s', () => {
     dir = world();
     const raises = require('../../skills/ledger-migrate/scripts/migrations/079-records.check.cjs').raises;
-    writeState(dir, layout.manifest('shop'), JSON.stringify({ ...JSON.parse(readState(dir, layout.manifest('shop'))), status: 'completed' }));
     const point = (/** @type {string} */ unit, /** @type {string} */ topic) => {
       const record = { entries: [{ ref: 'q1', event: 'asked', text: `What of ${topic}?`, by: 'claude', raise: true, cites: [logCite(unit, topic, 'Discussion')] }] };
       writeState(dir, carriedPath(unit, topic), JSON.stringify({ unit, phase: 'discussion', topic, entries: [{ ref: 'q1', id: `${topic}-id` }], record }));
     };
     point('shop', 'weights');
     point('gone', 'gone');
+    const building = raises({ projectDir: dir, stateDir: statePath(dir) });
+    writeState(dir, layout.manifest('shop'), JSON.stringify({ ...JSON.parse(readState(dir, layout.manifest('shop'))), status: 'completed' }));
 
-    assert.deepStrictEqual(raises({ projectDir: dir, stateDir: statePath(dir) }), [{ place: 'shop.specification', answers: 'weights-id', text: 'What of weights?' }]);
+    assert.deepStrictEqual([building, raises({ projectDir: dir, stateDir: statePath(dir) })], [[{ place: 'shop.specification', answers: 'weights-id', text: 'What of weights?' }], []]);
   });
 
-  it('once the check passes, it lists each open question marked to raise on a live topic, at the topic, or at the unit\'s specification where the unit has its spec, until this conversation raises it there, the person answering, and the directive closes; none on a cancelled unit\'s, nor on a topic never started, carried in discovery where nothing is decided, whose first opening reads it with the rest of its record (8.3.4, 9.3.6), nor of a cross-cutting unit, whose record is the product\'s (21.7.5)', async () => {
+  it('a point marked to raise where nothing raises it refused at the carry, naming why — a topic never started, a unit\'s own record, a cross-cutting unit\'s, a completed unit\'s, a cancelled unit\'s and a topic set aside — its point an open question carried unmarked (21.6.11)', () => {
+    dir = world();
+    writeState(dir, layout.unit('shop', 'discovery', 'session-001.md'), '## Discovery Session 001\n\n### Selling\n\nWho sets the case size?\n');
+    const vision = { ref: 'f1', event: 'found', text: 'The shop sells to the trade.', how: 'read in the discovery session', known: 'read', by: 'claude', cites: [{ path: 'shop/discovery/session-001.md', section: 'Selling' }], assets: [{ path: layout.assets('shop', 'vision.md'), status: 'reference' }] };
+    const search = JSON.parse(readState(dir, layout.manifest('fumi')));
+    search.phases.discussion.items.search.status = 'cancelled';
+    writeState(dir, layout.manifest('fumi'), JSON.stringify(search));
+    const shop = JSON.parse(readState(dir, layout.manifest('shop')));
+    const open = (/** @type {unknown} */ cites) => ({ ref: 'q9', event: 'asked', text: 'Is it settled?', by: 'claude', raise: true, cites });
+    const marked = (/** @type {string} */ dotpath) => refused(dotpath, [...GOOD[dotpath], open(GOOD[dotpath][0].cites)]);
+    const why = (/** @type {string} */ reason) => [`entry q9 is marked to raise, and ${reason}: its point is an open question, carried unmarked`];
+
+    const refusals = ['fumi.discovery.billing', 'platform.discussion.auth', 'gone.discussion.gone', 'fumi.discussion.search'].map(marked);
+    const own = refusedKeeping(dir, carryArgs(dir, 'shop.discovery', [vision, open(vision.cites)]), refusedPath('shop', null));
+    writeState(dir, layout.manifest('shop'), JSON.stringify({ ...shop, status: 'completed' }));
+    const completed = marked('shop.discussion.weights');
+
+    assert.deepStrictEqual([...refusals, own, completed], [
+      breaks('fumi', 'billing', why('its topic never started, so is carried in discovery, where nothing is raised')),
+      breaks('platform', 'auth', why('a cross-cutting unit\'s record is the product\'s')),
+      breaks('gone', 'gone', why('its unit is cancelled, and only a unit in progress raises its points')),
+      breaks('fumi', 'search', why('its topic is set aside')),
+      `ledger carry: shop's own discovery breaks the records directive's rules, so nothing is carried — ${why('a unit\'s own record is carried in discovery, where nothing is raised')[0]}`,
+      breaks('shop', 'weights', why('its unit is completed, and only a unit in progress raises its points')),
+    ]);
+  });
+
+  it('says the raises at the end are of a started topic of a unit in progress alone, each a decision only the person can make, what a row\'s notice is, and a point two records carry raised once, its answer merged into the other', () => {
+    const text = fs.readFileSync(DIRECTIVE, 'utf8');
+
+    assert.deepStrictEqual([
+      '- At the end, each point no source settles on a started topic of a unit\n  in progress, raised one at a time: answered, or left open.',
+      'So is such a point where nothing raises it, and the carry refuses the mark there: on a topic never started, or a unit\'s own record, carried in discovery, where nothing is decided, for its first opening to read; of a cross-cutting unit, whose record is the product\'s, for the product\'s conversation; of a completed unit, whose code settled what it built; and of a cancelled or postponed unit, or a topic set aside, waiting with it.',
+      'raise each, one at a time, as a decision only the person can make, at its `place`, answering its question. A point two records carry, listed twice, is raised once.',
+      'each `{"key", "name", "text", "notice"}` — its key, a short name for the answer, the answer, and what the person would notice were it the one, each one line;',
+      'node .claude/skills/ledger-engine/scripts/engine.cjs ledger merge {place} --question {answers} --into {answered}',
+    ].filter((rule) => !text.includes(rule)), []);
+  });
+
+  it('once the check passes, it lists each open question marked to raise, at the topic, or at the unit\'s specification where the unit has its spec, until this conversation raises it there — drawn as a decision only the person can make — the person answering, and the directive closes; a topic never started reads its unmarked open questions at its first opening (8.3.4, 9.3.6)', async () => {
     dir = world();
     const point = { ref: 'q3', event: 'asked', text: 'Does the trial need a card?', by: 'claude', raise: true, cites: [logCite('fumi', 'licensing', 'Trial Length')] };
-    const unsettled = { ref: 'q1', event: 'asked', text: 'Are rates set per seat or per team?', by: 'claude', raise: true, cites: [{ path: layout.assets('fumi', 'rates.md'), section: 'Rates' }] };
+    const unsettled = { ref: 'q1', event: 'asked', text: 'Are rates set per seat or per team?', by: 'claude', cites: [{ path: layout.assets('fumi', 'rates.md'), section: 'Rates' }] };
     const unclear = { ref: 'q4', event: 'asked', text: 'Do ties break by price or by name?', by: 'claude', raise: true, cites: [logCite('shop', 'weights', 'Tie Break')] };
-    const [cause] = GOOD['gone.discussion.gone'];
     for (const [dotpath, entries] of Object.entries(GOOD)) {
       if (dotpath === 'fumi.discussion.licensing') carry(dotpath, [...entries, point]);
       else if (dotpath === 'fumi.discovery.billing') carry(dotpath, [...entries, unsettled]);
-      else if (dotpath === 'gone.discussion.gone') carry(dotpath, [{ ...cause, raise: true }]);
-      else if (dotpath === 'platform.discussion.auth') carry(dotpath, entries.map((entry) => (entry.ref === 'q2' ? { ...entry, raise: true } : entry)));
       else if (dotpath === 'shop.discussion.weights') carry(dotpath, [...entries, unclear]);
       else carry(dotpath, entries);
     }
@@ -581,12 +618,17 @@ describe('the points to raise (21.6.10, 21.S25)', () => {
     assert.deepStrictEqual([listed.place, carriedIds('licensing').q3.startsWith(listed.answers), listed.text], ['fumi.discussion.licensing', true, point.text]);
     assert.deepStrictEqual([built.place, weights.q4.startsWith(built.answers), built.text, checked().raise.length], ['shop.specification', true, unclear.text, 2]);
 
+    /** @type {string[]} */
+    const asking = [];
     for (const [{ place, answers }, mechanism] of [[listed, 'The log says nothing of a card.'], [built, 'The log weighs both.']]) {
-      const { res } = await okSectionsAsync(dir, ['raise', place, '--answers', answers, '--fact'], {
+      const { res, sections } = await okSectionsAsync(dir, ['raise', place, '--answers', answers, '--fact'], {
         env: SESSION, stdin: JSON.stringify({ question: place === built.place ? unclear.text : point.text, rows: [], mechanism, product_wide: false }),
       });
+      asking.push(/WHY I'M ASKING\n\n(.*)\n/.exec(sections)?.[1] ?? sections);
       if (place === built.place) ok(dir, ['raise', 'answer', res.raise, '--own'], { env: SESSION, stdin: JSON.stringify({ text: 'By price.', why: 'The person said so.' }) });
     }
+
+    assert.deepStrictEqual(asking, Array(2).fill('Only you can decide this: nothing from before Ledger settles it.'), 'a decision only the person can make, never a fact');
 
     assert.deepStrictEqual([checked().raise, checked().passed], [[], true]);
     ok(dir, ['checklist', 'close', 'directive', RECORDS], { env: SESSION });

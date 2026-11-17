@@ -407,6 +407,14 @@ function escapeMarkdown(text) {
   return String(text).replace(/[\\`*_~[\]<>]/g, (c) => `\\${c}`);
 }
 
+// A code span, a backtick run closed on its line.
+const CODE_SPAN = /(`[^`\n]+`)/;
+
+/** Prose escaped as `escapeMarkdown` escapes it, each code span in it kept one. @param {string} text */
+function escapeProse(text) {
+  return String(text).split(CODE_SPAN).map((part, at) => (at % 2 === 1 ? part : escapeMarkdown(part))).join('');
+}
+
 // A code span's content and an escaped character are literal text; every
 // other marker is presentation.
 const MARKUP = /`([^`]*)`|\\([!-/:-@[-`{-~])|\*\*|~~|[`*]/g;
@@ -869,5 +877,5 @@ function treeList(items, { indent = '     ', width = displayWidth() } = {}) {
   return out.join('\n');
 }
 
-module.exports = { DOTS, NBSP, NOTE_SEPARATOR, gateSurfaceAnnounced, openGate, gateShown, gateStepped, illustrate, section, menuSection, GATE_MOD_INSTRUCTION, RENDER_FORMS, emitAs, timedInstruction, STOP_CLAUSE, MENU_INSTRUCTION, titleSection, dataSection, CONTINUE_CLAUSE, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, menuFrame, menu, drawLabel, cmdOption, bareOption, promptOption, escapeMarkdown, callout, indentedBody, bulletRow, clipped, treeList };
+module.exports = { DOTS, NBSP, NOTE_SEPARATOR, gateSurfaceAnnounced, openGate, gateShown, gateStepped, illustrate, section, menuSection, GATE_MOD_INSTRUCTION, RENDER_FORMS, emitAs, timedInstruction, STOP_CLAUSE, MENU_INSTRUCTION, titleSection, dataSection, CONTINUE_CLAUSE, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, menuFrame, menu, drawLabel, cmdOption, bareOption, promptOption, escapeMarkdown, escapeProse, callout, indentedBody, bulletRow, clipped, treeList };
 

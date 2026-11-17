@@ -30,11 +30,12 @@
 // naming it there (questions.cjs).
 // Every line above the rows is the menu's statement, so a surface drawing
 // the gate payload draws it all. Claude's words are escaped, so they read
-// as written, never as markup; the mechanism keeps its lines, each drawn
+// as written, never as markup, but each code span in them, which reads as
+// written only kept one; the mechanism keeps its lines, each drawn
 // from its first word: a leading indent in a menu is a row's continuation.
 // ---------------------------------------------------------------------------
 
-const { section, menu, cmdOption, promptOption, MENU_INSTRUCTION, CONTINUE_INSTRUCTION, escapeMarkdown } = require('./surfaces.cjs');
+const { section, menu, cmdOption, promptOption, MENU_INSTRUCTION, CONTINUE_INSTRUCTION, escapeProse } = require('./surfaces.cjs');
 const { titlecase, TREE_WIDTH } = require('../conventions.cjs');
 const { wrapWithPrefix } = require('../../kernel/render.cjs');
 const { titled } = require('../derivations.cjs');
@@ -50,7 +51,7 @@ function engine(argv) {
 
 /** The mechanism's lines as written, each escaped, from its first word. @param {string} mechanism */
 function mechanismLines(mechanism) {
-  return mechanism.split(/\r?\n/).map((line) => escapeMarkdown(line.trimStart()));
+  return mechanism.split(/\r?\n/).map((line) => escapeProse(line.trimStart()));
 }
 
 /**
@@ -115,7 +116,7 @@ function header({ place: { unit, topic }, parks }, titles) {
 /** What Claude found stepping back, where its call says; a fact's says none. @param {Seal['call']} call @returns {string[]} */
 function steppedBack(call) {
   const found = 'stepped_back' in call ? call.stepped_back : undefined;
-  return found === undefined ? [] : ['WHAT I FOUND STEPPING BACK', '', ...found.map((line) => `- ${escapeMarkdown(line)}`)];
+  return found === undefined ? [] : ['WHAT I FOUND STEPPING BACK', '', ...found.map((line) => `- ${escapeProse(line)}`)];
 }
 
 /**
@@ -132,11 +133,11 @@ function statement(seal, technical, titles) {
   const rows = drawnRows(seal);
   const blocks = [
     [header(seal, titles)],
-    [escapeMarkdown(call.question)],
+    [escapeProse(call.question)],
     steppedBack(call),
-    lean === undefined ? [] : [`I lean: ${escapeMarkdown(lean.text)}`],
-    rows.length === 0 ? [] : ['WHAT YOU\'D NOTICE', '', ...rows.map((row) => `- ${escapeMarkdown(row.name)}: ${escapeMarkdown(row.notice)}`)],
-    seal.blind ? [] : ['WHY I\'M ASKING', '', escapeMarkdown(reason)],
+    lean === undefined ? [] : [`I lean: ${escapeProse(lean.text)}`],
+    rows.length === 0 ? [] : ['WHAT YOU\'D NOTICE', '', ...rows.map((row) => `- ${escapeProse(row.name)}: ${escapeProse(row.notice)}`)],
+    seal.blind ? [] : ['WHY I\'M ASKING', '', escapeProse(reason)],
     technical ? ['THE MECHANISM', '', ...mechanismLines(call.mechanism)] : [],
   ];
   return blocks.filter((block) => block.length > 0).flatMap((block, i) => (i === 0 ? block : ['', ...block]));
@@ -152,7 +153,7 @@ function raiseScreen(seal, { technical = false, titles }) {
   const { id } = seal;
   const { question, prompt } = asking(seal);
   const rows = [
-    ...drawnRows(seal).map((row) => cmdOption(row.key, null, { head: escapeMarkdown(row.text), recommended: row.key === leanShown(seal) }, { next: engine(['raise', 'answer', id, '--pick', row.key]) })),
+    ...drawnRows(seal).map((row) => cmdOption(row.key, null, { head: escapeProse(row.text), recommended: row.key === leanShown(seal) }, { next: engine(['raise', 'answer', id, '--pick', row.key]) })),
     cmdOption('t', 'technical', technical ? 'Hide the mechanism' : 'Show the mechanism', { next: engine(['raise', 'show', id, ...(technical ? [] : ['--technical'])]) }),
     cmdOption('e', 'explain', 'I don\'t follow — explain it again', { next: engine(['raise', 'answer', id, '--didnt-follow']) }),
     promptOption('Comment', prompt),

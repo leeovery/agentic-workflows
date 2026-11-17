@@ -110,16 +110,20 @@
 // topic's sources and its record, never the session's own work.
 //
 // Beside the check, the points to raise (21.6.10): each question of a
-// carried record marked to raise, on a topic still live — its unit and its
-// item neither cancelled nor postponed — and started, which the engine
-// answers, once the check passes, where it has no raise yet: raised at the
-// topic, or at the unit's specification where the unit has its spec — its
-// `spec.md`, or its specs joined — past which a topic takes no raise. A topic never
-// started is carried in discovery, where nothing is decided (8.3.4): its
-// points stay open questions on it, which its first opening reads. A
+// carried record marked to raise, on a started topic not set aside of a
+// unit in progress, which the engine answers, once the check passes, where
+// it has no raise yet: raised at the topic, or at the unit's specification
+// where the unit has its spec — its `spec.md`, or its specs joined — past
+// which a topic takes no raise. A topic never started, and a unit's own
+// record, are carried in discovery, where nothing is decided (8.3.4): their
+// points stay open questions, which their first opening reads. A
 // cross-cutting unit's record is the product's: its points stay open
 // questions, the product's once the cut and the merges retire the unit
-// (21.7.5), which the product's conversation opens on.
+// (21.7.5), which the product's conversation opens on. A completed unit's
+// points are settled by the code it built; a cancelled or postponed unit's,
+// and a topic's set aside, wait with it (21.6.11). A record marking one of
+// these to raise breaks a rule (`unraised`), so the carry refuses the mark
+// that would never be raised.
 //
 // `.workflows/` is read where the move read it: the working tree of the
 // project's folder in the repository's main checkout, whichever checkout
@@ -161,6 +165,7 @@ const EPIC = 'epic';
 const LEDGER = '.ledger.jsonl';
 const OPEN_THREADS = ['open', 'digging'];
 const SET_ASIDE = ['cancelled', 'postponed'];
+const IN_PROGRESS = 'in-progress';
 // A spec item the person approved, in the old manifest.
 const APPROVED_SPEC = 'completed';
 // The spec a building unit's specs are joined into (078).
@@ -665,9 +670,29 @@ function sheetOf(project, unit, topic, entries) {
 /** Whether the unit has its spec, past which a point is raised at its specification: its `spec.md`, or its specs joined. @param {Project} project @param {Unit} unit */
 const hasSpec = (project, unit) => Array.isArray(unit.manifest?.spec?.joined) || isFile(path.join(project.stateDir, unit.name, JOINED_SPEC));
 
-/** Whether a topic is still live: its unit and its item neither cancelled nor postponed. @param {Record<string, any>} manifest @param {string} topic */
-const isLive = (manifest, topic) => !SET_ASIDE.includes(manifest.status)
-  && TOPIC_PHASES.every((phase) => !SET_ASIDE.includes(itemsOf(manifest.phases?.[phase]?.items)[topic]?.status));
+/**
+ * Why a point a record marks to raise is never raised at the directive's
+ * end, or null where it is: a unit's own record and a topic never started
+ * are carried in discovery, where nothing is decided (8.3.4); a
+ * cross-cutting unit's record is the product's (21.7.5); a unit not in
+ * progress — completed, its code the truth of what was built, cancelled
+ * or postponed — and a topic set aside raise nothing (21.6.11).
+ * @param {Unit} unit @param {string|null} topic @param {string} phase the record's
+ * @returns {string|null}
+ */
+function unraised(unit, topic, phase) {
+  if (topic === null) return 'a unit\'s own record is carried in discovery, where nothing is raised';
+  if (unit.manifest?.work_type === 'cross-cutting') return 'a cross-cutting unit\'s record is the product\'s';
+  if (unit.manifest?.status !== IN_PROGRESS) return `its unit is ${unit.manifest?.status}, and only a unit in progress raises its points`;
+  if (TOPIC_PHASES.some((each) => SET_ASIDE.includes(itemsOf(unit.manifest.phases?.[each]?.items)[topic]?.status))) return 'its topic is set aside';
+  return phase === 'discovery' ? 'its topic never started, so is carried in discovery, where nothing is raised' : null;
+}
+
+/** Each entry a record marks to raise where its point is never raised. @param {Unit} unit @param {string|null} topic @param {string} phase @param {Record<string, any>[]} record @returns {string[]} */
+function raiseProblems(unit, topic, phase, record) {
+  const why = unraised(unit, topic, phase);
+  return why === null ? [] : record.filter(({ raise }) => raise === true).map(({ ref }) => `entry ${ref} is marked to raise, and ${why}: its point is an open question, carried unmarked`);
+}
 
 /** The topic an import's origin names: its own, or a unit of one topic that is no epic's from its discovery. @param {Unit} unit @param {unknown} origin @returns {string|null} */
 function ownerOf(unit, origin) {
@@ -786,7 +811,7 @@ function citesProblems(project, unit, topic, record) {
  * @param {Project} project @param {Unit} unit @param {Record<string, any>[]} record @returns {string[]}
  */
 function ownProblems(project, unit, record) {
-  return [...undecidedProblems(record), ...citesProblems(project, unit, null, record), ...unlinkedImports(project, unit, null, record)];
+  return [...undecidedProblems(record), ...citesProblems(project, unit, null, record), ...unlinkedImports(project, unit, null, record), ...raiseProblems(unit, null, 'discovery', record)];
 }
 
 /**
@@ -811,7 +836,7 @@ function problemsOf(project, unit, topic, phase, record) {
   const threads = new Set(record.flatMap((entry) => namesOf(entry.thread)));
   const open = threadsOf(project, unit, topic).filter(({ thread }) => !threads.has(thread))
     .map(({ thread, status }) => `the thread ${thread} is still ${status} in its research, and no entry names it as its thread`);
-  return [...empty, ...undecided, ...narrow, ...cites, ...mapped, ...open, ...imports];
+  return [...empty, ...undecided, ...narrow, ...cites, ...mapped, ...open, ...imports, ...raiseProblems(unit, topic, phase, record)];
 }
 
 /** The ids the ledger's lines were given. @param {string} stateDir @returns {Set<string>} */
@@ -1079,7 +1104,7 @@ module.exports = {
   },
   /**
    * The points to raise: each question a carried record marks `raise`, on a
-   * topic still live and started, of a unit not cross-cutting — its place,
+   * started topic not set aside of a unit in progress (`unraised`) — its place,
    * the topic's or, where the unit has its spec, its specification's, the
    * question's id and its text.
    * @param {{projectDir: string, stateDir: string}} dirs
@@ -1087,9 +1112,9 @@ module.exports = {
    */
   raises({ projectDir, stateDir }) {
     const project = projectOf(projectDir, stateDir);
-    return unitsOf(project).filter((unit) => unit.manifest?.work_type !== 'cross-cutting').flatMap((unit) => topicsOf(unit.manifest).filter((topic) => isLive(unit.manifest, topic)).flatMap((topic) => {
+    return unitsOf(project).flatMap((unit) => topicsOf(unit.manifest).flatMap((topic) => {
       const carried = carriedOf(project, unit, topic);
-      if (carried === null || carried.phase === 'discovery') return [];
+      if (carried === null || unraised(unit, topic, carried.phase) !== null) return [];
       const ids = new Map(carried.entries.map(({ ref, id }) => [ref, id]));
       const place = hasSpec(project, unit) ? `${unit.name}.specification` : `${unit.name}.${carried.phase}.${topic}`;
       return carried.record.entries.filter((entry) => entry.raise === true).map((entry) => ({ place, answers: ids.get(entry.ref), text: entry.text }));
