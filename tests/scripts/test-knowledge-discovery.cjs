@@ -63,9 +63,6 @@ function buildFixture(root) {
         refunds: { status: 'completed' },
         chargebacks: { status: 'pending' },      // not completed → excluded
       } },
-      specification: { items: {
-        ledger: { status: 'completed' },          // completed, but never indexed (11.1.2)
-      } },
     },
     seeds: [{ path: 'seeds/original-idea.md', source: 'inbox:idea' }],
   });
@@ -86,12 +83,10 @@ function buildFixture(root) {
     name: 'auth-flow', work_type: 'feature', status: 'in-progress', created: '2026-01-02',
     phases: {
       discussion: { items: { 'auth-flow': { status: 'completed' } } },
-      specification: { items: { 'auth-flow': { status: 'completed' } } },
     },
   });
   writeFile(path.join(wf, 'auth-flow', 'topics', 'auth-flow', 'log.md'), '# the conversation, never indexed\n');
   writeFile(path.join(wf, '.knowledge', 'records', 'auth-flow', 'auth-flow.md'), '# D\n');
-  writeFile(path.join(wf, 'auth-flow', 'specification', 'auth-flow', 'specification.md'), '# S — never indexed\n');
   writeFile(path.join(wf, 'auth-flow', 'discovery', 'session-001.md'), '# a log, never indexed\n');
 
   // Quick-fix, completed: its short record, no phase's item, beside its build's log.
