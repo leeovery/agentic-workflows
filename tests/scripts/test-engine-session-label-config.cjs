@@ -234,7 +234,7 @@ describe('syncSessionHooks', () => {
 
   it('a hook of ours whose command is not the one the sync writes — another engine\'s path, another install prefix, an argument added — is rewritten to it where it stands, its group, matcher, place and other fields kept, and a second sync changes nothing', () => {
     const theirs = { type: 'command', command: 'say goodbye' };
-    const other = (/** @type {string} */ verb) => ({ type: 'command', command: `node "$CLAUDE_PROJECT_DIR/.claude/skills/workflow-engine/scripts/engine.cjs" ${verb}` });
+    const other = (/** @type {string} */ verb) => ({ type: 'command', command: `node "$CLAUDE_PROJECT_DIR/.claude/skills/other-engine/scripts/engine.cjs" ${verb}` });
     writeSettings({
       hooks: {
         SessionEnd: [{ hooks: [theirs, other('presence cleanup'), { ...other('conversation end'), timeout: 5 }] }],

@@ -478,7 +478,7 @@ describe('conversation position', () => {
       assert.doesNotMatch(text, /^## Resuming After Context Refresh$/m, `${skill} carries no recovery section`);
     }
     assert.strictEqual(quickFix, 'ledger-quick-fix-process', 'a quick-fix\'s implementation runs in its own skill');
-    assert.deepStrictEqual([skillAt('pay', undefined, 'feature'), skillAt('pay', 'scoping'), skillAt('pay', 'planning')], [null, null, null], 'a linear unit\'s menu, and scoping and planning, which no pipeline holds');
+    assert.strictEqual(skillAt('pay', undefined, 'feature'), null, 'a linear unit\'s menu');
     assert.strictEqual(skillAt('pay', undefined, 'epic'), 'ledger-continue-epic', 'an epic\'s menu carries on in its own skill');
   });
 

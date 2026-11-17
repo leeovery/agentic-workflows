@@ -664,7 +664,7 @@ describe('knowledge store — metadata', () => {
       model: 'text-embedding-3-small',
       dimensions: 1536,
       last_indexed: '2026-04-10T12:34:56.789Z',
-      fill_failure: '.workflows/a/discussion/a.md: quota',
+      fill_failure: '.ledger/.knowledge/records/a/a.md: quota',
     };
     store.writeMetadata(metaPath, metadata);
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(metaPath, 'utf8')), metadata);

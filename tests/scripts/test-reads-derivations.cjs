@@ -263,7 +263,7 @@ describe('reads + derivations', () => {
 
     it('reads the one spec a unit writes off its records, completed once its build has begun, in progress while it is written, and none before (P7) — and the items of a topic\'s phases alone, never another phase\'s (2.8.3)', () => {
       const built = { build: { position: 'auto' } };
-      const OTHERS = ['specification', 'implementation', 'review', 'planning'];
+      const OTHERS = ['specification', 'implementation', 'review'];
       const items = { phases: Object.fromEntries([...OTHERS, 'discussion'].map((phase) => [phase, { items: { a: { status: 'in-progress' } } }])) };
       assert.deepStrictEqual([
         phaseStatus({ phases: {} }, 'specification'),
@@ -271,7 +271,7 @@ describe('reads + derivations', () => {
         phaseStatus({ phases: {}, ...built }, 'specification'),
         ...OTHERS.map((phase) => phaseStatus(items, phase)),
         phaseStatus(items, 'discussion'),
-      ], [null, 'in-progress', 'completed', null, null, null, null, 'in-progress']);
+      ], [null, 'in-progress', 'completed', null, null, null, 'in-progress']);
     });
   });
 
