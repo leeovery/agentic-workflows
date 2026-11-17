@@ -449,6 +449,28 @@ describe('the migration\'s cut of a unit whose building started (21.7.1, 21.8.6�
     assert.deepStrictEqual([after(2)?.includes('shop-5-1'), after(3)?.includes('memo-1-1'), after(3)?.includes('shop-3-1')], [false, false, true]);
   });
 
+  it('refuses, nothing written to the tracker or the unit, another unit\'s task neither done nor closed held after one of the unit\'s neither — that unit cut first, before the unit\'s tasks had names — the remedy named through the unit\'s plan, which task unlink takes; a link after one of the unit\'s ended holding nothing up', () => {
+    const root = statePath(dir);
+    const [counts, totals] = PLANS.tally.phases;
+    SIDE.reopenTask(root, 'Total a week');
+    for (const after of ['Email a receipt', 'Take a card']) SIDE.linkBy(root, 'Total a week', after);
+    cut('tally', {
+      phases: [{ name: 'Counts', goal: 'Days counted.', sections: ['1'], built: true, tracker: counts }, { name: 'Totals', goal: 'Weeks totalled.', scenarios: ['1.S1'], sections: ['1'], relies_on: [1], tracker: totals }],
+      scenarios: { 1: ['Given a week of counts, when it ends, then its total shows.'] },
+    });
+    const plan = String(cutArgs('shop', shopPlan()).at(-1));
+    const unlink = (/** @type {string} */ task) => ['task', 'unlink', 'shop', task, '--after', '4.3', '--file', plan];
+
+    assert.deepStrictEqual([trackerUntouched('shop', cutArgs('shop', shopPlan())), trackerUntouched('shop', unlink('tally-1-1'))], [
+      'cut: task 2.1 of tally, "Total a week", is held after task 4.3, "Email a receipt", another unit\'s — a task waits on its own unit\'s alone, so task 2.1 of tally would never start: the link is the tracker\'s, which no piece of the plan settles — where it no longer holds, task unlink shop tally-2-1 --after 4.3 --file <plan.json> takes it off',
+      'task tally-1-1 is held after no task of shop\'s — the link is not there to take off',
+    ]);
+
+    const unlinked = ok(dir, unlink('tally-2-1'), { env: SESSION });
+    cut('shop', shopPlan());
+    assert.deepStrictEqual([unlinked.task, unlinked.after, DRIVER.show(root, { unit: 'tally', phase: 2, n: 1 })?.after], ['tally-2-1', '4.3', [{ unit: 'shop', phase: 3, n: 1 }]]);
+  });
+
   it('task unlink refuses a link the tracker does not hold, a task no adopted phase holds, a unit cut already given a plan and one not cut yet given none, and, once cut, a task the tracker does not hold, writing nothing', () => {
     const plan = String(cutArgs('shop', shopPlan()).at(-1));
     const unlink = (/** @type {string} */ task, /** @type {string} */ after, /** @type {string[]} */ file = ['--file', plan]) => trackerUntouched('shop', ['task', 'unlink', 'shop', task, '--after', after, ...file]);

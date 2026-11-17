@@ -110,13 +110,12 @@ format and its check's contract.
   its instructions follow under headings of their own. It names the
   roster's agents, never a model or an effort.
 - Its check sits beside it, `NNN-slug.check.cjs`, exporting
-  `{ counts, done, check({ projectDir, stateDir, tracker }) }`, the
-  tracker read through the engine: what one of its pieces is called and
-  many (`{ one: 'topic', many: 'topics' }`), what a piece done has
-  (`'have their records'`), and each piece with what it still lacks.
-  The stop's screen says them as "12 of Larkspur's 19 topics have
-  their records". `engine migrate check` runs it; the directive is
-  recorded only when
+  `{ counts, done, check({ projectDir, stateDir }) }`: what one of its
+  pieces is called and many (`{ one: 'topic', many: 'topics' }`), what
+  a piece done has (`'have their records'`), and each piece with what
+  it still lacks. The stop's screen says them as "12 of Larkspur's 19
+  topics have their records". `engine migrate check` runs it; the
+  directive is recorded only when
   `engine checklist close directive NNN-slug` finds it passing, or by
   the runner, unrun, where its check answers no piece at all: there is
   nothing for the session to do, and the line `NNN unrun` beside its own

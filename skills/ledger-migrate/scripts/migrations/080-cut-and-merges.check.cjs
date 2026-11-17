@@ -11,10 +11,7 @@
 //     planning or implementation items still on its manifest, which the move
 //     left for the cut, a quick-fix's its own and never cut — done once its topics no joined spec covers have
 //     left it and the cut has marked it (cut-migrating.cjs,
-//     `.cache/migrate/cut/{unit}.json`), the cut dropping those items,
-//     and no task of it neither done nor closed is held in the tracker after
-//     another unit's task neither — a link the cut refuses where the other
-//     unit was cut first, which the tracker shows once both are. A
+//     `.cache/migrate/cut/{unit}.json`), the cut dropping those items. A
 //     topic leaves where it is live — on the map, neither cancelled nor
 //     postponed, its discussion neither cancelled nor promoted — and no spec
 //     joined into `spec.md` names it as its own or among its sources; a topic
@@ -56,8 +53,7 @@
 // the old plans, the folder kept as legacy and the unit's staging. And the
 // section of the directive its agents' briefs draw, `briefed`: a phase's
 // piece, never the session's work.
-// It reads and changes nothing, and calls no model; the tracker it reads
-// through the engine's reads of it, `tracker`.
+// It reads and changes nothing, and calls no model.
 //
 // Known edges: a migration session a person edited until the move's line
 // is gone is no piece. Research placed after the records reached them
@@ -68,8 +64,6 @@
 const fs = require('fs');
 const path = require('path');
 const { OLD_STATE, mainCheckout, projectInMain } = require('./reshape/shared.cjs');
-
-const ENDED = ['done', 'closed'];
 
 const OLD_PLAN = ['specification', 'planning', 'implementation'];
 const STAGING = '.cache/migrate/cut-and-merges';
@@ -253,10 +247,10 @@ const listed = (names) => names.join(', ');
 
 /**
  * What a building unit still lacks (the header's).
- * @param {Project} project @param {string} unit @param {Record<string, any>} now @param {Record<string, any>|null} before @param {Tracker} tracker
+ * @param {Project} project @param {string} unit @param {Record<string, any>} now @param {Record<string, any>|null} before
  * @returns {string[]}
  */
-function buildingProblems(project, unit, now, before, tracker) {
+function buildingProblems(project, unit, now, before) {
   if (joinedOf(now).length === 0) return ['holds the old plan\'s items, and the move joined none of its specs into its spec.md — the cut takes only a unit whose specs it joined'];
   const filed = Object.entries(phaseItems(before, 'planning')).filter(([, item]) => isObject(item) && typeof item.external_id !== 'string').map(([topic]) => topic);
   if (filed.length > 0) return [`its plans ${listed(filed)} are kept in plain files, with no tracker root, and the cut adopts a plan from the tracker alone (21.8.13) — it needs a migration of its own`];
@@ -265,35 +259,9 @@ function buildingProblems(project, unit, now, before, tracker) {
   const left = leaving.length === 0 ? [] : [answered
     ? `its topics ${listed(leaving.map(({ topic }) => topic))} are in no spec it joined and have not left it yet, where the person said they go`
     : `its topics ${listed(leaving.map(({ topic }) => topic))} are in no spec it joined, so they leave it, and the person has not said where — ask once (21.8.10)`];
-  const cut = isCut(project, unit) ? heldAcross(tracker, unit, now) : ['is not cut yet'];
+  const cut = isCut(project, unit) ? [] : ['is not cut yet'];
   return [...left, ...cut];
 }
-
-/** @typedef {{unit: string, phase: number, n: number}} TaskRef */
-/** @typedef {{ref: TaskRef, title: string, status: string, after: TaskRef[]}} TaskDetail */
-/** The tracker as the engine reads it for a check. @typedef {{tasks: (unit: string, phase: number) => TaskDetail[]|null, show: (ref: TaskRef) => TaskDetail|null}} Tracker */
-
-/**
- * Each link of a cut unit's tasks the tracker holds that the cut refuses, a
- * task neither done nor closed held after another unit's neither, named as
- * the cut's refusal names it (task-verbs.cjs, `linkWords`), the unit cut.
- * @param {Tracker} tracker @param {string} unit @param {Record<string, any>} now
- */
-function heldAcross(tracker, unit, now) {
-  const phases = Array.isArray(now.cut?.phases) ? now.cut.phases.length : 0;
-  return Array.from({ length: phases }, (_, at) => tracker.tasks(unit, at + 1) ?? []).flat()
-    .filter(({ status }) => !ENDED.includes(status))
-    .flatMap((task) => task.after.filter((ref) => ref.unit !== unit).flatMap((ref) => {
-      const on = tracker.show(ref);
-      return on === null || ENDED.includes(on.status) ? [] : [heldWords(task, on)];
-    }));
-}
-
-/** @param {TaskRef} ref */
-const shown = ({ phase, n }) => `${phase}.${n}`;
-
-/** A cut unit's task held after another unit's, as the cut's refusal names it. @param {TaskDetail} task @param {TaskDetail} after */
-const heldWords = (task, after) => `task ${shown(task.ref)}, "${task.title}", is held after task ${shown(after.ref)} of ${after.ref.unit}, "${after.title}", another unit's — a task waits on its own unit's alone, so ${shown(task.ref)} would never start: the link is the tracker's, which no piece of the plan settles — where it no longer holds, task unlink ${task.ref.unit} ${shown(task.ref)} --after ${after.ref.unit}-${after.ref.phase}-${after.ref.n} takes it off`;
 
 /**
  * What a unit nothing of which was built still lacks: each old plan in the
@@ -445,15 +413,15 @@ function placementProblems(project, unit, sessions) {
 
 /**
  * Each piece of a unit (the header's): its kind's, and its research's.
- * @param {Project} project @param {string} unit @param {Tracker} tracker @returns {{name: string, problems: string[]}[]}
+ * @param {Project} project @param {string} unit @returns {{name: string, problems: string[]}[]}
  */
-function piecesOfUnit(project, unit, tracker) {
+function piecesOfUnit(project, unit) {
   const now = project.now(unit);
   const before = project.before(unit);
   /** @type {{name: string, problems: string[]}[]} */
   const pieces = [];
   if (now?.work_type === 'cross-cutting' || before?.work_type === 'cross-cutting') pieces.push({ name: unit, problems: retiringProblems(project, unit) });
-  else if (isBuilding(project, unit, now)) pieces.push({ name: unit, problems: buildingProblems(project, unit, /** @type {Record<string, any>} */ (now), before, tracker) });
+  else if (isBuilding(project, unit, now)) pieces.push({ name: unit, problems: buildingProblems(project, unit, /** @type {Record<string, any>} */ (now), before) });
   else if (now !== null && now.status !== 'completed' && trackerPlans(before).length > 0) pieces.push({ name: unit, problems: closingProblems(project, unit, before) });
   const sessions = now === null ? [] : migrationSessions(project, unit);
   if (sessions.length > 0) pieces.push({ name: `${unit}/research`, problems: placementProblems(project, unit, sessions) });
@@ -532,10 +500,10 @@ module.exports = {
   counts: { one: 'piece of work', many: 'pieces of work' },
   done: 'done',
   briefed: BRIEFED,
-  /** @param {{projectDir: string, stateDir: string, tracker: Tracker}} dirs */
-  check({ projectDir, stateDir, tracker }) {
+  /** @param {{projectDir: string, stateDir: string}} dirs */
+  check({ projectDir, stateDir }) {
     const project = projectOf(projectDir, stateDir);
-    return unitNames(project).flatMap((unit) => piecesOfUnit(project, unit, tracker));
+    return unitNames(project).flatMap((unit) => piecesOfUnit(project, unit));
   },
   /**
    * What leaves a building unit, by the unit's name: how many of its live

@@ -4,8 +4,7 @@
 
 - The tracker, through `task close-plan` for a unit nothing of which was
   built, and through `cut --migrating` for a unit whose building started,
-  `task unlink` taking off a link the cut refuses, or the check names once
-  a unit is cut.
+  `task unlink` taking off a link the cut refuses that no longer holds.
 - The units, through `workunit retire`, `workunit split` and
   `topic postpone`.
 - Each epic's topics' logs, which grow by the research placed on them.
@@ -22,9 +21,9 @@
 - Once for each building unit with topics its specs do not cover: where
   those topics go, a new epic the person names or the roadmap, and, for the
   roadmap, which horizon.
-- For each link in the tracker the cut refuses, or the check names, that
-  the sources do not settle: whether it still holds; and for one that holds
-  on a later phase of its own old plan, which way on.
+- For each link in the tracker the cut refuses that the sources do not
+  settle: whether it still holds; and for one that holds on a later phase
+  of its own old plan, which way on.
 - For a point a verifier reverses that the sources do not settle: how it
   stands.
 - Nothing else.
@@ -165,27 +164,20 @@ node .claude/skills/ledger-engine/scripts/engine.cjs cut {unit} --migrating --fi
 
 A cut that refuses writes nothing. Write each fault of its refusal, as it reads, into the findings of each phase it names, and amend those; then verify, join and cut again.
 
-But a link it names, a task held after one of a later phase or another unit's, is the tracker's, which no piece settles. Judge each from the phases' sources and the code: whether the task still needs what the one it waits on builds. Where they don't settle it, ask the person in prose, naming both tasks as the refusal does and what the sources show, and **STOP.** Wait for user response.
+But a link it names, a task held after one of a later phase or another unit's — of this unit's tasks, or another unit's held after one of them — is the tracker's, which no piece settles. Judge each from the phases' sources and the code: whether the task still needs what the one it waits on builds. Where they don't settle it, ask the person in prose, naming both tasks as the refusal does and what the sources show, and **STOP.** Wait for user response.
 
-- **It no longer holds.** Take the link off, as the refusal names it, `{plan}` the plan the join answered:
+- **It no longer holds.** Take the link off, `{task}` and `{after}` as the refusal names them, another unit's task by its id, `{plan}` the plan the join answered:
 
   ```bash
   node .claude/skills/ledger-engine/scripts/engine.cjs task unlink {unit} {task} --after {after} --file {plan}
   ```
 
-- **It holds, on another unit's task.** Take the link off as above; the waiting task's phase relies on that unit instead, the build holding it until that unit completes. The ruling is `Settled: phase {N} relies on {other unit}, whose task {after} task {task} waits on, amend to agree`.
+- **It holds, a task of this unit's on another unit's.** Take the link off as above; the waiting task's phase relies on that unit instead, the build holding it until that unit completes. The ruling is `Settled: phase {N} relies on {other unit}, whose task {after} task {task} waits on, amend to agree`.
 - **It holds, on a later phase of its own old plan.** Ask the person which way on, and **STOP.** Wait for user response. Either the link comes off as above, the waiting phase noting what the task waits on — `Settled: a note on phase {N} names task {after}, which task {task} waits on, amend to agree` — or the task is corrected as superseded by that later phase, closed, what was found its reason — `Settled: task {task} is superseded by task {after}, amend to agree`.
 - **It holds, on a later phase of another of the unit's old plans.** A known edge: the cut orders the plans by what they depend on, never by the tracker's links. Say so to the person, as the refusal reads, and stop the directive there.
+- **It holds, another unit's task on one of this unit's.** That unit was cut first, so its phase can't be amended to rely on this one: a known edge. Say so to the person, as the refusal reads, and stop the directive there.
 
 Write each such ruling into `phases/{N}.settled.md` of the waiting task's phase, as a reversal's is, and into its findings: it is amended and verified as any finding sends it. Once each link is settled, join and cut again.
-
-Once a unit is cut, the check names each task of it held after another unit's task neither done nor closed: a link the cut could not see while the other unit's tasks were not yet named. Judge each as above. Where it no longer holds, take it off as the check names it, the unit cut, no plan given:
-
-```bash
-node .claude/skills/ledger-engine/scripts/engine.cjs task unlink {unit} {task} --after {after}
-```
-
-Where it holds, the waiting phase is cut already and can't be amended to rely on the other unit: a known edge. Say so to the person, as the check reads, and stop the directive there.
 
 ## An Epic's Research
 

@@ -525,6 +525,17 @@ function adoption(root, unit, phases) {
   });
 }
 
+/**
+ * @param {string} root @param {string} unit @param {{phase: number, parent: string, order?: string[]}[]} phases
+ * @returns {TaskDetail[]}
+ */
+function waitingOn(root, unit, phases) {
+  const named = adoptedIds(root, unit, phases);
+  return namedTasks(named, [...named.held.values()]).filter(({ ref }) => ref.unit !== unit)
+    .map(({ ref, task }) => detailOf(named, ref, task))
+    .filter(({ after }) => after.some((on) => on.unit === unit));
+}
+
 /** @param {string} root @param {string} unit @param {number} phase @param {string} parent @param {string[]} [order] @returns {TaskRef[]} */
 function adopt(root, unit, phase, parent, order = []) {
   const ids = idsIn(root);
@@ -648,6 +659,7 @@ module.exports = {
   createPhase,
   createTask,
   adoption,
+  waitingOn,
   adopt,
   closePlan,
   add,

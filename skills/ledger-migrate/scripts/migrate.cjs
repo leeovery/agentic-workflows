@@ -53,7 +53,7 @@
 //     holding its list alone, an item wrapped onto lines indented beneath
 //     it; its instructions follow, under headings of their own. Beside it
 //     sits its check, `NNN-{slug}.check.cjs`: `module.exports = { counts,
-//     done, check({ projectDir, stateDir, tracker }) }`. `counts` names one piece of
+//     done, check({ projectDir, stateDir }) }`. `counts` names one piece of
 //     the directive's work and many, `{ one: 'topic', many: 'topics' }`, and
 //     `done` says what a piece done has ('have their records'), as the stop's
 //     screen counts them — "12 of Fumi's 19 topics have their records";
@@ -61,10 +61,7 @@
 //     `problems` a sentence for each thing the piece still lacks, none once
 //     it is done. The check reads alone — the project's code tree
 //     at `projectDir` and git's history of it, the state at `stateDir`, both
-//     absolute, and the task tracker through `tracker`, the engine's reads
-//     of it, `tasks(unit, phase)` a phase's and `show(ref)` one task, which
-//     name no tool — and is mechanical: it calls no model and changes
-//     nothing.
+//     absolute — and is mechanical: it calls no model and changes nothing.
 //     The directive's check passes when every piece's does. The engine runs
 //     it (`engine migrate check NNN-{slug}`). A directive that agents carry
 //     a piece of names, in its check, `briefed`, the headings of the

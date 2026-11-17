@@ -50,7 +50,7 @@ const harness = require('./engine-harness.cjs');
 const { ok, call, output, refuses, statePath, layout, readState, writeState, cleanupFixture } = harness;
 const { templateFolder, copyWorld } = require('./discovery-test-utils.cjs');
 const { SESSION, refusedUntouched } = require('./migration-world.cjs');
-const { DRIVER, SIDE, cutAndMergesProject } = require('./migrated-world.cjs');
+const { DRIVER, cutAndMergesProject } = require('./migrated-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { BRIEF_REFUSALS, briefPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
@@ -329,34 +329,15 @@ describe('the directive\'s ways on', () => {
     assert.deepStrictEqual(unstated(['Where the ruling has the piece change, replace the finding with `Settled: {point}, amend to agree`', 'Where the ruling keeps the piece as it stands, take the finding out of the findings file', 'An empty findings file is only ever a pass.']), []);
   });
 
-  it('a link the cut refuses that still holds: on another unit\'s task, the link off and the phase relying on that unit; on a later phase of its own plan, the person\'s choice of a note or a correction; on another plan\'s, a known edge; and one the check names once cut, taken off with no plan, a known edge where it holds', () => {
+  it('a link the cut refuses that still holds: a task of the unit\'s on another unit\'s, the link off and the phase relying on that unit; on a later phase of its own plan, the person\'s choice of a note or a correction; on another plan\'s, or another unit\'s task on one of the unit\'s, a known edge', () => {
     assert.deepStrictEqual(unstated([
-      '- **It holds, on another unit\'s task.** Take the link off as above; the waiting task\'s phase relies on that unit instead',
+      '- **It holds, a task of this unit\'s on another unit\'s.** Take the link off as above; the waiting task\'s phase relies on that unit instead',
       '- **It holds, on a later phase of its own old plan.** Ask the person which way on',
       'or the task is corrected as superseded by that later phase',
       'Write each such ruling into `phases/{N}.settled.md` of the waiting task\'s phase, as a reversal\'s is, and into its findings',
       '- **It holds, on a later phase of another of the unit\'s old plans.** A known edge',
-      'node .claude/skills/ledger-engine/scripts/engine.cjs task unlink {unit} {task} --after {after}\n',
-      'Where it holds, the waiting phase is cut already and can\'t be amended to rely on the other unit: a known edge.',
+      '- **It holds, another unit\'s task on one of this unit\'s.** That unit was cut first, so its phase can\'t be amended to rely on this one: a known edge.',
     ]), []);
-  });
-});
-
-describe('a cut unit\'s task held after another unit\'s, which the tracker shows once both are named', () => {
-  it('is named on the cut unit as the cut\'s refusal names it, until `task unlink` takes it off, the unit cut, no plan given; a link after a task ended names nothing', () => {
-    const root = statePath(dir);
-    for (const after of ['Write a memo', 'Pin a memo']) SIDE.linkBy(root, 'Export payments', after);
-    cutBy(shopPlan());
-    const before = lacks('shop');
-    DRIVER.adopt(root, 'memo', 1, PLANS.memo.phases[0]);
-    DRIVER.done(root, { unit: 'memo', phase: 1, n: 2 });
-    const named = lacks('shop');
-    const unlinked = run(['task', 'unlink', 'shop', '5.1', '--after', 'memo-1-1']);
-
-    assert.deepStrictEqual([named, [unlinked.task, unlinked.after], lacks('shop')], [[
-      ...(before ?? []),
-      'task 5.1, "Export payments", is held after task 1.1 of memo, "Write a memo", another unit\'s — a task waits on its own unit\'s alone, so 5.1 would never start: the link is the tracker\'s, which no piece of the plan settles — where it no longer holds, task unlink shop 5.1 --after memo-1-1 takes it off',
-    ], ['5.1', 'memo-1-1'], before]);
   });
 });
 

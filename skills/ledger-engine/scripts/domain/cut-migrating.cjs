@@ -57,7 +57,8 @@
 // plan's topic — the topic its plan's root names, a single-topic unit's
 // plan the whole spec's — a phase not marked built holds none, or a link
 // holds a task neither done nor closed after one neither, of a later phase
-// or another unit's; then each phase naming its parent adopted, its tasks
+// or another unit's, or holds another unit's task so after one of the
+// unit's; then each phase naming its parent adopted, its tasks
 // named in its old plan's order — the plan's task ids by number, then the
 // letters after it (`oldPlanOrder`) — each task a correction ends ended,
 // a close keeping what was found as its reason, and each task neither done
@@ -425,16 +426,19 @@ const adoptedPhases = (manifest, phases) => phases.flatMap((phase, at) => (phase
   phase: at + 1, parent: phase.tracker, order: oldPlanOrder(manifest, phase.tracker), built: 'built' in phase, sections: phase.sections,
 }]));
 
+/** A task as `task unlink` is given it: the unit's as shown, another's by its id. @param {string} unit @param {string} value */
+const givenTask = (unit, value) => (isShownTask(value) ? parseShownTask(unit, value) : parseTaskId(value));
+
 /**
  * `task unlink <unit> <task> --after <task> [--file <plan.json>]`: a link
- * the cut refuses taken off while the migration runs — `--after` another
- * unit's task by its id. For a unit not cut yet, as the cut is, each task
+ * the cut refuses taken off while the migration runs — either task another
+ * unit's by its id. For a unit not cut yet, as the cut is, each task
  * named as the cut's adoption of the plan given names it; for one the
  * migration has cut, as the tracker names them, no plan given.
  * @param {string} cwd @param {string} unit @param {string} given @param {string} afterGiven @param {string|undefined} file
  */
 function unlinkMigrating(cwd, unit, given, afterGiven, file) {
-  const named = () => ({ task: parseShownTask(unit, given), after: isShownTask(afterGiven) ? parseShownTask(unit, afterGiven) : parseTaskId(afterGiven) });
+  const named = () => ({ task: givenTask(unit, given), after: givenTask(unit, afterGiven) });
   if (file !== undefined) {
     const phases = adoptedPhases(cuttable(cwd, unit, UNLINK), planIn(path.resolve(cwd, file)).phases);
     const { task, after } = named();

@@ -54,7 +54,7 @@ const METHODS = Object.freeze({
   task: {
     required: /** @type {const} */ ([
       'ensureStore', 'storeFiles', 'localFiles', 'mergeStore',
-      'createUnit', 'createPhase', 'createTask', 'adoption', 'adopt', 'closePlan', 'add', 'setType', 'link', 'unlink',
+      'createUnit', 'createPhase', 'createTask', 'adoption', 'waitingOn', 'adopt', 'closePlan', 'add', 'setType', 'link', 'unlink',
       'ready', 'start', 'done', 'close', 'removePhase', 'list', 'show', 'tasks', 'started',
     ]),
     optional: /** @type {const} */ ([]),
@@ -174,7 +174,11 @@ const METHODS = Object.freeze({
  * engine's, null where it has none, and the phase's title as its parent
  * holds it, read as a phase's title is — writing nothing, and refusing
  * as `adopt` refuses: what the migration's cut checks before its first
- * write.
+ * write. `waitingOn` reads the same adoption from the other side: each
+ * task of another unit the tracker names held after a task the adoption
+ * names, whole, as `tasks` gives it, its links resolved through those
+ * names — so a unit cut first, whose tasks were held after this one's
+ * before they had names, is seen at this one's cut.
  * `closePlan` closes a plan the tracker held from before Ledger whose unit
  * built nothing (21.8.4): under the root the migration names, by the
  * tracker's own id, each task holding no task of its own, neither done nor
@@ -186,7 +190,8 @@ const METHODS = Object.freeze({
  * `unlink` takes off the link holding a task after another, for the
  * migration's cut, before its adoption (21.8.8): each task named as
  * adopting the unit's `phases` in turn would name it, as `adoption`
- * reads them, another unit's by the names it holds — writing no name.
+ * reads them, another unit's by the names it holds, either of the two —
+ * writing no name.
  * `removePhase` takes a phase written out of the tracker for good,
  * every task under it with it and every link to them dropped, so it reads
  * as never written and its number and its tasks' names are made again as
@@ -228,6 +233,7 @@ const METHODS = Object.freeze({
  *   createPhase: (root: string, unit: string, phase: number, title: string) => void,
  *   createTask: (root: string, ref: TaskRef, task: {title: string, type: string, text: string}) => void,
  *   adoption: (root: string, unit: string, phases: {phase: number, parent: string, order?: string[]}[]) => {phase: number, plan: string|null, title: string, tasks: TaskDetail[]}[],
+ *   waitingOn: (root: string, unit: string, phases: {phase: number, parent: string, order?: string[]}[]) => TaskDetail[],
  *   adopt: (root: string, unit: string, phase: number, parent: string, order?: string[]) => TaskRef[],
  *   closePlan: (root: string, unit: string, parent: string, reason: string) => number,
  *   add: (root: string, ref: TaskRef, addition: TaskAddition) => void,

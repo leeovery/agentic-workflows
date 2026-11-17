@@ -483,6 +483,16 @@ for (const driver of listDrivers('task')) {
         assert.deepStrictEqual(read, [1, 2].map((phase) => ({ phase, plan: OLD, title: PLAN[phase - 1].title, tasks: [1, 2, 3].map((n) => driver.show(root, old(phase, n))) })));
       });
 
+      it('reads, writing nothing, each task of another unit held after one adopting the phases would name, whole as it would then show', () => {
+        const phases = [{ phase: 1, parent: plan.phases[0] }, { phase: 2, parent: plan.phases[1] }];
+        side.linkBy(root, 'Read the ledger', 'Count the till');
+        const before = store();
+        const read = driver.waitingOn(root, OLD, phases);
+        assert.deepStrictEqual(store(), before);
+        adoptBoth();
+        assert.deepStrictEqual(read, [driver.show(root, ref(1, 2))]);
+      });
+
       it('unlink takes a link off before adoption, each task named as adopting the phases would name it, writing no name', () => {
         const phases = [{ phase: 1, parent: plan.phases[0] }, { phase: 2, parent: plan.phases[1] }];
         const before = side.apartFromNames(root, OLD);

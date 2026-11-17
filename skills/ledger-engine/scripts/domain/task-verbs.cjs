@@ -44,7 +44,9 @@
 // holding a task neither done nor closed after one neither, of a later
 // phase or another unit's, which `task link` refuses and the build would
 // wait on for ever (12.6.4, 7.1.14; a link after an ended task holds
-// nothing up) — so a refusal leaves the tracker as it was; then each phase
+// nothing up) — and another unit's task so held after one of the unit's,
+// which the cut of that unit, first, could not see, this unit's tasks
+// not yet named — so a refusal leaves the tracker as it was; then each phase
 // adopted, each task a correction ends ended where it has not, and each
 // task neither done nor closed typed (21.5.21), answering the tasks of the
 // phases not built the tracker holds done, and those neither done nor
@@ -544,23 +546,26 @@ function closePlan(cwd, unit, parent) {
   return closed;
 }
 
-/** A task the verb that takes a link off names as `--after`: its own unit's as shown, another's by its id. @param {string} unit @param {TaskRef} after */
-const unlinkedAfter = (unit, after) => (after.unit === unit ? shownTask(after) : taskId(after));
+/** A task as the verb that takes a link off names it: its own unit's as shown, another's by its id. @param {string} unit @param {TaskRef} ref */
+const unlinkName = (unit, ref) => (ref.unit === unit ? shownTask(ref) : taskId(ref));
+
+/** A task as a link the cut refuses names it: the unit cut's by its number, another's with its unit. @param {string} unit @param {TaskRef} ref */
+const linkedName = (unit, ref) => (ref.unit === unit ? `task ${shownTask(ref)}` : taskName(ref));
 
 /**
- * A task's link after another as the cut refuses it, each by its title as
- * the tracker holds it, naming why the build would wait on it for ever and
- * the verb that takes the link off where it no longer holds: the link is
- * the tracker's, so no piece of the plan settles it.
- * @param {TaskRow} task @param {TaskRow} after
+ * A task's link after another as the cut of `unit` refuses it, each by its
+ * title as the tracker holds it, naming why the build would wait on it for
+ * ever and the verb that takes the link off where it no longer holds: the
+ * link is the tracker's, so no piece of the plan settles it.
+ * @param {string} unit the unit cut @param {TaskRow} task @param {TaskRow} after
  */
-function linkWords(task, after) {
-  const { unit } = task.ref;
-  const own = after.ref.unit === unit;
-  const held = `task ${shownTask(task.ref)}, "${task.title}", is held after ${own ? `task ${shownTask(after.ref)}` : taskName(after.ref)}, "${after.title}"`;
+function linkWords(unit, task, after) {
+  const own = after.ref.unit === task.ref.unit;
+  const held = `${linkedName(unit, task.ref)}, "${task.title}", is held after ${linkedName(unit, after.ref)}, "${after.title}"`;
   const why = own ? 'of a later phase — a task waits on its own phase\'s or an earlier one\'s alone' : 'another unit\'s — a task waits on its own unit\'s alone';
-  const verb = `task unlink ${unit} ${shownTask(task.ref)} --after ${unlinkedAfter(unit, after.ref)} --file <plan.json>`;
-  return `${held}, ${why}, so ${shownTask(task.ref)} would never start: the link is the tracker's, which no piece of the plan settles — where it no longer holds, ${verb} takes it off`;
+  const waiting = task.ref.unit === unit ? shownTask(task.ref) : linkedName(unit, task.ref);
+  const verb = `task unlink ${unit} ${unlinkName(unit, task.ref)} --after ${unlinkName(unit, after.ref)} --file <plan.json>`;
+  return `${held}, ${why}, so ${waiting} would never start: the link is the tracker's, which no piece of the plan settles — where it no longer holds, ${verb} takes it off`;
 }
 
 /**
@@ -573,27 +578,56 @@ function linkFaults(driver, root, unit, tasks) {
   return tasks.filter(({ status }) => !ENDED.includes(status)).flatMap((task) => task.after.flatMap((ref) => {
     if (ref.unit === unit && ref.phase <= task.ref.phase) return [];
     const on = held.get(taskId(ref)) ?? driver.show(root, ref);
-    return on === null || ENDED.includes(on.status) ? [] : [linkWords(task, on)];
+    return on === null || ENDED.includes(on.status) ? [] : [linkWords(unit, task, on)];
+  }));
+}
+
+/**
+ * The links the cut refuses on the unit's tasks from another unit's (the
+ * header's): each task of another unit neither done nor closed held after
+ * one of the unit's neither, the unit's named as its adoption names them.
+ * @param {TaskDriver} driver @param {string} root @param {string} unit @param {{phase: number, parent: string, order: string[]}[]} phases @param {TaskDetail[]} tasks every task of the phases adopted
+ */
+function waitingFaults(driver, root, unit, phases, tasks) {
+  const held = new Map(tasks.map((task) => [taskId(task.ref), task]));
+  return driver.waitingOn(root, unit, phases).filter(({ status }) => !ENDED.includes(status)).flatMap((task) => task.after.flatMap((ref) => {
+    const on = held.get(taskId(ref));
+    return on === undefined || ENDED.includes(on.status) ? [] : [linkWords(unit, task, on)];
   }));
 }
 
 /**
  * `task unlink`: the link holding `task` after `after` taken off, for the
- * migration's cut (21.8.8): before its adoption, each named as adopting
- * `phases` in turn would name it, another unit's by its id; once the cut,
- * `phases` null, as the tracker names them. Refuses a task no phase the
- * cut adopts holds, or the tracker, once cut, and a link it does not hold.
+ * migration's cut (21.8.8), either another unit's by its id: before the
+ * cut, each named as adopting `phases` in turn would name it; once the
+ * cut, `phases` null, as the tracker names them. Refuses a task none holds
+ * — no phase the cut adopts, no task of another unit held after one of
+ * them, or the tracker, once cut — and a link it does not hold.
  * @param {string} cwd @param {string} unit @param {{phase: number, parent: string, order: string[]}[]|null} phases @param {TaskRef} task @param {TaskRef} after
  */
 function unlinkAdopted(cwd, unit, phases, task, after) {
-  const said = `${shownTask(task)} after ${unlinkedAfter(unit, after)}`;
-  return withTracker(cwd, unit, `take the link of ${said} off`, (driver, root) => {
-    const held = phases === null ? driver.show(root, task) : driver.adoption(root, unit, phases).flatMap(({ tasks }) => tasks).find(({ ref }) => sameTask(ref, task)) ?? null;
-    if (held === null) throw new TaskRefusal(phases === null ? `the tracker holds no task ${shownTask(task)} of ${unit}` : `no phase the cut adopts holds task ${shownTask(task)}`);
-    if (!held.after.some((ref) => sameTask(ref, after))) throw new TaskRefusal(`task ${shownTask(task)} is held after no task ${unlinkedAfter(unit, after)} — the link is not there to take off`);
+  const [shown, afterShown] = [task, after].map((ref) => unlinkName(unit, ref));
+  return withTracker(cwd, unit, `take the link of ${shown} after ${afterShown} off`, (driver, root) => {
+    const held = heldFor(driver, root, unit, phases, task);
+    if (!held.after.some((ref) => sameTask(ref, after))) throw new TaskRefusal(`task ${shown} is held after no task ${afterShown} — the link is not there to take off`);
     driver.unlink(root, unit, phases ?? [], task, after);
-    return { task: shownTask(task), after: unlinkedAfter(unit, after) };
+    return { task: shown, after: afterShown };
   });
+}
+
+/**
+ * The task whose link `task unlink` takes off, refused where nothing
+ * holds it (`unlinkAdopted`'s).
+ * @param {TaskDriver} driver @param {string} root @param {string} unit @param {{phase: number, parent: string, order: string[]}[]|null} phases @param {TaskRef} task
+ * @returns {TaskDetail}
+ */
+function heldFor(driver, root, unit, phases, task) {
+  /** @type {[TaskDetail|null|undefined, string]} */
+  const [held, refusal] = phases === null ? [driver.show(root, task), `the tracker holds no task ${shownTask(task)} of ${unit}`]
+    : task.unit === unit ? [driver.adoption(root, unit, phases).flatMap(({ tasks }) => tasks).find(({ ref }) => sameTask(ref, task)), `no phase the cut adopts holds task ${shownTask(task)}`]
+      : [driver.waitingOn(root, unit, phases).find(({ ref }) => sameTask(ref, task)), `task ${taskId(task)} is held after no task of ${unit}'s — the link is not there to take off`];
+  if (held === null || held === undefined) throw new TaskRefusal(refusal);
+  return held;
 }
 
 /**
@@ -684,7 +718,7 @@ function migratedTracker(cwd, unit, phases, type, topics, corrections = []) {
     /** @type {AdoptedPhase[]} */
     const read = driver.adoption(root, unit, phases).map(({ phase, plan, tasks }, at) => ({ phase, plan, built: phases[at].built, sections: phases[at].sections, tasks }));
     const held = corrected(read, corrections);
-    const faults = [...correctionFaults(read, corrections), ...held.flatMap(builtFaults), ...held.flatMap((each) => areaFaults(each, topics)), ...linkFaults(driver, root, unit, held.flatMap(({ tasks }) => tasks))];
+    const faults = [...correctionFaults(read, corrections), ...held.flatMap(builtFaults), ...held.flatMap((each) => areaFaults(each, topics)), ...linkFaults(driver, root, unit, held.flatMap(({ tasks }) => tasks)), ...waitingFaults(driver, root, unit, phases, held.flatMap(({ tasks }) => tasks))];
     if (faults.length > 0) throw new TaskRefusal(faults.join('; '));
     const adopted = phases.map(({ phase, parent, order }) => ({ phase, tasks: driver.adopt(root, unit, phase, parent, order).map(shownTask) }));
     const unended = new Set(read.flatMap(({ tasks }) => tasks.filter(({ status }) => !ENDED.includes(status)).map(({ ref }) => taskId(ref))));
@@ -708,19 +742,6 @@ function migratedTracker(cwd, unit, phases, type, topics, corrections = []) {
       open: unbuilt.filter(({ status }) => !ENDED.includes(status)).map(({ ref, text }) => ({ task: shownTask(ref), text })),
     };
   });
-}
-
-/**
- * The tracker as a directive's check reads it (directives.cjs): a phase's
- * tasks, and one task, through the project's task driver, chosen at the
- * first read and writing nothing — not even the driver's setting.
- * @param {string} cwd
- * @returns {{tasks: (unit: string, phase: number) => TaskDetail[]|null, show: (ref: TaskRef) => TaskDetail|null}}
- */
-function trackerReads(cwd) {
-  const root = stateRoot(cwd);
-  const driver = () => /** @type {TaskDriver} */ (chosenDriver(cwd, 'task').driver);
-  return { tasks: (unit, phase) => driver().tasks(root, unit, phase), show: (ref) => driver().show(root, ref) };
 }
 
 /**
@@ -1411,4 +1432,4 @@ function runTaskVerb(cwd, verb, positional, opts) {
   return run(cwd, positional, ...values, .../** @type {string[]} */ (given));
 }
 
-module.exports = { TASK_VERBS, ENDED, STATUS_WORDS, runTaskVerb, closeForMove, migratedTracker, adoptionRead, trackerReads, unlinkAdopted, writePhase, trackedTask, trackedPhases, trackedLists, trackedPhase, trackedBuild, removeBuild, trackedUnit, goingOn, goesOn, phaseOpen, takesTurns, stepTurn, turnOf, turnEnds, turnRefusal, turnWords, checkoutHold, refuseNotHolding, phaseWritten, givenText, trackedStart, copiedTasks };
+module.exports = { TASK_VERBS, ENDED, STATUS_WORDS, runTaskVerb, closeForMove, migratedTracker, adoptionRead, unlinkAdopted, writePhase, trackedTask, trackedPhases, trackedLists, trackedPhase, trackedBuild, removeBuild, trackedUnit, goingOn, goesOn, phaseOpen, takesTurns, stepTurn, turnOf, turnEnds, turnRefusal, turnWords, checkoutHold, refuseNotHolding, phaseWritten, givenText, trackedStart, copiedTasks };
