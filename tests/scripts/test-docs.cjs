@@ -11,8 +11,10 @@
 // in the docs or the README (23.S12, 23.4.6). The docs, the README, help
 // and the glossary call the product Ledger, never the name it was built
 // under or "the workflows", but where history tells of it or the
-// glossary's avoid line names it (23.S19, 23.1.4). Every link of the
-// book's and the README's resolves, to its file and the heading it names.
+// glossary's avoid line names it (23.S19, 23.1.4); so do the skills, the
+// briefs, the agents and the engine, never calling it the workflows, but in
+// a released migration. Every link of the book's and the README's resolves,
+// to its file and the heading it names.
 //
 // Layer: unit. World: the repository's own files, read.
 
@@ -72,8 +74,39 @@ const PRODUCT = /\bLedger\b/;
 /** Where an old name may stand: history, telling of it, and the glossary's avoid lines, naming it. */
 const TELLS_OF_IT = (/** @type {string} */ rel, /** @type {string} */ line) => rel === path.join('docs', 'history.md') || line.startsWith('_Avoid_:');
 
+/**
+ * The workflows as the product's name, in what ships: "the workflows", a
+ * workflows state or project, even where a line break and a comment's marker
+ * part the words.
+ */
+const WORKFLOWS_NAMED = /\bthe(?:\s|\/\/|\*)+workflows\b|\bworkflows?(?:\s|\/\/|\*)+(?:state|project)\b/gi;
+/** Where it stands in what ships: the released migrations, never edited, and a file whose change is in flight elsewhere. */
+const NAMES_IT_STILL = [
+  path.join('skills', 'ledger-migrate', 'scripts', 'migrations') + path.sep,
+  path.join('skills', 'ledger-engine', 'scripts', 'domain', 'brief-names.cjs'),
+];
+
 /** @param {string} rel from the repository's root */
 const read = (rel) => fs.readFileSync(path.join(REPO, rel), 'utf8');
+
+/** Every file under `skills/` and `agents/`, from the repository's root, but those `NAMES_IT_STILL` lets stand. */
+const productFiles = () => ['skills', 'agents']
+  .flatMap((top) => fs.readdirSync(path.join(REPO, top), { recursive: true, encoding: 'utf8' }).map((rel) => path.join(top, rel)))
+  .filter((rel) => !NAMES_IT_STILL.some((skip) => rel.startsWith(skip)) && fs.statSync(path.join(REPO, rel)).isFile());
+
+/**
+ * Each place of `rel`'s that names the product the workflows, as
+ * `{file}:{line}: {match}`, but on the glossary's avoid lines.
+ * @param {string} rel
+ */
+function workflowsNamed(rel) {
+  const text = read(rel);
+  return [...text.matchAll(WORKFLOWS_NAMED)].flatMap((found) => {
+    const start = text.lastIndexOf('\n', found.index) + 1;
+    if (text.startsWith('_Avoid_:', start)) return [];
+    return [`${rel}:${text.slice(0, found.index).split('\n').length}: ${found[0]}`];
+  });
+}
 
 /** Every markdown file the book holds, from the repository's root. */
 const bookFiles = () => fs.readdirSync(DOCS).filter((name) => name.endsWith('.md')).map((name) => path.join('docs', name));
@@ -166,6 +199,10 @@ describe('the user docs (23.4)', () => {
     const surfaces = { docs: bookFiles(), readme: ['README.md'], help: helpFiles().filter((rel) => rel !== GLOSSARY), glossary: [GLOSSARY] };
     for (const [surface, files] of Object.entries(surfaces)) assert.ok(files.some((rel) => PRODUCT.test(read(rel))), `${surface} names Ledger`);
     assert.deepStrictEqual(linesNaming(Object.values(surfaces).flat(), OLD_NAMES, TELLS_OF_IT), []);
+  });
+
+  it('the skills, the briefs, the agents and the engine call the product Ledger, never the workflows', () => {
+    assert.deepStrictEqual(productFiles().flatMap(workflowsNamed), []);
   });
 });
 

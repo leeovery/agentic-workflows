@@ -456,7 +456,7 @@ describe('while the migration runs (21.1.5, 21.9.3)', () => {
     const written = enter(dir, 'search', 'ranking');
 
     assert.deepStrictEqual([written.committed, written.note], [null, 'commit pending — the entry is in the ledger, and the next ledger write or boot commits it']);
-    assert.match(String(written.warnings), /holds fumi\/tmp\/notes\.md, outside the workflows' layout/);
+    assert.match(String(written.warnings), /holds fumi\/tmp\/notes\.md, outside Ledger's layout/);
   });
 
   it('nothing reaches the trust log — not Claude\'s decision, not a gate\'s answer, nothing kept waiting in the conversation — until the migration\'s commit makes the state branch\'s first', () => {

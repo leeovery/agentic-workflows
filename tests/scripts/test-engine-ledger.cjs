@@ -431,7 +431,7 @@ describe('the streamed reader', () => {
     const read = [];
     assert.throws(() => withLedger(root, [], (ledger) => { for (const { event } of ledger.entries()) read.push(event); }),
       (err) => err instanceof LedgerNewer && !(err instanceof LedgerLineError) && err.payload.stop === 'ledger'
-        && new RegExp(`holds entries a newer release wrote, at schema version ${LEDGER_VERSION + 1}, and the workflows here read up to version ${LEDGER_VERSION} — update the workflows on this machine \\(pull the project's code\\) and start again`).test(err.message));
+        && new RegExp(`holds entries a newer release wrote, at schema version ${LEDGER_VERSION + 1}, and Ledger here reads up to version ${LEDGER_VERSION} — update Ledger on this machine \\(pull the project's code\\) and start again`).test(err.message));
     assert.deepStrictEqual(read, [q]);
     assert.deepStrictEqual(keptStop(gitDir), { stop: 'newer', version: LEDGER_VERSION + 1, reads: LEDGER_VERSION });
     assert.strictEqual(ledgerStopSurface(main, {}), [
@@ -439,9 +439,9 @@ describe('the streamed reader', () => {
       '⚑ The engine stopped: the ledger holds entries a newer release wrote',
       '',
       '=== DISPLAY: ledger account (emit verbatim as markdown (not a code block)) ===',
-      `> Fumi's ledger holds entries at schema version ${LEDGER_VERSION + 1}, and the workflows on this machine read up to version ${LEDGER_VERSION}, so the engine reads none of it.`,
+      `> Fumi's ledger holds entries at schema version ${LEDGER_VERSION + 1}, and Ledger on this machine reads up to version ${LEDGER_VERSION}, so the engine reads none of it.`,
       '>',
-      "> Update the workflows on this machine — pull the project's code — and start again.",
+      "> Update Ledger on this machine — pull the project's code — and start again.",
       '',
     ].join('\n'));
 

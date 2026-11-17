@@ -9,7 +9,7 @@ tier('user')
  */
 const HOME = '/Users/person'
 
-/** The workflows' system config directory, in the person's home. */
+/** Ledger's system config directory, in the person's home. */
 const CONFIG = `${HOME}/.config/ledger`
 
 /** The folder of the conversation the engine names `name`, in the directory `config`. */

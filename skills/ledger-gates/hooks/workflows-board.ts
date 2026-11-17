@@ -1,5 +1,5 @@
 /**
- * The workflows board (§20): a pane titled "workflows" beside the
+ * The board (§20): a pane titled "workflows" beside the
  * conversation, and a banner on the band's last line, directly above the
  * prompt, that names the work and shows or hides the pane — in a session
  * that announced, in a conversation the engine has marked, with no screen
@@ -99,7 +99,7 @@ async function isDrawn($: EngineInterface): Promise<boolean> {
   return (await isAnnounced($)) && (await isBandAlone($))
 }
 
-/** The folder of the conversation `id`, where the engine has marked it as one that runs the workflows; else null. */
+/** The folder of the conversation `id`, where the engine has marked it as one that runs Ledger; else null. */
 async function markedFolder($: EngineInterface, id: string): Promise<string | null> {
   const folder = folderOf(await $.env.get('LEDGER_CONFIG_DIR'), await $.env.get('HOME'), id)
 
@@ -122,7 +122,7 @@ async function readNow($: EngineInterface, id: string, nav: Nav): Promise<Readin
   }
 }
 
-/** What the board shows for the conversation `id` from `nav` (`readOn`'s); nothing where it does not run the workflows. */
+/** What the board shows for the conversation `id` from `nav` (`readOn`'s); nothing where it does not run Ledger. */
 async function readFor($: EngineInterface, id: string, nav: Nav): Promise<{ nav: Nav; answer: Answer }> {
   const isMarked = (await markedFolder($, id).catch(() => null)) !== null
 

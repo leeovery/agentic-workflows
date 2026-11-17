@@ -19,7 +19,7 @@
 //   standing. Nothing is kept for a command Claude
 //   Code handed no session id; a record that cannot be written costs the
 //   command nothing. It is kept for a conversation not yet marked as
-//   running the workflows too, its folder made for it, so a gate before the
+//   running Ledger too, its folder made for it, so a gate before the
 //   project has state is answered like any other. The layout hook refuses
 //   Claude's own writes to it and to the mod's `pressed.json`
 //   (layout-hook.cjs).

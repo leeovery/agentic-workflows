@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Kernel: where the workflows' state lives — the one module that decides it.
+// Kernel: where Ledger's state lives — the one module that decides it.
 //
 // The state is `.ledger/` in the repository's main checkout, found through
 // git's common directory from any folder in the repository or any of its
@@ -51,7 +51,7 @@ function stateRoot(cwd) {
   try {
     main = mainCheckout(from);
   } catch (err) {
-    throw new Error(`no workflows state for ${from}: ${err instanceof Error ? err.message : String(err)}`, { cause: err });
+    throw new Error(`no Ledger state for ${from}: ${err instanceof Error ? err.message : String(err)}`, { cause: err });
   }
   const root = path.join(main, STATE_DIR_NAME);
   roots.set(from, root);

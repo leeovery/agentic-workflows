@@ -15,7 +15,7 @@ the mod could run in Claude Code's terminal app or the Desktop app's Code tab
 but is not running.
 
 A click on a row puts its answer in the prompt box; a second click on it sends
-it as the next message, which the workflows read as the answer. Once a click
+it as the next message, which Ledger reads as the answer. Once a click
 has given the band the keyboard, the arrows move between rows, Enter or a row's
 own key picks, and Enter on the picked row sends. A sent answer enters under
 the plugin's name, framed for the model and labelled in the transcript as the
@@ -66,7 +66,7 @@ takes the gate off the band.
 At the end of every turn, and as the conversation ends, the mod keeps what the
 band shows — the gate, or nothing — in the conversation's own folder,
 `~/.config/ledger/conversations/{session-id}/gate.json` (under
-`LEDGER_CONFIG_DIR` where that is set, beside the workflows' system
+`LEDGER_CONFIG_DIR` where that is set, beside Ledger's system
 config), found by the session id wherever the session's working directory has
 moved, and stamped with where the transcript ends, not counting the lines
 Claude Code writes around an interrupted turn. A conversation resumed with
@@ -76,7 +76,7 @@ there, with nothing picked or held — a held answer waits on a turn that does
 not come back; one that moved on while the mod was not loaded gets nothing. A
 session the mod was loaded into after it started carries no announcement, so
 there it keeps and reads back nothing, and a conversation that does not run
-the workflows has no folder and keeps nothing — nor does one in a process
+Ledger has no folder and keeps nothing — nor does one in a process
 that names neither a home directory nor `LEDGER_CONFIG_DIR`. The folder
 holds one gate, and goes once Claude Code has deleted the conversation's
 transcript, so a kept gate lives as long as its conversation can be resumed,
@@ -87,20 +87,20 @@ Code picks up only as a session starts, or one that crashed.
 The engine emits the menu regardless, so where the mod is off or absent the
 model reads the text menu the engine wrote.
 
-The mod is part of the workflows, and it runs in Claude Code's terminal app
+The mod is part of Ledger, and it runs in Claude Code's terminal app
 and the Desktop app's Code tab, from 2.1.287, with this directory installed in
 the project; mods are on by default there, so nothing switches it on. Claude
 Code loads a plugin as a session starts, so a session already open when the
-mod was installed or updated loads it in the next one. The mod is the
-workflows' upgrade layer and the engine's text menus their floor: a
+mod was installed or updated loads it in the next one. The mod is
+Ledger's upgrade layer and the engine's text menus its floor: a
 `/ledger` that finds the mod not running — a session started before
 the mod was installed or updated, mods turned off by `--safe-mode`, `--bare`,
 `"disableAllHooks": true` or an organization's policy, or installed mods
 switched off remotely by Anthropic — says so and carries on with typed menus;
 one that runs on a Claude Code older than 2.1.287 stops and says why. Anywhere
 else — the web, the VS Code extension, a Desktop session that runs in the
-cloud, another entrypoint, a project without this directory — the workflows
-carry on with the text menus and say nothing.
+cloud, another entrypoint, a project without this directory — Ledger
+carries on with the text menus and says nothing.
 
 The Desktop app runs the session as an SDK host: the session starts drawing
 nowhere and the app attaches after, so the band reads the screens attached at
@@ -118,7 +118,7 @@ it.
 
 ## Handoffs
 
-The mod also carries the workflows' handoffs: every move into work, which the
+The mod also carries Ledger's handoffs: every move into work, which the
 engine names with `engine handoff`, starts in a cleared conversation. At the
 session's start, where it announces the gate surface, the mod announces that
 it carries handoffs too (`LEDGER_HANDOFF=1`, a variable of its own, which
@@ -142,7 +142,7 @@ will not take it either, the toast holds the continuation for the person to
 send, and stays longer. A clear that fails sends in place, so the work still
 goes on. Esc on the turn that handed off carries nothing: Esc means stop.
 `ledger-gates-rows` draws the continuation's transcript row as the line. Where
-the mod does not announce, the engine says so and the workflows invoke the
+the mod does not announce, the engine says so and Ledger invokes the
 skill in the same conversation.
 
 ## What it sets in Claude Code
@@ -154,7 +154,7 @@ only moment the switch counts. The mod keeps the tool behind ToolSearch in
 every such session, one answer that never changes and so never spends the
 prompt cache; a plain session's tool list is Claude Code's own.
 
-In a conversation that runs the workflows there, the mod sets
+In a conversation that runs Ledger there, the mod sets
 `CLAUDE_CODE_THINKING_DISPLAY_UPDATES=false`, which stops one-line summaries
 of Claude's thinking printing as if they were output, and
 `CLAUDE_CODE_SILENT_TURN_REMINDER=false`, which stops the nudge to say what
@@ -245,10 +245,10 @@ dispatch, a dispatch that was refused or errored, a plain conversation and a
 session that did not announce record nothing, and whatever the engine
 answers, the dispatch's result is Claude Code's own.
 
-## The workflows board
+## The board
 
 In a session that announced, in a conversation the engine has marked, the mod
-draws the workflows board: a banner on the band's last line, directly above the
+draws the board: a banner on the band's last line, directly above the
 prompt, and a pane beside the conversation, its tab titled `workflows` — beside
 sitrep's where both are open. Anywhere else nothing draws, and nothing draws
 while another screen — Remote Control's, say — is attached beside the band's.

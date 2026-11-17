@@ -2,8 +2,8 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: the hook before Bash — Claude Code's hook before every shell
-// command, which refuses what would lose the workflows' state or go round
-// their doors (4.4.2, 6.3.7, 6.3.8, 12.9.8). Boot installs it in the
+// command, which refuses what would lose Ledger's state or go round
+// its doors (4.4.2, 6.3.7, 6.3.8, 12.9.8). Boot installs it in the
 // project's settings beside the layout hook (domain/session-label), so it
 // holds with or without the mod (6.3.10).
 //
@@ -92,10 +92,10 @@ const SHELL_HOOK_TOOLS = ['Bash'];
 
 /** Why each command of the state's is refused, with the way on. */
 const REFUSED = Object.freeze({
-  worktree: `unlocking, moving or removing the state worktree (${STATE_DIR_NAME}) is refused — it holds the workflows' state, and boot keeps it locked where it is`,
-  removal: `removing ${STATE_DIR_NAME} is refused — it is the state worktree, holding the workflows' state; a stray file in it is removed by its own name`,
-  branch: `deleting the state branch (${STATE_BRANCH}) is refused — it holds the workflows' state, which only the engine changes`,
-  remote: `deleting ${STATE_BRANCH} on the remote is refused — it holds the workflows' state, and boot restores a lost local branch from it`,
+  worktree: `unlocking, moving or removing the state worktree (${STATE_DIR_NAME}) is refused — it holds Ledger's state, and boot keeps it locked where it is`,
+  removal: `removing ${STATE_DIR_NAME} is refused — it is the state worktree, holding Ledger's state; a stray file in it is removed by its own name`,
+  branch: `deleting the state branch (${STATE_BRANCH}) is refused — it holds Ledger's state, which only the engine changes`,
+  remote: `deleting ${STATE_BRANCH} on the remote is refused — it holds Ledger's state, and boot restores a lost local branch from it`,
   force: `force-pushing ${STATE_BRANCH} is refused — the engine pushes it after every commit, and a force would drop what another clone pushed; push your own branches by name`,
   stateCommit: `a raw git commit in the state worktree (${STATE_DIR_NAME}) is refused — every state commit is the engine's, made by the verb that changes the state`,
 });

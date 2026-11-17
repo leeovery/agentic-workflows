@@ -360,7 +360,7 @@ async function runWizard(call, root, deps = {}) {
   (deps.requireTTY || requireTTY)(call);
   const files = knowledgeFiles(root);
   if (!fs.existsSync(root)) {
-    call.err(`No workflows state found at ${root}. Initialise a workflow project first.\n`);
+    call.err(`No Ledger state found at ${root}. Initialise a Ledger project first.\n`);
     throw new ExitSignal(1);
   }
 

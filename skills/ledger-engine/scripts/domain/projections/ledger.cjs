@@ -70,9 +70,9 @@ function ledgerStop(project, { line, found }, short) {
  */
 function ledgerNewerStop(project, { version, reads }) {
   return stopScreen('the ledger holds entries a newer release wrote', [
-    `${escapeMarkdown(project)}'s ledger holds entries at schema version ${version}, and the workflows on this machine read up to version ${reads}, so the engine reads none of it.`,
+    `${escapeMarkdown(project)}'s ledger holds entries at schema version ${version}, and Ledger on this machine reads up to version ${reads}, so the engine reads none of it.`,
     '',
-    "Update the workflows on this machine — pull the project's code — and start again.",
+    "Update Ledger on this machine — pull the project's code — and start again.",
   ]);
 }
 

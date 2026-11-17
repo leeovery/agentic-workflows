@@ -126,7 +126,7 @@ const ENGINE_FILES = Object.freeze({
 });
 
 /** The reason a write to the state-relative `rel` is refused with where the layout has no place for it. @param {string} rel */
-const outsideReason = (rel) => `${STATE_DIR_NAME}/${rel} is outside the workflows' layout — the state holds only the places the workflows keep; scratch goes in ${STATE_DIR_NAME}/.cache/`;
+const outsideReason = (rel) => `${STATE_DIR_NAME}/${rel} is outside Ledger's layout — the state holds only the places Ledger keeps; scratch goes in ${STATE_DIR_NAME}/.cache/`;
 
 /**
  * @param {{code: number, stdout: string, stderr: string}} res @param {string} what

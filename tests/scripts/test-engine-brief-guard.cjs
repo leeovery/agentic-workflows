@@ -272,7 +272,7 @@ describe('6.S16: the builder\'s brief', () => {
   it('one of the workflows\' agents no role is dispatched as is refused and recorded, whatever it carries', () => {
     assertRefused(guard('Agent', agentCall('ledger-scribe', pointer(briefs.builder.id))), {
       tool: 'Agent', agent: 'ledger-scribe', brief: null, reason: 'no-template',
-      detail: 'ledger-scribe is named as one of the workflows\' agents, and no role is dispatched as ledger-scribe — there is no template to brief it from',
+      detail: 'ledger-scribe is named as one of Ledger\'s agents, and no role is dispatched as ledger-scribe — there is no template to brief it from',
     });
   });
 

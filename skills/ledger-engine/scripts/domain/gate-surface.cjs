@@ -1,13 +1,13 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: the gate surface — the `ledger-gates` mod, part of the
-// workflows, which draws the engine's gates as buttons above the prompt
+// Domain ring: the gate surface — the `ledger-gates` mod, part of
+// Ledger, which draws the engine's gates as buttons above the prompt
 // instead of leaving the model to reproduce the menu. It runs only in
 // Claude Code's terminal app or the Desktop app's Code tab, from 2.1.287, in
 // a project that installed it, and there Claude Code loads it by default.
 // Boot reads where it stands and writes nothing for it: either app older
-// than the mod is reported outdated, and everywhere else the workflows carry
+// than the mod is reported outdated, and everywhere else Ledger carries
 // on with the text menus. Whether the mod is running, the mod says itself:
 // it announces the gate surface at session start, and every command the
 // session runs inherits the announcement.

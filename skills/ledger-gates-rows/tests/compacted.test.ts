@@ -16,7 +16,7 @@ type Surface = (typeof SURFACES)[number]
  */
 const HOME = '/Users/person'
 
-/** The conversation's folder, in the workflows' system config directory. */
+/** The conversation's folder, in Ledger's system config directory. */
 const FOLDER = `${HOME}/.config/ledger/conversations/s0`
 
 const COMPACTED = `${FOLDER}/compacted.json`

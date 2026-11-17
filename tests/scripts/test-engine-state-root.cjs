@@ -79,7 +79,7 @@ describe('stateRoot', () => {
   it('throws outside any git repository, naming the folder', () => {
     const outside = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'state-root-outside-')));
     try {
-      assert.throws(() => stateRoot(outside), new RegExp(`^Error: no workflows state for ${outside}: `));
+      assert.throws(() => stateRoot(outside), new RegExp(`^Error: no Ledger state for ${outside}: `));
     } finally {
       fs.rmSync(outside, { recursive: true, force: true });
     }
@@ -104,7 +104,7 @@ describe('pinStateRoot', () => {
       assert.strictEqual(stateRoot(world), pinned);
       assert.strictEqual(statePath(world, 'pay', 'manifest.json'), path.join(pinned, 'pay/manifest.json'));
       fs.mkdirSync(path.join(world, 'below'));
-      assert.throws(() => stateRoot(path.join(world, 'below')), /^Error: no workflows state for /, 'a folder below it is not pinned');
+      assert.throws(() => stateRoot(path.join(world, 'below')), /^Error: no Ledger state for /, 'a folder below it is not pinned');
     } finally {
       fs.rmSync(world, { recursive: true, force: true });
     }

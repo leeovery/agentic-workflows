@@ -1,5 +1,5 @@
 /**
- * The workflows board's banner: one line in the band above the prompt,
+ * The board's banner: one line in the band above the prompt,
  * naming the work and where it stands, with the button that shows or hides
  * the board at its right. Its mark is the session's state — ◐ running, ⚑
  * waiting on the person, ✓ done, none where neither — then the work's name

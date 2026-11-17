@@ -53,7 +53,7 @@ describe('engine brownfield record', () => {
     assert.deepStrictEqual(res, { ok: true, answer: 'native', committed: res.committed });
     assert.match(res.committed, /^[0-9a-f]+$/);
     assert.deepStrictEqual(projectManifest(dir), { work_units: { pay: { work_type: 'feature' } }, brownfield_offer: 'native' });
-    assert.strictEqual(lastSubject(dir), 'brownfield: the project grew up on the workflows');
+    assert.strictEqual(lastSubject(dir), 'brownfield: the project grew up on Ledger');
     assert.deepStrictEqual(stateGit(dir, ['show', '--name-only', '--pretty=format:', 'HEAD']).split('\n').filter(Boolean), ['manifest.json']);
     assert.strictEqual(git(dir, ['log', '-1', '--pretty=%s']).trim(), 'ignore the state', 'the default branch takes no state commit');
     const status = stateGit(dir, ['status', '--porcelain']).split('\n').filter(Boolean).sort();

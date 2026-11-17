@@ -1,6 +1,6 @@
 /**
  * The conversation's folder, as the engine names it (domain/conversation.cjs):
- * in the workflows' system config directory — `LEDGER_CONFIG_DIR`, else
+ * in Ledger's system config directory — `LEDGER_CONFIG_DIR`, else
  * `.config/ledger` in the home directory — by the session id's safe
  * characters alone, so a `cd` or a resume elsewhere finds it all the same.
  *

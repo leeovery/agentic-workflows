@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: the workflows board's view model (§20) — the contract
+// Domain ring: the board's view model (§20) — the contract
 // between `engine board` (board.cjs) and the gate mod's pane and banner,
 // which draws it and refuses a version it does not know rather than draw
 // it wrongly. A change of any shape here raises `BOARD_VERSION`.

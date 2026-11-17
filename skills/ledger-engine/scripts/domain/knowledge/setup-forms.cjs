@@ -70,7 +70,7 @@ function parseSetupForm(flags) {
 
 /** @param {string} root */
 function requireWorkflowsDir(root) {
-  if (!fs.existsSync(root)) refuse(`no workflows state found at ${root}. Initialise a workflow project first.`);
+  if (!fs.existsSync(root)) refuse(`no Ledger state found at ${root}. Initialise a Ledger project first.`);
 }
 
 function missingOpenAiKeyMessage() {

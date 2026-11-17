@@ -100,7 +100,7 @@ function codeHost(cwd, offer) {
 
 /**
  * The name of the driver the project lands through, settled or not, or
- * null where the project manifest names one the workflows don't ship.
+ * null where the project manifest names one Ledger doesn't ship.
  * @param {string} cwd
  * @returns {string|null}
  */

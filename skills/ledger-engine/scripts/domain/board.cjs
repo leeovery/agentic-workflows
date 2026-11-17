@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: `engine board <session-id> [--tab this|unit|all] [--unit
-// <work-unit>] [--page <ref> [--page-unit <work-unit>]]` — the workflows
+// <work-unit>] [--page <ref> [--page-unit <work-unit>]]` — Ledger
 // board's one read (§20),
 // answering its view model (board-model.cjs) for the gate mod, which calls
 // it after every engine call and every press. It takes no writer lock and

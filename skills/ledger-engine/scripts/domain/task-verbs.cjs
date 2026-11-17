@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: the `task` verbs, the only way anything in the workflows
+// Domain ring: the `task` verbs, the only way anything in Ledger
 // touches a tracker (7.1.2), through the project's task driver (drivers.cjs);
 // a verb of another kind that needs a task reads it as `task show` does
 // (`trackedTask`), as `land open` reads its type and title, and one that

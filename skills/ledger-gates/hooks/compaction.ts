@@ -36,7 +36,7 @@ const isNotes = (value: unknown): value is Notes =>
 
 /**
  * The session's own conversation's folder where the session announced and
- * the engine has marked the conversation as one that runs the workflows;
+ * the engine has marked the conversation as one that runs Ledger;
  * null for any other.
  */
 async function workflowFolder($: EngineInterface): Promise<string | null> {

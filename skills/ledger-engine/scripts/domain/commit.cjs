@@ -7,7 +7,7 @@
 //   worktree on `ledger-state` (domain/state-worktree), under the writer
 //   lock, then pushed; a push that fails is a warning, never a stop. Paths
 //   are state-relative.
-// - The code tree: the files the workflows own outside the state
+// - The code tree: the files Ledger owns outside the state
 //   (`OWNED_PATHS`) and declared code paths are committed in the code root's
 //   own tree (kernel/code-root), on the branch checked out, and never on the
 //   state branch. A process-wide lock (`.git/ledger-commit.lock`, on a long
@@ -19,7 +19,7 @@
 // Every commit is confined: it commits exactly the paths its action wrote —
 // a state commit with the layout's logs changed since (6.3.2) — so a peer
 // session's dirty or staged files are never swept up under someone else's
-// message. The migration commit takes the paths the workflows own as
+// message. The migration commit takes the paths Ledger owns as
 // the index records them on the code side, a removal a migration staged
 // included (`commitStaged`, built in a scratch index), and one commit on each
 // side that changed.
@@ -46,7 +46,7 @@ const PROJECT_MANIFEST_SPEC = 'manifest.json';
 const WORKTREE_INCLUDE = '.worktreeinclude';
 
 /**
- * The files the workflows own in the code tree (6.3.15), named from the code
+ * The files Ledger owns in the code tree (6.3.15), named from the code
  * root: the project's Claude Code settings and its `.gitignore`, which boot
  * keeps, and the worktree include, which only a migration writes. The code
  * side of the migration commit; its state side is the whole state worktree.
@@ -275,11 +275,11 @@ function commitTailPathspec(cwd, pathspec, message, warnings) {
 }
 
 /**
- * Commit the workflows' own change to a file they own in the code tree,
+ * Commit Ledger's own change to a file it owns in the code tree,
  * confined to it — the write this call made, or one an earlier call could not
  * commit, which this one retries — where the file's whole difference from
  * the branch checked out is that change. `ours` makes the file's committed
- * content, null where the branch lacks it, into what the workflows want it
+ * content, null where the branch lacks it, into what Ledger wants it
  * to read; null where it already does. The file is compared as git would
  * stage it, through the checkout's own conversions. A file that also holds
  * the person's own changes is theirs to commit, and a warning says so; a
@@ -305,7 +305,7 @@ function commitOwnChange(cwd, spec, ours, message, failure, warnings) {
     }
   } else if (onDisk !== committedId) {
     warnings.push(
-      `${spec} holds changes of yours not yet committed, so the workflows' own change to it was not committed either — ` +
+      `${spec} holds changes of yours not yet committed, so Ledger's own change to it was not committed either — ` +
       'commit yours, and the next boot commits theirs',
     );
   }

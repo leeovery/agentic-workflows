@@ -16,7 +16,7 @@ const ROOT = '/Users/person/app'
 
 const ENGINE = `${ROOT}/.claude/skills/ledger-engine/scripts/engine.cjs`
 
-/** The workflows' system config directory where the process names none. */
+/** Ledger's system config directory where the process names none. */
 const DEFAULT_CONFIG = `${HOME}/.config/ledger`
 
 /** Where the conversation `s0` records the notes the mod handed up. */

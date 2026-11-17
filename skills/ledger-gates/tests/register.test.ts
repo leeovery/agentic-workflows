@@ -94,14 +94,14 @@ const ANNOUNCEMENTS = [
   { name: 'LEDGER_HANDOFF', value: '1' },
 ]
 
-/** The workflows' system config directory, in the person's home. */
+/** Ledger's system config directory, in the person's home. */
 const CONFIG = `${HOME}/.config/ledger`
 
 /** A file in the folder of the conversation `id`, in the directory `config`. */
 const inFolder = (id: string, file: string, config = CONFIG) =>
   `${config}/conversations/${id}/${file}`
 
-/** The engine's mark that the conversation `id` runs the workflows. */
+/** The engine's mark that the conversation `id` runs Ledger. */
 const marker = (id: string) => inFolder(id, 'workflow')
 
 /** Where the conversation `id` keeps its band for a resume. */
@@ -309,7 +309,7 @@ function announced(stated: Stated = {}, after: readonly string[] = []): string {
 const engineGate = (environment: ReadonlyMap<string, string>) =>
   environment.get('LEDGER_GATE_SURFACE') === '1' ? announced() : TEXT_MENU
 
-/** The call the workflows make at a gate; the mod never reads the command. */
+/** The call Ledger makes at a gate; the mod never reads the command. */
 const ENGINE_CALL = {
   tool: 'Bash' as const,
   command:
@@ -2312,7 +2312,7 @@ describe('register', () => {
     await ui.unmount()
   })
 
-  test('the workflows board\'s banner takes the band\'s last line, beneath the gate, whose menu lays out whole in the rows it leaves', async ($, on) => {
+  test('the board\'s banner takes the band\'s last line, beneath the gate, whose menu lays out whole in the rows it leaves', async ($, on) => {
     const { clock } = world($, on, announced({ options: LONG }), {
       marked: ['s0'],
       stubsBeneath: false,
@@ -3675,7 +3675,7 @@ describe('register', () => {
     expect(written).toContainEqual(DISPLAY_TOOL)
   })
 
-  test('the display tool waits behind ToolSearch before the conversation runs the workflows and after, and every other tool keeps its place', async ($, on) => {
+  test('the display tool waits behind ToolSearch before the conversation runs Ledger and after, and every other tool keeps its place', async ($, on) => {
     on('tool.describe', ($, e) => ({ description: e.description }))
     const { marks } = world($, on)
 

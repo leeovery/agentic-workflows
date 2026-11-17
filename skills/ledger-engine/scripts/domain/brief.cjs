@@ -2,8 +2,8 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: a brief filled and issued (6.5) — `brief <role> [<unit>
-// <task>|<unit> <N>|<unit> <topic>|<unit>] [--{flag} <value> …]`, the only way the
-// workflows hand one of their own agents its brief (6.5.1). Each role names
+// <task>|<unit> <N>|<unit> <topic>|<unit>] [--{flag} <value> …]`, the only way
+// Ledger hands one of its own agents its brief (6.5.1). Each role names
 // its template, the agent it is dispatched as — the fix round's, the builder
 // it is sent to — and the records its brief draws on (6.5.4, 6.5.11,
 // brief-names.cjs); a role whose records include a task's takes the unit

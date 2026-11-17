@@ -1838,7 +1838,7 @@ function defaultBranch(root, remote, nested = false, local = branches(root)) {
     );
   }
   if (named === STATE_BRANCH) {
-    throw new Error(`land: the default branch reads as ${STATE_BRANCH}, the workflows' state branch, which nothing lands on — name ${nested ? 'its' : 'the project\'s'} own with \`git config init.defaultBranch <branch>\``);
+    throw new Error(`land: the default branch reads as ${STATE_BRANCH}, Ledger's state branch, which nothing lands on — name ${nested ? 'its' : 'the project\'s'} own with \`git config init.defaultBranch <branch>\``);
   }
   if (!local.has(named)) {
     throw new Error(`land: the default branch is ${named}, and the repository has no local branch of that name — make one with \`git branch ${named} ${remote}/${named}\``);

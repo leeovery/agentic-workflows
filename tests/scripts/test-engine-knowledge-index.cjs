@@ -130,15 +130,15 @@ describe('engine knowledge index <file>', () => {
 
     it('a file outside the state, the state of another checkout among them, named by its absolute path', async () => {
       write('../outside.md', 'hello\n');
-      await refused('outside.md', `Not in the workflows state: ${path.join(root, 'outside.md')}\n`);
+      await refused('outside.md', `Not in Ledger's state: ${path.join(root, 'outside.md')}\n`);
       const other = setupFixture('kb-index-other-');
       try {
         const elsewhere = createFile(statePath(other), layout.record('auth', 'elsewhere'), '# Auth\n\nElsewhere.\n');
-        await refused(elsewhere, `Not in the workflows state: ${elsewhere}\n`);
+        await refused(elsewhere, `Not in Ledger's state: ${elsewhere}\n`);
       } finally {
         cleanupFixture(other);
       }
-      await refused('.ledger/../etc/seeds/foo.md', `Not in the workflows state: ${path.join(root, 'etc/seeds/foo.md')}\n`);
+      await refused('.ledger/../etc/seeds/foo.md', `Not in Ledger's state: ${path.join(root, 'etc/seeds/foo.md')}\n`);
     });
 
     it('a file the state does not hold', async () => {

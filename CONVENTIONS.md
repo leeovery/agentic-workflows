@@ -141,7 +141,7 @@ In discussion, questions are asked in the conversation and each answer lands thr
 
 ## Writing for the Model Pass
 
-When the workflows move to a new model, the prose is walked on it and one pass cuts what that model no longer needs. The pass cuts prose, so where a part sits decides whether it can be cut:
+When Ledger moves to a new model, the prose is walked on it and one pass cuts what that model no longer needs. The pass cuts prose, so where a part sits decides whether it can be cut:
 - **Guidance a better model could do without is prose.** It stays in the skill, where the pass can cut it.
 - **What the hard layers hold is there for the person, whatever the model.** A new engine piece is proposed with the failure it prevents and how often that failure happened; one with no failure behind it is brought to the person as a cut.
 - **A hard-layer part held for today's model** — a checklist item, a brief template's words, a hook's entry, the model or effort of a call the engine makes itself — **needs its line in the model pass's list** (`docs/contributing.md`, Moving to a new model), which every pass re-weighs. An agent's model and effort need none: they sit in its definition, which the pass edits in place.
@@ -180,7 +180,7 @@ Every prescribed artifact — the spec, the phase cut, the tasks, the reviews, d
 
 **A brief** holds only the records its role draws on, filled by `brief` from the role's template in the engine's content folder (`skills/ledger-engine/content/briefs/{role}.md`). The template's own words are what every dispatch of that role is told; each `{{record}}` slot is a record the engine fills. What one role's dispatch needs goes in its template; what a task needs goes in the records the brief draws on — onto the task, or into the ledger — never into the dispatch. The project's skills and CLAUDE.md reach the agent without the brief.
 
-**The dispatch.** `brief {role} …` issues the brief and answers with its agent and its pointer. The Agent call's `subagent_type` is that agent, and its prompt the pointer, `brief:{id}`, alone (a fix round's is the SendMessage message). The hook before Agent and SendMessage keys on the agent, and refuses anything else for one of the workflows' agents. A phase whose skill dispatches an agent `brief` has no role for adds the role, its template and its records to the engine in the same phase. A fix round's brief is the reviewers' reports, verbatim, and nothing else.
+**The dispatch.** `brief {role} …` issues the brief and answers with its agent and its pointer. The Agent call's `subagent_type` is that agent, and its prompt the pointer, `brief:{id}`, alone (a fix round's is the SendMessage message). The hook before Agent and SendMessage keys on the agent, and refuses anything else for one of Ledger's agents. A phase whose skill dispatches an agent `brief` has no role for adds the role, its template and its records to the engine in the same phase. A fix round's brief is the reviewers' reports, verbatim, and nothing else.
 
 **A refusal.** When a door refuses what an agent made, the skill dispatches the agent again, with a fresh brief carrying the refusal; Claude never edits the agent's work itself. Where the role's template has no slot for a refusal, the phase that builds the corridor adds one.
 
@@ -242,7 +242,7 @@ The capture skills (`ledger-log-*`) write to the inbox and nothing else. They ar
 - `user-invocable: false` on every skill the person does not type themselves.
 - A `description` is all Claude sees of a skill until it is invoked. The start skill's opens with its trigger, short: what Claude reaches for Ledger on, and what goes straight through. Every other skill a handoff lands on (`HANDOFF_TARGETS`) says it is reached only through a Ledger handoff, never invoked directly (lint check 37). Invocability stays as it is: without the gate mod, a handoff invokes the next skill in the same conversation.
 - No `effort:` and no `model:`: the conversation runs at the person's own effort. An agent's definition fixes its own.
-- Every `allowed-tools` Bash grant carries a `*`; a grant for the workflows' own script ends in ` *` (lint check 28).
+- Every `allowed-tools` Bash grant carries a `*`; a grant for Ledger's own script ends in ` *` (lint check 28).
 - No `SessionEnd` hook: Claude Code never fires one declared in a skill. Session-end work is the settings hook the engine installs (lint check 18).
 
 ### Headings

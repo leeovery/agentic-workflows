@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Kernel: the workflows' system config directory — one per user, beside no
+// Kernel: Ledger's system config directory — one per user, beside no
 // project: `LEDGER_CONFIG_DIR` when set, else `~/.config/ledger` — and
 // the settings file in it, which several parts share, each under a key of
 // its own: the knowledge base's provider settings (knowledge/config.cjs),

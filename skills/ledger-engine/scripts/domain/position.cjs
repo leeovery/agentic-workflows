@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: the conversation's position — where in the workflows a
+// Domain ring: the conversation's position — where in Ledger a
 // conversation is working, kept as `position.json` in its folder
 // (conversation.cjs) for whatever carries the conversation on: the tmux
 // label's resume (session-label.cjs), the gate mod's spinner, and
@@ -51,8 +51,8 @@
 // is recorded again, which carries them only to a place of the same unit.
 //
 // The engine is the file's one writer, and writes only for a conversation
-// that runs the workflows: recording a position marks the conversation first
-// (conversation.cjs — a session id, a call run in a workflows project), since
+// that runs Ledger: recording a position marks the conversation first
+// (conversation.cjs — a session id, a call run in a Ledger project), since
 // a conversation a handoff began can arrive at its first place before any
 // other engine call has marked it; an agent is recorded only on a position
 // already there. Each write reads the position and writes it whole under the
@@ -121,9 +121,9 @@ function ownConversation() {
 }
 
 /**
- * The calling conversation, marked first: arriving at a place is running the
- * workflows. Null where no mark stands — no session id, a call run outside a
- * workflows project, a mark that could not be written.
+ * The calling conversation, marked first: arriving at a place is running
+ * Ledger. Null where no mark stands — no session id, a call run outside a
+ * Ledger project, a mark that could not be written.
  * @param {string} cwd @returns {string|null}
  */
 function arrivingConversation(cwd) {

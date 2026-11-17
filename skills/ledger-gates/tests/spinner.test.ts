@@ -14,7 +14,7 @@ type Surface = (typeof SURFACES)[number]
  */
 const HOME = '/Users/person'
 
-/** The workflows' system config directory where the process names none. */
+/** Ledger's system config directory where the process names none. */
 const DEFAULT_CONFIG = `${HOME}/.config/ledger`
 
 const ENGINE = 'node .claude/skills/ledger-engine/scripts/engine.cjs'

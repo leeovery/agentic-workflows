@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: the layout on disk (4.11) — every place the workflows keep
+// Domain ring: the layout on disk (4.11) — every place Ledger keeps
 // under `.ledger/`, one table with one reader, `layoutPlace`, whose row's
 // kind says what a path is, a log among them. The layout hook refuses
 // Claude's write to any path the table has no place for (layout-hook.cjs,

@@ -181,7 +181,7 @@ function runIndex(call, { root, files, args, options }) {
   }
   const given = path.resolve(call.cwd, args[0]);
   const file = stateRelative(call.cwd, given);
-  if (file === null) stop(call, `Not in the workflows state: ${given}\n`);
+  if (file === null) stop(call, `Not in Ledger's state: ${given}\n`);
   const artifact = artifactAt(root, file);
   if (!artifact) stop(call, `File not found: ${given}\n`);
   let written;

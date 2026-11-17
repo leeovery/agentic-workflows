@@ -114,13 +114,13 @@ describe('measures findings (17.1.5, 17.2.4)', () => {
     assert.deepStrictEqual(ok(dir, ['measures', 'findings']).phases[3], { phase: 'build', findings: 2, calls: { serious: 0, bug: 1, nit: 1 }, rounds: 1, failed: 1 });
   });
 
-  it('reads the calling project where none is named, and refuses a project with no workflows state and arguments of another shape, writing nothing', () => {
+  it('reads the calling project where none is named, and refuses a project with no Ledger state and arguments of another shape, writing nothing', () => {
     asked(`${UNIT}.specification`, 'review', 'Is a refund ever partial?');
     const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'measures-bare-'));
 
     try {
       assert.deepStrictEqual(ok(dir, ['measures', 'findings']).phases[1], { phase: 'specification', findings: 1 });
-      assert.match(refusedPristine(dir, ['measures', 'findings', '--project', bare]).error, new RegExp(`^measures findings: no workflows state for ${bare}`));
+      assert.match(refusedPristine(dir, ['measures', 'findings', '--project', bare]).error, new RegExp(`^measures findings: no Ledger state for ${bare}`));
       for (const args of [['measures'], ['measures', 'calls'], ['measures', 'findings', 'more'], ['measures', 'findings', 'bugs'], ['measures', 'findings', '--unit', UNIT], ['measures', 'bugs', '--area', 'checkout']]) {
         assert.strictEqual(refusedPristine(dir, args).error, 'Usage: engine measures findings|bugs [--project <path>]…', args.join(' '));
       }

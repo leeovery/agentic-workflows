@@ -152,8 +152,8 @@ for (const { name } of listDrivers('landing')) {
 
     it('nothing under .ledger/ lands: a task whose change carries the state is refused, and nothing of it lands (4.S2)', () => {
       const at = project();
-      assert.strictEqual(refuses(at, openArgs(notes)).error, 'land: task 1.3\'s change carries .ledger/notes.md — the workflows\' state never lands on a code branch, so take it off the task\'s branch and open the task again');
-      assert.strictEqual(refuses(at, openArgs(loudNotes)).error, 'land: task 1.9\'s change carries .LEDGER/notes.md — the workflows\' state never lands on a code branch, so take it off the task\'s branch and open the task again');
+      assert.strictEqual(refuses(at, openArgs(notes)).error, 'land: task 1.3\'s change carries .ledger/notes.md — Ledger\'s state never lands on a code branch, so take it off the task\'s branch and open the task again');
+      assert.strictEqual(refuses(at, openArgs(loudNotes)).error, 'land: task 1.9\'s change carries .LEDGER/notes.md — Ledger\'s state never lands on a code branch, so take it off the task\'s branch and open the task again');
       finishReady(at);
       assert.deepStrictEqual(ok(at, ['land', 'finish', 'pay']).repos, []);
       assert.deepStrictEqual(side.landed(at), []);

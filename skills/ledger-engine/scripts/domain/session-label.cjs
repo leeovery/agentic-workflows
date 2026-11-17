@@ -30,11 +30,11 @@
 // the engine installs them (a SessionEnd hook declared in skill frontmatter
 // never fires). SessionEnd carries three commands: `session cleanup`,
 // present while labels are on, and `presence cleanup` and `conversation
-// end`, present in every workflow project regardless — the heartbeat sweep
-// and the conversation's transcript record are the workflows' own, not a
+// end`, present in every Ledger project regardless — the heartbeat sweep
+// and the conversation's transcript record are Ledger's own, not a
 // label preference. SessionStart (matcher `resume`) carries `session
 // resume` while labels are on. PreToolUse carries three groups in every
-// workflow project, each matched to the tools its hook stands before:
+// Ledger project, each matched to the tools its hook stands before:
 // `layout guard` before Write, Edit and NotebookEdit (domain/layout-hook),
 // `brief guard` before Agent and SendMessage (domain/brief-guard), and
 // `shell guard` before Bash (domain/shell-guard). Recording the choice syncs
@@ -157,7 +157,7 @@ function carriesOurHooks(settings) {
  * The groups wanted, each under its event: the label hooks while labels are
  * on (`session`) — SessionEnd restores the name, and SessionStart brings a
  * resumed session's label back, its matcher having Claude Code fire it on
- * `claude --resume` alone — and the workflows' own (`workflows`), where
+ * `claude --resume` alone — and Ledger's own (`workflows`), where
  * SessionEnd sweeps the heartbeats and records the conversation's
  * transcript, and PreToolUse runs the layout hook before every write, the
  * brief hook before every dispatch and the shell hook before every shell
@@ -308,7 +308,7 @@ function syncSessionHooks(cwd, want) {
 }
 
 /**
- * Commit the workflows' own change to the session hooks — this call's
+ * Commit Ledger's own change to the session hooks — this call's
  * write, or one an earlier call could not commit (`commitOwnChange`).
  * @param {string} cwd @param {{session: boolean, workflows: boolean}} want
  * @param {string} message @param {string} failure the warning's lead where git refuses @param {string[]} warnings
@@ -320,7 +320,7 @@ function commitSessionHooks(cwd, want, message, failure, warnings) {
 
 /**
  * ledger's one-time answer: record the opt-in, sync the session
- * hooks to match (the workflows' own stay whatever the answer), and commit
+ * hooks to match (Ledger's own stay whatever the answer), and commit
  * each where it lives — the project manifest in the state, the settings in
  * the code tree. The choice is recorded either way: a settings file the
  * sync could not read, hooks left unwritten while git holds an operation

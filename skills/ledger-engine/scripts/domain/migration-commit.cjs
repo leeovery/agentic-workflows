@@ -5,8 +5,8 @@
 // person's yes at the migration gate (21.9.4).
 //
 // - After the migrations changed files: one commit on each side that
-//   changed, under the one message — the whole state, and the files the
-//   workflows own in the code tree (`OWNED_PATHS`) as the index records
+//   changed, under the one message — the whole state, and the files
+//   Ledger owns in the code tree (`OWNED_PATHS`) as the index records
 //   them (commit.cjs).
 // - While the reshape finishes: its finish step journals what goes from
 //   the code side, `finish.json` in the runner's journals folder — `drops`,

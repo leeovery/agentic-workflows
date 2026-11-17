@@ -747,7 +747,7 @@ function landingOf(project, ref, { type, title, status }) {
 function refuseState(own, shown, branch, whose) {
   const state = lg.changedAtTop(own.root, own.into, branch, STATE_DIR_NAME);
   if (state.length > 0) {
-    throw new Error(`land: task ${shown}'s change carries ${state.map(lg.plain).join(', ')} — the workflows' state never lands on a code branch, so take it off the ${whose} branch and open the task again`);
+    throw new Error(`land: task ${shown}'s change carries ${state.map(lg.plain).join(', ')} — Ledger's state never lands on a code branch, so take it off the ${whose} branch and open the task again`);
   }
 }
 

@@ -1564,7 +1564,7 @@ function runMeasures(call, argv) {
 }
 
 // ---------------------------------------------------------------------------
-// board — the workflows board's view model, read for the gate mod's pane and
+// board — the board's view model, read for the gate mod's pane and
 // banner (domain/board.cjs). A read: it writes nothing, the conversation's
 // mark among it.
 // ---------------------------------------------------------------------------
@@ -2052,7 +2052,7 @@ function runStateMerge(call, argv) {
 // (`--discovery`). The code tree's commit on the branch checked out:
 // declared code paths (`--paths`), for the task in flight (`--task`). One
 // form makes one commit on each side: the migration review (`--migrations`),
-// the state and the files the workflows own in the code tree. A clean scope
+// the state and the files Ledger owns in the code tree. A clean scope
 // is fine: {committed: null}, and for `--paths`, whose commits are listed per
 // repo, {committed: []}.
 // ---------------------------------------------------------------------------
@@ -2115,7 +2115,7 @@ function codePathSpec(cwd, repos, given) {
   if (given === '' || given === '-') throw new Error(`commit --paths: "${given}" is not a path`);
   const abs = path.resolve(cwd, given);
   if (insideState(cwd, abs)) {
-    throw new Error(`commit --paths: "${given}" is in the workflows' state — it commits by its own scope (--topic/--discovery)`);
+    throw new Error(`commit --paths: "${given}" is in Ledger's state — it commits by its own scope (--topic/--discovery)`);
   }
   const rel = path.relative(codeRoot(cwd), abs);
   if (rel === '' || rel.startsWith('..') || path.isAbsolute(rel)) {
@@ -2326,8 +2326,8 @@ function runCommit(call, argv) {
     } else if (workflows) {
       scope = '.';
     } else if (migrationsScope) {
-      // The reviewed migration commit: the whole state, and every path the
-      // workflows own in the code tree taken as the index records it — a
+      // The reviewed migration commit: the whole state, and every path
+      // Ledger owns in the code tree taken as the index records it — a
       // migration may stage a removal there that the working tree cannot
       // show. One commit on each side that changed; the reshape's two while
       // it finishes (domain/migration-commit.cjs).
@@ -2773,15 +2773,15 @@ function runCli(call, argv) {
 
 // The commands Claude Code's own hooks run as any conversation in the project
 // ends or resumes, or before it writes a file, dispatches an agent or runs a
-// shell command, whether it ran the workflows or not.
+// shell command, whether it ran Ledger or not.
 const HOOK_TARGETS = ['presence cleanup', 'session cleanup', 'session resume', 'conversation end', ...GUARD_VERBS];
 
 // The commands the gate mod runs for whatever conversation it draws, whether
-// that one runs the workflows or not.
+// that one runs Ledger or not.
 const MOD_READS = ['board'];
 
 // The capture line, which a capture skill runs from a conversation in any
-// project, one that runs the workflows or not (18.6.2).
+// project, one that runs Ledger or not (18.6.2).
 const CAPTURE = 'inbox capture';
 
 /** Whether a command marks the conversation that ran it. @param {string[]} argv */
@@ -2791,8 +2791,8 @@ const marks = (argv) => ![...HOOK_TARGETS, CAPTURE].includes(argv.slice(0, 2).jo
  * One command against a bound call, answering its exit code — later, for
  * the argv `ANSWERS_LATER` says waits. One boot's stamp does not let through
  * is refused before anything runs, and marks nothing. Whatever the exit of
- * any other, a command the conversation ran marks it as one that runs the
- * workflows — but a hook's, the mod's or the capture line's, run for any
+ * any other, a command the conversation ran marks it as one that runs
+ * Ledger — but a hook's, the mod's or the capture line's, run for any
  * conversation; one that answered records the gate its MENU stated as the
  * gate the conversation was shown, where a failed one showed none. Both
  * after the command, which may take the folder both live in: boot's tidy-up

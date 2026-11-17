@@ -21,7 +21,7 @@ The engine's brief is all you are given; the conversation never reaches you. It 
 - **For a phase or an area, its scenarios' runs** at its tips, and for a phase **what survived the mutation tool** over its lines, where the project has one.
 - **The linters** — the project's.
 - **Where your report goes** — the file of your report, for this round.
-- **How a failed review is met**, or for an area **the floor** a finding clears, **each finding's call** with the edge list, **your report's grammar**, and how comments and the workflows' own references are judged.
+- **How a failed review is met**, or for an area **the floor** a finding clears, **each finding's call** with the edge list, **your report's grammar**, and how comments and Ledger's own references are judged.
 
 ## Rules
 

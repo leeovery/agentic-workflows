@@ -113,7 +113,7 @@ describe('the main checkout', () => {
 
     for (const [cwd, original] of [[statePath(copy), root], [path.join(copy, 'side'), side]]) {
       assert.throws(() => mainCheckout(cwd),
-        new RegExp(`^Error: ${cwd} is in a copy of the worktree at ${original}: git reads it as that worktree, in that repository, so the workflows read and write nothing through it — run from the copy's own project folder$`));
+        new RegExp(`^Error: ${cwd} is in a copy of the worktree at ${original}: git reads it as that worktree, in that repository, so Ledger reads and writes nothing through it — run from the copy's own project folder$`));
     }
     assert.strictEqual(mainCheckout(copy), copy);
   });

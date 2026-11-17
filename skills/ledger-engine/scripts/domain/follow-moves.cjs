@@ -43,7 +43,7 @@ const { rebaseLinks } = require('./markdown-links.cjs');
 
 /** @typedef {[string, string][]} Moves */
 
-/** The state's top folders holding no document of the workflows'. */
+/** The state's top folders holding no document of Ledger's. */
 const NO_DOCUMENTS = Object.freeze(['.git', '.cache', '.knowledge']);
 
 /** Every markdown document in the state, from its root (the header's). @param {string} root @param {string} [from] @returns {string[]} */

@@ -150,7 +150,7 @@ function concludedRefusal(from, rel) {
  */
 function placeRefusal(from, rel, fold) {
   const at = layoutPlace(rel, fold) ?? stagedPlace(rel, fold);
-  if (at === null) return `${STATE_DIR_NAME}/${rel} is outside the workflows' layout — the state holds only the places the workflows keep; scratch goes in ${STATE_DIR_NAME}/.cache/`;
+  if (at === null) return `${STATE_DIR_NAME}/${rel} is outside Ledger's layout — the state holds only the places Ledger keeps; scratch goes in ${STATE_DIR_NAME}/.cache/`;
   return at.path === SPEC_PLACE ? concludedRefusal(from, rel) : engineRefusal(at, rel);
 }
 

@@ -2,14 +2,14 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: the brownfield offer — start's one-time offer to research a
-// codebase that predates the workflows (8.12.7, 8.12.11). Its answer is the
-// project manifest's `brownfield_offer`: `native`, the project grew up on the
-// workflows; `skipped`, the offer declined; `accepted`, its research owed,
+// codebase that predates Ledger (8.12.7, 8.12.11). Its answer is the
+// project manifest's `brownfield_offer`: `native`, the project grew up on
+// Ledger; `skipped`, the offer declined; `accepted`, its research owed,
 // which the product's conversation opens on (`researchOwed`, 8.12.13); and
 // `completed`, once that research has landed. Boot's field and the offer's
 // surface read it here, and its one write is here, a confined state commit.
 // So is the signal boot attaches while nothing is recorded: the project's
-// own account of what came before the workflows, read from every repo in it
+// own account of what came before Ledger, read from every repo in it
 // (kernel/repos) and handed to the one-time judgment as evidence to read
 // rather than a number to threshold (8.12.10).
 // ---------------------------------------------------------------------------
@@ -37,7 +37,7 @@ const FOLLOWS = { native: 'none', skipped: 'none', accepted: 'none', completed: 
 
 /** @type {Record<BrownfieldAnswer, string>} */
 const MESSAGES = {
-  native: 'brownfield: the project grew up on the workflows',
+  native: 'brownfield: the project grew up on Ledger',
   skipped: 'brownfield: decline the research offer',
   accepted: 'brownfield: accept the research offer',
   completed: 'brownfield: the research landed',
@@ -79,11 +79,11 @@ const researchOwed = (project) => answerOf(project) === 'accepted';
 /**
  * @typedef {object} BrownfieldSignal
  * @property {string} root_date  author date of the earliest first commit across the project's repos (YYYY-MM-DD)
- * @property {string|null} workflows_date  author date of the state's first commit — null when the state holds none yet, so the whole history predates the workflows
+ * @property {string|null} workflows_date  author date of the state's first commit — null when the state holds none yet, so the whole history predates Ledger
  * @property {number} commits_total  every commit reachable from HEAD, summed across the repos — a project inside a larger repository counting the commits that touched its folder, a shallow nested clone none
  * @property {number} commits_before  the commits before the arrival, summed: each repo's last commit made before the state's first commit and that commit's ancestors (each whole history when the state holds no commit)
  * @property {string[]} history_before  those commits as `date  subject`, oldest first across the repos — the head and tail kept around an elision line when the run is long
- * @property {number} files_at_arrival  project files (outside `.claude/`) in the trees the workflows arrived into — each repo's at its last commit before the arrival; HEAD's trees when the state holds no commit
+ * @property {number} files_at_arrival  project files (outside `.claude/`) in the trees Ledger arrived into — each repo's at its last commit before the arrival; HEAD's trees when the state holds no commit
  * @property {string[]} tree_at_arrival  that tree's top-level shape, named from the project: `dir/ (n)` and root files, largest first, elided past a dozen
  */
 
@@ -99,9 +99,9 @@ const TREE_ENTRIES = 12;
  */
 
 /**
- * One repo's account, bounded by the workflows' arrival: its commits, its
+ * One repo's account, bounded by Ledger's arrival: its commits, its
  * first commit's date, the commits before the arrival and the files, in
- * project paths, of the tree the workflows arrived into.
+ * project paths, of the tree Ledger arrived into.
  * @typedef {object} RepoAccount
  * @property {number} commits
  * @property {string|null} rootDate
@@ -111,7 +111,7 @@ const TREE_ENTRIES = 12;
 
 /**
  * The revisions bounding a repo's account: `before` the last commit before
- * the workflows arrived, `tree` the commit whose tree they arrived into —
+ * Ledger arrived, `tree` the commit whose tree it arrived into —
  * either null where there is none.
  * @typedef {{before: string|null, tree: string|null}} Cut
  */
@@ -182,8 +182,8 @@ function arrivalIn(cwd) {
  * before that second, so a side branch merged afterwards is never history
  * before it. A commit in the arrival's own second is the arrival's: the
  * setup boot commits its ignore line and hooks in it. No state commit means
- * the workflows are arriving now, into HEAD's tree, and the whole history
- * came before them.
+ * Ledger is arriving now, into HEAD's tree, and the whole history
+ * came before it.
  * @param {string} cwd @param {{time: string}|null} arrival
  * @returns {Cut}
  */
@@ -273,7 +273,7 @@ function elided(rows) {
 }
 
 /**
- * The project's files, less the workflows' own footprint in the code tree
+ * The project's files, less Ledger's own footprint in the code tree
  * (the skills install under `.claude/`): a file count plus the top-level
  * shape, largest entries first.
  * @param {string[]} paths project paths
@@ -298,7 +298,7 @@ function treeShape(paths) {
 }
 
 /**
- * The project's account of what came before the workflows, across every
+ * The project's account of what came before Ledger, across every
  * repo in it: when the history began, when the state took its first
  * commit, the commits before that arrival (as commits, not a count alone)
  * and the project tree they arrived into. A project inside a larger

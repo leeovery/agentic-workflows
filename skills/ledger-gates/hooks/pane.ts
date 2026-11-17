@@ -1,5 +1,5 @@
 /**
- * The workflows board's pane: its three tabs, This session following the
+ * The board's pane: its three tabs, This session following the
  * session, and the pages the person opens over them.
  *
  * What the pane shows is where the person has gone on it (`Nav`): the tab,

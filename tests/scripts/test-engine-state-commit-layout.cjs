@@ -49,7 +49,7 @@ const ARCHIVED = layout.archived('ideas', '2026-10-30--dark-mode.md');
 
 /** The refusal of a commit over files outside the layout, as the engine words it. @param {string} root @param {string} files */
 function outsideLayout(root, files) {
-  return `the state at ${root} holds ${files}, outside the workflows' layout — nothing committed; remove it, or move it into the layout`;
+  return `the state at ${root} holds ${files}, outside Ledger's layout — nothing committed; remove it, or move it into the layout`;
 }
 
 /** A state commit's short sha. @param {string} root @param {string} rev */
@@ -113,7 +113,7 @@ describe('a file outside the layout (6.2.5)', () => {
     for (const rel of [STRAY, 'notes.txt', layout.topic(UNIT, 'login', 'scratch', 'draft.md')]) createFile(root, rel, 'scratch\n');
 
     assert.throws(() => withStateLock(root, () => commitState(root, [BRIEF], 'state: the brief')), {
-      message: `the state at ${root} holds acme/tmp/x.md, acme/topics/login/scratch/draft.md, notes.txt, outside the workflows' layout — nothing committed; remove each, or move each into the layout`,
+      message: `the state at ${root} holds acme/tmp/x.md, acme/topics/login/scratch/draft.md, notes.txt, outside Ledger's layout — nothing committed; remove each, or move each into the layout`,
     });
   });
 

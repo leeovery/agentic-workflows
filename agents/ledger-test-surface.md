@@ -18,7 +18,7 @@ The engine's brief is all you are given; the conversation never reaches you. It 
 - **The change's commits** in each repository it touches — each of the unit's landings, then its work not landed — each with its stat: read each diff itself there.
 - **The linters** — the project's.
 - **Where your report goes** — the file of your report, for this round.
-- **Your review**, **each finding's call** with the edge list, **your report's grammar**, and how comments and the workflows' own references are judged.
+- **Your review**, **each finding's call** with the edge list, **your report's grammar**, and how comments and Ledger's own references are judged.
 
 ## Rules
 

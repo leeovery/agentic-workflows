@@ -4,7 +4,7 @@
 
 ---
 
-The project's code predates the workflows, and the person asked for it to be read: the product's conversation opens with that research. The product researcher reads the code, lands what it shows as findings on the ledger, and brings back what it leaves open. Brief it, then make the Agent call — its `subagent_type` the agent `brief` answers, its prompt the pointer alone:
+The project's code predates Ledger, and the person asked for it to be read: the product's conversation opens with that research. The product researcher reads the code, lands what it shows as findings on the ledger, and brings back what it leaves open. Brief it, then make the Agent call — its `subagent_type` the agent `brief` answers, its prompt the pointer alone:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs brief product-researcher

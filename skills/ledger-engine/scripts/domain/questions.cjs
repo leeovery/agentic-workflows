@@ -349,7 +349,7 @@ function waitingNamed(read, unit, name, said) {
 function unitRoot(cwd, unit, said, usage) {
   if (unit === undefined || unit === '' || unit.startsWith('--')) throw new Error(`Usage: engine ${usage}`);
   const root = findStateRoot(cwd);
-  if (root === null) throw new Error(`${said}: there is no workflows state here — the questions waiting are in the ledger, which the state holds`);
+  if (root === null) throw new Error(`${said}: there is no Ledger state here — the questions waiting are in the ledger, which the state holds`);
   if (manifestOf(root, unit) === null) throw new Error(`${said}: there is no work unit "${unit}"`);
   return root;
 }

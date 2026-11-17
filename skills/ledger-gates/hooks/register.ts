@@ -7,7 +7,7 @@
  * Bash result that carried it, cuts the menu out of what the model reads, and
  * draws the rows in the band once the model's turn is over. A press picks its
  * row's answer into the prompt box; a second press on that row sends it as the
- * next message, which the workflows' prose reads as the answer, or while
+ * next message, which Ledger's prose reads as the answer, or while
  * Claude works on anything else holds it until Claude finishes. In a session
  * that announced, what the band shows is kept in the conversation's folder
  * across a restart, so a conversation resumed where nothing has happened
@@ -17,15 +17,15 @@
  * so where the module never loads, or a cut throws or overruns, the model
  * reads the text menu the engine wrote.
  *
- * The module carries the workflows' handoffs too: a move into work the engine
+ * The module carries Ledger's handoffs too: a move into work the engine
  * names arms off the Bash result that carried it, cut out of what the model
  * reads, and once the turn ends the module clears the conversation, carries
  * the engine's boot stamp into the new one and sends the continuation there,
  * an Esc on that turn carrying nothing.
  *
- * The module also sets Claude Code's harness for the workflows: every session
+ * The module also sets Claude Code's harness for Ledger: every session
  * gets the SendUserMessage tool, kept behind ToolSearch, and a conversation
- * the engine has marked as running the workflows goes without Claude's
+ * the engine has marked as running Ledger goes without Claude's
  * thinking summarised as output and without the nudge to say what it is
  * doing, the person's own values of both put back as it ends. A conversation
  * the engine has not marked keeps them untouched.
@@ -34,7 +34,7 @@
  * well: the spinner saying the phase (`spinner.ts`), the compaction — Claude
  * Code's own, the engine's note appended last (`compaction.ts`) — each
  * task's builder and reviewers recorded as they are dispatched
- * (`builder.ts`), and the workflows board, its pane beside the conversation
+ * (`builder.ts`), and the board, its pane beside the conversation
  * and its banner on a line of its own beneath the band's rows
  * (`workflows-board.ts`), where the questions waiting are queued to discuss
  * with Claude (`discuss.ts`).
@@ -598,7 +598,7 @@ const inFolder = (folder: string, file: string) => `${folder}/${file}`
 
 /**
  * The folder of the conversation `id` where the engine has marked it as one
- * that runs the workflows; null for any other conversation.
+ * that runs Ledger; null for any other conversation.
  */
 async function markedFolder(
   $: EngineInterface,
@@ -614,7 +614,7 @@ async function markedFolder(
 /**
  * Keeps what the band shows for the conversation at `place` — the gate, or
  * nothing — in its folder, in a session that announced and a conversation
- * that runs the workflows: any other conversation gets no folder.
+ * that runs Ledger: any other conversation gets no folder.
  */
 async function keep($: EngineInterface, place: Place | null, gate: Gate | null) {
   if (place === null || !(await isAnnounced($))) {
@@ -779,7 +779,7 @@ export const register: Register = on => {
 
   /**
    * Whether the clear under way is this module's own, for a handoff: the
-   * conversation it leads into runs the workflows by construction, so the
+   * conversation it leads into runs Ledger by construction, so the
    * workflow harness stays on through it.
    */
   let isClearingForHandoff = false
@@ -938,7 +938,7 @@ export const register: Register = on => {
 
   // Every engine call marks the conversation that made it, whatever its exit,
   // so after each of the conversation's own commands the mark says whether it
-  // runs the workflows; a command that only mentions the engine marks nothing.
+  // runs Ledger; a command that only mentions the engine marks nothing.
   // A failure replays the payloads uncut, so the harness never fails the call
   // and nothing is armed until nothing more can fail.
   on('tool.call', { tool: 'Bash' }, async ($, e, next) => {

@@ -1,5 +1,5 @@
 /**
- * The workflows board's view model, as `engine board` answers it
+ * The board's view model, as `engine board` answers it
  * (domain/board-model.cjs): the contract between the engine and the board.
  * The mod draws a version it knows and refuses any other rather than draw
  * it wrongly. The model carries kinds, states, counts, times and the

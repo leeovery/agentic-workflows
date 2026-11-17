@@ -74,10 +74,10 @@ const TASK = [
 
 /** Why each of the state's commands is refused. */
 const REFUSED = Object.freeze({
-  worktree: 'unlocking, moving or removing the state worktree (.ledger) is refused — it holds the workflows\' state, and boot keeps it locked where it is',
-  removal: 'removing .ledger is refused — it is the state worktree, holding the workflows\' state; a stray file in it is removed by its own name',
-  branch: 'deleting the state branch (ledger-state) is refused — it holds the workflows\' state, which only the engine changes',
-  remote: 'deleting ledger-state on the remote is refused — it holds the workflows\' state, and boot restores a lost local branch from it',
+  worktree: 'unlocking, moving or removing the state worktree (.ledger) is refused — it holds Ledger\'s state, and boot keeps it locked where it is',
+  removal: 'removing .ledger is refused — it is the state worktree, holding Ledger\'s state; a stray file in it is removed by its own name',
+  branch: 'deleting the state branch (ledger-state) is refused — it holds Ledger\'s state, which only the engine changes',
+  remote: 'deleting ledger-state on the remote is refused — it holds Ledger\'s state, and boot restores a lost local branch from it',
   force: 'force-pushing ledger-state is refused — the engine pushes it after every commit, and a force would drop what another clone pushed; push your own branches by name',
   stateCommit: 'a raw git commit in the state worktree (.ledger) is refused — every state commit is the engine\'s, made by the verb that changes the state',
 });

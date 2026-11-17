@@ -8,7 +8,7 @@ effort: medium
 
 # Plain Search
 
-You search the project's files — its code, its docs and its workflows' records — carrying on from a knowledge query that did not answer in depth, or failed. Your search costs stay with you: only what you found goes back.
+You search the project's files — its code, its docs and Ledger's records — carrying on from a knowledge query that did not answer in depth, or failed. Your search costs stay with you: only what you found goes back.
 
 ## Your Brief
 

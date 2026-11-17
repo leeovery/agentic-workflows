@@ -1,7 +1,7 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: the state worktree. The workflows keep their state on a
+// Domain ring: the state worktree. Ledger keeps its state on a
 // branch of its own, `ledger-state`, an orphan checked out as a git worktree
 // at `.ledger/` inside the repository's main checkout and locked there. A
 // session in a code worktree finds the same `.ledger/` through the common git
@@ -866,7 +866,7 @@ function refuseOutsideLayout(root, changes) {
   const strays = changes.filter(({ at, gone, staging }) => at === null && !gone && !staging).map(({ rel }) => rel);
   if (strays.length === 0) return;
   const it = strays.length === 1 ? 'it' : 'each';
-  throw new Error(`the state at ${root} holds ${strays.join(', ')}, outside the workflows' layout — nothing committed; remove ${it}, or move ${it} into the layout`);
+  throw new Error(`the state at ${root} holds ${strays.join(', ')}, outside Ledger's layout — nothing committed; remove ${it}, or move ${it} into the layout`);
 }
 
 /**

@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: the state as the code tree sees it — kept out of every code
-// branch, and the workflows' trace, which tells a project whose state was
+// branch, and Ledger's trace, which tells a project whose state was
 // lost from one being set up (4.5.2).
 //
 // - Kept out: the state folder sits in the main checkout, ignored by every
@@ -10,7 +10,7 @@
 //   which is never committed — so a branch whose `.gitignore` never named it,
 //   one cut before setup among them, never takes it in (4.1.2, 4.1.3). Boot
 //   keeps the line there on every boot, before the state is put in place.
-// - The trace: the workflows' hooks in the project's Claude Code settings, or
+// - The trace: Ledger's hooks in the project's Claude Code settings, or
 //   a line naming the state in its `.gitignore` (6.3.15). Boot writes that
 //   line as it keeps the hooks: in the session's own code tree, committed on
 //   the branch checked out there, and only once the state exists, so the
@@ -134,8 +134,8 @@ function textsCheckedOut(git, rel) {
 }
 
 /**
- * Whether the repository holds the workflows' trace for the project: one of
- * their hooks in its settings, or a line naming the state in its
+ * Whether the repository holds Ledger's trace for the project: one of
+ * its hooks in the settings, or a line naming the state in its
  * `.gitignore` — in a tree checked out, or at the tip of any branch, local
  * or remote-tracking. It reads every branch, so it is asked only where the
  * state is missing everywhere.
@@ -172,7 +172,7 @@ function keepStateExcluded(cwd) {
 /**
  * Keep the state's ignore line, the trace, in the session's own code tree:
  * append it to its `.gitignore` where no line ignores the state folder
- * whole, and commit the workflows' own change to the file through the code
+ * whole, and commit Ledger's own change to the file through the code
  * door (`commitOwnChange`) — not while git is in the middle of an operation
  * there, which the next boot waits out. The state stands without the line,
  * so a file that cannot be written, or a commit git refuses, is a warning.
