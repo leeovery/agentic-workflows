@@ -1,5 +1,5 @@
 /**
- * The board (§20): a pane titled "workflows" beside the
+ * The board (§20): a pane titled "ledger" beside the
  * conversation, and a banner on the band's last line, directly above the
  * prompt, that names the work and shows or hides the pane — in a session
  * that announced, in a conversation the engine has marked, with no screen

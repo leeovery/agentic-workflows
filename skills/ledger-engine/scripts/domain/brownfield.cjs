@@ -79,7 +79,7 @@ const researchOwed = (project) => answerOf(project) === 'accepted';
 /**
  * @typedef {object} BrownfieldSignal
  * @property {string} root_date  author date of the earliest first commit across the project's repos (YYYY-MM-DD)
- * @property {string|null} workflows_date  author date of the state's first commit — null when the state holds none yet, so the whole history predates Ledger
+ * @property {string|null} ledger_date  author date of the state's first commit — null when the state holds none yet, so the whole history predates Ledger
  * @property {number} commits_total  every commit reachable from HEAD, summed across the repos — a project inside a larger repository counting the commits that touched its folder, a shallow nested clone none
  * @property {number} commits_before  the commits before the arrival, summed: each repo's last commit made before the state's first commit and that commit's ancestors (each whole history when the state holds no commit)
  * @property {string[]} history_before  those commits as `date  subject`, oldest first across the repos — the head and tail kept around an elision line when the run is long
@@ -323,7 +323,7 @@ function brownfieldSignal(cwd) {
     if (commitsTotal === 0) return null;
     return {
       root_date: accounts.flatMap((a) => (a.rootDate === null ? [] : [a.rootDate])).sort()[0],
-      workflows_date: arrival && arrival.date,
+      ledger_date: arrival && arrival.date,
       commits_total: commitsTotal,
       commits_before: sum(accounts.map((a) => a.history.length)),
       history_before: elided(mergedByTime(accounts.map((a) => a.history))),

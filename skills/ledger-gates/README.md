@@ -249,7 +249,7 @@ answers, the dispatch's result is Claude Code's own.
 
 In a session that announced, in a conversation the engine has marked, the mod
 draws the board: a banner on the band's last line, directly above the
-prompt, and a pane beside the conversation, its tab titled `workflows` — beside
+prompt, and a pane beside the conversation, its tab titled `ledger` — beside
 sitrep's where both are open. Anywhere else nothing draws, and nothing draws
 while another screen — Remote Control's, say — is attached beside the band's.
 

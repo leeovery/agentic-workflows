@@ -96,7 +96,7 @@ const SHELL_GUARD_COMMAND = `${HOOK_ENGINE} shell guard`;
 // the sync writes; the closing quote is part of the mark, so a re-quoted
 // command is not.
 const hookMark = (/** @type {string} */ command) => command.slice(command.indexOf('engine.cjs"'));
-const HOOK_MARKS = wantedGroups({ session: true, workflows: true }).flatMap((g) => g.commands.map(hookMark));
+const HOOK_MARKS = wantedGroups({ session: true, ledger: true }).flatMap((g) => g.commands.map(hookMark));
 
 /**
  * The opt-in for this project — `defaults.tmux_labels` when it is a
@@ -157,29 +157,29 @@ function carriesOurHooks(settings) {
  * The groups wanted, each under its event: the label hooks while labels are
  * on (`session`) — SessionEnd restores the name, and SessionStart brings a
  * resumed session's label back, its matcher having Claude Code fire it on
- * `claude --resume` alone — and Ledger's own (`workflows`), where
+ * `claude --resume` alone — and Ledger's own (`ledger`), where
  * SessionEnd sweeps the heartbeats and records the conversation's
  * transcript, and PreToolUse runs the layout hook before every write, the
  * brief hook before every dispatch and the shell hook before every shell
  * command. A group with no command wanted is never written.
- * @param {{session: boolean, workflows: boolean}} want
+ * @param {{session: boolean, ledger: boolean}} want
  * @returns {WantedGroup[]}
  */
-function wantedGroups({ session, workflows }) {
+function wantedGroups({ session, ledger }) {
   /** @param {(string|false)[]} candidates */
   const on = (candidates) => candidates.filter(/** @returns {c is string} */ (c) => typeof c === 'string');
   return [
-    { event: 'SessionEnd', commands: on([session && SESSION_CLEANUP_COMMAND, workflows && PRESENCE_CLEANUP_COMMAND, workflows && CONVERSATION_END_COMMAND]) },
+    { event: 'SessionEnd', commands: on([session && SESSION_CLEANUP_COMMAND, ledger && PRESENCE_CLEANUP_COMMAND, ledger && CONVERSATION_END_COMMAND]) },
     { event: 'SessionStart', matcher: 'resume', commands: on([session && SESSION_RESUME_COMMAND]) },
-    { event: 'PreToolUse', matcher: LAYOUT_HOOK_TOOLS.join('|'), commands: on([workflows && LAYOUT_GUARD_COMMAND]) },
-    { event: 'PreToolUse', matcher: BRIEF_HOOK_TOOLS.join('|'), commands: on([workflows && BRIEF_GUARD_COMMAND]) },
-    { event: 'PreToolUse', matcher: SHELL_HOOK_TOOLS.join('|'), commands: on([workflows && SHELL_GUARD_COMMAND]) },
+    { event: 'PreToolUse', matcher: LAYOUT_HOOK_TOOLS.join('|'), commands: on([ledger && LAYOUT_GUARD_COMMAND]) },
+    { event: 'PreToolUse', matcher: BRIEF_HOOK_TOOLS.join('|'), commands: on([ledger && BRIEF_GUARD_COMMAND]) },
+    { event: 'PreToolUse', matcher: SHELL_HOOK_TOOLS.join('|'), commands: on([ledger && SHELL_GUARD_COMMAND]) },
   ];
 }
 
 /**
  * The wanted groups gathered by event, in the table's order.
- * @param {{session: boolean, workflows: boolean}} want
+ * @param {{session: boolean, ledger: boolean}} want
  * @returns {Map<string, WantedGroup[]>}
  */
 function wantedByEvent(want) {
@@ -243,14 +243,14 @@ function currentCommands(groups, commands) {
 /**
  * A settings document with the session hooks as wanted: SessionEnd carries
  * `session cleanup` iff `session`, and `presence cleanup` and `conversation
- * end` iff `workflows`; SessionStart carries `session resume` iff `session`;
+ * end` iff `ledger`; SessionStart carries `session resume` iff `session`;
  * PreToolUse carries `layout guard`, `brief guard` and `shell guard`, each
- * in its own group, iff `workflows` — each event reconciled on its own,
+ * in its own group, iff `ledger` — each event reconciled on its own,
  * every other key (permissions, other events, foreign groups and their
  * matchers) preserved, an event emptied by a removal gone. Null where the
  * document already carries exactly those, each running the command the
  * sync writes.
- * @param {Record<string, any>} settings @param {{session: boolean, workflows: boolean}} want
+ * @param {Record<string, any>} settings @param {{session: boolean, ledger: boolean}} want
  * @returns {Record<string, any>|null}
  */
 function withSessionHooks(settings, want) {
@@ -275,7 +275,7 @@ function withSessionHooks(settings, want) {
  * What the project's settings file reads with the session hooks as wanted,
  * made from `text` — its committed content, null where there is none; null
  * where `text` already carries exactly those, or does not parse.
- * @param {string|null} text @param {{session: boolean, workflows: boolean}} want
+ * @param {string|null} text @param {{session: boolean, ledger: boolean}} want
  * @returns {string|null}
  */
 function sessionHooksText(text, want) {
@@ -292,7 +292,7 @@ function sessionHooksText(text, want) {
  * writes them. A settings file that does not parse is left untouched and
  * reported rather than thrown: neither caller may fail over hook plumbing it
  * cannot read.
- * @param {string} cwd @param {{session: boolean, workflows: boolean}} want
+ * @param {string} cwd @param {{session: boolean, ledger: boolean}} want
  * @returns {import('./settings.cjs').SettingsSync}
  */
 function syncSessionHooks(cwd, want) {
@@ -310,7 +310,7 @@ function syncSessionHooks(cwd, want) {
 /**
  * Commit Ledger's own change to the session hooks — this call's
  * write, or one an earlier call could not commit (`commitOwnChange`).
- * @param {string} cwd @param {{session: boolean, workflows: boolean}} want
+ * @param {string} cwd @param {{session: boolean, ledger: boolean}} want
  * @param {string} message @param {string} failure the warning's lead where git refuses @param {string[]} warnings
  */
 function commitSessionHooks(cwd, want, message, failure, warnings) {
@@ -333,7 +333,7 @@ function recordLabelChoice(cwd, value) {
   setLabelConfig(cwd, value);
   /** @type {string[]} */
   const warnings = [];
-  const want = { session: value, workflows: true };
+  const want = { session: value, ledger: true };
   const sync = withProjectLock(cwd, () => syncSessionHooks(cwd, want));
   if (sync.error) warnings.push(`session hooks not synced: ${sync.error}`);
   if (sync.waiting) warnings.push(`session hooks not written: ${sync.waiting} is in progress in the code tree — the next boot writes them`);

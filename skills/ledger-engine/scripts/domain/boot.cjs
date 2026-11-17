@@ -767,7 +767,7 @@ function syncMigrationHooks(cwd, warnings) {
  */
 function installSessionHooks(cwd, commit, warnings) {
   const { want, sync } = withProjectLock(cwd, () => {
-    const wanted = { session: resolveEnabled(cwd) === true, workflows: true };
+    const wanted = { session: resolveEnabled(cwd) === true, ledger: true };
     return { want: wanted, sync: syncSessionHooks(cwd, wanted) };
   });
   if (sync.error) warnings.push(`session hooks not installed: ${sync.error}`);

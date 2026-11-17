@@ -313,7 +313,7 @@ describe('lost state (4.4.5, 4.S9, 4.S32)', () => {
     assert.strictEqual(res.brownfield_offer, 'none');
     assert.strictEqual(res.brownfield_signal.commits_before, res.brownfield_signal.commits_total);
     assert.deepStrictEqual(res.brownfield_signal.history_before, ['2025-03-01  the app', '2025-03-01  set up']);
-    assert.notStrictEqual(res.brownfield_signal.workflows_date, null);
+    assert.notStrictEqual(res.brownfield_signal.ledger_date, null);
     assert.strictEqual(boot(main).state, 'ready', 'started again once: the next boot finds the state in place');
   });
 

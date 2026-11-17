@@ -30,7 +30,7 @@ import type { Views } from './views/index.ts'
 export const PANE = 'board'
 
 /** Its tab's title in Claude Code's tab row, beside sitrep's. */
-export const TITLE = 'workflows'
+export const TITLE = 'ledger'
 
 /** The width and height it asks for. */
 export const SIZE = { columns: 60, rows: 28 }

@@ -148,7 +148,7 @@ describe('the brownfield signal across the project\'s repos', () => {
     commitOn(dir, 'built on the workflows', '2025-11-01');
 
     assert.deepStrictEqual(brownfieldSignal(dir), {
-      root_date: '2025-01-15', workflows_date: '2025-09-01', commits_total: 5, commits_before: 3,
+      root_date: '2025-01-15', ledger_date: '2025-09-01', commits_total: 5, commits_before: 3,
       history_before: ['2025-01-15  api: the first endpoints', '2025-03-01  initial', '2025-05-01  api: billing'],
       files_at_arrival: 5, tree_at_arrival: ['api/ (3)', '.gitignore', 'README.md'],
     });
@@ -167,7 +167,7 @@ describe('the brownfield signal across the project\'s repos', () => {
     beginState(dir, '2025-06-01');
 
     assert.deepStrictEqual(brownfieldSignal(dir), {
-      root_date: '2025-01-10', workflows_date: '2025-06-01', commits_total: 3, commits_before: 3,
+      root_date: '2025-01-10', ledger_date: '2025-06-01', commits_total: 3, commits_before: 3,
       history_before: ['2025-01-10  sdk: the client', '2025-02-01  api: the first endpoints', '2025-03-01  initial'],
       files_at_arrival: 5, tree_at_arrival: ['api/ (2)', '.gitignore', 'README.md', 'vendor/ (1)'],
     });
@@ -186,7 +186,7 @@ describe('the brownfield signal across the project\'s repos', () => {
 
     try {
       assert.deepStrictEqual(brownfieldSignal(dir), {
-        root_date: '2025-03-01', workflows_date: '2025-06-01', commits_total: 1, commits_before: 1,
+        root_date: '2025-03-01', ledger_date: '2025-06-01', commits_total: 1, commits_before: 1,
         history_before: ['2025-03-01  initial'],
         files_at_arrival: 4, tree_at_arrival: ['api/ (2)', '.gitignore', 'README.md'],
       });
@@ -248,7 +248,7 @@ describe('the brownfield signal of a project inside a larger repository', () => 
     commitOn('web: built on the workflows', '2025-06-01');
 
     assert.deepStrictEqual(brownfieldSignal(project), {
-      root_date: '2025-02-01', workflows_date: '2025-04-01', commits_total: 2, commits_before: 1,
+      root_date: '2025-02-01', ledger_date: '2025-04-01', commits_total: 2, commits_before: 1,
       history_before: ['2025-02-01  web: the app'],
       files_at_arrival: 1, tree_at_arrival: ['src/ (1)'],
     });
