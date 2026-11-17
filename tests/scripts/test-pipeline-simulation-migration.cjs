@@ -11,7 +11,10 @@
 // link the old state's own, and the oracle's: its state, and the trust log
 // of the system config folder the migration ran under, which starts empty,
 // learning no call of the decisions the records carried (`given:
-// carried`).
+// carried`). Then the build of the migrated feature finds its code built
+// otherwise than two of those decisions (21.6.5): each a finding relying on
+// its decision, saying where the code shows it; the one the work turns on
+// raised as the decision's replacement, the person keeping it.
 //
 // Layer: simulation. World: the project migrated whole (migration-sequence-
 // world.cjs), made ready for a sim once per process and copied for each
@@ -32,6 +35,8 @@ const { Sim, readyForSim, startMenu } = require('./pipeline-world.cjs');
 const { auditState, auditTrust } = require('./pipeline-oracle.cjs');
 const { audit } = require('./migration-audit.cjs');
 const { git } = require('./engine-harness.cjs');
+const { leaningCall } = require('./ledger-world.cjs');
+const { labelAnswers } = require('./labels.cjs');
 const { TRUST_LOG } = require('../../skills/ledger-engine/scripts/domain/trust-log.cjs');
 
 /** @type {ReturnType<typeof migratedProject>} */
@@ -62,5 +67,35 @@ describe('pipeline simulation: the whole migration', () => {
 
     assert.strictEqual(sim.run(['boot']).go, 'menu');
     assert.deepStrictEqual(startMenu(sim).map(({ head }) => head).filter((head) => head.startsWith('Continue')), ['Continue feature: Memo', 'Continue epic: Gateway']);
+  });
+
+  it('21.6.5: the build finds the code built otherwise than two decisions carried over, recording each as a finding relying on it, citing the code — one the work goes on past, nothing asked; the other the work turns on, raised as its replacement, the person\'s keep leaving it standing', async () => {
+    sim.run(['boot']);
+    const carried = (/** @type {string} */ text) => JSON.parse(sim.read(['ledger', 'record', 'memo', 'memo'])).decisions.find((/** @type {{text: string}} */ d) => d.text === text).id;
+    const [oneLine, byLink] = [carried('One line.'), carried('By link.')];
+    const found = (/** @type {string} */ decision, /** @type {string} */ text, /** @type {string} */ how) => sim.run(['ledger', 'find', 'memo.implementation', '--relies-on', decision], null,
+      JSON.stringify({ text, how, known: 'read', by: 'claude', who_moved_whom: 'none' })).id;
+    const lines = () => fs.readFileSync(path.join(sim.dir, '.ledger/.ledger.jsonl'), 'utf8').trim().split('\n').map((line) => JSON.parse(line));
+
+    found(oneLine, 'A memo takes up to three lines.', 'read in src/memo.js, MAX_LINES');
+    assert.deepStrictEqual(JSON.parse(sim.read(['raise', 'waiting', 'memo'])).waiting, [], 'a finding the work goes on past asks nothing');
+
+    const byCode = found(byLink, 'A memo is shared by a code, not a link.', 'read in src/share.js, shareMemo');
+    const question = 'Is a memo shared by link or by code?';
+    sim.env = { ...sim.env, CLAUDE_STUB_ANSWERS: JSON.stringify({ [question]: labelAnswers('behaviour'), '': 'no-login' }) };
+    const raised = await sim.runAsync(['raise', 'memo.implementation', '--replaces', byLink, '--reason', 'new-fact', '--cause', byCode], null,
+      JSON.stringify({ ...leaningCall('By code, as built.', 'By link, as decided.'), question }));
+    assert.deepStrictEqual([raised.decision, raised.parked], ['ask', 'Q1']);
+    const drawn = sim.run(['raise', 'draw', 'memo', 'Q1']);
+    sim.run(['raise', 'answer', drawn.raise, '--pick', 'keep'], null, JSON.stringify({ why: 'Links are what the spec promised.' }));
+
+    const findings = lines().filter((e) => e.event === 'found' && e.unit === 'memo');
+    const decided = (/** @type {string} */ text) => lines().find((e) => e.event === 'decided' && e.text === text).id;
+    assert.deepStrictEqual(findings.map((e) => [e.phase, e.relies_on, e.how]), [
+      ['implementation', [decided('One line.')], 'read in src/memo.js, MAX_LINES'],
+      ['implementation', [decided('By link.')], 'read in src/share.js, shareMemo'],
+    ], 'each finding relies on the decision it is about, saying where the code shows it');
+    assert.strictEqual(lines().at(-1).event, 'kept');
+    assert.deepStrictEqual([carried('One line.'), carried('By link.')], [oneLine, byLink], 'both decisions still stand');
   });
 });
