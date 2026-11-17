@@ -64,7 +64,7 @@ describe('inbox close (18.6.4, 18.6.6)', () => {
     assert.deepStrictEqual(res, { ok: true, closed: [archived('loop')], unit: null, committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim() });
     assert.deepStrictEqual([fs.existsSync(live('loop')), fs.existsSync(archived('loop'))], [false, true]);
     assert.deepStrictEqual(record(), { 'bugs/2026-06-01--the-login-loops.md': { unit: null, at: AT } });
-    assert.deepStrictEqual([lastMessage(dir), touched(statePath(dir), 'HEAD')], ['workflow(inbox): close the-login-loops', [
+    assert.deepStrictEqual([lastMessage(dir), touched(statePath(dir), 'HEAD')], ['ledger(inbox): close the-login-loops', [
       `A\t${layout.archived('bugs', '2026-06-01--the-login-loops.md')}`, `D\t${ITEMS.loop}`, `M\t${layout.projectManifest}`,
     ]]);
   });
@@ -73,7 +73,7 @@ describe('inbox close (18.6.4, 18.6.6)', () => {
     inbox(['close', 'none', live('loop')]);
     const res = inbox(['close', UNIT, live('phone'), live('button')]);
 
-    assert.deepStrictEqual([res.closed, res.unit, lastMessage(dir)], [[archived('phone'), archived('button')], UNIT, `workflow(inbox): close 2 items, resolved by ${UNIT}`]);
+    assert.deepStrictEqual([res.closed, res.unit, lastMessage(dir)], [[archived('phone'), archived('button')], UNIT, `ledger(inbox): close 2 items, resolved by ${UNIT}`]);
     assert.deepStrictEqual(record(), {
       'bugs/2026-06-01--the-login-loops.md': { unit: null, at: AT },
       'ideas/2026-06-02--pay-by-phone.md': { unit: UNIT, at: AT },

@@ -498,7 +498,7 @@ function absorbWorkUnit(cwd, feature, { into, topic, summary, description }) {
     purgeWorkUnitCache(cwd, feature);
     carryMarks(root, feature, into, warnings);
     const paths = [feature, into, 'manifest.json'];
-    const message = `workflow(${feature}): absorb into ${into}`;
+    const message = `ledger(${feature}): absorb into ${into}`;
     const outcome = moved.carried ? commitLedger(cwd, message, warnings, paths) : commitStateTail(cwd, paths, message, warnings);
 
     /** @type {WorkUnitAbsorbResult} */

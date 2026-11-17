@@ -411,7 +411,7 @@ function moveYes(cwd, staged) {
 
     reindexWorkUnit(cwd, unit, warnings, { clearFirst: true });
     const paths = [unit, PROJECT_MANIFEST_SPEC, ...store];
-    const message = `workflow(${unit}): move ${from} to ${to}`;
+    const message = `ledger(${unit}): move ${from} to ${to}`;
     const outcome = lines.ids.length > 0 ? commitLedger(cwd, message, warnings, paths) : commitStateTail(cwd, paths, message, warnings);
     /** @type {Record<string, unknown>} */
     const result = {

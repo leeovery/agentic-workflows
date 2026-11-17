@@ -244,7 +244,7 @@ describe('engine commit --state: the files only the engine writes, the unit\'s a
     projectChanged(dir);
     for (const [file, text] of Object.entries(PEERS)) writeState(dir, file, text);
 
-    const res = ok(dir, ['commit', 'payments', '--state', '-m', 'workflow(payments): retry the commit']);
+    const res = ok(dir, ['commit', 'payments', '--state', '-m', 'ledger(payments): retry the commit']);
 
     assert.match(res.committed, /^[0-9a-f]+$/);
     assert.deepStrictEqual(headFiles(dir).sort(), [layout.projectManifest, layout.manifest('payments'), layout.run('payments', '1.S1', '001'), layout.brief('payments', 'topic-b')].sort());
@@ -282,7 +282,7 @@ describe('engine commit --state: the files only the engine writes, the unit\'s a
 
   it('never beats — a retry is not a session sitting in a topic', () => {
     writeState(dir, layout.manifest('payments'), JSON.stringify(epicManifest(), null, 2) + '\n\n');
-    ok(dir, ['commit', 'payments', '--state', '-m', 'workflow(payments): retry the commit']);
+    ok(dir, ['commit', 'payments', '--state', '-m', 'ledger(payments): retry the commit']);
     assert.ok(!fs.existsSync(statePath(dir, layout.cache('payments'))), 'no heartbeat anywhere');
   });
 });

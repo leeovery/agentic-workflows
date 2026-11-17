@@ -149,7 +149,7 @@ describe('the yes: a quick-fix moved (19.S24, 19.5.16)', () => {
       'the fix\'s record goes with its close, so no summary is left to set aside',
     );
     assert.deepStrictEqual(chunkTypes(QF), ['feature']);
-    assert.deepStrictEqual(stateGit(dir, ['log', '-2', '--format=%s']).trim().split('\n'), [`workflow(${QF}): move quick-fix to feature`, `task(${QF}): close 1.1`]);
+    assert.deepStrictEqual(stateGit(dir, ['log', '-2', '--format=%s']).trim().split('\n'), [`ledger(${QF}): move quick-fix to feature`, `task(${QF}): close 1.1`]);
     assert.deepStrictEqual([fs.existsSync(statePath(dir, STAGED)), stateGit(dir, ['status', '--porcelain'])], [false, '']);
     assert.deepStrictEqual(unitHistory(dir, QF).slice(0, 1).map(({ kind, detail }) => [kind, detail]), [['moved', 'feature']]);
     assert.deepStrictEqual(ok(dir, ['ledger', 'product', QF, QF], { env: env() }).discovery.map((e) => [e.text, e.unit, e.topic, e.phase]), [['The flag is spelt three ways.', QF, null, 'discovery']],

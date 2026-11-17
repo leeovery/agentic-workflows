@@ -55,7 +55,7 @@ check `$?` instead. This has produced a falsely-green report before.
 ## After changing the knowledge base
 
 The knowledge base is engine code — its mechanism in
-`skills/ledger-engine/scripts/kernel/knowledge/`, its workflow side in
+`skills/ledger-engine/scripts/kernel/knowledge/`, its domain side in
 `skills/ledger-engine/scripts/domain/knowledge/`. The kernel holds the
 store's file format, the tokenizer and stemmer, ranking, chunking,
 excerpts and outlines, the embedding providers and the config; the domain

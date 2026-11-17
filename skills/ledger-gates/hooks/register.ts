@@ -779,7 +779,7 @@ export const register: Register = on => {
 
   /**
    * Whether the clear under way is this module's own, for a handoff: the
-   * conversation it leads into runs Ledger by construction, so the
+   * conversation it leads into runs Ledger by construction, so
    * Ledger's harness stays on through it.
    */
   let isClearingForHandoff = false

@@ -43,17 +43,16 @@ const LOOK_BACK = 60;
 /**
  * The moments the board shows, by the subject's scope — any phase's for a
  * start — and what follows the unit in it; a topic and a detail where the
- * subject names them. The `workflow` scope keeps its old word: the state's
- * history holds it, and git history is never rewritten.
+ * subject names them.
  * @type {readonly {kind: string, scope: string|readonly string[], said: RegExp}[]}
  */
 const MOMENTS = Object.freeze([
   { kind: 'created', scope: 'discovery', said: /^(?:create work unit|start this work) \((?<detail>[^)]+)\)$/ },
   { kind: 'map-approved', scope: 'discovery', said: /^approve the map — (?<detail>.+)$/ },
-  { kind: 'postponed', scope: 'workflow', said: /^postpone (?<topic>\S+) → (?<detail>.+)$/ },
-  { kind: 'cancelled', scope: 'workflow', said: /^cancel (?<topic>\S+) \(discovery\)$/ },
-  { kind: 'reactivated', scope: 'workflow', said: /^reactivate (?<topic>\S+) \(discovery\)$/ },
-  { kind: 'moved', scope: 'workflow', said: /^move \S+ to (?<detail>\S+)$/ },
+  { kind: 'postponed', scope: 'ledger', said: /^postpone (?<topic>\S+) → (?<detail>.+)$/ },
+  { kind: 'cancelled', scope: 'ledger', said: /^cancel (?<topic>\S+) \(discovery\)$/ },
+  { kind: 'reactivated', scope: 'ledger', said: /^reactivate (?<topic>\S+) \(discovery\)$/ },
+  { kind: 'moved', scope: 'ledger', said: /^move \S+ to (?<detail>\S+)$/ },
   { kind: 'sent', scope: 'mail', said: /^send (?<detail>\S+) to (?<topic>\S+)$/ },
   { kind: 'answered', scope: 'mail', said: /^(?<topic>\S+) answered (?<detail>\S+)$/ },
   { kind: 'spec-landed', scope: 'spec', said: /^landed$/ },

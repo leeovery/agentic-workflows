@@ -134,7 +134,7 @@ describe('engine topic cancel — the discovery unit', () => {
     });
     assert.deepStrictEqual(readManifest(dir, 'payments').phases.discovery.items['data-export'],
       { source: 'discovery', cancelled: true, previous_order: 1 });
-    assert.strictEqual(lastMessage(dir), 'workflow(payments): cancel data-export (discovery)');
+    assert.strictEqual(lastMessage(dir), 'ledger(payments): cancel data-export (discovery)');
     assert.strictEqual(sections, '', 'transactions answer with pure JSON');
     assert.match(render(dir, ['topic-receipt', 'payments.discovery.data-export', '--verb', 'cancel']),
       /DISPLAY: confirmation[\s\S]*Cancelled "Data Export"\.\n/);
@@ -156,7 +156,7 @@ describe('engine topic cancel — the discovery unit', () => {
     assert.strictEqual(series.experiments['E1.1'].reason, 'topic cancelled');
     assert.deepStrictEqual(m.phases.discovery.items['auth-flow'],
       { source: 'discovery', cancelled: true, previous_order: 2 });
-    assert.strictEqual(lastMessage(dir), 'workflow(payments): cancel auth-flow (discovery)');
+    assert.strictEqual(lastMessage(dir), 'ledger(payments): cancel auth-flow (discovery)');
     assert.match(render(dir, ['topic-receipt', 'payments.discovery.auth-flow', '--verb', 'cancel']),
       /Cancelled "Auth Flow"\./);
   });
@@ -234,7 +234,7 @@ describe('engine topic reactivate', () => {
     });
     assert.deepStrictEqual(readManifest(dir, 'payments').phases.discovery.items['data-export'],
       { source: 'discovery', order: 1 });
-    assert.strictEqual(lastMessage(dir), 'workflow(payments): reactivate data-export (discovery)');
+    assert.strictEqual(lastMessage(dir), 'ledger(payments): reactivate data-export (discovery)');
     assert.match(render(dir, ['topic-receipt', 'payments.discovery.data-export', '--verb', 'reactivate']),
       /Reactivated "Data Export"\.\n/);
   });
@@ -250,7 +250,7 @@ describe('engine topic reactivate', () => {
     assert.deepStrictEqual(m.phases.discussion.items['auth-flow'], { status: 'in-progress' });
     assert.deepStrictEqual(m.phases.discovery.items['auth-flow'], { source: 'discovery', order: 2 });
     assert.strictEqual(m.phases.experiment.items['auth-flow'].experiments.E1.status, 'abandoned', 'the abandoned records stand on the register');
-    assert.strictEqual(lastMessage(dir), 'workflow(payments): reactivate auth-flow (discovery)');
+    assert.strictEqual(lastMessage(dir), 'ledger(payments): reactivate auth-flow (discovery)');
     assert.match(render(dir, ['topic-receipt', 'payments.discovery.auth-flow', '--verb', 'reactivate']),
       /Reactivated "Auth Flow"\. Restored discussion \[in-progress\]\./);
   });
@@ -475,7 +475,7 @@ describe('work-unit completion — finish\'s, in process', () => {
 
   it('sets status completed, stamps completed_at today, commits with the given message', () => {
     writeFile(dir, 'unrelated.txt', 'outside the scope\n');
-    const res = completeUnit(dir, 'auth-flow', 'workflow(auth-flow): complete feature pipeline');
+    const res = completeUnit(dir, 'auth-flow', 'ledger(auth-flow): complete feature pipeline');
 
     const today = new Date().toISOString().slice(0, 10);
     assert.strictEqual(res.work_unit, 'auth-flow');
@@ -488,7 +488,7 @@ describe('work-unit completion — finish\'s, in process', () => {
     const m = readManifest(dir, 'auth-flow');
     assert.strictEqual(m.status, 'completed');
     assert.strictEqual(m.completed_at, today);
-    assert.strictEqual(lastMessage(dir), 'workflow(auth-flow): complete feature pipeline');
+    assert.strictEqual(lastMessage(dir), 'ledger(auth-flow): complete feature pipeline');
     // Scoped: the unrelated file stays uncommitted.
     assert.match(git(dir, ['status', '--porcelain']), /\?\? unrelated\.txt/);
     assert.strictEqual(res.work_type, 'feature');
@@ -499,7 +499,7 @@ describe('work-unit completion — finish\'s, in process', () => {
   it('purges the work unit\'s scratch cache on complete, the old cache\'s reports the migration copied into its earlier/ with it — untracked scratch leaves no dirt', () => {
     writeFile(dir, '.ledger/.cache/auth-flow/discussion/auth-flow/review-1.md', 'scratch\n');
     writeFile(dir, '.ledger/.cache/auth-flow/earlier/discussion/auth-flow/review-001.md', 'an old report\n');
-    completeUnit(dir, 'auth-flow', 'workflow(auth-flow): complete feature pipeline');
+    completeUnit(dir, 'auth-flow', 'ledger(auth-flow): complete feature pipeline');
     assert.strictEqual(fs.existsSync(path.join(dir, '.ledger/.cache/auth-flow')), false, 'cache dir removed');
     assert.strictEqual(git(dir, ['status', '--porcelain']).trim() + stateGit(dir, ['status', '--porcelain']).trim(), '', 'no stray dirt');
   });
@@ -525,7 +525,7 @@ describe('work-unit completion — finish\'s, in process', () => {
     assert.throws(() => completeUnit(dir, 'auth-flow', 'msg'), /is cancelled — reactivate it first/);
 
     engine(dir, ['workunit', 'reactivate', 'auth-flow']);
-    completeUnit(dir, 'auth-flow', 'workflow(auth-flow): mark as completed');
+    completeUnit(dir, 'auth-flow', 'ledger(auth-flow): mark as completed');
     assert.throws(() => completeUnit(dir, 'auth-flow', 'again'), /already completed/);
   });
 
@@ -566,7 +566,7 @@ describe('engine workunit cancel', () => {
     const m = readManifest(dir, 'auth-flow');
     assert.strictEqual(m.status, 'cancelled');
     assert.strictEqual(m.completed_at, undefined);
-    assert.strictEqual(lastMessage(dir), 'workflow(auth-flow): mark as cancelled');
+    assert.strictEqual(lastMessage(dir), 'ledger(auth-flow): mark as cancelled');
     assert.strictEqual(sections, '', 'transactions answer with pure JSON');
     // Receipt: warning above confirmation, fetched from the cancelled state.
     // Conventions-form callout: 2-space flag, 4-space continuation.
@@ -580,7 +580,7 @@ describe('engine workunit cancel', () => {
     assert.match(engineFails(dir, ['workunit', 'cancel', 'auth-flow']).error, /already cancelled/);
 
     engine(dir, ['workunit', 'reactivate', 'auth-flow']);
-    completeUnit(dir, 'auth-flow', 'workflow(auth-flow): mark as completed');
+    completeUnit(dir, 'auth-flow', 'ledger(auth-flow): mark as completed');
     assert.strictEqual(
       engineFails(dir, ['workunit', 'cancel', 'auth-flow']).error,
       'work unit "auth-flow" is completed — a finished unit stays finished; a later change is new work');
@@ -622,7 +622,7 @@ describe('engine workunit reactivate', () => {
     // record. The store cannot be loaded, so the pass fails → one warn-don't-block warning.
     assert.strictEqual(res.warnings.length, 1, res.warnings.join('\n'));
     assert.match(res.warnings[0], /^knowledge index failed: loadStore: corrupted store file at /);
-    assert.strictEqual(lastMessage(dir), 'workflow(auth-flow): reactivate work unit');
+    assert.strictEqual(lastMessage(dir), 'ledger(auth-flow): reactivate work unit');
   });
 
   it('epic reactivate re-indexes in one scoped bulk pass — failure is a warning', () => {

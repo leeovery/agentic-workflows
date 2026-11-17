@@ -150,7 +150,7 @@ describe('engine workunit absorb — happy path', () => {
     // project manifest — with the engine-owned message; none in the code tree.
     assert.strictEqual(Number(stateGit(fix.project, ['rev-list', '--count', 'HEAD'])), stateCommits + 1);
     assert.strictEqual(git(fix.project, ['rev-parse', 'HEAD']), codeHead);
-    assert.strictEqual(stateGit(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'workflow(auth-flow): absorb into payments');
+    assert.strictEqual(stateGit(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'ledger(auth-flow): absorb into payments');
     const staged = stateGit(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
     assert.ok(staged.includes('auth-flow/manifest.json'), 'feature deletion staged');
     assert.ok(staged.includes('payments/topics/auth/log.md'), 'epic addition staged');

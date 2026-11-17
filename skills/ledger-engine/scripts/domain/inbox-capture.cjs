@@ -63,7 +63,7 @@ function captureItem(cwd, kind, text, project) {
     fs.writeFileSync(path.join(root, rel), `${text.replace(/\n*$/, '')}\n`);
     /** @type {string[]} */
     const warnings = [];
-    const outcome = commitStateTail(at, [rel], `workflow(inbox): capture ${path.posix.basename(rel, '.md').replace(/^\d{4}-\d{2}-\d{2}--/, '')}`, warnings);
+    const outcome = commitStateTail(at, [rel], `ledger(inbox): capture ${path.posix.basename(rel, '.md').replace(/^\d{4}-\d{2}-\d{2}--/, '')}`, warnings);
     /** @type {Captured['response']} */
     const response = { captured: path.join(root, rel), committed: outcome.committed };
     if (warnings.length > 0) response.warnings = warnings;

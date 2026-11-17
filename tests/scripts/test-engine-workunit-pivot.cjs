@@ -155,7 +155,7 @@ describe('engine workunit pivot — happy path', () => {
 
     // One state commit, engine-owned message, scoped to the two manifests;
     // the default branch takes none.
-    assert.strictEqual(stateGit(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'workflow(auth-flow): pivot to epic');
+    assert.strictEqual(stateGit(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'ledger(auth-flow): pivot to epic');
     assert.strictEqual(stateGit(fix.project, ['log', '-1', '--skip=1', '--pretty=%s']).trim(), 'init');
     const staged = stateGit(fix.project, ['show', '--name-only', '--pretty=format:', 'HEAD']).trim().split('\n');
     assert.deepStrictEqual(staged.sort(), ['auth-flow/manifest.json', 'manifest.json']);

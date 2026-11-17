@@ -39,7 +39,7 @@ const isNotes = (value: unknown): value is Notes =>
  * the engine has marked the conversation as one that runs Ledger;
  * null for any other.
  */
-async function ledgerFolder($: EngineInterface): Promise<string | null> {
+async function markedFolder($: EngineInterface): Promise<string | null> {
   if ((await $.env.get('LEDGER_GATE_SURFACE')) !== '1') {
     return null
   }
@@ -120,7 +120,7 @@ export function compaction(on: On) {
       return next(e)
     }
 
-    const folder = await ledgerFolder($)
+    const folder = await markedFolder($)
     const carryOn = folder === null ? null : await positionNow($)
 
     if (folder === null || carryOn === null || carryOn.skill === null) {

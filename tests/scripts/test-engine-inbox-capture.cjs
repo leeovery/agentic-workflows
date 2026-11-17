@@ -53,7 +53,7 @@ describe('inbox capture (18.6.1, 18.6.2)', () => {
     assert.deepStrictEqual(res, { ok: true, captured: path.join(root, rel), committed: git(root, ['rev-parse', '--short', 'HEAD']).trim() });
     assert.strictEqual(fs.readFileSync(path.join(root, rel), 'utf8'), BUG);
     assert.deepStrictEqual([git(root, ['log', '-1', '--format=%s']).trim(), touched(root, 'HEAD'), git(root, ['status', '--porcelain', '--untracked-files=all'])],
-      ['workflow(inbox): capture the-login-loops', [`A\t${rel}`], `?? ${aside}\n`]);
+      ['ledger(inbox): capture the-login-loops', [`A\t${rel}`], `?? ${aside}\n`]);
     assert.strictEqual(remoteTip(bare), tip(root, 'HEAD'));
     assert.strictEqual(line(sections), 'Logged bug: "The Login Loops"\n');
   });
@@ -98,7 +98,7 @@ describe('inbox capture from elsewhere (18.6.3, 18.6.8)', () => {
     const { res } = captured(linked, ['bug'], BUG);
 
     assert.strictEqual(res.captured, path.join(root, layout.inbox('bugs', `${TODAY}--the-login-loops.md`)));
-    assert.strictEqual(git(root, ['log', '-1', '--format=%s', 'ledger-state']).trim(), 'workflow(inbox): capture the-login-loops');
+    assert.strictEqual(git(root, ['log', '-1', '--format=%s', 'ledger-state']).trim(), 'ledger(inbox): capture the-login-loops');
     assert.deepStrictEqual([fs.existsSync(path.join(linked, '.ledger')), git(linked, ['status', '--porcelain'])], [false, '']);
   });
 
@@ -123,7 +123,7 @@ describe('inbox capture from elsewhere (18.6.3, 18.6.8)', () => {
     const [own, another] = [[], ['--project', there]].map((project) => captured(here, ['bug', ...project], BUG).res.note);
     for (const lock of locks) fs.unlinkSync(lock);
     const [, retry, from] = /^commit pending — state saved; retry with: engine commit (--inbox) -m "<message>", run from (.+)$/.exec(another) ?? [];
-    const retried = ok(from, ['commit', retry, '-m', 'workflow(inbox): capture the-login-loops']);
+    const retried = ok(from, ['commit', retry, '-m', 'ledger(inbox): capture the-login-loops']);
 
     assert.strictEqual(own, 'commit pending — state saved; retry with: engine commit --inbox -m "<message>"');
     assert.deepStrictEqual([from, retried.committed, touched(theirs, 'HEAD')], [there, git(theirs, ['rev-parse', '--short', 'HEAD']).trim(), [`A\t${layout.inbox('bugs', `${TODAY}--the-login-loops.md`)}`]]);

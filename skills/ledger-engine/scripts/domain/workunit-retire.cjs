@@ -212,7 +212,7 @@ function retireWorkUnit(cwd, unit) {
       const rewritten = deregister(cwd, unit);
       purgeWorkUnitCache(cwd, unit);
       const paths = [unit, keptAt(unit), legacyKeptAt(unit), PROJECT_MANIFEST_SPEC, ...relinked, ...new Set(promoted.map(({ work_unit: epic }) => epic))];
-      const message = `workflow(${unit}): retire to the product's assets`;
+      const message = `ledger(${unit}): retire to the product's assets`;
       const outcome = carried > 0 ? commitLedger(cwd, message, warnings, paths) : commitStateTail(cwd, paths, message, warnings);
       refreshLedgerCopies(cwd, warnings, { remove: [{ workUnit: unit }] });
       /** @type {WorkUnitRetireResult} */
