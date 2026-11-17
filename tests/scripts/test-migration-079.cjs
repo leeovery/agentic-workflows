@@ -854,10 +854,17 @@ describe('the directive\'s example record, frozen with 079', () => {
     assert.strictEqual(unfinished()['fumi.discussion.licensing'], undefined);
   });
 
-  it('a reversal the session settles: a ruling that changes the record becomes a finding to amend to, one that keeps it takes the finding out — so an empty findings file is only ever a pass', () => {
+  it('a reversal the session settles before the third round: a ruling that changes the record becomes a finding to amend to, one that keeps it takes the finding out; from the third, every finding stays as the verifier wrote it for the settlement — so an empty findings file is only ever a pass', () => {
     const text = fs.readFileSync(DIRECTIVE, 'utf8');
 
-    assert.deepStrictEqual(['Write what settles it, a line naming the point and the source or answer it rests on, into the settled file beside the record', 'Where it has the record change, replace the finding with `Settled: {point}, amend to agree`', 'Where it keeps the record as it stands, take the finding out of the findings file', 'An empty findings file is only ever a pass.'].filter((rule) => !text.includes(rule)), []);
+    assert.deepStrictEqual([
+      'Write what settles it, a line naming the point and the source or answer it rests on, into the settled file beside the record',
+      'Of a round before the third, where it has the record change, replace the finding with `Settled: {point}, amend to agree`, and where it keeps the record as it stands, take the finding out of the findings file.',
+      'A finding of the third round or a later one stays in the findings file as the verifier wrote it.',
+      'Then pass the record in the verifier\'s place, every finding of the round on stdin by its number, its list item\'s place in the findings file, one entry naming several settled alike: `{"findings": [{"numbers": [1, 3], "settled", "why"}]}`, `settled` `fixed` or `ruled-out`.',
+      'A finding the session writes itself, a section the check names below among them, always goes to a fresh verifier once the record is amended, never to the settlement, which is refused while the session\'s pass is the last.',
+      'An empty findings file is only ever a pass.',
+    ].filter((rule) => !text.includes(rule)), []);
   });
 
   it('one rule marks a point to raise: the points no source settles alone, every other open question carried unmarked', () => {
@@ -889,7 +896,8 @@ describe('the directive\'s example record, frozen with 079', () => {
       'A file an agent left beside the records, which the check names, is removed.',
       'Once it has returned, settle first each finding it handed back, as below: the verifier\'s brief and the carry are refused while its hand-back file stands. Then, where no `Settled:` finding stands, check the record as the carry would',
       'Settle every handed-back finding before anything else.',
-      'Once every handed-back finding is settled, remove the hand-back file. Then, where a `Settled:` finding stands, a fresh per-topic agent amends the record to answer it, and a fresh verifier reads it again, its brief keeping it as a round — but where the findings settled are the third round\'s or a later one\'s, the session passes the record once it is amended, in the verifier\'s place, each finding of the round on stdin, `{"findings": [{"finding", "settled", "why"}]}`, `settled` `fixed` or `ruled-out`; the round and the session\'s after it are kept with the rounds, and the record goes to the carry as it stands:\n\n```bash\nnode .claude/skills/ledger-engine/scripts/engine.cjs ledger settle {place}\n```',
+      'Once every handed-back finding is settled, remove the hand-back file. Then, where a `Settled:` finding stands, a fresh per-topic agent amends the record to answer it, and a fresh verifier reads it again, its brief keeping it as a round.',
+      'The verifier\'s round and the session\'s after it are kept with the rounds, and the record goes to the carry as it stands:\n\n```bash\nnode .claude/skills/ledger-engine/scripts/engine.cjs ledger settle {place}\n```',
       'Where none stands after a hand-back, the findings left are those the agent answered: check the record, and a fresh verifier reads it next. Where none stands after a reversal, a finding left goes to a fresh per-topic agent, and where none is left, the file empty, the record has passed.',
       '- Nothing for any one entry, but a point the record\'s sources do not\n  settle that a verifier reverses, or that a finding of the third round or\n  a later one raises.',
       'Where that topic\'s rulings set the section aside, write what settles it into its settled file instead, a line naming the section as the topic\'s, and the finding as `Settled: {section}, amend to agree`.',

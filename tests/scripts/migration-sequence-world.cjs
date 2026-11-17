@@ -219,7 +219,7 @@ function settleLate(dir, opts, place) {
   harness.ok(dir, ['brief', 'migration-verifier', '--topic', place, '--directive', RECORDS], opts);
   writeState(dir, findingsPath(unit, topic), '- The format is unnamed yet.\n');
   writeState(dir, checkedPath(unit, topic), entries.map(({ ref }) => `${ref}: see finding\n`).join(''));
-  const settled = { findings: [{ finding: 'The format is unnamed', settled: 'ruled-out', why: 'The log leaves it open, and the record asks it.' }] };
+  const settled = { findings: [{ numbers: [1], settled: 'ruled-out', why: 'The log leaves it open, and the record asks it.' }] };
   assert.strictEqual(harness.ok(dir, ['ledger', 'settle', place], { ...opts, stdin: JSON.stringify(settled) }).round, 4);
 }
 

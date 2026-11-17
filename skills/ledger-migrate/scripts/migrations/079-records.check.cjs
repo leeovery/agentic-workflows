@@ -1035,7 +1035,7 @@ function unitWaits(project, unit) {
   if (!topics.some((topic) => specsOf(project, unit, topic).some(({ approved }) => approved))) return [];
   const unpassed = topics.filter((topic) => carriedOf(project, unit, topic) === null).flatMap((topic) => {
     const said = uncarried(project, unit, topic);
-    return said === PASSED ? [] : [`${unit.name}'s ${topic} ${said}`];
+    return WAITING.includes(said) ? [] : [`${unit.name}'s ${topic} ${said}`];
   });
   if (unpassed.length > 0) return unpassed;
   return uncitedOf(project, unit).map((each) => uncitedProblem(unit, each));
@@ -1046,6 +1046,10 @@ const uncitedProblem = (unit, { path: at, part, section }) => `"${section}" in $
 
 /** A record its verifier has passed, waiting for the carry. */
 const PASSED = 'has passed its verifier, and waits to be carried';
+/** A record the session passed, settling a late round's findings, waiting for the carry. */
+const SETTLED = 'was settled by the session, and waits to be carried';
+/** Where a record waits for the carry alone. */
+const WAITING = [PASSED, SETTLED];
 
 /** The carry, whose guards say what a record its verifier passed still waits on. */
 const CARRY = path.join(__dirname, '..', '..', '..', 'ledger-engine', 'scripts', 'domain', 'ledger-carry.cjs');
@@ -1065,7 +1069,7 @@ function uncarried(project, unit, topic) {
   return handedBack(project.stateDir, unit.name, topic)
     ?? (why === null ? null : `has not passed its verifier — ${why}`)
     ?? unsettledRound(project.stateDir, unit.name, topic, record.map(({ ref }) => String(ref)))
-    ?? PASSED;
+    ?? (settledBySession(project.stateDir, unit.name, topic) ? SETTLED : PASSED);
 }
 
 /**
