@@ -63,7 +63,10 @@
 //     at `projectDir` and git's history of it, the state at `stateDir`, both
 //     absolute — and is mechanical: it calls no model and changes nothing.
 //     The directive's check passes when every piece's does. The engine runs
-//     it (`engine migrate check NNN-{slug}`).
+//     it (`engine migrate check NNN-{slug}`). A directive that agents carry
+//     a piece of names, in its check, `briefed`, the headings of the
+//     sections their briefs draw (`engine brief`), each with what nests
+//     beneath it: what an agent does, never the session's own work.
 //
 //     The runner stops at a directive the record does not hold: it prints
 //     `---DIRECTIVE: NNN-{slug}---` and ends, the migrations before it

@@ -14,7 +14,8 @@
 // product leaves. `oldProject` makes
 // it; `migrateWhole` takes it through the whole sequence as the start skill
 // runs it, boot by boot: the guard and the chain to the records directive,
-// whose work is scripted — each topic's record the fixture's, carried —
+// whose work is scripted — each topic's record the fixture's, checked by
+// the carry's dry run, then carried —
 // then the cut and the merges', scripted too — the cross-cutting unit
 // retired, the feature's phase still to build composed and joined into its
 // cut — then the finish, the review's summary and gate, and the yes's
@@ -207,6 +208,7 @@ function workDirective(dir, env, directive) {
     for (const [place, entries] of Object.entries(RECORDS_COMPOSED)) {
       const [unit, , topic] = place.split('.');
       writeState(dir, composedPath(unit, topic), JSON.stringify({ entries }));
+      assert.deepStrictEqual(harness.ok(dir, ['ledger', 'carry', place, '--dry-run'], opts).faults, [], `${place}'s record keeps the rules`);
       harness.ok(dir, ['ledger', 'carry', place], opts);
     }
   } else {

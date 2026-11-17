@@ -22,23 +22,29 @@
 //   `carried` where the log shows no maker (21.6.5) — beside its `ref`, a
 //   name the record gives it, unique in it; its links by ref, each to an
 //   entry before it: a question's `part_of`, a decision's `answers`, a
-//   question of the record no other decision answers, and any entry's
-//   `relies_on`; a question's or decision's `map_item`, the item of the
-//   topic's old map it carries, and a question's `thread`, the thread of
-//   its research it carries, each a name or, where one entry settles
-//   several, a list of them; an open question's `raise`, `true`, marking a
-//   point no source settles, to raise at the end (21.6.10); and its
-//   `assets`, each `{path, status}`, a file the state holds, linked as it
-//   is canonical or reference. Every entry moves no one; a decision lands
-//   unchecked, for the late one-decision check after the migration, and
-//   unlabelled, its kind and hard-to-undo mark null: no call is made while
-//   the migration runs.
+//   question of the record, which several sibling decisions may answer
+//   (5.3.13), and any entry's `relies_on`; any entry's `map_item`, the item
+//   of the topic's old map it carries, and `thread`, the thread of its
+//   research it carries, each a name or, where one entry carries several, a
+//   list of them; an open question's `raise`, `true`, marking a point no
+//   source settles, to raise at the end (21.6.10), never one a decision of
+//   the record answers, which `raise` refuses; and its `assets`, each
+//   `{path, status}`, a file the state holds, linked as it is canonical or
+//   reference. Every entry moves no one; a decision lands unchecked, for
+//   the late one-decision check after the migration, and unlabelled, its
+//   kind and hard-to-undo mark null: no call is made while the migration
+//   runs.
 // - Kept: the rules the records directive's check holds a topic's record to
-//   (079-records.check.cjs) — its sections cited, its old map, its threads
-//   and its imports, and in discovery no decision and nothing product-wide —
-//   run on the record before a line is written, so a record carried passes
-//   the check and one that would not is refused, nothing carried, to be
-//   composed again.
+//   (079-records.check.cjs) — what keeps the ledger whole, never a judgment
+//   of the record's content — run on the record before a line is written,
+//   so a record carried passes the check and one that would not is
+//   refused, nothing carried, to be amended.
+// - Every fault at once: the record's shape, entry by entry, each check of
+//   an entry run whichever others refuse, and the directive's rules, so one
+//   refusal names everything to mend. `--dry-run` answers the same faults,
+//   none where the carry would take the record, and writes nothing, no
+//   refusal beside the record either: the record's composer runs it before
+//   handing back, and the session before a verifier reads the record.
 // - Once: the whole record is appended in one write, after what it carried
 //   is kept in the state's cache (`.cache/migrate/carried/{unit}/{topic}.json`)
 //   — the record as given, and each entry's ref with the id it was given —
@@ -52,20 +58,14 @@
 //   taking them while 079 can run. The check rests on those two things
 //   alone: the carried file's record, and each of its ids standing as a
 //   line's `id` in the ledger, never another field of a line.
-// - It refuses, carrying nothing: outside the migration; no session; argv
-//   of another shape; a place of another shape, a phase the directive
-//   carries no topic of, a unit the project lacks, a topic with no item in
-//   the phase, a topic promoted. And what the record's composer answers —
-//   no record composed, or a file holding none; an entry of another event,
-//   a ref missing or given twice, a link naming no earlier entry of the
-//   kind it needs, a question answered twice, a point to raise a decision of
-//   the record answers or marked otherwise, a map item or a thread on an
-//   entry that takes none, or of another shape, content its write refuses,
-//   who moved whom given, an asset the state lacks, and a record breaking
-//   the directive's rules, naming each thing it breaks — is written beside
-//   the record
-//   (`.cache/migrate/records/{unit}/{topic}.refused.md`), for the next
-//   per-topic agent's brief, and nothing else.
+// - It refuses, carrying nothing: outside the migration; no session, but on
+//   a dry run, which tags nothing; argv of another shape; a place of
+//   another shape, a phase the directive carries no topic of, a unit the
+//   project lacks, a topic with no item in the phase, one whose item is in
+//   a later phase, a topic promoted. And what the record's composer answers — no record composed, or a file
+//   holding none; and every fault of a record — is written beside the
+//   record (`.cache/migrate/records/{unit}/{topic}.refused.md`), for the
+//   next per-topic agent's brief, and nothing else.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -85,8 +85,9 @@ const { codeRoot } = require('../kernel/code-root.cjs');
 const { directiveOf } = require('./directives.cjs');
 
 const CARRY_VERB = 'carry';
-const CARRY_USAGE = 'ledger carry <work-unit>.<phase>.<topic>   (the topic\'s record as JSON, {"entries": [...]}, composed at .cache/migrate/records/{unit}/{topic}.json in the state)';
+const CARRY_USAGE = 'ledger carry <work-unit>.<phase>.<topic> [--dry-run]   (the topic\'s record as JSON, {"entries": [...]}, composed at .cache/migrate/records/{unit}/{topic}.json in the state)';
 const SAID = 'ledger carry';
+const DRY_RUN = '--dry-run';
 
 /** What the migration carried of each topic, state-relative: `{unit}/{topic}.json` beneath it. */
 const CARRIED = '.cache/migrate/carried';
@@ -101,6 +102,9 @@ const COMPOSED = '.cache/migrate/records';
 /** The write each entry's event is made by. @type {Readonly<Record<string, string>>} */
 const EVENT_WRITES = Object.freeze({ asked: 'ask', found: 'find', decided: 'decide' });
 
+/** The kind of entry each event writes, as the write's own checks name it. @type {Readonly<Record<string, import('./ledger-events.cjs').EntryKind>>} */
+const EVENT_KINDS = Object.freeze({ asked: 'question', found: 'finding', decided: 'decision' });
+
 /** What an entry of a record carries beside its content: its name, its event, its links by name, and what the migration reads. */
 const RECORD_KEYS = Object.freeze(['ref', 'event', 'part_of', 'answers', 'relies_on', 'map_item', 'thread', 'raise', 'assets']);
 
@@ -111,6 +115,10 @@ const ASSET_STATUSES = Object.freeze(['canonical', 'reference']);
 /** An entry of the record as written: its line's fields and id, and what is kept of it. @typedef {{fields: Record<string, unknown>, id: string}} Line */
 
 /** The id an entry of the record was given, by its ref. @typedef {{ref: string, id: string}} Kept */
+
+/** An entry before another, as its links read it: its id, its event, and whether it is marked to raise. @typedef {{id: string, event: string, raised: boolean}} Earlier */
+
+/** The record drawn: its lines, what is kept of each entry, and every fault it holds. @typedef {{lines: Line[], kept: Kept[], faults: string[]}} Drawn */
 
 /** The records directive, whose check holds the rules a record keeps. */
 const RECORDS_DIRECTIVE = '079-records';
@@ -169,10 +177,11 @@ function topicPlace(cwd, dotpath, said, rules = recordsRules()) {
   return { root, unit, phase, topic };
 }
 
-/** The place `args` give, refused for argv of another shape. @param {string[]} args @returns {string} */
-function dotpathOf(args) {
-  if (args.length !== 1 || args[0].startsWith('--')) throw new Error(`Usage: engine ${CARRY_USAGE}`);
-  return args[0];
+/** The place `args` give, and whether the carry is a dry run, refused for argv of another shape. @param {string[]} args @returns {{dotpath: string, dry: boolean}} */
+function argsOf(args) {
+  const dry = args.length === 2 && args[1] === DRY_RUN;
+  if (args.length !== (dry ? 2 : 1) || args[0].startsWith('--')) throw new Error(`Usage: engine ${CARRY_USAGE}`);
+  return { dotpath: args[0], dry };
 }
 
 /**
@@ -200,102 +209,145 @@ const isNamed = (named) => (typeof named === 'string' && named !== '')
 
 /**
  * One link's refs, each naming an entry before it of the kind it needs:
- * their ids, in order.
- * @param {string} said @param {string} field @param {unknown} refs @param {Map<string, {id: string, event: string}>} before @param {string|null} event the event each must be, or null for any
+ * the ids of those that do, in order, a fault said for each that does not.
+ * @param {(text: string) => void} fault @param {string} field @param {unknown} refs
+ * @param {Map<string, Earlier>} before @param {string|null} event the event each must be, or null for any
  * @returns {string[]}
  */
-function linked(said, field, refs, before, event) {
-  if (!Array.isArray(refs) || !refs.every((ref) => typeof ref === 'string')) throw new Error(`${said}: ${field} names entries by their refs`);
-  return refs.map((ref) => {
+function linked(fault, field, refs, before, event) {
+  if (!Array.isArray(refs) || !refs.every((ref) => typeof ref === 'string')) {
+    fault(`${field} names entries by their refs`);
+    return [];
+  }
+  return refs.flatMap((ref) => {
     const named = before.get(ref);
-    const what = event === null ? 'an entry' : 'a question';
-    if (named === undefined || (event !== null && named.event !== event)) throw new Error(`${said}: ${field} names ${ref}, and no entry before it is ${what} of that ref`);
-    return named.id;
+    if (named !== undefined && (event === null || named.event === event)) return [named.id];
+    fault(`${field} names ${ref}, and no entry before it is ${event === null ? 'an entry' : 'a question'} of that ref`);
+    return [];
   });
 }
 
 /**
  * The asset links an entry carries: its `assets`, each a file the state
- * holds and the status it is linked as.
- * @param {string} said @param {Place} place @param {unknown} assets @param {string} entry @param {Record<string, unknown>} tags
+ * holds and the status it is linked as, a fault said for each that is not.
+ * @param {(text: string) => void} fault @param {Place} place @param {unknown} assets @param {string} entry @param {Record<string, unknown>} tags
  * @returns {Line[]}
  */
-function assetLines(said, place, assets, entry, tags) {
+function assetLines(fault, place, assets, entry, tags) {
   if (assets === undefined) return [];
-  if (!Array.isArray(assets)) throw new Error(`${said}: assets is a list of {path, status}`);
-  return assets.map((asset) => {
+  if (!Array.isArray(assets)) {
+    fault('assets is a list of {path, status}');
+    return [];
+  }
+  return assets.flatMap((asset) => {
     if (!isObject(asset) || Object.keys(asset).length !== 2 || typeof asset.path !== 'string' || !ASSET_STATUSES.includes(/** @type {string} */ (asset.status))) {
-      throw new Error(`${said}: an asset is {path, status}, its status ${ASSET_STATUSES.join(' or ')}`);
+      fault(`an asset is {path, status}, its status ${ASSET_STATUSES.join(' or ')}`);
+      return [];
     }
     const plain = asset.path.split('/').every((part) => part !== '' && part !== '.' && part !== '..');
     if (!plain || !fs.statSync(path.join(place.root, asset.path), { throwIfNoEntry: false })?.isFile()) {
-      throw new Error(`${said}: the asset ${asset.path} is no file the state holds — an asset's path is from the state root`);
+      fault(`the asset ${asset.path} is no file the state holds — an asset's path is from the state root`);
+      return [];
     }
-    return { fields: { event: 'asset', ...tags, entry, path: asset.path, status: asset.status, into: null }, id: newId() };
+    return [{ fields: { event: 'asset', ...tags, entry, path: asset.path, status: asset.status, into: null }, id: newId() }];
   });
 }
 
 /**
- * The record's lines, each entry followed by its asset links, and what is
- * kept of each entry, its links resolved to the ids minted for the entries
- * before it.
- * @param {Place} place @param {Record<string, unknown>[]} entries @param {string} session
- * @returns {{lines: Line[], kept: Kept[]}}
+ * What an entry's marks break of their shapes, each a fault said: who moved
+ * whom given, a link its event takes none of, a map item or a thread of
+ * another shape, a raise on no question.
+ * @param {Record<string, unknown>} entry @param {string} event @param {(text: string) => void} fault
  */
-function recordLines(place, entries, session) {
-  /** @type {Map<string, {id: string, event: string, raised: boolean}>} */
-  const before = new Map();
-  const answered = new Set();
-  /** @type {Line[]} */
-  const lines = [];
-  /** @type {Kept[]} */
-  const kept = [];
-  const tags = { unit: place.unit, topic: place.topic, phase: place.phase, session };
-  entries.forEach((entry, at) => {
-    const { ref, event, part_of: partOf, answers, relies_on: reliesOn = [], map_item: mapItem = null, thread = null, raise, assets } = entry;
-    const said = `${SAID}: entry ${typeof ref === 'string' ? ref : at + 1}`;
-    if (typeof ref !== 'string' || ref === '') throw new Error(`${said}: gives no ref, the name the record links it by`);
-    if (before.has(ref)) throw new Error(`${said}: its ref is given twice`);
-    if (typeof event !== 'string' || !Object.hasOwn(EVENT_WRITES, event)) throw new Error(`${said}: its event is none of ${Object.keys(EVENT_WRITES).join(', ')}`);
-    if (Object.hasOwn(entry, 'who_moved_whom')) throw new Error(`${said}: gives who_moved_whom — an entry the migration carries moves no one`);
-    if (partOf !== undefined && event !== 'asked') throw new Error(`${said}: only a question is part of another`);
-    if ((answers === undefined) !== (event !== 'decided')) throw new Error(`${said}: ${event === 'decided' ? 'a decision answers a question of the record' : 'only a decision answers'}`);
-    if (mapItem !== null && (event === 'found' || !isNamed(mapItem))) throw new Error(`${said}: a map item is a question's or a decision's: a name, or a list of names`);
-    if (thread !== null && (event !== 'asked' || !isNamed(thread))) throw new Error(`${said}: a thread is a question's: a name, or a list of names`);
-    if (raise !== undefined && (event !== 'asked' || raise !== true)) throw new Error(`${said}: raise marks a question to raise, true`);
-    const links = {
-      ...(event === 'asked' ? { part_of: partOf === undefined ? null : linked(said, 'part_of', [partOf], before, 'asked')[0] } : {}),
-      ...(event === 'decided' ? { answers: linked(said, 'answers', [answers], before, 'asked')[0] } : {}),
-      relies_on: linked(said, 'relies_on', reliesOn, before, null),
-      task: null,
-    };
-    if (event === 'decided') {
-      if (answered.has(links.answers)) throw new Error(`${said}: answers ${answers}, which another decision of the record answers — a question's current answer is one`);
-      answered.add(links.answers);
-    }
-    const given = Object.fromEntries(Object.entries(entry).filter(([key]) => !RECORD_KEYS.includes(key)));
+function markFaults(entry, event, fault) {
+  if (Object.hasOwn(entry, 'who_moved_whom')) fault('gives who_moved_whom — an entry the migration carries moves no one');
+  if (entry.part_of !== undefined && event !== 'asked') fault('only a question is part of another');
+  if ((entry.answers === undefined) !== (event !== 'decided')) fault(event === 'decided' ? 'a decision answers a question of the record' : 'only a decision answers');
+  if (entry.map_item !== undefined && !isNamed(entry.map_item)) fault('a map item is a name, or a list of names');
+  if (entry.thread !== undefined && !isNamed(entry.thread)) fault('a thread is a name, or a list of names');
+  if (entry.raise !== undefined && (event !== 'asked' || entry.raise !== true)) fault('raise marks a question to raise, true');
+}
+
+/**
+ * An entry's content as its write takes it, or null, the write's refusal
+ * kept as a fault.
+ * @param {string[]} faults @param {string} said @param {string} event @param {Record<string, unknown>} entry
+ * @returns {Record<string, unknown>|null}
+ */
+function entryContent(faults, said, event, entry) {
+  const given = Object.fromEntries(Object.entries(entry).filter(([key]) => !RECORD_KEYS.includes(key)));
+  try {
     const content = contentFields(said, WRITES[EVENT_WRITES[event]], { ...given, who_moved_whom: 'none' }, null);
     checkUnsealed(said, content);
-    checkSaid(said, event === 'decided' ? 'decision' : event === 'found' ? 'finding' : 'question', content);
-    const id = newId();
-    before.set(ref, { id, event, raised: raise === true });
-    lines.push({ fields: { event, ...tags, ...content, ...links, ...(event === 'decided' ? decisionGiven(null, true) : {}) }, id });
-    lines.push(...assetLines(said, place, assets, id, tags));
-    kept.push({ ref, id });
-  });
-  const settled = kept.find(({ ref, id }) => before.get(ref)?.raised === true && answered.has(id));
-  if (settled !== undefined) throw new Error(`${SAID}: entry ${settled.ref}: is marked to raise, and a decision of the record answers it — a point to raise is an open question`);
-  return { lines, kept };
+    checkSaid(said, EVENT_KINDS[event], content);
+    return content;
+  } catch (err) {
+    faults.push(messageOf(err));
+    return null;
+  }
 }
 
 /**
- * The record refused where it breaks the records directive's rules, each
- * thing it breaks named.
- * @param {string} cwd @param {Place} place @param {Record<string, any>[]} entries
+ * One entry drawn, its links resolved to the ids minted for the entries
+ * before it: its line followed by its asset links, and every fault of it,
+ * each check run whichever others refuse. An entry with a ref and an event
+ * is named for the entries after it even where it breaks something, so
+ * their links are judged on their own.
+ * @param {Place} place @param {Record<string, any>} entry @param {number} at @param {Map<string, Earlier>} before @param {Record<string, unknown>} tags
+ * @returns {{lines: Line[], faults: string[]}}
  */
-function checkRules(cwd, { root, unit, phase, topic }, entries) {
+function entryLines(place, entry, at, before, tags) {
+  /** @type {string[]} */
+  const faults = [];
+  const { ref, event, part_of: partOf, answers, relies_on: reliesOn = [], raise, assets } = entry;
+  const named = typeof ref === 'string' && ref !== '';
+  const said = `entry ${named ? ref : at + 1}`;
+  const fault = (/** @type {string} */ text) => { faults.push(`${said}: ${text}`); };
+  if (!named) fault('gives no ref, the name the record links it by');
+  else if (before.has(ref)) fault('its ref is given twice');
+  if (typeof event !== 'string' || !Object.hasOwn(EVENT_WRITES, event)) {
+    fault(`its event is none of ${Object.keys(EVENT_WRITES).join(', ')}`);
+    return { lines: [], faults };
+  }
+  markFaults(entry, event, fault);
+  const links = {
+    ...(event === 'asked' ? { part_of: partOf === undefined ? null : linked(fault, 'part_of', [partOf], before, 'asked')[0] } : {}),
+    ...(event === 'decided' && answers !== undefined ? { answers: linked(fault, 'answers', [answers], before, 'asked')[0] } : {}),
+    relies_on: linked(fault, 'relies_on', reliesOn, before, null),
+    task: null,
+  };
+  const content = entryContent(faults, said, event, entry);
+  const id = newId();
+  if (named && !before.has(ref)) before.set(ref, { id, event, raised: raise === true });
+  const assetLinks = assetLines(fault, place, assets, id, tags);
+  if (faults.length > 0) return { lines: [], faults };
+  return { lines: [{ fields: { event, ...tags, ...content, ...links, ...(event === 'decided' ? decisionGiven(null, true) : {}) }, id }, ...assetLinks], faults };
+}
+
+/**
+ * The record drawn: its lines, each entry followed by its asset links; what
+ * is kept of each entry; and every fault it holds — each entry's, each
+ * question marked to raise that a decision of the record answers, which
+ * `raise` would refuse, and what it breaks of the records directive's
+ * rules.
+ * @param {string} cwd @param {Place} place @param {Record<string, any>[]} entries @param {string|null} session
+ * @returns {Drawn}
+ */
+function drawnRecord(cwd, place, entries, session) {
+  const { root, unit, phase, topic } = place;
+  /** @type {Map<string, Earlier>} */
+  const before = new Map();
+  const tags = { unit, topic, phase, session };
+  const drawn = entries.map((entry, at) => entryLines(place, entry, at, before, tags));
+  const answered = new Set(entries.filter(({ event }) => event === 'decided').map(({ answers }) => answers));
+  const settled = [...before].filter(([ref, { raised }]) => raised && answered.has(ref))
+    .map(([ref]) => `entry ${ref}: is marked to raise, and a decision of the record answers it — raise refuses a question answered already, so a point to raise is an open question`);
   const problems = recordsRules().recordProblems({ projectDir: codeRoot(cwd), stateDir: root, unit, topic, phase, entries });
-  if (problems.length > 0) throw new Error(`${SAID}: ${unit}'s ${topic} breaks the records directive's rules, so nothing is carried — ${problems.join('; ')}`);
+  return {
+    lines: drawn.flatMap(({ lines }) => lines),
+    kept: [...before].map(([ref, { id }]) => ({ ref, id })),
+    faults: [...drawn.flatMap(({ faults }) => faults), ...settled, ...problems],
+  };
 }
 
 /**
@@ -329,16 +381,15 @@ function keepCarried({ root, unit, phase, topic }, entries, kept) {
 }
 
 /**
- * The record read, its lines drawn and held to the directive's rules; where
- * the composer must answer something, the refusal written beside the
- * record.
+ * The record read and drawn; where the composer must answer something, the
+ * refusal, naming every fault, written beside the record.
  * @param {string} cwd @param {Place} place @param {string} session
  */
 function composedRecord(cwd, place, session) {
   try {
     const entries = readRecord(place);
-    const { lines, kept } = recordLines(place, entries, session);
-    checkRules(cwd, place, entries);
+    const { lines, kept, faults } = drawnRecord(cwd, place, entries, session);
+    if (faults.length > 0) throw new Error(`${SAID}: ${place.unit}'s ${place.topic} breaks the records directive's rules, so nothing is carried — ${faults.join('; ')}`);
     return { entries, lines, kept };
   } catch (err) {
     writeWhole(path.join(place.root, refusedPath(place.unit, place.topic)), `${messageOf(err)}\n`);
@@ -352,11 +403,22 @@ function clearBeside({ root, unit, topic }) {
 }
 
 /**
+ * `ledger carry <unit>.<phase>.<topic> --dry-run`: every fault the carry
+ * would refuse the topic's record for, none where it would carry it,
+ * writing nothing.
+ * @param {string} cwd @param {string} dotpath
+ */
+function dryRun(cwd, dotpath) {
+  const place = topicPlace(cwd, dotpath, SAID);
+  return { faults: drawnRecord(cwd, place, readRecord(place), null).faults };
+}
+
+/**
  * `ledger carry <unit>.<phase>.<topic>`: the topic's record appended in one
  * write, what was carried kept, what was said of it beside it cleared, the
  * ledger's commit held for the migration's. Answers how many entries it
  * carried, each entry's short id by its ref, the commit — null, held — and
- * any warnings.
+ * any warnings; a dry run, the record's faults.
  * @param {string} cwd @param {string[]} args
  */
 function carryRecord(cwd, args) {
@@ -364,9 +426,11 @@ function carryRecord(cwd, args) {
   const warnings = [];
   try {
     assertMigrationRuns(stateRoot(cwd), SAID, 'a topic\'s record is carried into the ledger');
+    const { dotpath, dry } = argsOf(args);
+    if (dry) return dryRun(cwd, dotpath);
     const session = handedSession();
     if (session === null) throw new Error(`${SAID}: no session to tag the entries with — CLAUDE_CODE_SESSION_ID is not set`);
-    const place = topicPlace(cwd, dotpathOf(args), SAID);
+    const place = topicPlace(cwd, dotpath, SAID);
     const { entries, lines, kept } = composedRecord(cwd, place, session);
     const { outcome, short } = withStateLock(place.root, () => {
       const beside = idsBeside(place, warnings);
@@ -391,4 +455,4 @@ function carryRecord(cwd, args) {
   }
 }
 
-module.exports = { CARRY_VERB, CARRY_USAGE, carriedPath, composedPath, findingsPath, refusedPath, topicPlace, recordsRules, carryRecord };
+module.exports = { CARRY_VERB, CARRY_USAGE, DRY_RUN, carriedPath, composedPath, findingsPath, refusedPath, topicPlace, recordsRules, carryRecord };

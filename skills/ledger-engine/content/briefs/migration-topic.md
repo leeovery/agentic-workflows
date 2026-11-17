@@ -2,7 +2,11 @@
 
 Carry the migration's records step for one topic: compose the topic's record from its sources, as the directive below says of a topic's record, and write it as JSON where the topic says the record goes.
 
-Where the verifier's findings or the carry's refusal below name anything, compose the record from the start, each answered.
+Where the record is composed already, amend it in place: answer each of the verifier's findings and each fault of the carry's refusal below, and keep everything no finding or fault asks you to change.
+
+Before you hand back, check the record. This names every fault the carry would refuse it for, and writes nothing; mend each, and check again until it names none:
+
+{{record-check}}
 
 Hand back how many entries the record holds, and the refs of the points it marks to raise, or that there are none.
 

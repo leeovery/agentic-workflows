@@ -64,6 +64,10 @@
 // - `migrate join <unit> --directive <id>` joins the pieces a building
 //   unit's phases were composed in into the plan its cut takes
 //   (cut-merges.cjs).
+// - A directive that agents carry a piece of names, in its check, the
+//   sections of it their briefs draw, `briefed` (`briefedSections`): each
+//   from its heading to the next at its level or above — what an agent
+//   does, never the session's own work (brief-records.cjs).
 // - Known edges: held commits and the trust log's silence key on the state
 //   branch having no commit yet (state-worktree.cjs, trust-log.cjs), which
 //   only the reshape's migration leaves; a directive met later, on a branch
@@ -86,6 +90,7 @@ const { MIGRATION_JOURNALS, finishing, codeFiles } = require('./migration-commit
 const { refreshMigrationQuietly } = require('./presence.cjs');
 const { CHECKS_DONE } = require('../../../ledger-migrate/scripts/old-layout.cjs');
 const { markPath } = require('./cut-migrating.cjs');
+const { headingLevels, sectionEnd } = require('./spec-sections.cjs');
 
 // Resolved against this file, so it works wherever the skill tree is installed.
 const MIGRATE_SCRIPTS = path.resolve(__dirname, '..', '..', '..', 'ledger-migrate', 'scripts');
@@ -168,6 +173,28 @@ const isPoint = (point) => isObject(point) && isWords(point.place) && isWords(po
 function isCheck(checker) {
   const { counts, done, check } = checker;
   return typeof check === 'function' && isObject(counts) && isWords(counts.one) && isWords(counts.many) && isWords(done);
+}
+
+/**
+ * The sections of a directive's text its check names `briefed`, in that
+ * order, each its lines from its heading to the next heading at its level
+ * or above, the blank lines before that left out. Refused for a check
+ * naming none, and for a heading the text lacks.
+ * @param {string} id @param {string} text @param {unknown} briefed @returns {string[][]}
+ */
+function briefedSections(id, text, briefed) {
+  if (!Array.isArray(briefed) || briefed.length === 0 || !briefed.every((heading) => typeof heading === 'string')) {
+    throw new Error(`${id}'s check names no section its agents' briefs draw — briefed, a list of its headings`);
+  }
+  const lines = text.trimEnd().split('\n');
+  const levels = headingLevels(lines);
+  return briefed.map((heading) => {
+    const at = lines.findIndex((line, i) => levels[i] > 0 && line.slice(levels[i]).trim() === heading);
+    if (at === -1) throw new Error(`${id} heads no section "${heading}", which its check names briefed`);
+    const section = lines.slice(at, sectionEnd(levels, at, levels[at]));
+    while (section.length > 1 && section[section.length - 1].trim() === '') section.pop();
+    return section;
+  });
 }
 
 /**
@@ -453,4 +480,4 @@ function runMigrateVerb(cwd, argv) {
   return checked;
 }
 
-module.exports = { MIGRATE_CJS, MIGRATIONS_RECORD, MIGRATION_JOURNALS, MIGRATE_USAGE, unrunLine, directiveOf, isCheck, loadCheck, piecesOf, checkDirective, recordDirective, directiveStopped, directiveStopSurface, takenStopSurface, leavingSurface, runMigrateVerb };
+module.exports = { MIGRATE_CJS, MIGRATIONS_RECORD, MIGRATION_JOURNALS, MIGRATE_USAGE, unrunLine, directiveOf, isCheck, loadCheck, briefedSections, piecesOf, checkDirective, recordDirective, directiveStopped, directiveStopSurface, takenStopSurface, leavingSurface, runMigrateVerb };

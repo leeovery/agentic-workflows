@@ -436,26 +436,36 @@
 // cancelled among them (21.6.2), read by the check of the directive
 // `--directive` names and refused for one whose check carries no topic's work:
 //
-//   directive      the migration's directive `--directive` names, verbatim,
-//                  each of its headings a level down (21.10.2)
+//   directive      the sections of the migration's directive `--directive`
+//                  names that its check names `briefed`, verbatim, each
+//                  with what nests beneath it, its heading set at the
+//                  brief's second level and those beneath it kept in step:
+//                  what an agent does, never the session's own work
+//                  (21.10.2)
 //   migrated-topic the topic: the unit, its work type and status, the
 //                  phases the directive carries a topic of that the topic
 //                  is in, the state's place and the project's in the main
 //                  checkout, each file of the topic's folder but its mail,
 //                  and as the directive's check reads
-//                  them its specs — each where it is read and how it is
-//                  cited — its old map and its research's threads still
-//                  open; the unit's assets with where each came in from,
-//                  the topic's to link, or its file gone and linked by
-//                  none; and where the topic's record is composed, the
+//                  them its specs — each where it is cited, the part of the
+//                  unit's spec.md it makes where it was joined there, and
+//                  whether it was approved or is a draft — its old map and
+//                  its research's threads still open; the unit's assets
+//                  with where each came in from, the topic's to link, or
+//                  its file gone and linked by none; and where the topic's
+//                  record is composed, and whether it is yet, the
 //                  verifier's findings on it written and a carry's refusal
 //                  of it kept (21.10.5)
-//   composed-record that topic's record as composed, fenced as JSON (21.10.7)
-//   verifier-findings the verifier's findings on that record, verbatim
-//   carry-refusal  what `ledger carry` refused that record for, verbatim
-//
-// The brief takes the findings and the refusal: drawn, each file is cleared,
-// so neither reaches a later brief.
+//   composed-record that topic's record as composed, fenced as JSON
+//                  (21.10.7), the verifier's findings on it cleared once
+//                  drawn, for the verifier to write afresh: no file is no
+//                  verdict yet
+//   verifier-findings the last verifier's findings on that record, verbatim
+//                  — kept until a verifier reads the record again
+//   carry-refusal  what `ledger carry` refused that record for, verbatim,
+//                  cleared once drawn, so it reaches no later brief
+//   record-check   the call that checks that record as the carry would,
+//                  writing nothing: `ledger carry --dry-run` on the topic
 //
 // And for the agents of a directive carrying units — the cut and the
 // merges — each of one phase, `--phase`, of the cut of the unit the brief
@@ -538,7 +548,7 @@ const {
 const { lastQuery } = require('./knowledge/last-query.cjs');
 const { ROLES } = require('./brief-names.cjs');
 const {
-  SPEC_FILE, readCitedSections, headingLevels, readSpec, specPath, specSections, specStatements, fencedLines,
+  SPEC_FILE, readCitedSections, headingLevels, readSpec, specPath, specSections, specStatements,
 } = require('./spec-sections.cjs');
 const { withUnitEntries, unitEntries } = require('./unit-entries.cjs');
 const { huntOf, huntLog, huntEntries, openInvestigation } = require('./investigation-log.cjs');
@@ -577,7 +587,7 @@ const { cachedSurvivors } = require('./verify.cjs');
 const { REPRODUCING, isBugfix } = require('./bug-proven.cjs');
 const { scratchName } = require('./scratch.cjs');
 const { accountPath, accountOwed, landingStage, reviewOverWay } = require('./task-account.cjs');
-const { directiveOf, loadCheck } = require('./directives.cjs');
+const { directiveOf, loadCheck, briefedSections } = require('./directives.cjs');
 const {
   TESTS, TESTS_LETTER, roundRefusal, readsWords, areaReportPath, unitCalls, fixPhase, filesUnder,
 } = require('./review-phase.cjs');
@@ -586,7 +596,7 @@ const { reading, reposOf } = require('./phase-checks.cjs');
 const { changeOf, changeTips, workBelow } = require('./review-change.cjs');
 const { fixAcceptance, fixScenarios, fixNamed } = require('./fix-acceptance.cjs');
 const { summaryFile } = require('./knowledge/artifacts.cjs');
-const { topicPlace, composedPath, findingsPath, refusedPath } = require('./ledger-carry.cjs');
+const { CARRY_VERB, DRY_RUN, topicPlace, composedPath, findingsPath, refusedPath } = require('./ledger-carry.cjs');
 const { OLD_STATE, OLD_PLAN_FILE } = require('../../../ledger-migrate/scripts/old-layout.cjs');
 
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
@@ -1110,31 +1120,24 @@ const MIGRATED = Object.freeze({ name: 'topic', value: 'unit.phase.topic' });
 /** The flag naming the migration's directive a record draws for. @type {BriefFlag} */
 const DIRECTIVE = Object.freeze({ name: 'directive', value: 'id' });
 
-/** How a directive's command calls the engine. */
-const ENGINE_CALL = 'ledger-engine/scripts/engine.cjs';
+/** The level a migration agent's brief draws each section of its directive at, under the brief's own heading. */
+const BRIEFED_LEVEL = 2;
 
 /**
- * The directive as a migration agent's brief draws it: each heading a level
- * down, and each fenced block holding an engine call left out, with the
- * blank line after it — those calls are the session's, and no migration
- * agent runs the engine (21.S35).
+ * The directive as a migration agent's brief draws it: the sections its
+ * check names `briefed` (directives.cjs), in that order, each with what
+ * nests beneath it, its heading at the brief's second level and those
+ * beneath it kept in step.
  * @param {Filling} filling
  */
 function drawDirective({ given }) {
-  const lines = fs.readFileSync(directiveOf(given.directive).file, 'utf8').trimEnd().split('\n');
-  const fenced = fencedLines(lines);
-  /** @type {boolean[]} */
-  const dropped = lines.map(() => false);
-  for (let at = 0; at < lines.length; at += 1) {
-    if (!fenced[at]) continue;
-    const end = fenced.indexOf(false, at) === -1 ? lines.length : fenced.indexOf(false, at);
-    if (lines.slice(at, end).some((line) => line.includes(ENGINE_CALL))) {
-      for (let line = at; line < end; line += 1) dropped[line] = true;
-      if (lines[end] === '') dropped[end] = true;
-    }
-    at = end;
-  }
-  return headingsDown(lines.filter((_, at) => !dropped[at]).join('\n').trimEnd());
+  const { briefed } = /** @type {Record<string, unknown>} */ (loadCheck(given.directive));
+  const text = fs.readFileSync(directiveOf(given.directive).file, 'utf8');
+  return briefedSections(given.directive, text, briefed).map((lines) => {
+    const levels = headingLevels(lines);
+    const shift = BRIEFED_LEVEL - levels[0];
+    return lines.map((line, at) => (levels[at] > 0 ? `${'#'.repeat(levels[at] + shift)}${line.slice(levels[at])}` : line)).join('\n');
+  }).join('\n\n');
 }
 
 /**
@@ -1169,6 +1172,8 @@ function drawMigratedTopic(filling) {
     const owed = !held ? ' — its file is gone, so no entry links it' : owner === topic ? ' — this topic\'s to link' : '';
     return `- ${at}${origin === null ? '' : `, which came in from ${origin}`}${owed}`;
   });
+  const specs = sources.specs.map(({ path: at, part, approved }) => `- ${at}${part === null ? '' : `, its part "${part}"`}, ${approved ? 'approved' : 'a draft'}`);
+  const composed = fs.existsSync(path.join(root, composedPath(unit, topic)));
   return [
     `- **Unit:** ${unit}, ${manifest.work_type}, ${manifest.status}`,
     `- **Topic:** ${topic}, in ${phases.join('; ')}`,
@@ -1181,15 +1186,15 @@ function drawMigratedTopic(filling) {
     '',
     '## Its specs',
     '',
-    listed(sources.specs.map((spec) => (spec.read === spec.cite ? `- ${spec.read}` : `- ${spec.read}, cited as ${spec.cite}`))),
+    listed(specs),
     '',
     `## Its old map, as \`${OLD_STATE}/\` holds it`,
     '',
-    listed(sources.map.map(({ item, status }) => `- ${item}: ${status}`)),
+    sources.map.length === 0 ? 'None — no entry needs a map_item.' : sources.map.map(({ item, status }) => `- ${item}: ${status}`).join('\n'),
     '',
     '## Its research\'s threads still open',
     '',
-    listed(sources.threads.map(({ thread, status, question }) => `- ${thread}, ${status}: ${question}`)),
+    sources.threads.length === 0 ? 'None — no entry needs a thread.' : sources.threads.map(({ thread, status, question }) => `- ${thread}, ${status}: ${question}`).join('\n'),
     '',
     '## The unit\'s assets',
     '',
@@ -1197,10 +1202,16 @@ function drawMigratedTopic(filling) {
     '',
     '## Where the record goes',
     '',
-    `- The record composed: ${composedPath(unit, topic)}`,
+    `- The record composed: ${composedPath(unit, topic)}, ${composed ? 'composed already' : 'not composed yet'}`,
     `- The verifier's findings on it: ${findingsPath(unit, topic)}`,
     `- A carry's refusal of it: ${refusedPath(unit, topic)}`,
   ].join('\n');
+}
+
+/** The call that checks the topic's record as the carry would, writing nothing. @param {Filling} filling */
+function drawRecordCheck(filling) {
+  const { unit, phase, topic } = migratedTopic(filling);
+  return `\`${ENGINE_RUN} ledger ${CARRY_VERB} ${unit}.${phase}.${topic} ${DRY_RUN}\``;
 }
 
 /** @param {Filling} filling */
@@ -2485,9 +2496,10 @@ const RECORDS = Object.freeze({
   'knowledge-query': { of: null, draw: drawKnowledgeQuery },
   directive: { of: null, flags: [DIRECTIVE], draw: drawDirective },
   'migrated-topic': { of: null, flags: [MIGRATED, DIRECTIVE], draw: drawMigratedTopic },
-  'composed-record': { of: null, flags: [MIGRATED, DIRECTIVE], draw: drawComposedRecord },
-  'verifier-findings': { of: null, flags: [MIGRATED, DIRECTIVE], draw: (filling) => besideRecord(filling, findingsPath), bind: (filling) => clearBeside(filling, findingsPath) },
+  'composed-record': { of: null, flags: [MIGRATED, DIRECTIVE], draw: drawComposedRecord, bind: (filling) => clearBeside(filling, findingsPath) },
+  'verifier-findings': { of: null, flags: [MIGRATED, DIRECTIVE], draw: (filling) => besideRecord(filling, findingsPath) },
   'carry-refusal': { of: null, flags: [MIGRATED, DIRECTIVE], draw: (filling) => besideRecord(filling, refusedPath), bind: (filling) => clearBeside(filling, refusedPath) },
+  'record-check': { of: null, flags: [MIGRATED, DIRECTIVE], draw: drawRecordCheck },
   'migrated-phase': { of: 'unit', flags: [DIRECTIVE, PHASE], draw: drawMigratedPhase },
   'composed-piece': { of: 'unit', flags: [DIRECTIVE, PHASE], draw: drawComposedPiece, bind: (filling) => fs.rmSync(phaseFile(filling, 'findings'), { force: true }) },
   'piece-findings': { of: 'unit', flags: [DIRECTIVE, PHASE], draw: drawPieceFindings },

@@ -12,19 +12,21 @@
 // file the state holds linked, a unit of one topic's from its discovery among
 // them and an epic's from its discovery as a whole asked of none; a record of
 // none keeping every rule but the cites; every entry citing a heading its
-// file holds once, in a file of its topic's own or the unit's — its log and
-// the reviews the move folded into it, its brief, an experiment's record, the
-// unit's assets, or its spec.md, its specs joined by the move where its
-// building started — never the cache, another topic's or
-// its mail; every subtopic its old map shows decided carried, one entry
-// settling several, every one still undecided and every thread still open
-// carried by an open question. A record breaking a rule is refused at the
-// carry, the refusal written beside the record and nothing else, and leaves
-// nothing in the way of the record mended. Once it passes, the check lists
-// each point marked to raise on a live topic until the conversation raises it
-// — none on a topic never started, carried in discovery, whose first opening
-// reads it with the rest of its record, and none of a cross-cutting unit,
-// whose record is the product's, so the directive closes over it.
+// file holds, held twice or not, in a file that stays with the entry — its
+// topic's own, its log and the reviews the move folded into it, its brief,
+// an experiment's record, or the unit's beside its topics, its assets, its
+// spec.md, its specs joined by the move where its building started, a
+// discovery session — never the cache, another topic's, another unit's or
+// its mail; every subtopic its old map holds named by an entry, one entry
+// carrying several, and every thread still open, each by an open question
+// or by the entry a later source settles it with. A record breaking a rule
+// is refused at the carry, the refusal written beside the record and
+// nothing else, and leaves nothing in the way of the record mended. Once it
+// passes, the check lists each point marked to raise on a live topic until
+// the conversation raises it — a completed unit's among them, and none on
+// a topic never started, carried in discovery, whose first opening reads it
+// with the rest of its record, nor of a cross-cutting unit, whose record is
+// the product's, so the directive closes over it.
 // `.workflows/` is read where the move read it, the working tree in the main
 // checkout, the old chain's and the split's changes uncommitted there among
 // it, and the record where the state keeps it, from a linked worktree too.
@@ -156,9 +158,12 @@ const bareSearch = () => GOOD['fumi.discussion.search'].map(({ map_item: _, thre
 
 /** What search's bare record leaves uncarried. */
 const SEARCH_UNCARRIED = Object.freeze([
-  'ranking is decided on its map, and no entry carries it', 'typo-tolerance is still open on its map, and no open question carries it',
-  'synonyms is deferred on its map, and no open question carries it', 'the thread index-size is still digging in its research, and no open question carries it',
+  'ranking is on its old map, decided, and no entry names it as its map_item', 'typo-tolerance is on its old map, exploring, and no entry names it as its map_item',
+  'synonyms is on its old map, deferred, and no entry names it as its map_item', 'the thread index-size is still digging in its research, and no entry names it as its thread',
 ]);
+
+/** What an old map's subtopic no entry names breaks. @param {string} item @param {string} status */
+const unnamed = (item, status) => `${item} is on its old map, ${status}, and no entry names it as its map_item`;
 
 /** @type {string|null} */
 let carriedTemplate = null;
@@ -199,7 +204,7 @@ describe('a record breaking a rule is refused at the carry, its refusal kept bes
     assert.strictEqual(unfinished()['fumi/search'], undefined);
   });
 
-  it('an entry citing nothing, a file the state lacks, a heading its file lacks, or one its file holds more than once (21.12.7)', () => {
+  it('an entry citing nothing, a file the state lacks, or a heading its file lacks; one its file holds more than once still names a section of it', () => {
     assert.strictEqual(refused('gone.discussion.gone', [
       { ...GOOD['gone.discussion.gone'][0], cites: [] },
       { ref: 'q2', event: 'asked', text: 'Was it a timeout?', by: 'claude', cites: [{ path: 'gone/topics/gone/experiments/E9-load/report.md', section: 'Cause' }] },
@@ -208,26 +213,29 @@ describe('a record breaking a rule is refused at the carry, its refusal kept bes
       'entry q1 cites nothing', 'entry q2 cites gone/topics/gone/experiments/E9-load/report.md, which the state does not hold', 'entry q3 cites "Causes" in gone/topics/gone/log.md, which has no such heading',
     ]));
     const [q1, ...rest] = GOOD['fumi.discussion.search'];
-    assert.strictEqual(refused('fumi.discussion.search', [{ ...q1, cites: [logCite('fumi', 'search', 'Context')] }, ...rest]),
-      breaks('fumi', 'search', ['entry q1 cites "Context" in fumi/topics/search/log.md, which holds that heading 2 times — a cite names a heading its file holds once']));
+    carry('fumi.discussion.search', [{ ...q1, cites: [logCite('fumi', 'search', 'Context')] }, ...rest]);
   });
 
-  it('a cite of a file neither the topic\'s own nor the unit\'s: the cache, another topic\'s log, its own mail', () => {
+  it('a cite of a file that does not stay with the entry — the cache, another topic\'s log, another unit\'s asset, its own mail — refused; one of the unit\'s beside its topics carried', () => {
     writeState(dir, findingsPath('fumi', 'search'), '## Ranking\n\nDropped.\n');
     writeState(dir, layout.topic('fumi', 'search', 'mail', '001-seats.md'), '### Seats\n');
+    writeState(dir, layout.unit('fumi', 'discovery', 'session-001.md'), '## Discovery Session 001\n\n### Ranking\n\nBy recency, the person said.\n');
     const [q1, ...rest] = GOOD['fumi.discussion.search'];
-    const citing = (/** @type {string} */ cited, /** @type {string} */ section) => ({ ...q1, cites: [{ path: cited, section }] });
-    const none = (/** @type {string} */ cited) => `entry q1 cites ${cited}, which is none of its topic's log, brief or experiments, nor the unit's assets or spec.md`;
+    const citing = (/** @type {string} */ cited, /** @type {string} */ section) => [{ ...q1, cites: [{ path: cited, section }] }, ...rest];
+    const strays = (/** @type {string} */ cited) => breaks('fumi', 'search', [`entry q1 cites ${cited}, which is neither its topic's own, but its mail, nor the unit's beside its topics — a cite names a file that stays with its entry`]);
 
     assert.deepStrictEqual([
-      refused('fumi.discussion.search', [citing(findingsPath('fumi', 'search'), 'Ranking'), ...rest]),
-      refused('fumi.discussion.search', [citing(layout.topic('fumi', 'licensing', 'log.md'), 'Trial Length'), ...rest]),
-      refused('fumi.discussion.search', [citing(layout.topic('fumi', 'search', 'mail', '001-seats.md'), 'Seats'), ...rest]),
+      refused('fumi.discussion.search', citing(findingsPath('fumi', 'search'), 'Ranking')),
+      refused('fumi.discussion.search', citing(layout.topic('fumi', 'licensing', 'log.md'), 'Trial Length')),
+      refused('fumi.discussion.search', citing(layout.assets('platform', 'sso.md'), 'SSO')),
+      refused('fumi.discussion.search', citing(layout.topic('fumi', 'search', 'mail', '001-seats.md'), 'Seats')),
     ], [
-      breaks('fumi', 'search', [none(findingsPath('fumi', 'search'))]),
-      breaks('fumi', 'search', [none(layout.topic('fumi', 'licensing', 'log.md'))]),
-      breaks('fumi', 'search', [none(layout.topic('fumi', 'search', 'mail', '001-seats.md'))]),
+      strays(findingsPath('fumi', 'search')),
+      strays(layout.topic('fumi', 'licensing', 'log.md')),
+      strays(layout.assets('platform', 'sso.md')),
+      strays(layout.topic('fumi', 'search', 'mail', '001-seats.md')),
     ]);
+    carry('fumi.discussion.search', citing(layout.unit('fumi', 'discovery', 'session-001.md'), 'Ranking'));
   });
 
   it('8.S23: a topic never started, carried in discovery where nothing is decided — a decision, or a finding marked product-wide, refused; what its research concluded is a finding (8.3.4, 8.9.6)', () => {
@@ -253,23 +261,28 @@ describe('a record breaking a rule is refused at the carry, its refusal kept bes
     carry('platform.discussion.auth', [q1, d1, q2, f1]);
   });
 
-  it('21.S36: a subtopic its old map shows decided that no entry names, and one still open or deferred, and a thread still digging, that no open question names', () => {
-    const answered = [...GOOD['fumi.discussion.search'], { ref: 'd2', event: 'decided', answers: 'q2', text: 'Off by one letter.', why: 'The log says so.', by: 'claude', given: 'carried', map_item: 'typo-tolerance', cites: [logCite('fumi', 'search', 'Typo Tolerance')] }];
+  it('21.S36: every subtopic of its old map and every thread still digging named by an entry, whichever kind: a subtopic its map shows open that a later source settled carried by the decision, a thread a later source answers by the finding answering it', () => {
+    const later = [
+      ...GOOD['fumi.discussion.search'].map(({ thread: _, ...entry }) => entry),
+      { ref: 'd2', event: 'decided', answers: 'q2', text: 'Off by one letter.', why: 'A later section settles it.', by: 'claude', given: 'carried', map_item: 'typo-tolerance', cites: [logCite('fumi', 'search', 'Typo Tolerance')] },
+    ];
+    const answer = { ref: 'f3', event: 'found', text: 'The index stays under a gigabyte.', how: 'read in the research', known: 'read', by: 'claude', thread: 'index-size', cites: [logCite('fumi', 'search', 'Index Size')] };
 
-    assert.strictEqual(refused('fumi.discussion.search', answered), breaks('fumi', 'search', ['typo-tolerance is still open on its map, and no open question carries it']));
+    assert.strictEqual(refused('fumi.discussion.search', later), breaks('fumi', 'search', ['the thread index-size is still digging in its research, and no entry names it as its thread']));
+    carry('fumi.discussion.search', [...later, answer]);
   });
 
   it('one decision settles two subtopics by naming both; naming one leaves the other uncarried', () => {
     const [q1, d1, q2] = GOOD['platform.discussion.auth'];
 
     assert.strictEqual(refused('platform.discussion.auth', [{ ...q1, map_item: 'sessions' }, { ...d1, map_item: 'sessions' }, q2]),
-      breaks('platform', 'auth', ['tokens is decided on its map, and no entry carries it']));
+      breaks('platform', 'auth', [unnamed('tokens', 'decided')]));
   });
 
   it('a topic promoted to a cross-cutting unit: its research\'s threads, which stayed with the epic, asked of the unit it went to; the epic refused it', () => {
     const [q1, d1] = GOOD['platform.discussion.auth'];
 
-    assert.strictEqual(refused('platform.discussion.auth', [q1, d1]), breaks('platform', 'auth', ['the thread token-expiry is still open in its research, and no open question carries it']));
+    assert.strictEqual(refused('platform.discussion.auth', [q1, d1]), breaks('platform', 'auth', ['the thread token-expiry is still open in its research, and no entry names it as its thread']));
     assert.strictEqual(refusedUntouched(dir, carryArgs(dir, 'fumi.discussion.auth', GOOD['platform.discussion.auth']), { env: SESSION }, harness),
       'ledger carry: fumi\'s auth was promoted to platform, which carries its record');
   });
@@ -289,8 +302,8 @@ describe('a record breaking a rule is refused at the carry, its refusal kept bes
       refused('shop.discussion.weights', GOOD['shop.discussion.weights']),
       refused('fumi.discussion.search', GOOD['fumi.discussion.search']),
     ], [
-      breaks('shop', 'weights', ['by-price is decided on its map, and no entry carries it']),
-      breaks('fumi', 'search', ['the thread stop-words is still open in its research, and no open question carries it']),
+      breaks('shop', 'weights', [unnamed('by-price', 'decided')]),
+      breaks('fumi', 'search', ['the thread stop-words is still open in its research, and no entry names it as its thread']),
     ]);
   });
 
@@ -321,7 +334,7 @@ describe('a record breaking a rule is refused at the carry, its refusal kept bes
   });
 
   it('an empty record, where the topic\'s log holds anything; a topic with no log and nothing come in from it carries one', () => {
-    assert.strictEqual(refused('shop.discussion.weights', []), breaks('shop', 'weights', ['its record is empty, and its log is not', 'tie-break is decided on its map, and no entry carries it']));
+    assert.strictEqual(refused('shop.discussion.weights', []), breaks('shop', 'weights', ['its record is empty, and its log is not', unnamed('tie-break', 'decided')]));
     carry('fumi.discovery.support', []);
   });
 
@@ -331,21 +344,33 @@ describe('a record breaking a rule is refused at the carry, its refusal kept bes
     assert.strictEqual(refused('fumi.discussion.search', []), breaks('fumi', 'search', SEARCH_UNCARRIED));
   });
 
-  it('the unit\'s spec.md where its building never started; where it started, a heading the spec the move joined lacks, or holds more than once, one spec\'s heading and a heading two share among them — whatever its specs under `.workflows/` hold now', () => {
+  it('the unit\'s spec.md where its building never started; where it started, a heading the spec the move joined lacks — whatever its specs under `.workflows/` hold now — and one two of its specs share citing either', () => {
     fs.appendFileSync(path.join(dir, '.workflows/shop/specification/weights/specification.md'), '\n## Pricing\n\nBy price.\n');
     const licensing = GOOD['fumi.discussion.licensing'];
+    const [question, decision] = GOOD['shop.discussion.weights'];
     assert.strictEqual(refused('fumi.discussion.licensing', [...licensing.slice(0, 3), { ...licensing[3], cites: [{ path: 'fumi/spec.md', section: 'Corrigenda' }] }]),
       breaks('fumi', 'licensing', ['entry d2 cites fumi/spec.md, which the state does not hold']));
-    assert.strictEqual(refused('shop.discussion.weights', [{ ...GOOD['shop.discussion.weights'][0], cites: ['Pricing', 'Detail', 'Saving', 'Ranking'].map((section) => ({ path: 'shop/spec.md', section })) }]),
-      breaks('shop', 'weights', [
-        'entry q1 cites "Pricing" in shop/spec.md, which has no such heading',
-        'entry q1 cites "Detail" in shop/spec.md, which holds that heading 2 times — a cite names a heading its file holds once',
-        'entry q1 cites "Ranking" in shop/spec.md, which holds that heading 2 times — a cite names a heading its file holds once',
-      ]));
+    assert.strictEqual(refused('shop.discussion.weights', [{ ...question, cites: ['Pricing', 'Saving'].map((section) => ({ path: 'shop/spec.md', section })) }, decision]),
+      breaks('shop', 'weights', ['entry q1 cites "Pricing" in shop/spec.md, which has no such heading']));
+    carry('shop.discussion.weights', [{ ...question, cites: ['Detail', 'Ranking'].map((section) => ({ path: 'shop/spec.md', section })) }, decision]);
   });
 });
 
 describe('the points to raise (21.6.10, 21.S25)', () => {
+  it('lists a completed unit\'s points as any live unit\'s, its topics live; a cancelled unit\'s none', () => {
+    dir = world();
+    const raises = require('../../skills/ledger-migrate/scripts/migrations/079-records.check.cjs').raises;
+    writeState(dir, layout.manifest('shop'), JSON.stringify({ ...JSON.parse(readState(dir, layout.manifest('shop'))), status: 'completed' }));
+    const point = (/** @type {string} */ unit, /** @type {string} */ topic) => {
+      const record = { entries: [{ ref: 'q1', event: 'asked', text: `What of ${topic}?`, by: 'claude', raise: true, cites: [logCite(unit, topic, 'Discussion')] }] };
+      writeState(dir, carriedPath(unit, topic), JSON.stringify({ unit, phase: 'discussion', topic, entries: [{ ref: 'q1', id: `${topic}-id` }], record }));
+    };
+    point('shop', 'weights');
+    point('gone', 'gone');
+
+    assert.deepStrictEqual(raises({ projectDir: dir, stateDir: statePath(dir) }), [{ place: 'shop.discussion.weights', answers: 'weights-id', text: 'What of weights?' }]);
+  });
+
   it('once the check passes, it lists each open question marked to raise on a live topic, until this conversation raises it, and the directive closes; none on a cancelled unit\'s, nor on a topic never started, carried in discovery where nothing is decided, whose first opening reads it with the rest of its record (8.3.4, 9.3.6), nor of a cross-cutting unit, whose record is the product\'s (21.7.5)', async () => {
     dir = world();
     const point = { ref: 'q3', event: 'asked', text: 'Does the trial need a card?', by: 'claude', raise: true, cites: [logCite('fumi', 'licensing', 'Trial Length')] };
@@ -409,7 +434,7 @@ describe('what the check reads once a record is carried', () => {
     assert.deepStrictEqual(unfinished(), {
       'gone/gone': ['entry q1 cites "Cause" in gone/topics/gone/log.md, which has no such heading'],
       'platform/auth': ['its record never reached the ledger'],
-      'shop/weights': ['its record is empty, and its log is not', 'tie-break is decided on its map, and no entry carries it'],
+      'shop/weights': ['its record is empty, and its log is not', unnamed('tie-break', 'decided')],
     });
   });
 
@@ -454,8 +479,8 @@ describe('against what the real move writes (078)', () => {
     assert.deepStrictEqual(checked().unfinished, [{ name: 'fumi/search', problems: ['has no record yet'] }]);
     assert.ok(readState(dir, layout.topic('fumi', 'search', 'log.md')).endsWith('\n## Review review-001, never folded in\n\n#### F1: Ranking ties\n\nTwo results of one age have no order.\n'));
     assert.strictEqual(refused('fumi.discussion.search', []), breaks('fumi', 'search', [
-      'its record is empty, and its log is not', 'ranking is decided on its map, and no entry carries it', 'typo-tolerance is still open on its map, and no open question carries it',
-      'the thread index-size is still digging in its research, and no open question carries it', 'fumi/assets/notes.md came in from discussion/search, and no entry links it',
+      'its record is empty, and its log is not', unnamed('ranking', 'decided'), unnamed('typo-tolerance', 'exploring'),
+      'the thread index-size is still digging in its research, and no entry names it as its thread', 'fumi/assets/notes.md came in from discussion/search, and no entry links it',
     ]));
   });
 });
@@ -465,7 +490,8 @@ describe('the directive\'s example record, frozen with 079', () => {
     dir = world();
     const fills = {
       unit: 'fumi', topic: 'licensing', subtopic: 'trial-length', heading: 'Trial Length', file: 'pricing.md', experiment: 'E2-trial', 'report heading': 'Result',
-      question: 'How long is the trial?', answer: 'Fourteen days.', why: 'The log settles it.', fact: 'A week converts as well.', how: 'measured by the trial experiment', command: 'npm run trial', result: 'as well',
+      question: 'How long is the trial?', answer: 'Fourteen days.', 'second answer': 'Extended once, by a week.', why: 'The log settles it.', fact: 'A week converts as well.',
+      how: 'measured by the trial experiment', command: 'npm run trial', result: 'as well', 'open question': 'Does the trial need a card?', thread: 'card-on-trial',
     };
     const example = /```json\n([^]*?)\n```/.exec(fs.readFileSync(DIRECTIVE, 'utf8'))?.[1] ?? '';
     const { entries } = JSON.parse(example.replace(/\{([a-z ]+)\}/g, (whole, name) => fills[/** @type {keyof typeof fills} */ (name)] ?? whole));

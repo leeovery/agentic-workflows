@@ -25,7 +25,8 @@
 // laid out phase by phase, the plans ordered by their dependencies; each
 // phase's brief drawn from the directive's check, the tracker's tasks by
 // the cut's names with the text of each still to build, what its plan
-// depends on and where the manifest and the tracker disagree; the
+// depends on and where the manifest and the tracker disagree, and of the
+// directive the section its check names briefed, a phase's piece; the
 // verifier's, the piece verbatim; the join of the pieces into the plan the
 // cut takes, a missing or misshapen piece and an old dependency left
 // unrelied refused; each record refused for a directive whose check carries
@@ -402,7 +403,7 @@ describe('the per-phase agents and the join (21.10.5, E7)', () => {
     return error;
   };
 
-  it('lays the cut out phase by phase, each old plan\'s in its own order, the plans as their dependencies allow; a phase built where the manifest and the tracker agree is the join\'s, any other an agent\'s, its brief drawing the sections its area numbers, its own task file and section of the plan, its tasks by the cut\'s names, each still to build with its text, what its own plan depends on and where the two disagree, and no engine call; the verifier\'s brief, its piece verbatim', () => {
+  it('lays the cut out phase by phase, each old plan\'s in its own order, the plans as their dependencies allow; a phase built where the manifest and the tracker agree is the join\'s, any other an agent\'s, its brief drawing the sections its area numbers, its own task file and section of the plan, its tasks by the cut\'s names, each still to build with its text, what its own plan depends on and where the two disagree, and of the directive a phase\'s piece alone, its heading at the brief\'s second level, so no engine call; the verifier\'s brief, its piece verbatim', () => {
     const brief = composer('4');
 
     for (const part of [
@@ -426,6 +427,9 @@ describe('the per-phase agents and the join (21.10.5, E7)', () => {
       `### Where the manifest and the tracker disagree\n\n- ${REFUND_DISAGREES}`,
       '## Where your piece goes\n\n- The piece composed: .cache/migrate/cut-and-merges/shop/phases/4.json\n- The verifier\'s findings on it: .cache/migrate/cut-and-merges/shop/phases/4.findings.txt',
     ]) assert.ok(brief.includes(part), `${part}\n\nin\n\n${brief}`);
+    const directive = fs.readFileSync(path.join(__dirname, '../../skills/ledger-migrate/scripts/migrations/080-cut-and-merges.md'), 'utf8');
+    const piece = directive.slice(directive.indexOf('### A Phase\'s Piece'), directive.indexOf('### Its Cut')).trimEnd().replace(/^#/, '');
+    assert.ok(brief.endsWith(`# The directive\n\n${piece}\n`), brief);
     assert.ok(!brief.includes('engine.cjs'), 'the directive drawn without the session\'s engine calls');
     assert.ok(composer('5').includes('- Its tasks\' file: none kept\n- Its section of the plan: shop/assets/plans/pay/planning.md, under "### Phase 3: Export"'));
 

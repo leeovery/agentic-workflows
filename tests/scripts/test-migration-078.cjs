@@ -57,8 +57,9 @@
 // cut — and the join killed at each write and run again, a unit whose
 // name breaks the kebab-case rule by its case alone carried under its
 // lowercase name, as portal's quick-fix was, every reference following,
-// a merge stopped in the main checkout, the
-// projects with nothing to move, a native baseline, a completed one and
+// a merge stopped in the main checkout, an epic's topics never started,
+// one given its map row's description as its brief where none came to it,
+// the projects with nothing to move, a native baseline, a completed one and
 // one under way, defaults of the plan's format and the project skills alone,
 // read for its task driver after, a task driver's folder whose declaration
 // does not read, a `.worktreeinclude` of the workflows' lines alone,
@@ -1225,6 +1226,30 @@ describe('migration 078: a small project', () => {
       const { project_id: _id, ...project } = movedProject();
       const { driver, set } = chosenDriver(dir, 'task');
       assert.deepStrictEqual([project, driver.name, set], [{ work_units: {} }, listDrivers('task').find(({ isDefault }) => isDefault)?.name, false]);
+    } finally {
+      cleanupFixture(dir);
+    }
+  });
+
+  it('writes a topic never started its map row\'s description as its brief, under its name, where no brief came to it; one a brief came to keeps its own, and a topic started is given none', () => {
+    dir = tempProject('migration-078-described-');
+    try {
+      const row = (/** @type {string} */ name) => ({ routing: 'discussion', source: 'discovery', summary: name, description: `What ${name} covers.\n\nAnd why.` });
+      write(dir, '.workflows/manifest.json', json({ work_units: { atlas: { work_type: 'epic' } } }));
+      write(dir, '.workflows/atlas/manifest.json', json(unit('atlas', 'epic', 'in-progress', {
+        discovery: { items: { 'deep-links': row('deep links'), lambda: row('lambda'), mu: row('mu') } },
+        discussion: { items: { mu: { status: 'in-progress' } } },
+      })));
+      write(dir, '.workflows/atlas/discovery/briefs/lambda.md', '# Lambda brief\n');
+      write(dir, '.workflows/atlas/discussion/mu.md', '# Discussion: Mu\n');
+      commitAll(dir);
+      run(dir);
+      const brief = (/** @type {string} */ topic) => {
+        const file = path.join(dir, '.ledger/atlas/topics', topic, 'brief.md');
+        return fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null;
+      };
+
+      assert.deepStrictEqual(['deep-links', 'lambda', 'mu'].map(brief), ['# Deep Links\n\nWhat deep links covers.\n\nAnd why.\n', '# Lambda brief\n', null]);
     } finally {
       cleanupFixture(dir);
     }

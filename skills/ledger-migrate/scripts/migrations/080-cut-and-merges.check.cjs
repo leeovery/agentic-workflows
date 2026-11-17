@@ -50,7 +50,9 @@
 // joined spec's areas, each old plan's files, tracker root and phases, each
 // phase's name as its plan heads it, its parent and its tasks in the plan's
 // own order with the manifest's credit of each, the dependencies between
-// the old plans, the folder kept as legacy and the unit's staging.
+// the old plans, the folder kept as legacy and the unit's staging. And the
+// section of the directive its agents' briefs draw, `briefed`: a phase's
+// piece, never the session's work.
 // It reads and changes nothing, and calls no model.
 //
 // Known edges: a migration session a person edited until the move's line
@@ -68,6 +70,8 @@ const CUT_MARKS = '.cache/migrate/cut';
 const CLOSED_MARKS = '.cache/migrate/closed';
 const PRODUCT_ASSETS = '.product/assets';
 const SET_ASIDE = ['cancelled', 'postponed'];
+// The section of the directive its agents' briefs draw.
+const BRIEFED = ["A Phase's Piece"];
 const OUT_OF_THE_UNIT = ['cancelled', 'postponed', 'promoted'];
 // A markdown file's relative links, as the engine rebases them when a copy
 // lands in another folder (markdown-links.cjs), which no migration loads:
@@ -494,6 +498,7 @@ function plansOf(project, unit, before) {
 module.exports = {
   counts: { one: 'piece of work', many: 'pieces of work' },
   done: 'done',
+  briefed: BRIEFED,
   /** @param {{projectDir: string, stateDir: string}} dirs */
   check({ projectDir, stateDir }) {
     const project = projectOf(projectDir, stateDir);

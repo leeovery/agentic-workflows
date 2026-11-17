@@ -40,7 +40,7 @@ const path = require('path');
 const { spawn } = require('child_process');
 const { git, statePath, layout, readState, writeState, cleanupFixture, ledgerEntries, holdLock, lockAttempts } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
-const { headProblems, modelProblems, lintDirectives } = require('./directive-lint.cjs');
+const { headProblems, modelProblems, briefedProblems, lintDirectives } = require('./directive-lint.cjs');
 const {
   UNIT, SESSION, RECORDED, FIXTURES, directiveEngine, midMigration, stateUnborn, codeHead, enter, enterTopic, refusedUntouched, recorded,
 } = require('./migration-world.cjs');
@@ -99,6 +99,27 @@ describe('a directive\'s head (21.S34)', () => {
       ['its head\'s first section is not ## Touches', 'its head\'s second section is not ## Asks'],
       ['## Touches lists nothing'],
       ['## Asks holds more than its list'],
+    ]);
+  });
+});
+
+describe('the sections a directive\'s agents\' briefs draw (21.10.5)', () => {
+  it('each a heading the directive holds, with what nests beneath it, none calling the engine; a check naming none has none to lint', () => {
+    const text = '# Records\n\n## The Record\n\nCompose it.\n\n### Its Shape\n\nOne object.\n\n## Carrying\n\n```bash\nnode .claude/skills/ledger-engine/scripts/engine.cjs ledger carry {place}\n```\n';
+    assert.deepStrictEqual([
+      briefedProblems(text, undefined),
+      briefedProblems(text, ['The Record']),
+      briefedProblems(text, ['Its Shape', 'The Record']),
+      briefedProblems(text, []),
+      briefedProblems(text, ['The Records']),
+      briefedProblems(text, ['Carrying']),
+    ], [
+      [],
+      [],
+      [],
+      ['the directive\'s check names no section its agents\' briefs draw — briefed, a list of its headings'],
+      ['the directive heads no section "The Records", which its check names briefed'],
+      ['its section Carrying, which its agents\' briefs draw, calls the engine — the session\'s work'],
     ]);
   });
 });

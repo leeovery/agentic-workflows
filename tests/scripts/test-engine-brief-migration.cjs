@@ -6,19 +6,25 @@
 // 21.10.7): `engine brief migration-topic|migration-verifier --topic
 // <unit.phase.topic> --directive <id>`. The per-topic agent's brief — the
 // topic as the move left it, its files but its mail, and as the records
-// directive's check reads them its specs, grouped under another name or
-// under `.workflows/` where its building started, its old map there, its
-// research's threads still open and its reviews never folded in, a
-// promoted topic's where it was promoted from, all read in the main
-// checkout from a linked worktree too; the unit's assets with where each
-// came in from, those the topic owes a link and those whose file is gone
-// marked, where its record goes, the verifier's findings and the carry's
-// refusal where it has any, taken by the brief and cleared, and the
-// directive, its headings a level down; a cancelled unit's topic briefed
-// as any other; the verifier's — the topic, its record as composed, verbatim,
-// and the directive; every refusal storing nothing; and the two agents'
-// definitions (21.S35): each fixes its model and effort, and its tools hold
-// no shell, so no engine call and no ledger write is theirs.
+// directive's check reads them its specs, grouped under another name and
+// kept as an asset or joined into the unit's spec.md where its building
+// started, each part of it named, each approved or a draft, its old map
+// there, its research's threads still open, either "None — no entry needs"
+// its mark where it has none, and its reviews never folded in, a promoted
+// topic's where it was promoted from, all read in the main checkout from a
+// linked worktree too; the unit's assets with where each came in from,
+// those the topic owes a link and those whose file is gone marked, where
+// its record goes and whether it is composed yet, the verifier's findings
+// kept until a verifier reads the record again, the carry's refusal taken
+// by the brief and cleared, the call that checks the record writing
+// nothing, and of the directive the sections its check names briefed, the
+// session's own work none of them; a cancelled unit's topic briefed as any
+// other; the verifier's — the topic, its record as composed, verbatim, the
+// last verifier's findings, taken and cleared, and the directive; every
+// refusal storing nothing; and the two agents' definitions (21.S35): each
+// fixes its model and effort, and its shell is for reading, the per-topic
+// agent's for its record's check besides, so no other engine call and no
+// ledger write is theirs.
 //
 // Layer: verb. World: the records directive's (migration-world.cjs), made
 // once and copied for each test.
@@ -36,6 +42,7 @@ const { ok, git, statePath, layout, writeState, readState, cleanupFixture } = ha
 const { recordsMigration, refusedUntouched } = require('./migration-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
+const { ENGINE_RUN } = require(path.join(SCRIPTS, 'kernel/call.cjs'));
 const { ROLES, briefPath, issuedPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
 const { conversationDir } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
 const { composedPath, findingsPath, refusedPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
@@ -67,12 +74,17 @@ function filledTemplate(role, drawn) {
   return fs.readFileSync(path.join(TEMPLATES, `${role}.md`), 'utf8').split('\n').map((line) => drawn[line.slice(2, -2)] ?? line).join('\n');
 }
 
-/** The directive as a brief draws it: each heading a level down. */
-/** The directive as a brief draws it: its headings a level down, its blocks calling the engine left out. */
-const directiveDrawn = () => fs.readFileSync(DIRECTIVE, 'utf8').replace(/```bash\n[^`]*engine\.cjs[^`]*```\n\n?/g, '').trimEnd().split('\n').map((line) => (/^#{1,6} /.test(line) ? `#${line}` : line)).join('\n');
+/** The directive as a brief draws it: its two sections for the agents, a topic's sources and its record, as they stand. */
+function directiveDrawn() {
+  const text = fs.readFileSync(DIRECTIVE, 'utf8');
+  return text.slice(text.indexOf('## A Topic\'s Sources'), text.indexOf('## Working Through the Topics')).trimEnd();
+}
 
-/** The licensing topic as a brief draws it. */
-const licensingDrawn = () => [
+/** The call checking licensing's record, as its brief draws it. */
+const RECORD_CHECK = `\`${ENGINE_RUN} ledger carry fumi.discussion.licensing --dry-run\``;
+
+/** The licensing topic as a brief draws it, its record composed or not yet. @param {boolean} [composed] */
+const licensingDrawn = (composed = false) => [
   '- **Unit:** fumi, epic, in-progress',
   '- **Topic:** licensing, in discussion, completed',
   `- **The state:** ${statePath(dir)} — each path below is from there, as an entry cites it, but one under \`.workflows/\``,
@@ -86,7 +98,7 @@ const licensingDrawn = () => [
   '',
   '## Its specs',
   '',
-  '- fumi/assets/specs/commerce.md',
+  '- fumi/assets/specs/commerce.md, a draft',
   '',
   '## Its old map, as `.workflows/` holds it',
   '',
@@ -94,7 +106,7 @@ const licensingDrawn = () => [
   '',
   '## Its research\'s threads still open',
   '',
-  'None recorded.',
+  'None — no entry needs a thread.',
   '',
   '## The unit\'s assets',
   '',
@@ -105,7 +117,7 @@ const licensingDrawn = () => [
   '',
   '## Where the record goes',
   '',
-  '- The record composed: .cache/migrate/records/fumi/licensing.json',
+  `- The record composed: .cache/migrate/records/fumi/licensing.json, ${composed ? 'composed already' : 'not composed yet'}`,
   '- The verifier\'s findings on it: .cache/migrate/records/fumi/licensing.findings.txt',
   '- A carry\'s refusal of it: .cache/migrate/records/fumi/licensing.refused.md',
 ].join('\n');
@@ -127,12 +139,12 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
 
     assert.deepStrictEqual(res, { ok: true, id: res.id, role: 'migration-topic', agent: 'ledger-migration-topic', pointer: `brief:${res.id}` });
     assert.strictEqual(brief, `Brief ${res.id} — the migration's, for one topic\n\n${filledTemplate('migration-topic', {
-      'migrated-topic': licensingDrawn(), 'verifier-findings': 'None recorded.', 'carry-refusal': 'None recorded.', directive: directiveDrawn(),
+      'migrated-topic': licensingDrawn(), 'verifier-findings': 'None recorded.', 'carry-refusal': 'None recorded.', 'record-check': RECORD_CHECK, directive: directiveDrawn(),
     })}`);
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(issuedPath(SESSION_ID, res.id), 'utf8')), { role: 'migration-topic', agent: 'ledger-migration-topic', unit: null, task: null, topic: null });
   });
 
-  it('a topic\'s research threads still open and its map\'s undecided subtopics; a building unit\'s spec read under `.workflows/` and cited as its spec.md', () => {
+  it('a topic\'s research threads still open and its map\'s undecided subtopics, and none of either where it has none; a building unit\'s specs as the parts of its spec.md each makes, approved', () => {
     const search = issued(['migration-topic', '--topic', 'fumi.discussion.search', '--directive', '079-records']).brief;
     const weights = issued(['migration-topic', '--topic', 'shop.discussion.weights', '--directive', '079-records']).brief;
 
@@ -144,9 +156,13 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
     ].join('\n')), search);
     assert.ok(weights.includes([
       '## Its specs', '',
-      '- .workflows/shop/specification/weights/specification.md, cited as shop/spec.md',
-      '- .workflows/shop/specification/wishlist/specification.md, cited as shop/spec.md', '',
+      '- shop/spec.md, its part "1. Weights", approved',
+      '- shop/spec.md, its part "2. Wishlist", approved', '',
     ].join('\n')), weights);
+    assert.ok(issued(['migration-topic', '--topic', 'fumi.discovery.support', '--directive', '079-records']).brief.includes([
+      '## Its old map, as `.workflows/` holds it', '', 'None — no entry needs a map_item.', '',
+      '## Its research\'s threads still open', '', 'None — no entry needs a thread.', '',
+    ].join('\n')));
   });
 
   it('a promoted topic\'s research threads, read where it was promoted from', () => {
@@ -181,14 +197,18 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
     assert.ok(issued(['migration-topic', ...LICENSING]).brief.includes('# The carry\'s refusal\n\nNone recorded.\n\n# The directive'));
   });
 
-  it('briefed afresh after the verifier, it carries the verifier\'s findings verbatim and clears them, so the next brief carries none', () => {
-    writeState(dir, findingsPath('fumi', 'licensing'), '## Trial Length\n\nThe record drops the trial\'s fourteen days.\n');
+  it('briefed afresh after the verifier, it carries the verifier\'s findings verbatim and keeps them, so the verifier reading the record amended carries them as the last findings, and clears them', () => {
+    const FINDINGS = '## Trial Length\n\nThe record drops the trial\'s fourteen days.';
+    writeState(dir, findingsPath('fumi', 'licensing'), `${FINDINGS}\n`);
+    writeState(dir, composedPath('fumi', 'licensing'), `${RECORD}\n`);
 
-    const { brief } = issued(['migration-topic', ...LICENSING]);
+    const composer = issued(['migration-topic', ...LICENSING]).brief;
+    const verifier = issued(['migration-verifier', ...LICENSING]).brief;
 
-    assert.ok(brief.includes('# The verifier\'s findings\n\n## Trial Length\n\nThe record drops the trial\'s fourteen days.\n\n# The carry\'s refusal'));
+    assert.ok(composer.includes(`# The verifier's findings\n\n${FINDINGS}\n\n# The carry's refusal`), composer);
+    assert.ok(composer.includes('- The record composed: .cache/migrate/records/fumi/licensing.json, composed already'), composer);
+    assert.ok(verifier.includes(`# The last verifier's findings\n\n${FINDINGS}\n\n# The directive`), verifier);
     assert.strictEqual(fs.existsSync(statePath(dir, findingsPath('fumi', 'licensing'))), false);
-    assert.ok(issued(['migration-topic', ...LICENSING]).brief.includes('# The verifier\'s findings\n\nNone recorded.\n\n# The carry\'s refusal'));
   });
 
   it('21.S44: a cancelled unit\'s topic is briefed as any other, the import from its discovery its own to link', () => {
@@ -200,14 +220,14 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
 });
 
 describe('the verifier\'s brief (21.10.7)', () => {
-  it('the topic, its record as composed, verbatim, and the directive', () => {
+  it('the topic, its record as composed, verbatim, no last findings yet, and the directive', () => {
     writeState(dir, composedPath('fumi', 'licensing'), `${RECORD}\n`);
 
     const { res, brief } = issued(['migration-verifier', ...LICENSING]);
 
     assert.deepStrictEqual([res.role, res.agent], ['migration-verifier', 'ledger-migration-verifier']);
     assert.strictEqual(brief, `Brief ${res.id} — the migration verifier's\n\n${filledTemplate('migration-verifier', {
-      'migrated-topic': licensingDrawn(), 'composed-record': `\`\`\`json\n${RECORD}\n\`\`\``, directive: directiveDrawn(),
+      'migrated-topic': licensingDrawn(true), 'composed-record': `\`\`\`json\n${RECORD}\n\`\`\``, 'verifier-findings': 'None recorded.', directive: directiveDrawn(),
     })}`);
   });
 });
@@ -235,18 +255,23 @@ describe('the refusals, nothing stored', () => {
 });
 
 describe('the migration\'s agents and the plain search (21.S35, 26.5.1)', () => {
-  /** The rule confining an agent's shell, word for word in each agent's file. */
+  /** The rule confining an agent's shell, word for word in each agent's file: reading alone, or reading and the check its brief names. */
   const CONFINED = '**The shell is for reading and searching alone:** `rg`, `find`, `ls`, `cat`, `head`, `tail`, `wc` and their like. Never run the engine, never run git, and never write, move or delete a file through it.';
+  const CHECKING = '**The shell is for reading and searching, and for the check your brief names:** `rg`, `find`, `ls`, `cat`, `head`, `tail`, `wc` and their like. Never run the engine for anything else, never run git, and never write, move or delete a file through it.';
 
-  it('each searches through a shell confined to reading — Claude Code giving no Glob or Grep tool — and neither its agent file nor its brief names an engine call: only the session writes the ledger and the state', () => {
-    for (const agent of ['ledger-migration-topic', 'ledger-migration-verifier', 'ledger-plain-search']) {
+  it('each searches through a shell confined to reading, the per-topic agent\'s running its record\'s check besides — Claude Code giving no Glob or Grep tool — and no agent file names an engine call, nor any brief but the check it names: only the session writes the ledger and the state', () => {
+    for (const [agent, rule] of [['ledger-migration-topic', CHECKING], ['ledger-migration-verifier', CONFINED], ['ledger-plain-search', CONFINED]]) {
       const text = fs.readFileSync(path.join(AGENTS, `${agent}.md`), 'utf8');
       const tools = String(/^tools: (.*)$/m.exec(text)?.[1]).split(', ');
 
       assert.deepStrictEqual(['Bash', 'Glob', 'Grep'].map((tool) => tools.includes(tool)), [true, false, false], `${agent}'s tools: ${tools.join(', ')}`);
-      assert.ok(text.includes(CONFINED), `${agent} confines its shell`);
+      assert.ok(text.includes(rule), `${agent} confines its shell`);
       assert.ok(!text.includes('engine.cjs'), `${agent} names no engine call`);
     }
-    assert.deepStrictEqual([issued(['migration-topic', ...LICENSING]).brief.includes('engine.cjs'), fs.readFileSync(DIRECTIVE, 'utf8').includes('engine.cjs')], [false, true], 'the brief draws the directive without the session\'s engine calls');
+    writeState(dir, composedPath('fumi', 'licensing'), `${RECORD}\n`);
+    const engineCalls = (/** @type {string} */ brief) => brief.split('engine.cjs').length - 1;
+    assert.deepStrictEqual([
+      engineCalls(issued(['migration-topic', ...LICENSING]).brief), engineCalls(issued(['migration-verifier', ...LICENSING]).brief), fs.readFileSync(DIRECTIVE, 'utf8').includes('engine.cjs'),
+    ], [1, 0, true], 'the briefs draw the directive without the session\'s engine calls, the per-topic agent\'s naming its record\'s check alone');
   });
 });
