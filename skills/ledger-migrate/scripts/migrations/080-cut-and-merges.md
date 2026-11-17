@@ -18,6 +18,8 @@
 - Once for each building unit with topics its specs do not cover: where
   those topics go, a new epic the person names or the roadmap, and, for the
   roadmap, which horizon.
+- For each link in the tracker the cut refuses: that the person take it
+  off there.
 - Nothing else.
 
 ## What It Does
@@ -111,7 +113,7 @@ A piece, `phases/{N}.json`, is one JSON object. A phase still to build:
   "scenarios": ["Given {context}, when {action}, then {outcome}.", "…"],
   "notes": ["{text}"],
   "corrections": [
-    {"was": "{what disagreed}", "found": "{what the code shows}", "changed": "{what was changed}", "task": "{N}.{n}", "title": "{title}", "to": "done"}
+    {"was": "{what was wrong}", "found": "{what the code shows}", "changed": "{what was changed}", "task": "{N}.{n}", "title": "{title}", "to": "done"}
   ]
 }
 ```
@@ -124,18 +126,18 @@ A phase found built is `{"phase": {"name": "{name}", "goal": "{goal}", "sections
 - **A phase still to build** has its scenarios, at least one, written from the phase and each acceptance criterion of its tasks still to build. Each scenario is one line, `Given …, when …, then …`, of one behaviour; criteria that prove the same behaviour make one scenario, and no scenario says again what another does. A criterion about structure — a file's path, a class of its own — is carried as a scenario like any other. The join numbers them in the area, `{A}.S1` on, in the cut's order.
 - **An area with no plan** is a phase still to build, its scenarios written from the area.
 - **What it relies on, `relies_on`,** is required of a phase still to build: each earlier phase of this cut, by its number, or another unit, by its name, that builds what it depends on. Each dependency the brief names, on a phase still to build, is among them; `[]` where it relies on nothing.
-- **The notes** are what the build must know that no scenario says, with corrections or without: what a correction leaves to settle, a spike's question, where the tracker's text and the plan's differ, and each task still to build that the code already holds — the build reads the code before building it.
-- **The corrections** settle where the manifest and the tracker disagree, each disagreement the phase's brief names, from both and the code. Read the code for what the task or the phase was to build, and say what was found:
+- **The notes** are what the build must know that no scenario says, with corrections or without: what a correction leaves to settle, a spike's question, where the tracker's text and the plan's differ, and each task still to build that the code holds in part — the build reads the code before building it. A note is a line or several, and holds no heading at level one or two, which would read as another note.
+- **The corrections** settle what the tracker has wrong, from the phase's sources and the code: each disagreement between the manifest and the tracker the phase's brief names, every one, and any other task its sources show done, superseded by later work, or no longer wanted, which is corrected, never carried on as work to build. Read the code for what the task or the phase was to build, and say what was found, naming its evidence — the code's files, the later task by its id:
   - The code holds it, and the tracker holds the task neither done nor closed: the tracker is wrong. The correction ends the task, named as the brief names it, `"task": "{N}.{n}"`, with its title as the tracker holds it, `"to": "done"`.
   - The code holds it in another way than the task asked, or the work it asked for is no longer wanted: `"to": "closed"`, what was found its reason.
   - The code does not hold it: the tracker stands, and the correction changes nothing in it. Where the manifest counted the phase built, it is still to build.
   - The tracker holds the phase's every task ended, and the manifest does not count it built: the phase is built.
   - A task the tracker holds done that the code does not hold stays done; a note for later says what is missing.
 
-  Each correction says, one line each, what disagreed, `was`, what the code shows, `found`, and what was changed, `changed`: the task ended, the phase's mark, or nothing. One that ends a task names it too, `task`, `title` and `to`, all three; one that changes nothing in the tracker names none of them:
+  Each correction says, one line each, what was wrong, `was`, what the code shows, `found`, and what was changed, `changed`: the task ended, the phase's mark, or nothing. One that ends a task names it too, `task`, `title` and `to`, all three; one that changes nothing in the tracker names none of them:
 
   ```json
-  {"was": "{what disagreed}", "found": "{what the code shows}", "changed": "Nothing in the tracker: the task stands, and the phase is cut still to build."}
+  {"was": "{what was wrong}", "found": "{what the code shows}", "changed": "Nothing in the tracker: the task stands, and the phase is cut still to build."}
   ```
 
 ### Its Cut
@@ -152,7 +154,11 @@ The join refuses a piece no verifier has passed. Where it refuses, write its ref
 node .claude/skills/ledger-engine/scripts/engine.cjs cut {unit} --migrating --file {plan}
 ```
 
-A cut that refuses writes nothing: write its refusal, as it reads, into the findings of each phase it names, and compose those again; then verify, join and cut again.
+A cut that refuses writes nothing. Write each fault of its refusal, as it reads, into the findings of each phase it names, and compose those again; then verify, join and cut again. But a link it names, a task held after one of a later phase or another unit's, is the tracker's, which no piece settles: no phase is composed again for it. Tell the person each link, as the refusal reads, to take off in the tracker.
+
+**STOP.** Wait for user response.
+
+Once they have, cut again.
 
 ## An Epic's Research
 

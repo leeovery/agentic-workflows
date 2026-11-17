@@ -21,17 +21,19 @@
 // correcting step: a correction ending a task the manifest credits and the
 // tracker holds open, read as ended before the cut's checks and ended after,
 // a correction of another shape or naming a task otherwise than the tracker
-// refused, every correction listed in the migration's review. The cut
+// refused, every correction listed in the migration's review; and one of a
+// task no disagreement names, joined and cut all the same. The cut
 // laid out phase by phase, the plans ordered by their dependencies; each
 // phase's brief drawn from the directive's check, the tracker's tasks by
 // the cut's names with the text of each still to build, what its plan
 // depends on and where the manifest and the tracker disagree, and of the
 // directive the section its check names briefed, a phase's piece; the
 // verifier's, the piece verbatim; the join of the pieces into the plan the
-// cut takes, a missing or misshapen piece and an old dependency left
-// unrelied refused; each record refused for a directive whose check carries
-// no such piece; and an issued brief dispatched through the brief hook, a
-// hand-written one refused and recorded (13.S15).
+// cut takes, a note of several lines taken as the cut takes it, a missing
+// or misshapen piece, a note the cut would refuse and an old dependency
+// left unrelied refused; each record refused for a directive whose check
+// carries no such piece; and an issued brief dispatched through the brief
+// hook, a hand-written one refused and recorded (13.S15).
 //
 // Layer: verb. World: the cut and the merges' (migrated-world.cjs), built
 // once per process and copied for each test.
@@ -490,31 +492,47 @@ describe('the per-phase agents and the join (21.10.5, E7)', () => {
     assert.deepStrictEqual(run(['cut', 'shop', '--migrating', '--file', joined.plan]).ended, ['4.2']);
   });
 
-  it('numbers the scenarios of every piece in one area on from the last, and keeps every piece\'s notes, in the cut\'s order', () => {
+  it('numbers the scenarios of every piece in one area on from the last, and keeps every piece\'s notes, in the cut\'s order, a note of several lines among them, as the cut takes it', () => {
+    const several = 'The export format is the accountant\'s.\n\n### Its columns\n\nDate, amount, card.';
     compose(4, { phase: { name: 'Charges', goal: 'Cards charged.', sections: ['2'], relies_on: [] }, scenarios: ['Given a card, when it is charged, then the charge is kept.', 'Given a charge, when it is refunded, then the card is paid back.'], notes: ['Refunds in part wait on the till.'], corrections: [] });
-    compose(5, exported({ notes: ['The export format is the accountant\'s.'] }));
-    run(['migrate', 'join', 'shop', '--directive', DIRECTIVE]);
+    compose(5, exported({ notes: [several] }));
+    const joined = run(['migrate', 'join', 'shop', '--directive', DIRECTIVE]);
     const { phases, scenarios, notes } = JSON.parse(readState(dir, `${STAGING}/plan.json`));
 
-    assert.deepStrictEqual([phases[3].scenarios, phases[4].scenarios, scenarios[2].length, notes], [['2.S1', '2.S2'], ['2.S3'], 3, ['Refunds in part wait on the till.', 'The export format is the accountant\'s.']]);
+    assert.deepStrictEqual([phases[3].scenarios, phases[4].scenarios, scenarios[2].length, notes], [['2.S1', '2.S2'], ['2.S3'], 3, ['Refunds in part wait on the till.', several]]);
+    assert.strictEqual(run(['cut', 'shop', '--migrating', '--file', joined.plan]).notes, 2);
   });
 
-  it('refuses, writing no plan, each fault named by its phase: no piece, a piece of another shape or with keys of its own, "built" other than true, a section spec.md lacks, a correction the cut would refuse or corrections no list, and a piece its verifier has not passed or whose findings stand', () => {
+  it('joins a correction of a task no disagreement names — one its phase\'s sources show superseded — and the cut ends it, its phase then built', () => {
+    const superseded = { was: 'pay-3-1, task 5.1, "Export payments": the tracker holds it not started, and later work superseded it', found: 'The till exports payments itself (till/export.ts), so the shop builds no export.', changed: 'Task 5.1 closed, and the phase is built.', task: '5.1', title: 'Export payments', to: 'closed' };
+    compose(4, CHARGES);
+    compose(5, { phase: { name: 'Export', goal: 'Payments exported.', sections: ['2'], built: true }, scenarios: [], notes: [], corrections: [superseded] });
+    const joined = run(['migrate', 'join', 'shop', '--directive', DIRECTIVE]);
+    const res = run(['cut', 'shop', '--migrating', '--file', joined.plan]);
+
+    const exporting = DRIVER.show(statePath(dir), { unit: 'shop', phase: 5, n: 1 });
+    assert.deepStrictEqual([joined.built, res.ended, exporting?.status, exporting?.reason], [5, ['4.2', '5.1'], 'closed', superseded.found]);
+  });
+
+  it('refuses, writing no plan, each fault named by its phase: no piece, a piece of another shape or with keys of its own, "built" other than true, a section spec.md lacks, a note or a correction the cut would refuse or notes or corrections no list, and a piece its verifier has not passed or whose findings stand', () => {
     compose(4, { ...CHARGES, scenarios: ['A scenario.'] });
     assert.strictEqual(joinRefused(), [
       'migrate join: phase 4\'s piece marks it built and gives it scenarios — a phase found built places no scenario and relies on nothing',
       `phase 5 has no piece that reads — .cache/migrate/cut-and-merges/shop/phases/5.json: ENOENT: no such file or directory, open '${statePath(dir, STAGING, 'phases/5.json')}'`,
     ].join('; '));
 
-    compose(4, { ...CHARGES, phase: { ...CHARGES.phase, built: false }, corrections: [{ ...REFUND_CORRECTED, to: 'reopened' }] });
-    compose(5, exported({ phase: { name: 'Export', goal: 'Payments exported.', sections: ['2', '2.4'] }, corrections: 'none' }));
+    compose(4, { ...CHARGES, phase: { ...CHARGES.phase, built: false }, notes: [' ', 'Refunds wait.\n\n## The till\n\nIt refunds.'], corrections: [{ ...REFUND_CORRECTED, to: 'reopened' }] });
+    compose(5, exported({ phase: { name: 'Export', goal: 'Payments exported.', sections: ['2', '2.4'] }, notes: 'none', corrections: 'none' }));
     assert.strictEqual(joinRefused(), [
       'migrate join: phase 4\'s piece marks it "built": false — a phase found built is "built": true, and one still to build names no "built"',
       'phase 4\'s piece gives no "relies_on" — a phase still to build names what it relies on, [] for nothing',
       'phase 4\'s piece gives no scenario of one line — a phase still to build places its scenarios',
+      'phase 4\'s piece: note 1 holds nothing',
+      'phase 4\'s piece: note 2 holds a heading at level one or two, which would read as another note — "## The till"',
       'phase 4\'s piece: correction 1 ends a task by its "task", the name its phase\'s adoption gives it, its "title" as the tracker holds it, and "to", done or closed — all three',
       'phase 5\'s piece draws on section "2.4", which spec.md lacks',
       'phase 5\'s piece gives no "relies_on" — a phase still to build names what it relies on, [] for nothing',
+      'phase 5\'s piece\'s notes are not a list',
       'phase 5\'s piece\'s corrections are not a list',
     ].join('; '));
 

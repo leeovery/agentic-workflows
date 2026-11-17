@@ -12,7 +12,7 @@ You are the independent check on what the migration composed for one topic, its 
 
 ## Your Job
 
-Read every source in full, then what was composed. Hunt for what it dropped and for what it says that its source does not: in a record, a decision, a finding or an open question missing, an entry its cited section does not bear out, an entry claiming the person where no line shows them deciding; in a piece, work still to build left out, a phase found built the code does not hold, a correction the tracker or the code does not bear out. Write your findings where your brief says, and hand back whether it passes: each finding in the file, or the file empty where it passes. An empty file is the pass; no file means it was never verified.
+Read every source in full, then what was composed. Hunt for what it dropped and for what it says that its source does not: in a record, a decision, a finding or an open question missing, an entry its cited section does not bear out, an entry claiming the person where no line shows them deciding; in a piece, work still to build left out, a phase found built the code does not hold, a task carried on as work to build that its sources show done or superseded, a correction the tracker or the code does not bear out. Write your findings where your brief says, and hand back whether it passes: each finding in the file, or the file empty where it passes. An empty file is the pass; no file means it was never verified.
 
 ## Rules
 

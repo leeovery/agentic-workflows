@@ -28,10 +28,12 @@
 // marking built a phase with a task open, or not built one with none, the
 // tracker winning; a built phase naming a section outside the area of its
 // old plan's topic; a link holding a task not ended after an unfinished one
-// of a later phase or another unit's, naming each, the order it names then
-// cut; and, writing nothing at all, a built phase naming no tracker parent
-// or no section, a phase still to build placing no scenario, an area of the
-// joined spec no phase places, and every refusal of the verb's own —
+// of a later phase or another unit's, naming each by its titles and the
+// remedy, the tracker's, the tracker left as it was so a plan cut in the
+// link's order is then taken; and, writing nothing at all, a built phase
+// naming no tracker parent or no section, a phase still to build placing no
+// scenario, an area of the joined spec no phase places, and every refusal
+// of the verb's own —
 // outside the migration, a unit marked or not joined, a plan of another
 // shape or whose cut the spec refuses. A run killed at each of its writes
 // run again to what a whole run leaves, and a run again whose plan holds no
@@ -428,15 +430,15 @@ describe('the migration\'s cut of a unit whose building started (21.7.1, 21.8.6�
     assert.ok(!/staging|bank/.test(readState(dir, 'shop/manifest.json')), 'no staging, banked finding or old item stands on the manifest');
   });
 
-  it('refuses, nothing written to the tracker or the unit, a link holding a task neither done nor closed after one neither, of a later phase or another unit\'s — `task link`\'s rule (12.6.4, 7.1.14) — naming each; a link after an ended task, another unit\'s among them, or holding an ended one, holding nothing up', () => {
+  it('refuses, nothing written to the tracker or the unit, a link holding a task neither done nor closed after one neither, of a later phase or another unit\'s — `task link`\'s rule (12.6.4, 7.1.14) — naming each by its title, and the remedy the tracker\'s, never a piece\'s; a link after an ended task, another unit\'s among them, or holding an ended one, holding nothing up', () => {
     const root = statePath(dir);
     DRIVER.adopt(root, 'memo', 1, PLANS.memo.phases[0]);
     cut('tally', tallyPlan());
     for (const [title, after] of [['Refund a charge', 'Export payments'], ['Email a receipt', 'Take a card'], ['Email a receipt', 'Write a memo'], ['Refund a charge', 'Count a day'], ['Charge the card', 'Export payments']]) SIDE.linkBy(root, title, after);
 
     assert.strictEqual(trackerUntouched('shop', cutArgs('shop', shopPlan())), [
-      'cut: task 4.2 is held after task 5.1, of a later phase — a task waits on its own phase\'s or an earlier one\'s alone, so 4.2 would never start: cut the phases in the order the link holds, or take the link off in the tracker',
-      'task 4.3 is held after task 1.1 of memo, another unit\'s — a task waits on its own unit\'s alone, so 4.3 would never start: take the link off in the tracker',
+      'cut: task 4.2, "Refund a charge", is held after task 5.1, "Export payments", of a later phase — a task waits on its own phase\'s or an earlier one\'s alone, so 4.2 would never start: the link is the tracker\'s, which no piece of the plan settles — take it off in the tracker, then cut again',
+      'task 4.3, "Email a receipt", is held after task 1.1 of memo, "Write a memo", another unit\'s — a task waits on its own unit\'s alone, so 4.3 would never start: the link is the tracker\'s, which no piece of the plan settles — take it off in the tracker, then cut again',
     ].join('; '));
   });
 

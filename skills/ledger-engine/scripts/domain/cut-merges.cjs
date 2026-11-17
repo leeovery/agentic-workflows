@@ -35,13 +35,13 @@
 // refuses, naming every fault and writing nothing: a unit no building
 // unit; a phase whose piece is missing, will not read or is of another
 // shape — a phase still to build with no `relies_on` or no scenario, a
-// built one with either, a section `spec.md` lacks, a correction the cut
-// would refuse (cut-migrating.cjs, `correctionFaults`), each named by its
-// phase; a piece its verifier has not passed, or whose findings stand; and
-// a phase still to build of a plan that depends on another plan's phase
-// still to build, relying on nothing that names it — the old dependency
-// named, and both phases. It answers the plan's path from the project's
-// folder, as `cut --migrating --file` reads it.
+// built one with either, a section `spec.md` lacks, a note or a correction
+// the cut would refuse (cut-migrating.cjs, `noteFaults`, `correctionFaults`),
+// each named by its phase; a piece its verifier has not passed, or whose
+// findings stand; and a phase still to build of a plan that depends on
+// another plan's phase still to build, relying on nothing that names it —
+// the old dependency named, and both phases. It answers the plan's path
+// from the project's folder, as `cut --migrating --file` reads it.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -52,7 +52,7 @@ const { codeRoot } = require('../kernel/code-root.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { ENDED, STATUS_WORDS, adoptionRead } = require('./task-verbs.cjs');
 const { loadCheck } = require('./directives.cjs');
-const { correctionFaults } = require('./cut-migrating.cjs');
+const { noteFaults, correctionFaults } = require('./cut-migrating.cjs');
 const { SPEC_FILE, readSpec, specSections } = require('./spec-sections.cjs');
 
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
@@ -255,7 +255,7 @@ function pieceFaults(phase, piece, sections, phases) {
     ...(built && ('relies_on' in entry || (Array.isArray(scenarios) && scenarios.length > 0)) ? [`${which} marks it built and gives it ${'relies_on' in entry ? '"relies_on"' : 'scenarios'} — a phase found built places no scenario and relies on nothing`] : []),
     ...(!built && !Array.isArray(entry.relies_on) ? [`${which} gives no "relies_on" — a phase still to build names what it relies on, [] for nothing`] : []),
     ...(!built && (!isLines(scenarios) || scenarios.length === 0) ? [`${which} gives no scenario of one line — a phase still to build places its scenarios`] : []),
-    ...(isLines(notes) ? [] : [`${which}'s notes are not lines of text`]),
+    ...(Array.isArray(notes) ? noteFaults(notes).map((fault) => `${which}: ${fault}`) : [`${which}'s notes are not a list`]),
     ...(Array.isArray(corrections) ? correctionFaults(corrections, tracked).map((fault) => `${which}: ${fault}`) : [`${which}'s corrections are not a list`]),
   ];
 }

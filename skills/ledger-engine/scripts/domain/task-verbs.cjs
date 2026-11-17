@@ -544,11 +544,17 @@ function closePlan(cwd, unit, parent) {
   return closed;
 }
 
-/** A task's link after another as the cut refuses it, naming why the build would wait on it for ever. @param {TaskRef} task @param {TaskRef} after */
+/**
+ * A task's link after another as the cut refuses it, each by its title as
+ * the tracker holds it, naming why the build would wait on it for ever and
+ * the remedy: the link is the tracker's, so no piece of the plan settles it.
+ * @param {TaskRow} task @param {TaskRow} after
+ */
 function linkWords(task, after) {
-  const held = `task ${shownTask(task)} is held after ${after.unit === task.unit ? `task ${shownTask(after)}` : taskName(after)}`;
-  if (after.unit !== task.unit) return `${held}, another unit's — a task waits on its own unit's alone, so ${shownTask(task)} would never start: take the link off in the tracker`;
-  return `${held}, of a later phase — a task waits on its own phase's or an earlier one's alone, so ${shownTask(task)} would never start: cut the phases in the order the link holds, or take the link off in the tracker`;
+  const own = after.ref.unit === task.ref.unit;
+  const held = `task ${shownTask(task.ref)}, "${task.title}", is held after ${own ? `task ${shownTask(after.ref)}` : taskName(after.ref)}, "${after.title}"`;
+  const why = own ? 'of a later phase — a task waits on its own phase\'s or an earlier one\'s alone' : 'another unit\'s — a task waits on its own unit\'s alone';
+  return `${held}, ${why}, so ${shownTask(task.ref)} would never start: the link is the tracker's, which no piece of the plan settles — take it off in the tracker, then cut again`;
 }
 
 /**
@@ -557,13 +563,12 @@ function linkWords(task, after) {
  * @param {TaskDriver} driver @param {string} root @param {string} unit @param {TaskDetail[]} tasks every task of the phases adopted
  */
 function linkFaults(driver, root, unit, tasks) {
-  const statuses = new Map(tasks.map(({ ref, status }) => [taskId(ref), status]));
-  const unended = (/** @type {TaskRef} */ ref) => {
-    const status = statuses.get(taskId(ref)) ?? driver.show(root, ref)?.status;
-    return status !== undefined && !ENDED.includes(status);
-  };
-  return tasks.filter(({ status }) => !ENDED.includes(status))
-    .flatMap(({ ref, after }) => after.filter((on) => (on.unit !== unit || on.phase > ref.phase) && unended(on)).map((on) => linkWords(ref, on)));
+  const held = new Map(tasks.map((task) => [taskId(task.ref), task]));
+  return tasks.filter(({ status }) => !ENDED.includes(status)).flatMap((task) => task.after.flatMap((ref) => {
+    if (ref.unit === unit && ref.phase <= task.ref.phase) return [];
+    const on = held.get(taskId(ref)) ?? driver.show(root, ref);
+    return on === null || ENDED.includes(on.status) ? [] : [linkWords(task, on)];
+  }));
 }
 
 /**
@@ -595,10 +600,10 @@ function areaFaults({ phase, built, sections, plan }, topics) {
 }
 
 /**
- * A task the migration's cut ends where the manifest and the tracker
- * disagreed and the code settled it (cut-migrating.cjs): the task by the
- * name its phase's adoption gives it, its title as the tracker holds it,
- * how it ends, and why, the reason a close keeps.
+ * A task the migration's cut ends where its phase's sources and the code
+ * showed the tracker wrong (cut-migrating.cjs): the task by the name its
+ * phase's adoption gives it, its title as the tracker holds it, how it
+ * ends, and why, the reason a close keeps.
  * @typedef {{ref: TaskRef, title: string, to: 'done'|'closed', why: string}} TrackerCorrection
  */
 

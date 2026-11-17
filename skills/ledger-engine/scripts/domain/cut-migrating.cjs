@@ -20,13 +20,15 @@
 //   finds them (11.5.9);
 // - `notes`: the notes for later, each its text — what the build must
 //   know, and what a correction leaves for the build to settle (21.8.8);
-// - `corrections`: each disagreement between the manifest and the tracker
-//   the directive settled from both and the code, `{was, found, changed}`,
-//   each one line — what disagreed, what was found, what was changed —
-//   and, where the tracker was wrong, the task it ends, `{task, title,
-//   to}`: the task by the name its phase's adoption gives it, `N.n`, its
-//   title as the tracker holds it, and `done` or `closed`; a correction of
-//   the plan's built marks is the phases' own, and recorded alone;
+// - `corrections`: what the directive found the manifest or the tracker
+//   has wrong, settled from them and the code — each disagreement between
+//   the two, and any task its phase's sources show done, superseded or no
+//   longer wanted — `{was, found, changed}`, each one line — what was
+//   wrong, what was found, what was changed — and, where the tracker was
+//   wrong, the task it ends, `{task, title, to}`: the task by the name
+//   its phase's adoption gives it, `N.n`, its title as the tracker holds
+//   it, and `done` or `closed`; a correction of the plan's built marks is
+//   the phases' own, and recorded alone;
 // - `answers`: what the person answered for the unit (21.8.10), kept with
 //   the plan so a run again asks nothing, and never read here.
 //
@@ -445,4 +447,4 @@ function cutMigrating(cwd, unit, file) {
   return result;
 }
 
-module.exports = { MIGRATING_USAGE, cutMigrating, markPath, migratedType, oldPlanOrder, correctionFaults };
+module.exports = { MIGRATING_USAGE, cutMigrating, markPath, migratedType, oldPlanOrder, noteFaults, correctionFaults };
