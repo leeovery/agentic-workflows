@@ -51,10 +51,13 @@
 //   none where the carry would take the record, and writes nothing, no
 //   refusal beside the record either: the record's composer runs it before
 //   handing back, and the session before a verifier reads the record.
-// - Verified, in its unit's order: a record is carried only once its
-//   verifier has passed it, the findings beside it an empty file (079's
-//   check, `unverified`) — the carry clears them, and a record is carried
-//   once, so a finding left standing would never be answered — and a topic
+// - Verified, in its unit's order: a record is carried only once no
+//   finding its composer handed back to the session stands unsettled
+//   beside it (`handedBack`), and once its verifier has passed it, the
+//   findings beside it an empty file (079's check, `unverified`) — the
+//   carry clears them, and a record is carried once, so a finding left
+//   standing would never be answered — its verdicts naming every entry of
+//   it and no other (`unchecked`), and a topic
 //   of a unit drawing on an approved spec only once every topic of the
 //   unit has its record so passed and no section of those specs goes
 //   uncited (`unitWaits`), a topic carried taking no section found later;
@@ -69,8 +72,9 @@
 //   an entry on already is refused: its record was carried — asked of the
 //   ledger before the verifier's pass and the unit's order, so a carry run
 //   again is told so, and one killed before its append runs again. Once
-//   carried, the verifier's findings on the record and any refusal of it
-//   beside it are cleared.
+//   carried, its verifier's passing round is kept with the rounds before
+//   it, its findings, rulings and verdicts, and they and any refusal
+//   beside the record are cleared.
 // - Frozen with 079: the record this takes and the carried file it keeps
 //   are the directive's, released with it, so a later ledger version keeps
 //   taking them while 079 can run. The check rests on those two things
@@ -179,8 +183,110 @@ const refusedPath = (unit, topic) => recordFile(COMPOSED, unit, topic, '.refused
 /** The points the last verifier ruled are not the record's, or a later answer replaced. @param {string} unit @param {string|null} topic */
 const rulingsPath = (unit, topic) => recordFile(COMPOSED, unit, topic, '.rulings.txt');
 
-/** Every verifier's findings before the last, each under its round, its rulings with it. @param {string} unit @param {string|null} topic */
+/** The findings the composer handed back to the session, asking for a point the rulings set aside. @param {string} unit @param {string|null} topic */
+const handbackPath = (unit, topic) => recordFile(COMPOSED, unit, topic, '.handback.txt');
+
+/**
+ * Where findings of the record stand handed back to the session, what it
+ * does before the record goes on; else null.
+ * @param {string} root @param {string} unit @param {string|null} topic @returns {string|null}
+ */
+function handedBack(root, unit, topic) {
+  const rel = handbackPath(unit, topic);
+  if (!fs.existsSync(path.join(root, rel))) return null;
+  return `${recordName({ unit, topic })} has findings handed back to the session in ${rel}: settle each into ${settledPath(unit, topic)}, replace it in ${findingsPath(unit, topic)} with \`Settled: {point}, amend to agree\` where the record changes, or take it out where it stands, then remove ${rel}`;
+}
+
+/** The last verifier's verdict on each entry it read, a line each, `{ref}: ok` or `{ref}: see finding`. @param {string} unit @param {string|null} topic */
+const checkedPath = (unit, topic) => recordFile(COMPOSED, unit, topic, '.checked.txt');
+
+/** The refs of the record its last verifier was briefed on, a line each, written as its brief is issued. @param {string} unit @param {string|null} topic */
+const verifyingPath = (unit, topic) => recordFile(COMPOSED, unit, topic, '.verifying.txt');
+
+/** Every verifier's findings before the last, each under its round, its rulings and its verdicts with it. @param {string} unit @param {string|null} topic */
 const roundsPath = (unit, topic) => recordFile(COMPOSED, unit, topic, '.rounds.md');
+
+/** The heading a verifier's round is kept under. */
+const ROUND = /^## Round (\d+)$/gm;
+
+/** What a record's verifier writes beside its findings, kept with them in its round, each under its heading, in this order. */
+const BESIDE_FINDINGS = Object.freeze([
+  Object.freeze({ heading: '### Rulings', rel: rulingsPath }),
+  Object.freeze({ heading: '### Checked', rel: checkedPath }),
+]);
+
+/**
+ * The last verifier's findings, at `findings`, as the round after those kept
+ * at `rounds`, under its heading — an empty file its pass — and beneath
+ * them, under its heading, each file `beside` it holding anything; null
+ * where no verifier wrote since the last was kept.
+ * @param {string} rounds @param {string} findings @param {{heading: string, file: string}[]} [beside] @returns {string|null}
+ */
+function lastRound(rounds, findings, beside = []) {
+  if (!fs.existsSync(findings)) return null;
+  const kept = fs.existsSync(rounds) ? [...fs.readFileSync(rounds, 'utf8').matchAll(ROUND)].length : 0;
+  const text = fs.readFileSync(findings, 'utf8').trim();
+  const written = beside.flatMap(({ heading, file }) => {
+    const said = fs.existsSync(file) ? fs.readFileSync(file, 'utf8').trim() : '';
+    return said === '' ? [] : [`${heading}\n\n${said}`];
+  });
+  return [`## Round ${kept + 1}`, text === '' ? 'None: the verifier passed it.' : text, ...written].join('\n\n');
+}
+
+/**
+ * The last verifier's findings, and what it wrote `beside` them, kept as a
+ * round at `rounds`, and cleared: no findings file is no verdict yet.
+ * @param {string} rounds @param {string} findings @param {{heading: string, file: string}[]} [beside]
+ */
+function keepRound(rounds, findings, beside = []) {
+  const round = lastRound(rounds, findings, beside);
+  if (round !== null) fs.appendFileSync(rounds, `${fs.existsSync(rounds) ? '\n' : ''}${round}\n`);
+  for (const file of [findings, ...beside.map(({ file: at }) => at)]) fs.rmSync(file, { force: true });
+}
+
+/** What a record's verifier writes beside its findings, each absolute under its heading. @param {string} root @param {string} unit @param {string|null} topic */
+const besideFindings = (root, unit, topic) => BESIDE_FINDINGS.map(({ heading, rel }) => ({ heading, file: path.join(root, rel(unit, topic)) }));
+
+/** A record's last verifier's round kept with all it wrote, and cleared. @param {string} root @param {string} unit @param {string|null} topic */
+const keepRecordRound = (root, unit, topic) => keepRound(path.join(root, roundsPath(unit, topic)), path.join(root, findingsPath(unit, topic)), besideFindings(root, unit, topic));
+
+/** A file's lines holding anything, trimmed; none where it is no file. @param {string} file */
+const linesOf = (file) => (fs.existsSync(file) ? fs.readFileSync(file, 'utf8').split('\n').map((line) => line.trim()).filter(Boolean) : []);
+
+/**
+ * Where the last verifier's verdicts do not name each entry it read, once
+ * and no other — the refs its brief was issued on, else, where none was,
+ * `refs` — what is missing, and the way on; else null. A consistency guard
+ * alone: what each verdict says is the verifier's.
+ * @param {string} root @param {string} unit @param {string|null} topic @param {string[]} refs
+ * @returns {string|null}
+ */
+function unchecked(root, unit, topic, refs) {
+  const verifying = path.join(root, verifyingPath(unit, topic));
+  const read = fs.existsSync(verifying) ? linesOf(verifying) : refs;
+  const checked = checkedPath(unit, topic);
+  const named = linesOf(path.join(root, checked)).map((line) => line.split(':')[0].trim());
+  const missing = read.filter((ref) => !named.includes(ref));
+  const unknown = [...new Set(named.filter((ref) => !read.includes(ref)))];
+  const told = [
+    ...(fs.existsSync(path.join(root, checked)) ? [] : [`${checked} is no file`]),
+    ...(missing.length > 0 ? [`it names no verdict on ${missing.join(', ')}`] : []),
+    ...(unknown.length > 0 ? [`it names ${unknown.join(', ')}, which the record it read does not hold`] : []),
+  ];
+  if (told.length === 0) return null;
+  return `${recordName({ unit, topic })} has no verdict from its last verifier on every entry it read — ${told.join('; ')}: a verifier writes a line for each entry, \`{ref}: ok\` or \`{ref}: see finding\`, and one that does not has given no verdict — remove ${findingsPath(unit, topic)}, ${rulingsPath(unit, topic)} and ${checked}, and brief a fresh verifier`;
+}
+
+/**
+ * The guard before a brief that follows a verifier: where a verifier was
+ * briefed on the record and has written its findings, its verdicts name
+ * each entry it read (`unchecked`); else null.
+ * @param {string} root @param {string} unit @param {string|null} topic @returns {string|null}
+ */
+function uncheckedRound(root, unit, topic) {
+  const briefed = fs.existsSync(path.join(root, verifyingPath(unit, topic))) && fs.existsSync(path.join(root, findingsPath(unit, topic)));
+  return briefed ? unchecked(root, unit, topic, []) : null;
+}
 
 /** The points of the record the session settled where a verifier reversed an earlier round. @param {string} unit @param {string|null} topic */
 const settledPath = (unit, topic) => recordFile(COMPOSED, unit, topic, '.settled.md');
@@ -471,20 +577,30 @@ function composedRecord(cwd, place, session) {
  */
 function refuseUnsettled(cwd, place) {
   const { root, unit, topic } = place;
+  const handed = handedBack(root, unit, topic);
+  if (handed !== null) throw new Error(`${SAID}: ${handed}`);
   const rules = recordsRules();
   const unverified = rules.unverified({ stateDir: root, unit, topic });
   if (unverified !== null) {
     throw new Error(`${SAID}: ${recordName(place)} has not passed its verifier — ${unverified}: a record is carried once its verifier passes it, its findings file empty, for the carry clears the findings beside it and a record is carried once, so a finding left standing would never be answered`);
   }
+  const missing = unchecked(root, unit, topic, readRecord(place).map(({ ref }) => String(ref)));
+  if (missing !== null) throw new Error(`${SAID}: ${missing}`);
   const waits = topic === null ? [] : rules.unitWaits({ projectDir: codeRoot(cwd), stateDir: root, unit });
   if (waits.length > 0) {
     throw new Error(`${SAID}: ${unit}'s ${topic} is carried once every topic of ${unit} has its record passed by its verifier and no section of its approved specs goes uncited — a topic carried takes no section found later: ${waits.join('; ')}`);
   }
 }
 
-/** What was said of a topic's record beside it cleared, once it is carried: the verifier's findings and rulings, and any refusal. @param {Place} place */
+/**
+ * What was said of a topic's record beside it, once it is carried: its last
+ * verifier's round kept with the rounds before it, and the rest cleared —
+ * the refs it was briefed on and any refusal.
+ * @param {Place} place
+ */
 function clearBeside({ root, unit, topic }) {
-  for (const rel of [findingsPath(unit, topic), rulingsPath(unit, topic), refusedPath(unit, topic)]) fs.rmSync(path.join(root, rel), { force: true });
+  keepRecordRound(root, unit, topic);
+  for (const rel of [verifyingPath(unit, topic), refusedPath(unit, topic)]) fs.rmSync(path.join(root, rel), { force: true });
 }
 
 /**
@@ -541,4 +657,4 @@ function carryRecord(cwd, args) {
   }
 }
 
-module.exports = { CARRY_VERB, CARRY_USAGE, DRY_RUN, placePath, recordName, carriedPath, composedPath, findingsPath, rulingsPath, refusedPath, roundsPath, settledPath, topicPlace, carryRecord };
+module.exports = { CARRY_VERB, CARRY_USAGE, DRY_RUN, placePath, recordName, carriedPath, composedPath, findingsPath, rulingsPath, handbackPath, handedBack, checkedPath, verifyingPath, uncheckedRound, lastRound, keepRound, keepRecordRound, besideFindings, refusedPath, roundsPath, settledPath, topicPlace, carryRecord };

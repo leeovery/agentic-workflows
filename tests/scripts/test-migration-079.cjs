@@ -54,7 +54,7 @@ const os = require('os');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
 const { ok, okSections, okSectionsAsync, git, statePath, layout, writeState, readState, createFile, initRepo, commitAll, cleanupFixture } = harness;
-const { SESSION, recordsMigration, refusedKeeping, refusedUntouched } = require('./migration-world.cjs');
+const { SESSION, recordsMigration, refusedKeeping, refusedUntouched, passedBeside } = require('./migration-world.cjs');
 const { templateFolder, copyWorld } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
@@ -147,7 +147,7 @@ function recordOf(dotpath) {
 function carryArgs(at, dotpath, entries) {
   const [unit, topic] = recordOf(dotpath);
   writeState(at, composedPath(unit, topic), JSON.stringify({ entries }));
-  writeState(at, findingsPath(unit, topic), '');
+  for (const [rel, text] of passedBeside(unit, topic, entries)) writeState(at, rel, text);
   return ['ledger', 'carry', dotpath];
 }
 
@@ -165,6 +165,9 @@ function refused(dotpath, entries) {
 }
 
 /** The refusal of a record breaking the rules, its problems listed. @param {string} unit @param {string} topic @param {string[]} problems */
+/** The fault of an empty record whose sources hold text. */
+const EMPTY = 'its record is empty, and its sources hold text past their headings — its own files or a spec it draws on: compose it from them';
+
 const breaks = (unit, topic, problems) => `ledger carry: ${unit}'s ${topic} breaks the records directive's rules, so nothing is carried — ${problems.join('; ')}`;
 
 /** search's record with neither its map items nor its thread named. */
@@ -373,14 +376,23 @@ describe('a record breaking a rule is refused at the carry, its refusal kept bes
   });
 
   it('an empty record, where the topic\'s log holds anything; a topic with no log and nothing come in from it carries one', () => {
-    assert.strictEqual(refused('shop.discussion.weights', []), breaks('shop', 'weights', ['its record is empty, and its log or brief holds text past its headings', unnamed('tie-break', 'decided')]));
+    assert.strictEqual(refused('shop.discussion.weights', []), breaks('shop', 'weights', [EMPTY, unnamed('tie-break', 'decided')]));
     carry('fumi.discovery.support', []);
   });
 
-  it('an empty record of a topic with no log still carries its old map and its threads (21.12.7, 21.6.7)', () => {
+  it('an empty record of a topic with no log nor experiment still carries its old map and its threads (21.12.7, 21.6.7)', () => {
     fs.rmSync(statePath(dir, layout.topic('fumi', 'search', 'log.md')));
+    fs.rmSync(statePath(dir, layout.topic('fumi', 'search', 'experiments')), { recursive: true });
 
     assert.strictEqual(refused('fumi.discussion.search', []), breaks('fumi', 'search', SEARCH_UNCARRIED));
+  });
+
+  it('an empty record refused where any of its sources holds text, an experiment\'s record alone or a spec it draws on alone, the way on to compose it', () => {
+    fs.rmSync(statePath(dir, layout.topic('fumi', 'search', 'log.md')));
+    for (const file of ['log.md', 'brief.md']) fs.rmSync(statePath(dir, layout.topic('fumi', 'licensing', file)));
+    fs.rmSync(statePath(dir, layout.topic('fumi', 'licensing', 'experiments')), { recursive: true });
+
+    assert.deepStrictEqual(['fumi.discussion.search', 'fumi.discussion.licensing'].map((place) => refused(place, []).includes(EMPTY)), [true, true]);
   });
 
   it('the unit\'s spec.md where its building never started; where it started, a heading the spec the move joined lacks — whatever its specs under `.workflows/` hold now — and one two of its specs share citing either; a heading\'s path the spec\'s headings lack refused, and one they hold, a part\'s heading over it among them, taken', () => {
@@ -558,7 +570,7 @@ describe('what the check reads once a record is carried', () => {
     assert.deepStrictEqual(unfinished(), {
       'gone/gone': ['entry q1 cites "Cause" in gone/topics/gone/log.md, which has no such heading'],
       'platform/auth': ['its record never reached the ledger'],
-      'shop/weights': ['its record is empty, and its log or brief holds text past its headings', unnamed('tie-break', 'decided'), ...shopUncited('1. Weights', ['Ranking', 'Ranking > Detail', 'Corrigenda', 'Corrigenda > Detail']), ...shopUncited('2. Wishlist', ['Saving', 'Ranking'])],
+      'shop/weights': [EMPTY, unnamed('tie-break', 'decided'), ...shopUncited('1. Weights', ['Ranking', 'Ranking > Detail', 'Corrigenda', 'Corrigenda > Detail']), ...shopUncited('2. Wishlist', ['Saving', 'Ranking'])],
     });
   });
 
@@ -571,7 +583,7 @@ describe('what the check reads once a record is carried', () => {
     const titled = empty();
     writeState(dir, layout.topic('gone', 'gone', 'brief.md'), '# Gone\n\nWhy the queue drops jobs.\n');
 
-    assert.deepStrictEqual([titled, empty()], [[], ['its record is empty, and its log or brief holds text past its headings']]);
+    assert.deepStrictEqual([titled, empty()], [[], [EMPTY]]);
   });
 
   it('once every topic of a unit has a record, composed or carried, each section of its approved specs holding text that no record cites is named on the topics drawing on it — a joined spec\'s by its part, a heading two parts share once in each — asking no composer for an entry, until a record cites it or the session marks it, a mark in its part alone, as holding no topic\'s (21.6.4)', () => {
@@ -691,7 +703,7 @@ describe('against what the real move writes (078)', () => {
     assert.deepStrictEqual(checked().unfinished, [{ name: 'fumi/search', problems: ['has no record yet'] }]);
     assert.ok(readState(dir, layout.topic('fumi', 'search', 'log.md')).endsWith('\n## Review review-001, never folded in\n\n#### F1: Ranking ties\n\nTwo results of one age have no order.\n'));
     assert.strictEqual(refused('fumi.discussion.search', []), breaks('fumi', 'search', [
-      'its record is empty, and its log or brief holds text past its headings', unnamed('ranking', 'decided'), unnamed('typo-tolerance', 'exploring'),
+      EMPTY, unnamed('ranking', 'decided'), unnamed('typo-tolerance', 'exploring'),
       'the thread index-size is still digging in its research, and no entry names it as its thread', 'fumi/assets/notes.md came in from discussion/search, and no entry links it',
     ]));
   });
@@ -723,9 +735,15 @@ describe('the directive\'s example record, frozen with 079', () => {
     const text = fs.readFileSync(DIRECTIVE, 'utf8');
 
     assert.deepStrictEqual([
-      'writes its findings beside it, an empty file its pass, and its rulings: each point of the sources it ruled is not this record\'s, or is replaced by a later answer, one line each, with its source.',
-      'keeps the last as a round in the rounds file beside the record, its rulings with it, and clears both',
-      'A finding that opens `Reverses round {R}:` would undo what an earlier round had the record changed to, or carry a point an earlier round\'s rulings set aside: it goes to no agent, nor does a finding a per-topic agent handed back unanswered, asking for a point the rulings set aside.',
+      'and writes its findings beside the record, an empty file its pass; its rulings: each point of the sources it ruled is not this record\'s, or is replaced by a later answer, one line each, with its source; and its verdict on each entry, `{ref}: ok` or `{ref}: see finding`.',
+      'keeps the last as a round in the rounds file beside the record, its rulings and verdicts with it, and clears them',
+      'walking the sheet its brief draws: every section of every source, in order, with the entries citing each. It reads each section in its source, checks each entry beneath it states what the section says and each point the section makes is carried or not this record\'s — that a cited heading exists is no check —',
+      'The next brief and the carry are refused while the last verifier\'s verdicts miss an entry it read, or name one it did not: remove what it wrote, and brief a fresh verifier. The carry keeps the passing round with the rounds before it:',
+      '- **A record at least.** A topic whose sources hold text past their headings — its log, its brief, its experiments\' records, or a spec it draws on — has an entry at least.',
+      'A finding that opens `Reverses round {R}:` would undo what an earlier round had the record changed to, or carry a point an earlier round\'s rulings set aside: it goes to no agent, nor does a finding a per-topic agent handed back unanswered, asking for a point the rulings set aside, in the hand-back file beside the record.',
+      'Once it has returned, settle first each finding it handed back, as below: the verifier\'s brief and the carry are refused while its hand-back file stands. Then, where no `Settled:` finding stands, check the record as the carry would',
+      'Settle every handed-back finding before anything else.',
+      'Once every handed-back finding is settled, remove the hand-back file. Then, where a `Settled:` finding stands, a fresh per-topic agent amends the record to answer it, and a fresh verifier reads it again, its brief keeping it as a round. Where none stands after a hand-back, the findings left are those the agent answered: check the record, and a fresh verifier reads it next. Where none stands after a reversal, a finding left goes to a fresh per-topic agent, and where none is left, the file empty, the record has passed.',
       'Where that topic\'s rulings set the section aside, write what settles it into its settled file instead, a line naming the section as the topic\'s, and the finding as `Settled: {section}, amend to agree`.',
       'each brief carries the verifier\'s findings, every round\'s rulings, the carry\'s refusal and the points this session settled',
     ].filter((rule) => !text.includes(rule)), []);
@@ -736,7 +754,8 @@ describe('the directive\'s example record, frozen with 079', () => {
     const sources = text.slice(text.indexOf('## A Topic\'s Sources'), text.indexOf('## Working Through the Topics'));
 
     assert.deepStrictEqual([
-      'A point in a shared source — a discovery session, a spec several topics draw on, research that fed several topics — belongs to the record of the topic whose subject it bears on, whether or not it names the topic. A point bearing on no topic\'s subject is the unit\'s own record\'s, `{unit}.discovery`, where the unit has one, an epic\'s; in a unit of one topic, it is that topic\'s.',
+      'A point in a shared source — a discovery session, a spec several topics draw on, research that fed several topics — belongs to the record of the topic whose subject it bears on, whether or not it names the topic. A point of the discovery sessions or their research bearing on no topic\'s subject is the unit\'s own record\'s, `{unit}.discovery`, where the unit has one, an epic\'s; in a unit of one topic, it is that topic\'s. A spec section bearing on no one topic\'s subject is one of the topics\' drawing on the spec, the session choosing which once every record is composed.',
+      'A record of no entries is one, where every point of the sessions bears on a topic\'s subject.',
       '- **A shared spec.** From a spec several topics draw on, carry each point bearing on this topic\'s subject, its log discussing it or not, and each section its findings send it.',
       'and the unit\'s other topics, each with what it is about, to judge whose a point is by: they are not sources. Each record is carried from its own sources alone, never another topic\'s log, brief or record',
     ].filter((rule) => !sources.includes(rule)), []);

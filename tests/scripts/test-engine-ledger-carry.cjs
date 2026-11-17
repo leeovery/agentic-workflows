@@ -35,10 +35,10 @@ const os = require('os');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
 const { ok, refuses, git, statePath, layout, writeState, readState, cleanupFixture, ledgerEntries, killedAt, treeSnapshot } = harness;
-const { SESSION, recordsMigration, stateUnborn, refusedUntouched, refusedKeeping } = require('./migration-world.cjs');
+const { SESSION, recordsMigration, stateUnborn, refusedUntouched, refusedKeeping, passedBeside } = require('./migration-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
-const { carriedPath, composedPath, findingsPath, rulingsPath, refusedPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
+const { carriedPath, composedPath, findingsPath, rulingsPath, handbackPath, checkedPath, verifyingPath, roundsPath, refusedPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
 
 const LICENSING = 'fumi.discussion.licensing';
 const QUESTION = { ref: 'q1', event: 'asked', text: 'How long is the trial?', by: 'person', map_item: 'trial-length', cites: [{ path: 'fumi/topics/licensing/log.md', section: 'Trial Length' }] };
@@ -64,7 +64,8 @@ const untouched = (args, opts = { env: SESSION }) => refusedUntouched(dir, args,
 function composed(dotpath, record) {
   const [unit, , topic] = dotpath.split('.');
   writeState(dir, composedPath(unit, topic), typeof record === 'string' ? record : JSON.stringify(record));
-  writeState(dir, findingsPath(unit, topic), '');
+  const entries = typeof record === 'object' && record !== null && Array.isArray(/** @type {{entries?: unknown}} */ (record).entries) ? /** @type {unknown[]} */ (/** @type {{entries: unknown[]}} */ (record).entries) : [];
+  for (const [rel, text] of passedBeside(unit, topic, entries)) writeState(dir, rel, text);
   return ['ledger', 'carry', dotpath];
 }
 
@@ -161,13 +162,46 @@ describe('a topic\'s record carried (21.6, 21.10.9)', () => {
     ]);
   });
 
-  it('the verifier\'s pass, its rulings and a refusal beside the record, cleared once it is carried', () => {
+  it('a record whose composer handed findings back to the session refused, nothing written, until the session settles them and removes the file', () => {
+    const args = composed(LICENSING, { entries: [QUESTION, DECISION] });
+    const handback = handbackPath('fumi', 'licensing');
+    writeState(dir, handback, '- Carry the CLI framework: round 1 ruled it replaced.\n');
+
+    assert.strictEqual(untouched(args), `ledger carry: fumi's licensing has findings handed back to the session in ${handback}: settle each into .cache/migrate/records/fumi/licensing.settled.md, replace it in ${findingsPath('fumi', 'licensing')} with \`Settled: {point}, amend to agree\` where the record changes, or take it out where it stands, then remove ${handback}`);
+  });
+
+  it('once carried, the verifier\'s passing round, its rulings and verdicts with it, kept after the rounds before it, and all beside the record cleared', () => {
+    const RULED = '- The session\'s pricing is not this record\'s: fumi/discovery/session-001.md "Pricing".';
     writeState(dir, refusedPath('fumi', 'licensing'), 'ledger carry: refused.\n');
-    writeState(dir, rulingsPath('fumi', 'licensing'), '- The session\'s pricing is not this record\'s: fumi/discovery/session-001.md "Pricing".\n');
+    writeState(dir, roundsPath('fumi', 'licensing'), '## Round 1\n\nThe trial is wrong.\n');
+    writeState(dir, verifyingPath('fumi', 'licensing'), 'q1\nd1\n');
+    writeState(dir, rulingsPath('fumi', 'licensing'), `${RULED}\n`);
 
     carry(LICENSING, [QUESTION, DECISION]);
 
-    assert.deepStrictEqual([findingsPath('fumi', 'licensing'), rulingsPath('fumi', 'licensing'), refusedPath('fumi', 'licensing')].map((rel) => fs.existsSync(statePath(dir, rel))), [false, false, false]);
+    assert.strictEqual(readState(dir, roundsPath('fumi', 'licensing')), `## Round 1\n\nThe trial is wrong.\n\n## Round 2\n\nNone: the verifier passed it.\n\n### Rulings\n\n${RULED}\n\n### Checked\n\nq1: ok\nd1: ok\n`);
+    assert.deepStrictEqual([findingsPath, rulingsPath, checkedPath, verifyingPath, refusedPath].map((rel) => fs.existsSync(statePath(dir, rel('fumi', 'licensing')))), [false, false, false, false, false]);
+  });
+
+  it('a record whose verifier gave no verdict on every entry it read refused, nothing written: one missing, one it never read, or none at all — read as its brief recorded them, else as the record holds them', () => {
+    const args = composed(LICENSING, { entries: [QUESTION, DECISION] });
+    const checked = checkedPath('fumi', 'licensing');
+    const way = `: a verifier writes a line for each entry, \`{ref}: ok\` or \`{ref}: see finding\`, and one that does not has given no verdict — remove ${findingsPath('fumi', 'licensing')}, ${rulingsPath('fumi', 'licensing')} and ${checked}, and brief a fresh verifier`;
+    const told = (said) => `ledger carry: fumi's licensing has no verdict from its last verifier on every entry it read — ${said}${way}`;
+    writeState(dir, checked, 'q1: ok\n');
+    const missing = untouched(args);
+    writeState(dir, checked, 'q1: ok\nd1: ok\nf9: ok\n');
+    const unknown = untouched(args);
+    fs.rmSync(statePath(dir, checked));
+    const none = untouched(args);
+    writeState(dir, checked, 'q1: ok\nd1: ok\n');
+    writeState(dir, verifyingPath('fumi', 'licensing'), 'q1\n');
+    const briefed = untouched(args);
+
+    assert.deepStrictEqual([missing, unknown, none, briefed], [
+      told('it names no verdict on d1'), told('it names f9, which the record it read does not hold'),
+      told(`${checked} is no file; it names no verdict on q1, d1`), told('it names d1, which the record it read does not hold'),
+    ]);
   });
 
   it('outside the migration: once the state branch has its first commit, refused, nothing written', () => {

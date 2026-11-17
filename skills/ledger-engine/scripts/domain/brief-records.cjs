@@ -449,20 +449,23 @@
 //                  project's in the main checkout, each file of the topic's
 //                  folder but its mail, the unit's discovery sessions, the
 //                  other topics they may speak of with their subjects, to
-//                  judge whose a point is by, and
-//                  as the directive's check reads them its specs — each where it is cited, the part of the
-//                  unit's spec.md it makes where it was joined there, and
-//                  whether it was approved or is a draft — its old map and
-//                  its research's threads still open; the unit's assets
-//                  with where each came in from, the topic's to link, or
-//                  its file gone and linked by none; and where the topic's
-//                  record is composed, and whether it is yet, the
-//                  verifier's findings and rulings on it written and a
-//                  carry's refusal of it kept (21.10.5)
+//                  judge whose a point is by, and as the directive's check
+//                  reads them its specs — each where it is cited, the part
+//                  of the unit's spec.md it makes where it was joined
+//                  there, and whether it was approved or is a draft — its
+//                  old map and its research's threads still open; the
+//                  unit's assets with where each came in from, the topic's
+//                  to link, or its file gone and linked by none; and where
+//                  the topic's record is composed, and whether it is yet,
+//                  the verifier's findings and rulings on it written, the
+//                  findings its composer hands back, and a carry's refusal
+//                  of it kept (21.10.5)
 //   composed-record that topic's record as composed, fenced as JSON
-//                  (21.10.7), the last verifier's findings and rulings on
-//                  it kept as a round once drawn and cleared, for the
-//                  verifier to write afresh: no file is no verdict yet
+//                  (21.10.7), refused while findings its composer handed
+//                  back stand unsettled; the last verifier's findings and
+//                  rulings on it kept as a round once drawn and cleared,
+//                  for the verifier to write afresh: no file is no verdict
+//                  yet
 //   verifier-findings the last verifier's findings on that record, verbatim
 //                  — kept until a verifier reads the record again
 //   verifier-rulings every verifier's rulings on that record so far, the
@@ -615,7 +618,7 @@ const { reading, reposOf } = require('./phase-checks.cjs');
 const { changeOf, changeTips, workBelow } = require('./review-change.cjs');
 const { fixAcceptance, fixScenarios, fixNamed } = require('./fix-acceptance.cjs');
 const { summaryFile } = require('./knowledge/artifacts.cjs');
-const { CARRY_VERB, DRY_RUN, topicPlace, placePath, recordName, composedPath, findingsPath, rulingsPath, refusedPath, roundsPath, settledPath } = require('./ledger-carry.cjs');
+const { CARRY_VERB, DRY_RUN, topicPlace, placePath, recordName, composedPath, findingsPath, rulingsPath, handbackPath, handedBack, checkedPath, verifyingPath, uncheckedRound, lastRound, keepRound, keepRecordRound, besideFindings, refusedPath, roundsPath, settledPath } = require('./ledger-carry.cjs');
 const { OLD_STATE, OLD_PLAN_FILE } = require('../../../ledger-migrate/scripts/old-layout.cjs');
 
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
@@ -1188,6 +1191,8 @@ function recordGoes(root, unit, topic) {
     `- The record composed: ${composedPath(unit, topic)}, ${composed ? 'composed already' : 'not composed yet'}`,
     `- The verifier's findings on it: ${findingsPath(unit, topic)}`,
     `- The verifier's rulings on it: ${rulingsPath(unit, topic)}`,
+    `- The verifier's verdict on each entry: ${checkedPath(unit, topic)}`,
+    `- The findings its composer hands back to the session: ${handbackPath(unit, topic)}`,
     `- A carry's refusal of it: ${refusedPath(unit, topic)}`,
   ].join('\n');
 }
@@ -1212,14 +1217,14 @@ function drawOwnRecord(filling, root, unit) {
   const sources = topicRules(filling).sourcesOf({ projectDir: codeRoot(filling.cwd), stateDir: root, unit, topic: null });
   return [
     `- **Unit:** ${unit}, ${manifest.work_type}, ${manifest.status}`,
-    `- **The record:** the unit's own, carried in discovery — what its discovery sessions hold of the unit as a whole, or of no one topic`,
+    `- **The record:** the unit's own, carried in discovery — each point of its discovery sessions bearing on no topic's subject`,
     `- **The state:** ${root} — each path below is from there, as an entry cites it`,
     '',
     '## The unit\'s discovery sessions',
     '',
     listed(sources.sessions.map((/** @type {string} */ at) => `- ${at}`)),
     '',
-    '## The unit\'s topics, each carrying what the sessions say of it: for judging whose a point is, never sources',
+    '## The unit\'s topics, each carrying the points of the sessions bearing on its subject: for judging whose a point is, never sources',
     '',
     listed(otherLines(sources.others, unit)),
     '',
@@ -1303,6 +1308,8 @@ function drawComposedRecord(filling) {
   const file = path.join(root, composedPath(unit, topic));
   const text = fs.existsSync(file) && fs.statSync(file).isFile() ? fs.readFileSync(file, 'utf8') : null;
   const named = recordName({ unit, topic });
+  const handed = handedBack(root, unit, topic) ?? uncheckedRound(root, unit, topic);
+  if (handed !== null) throw new Error(`brief: ${handed}`);
   if (text === null) throw new Error(`${named} has no record composed — ${file} is no file`);
   if (text.trim() === '') throw new Error(`${named} has no record composed — ${file} is empty`);
   return fenced('json', text.trimEnd());
@@ -1466,55 +1473,91 @@ function verbatim(file) {
   return text === '' ? NONE : text;
 }
 
-/** The heading a verifier's round of findings is kept under. */
-const ROUND = /^## Round (\d+)$/gm;
-
-/** The heading a round's rulings are kept under, beneath its findings. */
+/** The heading a verifier's rulings are kept under in its round. */
 const RULINGS = '### Rulings';
 
 /**
- * The last verifier's findings, at `findings`, as the round after those kept
- * at `rounds`, under its heading — an empty file its pass — its rulings at
- * `rulings` beneath them where it wrote any, or null where no verifier
- * wrote since the last was kept.
- * @param {string} rounds @param {string} findings @param {string|null} rulings @returns {string|null}
+ * The rounds kept at `rounds`, and the last verifier's after them where it
+ * has written since: each its number, its findings, and what it wrote
+ * beside them under each heading.
+ * @param {string} rounds @param {string} findings @param {{heading: string, file: string}[]} beside
+ * @returns {{number: string, findings: string, beside: Map<string, string>}[]}
  */
-function lastRound(rounds, findings, rulings) {
-  if (!fs.existsSync(findings)) return null;
-  const kept = fs.existsSync(rounds) ? [...fs.readFileSync(rounds, 'utf8').matchAll(ROUND)].length : 0;
-  const text = fs.readFileSync(findings, 'utf8').trim();
-  const ruled = rulings !== null && fs.existsSync(rulings) ? fs.readFileSync(rulings, 'utf8').trim() : '';
-  return `## Round ${kept + 1}\n\n${text === '' ? 'None: the verifier passed it.' : text}${ruled === '' ? '' : `\n\n${RULINGS}\n\n${ruled}`}`;
-}
-
-/** Every verifier's findings, round by round, the last among them, each round's rulings with it; none recorded before the first. @param {string} rounds @param {string} findings @param {string|null} [rulings] */
-function drawRounds(rounds, findings, rulings = null) {
+function roundsOf(rounds, findings, beside) {
   const kept = fs.existsSync(rounds) ? fs.readFileSync(rounds, 'utf8').trim() : '';
-  const text = [kept, lastRound(rounds, findings, rulings) ?? ''].filter((part) => part !== '').join('\n\n');
-  return text === '' ? NONE : text;
+  const parts = [kept, lastRound(rounds, findings, beside) ?? ''].join('\n\n').split(/^## Round (\d+)$/m);
+  const headings = beside.map(({ heading }) => heading);
+  /** @type {{number: string, findings: string, beside: Map<string, string>}[]} */
+  const read = [];
+  for (let at = 1; at < parts.length; at += 2) {
+    const pieces = headings.length === 0 ? [parts[at + 1]] : parts[at + 1].split(new RegExp(`^(${headings.join('|')})$`, 'm'));
+    const written = new Map();
+    for (let next = 1; next < pieces.length; next += 2) written.set(pieces[next], pieces[next + 1].trim());
+    read.push({ number: parts[at], findings: pieces[0].trim(), beside: written });
+  }
+  return read;
 }
 
-/** Every verifier's rulings, each round's under it, the last's among them; none recorded where no round ruled. @param {string} rounds @param {string} findings @param {string} rulings */
-function drawRulings(rounds, findings, rulings) {
-  const parts = drawRounds(rounds, findings, rulings).split(/^## Round (\d+)$/m);
-  const ruled = [];
-  for (let at = 1; at < parts.length; at += 2) {
-    const from = parts[at + 1].indexOf(`\n${RULINGS}\n`);
-    if (from >= 0) ruled.push(`## Round ${parts[at]}\n\n${parts[at + 1].slice(from + RULINGS.length + 2).trim()}`);
-  }
+/** Every verifier's findings, round by round, the last among them, each round's rulings with it — never its verdicts, the engine's to check; none recorded before the first. @param {string} rounds @param {string} findings @param {{heading: string, file: string}[]} [beside] */
+function drawRounds(rounds, findings, beside = []) {
+  const drawn = roundsOf(rounds, findings, beside).map((round) => {
+    const ruled = round.beside.get(RULINGS);
+    return [`## Round ${round.number}`, round.findings, ...(ruled === undefined ? [] : [`${RULINGS}\n\n${ruled}`])].join('\n\n');
+  });
+  return drawn.length === 0 ? NONE : drawn.join('\n\n');
+}
+
+/** Every verifier's rulings, each round's under it, the last's among them; none recorded where no round ruled. @param {string} rounds @param {string} findings @param {{heading: string, file: string}[]} beside */
+function drawRulings(rounds, findings, beside) {
+  const ruled = roundsOf(rounds, findings, beside).filter((round) => round.beside.has(RULINGS)).map((round) => `## Round ${round.number}\n\n${round.beside.get(RULINGS)}`);
   return ruled.length === 0 ? NONE : ruled.join('\n\n');
 }
 
+/** The rounds file and the last verifier's findings of the record the brief is for, and what it wrote beside them. @param {Filling} filling */
+function recordRounds(filling) {
+  const { root, unit, topic } = migratedTopic(filling);
+  return { rounds: path.join(root, roundsPath(unit, topic)), findings: path.join(root, findingsPath(unit, topic)), beside: besideFindings(root, unit, topic) };
+}
+
+/** Refused where the record's last verifier gave no verdict on every entry it read (`uncheckedRound`). @param {Filling} filling */
+function refuseUnchecked(filling) {
+  const { root, unit, topic } = migratedTopic(filling);
+  const missing = uncheckedRound(root, unit, topic);
+  if (missing !== null) throw new Error(`brief: ${missing}`);
+}
+
 /**
- * The last verifier's findings, and its rulings where it keeps them, kept
- * as a round at `rounds`, and cleared, so the verifier the brief is for
- * writes them afresh: no findings file is no verdict yet.
- * @param {string} rounds @param {string} findings @param {string|null} [rulings]
+ * The last verifier's round kept and cleared, and the refs of the record
+ * as the verifier the brief is for reads it written beside it, for its
+ * verdicts to be held to.
+ * @param {Filling} filling
  */
-function keepRound(rounds, findings, rulings = null) {
-  const round = lastRound(rounds, findings, rulings);
-  if (round !== null) fs.appendFileSync(rounds, `${fs.existsSync(rounds) ? '\n' : ''}${round}\n`);
-  for (const file of [findings, rulings]) if (file !== null) fs.rmSync(file, { force: true });
+function briefVerifier(filling) {
+  const { root, unit, topic } = migratedTopic(filling);
+  keepRecordRound(root, unit, topic);
+  const { entries } = JSON.parse(fs.readFileSync(path.join(root, composedPath(unit, topic)), 'utf8'));
+  fs.writeFileSync(path.join(root, verifyingPath(unit, topic)), (Array.isArray(entries) ? entries : []).map((entry) => `${entry?.ref}\n`).join(''));
+}
+
+/** The record laid against its sources, as its verifier walks it: each file, each section with its lines and every entry citing it. @param {Filling} filling */
+function drawWalkSheet(filling) {
+  const { root, unit, topic } = migratedTopic(filling);
+  const { entries } = JSON.parse(fs.readFileSync(path.join(root, composedPath(unit, topic)), 'utf8'));
+  const sheet = topicRules(filling).sheetOf({ projectDir: codeRoot(filling.cwd), stateDir: root, unit, topic, entries: Array.isArray(entries) ? entries : [] });
+  return sheet.map(({ path: at, sections }) => [`## ${at}`, '', listed(sections.flatMap(({ section, line, end, entries: citing }) => [
+    `- ${section}, ${line === end ? `line ${line}` : `lines ${line}–${end}`}${citing.length === 0 ? ': no entry cites it' : ''}`,
+    ...citing.map(({ ref, event, text }) => `  - ${ref}, ${event}: ${claimOf(text)}`),
+  ]))].join('\n')).join('\n\n');
+}
+
+/** The most of an entry's text a walk sheet shows. */
+const CLAIM = 100;
+
+/** An entry's text as its walk sheet shows it, cut at a word. @param {string} text */
+function claimOf(text) {
+  const flat = text.replace(/\s+/g, ' ').trim();
+  if (flat.length <= CLAIM) return flat;
+  return `${flat.slice(0, CLAIM).replace(/\s+\S*$/, '')}…`;
 }
 
 /** A file beside the topic's record, absolute. @param {Filling} filling @param {(unit: string, topic: string|null) => string} rel */
@@ -2636,10 +2679,11 @@ const RECORDS = Object.freeze({
   'knowledge-query': { of: null, draw: drawKnowledgeQuery },
   directive: { of: null, flags: [DIRECTIVE], draw: drawDirective },
   'migrated-topic': { of: null, flags: [MIGRATED, DIRECTIVE], draw: drawMigratedTopic },
-  'composed-record': { of: null, flags: [MIGRATED, DIRECTIVE], draw: drawComposedRecord, bind: (filling) => keepRound(besideFile(filling, roundsPath), besideFile(filling, findingsPath), besideFile(filling, rulingsPath)) },
-  'verifier-findings': { of: null, flags: [MIGRATED, DIRECTIVE], draw: (filling) => besideRecord(filling, findingsPath) },
-  'verifier-rulings': { of: null, flags: [MIGRATED, DIRECTIVE], draw: (filling) => drawRulings(besideFile(filling, roundsPath), besideFile(filling, findingsPath), besideFile(filling, rulingsPath)) },
-  'earlier-findings': { of: null, flags: [MIGRATED, DIRECTIVE], draw: (filling) => drawRounds(besideFile(filling, roundsPath), besideFile(filling, findingsPath), besideFile(filling, rulingsPath)) },
+  'composed-record': { of: null, flags: [MIGRATED, DIRECTIVE], draw: drawComposedRecord, bind: briefVerifier },
+  'walk-sheet': { of: null, flags: [MIGRATED, DIRECTIVE], draw: drawWalkSheet },
+  'verifier-findings': { of: null, flags: [MIGRATED, DIRECTIVE], draw: (filling) => { refuseUnchecked(filling); return besideRecord(filling, findingsPath); } },
+  'verifier-rulings': { of: null, flags: [MIGRATED, DIRECTIVE], draw: (filling) => { const { rounds, findings, beside } = recordRounds(filling); return drawRulings(rounds, findings, beside); } },
+  'earlier-findings': { of: null, flags: [MIGRATED, DIRECTIVE], draw: (filling) => { const { rounds, findings, beside } = recordRounds(filling); return drawRounds(rounds, findings, beside); } },
   'settled-points': { of: null, flags: [MIGRATED, DIRECTIVE], draw: (filling) => besideRecord(filling, settledPath) },
   'carry-refusal': { of: null, flags: [MIGRATED, DIRECTIVE], draw: (filling) => besideRecord(filling, refusedPath), bind: (filling) => clearBeside(filling, refusedPath) },
   'record-check': { of: null, flags: [MIGRATED, DIRECTIVE], draw: drawRecordCheck },

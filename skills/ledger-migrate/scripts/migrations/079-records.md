@@ -4,9 +4,9 @@
 
 - The ledger, through `ledger carry`, one record at a time, and through
   `raise` for the points raised at the end.
-- Each record as composed, the verifier's findings and rulings on it and
-  every round of them before, the points the session settled, and a
-  carry's refusal of it, in the state's cache, where its brief names them;
+- Each record as composed, the verifier's findings, rulings and verdicts
+  on it and every round of them before, the findings its composer handed back, the
+  points the session settled, and a carry's refusal of it, in the state's cache, where its brief names them;
   and each unit's sections of its specs that hold no topic's decision,
   finding or open question, `.cache/migrate/records/{unit}.sections.json`.
 
@@ -19,7 +19,7 @@
 
 ## What It Does
 
-Every topic of every unit gets its record in the ledger, completed and cancelled units among them: what its sources settle, carried forward one entry at a time. A quick-fix holds no topic, and nothing of it is carried. Nor is anything of a cancelled unit holding an approved spec and no topic: its spec stays in its assets, the reference it is, and a cancelled unit's decisions govern nothing. A topic an epic promoted to a cross-cutting unit is carried on that unit, never on the epic. Each epic whose discovery holds a session gets a record of its own too, `{unit}.discovery`: what its discovery sessions hold of the epic as a whole, or of no one topic, carried at the epic's discovery. A unit of one topic has none: its discovery is its topic's.
+Every topic of every unit gets its record in the ledger, completed and cancelled units among them: what its sources settle, carried forward one entry at a time. A quick-fix holds no topic, and nothing of it is carried. Nor is anything of a cancelled unit holding an approved spec and no topic: its spec stays in its assets, the reference it is, and a cancelled unit's decisions govern nothing. A topic an epic promoted to a cross-cutting unit is carried on that unit, never on the epic. Each epic whose discovery holds a session gets a record of its own too, `{unit}.discovery`: each point of its discovery sessions bearing on no topic's subject, carried at the epic's discovery. A unit of one topic has none: its discovery is its topic's.
 
 Paths below are from the state's folder, but one under `.workflows/`, which is from the project's folder in the main checkout; a topic's brief names both. `{phase}` is the phase the topic's item is in: discussion; investigation for a bugfix's topic; discovery for an epic's topic never started, whose record holds questions and findings alone.
 
@@ -33,7 +33,7 @@ Paths below are from the state's folder, but one under `.workflows/`, which is f
 
 A unit's own record has the unit's discovery sessions alone as its sources.
 
-A point in a shared source — a discovery session, a spec several topics draw on, research that fed several topics — belongs to the record of the topic whose subject it bears on, whether or not it names the topic. A point bearing on no topic's subject is the unit's own record's, `{unit}.discovery`, where the unit has one, an epic's; in a unit of one topic, it is that topic's.
+A point in a shared source — a discovery session, a spec several topics draw on, research that fed several topics — belongs to the record of the topic whose subject it bears on, whether or not it names the topic. A point of the discovery sessions or their research bearing on no topic's subject is the unit's own record's, `{unit}.discovery`, where the unit has one, an epic's; in a unit of one topic, it is that topic's. A spec section bearing on no one topic's subject is one of the topics' drawing on the spec, the session choosing which once every record is composed.
 
 Its brief lists each of these as the check reads them, and the unit's other topics, each with what it is about, to judge whose a point is by: they are not sources. Each record is carried from its own sources alone, never another topic's log, brief or record: where another topic's says otherwise, each is carried as its own sources say.
 
@@ -53,9 +53,9 @@ Each current decision, finding and open question the topic's sources hold, and n
 - **The old map.** Each subtopic of the old map is carried by an entry naming it, `map_item`: its decision where a source settles it, else an open question, whatever the map's state says; an entry carrying several names them all. The map is as it stood when last written: a later section of the log, or an approved spec, may have settled a subtopic it shows open.
 - **Threads.** Each thread the register shows `open` or `digging` is carried by an entry naming it, `thread`: an open question where no source answers it, else the decision or finding that answers it, citing where.
 - **A topic never started.** An epic's topic no item past discovery holds is carried in discovery, as its brief's topic line shows. Nothing is decided in discovery: its record holds questions and findings alone, none product-wide, and what its research concluded is a finding.
-- **A unit's own record** is carried in discovery too, so it holds questions and findings alone, none product-wide. A record of no entries is one, where the sessions say nothing of the unit as a whole.
+- **A unit's own record** is carried in discovery too, so it holds questions and findings alone, none product-wide. A record of no entries is one, where every point of the sessions bears on a topic's subject.
 - **Assets.** Each of the unit's assets its brief marks the record's to link, and any other its log or brief links to, is linked as `reference` from the entry that draws on it. One its brief shows gone is linked from none.
-- **A record at least.** A topic whose log or brief holds text past its headings has an entry at least.
+- **A record at least.** A topic whose sources hold text past their headings — its log, its brief, its experiments' records, or a spec it draws on — has an entry at least.
 - **Points no source settles** are open questions marked `raise` `true`, for the raises at the end: a log unclear on what was decided, with no approved spec to settle it; a draft spec at odds with its log; a spec at odds with itself. Where an approved spec settles it, it is settled.
 - **Nothing invented.** An entry says what a source says, and nothing more.
 
@@ -94,13 +94,13 @@ node .claude/skills/ledger-engine/scripts/engine.cjs brief migration-topic --top
 
 A record composed already, by this session or an earlier one, is amended, never composed from the start: each brief carries the verifier's findings, every round's rulings, the carry's refusal and the points this session settled, waiting beside the record.
 
-Once it has returned, check the record as the carry would; this names every fault and writes nothing:
+Once it has returned, settle first each finding it handed back, as below: the verifier's brief and the carry are refused while its hand-back file stands. Then, where no `Settled:` finding stands, check the record as the carry would; this names every fault and writes nothing:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs ledger carry {place} --dry-run
 ```
 
-Where it names a fault, a fresh per-topic agent amends the record, its own check naming the faults. Where it names none, the verifier reads the record against its sources and writes its findings beside it, an empty file its pass, and its rulings: each point of the sources it ruled is not this record's, or is replaced by a later answer, one line each, with its source. Its brief carries every round of findings and rulings before it, keeps the last as a round in the rounds file beside the record, its rulings with it, and clears both, so a verifier that never writes leaves no verdict:
+Where it names a fault, a fresh per-topic agent amends the record, its own check naming the faults. Where it names none, the verifier reads the record against its sources, walking the sheet its brief draws: every section of every source, in order, with the entries citing each. It reads each section in its source, checks each entry beneath it states what the section says and each point the section makes is carried or not this record's — that a cited heading exists is no check — and writes its findings beside the record, an empty file its pass; its rulings: each point of the sources it ruled is not this record's, or is replaced by a later answer, one line each, with its source; and its verdict on each entry, `{ref}: ok` or `{ref}: see finding`. Its brief carries every round of findings and rulings before it, keeps the last as a round in the rounds file beside the record, its rulings and verdicts with it, and clears them, so a verifier that never writes leaves no verdict. The next brief and the carry are refused while the last verifier's verdicts miss an entry it read, or name one it did not: remove what it wrote, and brief a fresh verifier. The carry keeps the passing round with the rounds before it:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs brief migration-verifier --topic {place} --directive 079-records
@@ -108,7 +108,7 @@ node .claude/skills/ledger-engine/scripts/engine.cjs brief migration-verifier --
 
 Dispatch each brief's agent with its pointer alone. Where the verifier finds something, a fresh per-topic agent amends the record, its brief carrying the findings, and a fresh verifier reads it again, until one passes it.
 
-A finding that opens `Reverses round {R}:` would undo what an earlier round had the record changed to, or carry a point an earlier round's rulings set aside: it goes to no agent, nor does a finding a per-topic agent handed back unanswered, asking for a point the rulings set aside. Settle the point from the record's sources; where they don't settle it, ask the person in prose, naming what each round found and the lines of the sources each rests on, and **STOP.** Wait for user response. Write what settles it, a line naming the point and the source or answer it rests on, into the settled file beside the record, which every later brief of it carries as closed. Where it has the record change, replace the finding with `Settled: {point}, amend to agree`: a fresh per-topic agent amends the record to answer it, and a fresh verifier reads it again, its brief keeping it as a round. Where it keeps the record as it stands, take the finding out of the findings file; where no finding is left, the file empty, the record has passed. An empty findings file is only ever a pass.
+A finding that opens `Reverses round {R}:` would undo what an earlier round had the record changed to, or carry a point an earlier round's rulings set aside: it goes to no agent, nor does a finding a per-topic agent handed back unanswered, asking for a point the rulings set aside, in the hand-back file beside the record. Settle every handed-back finding before anything else. Settle the point from the record's sources; where they don't settle it, ask the person in prose, naming what each round found and the lines of the sources each rests on, and **STOP.** Wait for user response. Write what settles it, a line naming the point and the source or answer it rests on, into the settled file beside the record, which every later brief of it carries as closed. Where it has the record change, replace the finding with `Settled: {point}, amend to agree`. Where it keeps the record as it stands, take the finding out of the findings file. Once every handed-back finding is settled, remove the hand-back file. Then, where a `Settled:` finding stands, a fresh per-topic agent amends the record to answer it, and a fresh verifier reads it again, its brief keeping it as a round. Where none stands after a hand-back, the findings left are those the agent answered: check the record, and a fresh verifier reads it next. Where none stands after a reversal, a finding left goes to a fresh per-topic agent, and where none is left, the file empty, the record has passed. An empty findings file is only ever a pass.
 
 Once every topic of a unit has its record composed, the check names, on the topics drawing on each of the unit's approved specs, each section of it holding text that no record cites: a decision made at the spec stage on a subject no log discusses is in no other source. In a spec joined into `spec.md` a section is its part's, and the check names its part; a section whose heading its part, or a kept spec, holds more than once, it names by its path. Read each such section. Where it holds a decision, a finding or an open question of a topic's, write it into the findings of the topic its subject belongs to, one of those the check names it on, naming the section and what the record misses, and that topic's record is amended and verified again. Where that topic's rulings set the section aside, write what settles it into its settled file instead, a line naming the section as the topic's, and the finding as `Settled: {section}, amend to agree`. Where it holds none, a section that frames the others or says again what a cited one holds, mark it in `.cache/migrate/records/{unit}.sections.json` as the check names the mark: `{"{path}": ["{section}", …]}`, or in a joined spec under its part, `{"{path}": {"{part}": ["{section}", …]}}`, a section named by its path marked by that path.
 

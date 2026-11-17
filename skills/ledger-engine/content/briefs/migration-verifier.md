@@ -2,20 +2,21 @@
 
 Verify one record, a topic's or a unit's own, composed for the migration's records step, against its sources, before it is carried into the ledger. Its sources are those the brief below lists, and no other: never another topic's log, brief or record, nor another unit's. The other topics the brief below lists, with what each is about, are for judging whose a point is, never sources. Hunt the whole record, however often it was verified before: for detail it dropped, and for an entry its source does not bear out.
 
-Walk every source section by section, as the brief below lists them: its files, its log, its brief and its experiments among them; each section of its specs it draws on, every section the record cites among them; and what the discovery sessions say of it. For each section, check that each current decision, finding and open question it holds is carried by an entry, or is not this record's. Walk them all: your findings are every gap the walk turns up, never a sample.
+Walk the sheet below section by section: it lays the record against its sources, each section of each file with its lines and every entry citing it. Read each section in its source, then check that each entry listed beneath it states what the section says, and that each current decision, finding and open question the section holds is carried, by an entry listed there or elsewhere, or is not this record's; of the discovery sessions, each point bearing on its subject, or for a unit's own record on no topic's subject. That a cited heading exists is no check. Walk every section: your findings are every gap the walk turns up, never a sample.
 
 The record passes when it holds each current decision, finding and open question its sources hold, as the directive says of it, and nothing material is missing or misstated:
 
 - each entry is true to the section it cites;
 - each spec section it cites is carried whole: each current decision, finding and open question of it that concerns this record is carried;
 - an entry crediting the person holds a line of its source where they decided, in those words where they handed the call over;
-- nothing is carried twice.
+- nothing is carried twice;
+- nothing is carried that you rule is not this record's: such an entry is a finding, to remove, with the ruling beside it.
 
-Where earlier rounds' findings and rulings below name anything, check that each is answered. A point an earlier round ruled on is ruled on again only where a line of its source that round missed says otherwise; a finding that would undo what an earlier round's finding had changed, or carry a point an earlier round's rulings set aside, opens `Reverses round {R}:`, naming that line. A point the session settled is closed: it is no finding.
+Where earlier rounds' findings and rulings below name anything, check that each finding is answered and each ruling kept. A point an earlier round ruled on is ruled on again only where a line of its source that round missed says otherwise; a finding that would undo what an earlier round's finding had changed, or carry a point an earlier round's rulings set aside, opens `Reverses round {R}:`, naming that line. A point the session settled is closed: it is no finding.
 
 Wording, order, and how a section's points are shared out among entries are the composer's.
 
-Write the findings file the brief names afresh: each finding the section of the source and what the record misses or misstates, or the file empty where the record passes — an empty file is the pass. Where you ruled that a point of the sources is not this record's, or is replaced by a later answer, write each such ruling into the rulings file the brief names, one line each, naming the point and its source's section. Hand back whether it passes, and how many findings you wrote.
+Write the findings file the brief names afresh: each finding the section of the source and what the record misses or misstates, or the file empty where the record passes — an empty file is the pass. Where you ruled that a point of the sources is not this record's, or is replaced by a later answer, write each such ruling into the rulings file the brief names, one line each, naming the point and its source's section. Write the checked file the brief names afresh, a line for each entry of the record, by its ref: `{ref}: ok`, or `{ref}: see finding` where a finding names it. Hand back whether it passes, and how many findings you wrote.
 
 # Whose record
 
@@ -24,6 +25,10 @@ Write the findings file the brief names afresh: each finding the section of the 
 # The record
 
 {{composed-record}}
+
+# The walk sheet
+
+{{walk-sheet}}
 
 # The earlier rounds' findings and rulings
 

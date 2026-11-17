@@ -48,7 +48,7 @@ const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { ENGINE_RUN } = require(path.join(SCRIPTS, 'kernel/call.cjs'));
 const { ROLES, briefPath, issuedPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
 const { conversationDir } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
-const { composedPath, findingsPath, rulingsPath, refusedPath, roundsPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
+const { composedPath, findingsPath, rulingsPath, handbackPath, checkedPath, verifyingPath, refusedPath, roundsPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
 const TEMPLATES = path.join(__dirname, '../../skills/ledger-engine/content/briefs');
 const DIRECTIVE = path.join(__dirname, '../../skills/ledger-migrate/scripts/migrations/079-records.md');
 const AGENTS = path.join(__dirname, '../../agents');
@@ -75,6 +75,20 @@ function issued(args) {
 /** A role's template as shipped, its slots filled with `drawn`. @param {string} role @param {Record<string, string>} drawn */
 function filledTemplate(role, drawn) {
   return fs.readFileSync(path.join(TEMPLATES, `${role}.md`), 'utf8').split('\n').map((line) => drawn[line.slice(2, -2)] ?? line).join('\n');
+}
+
+/** licensing's sources laid out for its verifier, no entry of the record citing one. */
+const UNCITED_SHEET = [
+  '## fumi/topics/licensing/brief.md', '', '- Licensing, lines 1–3: no entry cites it', '',
+  '## fumi/topics/licensing/experiments/E2-trial/report.md', '', '- Report > Result, lines 3–5: no entry cites it', '',
+  '## fumi/topics/licensing/log.md', '', '- Discussion: Licensing > Trial Length > Decision, lines 7–9: no entry cites it', '',
+  '## fumi/assets/specs/commerce.md', '', '- Specification: Commerce > Corrigenda, lines 3–5: no entry cites it',
+].join('\n');
+
+/** A verifier's verdict on licensing's record: its findings, and its line on each entry. @param {string} findings @param {string} checked */
+function verdict(findings, checked) {
+  writeState(dir, findingsPath('fumi', 'licensing'), findings);
+  writeState(dir, checkedPath('fumi', 'licensing'), checked);
 }
 
 /** Each line the role's template does not say. @param {string} role @param {string[]} lines */
@@ -137,6 +151,8 @@ const licensingDrawn = (composed = false) => [
   `- The record composed: .cache/migrate/records/fumi/licensing.json, ${composed ? 'composed already' : 'not composed yet'}`,
   '- The verifier\'s findings on it: .cache/migrate/records/fumi/licensing.findings.txt',
   '- The verifier\'s rulings on it: .cache/migrate/records/fumi/licensing.rulings.txt',
+  '- The verifier\'s verdict on each entry: .cache/migrate/records/fumi/licensing.checked.txt',
+  '- The findings its composer hands back to the session: .cache/migrate/records/fumi/licensing.handback.txt',
   '- A carry\'s refusal of it: .cache/migrate/records/fumi/licensing.refused.md',
 ].join('\n');
 
@@ -226,11 +242,11 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
 
     const composer = issued(['migration-topic', ...LICENSING]).brief;
     const verifier = issued(['migration-verifier', ...LICENSING]).brief;
-    writeState(dir, findingsPath('fumi', 'licensing'), `${REVERSED}\n`);
+    verdict(`${REVERSED}\n`, 'q1: see finding\n');
     writeState(dir, '.cache/migrate/records/fumi/licensing.settled.md', `${SETTLED}\n`);
     const settled = issued(['migration-topic', ...LICENSING]).brief;
     const second = issued(['migration-verifier', ...LICENSING]).brief;
-    writeState(dir, findingsPath('fumi', 'licensing'), '');
+    verdict('', 'q1: ok\n');
     const third = issued(['migration-verifier', ...LICENSING]).brief;
 
     assert.ok(composer.includes(`# The verifier's findings\n\n${FINDINGS}\n\n# The verifier's rulings\n\nNone recorded.\n\n# The carry's refusal`), composer);
@@ -253,7 +269,7 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
     const composer = issued(['migration-topic', ...LICENSING]).brief;
     const verifier = issued(['migration-verifier', ...LICENSING]).brief;
     const rulingsLeft = fs.existsSync(statePath(dir, rulingsPath('fumi', 'licensing')));
-    writeState(dir, findingsPath('fumi', 'licensing'), '');
+    verdict('', 'q1: ok\n');
     writeState(dir, rulingsPath('fumi', 'licensing'), `${REPLACED}\n`);
     const later = issued(['migration-topic', ...LICENSING]).brief;
     issued(['migration-verifier', ...LICENSING]);
@@ -262,7 +278,7 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
     assert.ok(verifier.includes(`# The earlier rounds' findings and rulings\n\n## Round 1\n\n${FINDINGS}\n\n### Rulings\n\n${RULED}\n\n# Points the session settled`), verifier);
     assert.strictEqual(rulingsLeft, false);
     assert.ok(later.includes(`# The verifier's rulings\n\n## Round 1\n\n${RULED}\n\n## Round 2\n\n${REPLACED}\n\n# The carry's refusal`), later);
-    assert.strictEqual(readState(dir, roundsPath('fumi', 'licensing')), `## Round 1\n\n${FINDINGS}\n\n### Rulings\n\n${RULED}\n\n## Round 2\n\nNone: the verifier passed it.\n\n### Rulings\n\n${REPLACED}\n`);
+    assert.strictEqual(readState(dir, roundsPath('fumi', 'licensing')), `## Round 1\n\n${FINDINGS}\n\n### Rulings\n\n${RULED}\n\n## Round 2\n\nNone: the verifier passed it.\n\n### Rulings\n\n${REPLACED}\n\n### Checked\n\nq1: ok\n`);
   });
 
   it('a unit\'s own record: its discovery sessions, its topics, which carry what the sessions say of each, the imports of its discovery as a whole its own to link, where it goes, and its check', () => {
@@ -271,8 +287,8 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
     const { brief } = issued(['migration-topic', '--topic', 'shop.discovery', '--directive', '079-records']);
 
     for (const part of [
-      '- **Unit:** shop, epic, in-progress\n- **The record:** the unit\'s own, carried in discovery — what its discovery sessions hold of the unit as a whole, or of no one topic',
-      '## The unit\'s discovery sessions\n\n- shop/discovery/session-001.md\n\n## The unit\'s topics, each carrying what the sessions say of it: for judging whose a point is, never sources\n\n- weights: By name.\n',
+      '- **Unit:** shop, epic, in-progress\n- **The record:** the unit\'s own, carried in discovery — each point of its discovery sessions bearing on no topic\'s subject',
+      '## The unit\'s discovery sessions\n\n- shop/discovery/session-001.md\n\n## The unit\'s topics, each carrying the points of the sessions bearing on its subject: for judging whose a point is, never sources\n\n- weights: By name.\n',
       '- shop/assets/vision.md, which came in from discovery — this record\'s to link',
       '- The record composed: .cache/migrate/records/shop.json, not composed yet',
       `\`${ENGINE_RUN} ledger carry shop.discovery --dry-run\``,
@@ -292,12 +308,13 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
 
     assert.ok(brief.includes('## The unit\'s discovery sessions\n\n- fumi/discovery/session-001.md, of fumi, which it moved from\n'), brief);
     assert.ok(brief.includes('## The unit\'s other topics: for judging whose a point is, never sources\n\n- billing, of fumi\n- licensing, of fumi: How the trial works.\n- search, of fumi: Still digging.\n- support, of fumi\n\n'), brief);
-    assert.ok(own.includes('## The unit\'s topics, each carrying what the sessions say of it: for judging whose a point is, never sources\n\n- auth, moved to platform: Who signs in, and for how long.\n- billing\n- licensing: How the trial works.\n'), own);
+    assert.ok(own.includes('## The unit\'s topics, each carrying the points of the sessions bearing on its subject: for judging whose a point is, never sources\n\n- auth, moved to platform: Who signs in, and for how long.\n- billing\n- licensing: How the trial works.\n'), own);
   });
 
   it('what each other topic is about, the first that holds: its map row\'s summary; its brief\'s first line of prose, the old brief\'s provenance line passed over; its log\'s first line of prose, past a section\'s frontmatter; else its name alone', () => {
     const manifest = JSON.parse(readState(dir, layout.manifest('fumi')));
     manifest.phases.discovery.items.billing.summary = 'Invoices, refunds and seat billing.';
+    manifest.phases.discovery.items.support.summary = '  ';
     writeState(dir, layout.manifest('fumi'), JSON.stringify(manifest));
     writeState(dir, layout.topic('fumi', 'billing', 'brief.md'), '# Discovery Brief — Billing\n\nDrawn from discovery session 001.\n\n## Soft decisions\n\n- Seats bill monthly.\n');
     writeState(dir, layout.topic('fumi', 'search', 'brief.md'), '# Discovery Brief — Search\n\nDrawn from discovery session 001.\n\n## Soft decisions\n\n- **Ranking**: newest first.\n');
@@ -308,6 +325,16 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
 
     assert.ok(brief.includes('- billing: Invoices, refunds and seat billing.\n- search: **Ranking**: newest first.\n- support: Customers reach us by email alone.\n'), brief);
     assert.ok(issued(['migration-topic', '--topic', 'fumi.discussion.search', '--directive', '079-records']).brief.includes('- auth, moved to platform: Thirty days'), 'a promoted topic\'s log read where it went');
+  });
+
+  it('a log\'s run of `key: value` lines no rule closes is read at once, its lines prose', () => {
+    writeState(dir, layout.topic('fumi', 'support', 'log.md'), `## Discussion\n\n---\n${'at: 10:30\n'.repeat(23)}`);
+
+    const started = process.hrtime.bigint();
+    const { brief } = issued(['migration-topic', ...LICENSING]);
+
+    assert.ok(Number(process.hrtime.bigint() - started) / 1e6 < 1000, 'read at once');
+    assert.ok(brief.includes('- support: at: 10:30\n'), brief);
   });
 
   it('lists the unit\'s discovery sessions, the migration\'s research session among them, and nothing else its discovery holds; an epic\'s topic never started carried in discovery, and shown so', () => {
@@ -337,7 +364,7 @@ describe('the verifier\'s brief (21.10.7)', () => {
 
     assert.deepStrictEqual([res.role, res.agent], ['migration-verifier', 'ledger-migration-verifier']);
     assert.strictEqual(brief, `Brief ${res.id} — the migration verifier's\n\n${filledTemplate('migration-verifier', {
-      'migrated-topic': licensingDrawn(true), 'composed-record': `\`\`\`json\n${RECORD}\n\`\`\``, 'earlier-findings': 'None recorded.', 'settled-points': 'None recorded.', directive: directiveDrawn(),
+      'migrated-topic': licensingDrawn(true), 'composed-record': `\`\`\`json\n${RECORD}\n\`\`\``, 'walk-sheet': UNCITED_SHEET, 'earlier-findings': 'None recorded.', 'settled-points': 'None recorded.', directive: directiveDrawn(),
     })}`);
   });
 });
@@ -354,7 +381,7 @@ describe('a cite of a heading held more than once', () => {
 
 describe('the walk of a record\'s sources', () => {
   const CONFINED = 'Its sources are those the brief below lists, and no other: never another topic\'s log, brief or record, nor another unit\'s. The other topics the brief below lists, with what each is about, are for judging whose a point is, never sources.';
-  const LISTED = 'its sources section by section, as the brief below lists them: its files, its log, its brief and its experiments among them; each section of its specs it draws on, every section the record cites among them; and what the discovery sessions say of it.';
+  const LISTED = 'its sources section by section, as the brief below lists them: its files, its log, its brief and its experiments among them; each section of its specs it draws on, every section the record cites among them; and each point of the discovery sessions bearing on its subject, or for a unit\'s own record on no topic\'s subject.';
 
   it('the composer composing a record from the start walks its sources section by section, each current decision, finding and open question carried or not the record\'s, an amend answering the findings in its place and keeping everything else; the verifier walks every one, its findings every gap the walk turns up, a cited section carried whole; neither reads another topic\'s log, brief or record, nor another unit\'s, the other topics listed to judge whose a point is by', () => {
     assert.deepStrictEqual([
@@ -362,8 +389,10 @@ describe('the walk of a record\'s sources', () => {
       unsaid('migration-verifier', [
         CONFINED,
         'The record passes when it holds each current decision, finding and open question its sources hold,',
-        `Walk every source ${LISTED.slice('its sources '.length)} For each section, check that each current decision, finding and open question it holds is carried by an entry, or is not this record's. Walk them all: your findings are every gap the walk turns up, never a sample.`,
+        'Walk the sheet below section by section: it lays the record against its sources, each section of each file with its lines and every entry citing it. Read each section in its source, then check that each entry listed beneath it states what the section says, and that each current decision, finding and open question the section holds is carried, by an entry listed there or elsewhere, or is not this record\'s; of the discovery sessions, each point bearing on its subject, or for a unit\'s own record on no topic\'s subject. That a cited heading exists is no check. Walk every section: your findings are every gap the walk turns up, never a sample.',
+        'Write the checked file the brief names afresh, a line for each entry of the record, by its ref: `{ref}: ok`, or `{ref}: see finding` where a finding names it.',
         '- each spec section it cites is carried whole: each current decision, finding and open question of it that concerns this record is carried;',
+        '- nothing is carried that you rule is not this record\'s: such an entry is a finding, to remove, with the ruling beside it.',
       ]),
     ], [[], []]);
   });
@@ -376,9 +405,95 @@ describe('a verifier\'s rulings', () => {
       unsaid('migration-verifier', [
         'Where you ruled that a point of the sources is not this record\'s, or is replaced by a later answer, write each such ruling into the rulings file the brief names, one line each, naming the point and its source\'s section.',
         'a finding that would undo what an earlier round\'s finding had changed, or carry a point an earlier round\'s rulings set aside, opens `Reverses round {R}:`, naming that line.',
+        'check that each finding is answered and each ruling kept.',
       ]),
-      unsaid('migration-topic', ['Never carry a point the verifier\'s rulings below set aside, unless a point the session settled says otherwise. A finding asking for a point the rulings set aside, which no point the session settled covers, is not yours to answer: hand it back unanswered, for the session to settle as a reversal.', 'and each finding you handed back unanswered.']),
+      unsaid('migration-topic', ['Never carry a point the verifier\'s rulings below set aside, unless a point the session settled says otherwise. A finding asking for a point the rulings set aside, which no point the session settled covers, is not yours to answer: write it into the hand-back file the brief names, one line each, the finding and why you hand it back, for the session to settle as a reversal.', 'and how many findings you wrote into the hand-back file.']),
     ], [[], []]);
+  });
+});
+
+describe('the walk sheet (the verifier\'s brief)', () => {
+  it('each source in the brief\'s order, then each other file an entry cites; each section holding text or cited, in order, with its lines and every entry citing it once, its text cut at a word; one no entry cites so said', () => {
+    writeState(dir, layout.unit('fumi', 'discovery', 'session-001.md'), '## Pricing\n\nSeats.\n');
+    const log = (section) => ({ path: 'fumi/topics/licensing/log.md', section });
+    const entries = [
+      { ref: 'q1', event: 'asked', text: 'How long is the trial?', by: 'person', cites: [log('Trial Length')] },
+      { ref: 'd1', event: 'decided', answers: 'q1', text: 'Fourteen days.', cites: [log('Decision'), { path: 'fumi/assets/specs/commerce.md', section: 'Corrigenda' }, log('Trial Length > Decision')] },
+      {
+        ref: 'f1', event: 'found', text: 'A week converts as well as fourteen days in the trial experiment, measured over three cohorts of new teams signing up in spring.',
+        cites: [{ path: 'fumi/topics/licensing/experiments/E2-trial/report.md', section: 'Result' }, { path: 'fumi/assets/pricing.md', section: 'Pricing' }],
+      },
+    ];
+    writeState(dir, composedPath('fumi', 'licensing'), JSON.stringify({ entries }));
+    const F1 = '  - f1, found: A week converts as well as fourteen days in the trial experiment, measured over three cohorts of…';
+
+    const { brief } = issued(['migration-verifier', ...LICENSING]);
+
+    assert.ok(brief.includes(`# The walk sheet\n\n${[
+      '## fumi/topics/licensing/brief.md', '', '- Licensing, lines 1–3: no entry cites it', '',
+      '## fumi/topics/licensing/experiments/E2-trial/report.md', '', '- Report > Result, lines 3–5', F1, '',
+      '## fumi/topics/licensing/log.md', '', '- Discussion: Licensing > Trial Length, lines 5–6', '  - q1, asked: How long is the trial?',
+      '- Discussion: Licensing > Trial Length > Decision, lines 7–9', '  - d1, decided: Fourteen days.', '',
+      '## fumi/assets/specs/commerce.md', '', '- Specification: Commerce > Corrigenda, lines 3–5', '  - d1, decided: Fourteen days.', '',
+      '## fumi/discovery/session-001.md', '', '- Pricing, lines 1–3: no entry cites it', '',
+      '## fumi/assets/pricing.md', '', '- Pricing, line 1', F1,
+    ].join('\n')}\n\n# The earlier rounds'`), brief);
+  });
+
+  it('a joined spec\'s sections in the parts the topic draws on alone', () => {
+    writeState(dir, composedPath('shop', 'weights'), JSON.stringify({ entries: [{ ref: 'q1', event: 'asked', text: 'How do ties break?', cites: [{ path: 'shop/spec.md', section: '1. Weights > Ranking' }] }] }));
+    const old = path.join(dir, '.workflows/shop/manifest.json');
+    const manifest = JSON.parse(fs.readFileSync(old, 'utf8'));
+    manifest.phases.specification.items.wishlist.sources = {};
+    fs.writeFileSync(old, JSON.stringify(manifest));
+
+    const { brief } = issued(['migration-verifier', '--topic', 'shop.discussion.weights', '--directive', '079-records']);
+
+    assert.ok(brief.includes([
+      '## shop/spec.md', '', '- Shop > 1. Weights > Ranking, lines 5–8', '  - q1, asked: How do ties break?',
+      '- Shop > 1. Weights > Ranking > Detail, lines 9–12: no entry cites it', '- Shop > 1. Weights > Corrigenda, lines 13–16: no entry cites it',
+      '- Shop > 1. Weights > Corrigenda > Detail, lines 17–20: no entry cites it', '', '# The earlier rounds\'',
+    ].join('\n')), brief);
+  });
+});
+
+describe('the verifier\'s verdict on each entry', () => {
+  it('its brief issued, the refs it reads written beside the record; once it has written its findings, the next brief refused until its verdicts name each entry it read and no other, naming what is wrong and the way on; a complete one kept with its round', () => {
+    const RECORD2 = JSON.stringify({ entries: [{ ref: 'q1', event: 'asked', text: 'How long is the trial?', by: 'person' }, { ref: 'q2', event: 'asked', text: 'Is a card needed?', by: 'person' }] });
+    writeState(dir, composedPath('fumi', 'licensing'), RECORD2);
+    issued(['migration-verifier', ...LICENSING]);
+    const read = readState(dir, verifyingPath('fumi', 'licensing'));
+    const way = 'a verifier writes a line for each entry, `{ref}: ok` or `{ref}: see finding`, and one that does not has given no verdict — remove .cache/migrate/records/fumi/licensing.findings.txt, .cache/migrate/records/fumi/licensing.rulings.txt and .cache/migrate/records/fumi/licensing.checked.txt, and brief a fresh verifier';
+    const refusedBrief = (/** @type {string[]} */ args, /** @type {RegExp} */ pattern) => assert.match(refusedUntouched(dir, ['brief', ...args], { env: SESSION }, harness), pattern);
+    const refusal = (/** @type {string} */ told) => new RegExp(`^brief: fumi's licensing has no verdict from its last verifier on every entry it read — ${told.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}: ${way.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
+
+    verdict('The trial is wrong.\n', 'q1: see finding\n');
+    refusedBrief(['migration-topic', ...LICENSING], refusal('it names no verdict on q2'));
+    writeState(dir, checkedPath('fumi', 'licensing'), 'q1: see finding\nq2: ok\nq9: ok\n');
+    refusedBrief(['migration-verifier', ...LICENSING], refusal('it names q9, which the record it read does not hold'));
+    fs.rmSync(statePath(dir, checkedPath('fumi', 'licensing')));
+    refusedBrief(['migration-topic', ...LICENSING], refusal('.cache/migrate/records/fumi/licensing.checked.txt is no file; it names no verdict on q1, q2'));
+    writeState(dir, checkedPath('fumi', 'licensing'), 'q1: see finding\nq2: ok\n');
+    writeState(dir, composedPath('fumi', 'licensing'), `${RECORD}\n`);
+    issued(['migration-topic', ...LICENSING]);
+    issued(['migration-verifier', ...LICENSING]);
+
+    assert.strictEqual(read, 'q1\nq2\n');
+    assert.strictEqual(readState(dir, roundsPath('fumi', 'licensing')), '## Round 1\n\nThe trial is wrong.\n\n### Checked\n\nq1: see finding\nq2: ok\n');
+    assert.strictEqual(readState(dir, verifyingPath('fumi', 'licensing')), 'q1\n');
+  });
+});
+
+describe('a finding handed back to the session', () => {
+  it('while the composer\'s hand-back file stands, the verifier is briefed for nothing, the refusal naming the way on; settled and removed, it is briefed', () => {
+    writeState(dir, composedPath('fumi', 'licensing'), `${RECORD}\n`);
+    writeState(dir, findingsPath('fumi', 'licensing'), 'Carry the CLI framework.\n');
+    writeState(dir, handbackPath('fumi', 'licensing'), '- Carry the CLI framework: round 1 ruled it replaced.\n');
+
+    refusedUnissued(['migration-verifier', ...LICENSING], /^brief: fumi's licensing has findings handed back to the session in \.cache\/migrate\/records\/fumi\/licensing\.handback\.txt: settle each into \.cache\/migrate\/records\/fumi\/licensing\.settled\.md, replace it in \.cache\/migrate\/records\/fumi\/licensing\.findings\.txt with `Settled: \{point\}, amend to agree` where the record changes, or take it out where it stands, then remove \.cache\/migrate\/records\/fumi\/licensing\.handback\.txt$/);
+    assert.strictEqual(readState(dir, findingsPath('fumi', 'licensing')), 'Carry the CLI framework.\n');
+    fs.rmSync(statePath(dir, handbackPath('fumi', 'licensing')));
+    assert.ok(issued(['migration-verifier', ...LICENSING]).brief.includes('## Round 1\n\nCarry the CLI framework.'));
   });
 });
 
@@ -410,7 +525,8 @@ describe('the migration\'s agents and the plain search (21.S35, 26.5.1)', () => 
   const CHECKING = '**The shell is for reading and searching, and for the check your brief names:** `rg`, `find`, `ls`, `cat`, `head`, `tail`, `wc` and their like. Never run the engine for anything else, never run git, and never write, move or delete a file through it.';
 
   it('each searches through a shell confined to reading, the per-topic agent\'s running its record\'s check besides — Claude Code giving no Glob or Grep tool — and no agent file names an engine call, nor any brief but the check it names: only the session writes the ledger and the state', () => {
-    assert.ok(fs.readFileSync(path.join(AGENTS, 'ledger-migration-verifier.md'), 'utf8').includes('- Write only the findings file, and the rulings file where your brief names one, the `.txt` files your brief names, with the Write tool.'), 'the verifier writes its rulings');
+    assert.ok(fs.readFileSync(path.join(AGENTS, 'ledger-migration-topic.md'), 'utf8').includes('- Touch only the files the directive names for a topic or a phase, and only this one\'s: what you compose, and the hand-back file where your brief names one.'), 'the per-topic agent writes its hand-back');
+    assert.ok(fs.readFileSync(path.join(AGENTS, 'ledger-migration-verifier.md'), 'utf8').includes('- Write only the findings file, and the rulings file and the checked file where your brief names them, the `.txt` files your brief names, with the Write tool.'), 'the verifier writes its rulings and verdicts');
     for (const [agent, rule] of [['ledger-migration-topic', CHECKING], ['ledger-migration-verifier', CONFINED], ['ledger-plain-search', CONFINED]]) {
       const text = fs.readFileSync(path.join(AGENTS, `${agent}.md`), 'utf8');
       const tools = String(/^tools: (.*)$/m.exec(text)?.[1]).split(', ');
