@@ -173,12 +173,14 @@ describe('several live: the pick, asked first and writing nothing (6.1.21)', () 
     assert.deepStrictEqual([res.entered, dataOf(sections)[0], position()], [true, 'experiment: E2', { name: UNIT, phase: 'experiment', topic: TOPIC, record: 'E2' }]);
   });
 
-  it('reached from the next experiment\'s gate, the pick\'s back puts that gate back, and keeps it there when the pick is drawn again', () => {
+  it('reached from the next experiment\'s gate, the pick draws no register, the gate\'s just above it; its back puts that gate back, and keeps it there when the pick is drawn again, the register with it', () => {
     output(dir, ['render', 'experiment-next-gate', `${UNIT}.experiment.${TOPIC}`], { env: env() });
     const again = answered('experiment next gate', 'y');
-    enter(again.argv.slice(1));
-    enter(again.argv.slice(1));
-    assert.deepStrictEqual(answered('experiment pick', 'b'), { kind: 'engine', argv: ['render', 'experiment-next-gate', `${UNIT}.experiment.${TOPIC}`] });
+    const drawn = [enter(again.argv.slice(1)), enter(again.argv.slice(1))].map(({ sections }) => sections.includes('=== DISPLAY: experiment register'));
+    assert.deepStrictEqual([drawn, answered('experiment pick', 'b')], [
+      [false, true],
+      { kind: 'engine', argv: ['render', 'experiment-next-gate', `${UNIT}.experiment.${TOPIC}`] },
+    ]);
   });
 
   it('held by another session, the held question comes before the pick; its yes takes the laboratory, and the pick then carries the take on each row (18.4.21)', () => {

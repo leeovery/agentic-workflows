@@ -64,7 +64,7 @@ Present the design in plain terms, in paragraphs and never as a file dump: what 
 node .claude/skills/ledger-engine/scripts/engine.cjs render experiment-approval-gate {work_unit}.experiment.{topic} --id {id}
 ```
 
-The answer goes to `gate`: follow its `next`. The yes runs `experiment approve`, which freezes the design; abandon carries on into **Abandoning the Experiment**.
+The yes runs `experiment approve`, which freezes the design; abandon carries on into **Abandoning the Experiment**.
 
 ### The Run
 
@@ -89,7 +89,7 @@ Once results are visible, the design is frozen for good. A flaw found then goes 
 
 Complete the report: the reading, kept apart from the results it reads; the conclusion, applying the pre-registered rule, which branch fired and what it triggers, never a fresh judgment; and how to reproduce the run. A measure thought of after seeing the data is labelled exploratory: it can motivate the next experiment, never settle this one. A disproven hypothesis is examined run first, since only a clean run indicts the belief. A parent's conclusion brings its splits' verdicts together.
 
-Walk the person through what was measured and what the rule says it means, then record the verdict, the conclusion's one line, with `experiment conclude`. Say in a line where the result goes: a split's to its parent, whose conclusion brings it in; the series' own back to the spawning conversation, which takes it in when it next opens, or, where the response's `report_sent` names a topic, into that topic's mail, reopening it where `reopened` says so. Then follow its `next`; where it draws the next experiment's gate, the answer goes to `gate`, whose `next` you follow.
+Walk the person through what was measured and what the rule says it means, then record the verdict, the conclusion's one line, with `experiment conclude`. Say in a line where the result goes: a split's to its parent, whose conclusion brings it in; the series' own back to the spawning conversation, which takes it in when it next opens, or, where the response's `report_sent` names a topic, into that topic's mail, reopening it where `reopened` says so. Then follow its `next`.
 
 ## Doors
 
@@ -101,7 +101,7 @@ Walk the person through what was measured and what the rule says it means, then 
 - The verdict → `experiment conclude {work_unit} {topic} {id} --verdict "{verdict}"`; an abandonment → `experiment abandon {work_unit} {topic} {id} --reason "{reason}"`.
 - A gate's answer → `gate "{name}" --pick {key}`, or `--typed {key}` for a typed row such as Amend.
 
-Each `experiment` verb commits what it records with the experiment's folder: the design, the report and the data written there since. From the approval, a step refuses a design changed since its commit: record the change with `experiment amend` first.
+Each `experiment` verb commits what it records with the experiment's folder, the design, the report and the data written there since; `experiment amend` commits the design alone. From the approval, a step refuses a design changed since its commit: until results are visible, record the change with `experiment amend` first. Once they are, `experiment amend` refuses too: put the design back, and a flaw goes in the report's `## Corrections`.
 
 ## Abandoning the Experiment
 

@@ -46,7 +46,7 @@ const {
 const { projectRepos, repoOf, repoPath, repoName, commitGroups } = require('./kernel/repos.cjs');
 const { codeChanges, linksHeldOut, stagedHeldOut } = require('./domain/worktree-prep.cjs');
 const { quoted } = require('./domain/landing-git.cjs');
-const { TERMINAL_STATUSES, isParentExperimentId } = require('./kernel/manifest-schema.cjs');
+const { TERMINAL_STATUSES } = require('./kernel/manifest-schema.cjs');
 const { sequenceMap, addTopic, addTopics, editTopic, renameTopic, removeTopic, rewriteBrief } = require('./domain/discovery-map.cjs');
 const { cancelTopic, reactivateTopic, postponeTopic } = require('./domain/transitions.cjs');
 const { mailboxDir, mailPhase } = require('./domain/derivations.cjs');
@@ -1182,14 +1182,15 @@ function runTopic(call, argv) {
 // Beats follow the acting session, the phase of the topic its position sits
 // in, never a flag: the spawning discussion recording the spawn, or
 // abandoning one no one will run, beats its own; the laboratory working its
-// records beats the experiment slot, and its top-level conclude or abandon
-// clears it — the record's close is the session's release. A session
-// sitting elsewhere beats nothing.
+// records beats the experiment slot, and the top-level end that is its own —
+// the one whose way on is the laboratory's (experiment.cjs) — clears it: the
+// record's close is the session's release. Ending another record than the
+// live one it works keeps its hold. A session sitting elsewhere beats nothing.
 // ---------------------------------------------------------------------------
 
 /**
  * The acting session's presence at the topic, in the phase its position
- * sits in (the header's): beaten, or released where the laboratory's
+ * sits in (the header's): beaten, or released where the laboratory's own
  * top-level record ended; nothing where it sits elsewhere.
  * @param {string} cwd @param {string} workUnit @param {string} topic @param {boolean} released
  */
@@ -1223,7 +1224,7 @@ function runExperiment(call, argv) {
       const result = command === 'conclude'
         ? concludeExperiment(cwd, workUnit, topic, id, { verdict: payload })
         : abandonExperiment(cwd, workUnit, topic, id, { reason: payload });
-      beatActing(cwd, workUnit, topic, isParentExperimentId(id));
+      beatActing(cwd, workUnit, topic, result.next?.kind !== 'continue');
       respond(call, result);
       return;
     }

@@ -769,7 +769,6 @@ describe('conversation position', () => {
       'E2-throughput/problem.md', 'E2-throughput/design.md', 'E2-throughput/report.md', 'E2-throughput/E2.1-batch/problem.md',
     ]) write(`.ledger/pay/topics/ledger/experiments/${f}`);
     write('.ledger/pay/topics/ledger/log.md');
-    const record = '`node .claude/skills/ledger-engine/scripts/engine.cjs ledger record pay ledger`';
     writePosition({ name: 'pay', phase: 'experiment', topic: 'ledger', record: 'E2' });
     const running = reads();
     writePosition({ name: 'pay', phase: 'experiment', topic: 'ledger', record: 'E1' });
@@ -779,9 +778,17 @@ describe('conversation position', () => {
     ].map((f) => abs(`.ledger/pay/topics/ledger/experiments/${f}`)), [
       abs('.ledger/pay/topics/ledger/experiments/E1-latency/problem.md'), abs('.ledger/pay/topics/ledger/experiments/E1-latency/design.md'), abs('.ledger/pay/topics/ledger/log.md'),
     ]]);
-    assert.deepStrictEqual([running.text, designed.text].map((text) => [text.includes(record), /The experiment worked here is (.*)\.$/m.exec(text)?.[1]]), [
-      [false, 'E2, running; its splits E2.1 designed'],
-      [true, 'E1, designed'],
+    const note = (/** @type {string[]} */ calls, /** @type {string[]} */ files, /** @type {string} */ line) => [
+      'The conversation was just compacted. This conversation is working in the experiment of "ledger" in the epic "pay". Before anything else, re-read these in full, running each engine call:',
+      `- ${abs('.claude/skills/ledger-experiment-process/SKILL.md')} and its framework`,
+      ...calls.map((call) => `- \`node .claude/skills/ledger-engine/scripts/engine.cjs ${call}\``),
+      ...files.map((file) => `- ${file}`),
+      line,
+      'Then carry on from where the conversation was, as if the break never happened — no recap and no announcement.',
+    ].join('\n');
+    assert.deepStrictEqual([running.text, designed.text], [
+      note([], running.files, 'The experiment worked here is E2, running; its splits E2.1 designed.'),
+      note(['ledger record pay ledger'], designed.files, 'The experiment worked here is E1, designed.'),
     ]);
   });
 

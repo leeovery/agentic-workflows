@@ -8,7 +8,8 @@
 // discussion; and a record named that is not one of the series' live
 // top-level records, a split worked inside its parent's run. Where several
 // are live and the call named none, it asks which first, nothing written:
-// the register, then the pick, each row the entry again naming its record,
+// the register — unless the next experiment's gate drew it just above —
+// then the pick, each row the entry again naming its record,
 // its back the surface before it — the next experiment's gate where the
 // conversation came from it, the pick drawn again keeping its back — else
 // the unit's menu. It starts nothing and keeps no log: the spawn conceived
@@ -90,29 +91,32 @@ function checkRecord({ topic = '', manifest }, record) {
 }
 
 /**
- * Where the pick's back leads: the surface before it — the next
+ * Where the pick's back leads: the surface before it, `before` — the next
  * experiment's gate where the conversation came from it, the pick drawn
  * again keeping its back — else `leave`.
- * @param {string} dotpath @param {Next} leave @returns {Next}
+ * @param {import('./gate.cjs').ShownRecord|null} before @param {string} dotpath @param {Next} leave @returns {Next}
  */
-function pickerBack(dotpath, leave) {
-  const session = handedSession();
-  const before = session === null ? null : lastShown(session);
+function pickerBack(before, dotpath, leave) {
   if (before?.gate === 'experiment pick') return before.options.find((o) => o.key === 'b')?.next ?? leave;
   return before?.gate === 'experiment next gate' ? { kind: 'engine', argv: ['render', 'experiment-next-gate', dotpath] } : leave;
 }
 
 /**
  * The pick, where several records are live: the register, then the menu,
- * each row the entry again naming its record; none where one is live.
+ * each row the entry again naming its record; none where one is live. From
+ * the next experiment's gate, which drew the register just above, the menu
+ * alone.
  * @param {Standing} at @param {(record: string) => string[]} again @returns {string|null}
  */
 function pickQuestion({ unit, topic = '', manifest }, again) {
   const rows = seriesRows(manifest, topic);
   const live = liveRecords(rows);
   if (live.length === 1) return null;
-  const back = pickerBack(`${unit}.${PHASE}.${topic}`, ontoMenu(unit, manifest.work_type));
-  return experimentRegister(topicTitle(manifest, topic), rows) + experimentPick(live, { into: (id) => ({ kind: 'engine', argv: again(id) }), back });
+  const session = handedSession();
+  const before = session === null ? null : lastShown(session);
+  const back = pickerBack(before, `${unit}.${PHASE}.${topic}`, ontoMenu(unit, manifest.work_type));
+  const register = before?.gate === 'experiment next gate' ? '' : experimentRegister(topicTitle(manifest, topic), rows);
+  return register + experimentPick(live, { into: (id) => ({ kind: 'engine', argv: again(id) }), back });
 }
 
 /** The record the entry works: the one named, else the series' one live. @param {Standing} at @param {string|null} record */
@@ -161,7 +165,7 @@ function labSources(cwd, unit, topic, manifest, record) {
     splits: rows.filter(({ id }) => id.startsWith(`${own.id}.`)),
     folderOf,
     frozen: EXPERIMENT_FROZEN_STATUSES.includes(own.status),
-    topicRecord: `\`${recordCall(unit, topic)}\``,
+    topicRecord: recordCall(unit, topic),
     topicLog: statePath(cwd, topicLog(unit, topic)),
   };
 }
@@ -176,7 +180,7 @@ function labReads(ground) {
     const { cwd, unit, topic = '', manifest, record } = at;
     const lab = /** @type {LabSources} */ (labSources(cwd, unit, topic, manifest, /** @type {string} */ (record)));
     const before = lab.frozen ? [] : [
-      as('topic record')(lab.topicRecord),
+      as('topic record')(`\`${lab.topicRecord}\``),
       ...existing([lab.topicLog]).map(as('topic log')),
       ...ground(at),
     ];

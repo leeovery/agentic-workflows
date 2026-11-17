@@ -59,6 +59,9 @@ function spawn(dir, from, slug) {
   return engine(dir, ['experiment', 'create', 'lab', 'timing', '--slug', slug, '--from', from, '--problem', problemScratch(dir, slug), '--question', question]);
 }
 
+/** Two processes that no longer run, each a conversation's of its own. */
+const GONE = ['2147483646', '2147483645'];
+
 /** The system config folders of the conversations a test sits, removed after it. @type {string[]} */
 const configs = [];
 afterEach(() => { for (const config of configs.splice(0)) fs.rmSync(config, { recursive: true, force: true }); });
@@ -283,7 +286,7 @@ describe('every laboratory verb commits what it records with the record\'s folde
   /** E1's amendment refused, writing nothing: its error. */
   const amendRefused = () => refusedPristine(dir, ['experiment', 'amend', 'lab', 'timing', 'E1']).error;
 
-  it('each step commits the manifest with the record\'s own folder — the design, the report and the data written there — another record\'s documents left out; amend the folder alone, of a frozen design only; a split its manifest', () => {
+  it('each step commits the manifest with the record\'s own folder — the design, the report and the data written there — another record\'s documents left out; amend the design alone, of a frozen design only, until results are visible; a split its manifest', () => {
     spawn(dir, 'discussion', 'window-size');
     const other = written('design.md', 'E2-window-size');
     const design = written('design.md');
@@ -296,13 +299,14 @@ describe('every laboratory verb commits what it records with the record\'s folde
     written('design.md');
     const amendedApproved = step('amend', 'E1');
     const running = step('advance', 'E1');
+    const data = [written('report.md'), written('data/raw.csv')];
     written('design.md');
     const amendedRunning = step('amend', 'E1');
-    const data = [written('report.md'), written('data/raw.csv')];
     const tally = '.ledger/.cache/lab/experiment/timing/E1-runs.json';
     fs.mkdirSync(path.join(dir, path.dirname(tally)), { recursive: true });
     fs.writeFileSync(path.join(dir, tally), JSON.stringify([{ condition: 'one monitor', of: 2, values: [1] }]));
     const runs = step('runs', 'E1', '--file', tally);
+    const visible = amendRefused();
     const split = step('create', '--slug', 'single-monitor', '--parent', 'E1');
     const sub = written('design.md', 'E1-window-placement/E1.1-single-monitor');
     const splitEnded = step('abandon', 'E1.1', '--reason', 'moot');
@@ -311,7 +315,7 @@ describe('every laboratory verb commits what it records with the record\'s folde
     const abandoned = step('abandon', 'E2', '--reason', 'moot');
     const amended = ['experiment(lab/timing): E1 design amended', [`M\t${design}`]];
     assert.deepStrictEqual(
-      [conceived, designed, left, unfrozen, approved, amendedApproved, running, amendedRunning, runs, split, splitEnded, concluded, abandoned, amendRefused()], [
+      [conceived, designed, left, unfrozen, approved, amendedApproved, running, amendedRunning, runs, visible, split, splitEnded, concluded, abandoned, amendRefused()], [
         'experiment E1 ("timing") is conceived — its design changes freely until the approval freezes it; an amendment is to a frozen design',
         ['experiment(lab/timing): E1 designed', [`A\t${design}`, MANIFEST].sort()],
         `?? ${other}`,
@@ -321,6 +325,7 @@ describe('every laboratory verb commits what it records with the record\'s folde
         ['experiment(lab/timing): E1 running', [MANIFEST]],
         amended,
         ['experiment(lab/timing): E1 runs recorded', [...data.map((file) => `A\t${file}`), MANIFEST].sort()],
+        'experiment E1 ("timing") has results visible — the design is frozen for good: put it back, and record a flaw in the report\'s ## Corrections',
         ['experiment(lab/timing): split E1.1 single-monitor from E1', [MANIFEST]],
         ['experiment(lab/timing): E1.1 abandoned', [`A\t${sub}`, MANIFEST].sort()],
         ['experiment(lab/timing): E1 concluded', [`M\t${data[0]}`, MANIFEST].sort()],
@@ -346,6 +351,24 @@ describe('every laboratory verb commits what it records with the record\'s folde
       'experiment(lab/timing): E1 running',
       'experiment E1.1 ("timing")\'s design changed after its approval — record the change with experiment amend lab timing E1.1 first, or put the design back',
       'experiment(lab/timing): E1.1 amendment struck',
+    ]);
+  });
+
+  it('once a run is done its results are visible and the design frozen for good: a step over it changed refuses, naming Corrections, never amend; put back, the step goes on', () => {
+    written('design.md');
+    walkTo(dir, 'E1', 'running');
+    const tally = '.ledger/.cache/lab/experiment/timing/E1-runs.json';
+    fs.mkdirSync(path.join(dir, path.dirname(tally)), { recursive: true });
+    fs.writeFileSync(path.join(dir, tally), JSON.stringify([{ condition: 'one monitor', of: 2, values: [1] }]));
+    step('runs', 'E1', '--file', tally);
+    const design = statePath(dir, layout.experiment('lab', 'timing', 'E1-window-placement', 'design.md'));
+    const frozen = fs.readFileSync(design, 'utf8');
+    written('design.md');
+    const refused = refusedPristine(dir, ['experiment', 'conclude', 'lab', 'timing', 'E1', '--verdict', 'held']).error;
+    fs.writeFileSync(design, frozen);
+    assert.deepStrictEqual([refused, step('conclude', 'E1', '--verdict', 'held')[0]], [
+      'experiment E1 ("timing")\'s design changed after its results were visible — the design is frozen for good: put it back, and record a flaw in the report\'s ## Corrections',
+      'experiment(lab/timing): E1 concluded',
     ]);
   });
 
@@ -876,9 +899,9 @@ describe('presence follows the phase of the topic the acting conversation sits i
   it('a top-level close releases only its own session\'s slot, never a peer\'s working another record of the topic', () => {
     spawn(dir, 'discussion', 'window-placement');
     spawn(dir, 'discussion', 'window-size');
-    const a = sitting(dir, { ...conversation('lab-a'), CLAUDE_PID: '101' }, 'experiment', 'E1');
+    const a = sitting(dir, { ...conversation('lab-a'), CLAUDE_PID: GONE[0] }, 'experiment', 'E1');
     for (const verb of ['advance', 'approve', 'advance']) engine(dir, ['experiment', verb, 'lab', 'timing', 'E1'], { env: a });
-    const b = sitting(dir, { ...conversation('lab-b'), CLAUDE_PID: '202' }, 'experiment', 'E2');
+    const b = sitting(dir, { ...conversation('lab-b'), CLAUDE_PID: GONE[1] }, 'experiment', 'E2');
     engine(dir, ['experiment', 'advance', 'lab', 'timing', 'E2'], { env: b });
     const before = holder('experiment');
 
@@ -886,5 +909,19 @@ describe('presence follows the phase of the topic the acting conversation sits i
     const peer = holder('experiment');
     engine(dir, ['experiment', 'abandon', 'lab', 'timing', 'E2', '--reason', 'superseded'], { env: b });
     assert.deepStrictEqual([before, peer, holder('experiment')], ['lab-b', 'lab-b', null], 'the peer keeps its slot; its own close releases it');
+  });
+
+  it('the laboratory ending another record than the live one it works carries the calling flow on and keeps its hold; once the one it works has ended, an end is its own again', () => {
+    for (const slug of ['window-placement', 'window-size', 'stacking']) spawn(dir, 'discussion', slug);
+    const lab = sitting(dir, conversation('lab'), 'experiment', 'E1');
+    const end = (/** @type {string} */ id) => {
+      const { next } = engine(dir, ['experiment', 'abandon', 'lab', 'timing', id, '--reason', 'moot'], { env: lab });
+      return [next, holder('experiment')];
+    };
+    assert.deepStrictEqual([end('E2'), end('E1'), end('E3')], [
+      [{ kind: 'continue' }, 'lab'],
+      [{ kind: 'engine', argv: ['render', 'experiment-next-gate', 'lab.experiment.timing'] }, null],
+      [{ kind: 'engine', argv: ['handoff', 'unit', 'lab'] }, null],
+    ]);
   });
 });

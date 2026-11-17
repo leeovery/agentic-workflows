@@ -37,6 +37,7 @@ const { UNIT_PHASES } = require('./derivations.cjs');
 const { roadmapState } = require('./roadmap.cjs');
 
 /** @typedef {import('./projections/surfaces.cjs').Next} Next */
+/** A position in a phase of a unit. @typedef {import('./conversation.cjs').Position & {phase: string}} Seat */
 
 const CONTINUE = Object.freeze({ kind: 'continue' });
 
@@ -63,14 +64,24 @@ function sittingAt() {
 }
 
 /**
- * The phase of the unit's topic the calling conversation sits in, or null
- * where it sits elsewhere: what a verb acting on the topic from more than one
- * phase reads to tell whose call it is.
+ * Where the calling conversation sits in a phase of the unit — at `topic`
+ * where one is named — or null where it sits elsewhere: what a verb acting
+ * from more than one place reads to tell whose call it is.
+ * @param {string} workUnit @param {string} [topic]
+ * @returns {Seat|null}
+ */
+function seatIn(workUnit, topic) {
+  const at = sittingAt();
+  if (at === null || at.name !== workUnit || typeof at.phase !== 'string') return null;
+  return topic === undefined || at.topic === topic ? /** @type {Seat} */ (at) : null;
+}
+
+/**
+ * The phase of the unit's topic the calling conversation sits in, or null.
  * @param {string} workUnit @param {string} topic @returns {string|null}
  */
 function sittingIn(workUnit, topic) {
-  const at = sittingAt();
-  return at !== null && at.name === workUnit && at.topic === topic && typeof at.phase === 'string' ? at.phase : null;
+  return seatIn(workUnit, topic)?.phase ?? null;
 }
 
 /**
@@ -79,10 +90,8 @@ function sittingIn(workUnit, topic) {
  * @returns {Next}
  */
 function leaveNext(workUnit, topic) {
-  const at = sittingAt();
-  const sitting = at !== null && at.name === workUnit && at.topic === topic
-    && typeof at.phase === 'string' && UNIT_PHASES.discovery.includes(at.phase);
-  return sitting ? ontoEpic(workUnit) : CONTINUE;
+  const phase = sittingIn(workUnit, topic);
+  return phase !== null && UNIT_PHASES.discovery.includes(phase) ? ontoEpic(workUnit) : CONTINUE;
 }
 
 /**
@@ -91,9 +100,7 @@ function leaveNext(workUnit, topic) {
  * @returns {Next}
  */
 function unitLeaveNext(workUnit) {
-  const at = sittingAt();
-  const sitting = at !== null && at.name === workUnit && typeof at.phase === 'string';
-  return sitting ? ONTO_START : CONTINUE;
+  return seatIn(workUnit) === null ? CONTINUE : ONTO_START;
 }
 
 /**
@@ -149,4 +156,4 @@ function putBackNext(cwd, from, names) {
     : { kind: 'engine', argv: ['render', 'horizon-pick', '--back', first, '--from', from, ...thenArgs(rest)] };
 }
 
-module.exports = { ontoEpic, ontoMenu, sittingIn, leaveNext, putBackNext, putBackBy, stillToAsk, thenArgs };
+module.exports = { ontoEpic, ontoMenu, seatIn, sittingIn, leaveNext, putBackNext, putBackBy, stillToAsk, thenArgs };
