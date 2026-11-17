@@ -27,7 +27,9 @@
 //     project's folder in the main checkout: the copy the migration's commit
 //     drops from the default branch. The move (078) reads that copy as it
 //     stands on disk, carrying an untracked file as any other, so each is
-//     named, an untracked folder's by each file in it — but for the files
+//     named, an untracked folder's by each file in it and a rename by both
+//     its paths, so a rename to a sidecar's name is named by its source —
+//     but for the files
 //     the person's tools leave beside theirs, a `.DS_Store` among them
 //     (reshape/shared.cjs, `SIDECAR_NAME`), which the move never carries.
 // A refusal throws an error carrying `refused`, the facts its screen states
@@ -149,17 +151,10 @@ function liveRows(folders) {
  * @param {string} main @param {string} project @returns {string[]}
  */
 function changedPaths(main, project) {
-  const status = git(project, ['status', '--porcelain', '-z', '--untracked-files=all', '--', OLD_STATE]);
+  const status = git(project, ['status', '--porcelain', '-z', '--no-renames', '--untracked-files=all', '--', OLD_STATE]);
   if (!status.ok) throw new Error(`git status failed in ${project}: ${status.stderr.trim()}`);
-  const entries = status.stdout.split('\0');
-  /** @type {string[]} */
-  const changed = [];
-  for (let at = 0; at < entries.length && entries[at] !== ''; at += 1) {
-    changed.push(entries[at].slice(3));
-    // A rename's or a copy's entry is followed by its source's path, which names no change of its own.
-    if (/^(?:[RC]|.[RC])/.test(entries[at])) at += 1;
-  }
-  return changed.map((rel) => path.relative(project, path.join(main, rel)).split(path.sep).join('/'))
+  return status.stdout.split('\0').filter((entry) => entry !== '')
+    .map((entry) => path.relative(project, path.join(main, entry.slice(3))).split(path.sep).join('/'))
     .filter((at) => !SIDECAR_NAME.test(path.posix.basename(at)));
 }
 

@@ -243,7 +243,9 @@ function migrationGuardStop(refused) {
     return [
       section('DISPLAY: migration guard stop', emitAs('properties'), `⚑ The migration can't run: ${refused.folder}/ has uncommitted changes`),
       section('DISPLAY: migration guard account', emitAs('markdown'), [
-        "> The migration's commit would sweep them in with its own, so nothing has been changed:",
+        "> The migration's commit would sweep them in with its own, so nothing has been changed.",
+        '>',
+        '> The changes:',
         '>',
         ...refused.paths.map((at) => `> - ${escapeMarkdown(at)}`),
         '>',

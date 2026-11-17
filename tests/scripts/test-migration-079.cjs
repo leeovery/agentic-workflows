@@ -728,7 +728,7 @@ describe('the directive\'s example record, frozen with 079', () => {
   it('a spec section the record cites is carried whole: citing it for one rule and leaving its others out is a gap', () => {
     const text = fs.readFileSync(DIRECTIVE, 'utf8');
 
-    assert.ok(text.includes('- **A cited section, whole.** A spec section the record cites is carried whole: each decision, finding and open question it holds that concerns this topic is an entry. Citing a section for one of its rules and leaving its others out is a gap.'));
+    assert.ok(text.includes('- **A cited section, whole.** A spec section the record cites is carried whole: each current decision, finding and open question it holds that concerns this topic is an entry. Citing a section for one of its rules and leaving its others out is a gap.'));
   });
 
   it('carries nothing of a cancelled unit holding an approved spec and no topic: its spec the reference it is, governing nothing', () => {

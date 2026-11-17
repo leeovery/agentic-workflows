@@ -2491,8 +2491,10 @@ function runHandoff(call, argv) {
 }
 
 const RENDER_FLAGS = ['warn', 'menu-only', 'content-only', 'calls', 'sweep', 'page', 'revised', 'asked'];
-// The flags a surface takes more than once, each value its own.
-const RENDER_LISTS = ['path'];
+// The flags a surface takes more than once, each value its own, by surface:
+// every other surface takes each flag once.
+/** @type {Record<string, string[]>} */
+const RENDER_LISTS = { 'migration-guard-stop': ['path'] };
 
 /** The render family's refusal of a surface it does not draw, naming every one it does, its three dev aids among them. */
 const RENDER_USAGE = `Usage: engine render <${[...Object.keys(SURFACES), 'signpost', 'tree', 'wrap'].join('|')}> …`;
@@ -2500,7 +2502,7 @@ const RENDER_USAGE = `Usage: engine render <${[...Object.keys(SURFACES), 'signpo
 /** @param {Call} call @param {string[]} argv */
 function runRender(call, argv) {
   const [command, ...rest] = argv;
-  const { opts, flags, lists, positional } = parseArgs(rest, RENDER_FLAGS, RENDER_LISTS);
+  const { opts, flags, lists, positional } = parseArgs(rest, RENDER_FLAGS, Object.hasOwn(RENDER_LISTS, command) ? RENDER_LISTS[command] : []);
   const width = opts.width !== undefined ? parseInt(opts.width, 10) : WIDTH;
 
   if (Object.hasOwn(SURFACES, command)) {

@@ -222,15 +222,17 @@ describe('migration 074: the reshape\'s guard', () => {
     /** The guard's refusal over uncommitted changes, naming `paths`. @param {string[]} paths */
     const dirty = (paths) => ({ refused: { cause: 'dirty', unit: null, phase: null, topic: null, active: null, paths } });
 
-    it('refuses over a change to a tracked file, and over files git does not track, naming each path from the project\'s folder, an untracked folder\'s by each file in it and a rename by its new path, writing nothing', () => {
+    it('refuses over a change to a tracked file, and over files git does not track, naming each path from the project\'s folder, an untracked folder\'s by each file in it and a rename by both its paths, so one to a sidecar\'s name is named by its source, writing nothing', () => {
       for (const [change, paths] of /** @type {[() => void, string[]][]} */ ([
         [() => createFile(main, '.workflows/fumi/manifest.json', '{"name":"fumi","work_type":"feature"}\n'), ['.workflows/fumi/manifest.json']],
         [() => {
           createFile(main, '.workflows/fumi/discussion/new.md', '# New\n');
           createFile(main, '.workflows/fumi/discussion/notes/one.md', '# One\n');
         }, ['.workflows/fumi/discussion/new.md', '.workflows/fumi/discussion/notes/one.md']],
-        [() => git(main, ['mv', '.workflows/fumi/manifest.json', '.workflows/fumi/moved.json']), ['.workflows/fumi/moved.json']],
+        [() => git(main, ['mv', '.workflows/fumi/manifest.json', '.workflows/fumi/moved.json']), ['.workflows/fumi/manifest.json', '.workflows/fumi/moved.json']],
+        [() => git(main, ['mv', '.workflows/fumi/manifest.json', '.workflows/fumi/.DS_Store']), ['.workflows/fumi/manifest.json']],
       ])) {
+        git(main, ['reset', '-q']);
         git(main, ['checkout', '-q', '--', '.workflows']);
         git(main, ['clean', '-q', '-fd', '--', '.workflows']);
         change();
@@ -240,7 +242,7 @@ describe('migration 074: the reshape\'s guard', () => {
         assert.deepStrictEqual(untouched(main), before);
       }
       assert.throws(() => withEnv(THIS_SESSION, () => MIGRATION.run({ projectDir: main, reportUpdate() {}, reportSkip() {} })), {
-        message: 'the reshape\'s guard refused: .workflows/ has uncommitted changes: .workflows/fumi/moved.json',
+        message: 'the reshape\'s guard refused: .workflows/ has uncommitted changes: .workflows/fumi/manifest.json',
       });
     });
 

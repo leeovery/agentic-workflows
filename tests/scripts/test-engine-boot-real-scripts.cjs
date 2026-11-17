@@ -233,7 +233,9 @@ describe('engine boot runs the reshape (real scripts)', () => {
       '⚑ The migration can\'t run: .workflows/ has uncommitted changes',
       '',
       '=== DISPLAY: migration guard account (emit verbatim as markdown (not a code block)) ===',
-      '> The migration\'s commit would sweep them in with its own, so nothing has been changed:',
+      '> The migration\'s commit would sweep them in with its own, so nothing has been changed.',
+      '>',
+      '> The changes:',
       '>',
       '> - .workflows/fumi/manifest.json',
       '> - .workflows/fumi/notes\\_one.md',
@@ -256,6 +258,13 @@ describe('engine boot runs the reshape (real scripts)', () => {
       'render migration-guard-stop: --active takes the seconds since the live session was last active, got "3m"',
       'render migration-guard-stop: --cause is live or dirty, as boot\'s guard stop answers it, got "busy"',
     ]);
+  });
+
+  it('--path is a list on the guard\'s stop alone: a surface taking one path still reads it', () => {
+    const { error } = real.refuses(project, ['render', 'inbox-delete-receipt', '--path', '.ledger/.inbox/.archived/ideas/2026-01-01--gone.md']);
+
+    assert.match(error, /^render inbox-delete-receipt: /);
+    assert.doesNotMatch(error, /--path is required/);
   });
 
   it('21.S2: a project at 070, its hooks as today\'s product leaves them, naming that engine and no guard, runs the guard, then the chain from the old record, 071 on, then the split, nothing in it to split, and the move — 072\'s kind on the moved roadmap — to the records directive, where its session hooks stand synced, written for the migration\'s commit and not committed, the guards before the new engine and the label hooks kept, so the brief hook hands the records\' agent its brief; a run killed once the guard has placed the state is carried on by the next boot', () => {
