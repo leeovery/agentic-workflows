@@ -14,7 +14,7 @@ node .claude/skills/ledger-engine/scripts/engine.cjs render directive-stop --dir
 
 Read the directive, `{file}`, and carry it out as written. Its head names the files it may touch and what it asks the person: touch no other file, and ask the person nothing else.
 
-The directive's check tells the pieces done from the rest. A piece done is kept. A piece the check names is redone from the start, never resumed from what an earlier session left of it. See where the directive stands, and again whenever you need to:
+The directive's check tells the pieces done from the rest. A piece done is kept. A piece the check names is carried on from where an earlier session left it, as the directive says. See where the directive stands, and again whenever you need to:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs migrate check {directive}

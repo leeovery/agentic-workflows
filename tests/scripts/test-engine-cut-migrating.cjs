@@ -679,10 +679,10 @@ describe('the plan from before Ledger of a unit that built nothing, closed throu
     assert.deepStrictEqual(Object.values(SIDE.planStanding(statePath(dir), 'crash')).map(([status]) => status), ['closed', 'closed']);
   });
 
-  it('refuses, closing nothing, a plan holding a task done — the tracker winning, its unit built some of it (21.8.4)', () => {
+  it('refuses, closing nothing, a plan holding a task done — the tracker winning, its unit built some of it, the migration stopping there (21.8.4, 21.8.12)', () => {
     SIDE.taskByHand(statePath(dir), 'done', 'Write a memo');
     assert.strictEqual(trackerUntouched('memo', ['task', 'close-plan', 'memo', '--parent', PLANS.memo.root]),
-      `the plan from before Ledger under ${PLANS.memo.root} holds "Write a memo" done, so unit memo built some of it — the tracker wins: the migration cuts the unit, carrying its plan on, and closes none of it`);
+      `the plan from before Ledger under ${PLANS.memo.root} holds "Write a memo" done, so unit memo built some of it — the tracker wins: none of it is closed, and the migration stops there, telling the person so`);
   });
 
   it('types a quick-fix\'s tasks fix, as a bugfix\'s, and any other unit\'s feat (21.5.21)', () => {

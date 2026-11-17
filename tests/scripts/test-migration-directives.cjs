@@ -256,7 +256,7 @@ const atDirective = (id, counts = {}) => {
 };
 
 describe('boot at a directive (21.10.4, 21.10.9, 21.10.10)', () => {
-  it('21.S37: a session died with two topics done and one half done — boot goes no further than the directive, stamping the conversation for its steps, the two pass its check, the third is redone and the ledger holds each of its entries once; recorded, the directive lets boot on to the next, and past both to the migration waiting on its commit, with nothing committed', () => {
+  it('21.S37: a session died with two topics done and one half done — boot goes no further than the directive, stamping the conversation for its steps, the two pass its check, the third is carried on and the ledger holds each of its entries once; recorded, the directive lets boot on to the next, and past both to the migration waiting on its commit, with nothing committed', () => {
     enterTopic(dir, 'licensing');
     enterTopic(dir, 'search');
     writeState(dir, layout.cache('migration', 'onboarding.md'), '# Onboarding\n\nPermissions: decided, a half-written entry.\n');
@@ -392,14 +392,14 @@ describe('the stop\'s screen (21.10.11)', () => {
       '⚑ The migration stopped part-way: its records step isn\'t done',
       '',
       '=== DISPLAY: directive account (emit verbatim as markdown (not a code block)) ===',
-      '> No session works in this project until the migration is done. What it finished is kept: 2 of Fumi\'s 3 topics have their records, each checked. Any topic it was in the middle of is redone from the start.',
+      '> No session works in this project until the migration is done. What it finished is kept: 2 of Fumi\'s 3 topics have their records, each checked. Any topic it was in the middle of is carried on from where it stood.',
       '>',
       '> This session carries the migration on from its records step; the start menu follows once the migration is done and committed.',
       '',
     ].join('\n'));
   });
 
-  it('the taken stop, where another session carries the step on, draws that step\'s stop naming when it was last active and saying this session stops there — nothing of a piece redone — refusing a step or an --active missing, and an --active that is no whole number', () => {
+  it('the taken stop, where another session carries the step on, draws that step\'s stop naming when it was last active and saying this session stops there — nothing of a piece carried on — refusing a step or an --active missing, and an --active that is no whole number', () => {
     enterTopic(dir, 'licensing');
     enterTopic(dir, 'search');
     const taken = (/** @type {string} */ at) => engine.output(dir, ['render', 'migration-taken-stop', '--at', at, '--active', '180']).split('\n').filter((line) => line.startsWith('>'));
@@ -440,7 +440,7 @@ describe('the stop\'s screen (21.10.11)', () => {
     const screen = directiveStop({ project: 'Fumi', step: 'cut', progress: { done: 1, of: 4, counts: { one: 'branch', many: 'branches' }, says: 'are cut' } });
 
     assert.strictEqual(screen.split('\n').filter((line) => line.startsWith('> No session'))[0],
-      '> No session works in this project until the migration is done. What it finished is kept: 1 of Fumi\'s 4 branches are cut, each checked. Any branch it was in the middle of is redone from the start.');
+      '> No session works in this project until the migration is done. What it finished is kept: 1 of Fumi\'s 4 branches are cut, each checked. Any branch it was in the middle of is carried on from where it stood.');
   });
 
   it('says the step is ready to close where every piece is done and the close has not run', () => {

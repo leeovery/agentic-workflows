@@ -3,9 +3,11 @@
 // ---------------------------------------------------------------------------
 // Domain ring: what the start menu reads (18.2) — each unit in progress with
 // how far it has come (progress.cjs) and what waits on the person in it
-// (waits.cjs), counted by what it is: the authority gates, the questions and
-// the decided topics an answer they relied on, replaced since, holds
-// (18.2.3) — never the verdicts, which wait on the project's own row; and
+// (waits.cjs), counted by what it is: the authority gates, an
+// investigation's conclude while its yes waits among them (20.12.5), the
+// questions and the decided topics an answer they relied on, replaced
+// since, holds (18.2.3) — never the verdicts, which wait on the project's
+// own row; and
 // whether mail waits for its topic, shown beside the count and never in it
 // (10.4.3), an epic's left to its own menu, which shows it by topic; the
 // inbox's live items by kind; the product's conversation, and whether the
@@ -57,7 +59,7 @@ const { legacyPlaces } = require('./legacy-files.cjs');
 
 /** The kinds of wait each count takes in (18.2.3). @type {Readonly<Record<keyof Waiting, readonly Wait['kind'][]>>} */
 const COUNTED = Object.freeze({
-  gates: Object.freeze(/** @type {const} */ (['map', 'decided', 'ready', 'finish'])),
+  gates: Object.freeze(/** @type {const} */ (['map', 'decided', 'ready', 'conclude', 'finish'])),
   questions: Object.freeze(/** @type {const} */ (['gap', 'question', 'raise', 'raised'])),
   topics: Object.freeze(/** @type {const} */ (['affected'])),
 });

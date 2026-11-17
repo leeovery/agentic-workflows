@@ -166,7 +166,7 @@ A placeholder never wraps across lines, and a flag carrying the person's words i
 
 ## Agents and Briefs
 
-Every prescribed artifact — the spec, the phase cut, the tasks, the reviews, deep dives, experiment write-ups — is written by a named agent on the roster. The conversation and the build's orchestration stay in the main session.
+Every prescribed artifact — the spec, the phase cut, the tasks, the reviews, deep dives — is written by a named agent on the roster; an experiment's report is the laboratory session's own. The conversation and the build's orchestration stay in the main session.
 
 **An agent's definition** (`agents/{name}.md`) holds what is true of it whatever it is dispatched for:
 - its one job, the artifact, with its rules and references boxed inside it;

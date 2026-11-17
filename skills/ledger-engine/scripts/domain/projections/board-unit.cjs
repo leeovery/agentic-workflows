@@ -102,8 +102,8 @@ const LATELY_SHOWN = 10;
 /** The phases a session works in a topic of an epic. */
 const TOPIC_PHASES = Object.freeze(['discussion', 'experiment']);
 
-/** What an epic's phases wait on while its discovery runs (20.15.2). @type {Readonly<Record<string, string>>} */
-const EPIC_WAITS = Object.freeze({ discussion: 'once the map is approved', specification: 'once every topic is decided' });
+/** What an epic's phases wait on while its discovery runs (20.15.2): a topic settled is decided, cancelled or postponed (spec-standing.cjs). @type {Readonly<Record<string, string>>} */
+const EPIC_WAITS = Object.freeze({ discussion: 'once the map is approved', specification: 'once every topic is settled' });
 
 /** The sessions the project holds, read once a call. @param {BoardAt} at @returns {ReturnType<typeof scanProject>['sessions']} */
 const presenceOf = (at) => at.once('presence', () => scanProject(at.cwd).sessions);

@@ -13,7 +13,7 @@
 // it touches, made as that task opens, each brought up by a later phase's
 // start and landed on its default branch at finish, children first (7.2.40,
 // 7.2.36, 7.S37) — and where each repository's branch was squashed by hand,
-// read landed (7.2.32). A verb refused in one repository is
+// read landed (7.2.39). A verb refused in one repository is
 // test-engine-landing-conformance-nested-refusals.cjs's; fix phases stacked
 // on a phase across nested repositories,
 // test-engine-landing-conformance-stacked.cjs's and
@@ -120,7 +120,7 @@ for (const { name } of listDrivers('landing')) {
       });
     }
 
-    it('a unit with its own branch squashed by hand onto each default branch, the project\'s first, is read landed at finish, nothing more landing (7.S37, 7.2.32)', () => {
+    it('a unit with its own branch squashed by hand onto each default branch, the project\'s first, is read landed at finish, nothing more landing (7.S37, 7.2.39)', () => {
       const at = project();
       buildBegun(at.dir, 5);
       startClosed(at.dir, 1, side.env);
