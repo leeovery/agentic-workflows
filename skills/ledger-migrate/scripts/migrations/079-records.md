@@ -39,10 +39,11 @@ Its brief lists each of these as the check reads them. Each topic's record is ca
 
 ### What It Holds
 
-Every current decision, every finding and every open question the topic's sources hold, and nothing else:
+Each current decision, finding and open question the topic's sources hold, and nothing else:
 
 - **Current answers only.** Each question's answer as it now stands; an answer replaced later is left in the log. An approved spec is the current answer where it and the log differ, its corrigenda and amendments among it; a decision made at the spec stage — a review gap decided in the spec, an amendment, a corrigendum — is an entry of the topic it belongs to, citing the spec's section.
 - **A shared spec.** From a spec several topics draw on, carry what this topic's log discusses, and each section its findings send it.
+- **A cited section, whole.** A spec section the record cites is carried whole: each current decision, finding and open question it holds that concerns this topic is an entry. Citing a section for one of its rules and leaving its others out is a gap.
 - **One thing per entry.** A decision holds one rule. A question settled in several rules is answered by several decisions, one for each, each answering it.
 - **Cited.** Every entry cites the sections it came from, each by the nearest heading above its text; where its file holds that heading more than once — in a spec joined into `spec.md`, more than once in its part — by its path, as many of the headings over it as tell it apart, then its own: `Identity & Naming > Decision`.
 - **Who decided.** `by` `person`, `given` `own`, where a line of the source shows the person deciding; `by` `claude`, `given` `own`, where it shows Claude's own call; `by` `claude`, `given` `your-call` or `dont-care`, where the person handed the call over in those words; and where it shows no one, `by` `claude`, `given` `carried`. A question's `by` is whoever the source shows raising it, else `claude`.

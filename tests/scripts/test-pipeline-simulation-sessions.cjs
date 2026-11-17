@@ -204,8 +204,8 @@ describe('pipeline simulation: sessions', () => {
     commitCode(legacy, 'the old layout');
     createFile(legacy, '.workflows/shop/draft.md', '# Draft\n');
     const guarded = sim.runIn(legacy, ['boot']);
-    assert.deepStrictEqual([guarded.state, guarded.cause], ['guard', 'dirty']);
-    assert.match(sim.render(['migration-guard-stop', '--cause', guarded.cause], { expect: 'content', cwd: legacy }), /\.workflows\/ has uncommitted changes/);
+    assert.deepStrictEqual([guarded.state, guarded.cause, guarded.paths], ['guard', 'dirty', ['.workflows/shop/draft.md']]);
+    assert.match(sim.render([guarded.stop.surface, ...guarded.stop.args], { expect: 'content', cwd: legacy }), /\.workflows\/ has uncommitted changes[^]*^> - \.workflows\/shop\/draft\.md$/m);
 
     // The state branch and its worktree gone, the code tree still ignoring
     // the state: lost, here and with no remote to restore it from.

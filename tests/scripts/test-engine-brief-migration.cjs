@@ -298,6 +298,25 @@ describe('a cite of a heading held more than once', () => {
   });
 });
 
+describe('the walk of a record\'s sources', () => {
+  /** Each line the role's template does not say. @param {string} role @param {string[]} lines */
+  const unsaid = (role, lines) => lines.filter((line) => !fs.readFileSync(path.join(TEMPLATES, `${role}.md`), 'utf8').includes(line));
+  const CONFINED = 'Its sources are those the brief below lists, and no other: never a record composed for another topic or unit.';
+  const LISTED = 'its sources section by section, as the brief below lists them: its files, its log, its brief and its experiments among them; each section of its specs it draws on, every section the record cites among them; and what the discovery sessions say of it.';
+
+  it('the composer composing a record from the start walks its sources section by section, each current decision, finding and open question carried or not the record\'s, an amend answering the findings in its place and keeping everything else; the verifier walks every one, its findings every gap the walk turns up, a cited section carried whole; neither reads a record composed for another topic or unit', () => {
+    assert.deepStrictEqual([
+      unsaid('migration-topic', [CONFINED, 'keep everything no finding or fault asks you to change.', `Where you compose the record from the start, walk ${LISTED} For each section, confirm that each current decision, finding and open question it holds is carried by an entry, or is not this record's, and carry each it misses. Where you amend it, the findings stand in for the walk.`]),
+      unsaid('migration-verifier', [
+        CONFINED,
+        'The record passes when it holds each current decision, finding and open question its sources hold,',
+        `Walk every source ${LISTED.slice('its sources '.length)} For each section, check that each current decision, finding and open question it holds is carried by an entry, or is not this record's. Walk them all: your findings are every gap the walk turns up, never a sample.`,
+        '- each spec section it cites is carried whole: each current decision, finding and open question of it that concerns this record is carried;',
+      ]),
+    ], [[], []]);
+  });
+});
+
 describe('the refusals, nothing stored', () => {
   it('a directive the migrations lack, a place naming no topic, a phase the records carry no topic of, a topic the unit lacks, a topic promoted, a place at a phase before the one its item is in, and the verifier\'s brief with no record composed, or an empty one', () => {
     refusedUnissued(['migration-topic', '--topic', 'fumi.discussion.licensing', '--directive', '078-move'], /^there is no directive 078-move$/);

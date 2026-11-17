@@ -232,9 +232,10 @@ function takenBy(step, carrier) {
  * Boot's stop where the reshape's guard refused the migration (21.3.4):
  * another session live in the project — its unit, its phase, and its topic
  * where the unit has topics of its own, and how long ago it was last active
- * — or uncommitted changes in the old state's folder; nothing changed
- * either way, and what the person does before running `/ledger` again.
- * @param {{cause: 'live', unit: string, phase: string, topic: string, active: number} | {cause: 'dirty', folder: string}} refused
+ * — or uncommitted changes in the old state's folder, each path named;
+ * nothing changed either way, and what the person does before running
+ * `/ledger` again.
+ * @param {{cause: 'live', unit: string, phase: string, topic: string, active: number} | {cause: 'dirty', folder: string, paths: string[]}} refused
  * @returns {string}
  */
 function migrationGuardStop(refused) {
@@ -243,6 +244,10 @@ function migrationGuardStop(refused) {
       section('DISPLAY: migration guard stop', emitAs('properties'), `⚑ The migration can't run: ${refused.folder}/ has uncommitted changes`),
       section('DISPLAY: migration guard account', emitAs('markdown'), [
         "> The migration's commit would sweep them in with its own, so nothing has been changed.",
+        '>',
+        '> The changes:',
+        '>',
+        ...refused.paths.map((at) => `> - ${escapeMarkdown(at)}`),
         '>',
         '> Commit or discard them, then run `/ledger` here again.',
       ].join('\n')),

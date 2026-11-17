@@ -444,7 +444,7 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render state-merge-gate
   render ledger-stop
   render directive-stop --directive <id>
-  render migration-guard-stop --cause live|dirty [--unit <unit> --phase <phase> --topic <topic> --active <seconds>]
+  render migration-guard-stop --cause live|dirty [--unit <unit> --phase <phase> --topic <topic> --active <seconds>] [--path <path> …]
   render migration-checks-stop
   render migration-taken-stop --at <directive id|checks> --active <seconds>
   render migration-leaving <work-unit> --directive <id>
@@ -2491,6 +2491,10 @@ function runHandoff(call, argv) {
 }
 
 const RENDER_FLAGS = ['warn', 'menu-only', 'content-only', 'calls', 'sweep', 'page', 'revised', 'asked'];
+// The flags a surface takes more than once, each value its own, by surface:
+// every other surface takes each flag once.
+/** @type {Record<string, string[]>} */
+const RENDER_LISTS = { 'migration-guard-stop': ['path'] };
 
 /** The render family's refusal of a surface it does not draw, naming every one it does, its three dev aids among them. */
 const RENDER_USAGE = `Usage: engine render <${[...Object.keys(SURFACES), 'signpost', 'tree', 'wrap'].join('|')}> …`;
@@ -2498,7 +2502,7 @@ const RENDER_USAGE = `Usage: engine render <${[...Object.keys(SURFACES), 'signpo
 /** @param {Call} call @param {string[]} argv */
 function runRender(call, argv) {
   const [command, ...rest] = argv;
-  const { opts, flags, positional } = parseArgs(rest, RENDER_FLAGS);
+  const { opts, flags, lists, positional } = parseArgs(rest, RENDER_FLAGS, Object.hasOwn(RENDER_LISTS, command) ? RENDER_LISTS[command] : []);
   const width = opts.width !== undefined ? parseInt(opts.width, 10) : WIDTH;
 
   if (Object.hasOwn(SURFACES, command)) {
@@ -2506,7 +2510,7 @@ function runRender(call, argv) {
       /** @type {{dotpath: string} & Record<string, string|undefined>} */
       const args = { dotpath: positional[0], item: positional[1], ...opts };
       for (const flag of RENDER_FLAGS) if (flags.has(flag)) args[flag] = '1';
-      respondSections(call, renderSurface(call.cwd, command, args));
+      respondSections(call, renderSurface(call.cwd, command, args, lists));
     } catch (err) {
       failJson(call, err);
     }

@@ -191,7 +191,10 @@ describe('engine boot runs the reshape (real scripts)', () => {
     createFile(project, '.workflows/payments/discussion/draft.md', '# Draft\n');
     const before = projectAsItStands();
 
-    assert.deepStrictEqual(runEngine(real, project, ['boot'], env), { ok: true, state: 'guard', cause: 'dirty', unit: null, phase: null, topic: null, active: null, stop: { marker: 'Migration', surface: 'migration-guard-stop', args: ['--cause', 'dirty'], next: null }, warnings: [] });
+    assert.deepStrictEqual(runEngine(real, project, ['boot'], env), {
+      ok: true, state: 'guard', cause: 'dirty', unit: null, phase: null, topic: null, active: null, paths: ['.workflows/payments/discussion/draft.md'],
+      stop: { marker: 'Migration', surface: 'migration-guard-stop', args: ['--cause', 'dirty', '--path', '.workflows/payments/discussion/draft.md'], next: null }, warnings: [],
+    });
 
     const written = Date.now() - 180 * 1000;
     const row = path.join(project, '.workflows/.cache/payments/discussion/payments/presence');
@@ -202,7 +205,7 @@ describe('engine boot runs the reshape (real scripts)', () => {
     // The calling session in a time zone and locale of its own: the row's start time is UTC's and the C locale's.
     const live = runEngine(real, project, ['boot'], { ...env, CLAUDE_CODE_SESSION_ID: 'this-session', CLAUDE_PID: undefined, TZ: 'Asia/Tokyo', LANG: 'en_GB.UTF-8', LC_ALL: undefined, LC_TIME: undefined });
 
-    assert.deepStrictEqual({ ...live, active: undefined, stop: undefined }, { ok: true, state: 'guard', cause: 'live', unit: 'payments', phase: 'discussion', topic: 'payments', active: undefined, stop: undefined, warnings: [] });
+    assert.deepStrictEqual({ ...live, active: undefined, stop: undefined }, { ok: true, state: 'guard', cause: 'live', unit: 'payments', phase: 'discussion', topic: 'payments', active: undefined, paths: null, stop: undefined, warnings: [] });
     assert.ok(live.active >= 180 && live.active < 210, `active ${live.active}s ago`);
     const facts = ['--cause', live.cause, '--unit', live.unit, '--phase', live.phase, '--topic', live.topic, '--active', String(live.active)];
     assert.deepStrictEqual(live.stop, { marker: 'Migration', surface: 'migration-guard-stop', args: facts, next: null }, 'the stop names its screen, drawn from its facts');
@@ -212,7 +215,7 @@ describe('engine boot runs the reshape (real scripts)', () => {
     assert.strictEqual(fs.readFileSync(path.join(project, '.git/info/exclude'), 'utf8').split('\n').filter((line) => line === '/.ledger/').length, 1);
   });
 
-  it('21.3.4: the guard\'s stop draws its two screens from boot\'s facts — the live session by its unit, phase and topic, the topic left out where it is the unit, and how long ago — refusing facts that are not a refusal\'s', () => {
+  it('21.3.4: the guard\'s stop draws its two screens from boot\'s facts — the live session by its unit, phase and topic, the topic left out where it is the unit, and how long ago, or each path changed — refusing facts that are not a refusal\'s', () => {
     const screen = (/** @type {string[]} */ facts) => real.output(project, ['render', 'migration-guard-stop', ...facts]);
 
     assert.strictEqual(screen(['--cause', 'live', '--unit', 'fumi', '--phase', 'discussion', '--topic', 'licensing-and-trial-integrity', '--active', '180']), [
@@ -225,23 +228,32 @@ describe('engine boot runs the reshape (real scripts)', () => {
       '> End that session, then run `/ledger` here again.',
       '',
     ].join('\n'));
-    assert.strictEqual(screen(['--cause', 'dirty']), [
+    assert.strictEqual(screen(['--cause', 'dirty', '--path', '.workflows/fumi/manifest.json', '--path', '.workflows/fumi/notes_one.md']), [
       '=== DISPLAY: migration guard stop (emit verbatim as a properties code block (```properties fence)) ===',
       '⚑ The migration can\'t run: .workflows/ has uncommitted changes',
       '',
       '=== DISPLAY: migration guard account (emit verbatim as markdown (not a code block)) ===',
       '> The migration\'s commit would sweep them in with its own, so nothing has been changed.',
       '>',
+      '> The changes:',
+      '>',
+      '> - .workflows/fumi/manifest.json',
+      '> - .workflows/fumi/notes\\_one.md',
+      '>',
       '> Commit or discard them, then run `/ledger` here again.',
       '',
     ].join('\n'));
     assert.deepStrictEqual([
       ['--cause', 'dirty', '--unit', 'fumi'],
+      ['--cause', 'dirty'],
+      ['--cause', 'live', '--unit', 'fumi', '--phase', 'discussion', '--topic', 'licensing', '--active', '3', '--path', '.workflows/fumi/manifest.json'],
       ['--cause', 'live', '--unit', 'fumi', '--phase', 'discussion', '--topic', 'licensing'],
       ['--cause', 'live', '--unit', 'fumi', '--phase', 'discussion', '--topic', 'licensing', '--active', '3m'],
       ['--cause', 'busy'],
     ].map((facts) => real.refuses(project, ['render', 'migration-guard-stop', ...facts]).error), [
       'render migration-guard-stop: --unit names the live session a refusal for uncommitted changes has none of',
+      'render migration-guard-stop: --cause dirty names each path changed by a --path of its own',
+      'render migration-guard-stop: --path names an uncommitted change a refusal for a live session has none of',
       'render migration-guard-stop: --active takes the seconds since the live session was last active, got ""',
       'render migration-guard-stop: --active takes the seconds since the live session was last active, got "3m"',
       'render migration-guard-stop: --cause is live or dirty, as boot\'s guard stop answers it, got "busy"',

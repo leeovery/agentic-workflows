@@ -279,7 +279,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
 
   it('a refusal of the reshape\'s guard stops boot with its facts, nothing written but the exclude line, the conversation unstamped — and the next boot runs the guard again', () => {
     const main = owingProject();
-    const refused = { cause: 'live', unit: 'payments', phase: 'discussion', topic: 'checkout', active: 42 };
+    const refused = { cause: 'live', unit: 'payments', phase: 'discussion', topic: 'checkout', active: 42, paths: null };
     const config = path.join(world(), 'config');
     const env = { STUB_MIGRATE_MODE: 'refuse', STUB_MIGRATE_REFUSAL: JSON.stringify(refused), CLAUDE_CODE_SESSION_ID: 'guarded', LEDGER_CONFIG_DIR: config };
     const before = untouched(main, null);
@@ -295,7 +295,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
 
   it('reads the guard\'s refusal alone, and of it only the facts its stop states: no fact overwrites the stop, and another migration\'s refusal marker is none of boot\'s', () => {
     const owing = owingProject();
-    const refused = { cause: 'live', unit: 'payments', phase: 'discussion', topic: 'checkout', active: 42 };
+    const refused = { cause: 'live', unit: 'payments', phase: 'discussion', topic: 'checkout', active: 42, paths: null };
     const facts = JSON.stringify({ ...refused, ok: false, state: 'ready', warnings: ['a fact'], more: true });
     const settled = projectInWorld({ name: 'shop' });
     boot(settled);

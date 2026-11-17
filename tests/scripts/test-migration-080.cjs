@@ -329,6 +329,26 @@ describe('the directive\'s ways on', () => {
     assert.deepStrictEqual(unstated(['Where the ruling has the piece change, replace the finding with `Settled: {point}, amend to agree`', 'Where the ruling keeps the piece as it stands, take the finding out of the findings file', 'An empty findings file is only ever a pass.']), []);
   });
 
+  it('a task\'s criteria carried whole, and an area no plan put in the tracker section by section: the composer composing a piece from the start walks the phase, an amend answering the findings in its place and keeping everything else, the verifier every task, criterion and section, its findings every gap, never a sample; neither reads a piece composed for another phase, the unit\'s legacy files among their sources', () => {
+    const template = (/** @type {string} */ role) => fs.readFileSync(path.join(__dirname, `../../skills/ledger-engine/content/briefs/${role}.md`), 'utf8');
+    const CONFINED = 'These are its sources, and no other: never a piece composed for another phase.';
+    const SOURCES = 'the unit\'s joined spec, the phase\'s tasks, its old plan\'s files, the unit\'s files kept as legacy, the tracker and the code';
+    const AREA = 'or, for an area no plan put in the tracker, each section of the area: each of its rules is carried by a scenario';
+
+    assert.deepStrictEqual([
+      unstated(['- **An area with no plan** is a phase still to build, its scenarios written from each section of the area: each of its rules is carried by a scenario.']),
+      [
+        SOURCES, CONFINED, 'keep everything no finding asks you to change.',
+        `Where you compose the piece from the start, walk the phase's tasks one by one, as the brief below lists them, and confirm that each acceptance criterion of a task still to build is carried by a scenario; ${AREA}. Carry each it misses. Where you amend it, the findings stand in for the walk.`,
+      ].filter((rule) => !template('migration-phase').includes(rule)),
+      [
+        SOURCES, CONFINED,
+        `Walk every task of the phase, as the brief below lists them, and each acceptance criterion of a task still to build: check that each criterion is carried by a scenario, and that each task the piece corrects or carries on stands as its sources and the code show it; ${AREA}. Walk them all: your findings are every gap the walk turns up, never a sample.`,
+        'each acceptance criterion of its tasks still to build is carried by a scenario, or, for an area no plan put in the tracker, each rule of each section of the area, and it relies',
+      ].filter((rule) => !template('migration-phase-verifier').includes(rule)),
+    ], [[], [], []]);
+  });
+
   it('a link the cut refuses that still holds: a task of the unit\'s on another unit\'s, the link off and the phase relying on that unit; on a later phase of its own plan, the person\'s choice of a note or a correction; on another plan\'s, or another unit\'s task on one of the unit\'s, a known edge', () => {
     assert.deepStrictEqual(unstated([
       '- **It holds, a task of this unit\'s on another unit\'s.** Take the link off as above; the waiting task\'s phase relies on that unit instead',
