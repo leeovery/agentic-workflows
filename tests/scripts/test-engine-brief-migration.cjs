@@ -104,6 +104,9 @@ function directiveDrawn() {
 /** The call checking licensing's record, as its brief draws it. */
 const RECORD_CHECK = `\`${ENGINE_RUN} ledger carry fumi.discussion.licensing --dry-run\``;
 
+/** The heading the unit's approved specs a topic does not draw on are listed under. */
+const LATER = '## The unit\'s approved specs it does not draw on: the later answer to its points';
+
 /** The licensing topic as a brief draws it, its record composed or not yet. @param {boolean} [composed] */
 const licensingDrawn = (composed = false) => [
   '- **Unit:** fumi, epic, in-progress',
@@ -120,6 +123,10 @@ const licensingDrawn = (composed = false) => [
   '## Its specs',
   '',
   '- fumi/assets/specs/commerce.md, a draft',
+  '',
+  LATER,
+  '',
+  'None recorded.',
   '',
   '## The unit\'s discovery sessions',
   '',
@@ -184,7 +191,7 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
     const weights = issued(['migration-topic', '--topic', 'shop.discussion.weights', '--directive', '079-records']).brief;
 
     assert.ok(search.includes([
-      '## Its specs', '', 'None recorded.', '',
+      '## Its specs', '', 'None recorded.', '', LATER, '', 'None recorded.', '',
       '## The unit\'s discovery sessions', '', 'None recorded.', '',
       '## The unit\'s other topics: for judging whose a point is, never sources', '', '- auth, moved to platform: Thirty days, then sign in again, with tokens renewed on each.', '- billing', '- licensing: How the trial works.', '- support', '',
       '## Its old map, as `.workflows/` holds it', '', '- ranking: decided', '- typo-tolerance: exploring', '- synonyms: deferred', '',
@@ -194,7 +201,7 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
     assert.ok(weights.includes([
       '## Its specs', '',
       '- shop/spec.md, its part "1. Weights", approved',
-      '- shop/spec.md, its part "2. Wishlist", approved', '',
+      '- shop/spec.md, its part "2. Wishlist", approved', '', LATER, '', 'None recorded.', '',
     ].join('\n')), weights);
     assert.ok(issued(['migration-topic', '--topic', 'fumi.discovery.support', '--directive', '079-records']).brief.includes([
       '## Its old map, as `.workflows/` holds it', '', 'None — no entry needs a map_item.', '',
@@ -380,18 +387,19 @@ describe('a cite of a heading held more than once', () => {
 
 describe('the walk of a record\'s sources', () => {
   const CONFINED = 'Its sources are those the brief below lists, and no other: never another topic\'s log, brief or record, nor another unit\'s. The other topics the brief below lists, with what each is about, are for judging whose a point is, never sources.';
-  const LISTED = 'its sources section by section, as the brief below lists them: its files, its log, its brief and its experiments among them; each section of its specs it draws on, every section the record cites among them; and each point of the discovery sessions bearing on its subject, or for a unit\'s own record on no topic\'s subject.';
+  const LISTED = 'its sources section by section, as the brief below lists them: its files, its log, its brief and its experiments among them; each section of the specs it draws on, every section of them the record cites among them; and each point of the discovery sessions bearing on its subject, or for a unit\'s own record on no topic\'s subject.';
 
   it('the composer composing a record from the start walks its sources section by section, each current decision, finding and open question carried or not the record\'s, an amend answering the findings in its place and keeping everything else; the verifier walks every one, its findings every gap the walk turns up, a cited section carried whole; neither reads another topic\'s log, brief or record, nor another unit\'s, the other topics listed to judge whose a point is by', () => {
     assert.deepStrictEqual([
-      unsaid('migration-topic', [CONFINED, 'keep everything no finding or fault asks you to change.', `Where you compose the record from the start, walk ${LISTED} For each section, confirm that each current decision, finding and open question it holds is carried by an entry, or is not this record's, and carry each it misses.`, 'Where you amend it, the findings stand in for the walk.']),
+      unsaid('migration-topic', [CONFINED, 'keep everything no finding or fault asks you to change.', `Where you compose the record from the start, walk ${LISTED} For each section, confirm that each current decision, finding and open question it holds is carried by an entry, or is not this record's, and carry each it misses.`, 'Check each decision and open question against the unit\'s approved specs the brief below lists as the later answer, searching them for its subject rather than walking them: where one decides it otherwise or answers it, the record carries the spec\'s answer, as the directive says.', 'Where you amend it, the findings stand in for the walk.']),
       unsaid('migration-verifier', [
         CONFINED,
         'The record passes when it holds each current decision, finding and open question its sources hold,',
         'Walk the sheet below section by section: it lays the record against its sources, each section of each file with its lines and every entry citing it. Read each section in its source, then check that what each entry listed beneath it takes from the section is what the section says, and that each current decision, finding and open question the section holds is carried, by an entry listed there or elsewhere, or is not this record\'s; of the discovery sessions, each point bearing on its subject, or for a unit\'s own record on no topic\'s subject. That a cited heading exists is no check.',
         'Walk every section: your findings are every gap the walk turns up, never a sample.',
         'Write the checked file the brief names afresh, a line for each entry of the record, by its ref: `{ref}: ok`, or `{ref}: see finding` where a finding names it.',
-        '- each spec section it cites is carried whole: each current decision, finding and open question of it that concerns this record is carried;',
+        '- each section it cites of a spec drawing on it is carried whole: each current decision, finding and open question of it that concerns this record is carried; one it cites of a spec it does not draw on, the later answer, gives that answer alone;',
+        'Check each decision and open question against the unit\'s approved specs the brief below lists as the later answer, searching them for its subject rather than walking them: one they decide otherwise or answer, carried as the log has it, is a finding.',
         '- nothing is carried that you rule is not this record\'s: such an entry is a finding, to remove, with the ruling beside it.',
       ]),
     ], [[], []]);
@@ -468,6 +476,32 @@ describe('the walk sheet (the verifier\'s brief)', () => {
       '- Shop > 1. Weights > Corrigenda > Detail, lines 17–20: no entry cites it',
       '- Shop > 2. Wishlist > Saving, lines 23–26', '  - q2, asked: May a wish be saved twice?', '', '# The earlier rounds\'',
     ].join('\n')), brief);
+  });
+
+  it('21.6.3: the unit\'s approved specs a topic does not draw on, kept or a part of its spec.md, listed as the later answer to its points — a draft none — and of one it draws no part of only the sections its entries cite, the answer searched for, never walked', () => {
+    const old = path.join(dir, '.workflows', 'fumi', 'manifest.json');
+    const fumi = JSON.parse(fs.readFileSync(old, 'utf8'));
+    fumi.phases.specification.items.commerce = { status: 'completed', sources: {} };
+    fs.writeFileSync(old, JSON.stringify(fumi));
+    const shop = path.join(dir, '.workflows', 'shop', 'manifest.json');
+    const wishlist = JSON.parse(fs.readFileSync(shop, 'utf8'));
+    wishlist.phases.specification.items.wishlist.sources = {};
+    fs.writeFileSync(shop, JSON.stringify(wishlist));
+    writeState(dir, layout.assets('fumi', 'specs', 'commerce.md'), '# Specification: Commerce\n\n## Corrigenda\n\nThe trial is fourteen days, not thirty.\n\n## Refunds\n\nWithin a week.\n');
+    writeState(dir, composedPath('fumi', 'licensing'), JSON.stringify({ entries: [
+      { ref: 'q1', event: 'asked', text: 'How long is the trial?', cites: [{ path: 'fumi/topics/licensing/log.md', section: 'Trial Length' }] },
+      { ref: 'd1', event: 'decided', answers: 'q1', text: 'Fourteen days.', cites: [{ path: 'fumi/assets/specs/commerce.md', section: 'Corrigenda' }] },
+    ] }));
+
+    const topic = issued(['migration-topic', ...LICENSING]).brief;
+    const verifier = issued(['migration-verifier', ...LICENSING]).brief;
+    const weights = issued(['migration-topic', '--topic', 'shop.discussion.weights', '--directive', '079-records']).brief;
+
+    assert.deepStrictEqual([
+      [topic.includes('## Its specs\n\nNone recorded.\n'), topic.includes(`${LATER}\n\n- fumi/assets/specs/commerce.md\n`)],
+      verifier.slice(verifier.indexOf('## fumi/assets/specs/commerce.md'), verifier.indexOf('\n\n# The earlier rounds')),
+      weights.includes(`- shop/spec.md, its part "1. Weights", approved\n\n${LATER}\n\n- shop/spec.md, its part "2. Wishlist"\n`),
+    ], [[true, true], '## fumi/assets/specs/commerce.md\n\n- Specification: Commerce > Corrigenda, lines 3–6\n  - d1, decided: Fourteen days.', true]);
   });
 });
 

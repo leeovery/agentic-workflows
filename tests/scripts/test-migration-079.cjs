@@ -644,6 +644,19 @@ describe('what the check reads once a record is carried', () => {
     assert.deepStrictEqual([before, named()], [['Decision', 'Option A > Decision'].map((section) => uncited('fumi', commerce, section)), [uncited('fumi', commerce, 'Option A > Decision')]]);
   });
 
+  it('21.6.3: a cite of an approved spec its topic draws no part of, the later answer to its point, gives that answer alone: it settles none of the spec\'s sections, which the topics drawing on it carry', () => {
+    dir = world();
+    const commerce = approvedCommerce((text) => text);
+    const answered = { ref: 'd9', event: 'decided', answers: 'q1', text: 'Fourteen days, as the spec\'s corrigendum holds.', why: 'The approved spec answers it.', by: 'claude', given: 'carried', cites: [{ path: commerce, section: 'Corrigenda' }] };
+    for (const [dotpath, entries] of Object.entries(GOOD).filter(([at]) => at.startsWith('fumi.'))) {
+      const topic = dotpath.split('.')[2];
+      const record = topic === 'licensing' ? entries.filter(({ ref }) => !['q2', 'd2'].includes(ref)) : topic === 'search' ? [...entries, answered] : entries;
+      writeState(dir, composedPath('fumi', topic), JSON.stringify({ entries: record }));
+    }
+
+    assert.deepStrictEqual(unfinished()['fumi/licensing'].filter((problem) => problem.includes(commerce)), [uncited('fumi', commerce, 'Corrigenda')]);
+  });
+
   it('carries no topic of a unit drawing on an approved spec while any topic of it has no record its verifier passed, or a section of its specs goes uncited: the session\'s order, refused with nothing written, nor anything beside the record (21.10.9)', () => {
     dir = world();
     const commerce = approvedCommerce((text) => `${text}\n## Refunds\n\nWithin a week.\n`);
@@ -787,7 +800,17 @@ describe('the directive\'s example record, frozen with 079', () => {
     const text = fs.readFileSync(DIRECTIVE, 'utf8');
 
     assert.ok(text.includes('Each current decision, finding and open question the topic\'s sources hold, and nothing else:'));
-    assert.ok(text.includes('- **A cited section, whole.** A spec section the record cites is carried whole: each current decision, finding and open question it holds that concerns this topic is an entry. Citing a section for one of its rules and leaving its others out is a gap.'));
+    assert.ok(text.includes('- **A cited section, whole.** A section of a spec drawing on the topic, cited, is carried whole: each current decision, finding and open question it holds that concerns this topic is an entry. Citing a section for one of its rules and leaving its others out is a gap. A section cited as a later answer gives that answer alone.'));
+  });
+
+  it('21.6.3: every approved spec of the unit is the later answer to each of a topic\'s points, whether it draws on the topic or not: what it replaces left in the log, a question it answers answered by a decision citing its section — in discovery a finding — each in what the agents\' briefs draw', () => {
+    const text = fs.readFileSync(DIRECTIVE, 'utf8');
+    const briefed = text.slice(text.indexOf('## A Topic\'s Sources'), text.indexOf('## Working Through the Topics'));
+
+    assert.deepStrictEqual([
+      '- Its unit\'s approved specs it does not draw on, kept or joined the same way: the later answer to each of its points.',
+      'An approved spec of its unit is the current answer where it and the log differ, whether it draws on the topic or not, its corrigenda and amendments among it: a decision or proposal it replaces is left in the log; a question it answers is answered by a decision citing its section, or, in a record carried in discovery, where nothing is decided, by a finding saying so.',
+    ].filter((rule) => !briefed.includes(rule)), []);
   });
 
   it('a point a source leaves unmeasured is carried, set aside only where a later source measured it or made it moot; a contradiction no later source settles is named — each in what the record holds, which the agents\' briefs draw', () => {

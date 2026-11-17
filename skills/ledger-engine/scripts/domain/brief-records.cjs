@@ -452,8 +452,10 @@
 //                  judge whose a point is by, and as the directive's check
 //                  reads them its specs — each where it is cited, the part
 //                  of the unit's spec.md it makes where it was joined
-//                  there, and whether it was approved or is a draft — its
-//                  old map and its research's threads still open; the
+//                  there, and whether it was approved or is a draft — the
+//                  unit's approved specs it does not draw on, the later
+//                  answer to its points, its old map and its research's
+//                  threads still open; the
 //                  unit's assets with where each came in from, the topic's
 //                  to link, or its file gone and linked by none; and where
 //                  the topic's record is composed, and whether it is yet,
@@ -1262,7 +1264,8 @@ function drawMigratedTopic(filling) {
   const sources = rules.sourcesOf({ projectDir: codeRoot(filling.cwd), stateDir: root, unit, topic });
   const sessions = sources.sessions.map((/** @type {string} */ at) => (at.startsWith(`${unit}/`) ? `- ${at}` : `- ${at}, of ${at.split('/')[0]}, which it moved from`));
   const assets = importLines(sources.imports, topic);
-  const specs = sources.specs.map((/** @type {{path: string, part: string|null, approved: boolean}} */ { path: at, part, approved }) => `- ${at}${part === null ? '' : `, its part "${part}"`}, ${approved ? 'approved' : 'a draft'}`);
+  const specs = sources.specs.map((/** @type {{path: string, part: string|null, approved: boolean}} */ { path: at, part, approved }) => `- ${specLine(at, part)}, ${approved ? 'approved' : 'a draft'}`);
+  const later = sources.later.map((/** @type {{path: string, part: string|null}} */ { path: at, part }) => `- ${specLine(at, part)}`);
   return [
     `- **Unit:** ${unit}, ${manifest.work_type}, ${manifest.status}`,
     `- **Topic:** ${topic}, in ${phases.join('; ')} — its record carried in ${carried}${carried === NEVER_STARTED ? ', the topic never started' : ''}`,
@@ -1276,6 +1279,10 @@ function drawMigratedTopic(filling) {
     '## Its specs',
     '',
     listed(specs),
+    '',
+    '## The unit\'s approved specs it does not draw on: the later answer to its points',
+    '',
+    listed(later),
     '',
     '## The unit\'s discovery sessions',
     '',
@@ -1302,6 +1309,9 @@ function drawMigratedTopic(filling) {
     recordGoes(root, unit, topic),
   ].join('\n');
 }
+
+/** A spec as a topic's brief names it: its path, and the part of the unit's spec.md it makes where it was joined there. @param {string} at @param {string|null} part */
+const specLine = (at, part) => `${at}${part === null ? '' : `, its part "${part}"`}`;
 
 /** The phase an epic's topic never started is carried in. */
 const NEVER_STARTED = 'discovery';

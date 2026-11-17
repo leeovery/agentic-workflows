@@ -27,6 +27,7 @@ Paths below are from the state's folder, but one under `.workflows/`, which is f
 
 - Its log, `{unit}/topics/{topic}/log.md`, its brief, `brief.md` beside it, and its experiments' records in `experiments/`.
 - Its specs: each spec that draws on the topic, kept in `{unit}/assets/specs/` while the unit's building has not started, and joined into `{unit}/spec.md` once it has, each spec a part of it under its own numbered heading. Its brief marks each approved or a draft.
+- Its unit's approved specs it does not draw on, kept or joined the same way: the later answer to each of its points.
 - Its old discussion map and its research's threads, in its unit's manifest under `.workflows/`, as the move read them; a promoted topic's research as the unit it came from holds it.
 - Its reviews never folded in, which the move appended to its log, each under `## Review {id}, never folded in`.
 - Its unit's discovery sessions, `{unit}/discovery/session-{NNN}.md`, the migration's own among them where research fed several topics, and for a promoted topic those of the unit it came from.
@@ -43,9 +44,9 @@ Its brief lists each of these as the check reads them, and the unit's other topi
 
 Each current decision, finding and open question the topic's sources hold, and nothing else:
 
-- **Current answers only.** Each question's answer as it now stands; an answer replaced later is left in the log. An approved spec is the current answer where it and the log differ, its corrigenda and amendments among it; a decision made at the spec stage — a review gap decided in the spec, an amendment, a corrigendum — is an entry of the topic it belongs to, citing the spec's section.
+- **Current answers only.** Each question's answer as it now stands; an answer replaced later is left in the log. An approved spec of its unit is the current answer where it and the log differ, whether it draws on the topic or not, its corrigenda and amendments among it: a decision or proposal it replaces is left in the log; a question it answers is answered by a decision citing its section, or, in a record carried in discovery, where nothing is decided, by a finding saying so. A decision made at the spec stage — a review gap decided in the spec, an amendment, a corrigendum — is an entry of the topic it belongs to, citing the spec's section.
 - **A shared spec.** From a spec several topics draw on, carry each point bearing on this topic's subject, its log discussing it or not, and each section its findings send it.
-- **A cited section, whole.** A spec section the record cites is carried whole: each current decision, finding and open question it holds that concerns this topic is an entry. Citing a section for one of its rules and leaving its others out is a gap.
+- **A cited section, whole.** A section of a spec drawing on the topic, cited, is carried whole: each current decision, finding and open question it holds that concerns this topic is an entry. Citing a section for one of its rules and leaving its others out is a gap. A section cited as a later answer gives that answer alone.
 - **One thing per entry.** A decision holds one rule. A question settled in several rules is answered by several decisions, one for each, each answering it.
 - **Cited.** Every entry cites the sections it came from, each by the nearest heading above its text; where its file holds that heading more than once — in a spec joined into `spec.md`, more than once in its part — by its path, as many of the headings over it as tell it apart, then its own: `Identity & Naming > Decision`.
 - **Who decided.** `by` `person`, `given` `own`, where a line of the source shows the person deciding; `by` `claude`, `given` `own`, where it shows Claude's own call; `by` `claude`, `given` `your-call` or `dont-care`, where the person handed the call over in those words; and where it shows no one, `by` `claude`, `given` `carried`. A question's `by` is whoever the source shows raising it, else `claude`.

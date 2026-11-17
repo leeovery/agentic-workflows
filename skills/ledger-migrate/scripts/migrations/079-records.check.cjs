@@ -74,12 +74,13 @@
 // path naming it alone there, its heading or with as many of those over it
 // as tell it apart; a cite or a mark counts for the sections it names
 // alone, so a bare heading its part holds more than once counts for none
-// of its copies. In a joined spec a section is its part's: a cite counts
-// in the parts of its topic's specs, or in every part where its topic
-// draws on none of the spec, a mark is its part's, `{"{path}": {"{part}":
-// ["{section}", …]}}`, and the front matter a part opens on, the old
-// spec's, holds none of its text; any other section is marked `{"{path}":
-// ["{section}", …]}`. It is named on each topic drawing on it — in a
+// of its copies; and a cite counts only where its topic draws on the spec,
+// never of a spec it draws no part of, its later answer, which it cites
+// for that answer alone (21.6.3). In a joined spec a section is its part's:
+// a cite counts in the parts of its topic's specs, a mark is its part's,
+// `{"{path}": {"{part}": ["{section}", …]}}`, and the front matter a part
+// opens on, the old spec's, holds none of its text; any other section is
+// marked `{"{path}": ["{section}", …]}`. It is named on each topic drawing on it — in a
 // joined spec, each whose part holds it, any section outside the parts
 // every topic's of the spec — and asks no composer for an entry. A record
 // is carried once its verifier has passed it, the findings beside it as
@@ -118,7 +119,11 @@
 // brief draws (brief-records.cjs), and a record laid against them for its
 // verifier's walk (`sheetOf`): the topic's own markdown files, but its
 // mail, its specs, the discovery sessions it draws on and any other file
-// an entry cites, each section by its lines with the entries citing it.
+// an entry cites, each section by its lines with the entries citing it —
+// of a spec of the unit's it draws no part of, only the sections cited.
+// A topic's sources take the unit's approved specs it does not draw on
+// too, the later answer to each of its points (21.6.3): searched for the
+// answer, never walked.
 // The topic's own files the walk and the empty-record rule read are its
 // markdown files alone: a data file an experiment keeps is read through
 // the record that names it.
@@ -414,25 +419,36 @@ function joinedPart(project, unit, name) {
 }
 
 /**
- * The topic's specs, as the unit's manifest under `.workflows/` names them —
- * each whose sources name the topic, or that bears its name: where the state
- * keeps it, in `assets/specs/`, or joined into the unit's `spec.md` (078,
- * the topics `spec.joined` names), the part of it it makes; and whether it
- * was approved, its item completed, or is a draft.
- * @param {Project} project @param {Unit} unit @param {string} topic
- * @returns {{name: string, path: string, part: string|null, approved: boolean}[]}
+ * A spec of the unit's, as its manifest under `.workflows/` names it: where
+ * the state keeps it, in `assets/specs/`, or joined into the unit's
+ * `spec.md` (078, the topics `spec.joined` names), the part of it it makes;
+ * whether it was approved, its item completed, or is a draft; and the
+ * topics it draws on, its sources and the one it bears the name of.
+ * @typedef {{name: string, path: string, part: string|null, approved: boolean, topics: string[]}} Spec
  */
-function specsOf(project, unit, topic) {
-  return Object.entries(itemsOf(unit.before?.phases?.specification?.items))
-    .filter(([name, item]) => name === topic || (isObject(item) && sourceNames(item.sources).includes(topic)))
-    .flatMap(([name, item]) => {
-      const approved = isObject(item) && item.status === APPROVED_SPEC;
-      const kept = `${unit.name}/assets/specs/${name}.md`;
-      if (fs.existsSync(path.join(project.stateDir, kept))) return [{ name, path: kept, part: null, approved }];
-      if (!Array.isArray(unit.manifest.spec?.joined) || !unit.manifest.spec.joined.includes(name)) return [];
-      return [{ name, path: `${unit.name}/${JOINED_SPEC}`, part: joinedPart(project, unit, name), approved }];
-    });
+
+/** The unit's specs the state holds (`Spec`). @param {Project} project @param {Unit} unit @returns {Spec[]} */
+function unitSpecs(project, unit) {
+  return Object.entries(itemsOf(unit.before?.phases?.specification?.items)).flatMap(([name, item]) => {
+    const approved = isObject(item) && item.status === APPROVED_SPEC;
+    const topics = [name, ...(isObject(item) ? sourceNames(item.sources) : [])];
+    const kept = `${unit.name}/assets/specs/${name}.md`;
+    if (fs.existsSync(path.join(project.stateDir, kept))) return [{ name, path: kept, part: null, approved, topics }];
+    if (!Array.isArray(unit.manifest.spec?.joined) || !unit.manifest.spec.joined.includes(name)) return [];
+    return [{ name, path: `${unit.name}/${JOINED_SPEC}`, part: joinedPart(project, unit, name), approved, topics }];
+  });
 }
+
+/** The topic's specs: each of the unit's that draws on it. @param {Project} project @param {Unit} unit @param {string} topic @returns {Spec[]} */
+const specsOf = (project, unit, topic) => unitSpecs(project, unit).filter(({ topics }) => topics.includes(topic));
+
+/**
+ * The later answer to a topic's points: each approved spec of its unit
+ * that does not draw on it — a kept spec, or a part of the unit's
+ * `spec.md` (21.6.3).
+ * @param {Project} project @param {Unit} unit @param {string} topic @returns {Spec[]}
+ */
+const laterOf = (project, unit, topic) => unitSpecs(project, unit).filter(({ approved, topics }) => approved && !topics.includes(topic));
 
 /** The subtopics of the topic's old map, each with its state. @param {Unit} unit @param {string} topic @returns {{item: string, status: string}[]} */
 function mapOf(unit, topic) {
@@ -521,15 +537,17 @@ function ownFilesOf(project, unit, topic) {
 
 /**
  * The sections of one file of the walk, in order: those holding text, in
- * a joined spec in the parts the topic draws on alone, every part where it
- * draws on none; and those an entry cites, in any part — each with every
- * entry citing it, once.
- * @param {Project} project @param {Unit} unit @param {{path: string, part: string|null}[]} specs @param {Record<string, any>[]} entries @param {string} at
+ * a joined spec in the parts the topic draws on alone, but none of a spec
+ * of the unit's it draws no part of, its later answer; and those an entry
+ * cites, in any part — each with every entry citing it, once.
+ * @param {Project} project @param {Unit} unit @param {{specs: Spec[], later: Set<string>}} drawing the topic's specs, and the paths of the unit's it draws no part of
+ * @param {Record<string, any>[]} entries @param {string} at
  * @returns {SheetSection[]}
  */
-function sheetSections(project, unit, specs, entries, at) {
+function sheetSections(project, unit, { specs, later }, entries, at) {
   const parts = partsDrawn(specs, at);
   const headings = outlineOf(readText(path.join(project.stateDir, at)) ?? '', at === `${unit.name}/${JOINED_SPEC}`);
+  const counted = (/** @type {string|null} */ part) => parts === null || parts.includes(part);
   /** @type {Map<Heading, Record<string, any>[]>} */
   const citing = new Map();
   for (const entry of entries) {
@@ -537,7 +555,7 @@ function sheetSections(project, unit, specs, entries, at) {
     const named = new Set([...byPartOf(headings).values()].flatMap((held) => names.flatMap((name) => namedAlone(held, name))));
     for (const heading of named) citing.set(heading, [...(citing.get(heading) ?? []), entry]);
   }
-  const drawn = (/** @type {Heading} */ heading) => parts === null || parts.includes(heading.part);
+  const drawn = (/** @type {Heading} */ heading) => !later.has(at) && counted(heading.part);
   return headings.filter((heading) => (heading.text && drawn(heading)) || citing.has(heading)).map((heading) => ({
     section: heading.path, line: heading.line, end: heading.end,
     entries: (citing.get(heading) ?? []).map(({ ref, event, text }) => ({ ref: String(ref), event: String(event), text: String(text ?? '') })),
@@ -554,9 +572,10 @@ function sheetSections(project, unit, specs, entries, at) {
  */
 function sheetOf(project, unit, topic, entries) {
   const specs = topic === null ? [] : specsOf(project, unit, topic);
+  const later = new Set(unitSpecs(project, unit).map(({ path: at }) => at).filter((at) => !specs.some((spec) => spec.path === at)));
   const cited = entries.flatMap(({ cites }) => (Array.isArray(cites) ? cites.filter(isObject) : [])).map(({ path: at }) => String(at));
   const files = [...(topic === null ? [] : ownFilesOf(project, unit, topic)), ...specs.map(({ path: at }) => at), ...sessionsOf(project, unit, topic), ...cited];
-  return [...new Set(files)].filter((at) => isFile(path.join(project.stateDir, at))).map((at) => ({ path: at, sections: sheetSections(project, unit, specs, entries, at) }));
+  return [...new Set(files)].filter((at) => isFile(path.join(project.stateDir, at))).map((at) => ({ path: at, sections: sheetSections(project, unit, { specs, later }, entries, at) }));
 }
 
 /** Whether the unit has its spec, past which a point is raised at its specification: its `spec.md`, or its specs joined. @param {Project} project @param {Unit} unit */
@@ -784,14 +803,17 @@ const specKey = (at, name) => `${at}\n${name ?? ''}`;
 const sectionKey = (at, part, section) => `${at}\n${part ?? ''}\n${section}`;
 
 /**
- * The cites of a topic's record, each with the parts of its spec the topic
- * draws on — null where it draws on none, so the cite counts in every part.
+ * The cites of a topic's record, each with the parts of its spec it counts
+ * in: those the topic draws on, null for a spec it draws on whole, none of
+ * one it draws no part of — its later answer, a cite of which gives that
+ * answer alone (21.6.15).
  * @param {Project} project @param {Unit} unit @param {string} topic @param {Record<string, any>[]} record
  * @returns {{path: string, name: string, parts: (string|null)[]|null}[]}
  */
 function citesOf(project, unit, topic, record) {
   const specs = specsOf(project, unit, topic);
-  return record.flatMap(({ cites }) => (Array.isArray(cites) ? cites.filter(isObject) : [])).map(({ path: at, section }) => ({ path: String(at), name: String(section), parts: partsDrawn(specs, at) }));
+  const countedIn = (/** @type {string} */ at) => (specs.some((spec) => spec.path === at) ? partsDrawn(specs, at) : []);
+  return record.flatMap(({ cites }) => (Array.isArray(cites) ? cites.filter(isObject) : [])).map(({ path: at, section }) => ({ path: String(at), name: String(section), parts: countedIn(String(at)) }));
 }
 
 /**
@@ -971,9 +993,11 @@ module.exports = {
    * are read in, a topic's old map, its research's threads still open and
    * its specs, the unit's imports, each with the topic owing its link — none
    * for one the unit's own record owes — and whether the state holds its
-   * file, the discovery sessions it draws on, and the other topics those
-   * sessions may speak of (`othersOf`). A unit's own, `topic` null, has no
-   * map, thread or spec.
+   * file, the discovery sessions it draws on, the other topics those
+   * sessions may speak of (`othersOf`), and the unit's approved specs it
+   * does not draw on, the later answer (`laterOf`). A unit's own, `topic`
+   * null, has no map, thread or spec, and no later answer: nothing is
+   * decided in discovery.
    * @param {{projectDir: string, stateDir: string, unit: string, topic: string|null}} at
    */
   sourcesOf({ projectDir, stateDir, unit: name, topic }) {
@@ -988,6 +1012,7 @@ module.exports = {
       imports: importsOf(project, unit),
       sessions: sessionsOf(project, unit, topic),
       others: othersOf(project, unit, topic),
+      later: own ? [] : laterOf(project, unit, topic),
     };
   },
   /**
