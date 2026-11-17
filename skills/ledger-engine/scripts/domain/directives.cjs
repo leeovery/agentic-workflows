@@ -91,6 +91,7 @@ const { MIGRATION_JOURNALS, finishing, codeFiles } = require('./migration-commit
 const { refreshMigrationQuietly } = require('./presence.cjs');
 const { CHECKS_DONE } = require('../../../ledger-migrate/scripts/old-layout.cjs');
 const { markPath } = require('./cut-migrating.cjs');
+const { trackerReads } = require('./task-verbs.cjs');
 const { headingLevels, sectionEnd } = require('./spec-sections.cjs');
 
 // Resolved against this file, so it works wherever the skill tree is installed.
@@ -213,14 +214,14 @@ function loadCheck(id) {
     throw new Error(`${id}'s check could not be loaded from ${check}: ${messageOf(err)}`);
   }
   if (!isCheck(checker)) {
-    throw new Error(`${id}'s check exports no check() beside what it counts — it exports { counts: { one, many }, done, check({ projectDir, stateDir }) }`);
+    throw new Error(`${id}'s check exports no check() beside what it counts — it exports { counts: { one, many }, done, check({ projectDir, stateDir, tracker }) }`);
   }
   return checker;
 }
 
-/** What a check reads: the project's code root and its state, both absolute. @param {string} cwd */
+/** What a check reads: the project's code root and its state, both absolute, and the tracker's reads. @param {string} cwd */
 function checkDirs(cwd) {
-  return { projectDir: codeRoot(cwd), stateDir: stateRoot(cwd) };
+  return { projectDir: codeRoot(cwd), stateDir: stateRoot(cwd), tracker: trackerReads(cwd) };
 }
 
 /**

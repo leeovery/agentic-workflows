@@ -3,7 +3,9 @@
 // ---------------------------------------------------------------------------
 // Domain ring: a topic's record carried into the ledger by the migration
 // (21.6, 21.10.9) — `ledger carry <unit>.<phase>.<topic>`, the records
-// directive's one write.
+// directive's one write — and a unit's own, `ledger carry <unit>.discovery`:
+// what its discovery sessions hold of the unit as a whole, or of no one
+// topic, at the unit's own place in discovery, no topic's.
 //
 // - When: only while the migration runs (state-worktree.cjs's
 //   `migrationRuns`), so its commit is held for the migration's, and the
@@ -13,9 +15,11 @@
 //   not: a cancelled unit's topics and a cancelled topic get their records
 //   too (21.6.2), their entries landing not current, by the rule every read
 //   decides by. A topic an epic promoted to a cross-cutting unit is that
-//   unit's to carry.
+//   unit's to carry. A unit's own record is carried at `<unit>.discovery`,
+//   for an epic whose discovery folder holds a session (079's check).
 // - What: the record as one JSON object, `{"entries": […]}`, composed where
-//   the state keeps it (`.cache/migrate/records/{unit}/{topic}.json`), read
+//   the state keeps it (`.cache/migrate/records/{unit}/{topic}.json`, a
+//   unit's own `.cache/migrate/records/{unit}.json`), read
 //   from the state root whichever checkout the session runs in. Each entry
 //   is an `asked`, `found` or `decided` in the content its write takes
 //   (ledger-write.cjs) — who made it, and for a decision how it was given,
@@ -47,6 +51,12 @@
 //   none where the carry would take the record, and writes nothing, no
 //   refusal beside the record either: the record's composer runs it before
 //   handing back, and the session before a verifier reads the record.
+// - In its unit's order: a topic of a unit drawing on an approved spec is
+//   carried only once every topic of the unit has its record composed and
+//   no section of those specs goes uncited (079's check, `unitWaits`), a
+//   topic carried taking no section found later; refused, writing nothing
+//   beside the record, for the session alone keeps the order. A dry run
+//   names none of it: it is the record's composer's.
 // - Once: the whole record is appended in one write, after what it carried
 //   is kept in the state's cache (`.cache/migrate/carried/{unit}/{topic}.json`)
 //   — the record as given, and each entry's ref with the id it was given —
@@ -87,7 +97,7 @@ const { codeRoot } = require('../kernel/code-root.cjs');
 const { directiveOf } = require('./directives.cjs');
 
 const CARRY_VERB = 'carry';
-const CARRY_USAGE = 'ledger carry <work-unit>.<phase>.<topic> [--dry-run]   (the topic\'s record as JSON, {"entries": [...]}, composed at .cache/migrate/records/{unit}/{topic}.json in the state)';
+const CARRY_USAGE = 'ledger carry <work-unit>.<phase>.<topic>|<work-unit>.discovery [--dry-run]   (the record as JSON, {"entries": [...]}, composed at .cache/migrate/records/{unit}/{topic}.json in the state, a unit\'s own at .cache/migrate/records/{unit}.json)';
 const SAID = 'ledger carry';
 const DRY_RUN = '--dry-run';
 
@@ -112,7 +122,7 @@ const RECORD_KEYS = Object.freeze(['ref', 'event', 'part_of', 'answers', 'relies
 
 const ASSET_STATUSES = Object.freeze(['canonical', 'reference']);
 
-/** Where a topic's record is carried: the state root, the unit, the phase and the topic. @typedef {{root: string, unit: string, phase: string, topic: string}} Place */
+/** Where a record is carried: the state root, the unit, the phase and the topic, null for the unit's own. @typedef {{root: string, unit: string, phase: string, topic: string|null}} Place */
 
 /** An entry of the record as written: its line's fields and id, and what is kept of it. @typedef {{fields: Record<string, unknown>, id: string}} Line */
 
@@ -133,28 +143,46 @@ const RECORDS_DIRECTIVE = '079-records';
  *   holds: (manifest: Record<string, any>, phase: string, topic: string) => boolean,
  *   topicsOf: (manifest: Record<string, any>) => string[],
  *   recordProblems: (at: Record<string, unknown>) => string[],
+ *   unitWaits: (at: Record<string, unknown>) => string[],
+ *   ownRecord: (at: Record<string, unknown>) => boolean,
  *   sourcesOf: (at: Record<string, unknown>) => Record<string, any>,
  * }}
  */
 const recordsRules = () => require(directiveOf(RECORDS_DIRECTIVE).check);
 
-/** @param {string} unit @param {string} topic */
-const carriedPath = (unit, topic) => path.posix.join(CARRIED, unit, `${topic}.json`);
+/**
+ * A file of a record's beneath `folder`: a topic's in its unit's folder, a
+ * unit's own beside that folder.
+ * @param {string} folder @param {string} unit @param {string|null} topic @param {string} ending
+ */
+const recordFile = (folder, unit, topic, ending) => (topic === null ? path.posix.join(folder, `${unit}${ending}`) : path.posix.join(folder, unit, `${topic}${ending}`));
 
-/** @param {string} unit @param {string} topic */
-const composedPath = (unit, topic) => path.posix.join(COMPOSED, unit, `${topic}.json`);
+/** @param {string} unit @param {string|null} topic */
+const carriedPath = (unit, topic) => recordFile(CARRIED, unit, topic, '.json');
 
-/** @param {string} unit @param {string} topic */
-const findingsPath = (unit, topic) => path.posix.join(COMPOSED, unit, `${topic}.findings.txt`);
+/** @param {string} unit @param {string|null} topic */
+const composedPath = (unit, topic) => recordFile(COMPOSED, unit, topic, '.json');
 
-/** @param {string} unit @param {string} topic */
-const refusedPath = (unit, topic) => path.posix.join(COMPOSED, unit, `${topic}.refused.md`);
+/** @param {string} unit @param {string|null} topic */
+const findingsPath = (unit, topic) => recordFile(COMPOSED, unit, topic, '.findings.txt');
 
-/** Every verifier's findings before the last, each under its round. @param {string} unit @param {string} topic */
-const roundsPath = (unit, topic) => path.posix.join(COMPOSED, unit, `${topic}.rounds.md`);
+/** @param {string} unit @param {string|null} topic */
+const refusedPath = (unit, topic) => recordFile(COMPOSED, unit, topic, '.refused.md');
 
-/** The points of the record the session settled where a verifier reversed an earlier round. @param {string} unit @param {string} topic */
-const settledPath = (unit, topic) => path.posix.join(COMPOSED, unit, `${topic}.settled.md`);
+/** Every verifier's findings before the last, each under its round. @param {string} unit @param {string|null} topic */
+const roundsPath = (unit, topic) => recordFile(COMPOSED, unit, topic, '.rounds.md');
+
+/** The points of the record the session settled where a verifier reversed an earlier round. @param {string} unit @param {string|null} topic */
+const settledPath = (unit, topic) => recordFile(COMPOSED, unit, topic, '.settled.md');
+
+/** The phase a unit's own record is carried in. */
+const UNIT_PHASE = 'discovery';
+
+/** A record's place as a sentence names it. @param {{unit: string, topic: string|null}} place */
+const recordName = ({ unit, topic }) => (topic === null ? `${unit}'s own discovery` : `${unit}'s ${topic}`);
+
+/** A record's place as its dot-path names it. @param {{unit: string, phase: string, topic: string|null}} place */
+const placePath = ({ unit, phase, topic }) => (topic === null ? `${unit}.${phase}` : `${unit}.${phase}.${topic}`);
 
 /**
  * A topic of a unit, from its dot-path, live or not, as a directive's check
@@ -170,7 +198,8 @@ const settledPath = (unit, topic) => path.posix.join(COMPOSED, unit, `${topic}.s
  */
 function topicPlace(cwd, dotpath, said, rules = recordsRules()) {
   const parts = String(dotpath).split('.');
-  if (parts.length !== 3 || parts.some((part) => part === '')) throw new Error(`${said}: "${dotpath}" names no topic — <work-unit>.<phase>.<topic>`);
+  if (parts.length === 2 && parts[1] === UNIT_PHASE && parts[0] !== '') return unitPlace(cwd, parts[0], said, rules);
+  if (parts.length !== 3 || parts.some((part) => part === '')) throw new Error(`${said}: "${dotpath}" names no topic — <work-unit>.<phase>.<topic>, or <work-unit>.${UNIT_PHASE} for a unit's own`);
   const [unit, phase, topic] = parts;
   if (!rules.phases.includes(phase)) throw new Error(`${said}: the records carry no topic in "${phase}" — one of ${rules.phases.join(', ')}`);
   const root = stateRoot(cwd);
@@ -183,6 +212,18 @@ function topicPlace(cwd, dotpath, said, rules = recordsRules()) {
     throw new Error(`${said}: ${unit}'s ${topic} was promoted to ${manifest.phases.discussion.items[topic].promoted_to}, which carries its record`);
   }
   return { root, unit, phase, topic };
+}
+
+/**
+ * A unit's own record's place, at its discovery: refused for a unit the
+ * project lacks, and one with no record of its own (079's check).
+ * @param {string} cwd @param {string} unit @param {string} said @param {ReturnType<typeof recordsRules>} rules @returns {Place}
+ */
+function unitPlace(cwd, unit, said, rules) {
+  const root = stateRoot(cwd);
+  if (manifestOf(root, unit) === null) throw new Error(`${said}: there is no work unit "${unit}"`);
+  if (!rules.ownRecord({ stateDir: root, unit })) throw new Error(`${said}: ${unit} has no record of its own — an epic whose discovery holds a session has one, and a unit of one topic's discovery is its topic's`);
+  return { root, unit, phase: UNIT_PHASE, topic: null };
 }
 
 /** The place `args` give, and whether the carry is a dry run, refused for argv of another shape. @param {string[]} args @returns {{dotpath: string, dry: boolean}} */
@@ -364,13 +405,16 @@ function drawnRecord(cwd, place, entries, session) {
 
 /**
  * The ids the ledger holds, refused where one of its entries is on the
- * place's topic already: its record was carried.
+ * place's topic already, or a unit's own record's on the unit: its record
+ * was carried. No other entry is on a unit, no topic's, until every record
+ * is carried (the raises at the end).
  * @param {Place} place @param {string[]} warnings
  * @returns {string[]}
  */
-function idsBeside({ root, unit, topic }, warnings) {
+function idsBeside(place, warnings) {
+  const { root, unit, topic } = place;
   return withLedger(root, warnings, (ledger) => [...ledger.entries()].map(({ event }) => {
-    if (event.unit === unit && event.topic === topic) throw new Error(`${SAID}: the ledger holds entries on ${unit}'s ${topic} already — a topic's record is carried once`);
+    if (event.unit === unit && event.topic === topic) throw new Error(`${SAID}: the ledger holds entries on ${recordName(place)} already — a record is carried once`);
     return /** @type {string} */ (event.id);
   }));
 }
@@ -401,11 +445,24 @@ function composedRecord(cwd, place, session) {
   try {
     const entries = readRecord(place);
     const { lines, kept, faults } = drawnRecord(cwd, place, entries, session);
-    if (faults.length > 0) throw new Error(`${SAID}: ${place.unit}'s ${place.topic} breaks the records directive's rules, so nothing is carried — ${faults.join('; ')}`);
+    if (faults.length > 0) throw new Error(`${SAID}: ${recordName(place)} breaks the records directive's rules, so nothing is carried — ${faults.join('; ')}`);
     return { entries, lines, kept };
   } catch (err) {
     writeWhole(path.join(place.root, refusedPath(place.unit, place.topic)), `${messageOf(err)}\n`);
     throw err;
+  }
+}
+
+/**
+ * Refused, writing nothing, while the topic's unit waits on its records:
+ * the session's order to keep, which no composer answers.
+ * @param {string} cwd @param {Place} place
+ */
+function refuseUnsettled(cwd, { root, unit, topic }) {
+  if (topic === null) return;
+  const waits = recordsRules().unitWaits({ projectDir: codeRoot(cwd), stateDir: root, unit });
+  if (waits.length > 0) {
+    throw new Error(`${SAID}: ${unit}'s ${topic} is carried once every topic of ${unit} has its record composed and no section of its approved specs goes uncited — a topic carried takes no section found later: ${waits.join('; ')}`);
   }
 }
 
@@ -444,12 +501,13 @@ function carryRecord(cwd, args) {
     if (session === null) throw new Error(`${SAID}: no session to tag the entries with — CLAUDE_CODE_SESSION_ID is not set`);
     const place = topicPlace(cwd, dotpath, SAID);
     const { entries, lines, kept } = composedRecord(cwd, place, session);
+    refuseUnsettled(cwd, place);
     const { outcome, short } = withStateLock(place.root, () => {
       const beside = idsBeside(place, warnings);
       keepCarried(place, entries, kept);
       if (lines.length > 0) appendEntries(place.root, lines, warnings);
       return {
-        outcome: lines.length === 0 ? null : commitLedger(cwd, `ledger(${place.unit}): carry ${place.topic}'s record`, warnings),
+        outcome: lines.length === 0 ? null : commitLedger(cwd, `ledger(${place.unit}): carry ${place.topic === null ? 'its discovery' : place.topic}'s record`, warnings),
         short: shortIds([...beside, ...lines.map(({ id }) => id)]),
       };
     });
@@ -467,4 +525,4 @@ function carryRecord(cwd, args) {
   }
 }
 
-module.exports = { CARRY_VERB, CARRY_USAGE, DRY_RUN, carriedPath, composedPath, findingsPath, refusedPath, roundsPath, settledPath, topicPlace, recordsRules, carryRecord };
+module.exports = { CARRY_VERB, CARRY_USAGE, DRY_RUN, placePath, recordName, carriedPath, composedPath, findingsPath, refusedPath, roundsPath, settledPath, topicPlace, recordsRules, carryRecord };

@@ -610,7 +610,7 @@ const { reading, reposOf } = require('./phase-checks.cjs');
 const { changeOf, changeTips, workBelow } = require('./review-change.cjs');
 const { fixAcceptance, fixScenarios, fixNamed } = require('./fix-acceptance.cjs');
 const { summaryFile } = require('./knowledge/artifacts.cjs');
-const { CARRY_VERB, DRY_RUN, topicPlace, composedPath, findingsPath, refusedPath, roundsPath, settledPath } = require('./ledger-carry.cjs');
+const { CARRY_VERB, DRY_RUN, topicPlace, placePath, recordName, composedPath, findingsPath, refusedPath, roundsPath, settledPath } = require('./ledger-carry.cjs');
 const { OLD_STATE, OLD_PLAN_FILE } = require('../../../ledger-migrate/scripts/old-layout.cjs');
 
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
@@ -1170,9 +1170,60 @@ function topicRules({ given }) {
 /** @param {Filling} filling */
 const migratedTopic = (filling) => topicPlace(filling.cwd, filling.given.topic, 'brief', topicRules(filling));
 
+/** Each import of the unit's as a record's brief lists it, and which the record owes a link. @param {{path: string, origin: string|null, owner: string|null, held: boolean}[]} imports @param {string|null} topic */
+const importLines = (imports, topic) => imports.map(({ path: at, origin, owner, held }) => {
+  const owed = !held ? ' — its file is gone, so no entry links it' : owner === topic ? ` — this ${topic === null ? 'record' : 'topic'}'s to link` : '';
+  return `- ${at}${origin === null ? '' : `, which came in from ${origin}`}${owed}`;
+});
+
+/** Where a record goes, and what is said of it beside it, as its brief lists them. @param {string} root @param {string} unit @param {string|null} topic */
+function recordGoes(root, unit, topic) {
+  const composed = fs.existsSync(path.join(root, composedPath(unit, topic)));
+  return [
+    `- The record composed: ${composedPath(unit, topic)}, ${composed ? 'composed already' : 'not composed yet'}`,
+    `- The verifier's findings on it: ${findingsPath(unit, topic)}`,
+    `- A carry's refusal of it: ${refusedPath(unit, topic)}`,
+  ].join('\n');
+}
+
+/**
+ * A unit's own record as its brief draws it: the unit, the discovery
+ * sessions it is composed from, the unit's topics, each of which carries
+ * what the sessions say of it, its assets and where the record goes.
+ * @param {Filling} filling @param {string} root @param {string} unit
+ */
+function drawOwnRecord(filling, root, unit) {
+  const manifest = readWorkUnitManifest(root, unit);
+  const rules = topicRules(filling);
+  const sources = rules.sourcesOf({ projectDir: codeRoot(filling.cwd), stateDir: root, unit, topic: null });
+  const topics = rules.topicsOf(manifest).map((topic) => `- ${topic}, its folder ${unit}/topics/${topic}/`);
+  return [
+    `- **Unit:** ${unit}, ${manifest.work_type}, ${manifest.status}`,
+    `- **The record:** the unit's own, carried in discovery — what its discovery sessions hold of the unit as a whole, or of no one topic`,
+    `- **The state:** ${root} — each path below is from there, as an entry cites it`,
+    '',
+    '## The unit\'s discovery sessions',
+    '',
+    listed(sources.sessions.map((/** @type {string} */ at) => `- ${at}`)),
+    '',
+    '## The unit\'s topics, each carrying what the sessions say of it',
+    '',
+    listed(topics),
+    '',
+    '## The unit\'s assets',
+    '',
+    listed(importLines(sources.imports, null)),
+    '',
+    '## Where the record goes',
+    '',
+    recordGoes(root, unit, null),
+  ].join('\n');
+}
+
 /** @param {Filling} filling */
 function drawMigratedTopic(filling) {
   const { root, unit, phase: carried, topic } = migratedTopic(filling);
+  if (topic === null) return drawOwnRecord(filling, root, unit);
   const manifest = readWorkUnitManifest(root, unit);
   const rules = topicRules(filling);
   const phases = rules.phases.filter((phase) => rules.holds(manifest, phase, topic)).map((phase) => {
@@ -1181,15 +1232,10 @@ function drawMigratedTopic(filling) {
   });
   const folder = path.join(root, unit, 'topics', topic);
   const files = (fs.existsSync(folder) ? filesUnder(folder) : []).filter((file) => !file.startsWith('mail/')).map((file) => `${unit}/topics/${topic}/${file}`).sort();
-  const discovery = path.join(root, unit, 'discovery');
-  const sessions = (fs.existsSync(discovery) ? filesUnder(discovery) : []).filter((file) => DISCOVERY_SESSION.test(file)).map((file) => `- ${unit}/discovery/${file}`).sort();
   const sources = rules.sourcesOf({ projectDir: codeRoot(filling.cwd), stateDir: root, unit, topic });
-  const assets = sources.imports.map(({ path: at, origin, owner, held }) => {
-    const owed = !held ? ' — its file is gone, so no entry links it' : owner === topic ? ' — this topic\'s to link' : '';
-    return `- ${at}${origin === null ? '' : `, which came in from ${origin}`}${owed}`;
-  });
-  const specs = sources.specs.map(({ path: at, part, approved }) => `- ${at}${part === null ? '' : `, its part "${part}"`}, ${approved ? 'approved' : 'a draft'}`);
-  const composed = fs.existsSync(path.join(root, composedPath(unit, topic)));
+  const sessions = sources.sessions.map((/** @type {string} */ at) => (at.startsWith(`${unit}/`) ? `- ${at}` : `- ${at}, of ${at.split('/')[0]}, which it was promoted from`));
+  const assets = importLines(sources.imports, topic);
+  const specs = sources.specs.map((/** @type {{path: string, part: string|null, approved: boolean}} */ { path: at, part, approved }) => `- ${at}${part === null ? '' : `, its part "${part}"`}, ${approved ? 'approved' : 'a draft'}`);
   return [
     `- **Unit:** ${unit}, ${manifest.work_type}, ${manifest.status}`,
     `- **Topic:** ${topic}, in ${phases.join('; ')} — its record carried in ${carried}${carried === NEVER_STARTED ? ', the topic never started' : ''}`,
@@ -1222,22 +1268,16 @@ function drawMigratedTopic(filling) {
     '',
     '## Where the record goes',
     '',
-    `- The record composed: ${composedPath(unit, topic)}, ${composed ? 'composed already' : 'not composed yet'}`,
-    `- The verifier's findings on it: ${findingsPath(unit, topic)}`,
-    `- A carry's refusal of it: ${refusedPath(unit, topic)}`,
+    recordGoes(root, unit, topic),
   ].join('\n');
 }
-
-/** A discovery session's log, as the unit's discovery folder holds it. */
-const DISCOVERY_SESSION = /^session-[0-9]{3}\.md$/;
 
 /** The phase an epic's topic never started is carried in. */
 const NEVER_STARTED = 'discovery';
 
 /** The call that checks the topic's record as the carry would, writing nothing. @param {Filling} filling */
 function drawRecordCheck(filling) {
-  const { unit, phase, topic } = migratedTopic(filling);
-  return `\`${ENGINE_RUN} ledger ${CARRY_VERB} ${unit}.${phase}.${topic} ${DRY_RUN}\``;
+  return `\`${ENGINE_RUN} ledger ${CARRY_VERB} ${placePath(migratedTopic(filling))} ${DRY_RUN}\``;
 }
 
 /** @param {Filling} filling */
@@ -1245,8 +1285,9 @@ function drawComposedRecord(filling) {
   const { root, unit, topic } = migratedTopic(filling);
   const file = path.join(root, composedPath(unit, topic));
   const text = fs.existsSync(file) && fs.statSync(file).isFile() ? fs.readFileSync(file, 'utf8') : null;
-  if (text === null) throw new Error(`${unit}'s ${topic} has no record composed — ${file} is no file`);
-  if (text.trim() === '') throw new Error(`${unit}'s ${topic} has no record composed — ${file} is empty`);
+  const named = recordName({ unit, topic });
+  if (text === null) throw new Error(`${named} has no record composed — ${file} is no file`);
+  if (text.trim() === '') throw new Error(`${named} has no record composed — ${file} is empty`);
   return fenced('json', text.trimEnd());
 }
 
@@ -1443,16 +1484,16 @@ function keepRound(rounds, findings) {
   fs.rmSync(findings, { force: true });
 }
 
-/** A file beside the topic's record, absolute. @param {Filling} filling @param {(unit: string, topic: string) => string} rel */
+/** A file beside the topic's record, absolute. @param {Filling} filling @param {(unit: string, topic: string|null) => string} rel */
 function besideFile(filling, rel) {
   const { root, unit, topic } = migratedTopic(filling);
   return path.join(root, rel(unit, topic));
 }
 
-/** What the topic's record has beside it at `rel`, verbatim, or none recorded. @param {Filling} filling @param {(unit: string, topic: string) => string} rel */
+/** What the topic's record has beside it at `rel`, verbatim, or none recorded. @param {Filling} filling @param {(unit: string, topic: string|null) => string} rel */
 const besideRecord = (filling, rel) => verbatim(besideFile(filling, rel));
 
-/** What the topic's record has beside it at `rel` cleared, the brief having taken it. @param {Filling} filling @param {(unit: string, topic: string) => string} rel */
+/** What the topic's record has beside it at `rel` cleared, the brief having taken it. @param {Filling} filling @param {(unit: string, topic: string|null) => string} rel */
 function clearBeside(filling, rel) {
   fs.rmSync(besideFile(filling, rel), { force: true });
 }

@@ -50,7 +50,7 @@ const harness = require('./engine-harness.cjs');
 const { ok, call, output, refuses, statePath, layout, readState, writeState, cleanupFixture } = harness;
 const { templateFolder, copyWorld } = require('./discovery-test-utils.cjs');
 const { SESSION, refusedUntouched } = require('./migration-world.cjs');
-const { DRIVER, cutAndMergesProject } = require('./migrated-world.cjs');
+const { DRIVER, SIDE, cutAndMergesProject } = require('./migrated-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { BRIEF_REFUSALS, briefPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
@@ -317,6 +317,46 @@ describe('the mixed unit\'s question (21.8.9, 21.8.10)', () => {
 
     assert.deepStrictEqual(lacks('shop'), ['is not cut yet']);
     assert.deepStrictEqual(Object.keys(JSON.parse(readState(dir, layout.manifest('storefront'))).phases.discovery.items), ['reviews', 'gifts']);
+  });
+});
+
+describe('the directive\'s ways on', () => {
+  const TEXT = fs.readFileSync(path.join(__dirname, '../../skills/ledger-migrate/scripts/migrations/080-cut-and-merges.md'), 'utf8');
+  /** Each rule the directive does not state. @param {string[]} rules */
+  const unstated = (rules) => rules.filter((rule) => !TEXT.includes(rule));
+
+  it('a reversal the session settles: a ruling that changes the piece becomes a finding to amend to, one that keeps it takes the finding out — so an empty findings file is only ever a pass', () => {
+    assert.deepStrictEqual(unstated(['Where the ruling has the piece change, replace the finding with `Settled: {point}, amend to agree`', 'Where the ruling keeps the piece as it stands, take the finding out of the findings file', 'An empty findings file is only ever a pass.']), []);
+  });
+
+  it('a link the cut refuses that still holds: on another unit\'s task, the link off and the phase relying on that unit; on a later phase of its own plan, the person\'s choice of a note or a correction; on another plan\'s, a known edge; and one the check names once cut, taken off with no plan, a known edge where it holds', () => {
+    assert.deepStrictEqual(unstated([
+      '- **It holds, on another unit\'s task.** Take the link off as above; the waiting task\'s phase relies on that unit instead',
+      '- **It holds, on a later phase of its own old plan.** Ask the person which way on',
+      'or the task is corrected as superseded by that later phase',
+      'Write each such ruling into `phases/{N}.settled.md` of the waiting task\'s phase, as a reversal\'s is, and into its findings',
+      '- **It holds, on a later phase of another of the unit\'s old plans.** A known edge',
+      'node .claude/skills/ledger-engine/scripts/engine.cjs task unlink {unit} {task} --after {after}\n',
+      'Where it holds, the waiting phase is cut already and can\'t be amended to rely on the other unit: a known edge.',
+    ]), []);
+  });
+});
+
+describe('a cut unit\'s task held after another unit\'s, which the tracker shows once both are named', () => {
+  it('is named on the cut unit as the cut\'s refusal names it, until `task unlink` takes it off, the unit cut, no plan given; a link after a task ended names nothing', () => {
+    const root = statePath(dir);
+    for (const after of ['Write a memo', 'Pin a memo']) SIDE.linkBy(root, 'Export payments', after);
+    cutBy(shopPlan());
+    const before = lacks('shop');
+    DRIVER.adopt(root, 'memo', 1, PLANS.memo.phases[0]);
+    DRIVER.done(root, { unit: 'memo', phase: 1, n: 2 });
+    const named = lacks('shop');
+    const unlinked = run(['task', 'unlink', 'shop', '5.1', '--after', 'memo-1-1']);
+
+    assert.deepStrictEqual([named, [unlinked.task, unlinked.after], lacks('shop')], [[
+      ...(before ?? []),
+      'task 5.1, "Export payments", is held after task 1.1 of memo, "Write a memo", another unit\'s — a task waits on its own unit\'s alone, so 5.1 would never start: the link is the tracker\'s, which no piece of the plan settles — where it no longer holds, task unlink shop 5.1 --after memo-1-1 takes it off',
+    ], ['5.1', 'memo-1-1'], before]);
   });
 });
 
@@ -601,6 +641,24 @@ describe('the per-phase agents and the join (21.10.5, E7)', () => {
 
     oldManifest((before) => { before.phases.planning.items.pay.task_map['pay-3'] = 'no-such-parent'; });
     assert.match(joinRefused(), /^migrate join: the tracker could not be read as the cut adopts shop's plans — /);
+  });
+
+  it('the phase dry run names a reliance the join would refuse its piece for, a phase relied on counting as still to build unless the join writes it or its piece reads built', () => {
+    oldManifest((before) => {
+      before.phases.implementation.items.cart.completed_phases = [];
+      before.phases.planning.items.pay.external_dependencies.cart.internal_id = 'cart-1-1';
+    });
+    const check = (/** @type {string} */ phase) => run(['migrate', 'join', 'shop', '--directive', DIRECTIVE, '--phase', phase, '--dry-run']).faults;
+    const charges = (/** @type {number[]} */ relies) => ({ ...CHARGES, phase: { name: 'Charges', goal: 'Cards charged.', sections: ['2'], relies_on: relies }, scenarios: ['Given a card, when it is charged, then the charge is kept.'] });
+    compose(4, charges([]));
+
+    const unread = check('4');
+    compose(1, { phase: { name: 'Cart 1', goal: 'The cart.', sections: ['1'], built: true }, scenarios: [], notes: [], corrections: [] });
+    const built = check('4');
+    fs.rmSync(statePath(dir, staged(1, 'json')));
+    compose(4, charges([1]));
+
+    assert.deepStrictEqual([unread, built, check('4')], [['phase 4, of pay\'s plan, relies on nothing for cart-1-1, which phase 1, of cart\'s plan, builds — it relies on phase 1'], [], []]);
   });
 
   it('draws in a phase\'s brief only its own plan\'s dependencies', () => {

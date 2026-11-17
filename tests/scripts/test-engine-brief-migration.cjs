@@ -228,6 +228,32 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
     assert.strictEqual(fs.existsSync(statePath(dir, findingsPath('fumi', 'licensing'))), false);
   });
 
+  it('a unit\'s own record: its discovery sessions, its topics, which carry what the sessions say of each, the imports of its discovery as a whole its own to link, where it goes, and its check', () => {
+    writeState(dir, layout.unit('shop', 'discovery', 'session-001.md'), '## Discovery Session 001\n');
+
+    const { brief } = issued(['migration-topic', '--topic', 'shop.discovery', '--directive', '079-records']);
+
+    for (const part of [
+      '- **Unit:** shop, epic, in-progress\n- **The record:** the unit\'s own, carried in discovery — what its discovery sessions hold of the unit as a whole, or of no one topic',
+      '## The unit\'s discovery sessions\n\n- shop/discovery/session-001.md\n\n## The unit\'s topics, each carrying what the sessions say of it\n\n- weights, its folder shop/topics/weights/',
+      '- shop/assets/vision.md, which came in from discovery — this record\'s to link',
+      '- The record composed: .cache/migrate/records/shop.json, not composed yet',
+      `\`${ENGINE_RUN} ledger carry shop.discovery --dry-run\``,
+    ]) assert.ok(brief.includes(part), `${part}\n\nin\n\n${brief}`);
+    writeState(dir, composedPath('shop', null), `${RECORD}\n`);
+    writeState(dir, findingsPath('shop', null), 'The session on selling is not carried.\n');
+    const verifier = issued(['migration-verifier', '--topic', 'shop.discovery', '--directive', '079-records']).brief;
+    assert.ok(verifier.includes(`# The record\n\n\`\`\`json\n${RECORD}`) && readState(dir, '.cache/migrate/records/shop.rounds.md').includes('The session on selling is not carried.'), verifier);
+  });
+
+  it('a promoted topic\'s discovery sessions: its unit\'s, and those of the unit it came from, so marked', () => {
+    writeState(dir, layout.unit('fumi', 'discovery', 'session-001.md'), '## Discovery Session 001\n');
+
+    const { brief } = issued(['migration-topic', '--topic', 'platform.discussion.auth', '--directive', '079-records']);
+
+    assert.ok(brief.includes('## The unit\'s discovery sessions\n\n- fumi/discovery/session-001.md, of fumi, which it was promoted from\n'), brief);
+  });
+
   it('lists the unit\'s discovery sessions, the migration\'s research session among them, and nothing else its discovery holds; an epic\'s topic never started carried in discovery, and shown so', () => {
     writeState(dir, layout.unit('fumi', 'discovery', 'session-001.md'), '## Discovery Session 001\n');
     writeState(dir, layout.unit('fumi', 'discovery', 'session-002.md'), '## Discovery Session 002\n\nResearch the migration placed: index-size.\n');
@@ -264,7 +290,7 @@ describe('the refusals, nothing stored', () => {
   it('a directive the migrations lack, a place naming no topic, a phase the records carry no topic of, a topic the unit lacks, a topic promoted, a place at a phase before the one its item is in, and the verifier\'s brief with no record composed, or an empty one', () => {
     refusedUnissued(['migration-topic', '--topic', 'fumi.discussion.licensing', '--directive', '078-move'], /^there is no directive 078-move$/);
     refusedUnissued(['migration-topic', '--topic', 'fumi.discussion.licensing', '--directive', '../079'], /^"\.\.\/079" is no directive's id/);
-    refusedUnissued(['migration-topic', '--topic', 'fumi.licensing', '--directive', '079-records'], /^brief: "fumi\.licensing" names no topic — <work-unit>\.<phase>\.<topic>$/);
+    refusedUnissued(['migration-topic', '--topic', 'fumi.licensing', '--directive', '079-records'], /^brief: "fumi\.licensing" names no topic — <work-unit>\.<phase>\.<topic>, or <work-unit>\.discovery for a unit's own$/);
     refusedUnissued(['migration-topic', '--topic', 'fumi.research.search', '--directive', '079-records'], /^brief: the records carry no topic in "research" — one of discovery, discussion, investigation$/);
     refusedUnissued(['migration-topic', '--topic', 'fumi.discussion.billing', '--directive', '079-records'], /^brief: fumi has no topic "billing" in discussion$/);
     refusedUnissued(['migration-topic', '--topic', 'fumi.discussion.auth', '--directive', '079-records'], /^brief: fumi's auth was promoted to platform, which carries its record$/);

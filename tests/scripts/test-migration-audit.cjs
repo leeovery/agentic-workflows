@@ -100,7 +100,7 @@ describe('a project the whole sequence migrated', () => {
       faults: [],
       counts: {
         units: { epic: { 'in-progress': 1, completed: 1 }, feature: { 'in-progress': 1, cancelled: 1 }, 'quick-fix': { completed: 1 } },
-        decisions: 5 + AUTH_MAP.length,
+        decisions: 6 + AUTH_MAP.length,
         legacy_files: 1,
         earlier: 2,
         dead_links: { before: 1, after: 1, after_already_dead: 1, legacy: 0 },

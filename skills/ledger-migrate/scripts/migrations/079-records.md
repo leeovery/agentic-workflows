@@ -2,24 +2,24 @@
 
 ## Touches
 
-- The ledger, through `ledger carry`, one topic's record at a time, and
-  through `raise` for the points raised at the end.
-- Each topic's record as composed, the verifier's findings on it and every
-  round of them before, the points the session settled, and a carry's
-  refusal of it, in the state's cache, where the topic's brief names them;
-  and each unit's sections of its specs that hold no topic's decision,
-  `.cache/migrate/records/{unit}.sections.json`.
+- The ledger, through `ledger carry`, one record at a time, and through
+  `raise` for the points raised at the end.
+- Each record as composed, the verifier's findings on it and every round of
+  them before, the points the session settled, and a carry's refusal of it,
+  in the state's cache, where its brief names them; and each unit's
+  sections of its specs that hold no topic's decision, finding or open
+  question, `.cache/migrate/records/{unit}.sections.json`.
 
 ## Asks
 
 - Nothing for any one entry, but a point a verifier reverses that the
-  topic's sources do not settle.
+  record's sources do not settle.
 - At the end, each point no source settles on a live topic that has
   started, raised one at a time: answered, or left open.
 
 ## What It Does
 
-Every topic of every unit gets its record in the ledger, completed and cancelled units among them: what its sources settle, carried forward one entry at a time. A quick-fix holds no topic, and nothing of it is carried. A topic an epic promoted to a cross-cutting unit is carried on that unit, never on the epic.
+Every topic of every unit gets its record in the ledger, completed and cancelled units among them: what its sources settle, carried forward one entry at a time. A quick-fix holds no topic, and nothing of it is carried. A topic an epic promoted to a cross-cutting unit is carried on that unit, never on the epic. Each epic whose discovery holds a session gets a record of its own too, `{unit}.discovery`: what its discovery sessions hold of the epic as a whole, or of no one topic, carried at the epic's discovery. A unit of one topic has none: its discovery is its topic's.
 
 Paths below are from the state's folder, but one under `.workflows/`, which is from the project's folder in the main checkout; a topic's brief names both. `{phase}` is the phase the topic's item is in: discussion; investigation for a bugfix's topic; discovery for an epic's topic never started, whose record holds questions and findings alone.
 
@@ -29,7 +29,9 @@ Paths below are from the state's folder, but one under `.workflows/`, which is f
 - Its specs: each spec that draws on the topic, kept in `{unit}/assets/specs/` while the unit's building has not started, and joined into `{unit}/spec.md` once it has, each spec a part of it under its own numbered heading. Its brief marks each approved or a draft.
 - Its old discussion map and its research's threads, in its unit's manifest under `.workflows/`, as the move read them; a promoted topic's research as the unit it came from holds it.
 - Its reviews never folded in, which the move appended to its log, each under `## Review {id}, never folded in`.
-- Its unit's discovery sessions, `{unit}/discovery/session-{NNN}.md`, the migration's own among them where research fed several topics: the topic takes only what they say of it.
+- Its unit's discovery sessions, `{unit}/discovery/session-{NNN}.md`, the migration's own among them where research fed several topics, and for a promoted topic those of the unit it came from: the topic takes only what they say of it.
+
+A unit's own record has the unit's discovery sessions alone as its sources, and takes what they say of the unit as a whole, or of no one topic: what they say of a topic is that topic's.
 
 Its brief lists each of these as the check reads them. Each topic's record is carried from its own sources alone: where another topic's says otherwise, each is carried as its own sources say.
 
@@ -49,7 +51,8 @@ Every current decision, every finding and every open question the topic's source
 - **Threads.** Each thread the register shows `open` or `digging` is carried by an entry naming it, `thread`: an open question where no source answers it, else the decision or finding that answers it, citing where.
 - **Product-wide.** An entry is `product_wide` `true` where it holds for the whole product: what the product is, who it is for, what it values, or a standing rule that cuts across topics. A cross-cutting unit's every finding and decision is product-wide.
 - **A topic never started.** An epic's topic no item past discovery holds is carried in discovery, as its brief's topic line shows. Nothing is decided in discovery: its record holds questions and findings alone, none product-wide, and what its research concluded is a finding.
-- **Assets.** Each of the unit's assets its brief marks the topic's to link, and any other its log or brief links to, is linked as `reference` from the entry that draws on it. One its brief shows gone is linked from none.
+- **A unit's own record** is carried in discovery too, so it holds questions and findings alone, none product-wide. A record of no entries is one, where the sessions say nothing of the unit as a whole.
+- **Assets.** Each of the unit's assets its brief marks the record's to link, and any other its log or brief links to, is linked as `reference` from the entry that draws on it. One its brief shows gone is linked from none.
 - **A record at least.** A topic whose log or brief holds text past its headings has an entry at least.
 - **Points no source settles** are open questions marked `raise` `true`, for the raises at the end: a log unclear on what was decided, with no approved spec to settle it; a draft spec at odds with its log; a spec at odds with itself. Where an approved spec settles it, it is settled.
 - **Nothing invented.** An entry says what a source says, and nothing more.
@@ -64,7 +67,7 @@ The record is one JSON object, `{"entries": [...]}`, its entries in the order th
 - **A decision** holds `answers`, the ref of the question it answers, `text`, `why`, `by` and `given`; `rules_out`, `alternatives` and `evidence` where the source gives them, each a list of lines; and `product_wide`. The person's decision is given `own`; one given `your-call`, `dont-care` or `carried` is `by` `claude`.
 - **A finding** holds `text`, `how`, `known` and `by`, a measured one its `command` and `result`; and `product_wide`.
 - **Any entry** may hold `relies_on`, a list of the refs it rests on; `map_item` and `thread`, each a name or a list of names; and `assets`, a list of `{"path", "status"}`, each a file the state holds, `status` `reference` or `canonical`.
-- **`cites`**: a list of `{"path", "section"}`, one at least: the file's path from the state's folder and a heading it holds. The file is the topic's own, but its mail, or the unit's beside its topics — its assets, its `spec.md` — never the cache, another topic's or another unit's.
+- **`cites`**: a list of `{"path", "section"}`, one at least: the file's path from the state's folder and a heading it holds. The file is the topic's own, but its mail, or the unit's beside its topics — its assets, its `spec.md`, its discovery sessions — or, for a promoted topic, a discovery session of the unit it came from; never the cache, another topic's or another unit's.
 - **`raise`**: `true`, on an open question alone, one no decision of the record answers.
 - **`who_moved_whom`** is never given: an entry the migration carries moves no one.
 
@@ -80,43 +83,45 @@ The record is one JSON object, `{"entries": [...]}`, its entries in the order th
 
 ## Working Through the Topics
 
-Give each topic the check names to the migration's per-topic agent; the topics run side by side. Its brief names where it writes the record, and how to check it before handing back:
+Give each record the check names to the migration's per-topic agent; the records run side by side. `{place}` is the record's place: a topic's, `{unit}.{phase}.{topic}`, or a unit's own, `{unit}.discovery`, as the check names it. Its brief names where it writes the record, and how to check it before handing back:
 
 ```bash
-node .claude/skills/ledger-engine/scripts/engine.cjs brief migration-topic --topic {unit}.{phase}.{topic} --directive 079-records
+node .claude/skills/ledger-engine/scripts/engine.cjs brief migration-topic --topic {place} --directive 079-records
 ```
 
-A record composed already, by this session or an earlier one, is amended, never composed from the start: each brief carries the verifier's findings, the carry's refusal and the points this session settled, waiting beside the topic's record.
+A record composed already, by this session or an earlier one, is amended, never composed from the start: each brief carries the verifier's findings, the carry's refusal and the points this session settled, waiting beside the record.
 
 Once it has returned, check the record as the carry would; this names every fault and writes nothing:
 
 ```bash
-node .claude/skills/ledger-engine/scripts/engine.cjs ledger carry {unit}.{phase}.{topic} --dry-run
+node .claude/skills/ledger-engine/scripts/engine.cjs ledger carry {place} --dry-run
 ```
 
-Where it names a fault, a fresh per-topic agent amends the record, its own check naming the faults. Where it names none, the verifier reads the record against its sources and writes its findings beside it, an empty file its pass; its brief carries every round of findings before it, keeps the last as a round, `{topic}.rounds.md` beside the record, and clears it, so a verifier that never writes leaves no verdict:
+Where it names a fault, a fresh per-topic agent amends the record, its own check naming the faults. Where it names none, the verifier reads the record against its sources and writes its findings beside it, an empty file its pass; its brief carries every round of findings before it, keeps the last as a round in the rounds file beside the record, and clears it, so a verifier that never writes leaves no verdict:
 
 ```bash
-node .claude/skills/ledger-engine/scripts/engine.cjs brief migration-verifier --topic {unit}.{phase}.{topic} --directive 079-records
+node .claude/skills/ledger-engine/scripts/engine.cjs brief migration-verifier --topic {place} --directive 079-records
 ```
 
 Dispatch each brief's agent with its pointer alone. Where the verifier finds something, a fresh per-topic agent amends the record, its brief carrying the findings, and a fresh verifier reads it again, until one passes it.
 
-A finding that opens `Reverses round {R}:` would undo what an earlier round had the record changed to: it goes to no agent. Settle the point from the topic's sources; where they don't settle it, ask the person in prose, naming what each round found and the lines of the sources each rests on, and **STOP.** Wait for user response. Write the ruling, a line naming the point and what settles it, into `{topic}.settled.md` beside the record, which every later brief of the topic carries as closed, and take the finding out of the findings file. Where the ruling has the record change, a fresh per-topic agent amends it, and a fresh verifier reads it again; where no finding is left, the file empty, the record has passed.
+A finding that opens `Reverses round {R}:` would undo what an earlier round had the record changed to: it goes to no agent. Settle the point from the record's sources; where they don't settle it, ask the person in prose, naming what each round found and the lines of the sources each rests on, and **STOP.** Wait for user response. Write the ruling, a line naming the point and what settles it, into the settled file beside the record, which every later brief of it carries as closed. Where the ruling has the record change, replace the finding with `Settled: {point}, amend to agree`: a fresh per-topic agent amends the record to answer it, and a fresh verifier reads it again, its brief keeping it as a round. Where the ruling keeps the record as it stands, take the finding out of the findings file; where no finding is left, the file empty, the record has passed. An empty findings file is only ever a pass.
 
-Once every topic of a unit has its record composed, the check names, on the topics drawing on each of the unit's approved specs, each section of it holding text that no record cites: a decision made at the spec stage on a subject no log discusses is in no other source. Read each such section. Where it holds a decision or a finding of a topic's, write it into the findings of the topic its subject belongs to, naming the section and what the record misses, and that topic's record is amended and verified again. Where it holds none, a section that frames the others or says again what a cited one holds, mark it, `{"{path}": ["{section}", …]}`, in `.cache/migrate/records/{unit}.sections.json`. Carry a unit's topics once the check names no such section.
+Once every topic of a unit has its record composed, the check names, on the topics drawing on each of the unit's approved specs, each section of it holding text that no record cites: a decision made at the spec stage on a subject no log discusses is in no other source. In a spec joined into `spec.md` a section is its part's, and the check names its part. Read each such section. Where it holds a decision, a finding or an open question of a topic's, write it into the findings of the topic its subject belongs to, naming the section and what the record misses, and that topic's record is amended and verified again. Where it holds none, a section that frames the others or says again what a cited one holds, mark it in `.cache/migrate/records/{unit}.sections.json` as the check names the mark: `{"{path}": ["{section}", …]}`, or in a joined spec under its part, `{"{path}": {"{part}": ["{section}", …]}}`.
+
+So a unit's topics are carried in order: compose every topic's record, settle the sections the check names, then carry them. The carry of a topic of a unit with an approved spec waits until each of the unit's topics has its record composed and the check names no such section, naming what it waits on; a unit's own record never waits.
 
 Carry each record its verifier has passed, which reads the record where the brief said it goes and appends it whole in one write:
 
 ```bash
-node .claude/skills/ledger-engine/scripts/engine.cjs ledger carry {unit}.{phase}.{topic}
+node .claude/skills/ledger-engine/scripts/engine.cjs ledger carry {place}
 ```
 
 Carrying holds the record to the check's rules before it writes anything. A record that breaks one is refused, naming every fault, the refusal kept beside the record for the next brief, and nothing is carried: a fresh per-topic agent amends it, its brief carrying the refusal, and it is checked, verified and carried again. An agent's record is never edited by hand.
 
 ## The Raises at the End
 
-Once every topic is carried, the check passes, and its answer lists under `raise` each point still to raise, `{"place", "answers", "text"}`: an open question marked `raise`, on a live topic, that no raise of this conversation has drawn. Read them there whenever you need them, never from memory. Before the directive's checklist is closed, raise each, one at a time, as a fact only the person holds, at its `place`, answering its question. A point on a topic or unit that isn't live, cancelled or postponed, is not listed: it stays an open question on its topic, left open until the topic returns. Nor is a point on a topic never started, carried in discovery, where nothing is decided: it stays an open question on its topic, for its discussion to open with. Nor is a point of a cross-cutting unit: its record is the product's, and the point stays an open question, the product's, which the product's conversation opens on.
+Once every record is carried, the check passes, and its answer lists under `raise` each point still to raise, `{"place", "answers", "text"}`: an open question marked `raise`, on a live topic, that no raise of this conversation has drawn. Read them there whenever you need them, never from memory. Before the directive's checklist is closed, raise each, one at a time, as a fact only the person holds, at its `place`, answering its question. A point on a topic or unit that isn't live, cancelled or postponed, is not listed: it stays an open question on its topic, left open until the topic returns. Nor is a point on a topic never started, carried in discovery, where nothing is decided: it stays an open question on its topic, for its discussion to open with. Nor is a point of a unit's own record, carried in discovery too: it stays an open question of the unit's discovery. Nor is a point of a cross-cutting unit: its record is the product's, and the point stays an open question, the product's, which the product's conversation opens on.
 
 The raise takes one JSON object on stdin, `{"question", "rows", "mechanism", "product_wide"}`: the point as the person reads it, cold; the rows, each `{"key", "name", "text", "notice"}`, only where the answers are few and known, else `[]`; what the sources say of it and where, as the mechanism; and whether its answer holds for the whole product, `true` or `false`.
 

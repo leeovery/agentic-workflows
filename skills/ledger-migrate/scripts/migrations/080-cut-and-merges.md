@@ -4,7 +4,8 @@
 
 - The tracker, through `task close-plan` for a unit nothing of which was
   built, and through `cut --migrating` for a unit whose building started,
-  `task unlink` taking off a link the cut refuses that no longer holds.
+  `task unlink` taking off a link the cut refuses, or the check names once
+  a unit is cut.
 - The units, through `workunit retire`, `workunit split` and
   `topic postpone`.
 - Each epic's topics' logs, which grow by the research placed on them.
@@ -21,8 +22,9 @@
 - Once for each building unit with topics its specs do not cover: where
   those topics go, a new epic the person names or the roadmap, and, for the
   roadmap, which horizon.
-- For each link in the tracker the cut refuses that the sources do not
-  settle: whether it still holds.
+- For each link in the tracker the cut refuses, or the check names, that
+  the sources do not settle: whether it still holds; and for one that holds
+  on a later phase of its own old plan, which way on.
 - For a point a verifier reverses that the sources do not settle: how it
   stands.
 - Nothing else.
@@ -108,7 +110,7 @@ node .claude/skills/ledger-engine/scripts/engine.cjs brief migration-phase-verif
 
 Dispatch each brief's agent with its pointer alone; phases' agents can run at once, each writing its own piece. Where a verifier finds something, a fresh per-phase agent amends that piece, its brief carrying the findings, and the verifier reads it again, its brief carrying every round before, until it passes the piece. A piece is never edited by hand.
 
-A finding that opens `Reverses round {R}:` would undo what an earlier round had the piece changed to: it goes to no agent. Settle the point from the phase's sources and the code; where they don't settle it, ask the person in prose, naming what each round found and what each rests on, and **STOP.** Wait for user response. Write the ruling, a line naming the point and what settles it, into `phases/{N}.settled.md`, which every later brief of the phase carries as closed, and take the finding out of the findings file. Where the ruling has the piece change, a fresh per-phase agent amends it, and the verifier reads it again; where no finding is left, the file empty, the piece has passed.
+A finding that opens `Reverses round {R}:` would undo what an earlier round had the piece changed to: it goes to no agent. Settle the point from the phase's sources and the code; where they don't settle it, ask the person in prose, naming what each round found and what each rests on, and **STOP.** Wait for user response. Write the ruling, a line naming the point and what settles it, into `phases/{N}.settled.md`, which every later brief of the phase carries as closed. Where the ruling has the piece change, replace the finding with `Settled: {point}, amend to agree`: a fresh per-phase agent amends the piece to answer it, and the verifier reads it again, its brief keeping it as a round. Where the ruling keeps the piece as it stands, take the finding out of the findings file; where no finding is left, the file empty, the piece has passed. An empty findings file is only ever a pass.
 
 ### A Phase's Piece
 
@@ -163,20 +165,34 @@ node .claude/skills/ledger-engine/scripts/engine.cjs cut {unit} --migrating --fi
 
 A cut that refuses writes nothing. Write each fault of its refusal, as it reads, into the findings of each phase it names, and amend those; then verify, join and cut again.
 
-But a link it names, a task held after one of a later phase or another unit's, is the tracker's, which no piece settles: no phase is amended for it. Judge each from the phases' sources and the code: whether the task still needs what the one it waits on builds. Where they show it does not, take the link off, as the refusal names it, `{plan}` the plan the join answered:
+But a link it names, a task held after one of a later phase or another unit's, is the tracker's, which no piece settles. Judge each from the phases' sources and the code: whether the task still needs what the one it waits on builds. Where they don't settle it, ask the person in prose, naming both tasks as the refusal does and what the sources show, and **STOP.** Wait for user response.
+
+- **It no longer holds.** Take the link off, as the refusal names it, `{plan}` the plan the join answered:
+
+  ```bash
+  node .claude/skills/ledger-engine/scripts/engine.cjs task unlink {unit} {task} --after {after} --file {plan}
+  ```
+
+- **It holds, on another unit's task.** Take the link off as above; the waiting task's phase relies on that unit instead, the build holding it until that unit completes. The ruling is `Settled: phase {N} relies on {other unit}, whose task {after} task {task} waits on, amend to agree`.
+- **It holds, on a later phase of its own old plan.** Ask the person which way on, and **STOP.** Wait for user response. Either the link comes off as above, the waiting phase noting what the task waits on — `Settled: a note on phase {N} names task {after}, which task {task} waits on, amend to agree` — or the task is corrected as superseded by that later phase, closed, what was found its reason — `Settled: task {task} is superseded by task {after}, amend to agree`.
+- **It holds, on a later phase of another of the unit's old plans.** A known edge: the cut orders the plans by what they depend on, never by the tracker's links. Say so to the person, as the refusal reads, and stop the directive there.
+
+Write each such ruling into `phases/{N}.settled.md` of the waiting task's phase, as a reversal's is, and into its findings: it is amended and verified as any finding sends it. Once each link is settled, join and cut again.
+
+Once a unit is cut, the check names each task of it held after another unit's task neither done nor closed: a link the cut could not see while the other unit's tasks were not yet named. Judge each as above. Where it no longer holds, take it off as the check names it, the unit cut, no plan given:
 
 ```bash
-node .claude/skills/ledger-engine/scripts/engine.cjs task unlink {unit} {task} --after {after} --file {plan}
+node .claude/skills/ledger-engine/scripts/engine.cjs task unlink {unit} {task} --after {after}
 ```
 
-Where they don't settle it, ask the person in prose, naming both tasks as the refusal does and what the sources show, and **STOP.** Wait for user response. A link they say no longer holds is taken off as above. A link that holds leaves a task that would never start: say so to the person, as the refusal reads, and stop the directive there. Once each link is off, cut again.
+Where it holds, the waiting phase is cut already and can't be amended to rely on the other unit: a known edge. Say so to the person, as the check reads, and stop the directive there.
 
 ## An Epic's Research
 
 The move kept research that fed several topics on the epic's discovery log, in a session of its own, `{unit}/discovery/session-{NNN}.md`, opening on the migration's line, each source under `## Research: {source}`, `{source}` the name of the research file it came from. Place each source by judgment:
 
 - **Where it bears.** A topic it bears on is one whose conversation needs what the section holds to be had: its decisions turn on it, or it answers that topic's questions. A section bearing on one theme of the epic goes to that topic; one bearing on several goes to each.
-- **Epic-wide.** A section that bears on the epic as a whole, or on no topic more than another, stays where it is.
+- **Epic-wide.** A section that bears on the epic as a whole, or on no topic more than another, stays where it is: the records step carried what it holds on the epic's own record.
 - **Logs only grow.** Append the section to the end of each topic's log, under `## Research: {source}, from discovery session {NNN}`, a blank line, then everything the session holds under its source's heading up to the next source's, word for word, its own headings among it, but each relative link rebased to resolve from the log's folder to what it named from the session's. A topic's log is `{unit}/topics/{topic}/log.md`, or, for a topic a split took to a new epic, `{epic}/topics/{topic}/log.md`. Change nothing already in the log, and leave the session as it stands.
 
 Then write the placement, `.cache/migrate/cut-and-merges/{unit}/placed.json`: for each session, each of its sources and the topics it went to, `[]` for one left epic-wide:

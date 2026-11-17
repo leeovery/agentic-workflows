@@ -741,8 +741,6 @@ function mapTopics(reshaped) {
 /** @param {Record<string, any>} manifest */
 const isQuickFix = (manifest) => manifest.work_type === 'quick-fix';
 
-// The phases a started topic holds an item in, once the move reshaped its unit's manifest.
-
 /** Whether every phase of a quick-fix's old pipeline completed, as today's engine reads a phase. @param {Record<string, any>} manifest */
 const pipelineDone = (manifest) => QUICK_FIX_PIPELINE.every((phase) => {
   const items = Object.values(itemsOf(manifest, phase));

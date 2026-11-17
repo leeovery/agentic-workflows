@@ -137,9 +137,15 @@ const checked = (at = dir) => ok(at, ['migrate', 'check', RECORDS], { env: SESSI
 /** Each piece not done, by its name, with what it lacks. @param {string} [at] */
 const unfinished = (at = dir) => Object.fromEntries(checked(at).unfinished.map(({ name, problems }) => [name, problems]));
 
-/** The ledger carry of a topic's record, composed where the directive keeps it. @param {string} at @param {string} dotpath @param {unknown[]} entries */
+/** The unit and the topic a record's dot-path names, the topic null for a unit's own. @param {string} dotpath @returns {[string, string|null]} */
+function recordOf(dotpath) {
+  const [unit, , topic = null] = dotpath.split('.');
+  return [unit, topic];
+}
+
+/** The ledger carry of a record, composed where the directive keeps it. @param {string} at @param {string} dotpath @param {unknown[]} entries */
 function carryArgs(at, dotpath, entries) {
-  const [unit, , topic] = dotpath.split('.');
+  const [unit, topic] = recordOf(dotpath);
   writeState(at, composedPath(unit, topic), JSON.stringify({ entries }));
   return ['ledger', 'carry', dotpath];
 }
@@ -153,7 +159,7 @@ const carry = (dotpath, entries, at = dir, cwd = at) => ok(cwd, carryArgs(at, do
  * @param {string} dotpath @param {unknown[]} entries
  */
 function refused(dotpath, entries) {
-  const [unit, , topic] = dotpath.split('.');
+  const [unit, topic] = recordOf(dotpath);
   return refusedKeeping(dir, carryArgs(dir, dotpath, entries), refusedPath(unit, topic));
 }
 
@@ -169,8 +175,15 @@ const SEARCH_UNCARRIED = Object.freeze([
   'synonyms is on its old map, deferred, and no entry names it as its map_item', 'the thread index-size is still digging in its research, and no entry names it as its thread',
 ]);
 
-/** What a section of an approved spec no record cites breaks. @param {string} unit @param {string} at @param {string} section */
-const uncited = (unit, at, section) => `"${section}" in ${at}, an approved spec, holds text no record of ${unit} cites — a decision made at the spec stage is carried by the topic it belongs to; one it holds none of is marked in ${sectionsMarked(unit)}`;
+/**
+ * What a section of an approved spec no record cites breaks, in its part of
+ * a joined spec where it is in one.
+ * @param {string} unit @param {string} at @param {string} section @param {string|null} [part]
+ */
+const uncited = (unit, at, section, part = null) => `"${section}" in ${part === null ? '' : `part "${part}" of `}${at}, an approved spec, holds text no record of ${unit} cites — what the spec stage decided, found or left open is carried by the topic it belongs to; a section holding none of it is marked in ${sectionsMarked(unit)} as ${JSON.stringify({ [at]: part === null ? [section] : { [part]: [section] } })}`;
+
+/** What each section of shop's joined spec no record cites breaks, by its part. @param {'1. Weights'|'2. Wishlist'} part @param {string[]} sections */
+const shopUncited = (part, sections) => sections.map((section) => uncited('shop', 'shop/spec.md', section, part));
 
 /** What an old map's subtopic no entry names breaks. @param {string} item @param {string} status */
 const unnamed = (item, status) => `${item} is on its old map, ${status}, and no entry names it as its map_item`;
@@ -232,7 +245,7 @@ describe('a record breaking a rule is refused at the carry, its refusal kept bes
     writeState(dir, layout.unit('fumi', 'discovery', 'session-001.md'), '## Discovery Session 001\n\n### Ranking\n\nBy recency, the person said.\n');
     const [q1, ...rest] = GOOD['fumi.discussion.search'];
     const citing = (/** @type {string} */ cited, /** @type {string} */ section) => [{ ...q1, cites: [{ path: cited, section }] }, ...rest];
-    const strays = (/** @type {string} */ cited) => breaks('fumi', 'search', [`entry q1 cites ${cited}, which is neither its topic's own, but its mail, nor the unit's beside its topics — a cite names a file that stays with its entry`]);
+    const strays = (/** @type {string} */ cited) => breaks('fumi', 'search', [`entry q1 cites ${cited}, which is neither its topic's own, but its mail, nor the unit's beside its topics, nor a discovery session it draws on — a cite names a file that stays with its entry`]);
 
     assert.deepStrictEqual([
       refused('fumi.discussion.search', citing(findingsPath('fumi', 'search'), 'Ranking')),
@@ -362,7 +375,60 @@ describe('a record breaking a rule is refused at the carry, its refusal kept bes
       breaks('fumi', 'licensing', ['entry d2 cites fumi/spec.md, which the state does not hold']));
     assert.strictEqual(refused('shop.discussion.weights', [{ ...question, cites: ['Pricing', 'Saving'].map((section) => ({ path: 'shop/spec.md', section })) }, decision]),
       breaks('shop', 'weights', ['entry q1 cites "Pricing" in shop/spec.md, which has no such heading']));
-    carry('shop.discussion.weights', [{ ...question, cites: ['Detail', 'Ranking'].map((section) => ({ path: 'shop/spec.md', section })) }, decision]);
+    carryArgs(dir, 'shop.discussion.weights', [{ ...question, cites: ['Detail', 'Ranking'].map((section) => ({ path: 'shop/spec.md', section })) }, decision]);
+    assert.deepStrictEqual(ok(dir, ['ledger', 'carry', 'shop.discussion.weights', '--dry-run'], { env: SESSION }).faults, []);
+  });
+});
+
+describe('a unit\'s own record, `{unit}.discovery` (21.6.2)', () => {
+  const SESSION_LOG = '## Discovery Session 001\n\n### Selling\n\nThe shop sells to the trade alone, and its buyers order by the case.\n';
+  const selling = { ref: 'f1', event: 'found', text: 'The shop sells to the trade alone.', how: 'read in the discovery session', known: 'read', by: 'claude', cites: [{ path: 'shop/discovery/session-001.md', section: 'Selling' }], assets: [{ path: layout.assets('shop', 'vision.md'), status: 'reference' }] };
+
+  it('is a piece of each epic whose discovery holds a session, carried at the unit\'s discovery, no topic\'s: findings and open questions alone, cites that stay, the imports of the unit\'s discovery as a whole linked — once', () => {
+    dir = world();
+    writeState(dir, layout.unit('shop', 'discovery', 'session-001.md'), SESSION_LOG);
+    const before = checked().unfinished.find(({ name }) => name === 'shop.discovery');
+
+    const faults = refused('shop.discovery', [{ ...selling, assets: [] }, { ref: 'q1', event: 'asked', text: 'Who sets the case size?', by: 'claude', cites: [logCite('shop', 'weights', 'Tie Break')] }, { ref: 'd1', event: 'decided', answers: 'q1', text: 'The trade.', why: 'The session says so.', by: 'claude', given: 'carried', cites: selling.cites }]);
+    const { ids } = carry('shop.discovery', [selling]);
+    const line = JSON.parse(fs.readFileSync(statePath(dir, layout.ledger), 'utf8').split('\n').filter(Boolean).at(-2));
+    const again = harness.refuses(dir, carryArgs(dir, 'shop.discovery', [selling]), { env: SESSION }).error;
+
+    assert.deepStrictEqual([before, faults, Object.keys(ids), [line.unit, line.phase, line.topic], unfinished()['shop.discovery'], again], [
+      { name: 'shop.discovery', problems: ['has no record yet'] },
+      breaks('shop', 'own discovery', [
+        'entry d1 decides, and nothing is decided in discovery — what its sources settle is a finding, what they leave open a question',
+        'entry q1 cites shop/topics/weights/log.md, which is neither its topic\'s own, but its mail, nor the unit\'s beside its topics, nor a discovery session it draws on — a cite names a file that stays with its entry',
+        'shop/assets/vision.md came in from discovery, and no entry links it',
+      ]),
+      ['f1'], ['shop', 'discovery', null], undefined,
+      'ledger carry: the ledger holds entries on shop\'s own discovery already — a record is carried once',
+    ]);
+  });
+
+  it('none for an epic whose discovery holds no session, nor for a unit of one topic, whose discovery is its topic\'s', () => {
+    dir = world();
+    writeState(dir, layout.unit('gone', 'discovery', 'session-001.md'), '## Discovery Session 001\n\n### Going\n\nIt went.\n');
+    const none = (/** @type {string} */ unit) => `ledger carry: ${unit} has no record of its own — an epic whose discovery holds a session has one, and a unit of one topic's discovery is its topic's`;
+
+    assert.deepStrictEqual([checked().unfinished.some(({ name }) => name.endsWith('.discovery')), ...['shop', 'gone'].map((unit) => harness.refuses(dir, ['ledger', 'carry', `${unit}.discovery`], { env: SESSION }).error)],
+      [false, none('shop'), none('gone')]);
+  });
+
+  it('a topic promoted to a cross-cutting unit draws on the discovery sessions of the unit it came from, which its entries may cite; another unit\'s they may not', () => {
+    dir = world();
+    writeState(dir, layout.unit('fumi', 'discovery', 'session-001.md'), '## Discovery Session 001\n\n### Sign-in\n\nOne sign-in across the product.\n');
+    writeState(dir, layout.unit('shop', 'discovery', 'session-001.md'), SESSION_LOG);
+    const [q1, d1, ...rest] = GOOD['platform.discussion.auth'];
+    const citing = (/** @type {string} */ at, /** @type {string} */ section) => [{ ...q1, cites: [...q1.cites, { path: at, section }] }, d1, ...rest];
+    const dry = (/** @type {unknown[]} */ entries) => {
+      carryArgs(dir, 'platform.discussion.auth', entries);
+      return ok(dir, ['ledger', 'carry', 'platform.discussion.auth', '--dry-run'], { env: SESSION }).faults;
+    };
+
+    assert.deepStrictEqual([dry(citing('fumi/discovery/session-001.md', 'Sign-in')), dry(citing('shop/discovery/session-001.md', 'Selling'))], [[], [
+      'entry q1 cites shop/discovery/session-001.md, which is neither its topic\'s own, but its mail, nor the unit\'s beside its topics, nor a discovery session it draws on — a cite names a file that stays with its entry',
+    ]]);
   });
 });
 
@@ -451,7 +517,7 @@ describe('what the check reads once a record is carried', () => {
     assert.deepStrictEqual(unfinished(), {
       'gone/gone': ['entry q1 cites "Cause" in gone/topics/gone/log.md, which has no such heading'],
       'platform/auth': ['its record never reached the ledger'],
-      'shop/weights': ['its record is empty, and its log or brief holds text past its headings', unnamed('tie-break', 'decided'), ...['Ranking', 'Detail', 'Corrigenda', 'Saving'].map((section) => uncited('shop', 'shop/spec.md', section))],
+      'shop/weights': ['its record is empty, and its log or brief holds text past its headings', unnamed('tie-break', 'decided'), ...shopUncited('1. Weights', ['Ranking', 'Detail', 'Corrigenda']), ...shopUncited('2. Wishlist', ['Saving', 'Ranking'])],
     });
   });
 
@@ -467,17 +533,44 @@ describe('what the check reads once a record is carried', () => {
     assert.deepStrictEqual([titled, empty()], [[], ['its record is empty, and its log or brief holds text past its headings']]);
   });
 
-  it('once every topic of a unit has a record, composed or carried, each section of its approved specs holding text that no record cites is named on the topics drawing on it — asking no composer for an entry, the carry taking the record — until a record cites it or the session marks it as holding no topic\'s decision (21.6.4)', () => {
+  it('once every topic of a unit has a record, composed or carried, each section of its approved specs holding text that no record cites is named on the topics drawing on it — a joined spec\'s by its part, a heading two parts share once in each — asking no composer for an entry, until a record cites it or the session marks it, a mark in its part alone, as holding no topic\'s (21.6.4)', () => {
     dir = world();
     const [q1, d1] = GOOD['shop.discussion.weights'];
-    const shop = (/** @type {string[]} */ sections) => sections.map((section) => uncited('shop', 'shop/spec.md', section));
     writeState(dir, composedPath('shop', 'weights'), JSON.stringify({ entries: [q1, d1] }));
 
     const composed = unfinished()['shop/weights'];
-    writeState(dir, sectionsMarked('shop'), JSON.stringify({ 'shop/spec.md': ['Saving'] }));
-    carry('shop.discussion.weights', [q1, d1]);
+    writeState(dir, sectionsMarked('shop'), JSON.stringify({ 'shop/spec.md': { '2. Wishlist': ['Saving', 'Ranking'] } }));
+    const marked = unfinished()['shop/weights'];
 
-    assert.deepStrictEqual([composed, unfinished()['shop/weights']], [['has no record yet', ...shop(['Ranking', 'Detail', 'Saving'])], shop(['Ranking', 'Detail'])]);
+    assert.deepStrictEqual([composed, marked, ok(dir, ['ledger', 'carry', 'shop.discussion.weights', '--dry-run'], { env: SESSION }).faults], [
+      ['has no record yet', ...shopUncited('1. Weights', ['Ranking', 'Detail']), ...shopUncited('2. Wishlist', ['Saving', 'Ranking'])],
+      ['has no record yet', ...shopUncited('1. Weights', ['Ranking', 'Detail'])],
+      [],
+    ]);
+  });
+
+  it('carries no topic of a unit drawing on an approved spec while any topic of it has no record composed, or a section of its specs goes uncited: the session\'s order, refused with nothing written, nor anything beside the record (21.10.9)', () => {
+    dir = world();
+    const manifest = path.join(dir, '.workflows/fumi/manifest.json');
+    const old = JSON.parse(fs.readFileSync(manifest, 'utf8'));
+    old.phases.specification.items.commerce.status = 'completed';
+    fs.writeFileSync(manifest, JSON.stringify(old));
+    const commerce = layout.assets('fumi', 'specs', 'commerce.md');
+    writeState(dir, commerce, `${readState(dir, commerce)}\n## Refunds\n\nWithin a week.\n`);
+    const waits = (/** @type {string[]} */ reasons) => `ledger carry: fumi's licensing is carried once every topic of fumi has its record composed and no section of its approved specs goes uncited — a topic carried takes no section found later: ${reasons.join('; ')}`;
+    const licensing = () => refusedUntouched(dir, carryArgs(dir, 'fumi.discussion.licensing', GOOD['fumi.discussion.licensing']), { env: SESSION }, harness);
+
+    const alone = licensing();
+    for (const [dotpath, entries] of Object.entries(GOOD).filter(([at]) => at.startsWith('fumi.') && at !== 'fumi.discussion.licensing')) writeState(dir, composedPath('fumi', dotpath.split('.')[2]), JSON.stringify({ entries }));
+    const uncitedRefunds = licensing();
+    writeState(dir, sectionsMarked('fumi'), JSON.stringify({ [commerce]: ['Refunds'] }));
+    carry('fumi.discussion.licensing', GOOD['fumi.discussion.licensing']);
+
+    assert.deepStrictEqual([alone, uncitedRefunds, fs.existsSync(statePath(dir, refusedPath('fumi', 'licensing')))], [
+      waits(['billing', 'search', 'support'].map((topic) => `fumi's ${topic} has no record composed`)),
+      waits([uncited('fumi', commerce, 'Refunds')]),
+      false,
+    ]);
   });
 
   it('rests on the record the carry kept and on its ids in the ledger: a ledger line reshaped beyond its id changes nothing', () => {
@@ -543,9 +636,21 @@ describe('the directive\'s example record, frozen with 079', () => {
     assert.strictEqual(unfinished()['fumi/licensing'], undefined);
   });
 
-  it('spells no path from the session\'s folder: every state path is the brief\'s or the engine\'s, the carry naming the topic alone', () => {
+  it('a reversal the session settles: a ruling that changes the record becomes a finding to amend to, one that keeps it takes the finding out — so an empty findings file is only ever a pass', () => {
     const text = fs.readFileSync(DIRECTIVE, 'utf8');
 
-    assert.deepStrictEqual([text.includes('.ledger/'), /ledger carry \{unit\}\.\{phase\}\.\{topic\}\n/.test(text)], [false, true]);
+    assert.deepStrictEqual(['Where the ruling has the record change, replace the finding with `Settled: {point}, amend to agree`', 'Where the ruling keeps the record as it stands, take the finding out of the findings file', 'An empty findings file is only ever a pass.'].filter((rule) => !text.includes(rule)), []);
+  });
+
+  it('a section no record cites goes to the topic it belongs to where it holds a decision, a finding or an open question, and a unit\'s topics are carried once its records are composed and its sections settled', () => {
+    const text = fs.readFileSync(DIRECTIVE, 'utf8');
+
+    assert.deepStrictEqual(['Where it holds a decision, a finding or an open question of a topic\'s, write it into the findings of the topic its subject belongs to', 'So a unit\'s topics are carried in order: compose every topic\'s record, settle the sections the check names, then carry them.'].filter((rule) => !text.includes(rule)), []);
+  });
+
+  it('spells no path from the session\'s folder: every state path is the brief\'s or the engine\'s, the carry naming the record\'s place alone, a topic\'s or a unit\'s own', () => {
+    const text = fs.readFileSync(DIRECTIVE, 'utf8');
+
+    assert.deepStrictEqual([text.includes('.ledger/'), /ledger carry \{place\}\n/.test(text), text.includes('a topic\'s, `{unit}.{phase}.{topic}`, or a unit\'s own, `{unit}.discovery`')], [false, true, true]);
   });
 });

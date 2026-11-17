@@ -46,8 +46,9 @@
 // `migrate join <unit> --directive <id> --phase <N> --dry-run` answers the
 // faults of that phase's piece alone, as the join would name them, and
 // writes nothing: the per-phase agent checks its piece with it before
-// handing back. Its verifier's verdict and the reliances between phases
-// are the join's own, met there. It refuses a phase the cut lacks, one the
+// handing back. A phase it relies on counts as still to build unless the
+// join writes it or its piece reads built; its verifier's verdict is the
+// join's own, met there. It refuses a phase the cut lacks, one the
 // join writes itself, and a piece that will not read.
 // ---------------------------------------------------------------------------
 
@@ -310,6 +311,18 @@ function pieceIn(root, sources, phase) {
 }
 
 /**
+ * Each phase still to build of `phases` that relies on nothing for a phase
+ * still to build its plan depends on, in the join's words — `of` alone where
+ * one is named; `building` says which are still to build, and `reliesOn`
+ * what a phase's piece relies on.
+ * @param {CutPhase[]} phases @param {(phase: CutPhase) => boolean} building @param {(number: number) => unknown[]} reliesOn @param {CutPhase|null} [of]
+ */
+function unreliedFaults(phases, building, reliesOn, of = null) {
+  return oldReliances(phases).filter(({ phase, on }) => (of === null || phase === of) && building(phase) && building(on) && !reliesOn(phase.number).includes(on.number))
+    .map(({ phase, on, by }) => `phase ${phase.number}, of ${phase.topic}'s plan, relies on nothing for ${by}, which phase ${on.number}, of ${on.topic}'s plan, builds — it relies on phase ${on.number}`);
+}
+
+/**
  * The plan the cut takes, joined from the pieces (the header's), or every
  * fault that refuses the join.
  * @param {string} root the state's folder @param {UnitSources} sources @param {CutPhase[]} phases @param {Set<string>} sections the spec's
@@ -325,8 +338,7 @@ function joined(root, sources, phases, sections) {
   const faults = read.flatMap((each) => each.faults);
   const stillToBuild = new Set(read.filter(({ phase, piece }) => phase.composed && piece?.phase?.built !== true).map(({ phase }) => phase.number));
   const reliesOn = (/** @type {number} */ number) => read.find(({ phase }) => phase.number === number)?.piece?.phase?.relies_on ?? [];
-  const unrelied = oldReliances(phases).filter(({ phase, on }) => stillToBuild.has(phase.number) && stillToBuild.has(on.number) && !reliesOn(phase.number).includes(on.number))
-    .map(({ phase, on, by }) => `phase ${phase.number}, of ${phase.topic}'s plan, relies on nothing for ${by}, which phase ${on.number}, of ${on.topic}'s plan, builds — it relies on phase ${on.number}`);
+  const unrelied = unreliedFaults(phases, (phase) => stillToBuild.has(phase.number), reliesOn);
   if (faults.length > 0 || unrelied.length > 0) return { plan: null, faults: [...faults, ...unrelied] };
   /** @type {Record<string, string[]>} */
   const scenarios = {};
@@ -346,7 +358,9 @@ function joined(root, sources, phases, sections) {
 
 /**
  * The faults of one phase's piece, as the join would name them, nothing
- * written (the header's).
+ * written (the header's): its own, and where it relies on nothing for a
+ * phase its plan depends on, which counts as still to build unless the join
+ * writes it or its piece reads built.
  * @param {string} root @param {string} unit @param {UnitSources} sources @param {CutPhase[]} phases @param {Set<string>} sections @param {string} number
  */
 function pieceCheck(root, unit, sources, phases, sections, number) {
@@ -355,7 +369,9 @@ function pieceCheck(root, unit, sources, phases, sections, number) {
   if (!phase.composed) throw new Error(`migrate join: phase ${phase.number} of ${unit}'s cut is built, and the manifest and the tracker agree — the join writes it`);
   const { piece, fault } = pieceIn(root, sources, phase);
   if (fault !== null) throw new Error(`migrate join: ${fault}`);
-  return { unit, phase: phase.number, faults: pieceFaults(phase, piece, sections, phases) };
+  const building = (/** @type {CutPhase} */ other) => (other === phase ? piece?.phase?.built !== true : other.composed && pieceIn(root, sources, other).piece?.phase?.built !== true);
+  const reliance = unreliedFaults(phases, building, () => (Array.isArray(piece?.phase?.relies_on) ? piece.phase.relies_on : []), phase);
+  return { unit, phase: phase.number, faults: [...pieceFaults(phase, piece, sections, phases), ...reliance] };
 }
 
 /**

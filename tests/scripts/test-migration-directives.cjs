@@ -180,7 +180,7 @@ describe('engine migrate check (21.10.7)', () => {
       'migrate check: "../079" is no directive\'s id — a directive\'s id is its file\'s name, NNN-{slug}',
       'migrate check: there is no directive 078-move',
       'migrate check: 090-unchecked\'s check could not be loaded from {migrations}/090-unchecked.check.cjs: Cannot find module',
-      'migrate check: 091-shapeless\'s check exports no check() beside what it counts — it exports { counts: { one, many }, done, check({ projectDir, stateDir }) }',
+      'migrate check: 091-shapeless\'s check exports no check() beside what it counts — it exports { counts: { one, many }, done, check({ projectDir, stateDir, tracker }) }',
       'migrate check: 092-failing\'s check failed: the old manifests could not be read',
       'migrate check: 093-unanswered\'s check answered no list of { name, problems }',
       'Usage: engine migrate check <id> | engine migrate checked | engine migrate review | engine migrate join <work-unit> --directive <id> [--phase <N> --dry-run]',

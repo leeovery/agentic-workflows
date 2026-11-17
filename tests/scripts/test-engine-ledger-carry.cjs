@@ -174,7 +174,7 @@ describe('a redo never duplicates (21.10.9)', () => {
     carry(LICENSING, [QUESTION, DECISION]);
 
     assert.strictEqual(untouched(composed(LICENSING, { entries: [QUESTION, DECISION] })),
-      'ledger carry: the ledger holds entries on fumi\'s licensing already — a topic\'s record is carried once');
+      'ledger carry: the ledger holds entries on fumi\'s licensing already — a record is carried once');
     assert.strictEqual(lines().length, 3);
   });
 
@@ -194,7 +194,7 @@ describe('a redo never duplicates (21.10.9)', () => {
     const landed = readState(dir, layout.ledger);
 
     assert.strictEqual(landed.split('\n').filter(Boolean).length, 3);
-    assert.match(refuses(dir, args, { env: SESSION }).error, /a topic's record is carried once$/);
+    assert.match(refuses(dir, args, { env: SESSION }).error, /a record is carried once$/);
     assert.strictEqual(readState(dir, layout.ledger), landed);
   });
 });
@@ -204,7 +204,7 @@ describe('the refusals, nothing written', () => {
   after(() => cleanupFixture(path.dirname(dir)));
 
   it('no session, argv of another shape, and a place naming no topic, writing nothing; no record composed, or a file holding none, writing its refusal beside the record', () => {
-    const usage = 'Usage: engine ledger carry <work-unit>.<phase>.<topic> [--dry-run]   (the topic\'s record as JSON, {"entries": [...]}, composed at .cache/migrate/records/{unit}/{topic}.json in the state)';
+    const usage = 'Usage: engine ledger carry <work-unit>.<phase>.<topic>|<work-unit>.discovery [--dry-run]   (the record as JSON, {"entries": [...]}, composed at .cache/migrate/records/{unit}/{topic}.json in the state, a unit\'s own at .cache/migrate/records/{unit}.json)';
     assert.deepStrictEqual([
       untouched(['ledger', 'carry', LICENSING], { env: {} }),
       untouched(['ledger', 'carry']),
@@ -230,7 +230,7 @@ describe('the refusals, nothing written', () => {
       usage,
       usage,
       usage,
-      'ledger carry: "fumi.discussion" names no topic — <work-unit>.<phase>.<topic>',
+      'ledger carry: "fumi.discussion" names no topic — <work-unit>.<phase>.<topic>, or <work-unit>.discovery for a unit\'s own',
       'ledger carry: the records carry no topic in "specification" — one of discovery, discussion, investigation',
       'ledger carry: the records carry no topic in "research" — one of discovery, discussion, investigation',
       'ledger carry: there is no work unit "nope"',
@@ -332,6 +332,15 @@ describe('the refusals, nothing written', () => {
       'trial-length is on its old map, decided, and no entry names it as its map_item',
       'fumi/assets/pricing.md came in from discussion/licensing, and no entry links it',
     ));
+  });
+
+  it('what an entry says of itself is judged on the fields that passed their type: a field of another type is named once, as such', () => {
+    const mistyped = (/** @type {Record<string, unknown>} */ entry) => mend([QUESTION, entry]);
+
+    assert.deepStrictEqual([mistyped({ ...DECISION, by: 'person', given: 'mine' }), mistyped({ ...FINDING, relies_on: [], known: 'measured', command: 7, result: null })], [
+      broken('entry d1: the content\'s given is not one of own, your-call, dont-care, carried'),
+      broken('entry f1: the content\'s command is not non-empty text, or null'),
+    ]);
   });
 
   it('an asset of another shape, or one the state holds no file at', () => {

@@ -1107,16 +1107,20 @@ function trustEventOf(kind, content, reason, replaced) {
  * says of itself what cannot be: the person's decision given as anything
  * but their own, a finding saying no kind, a measurement — measured or
  * exploratory — with no command run or no result, and a command or a
- * result without the other.
+ * result without the other. Each is judged on the fields the content holds,
+ * a field of another type left out of it, which its own fault names.
  * @param {string} said @param {EntryKind|null} kind @param {Record<string, unknown>} content
  * @returns {string[]}
  */
-function saidFaults(said, kind, { by, given, known, command, result }) {
+function saidFaults(said, kind, content) {
+  const holds = (/** @type {string[]} */ ...names) => names.every((name) => Object.hasOwn(content, name));
+  const { by, given, known, command, result } = content;
   if (kind === 'decision') {
-    return by === 'person' && given !== 'own' ? [`${said}: the person's decision is given ${given} — the person's own is given own, and what they hand over, or what is carried over, is Claude's line, by claude`] : [];
+    return holds('by', 'given') && by === 'person' && given !== 'own' ? [`${said}: the person's decision is given ${given} — the person's own is given own, and what they hand over, or what is carried over, is Claude's line, by claude`] : [];
   }
-  if (kind !== 'finding') return [];
+  if (kind !== 'finding' || !holds('known')) return [];
   if (known === null) return [`${said}: the content's known is null — a finding written now says how it is known`];
+  if (!holds('command', 'result')) return [];
   if (MEASURED.includes(/** @type {string} */ (known)) && command === null) {
     return [`${said}: ${known === 'exploratory' ? 'an exploratory' : 'a measured'} finding records the command run and its result — the content needs command and result`];
   }

@@ -579,18 +579,19 @@ function linkFaults(driver, root, unit, tasks) {
 
 /**
  * `task unlink`: the link holding `task` after `after` taken off, for the
- * migration's cut, before its adoption (21.8.8): each named as adopting
- * `phases` in turn would name it, another unit's by its id. Refuses a task
- * no phase the cut adopts holds, and a link it does not hold.
- * @param {string} cwd @param {string} unit @param {{phase: number, parent: string, order: string[]}[]} phases @param {TaskRef} task @param {TaskRef} after
+ * migration's cut (21.8.8): before its adoption, each named as adopting
+ * `phases` in turn would name it, another unit's by its id; once the cut,
+ * `phases` null, as the tracker names them. Refuses a task no phase the
+ * cut adopts holds, or the tracker, once cut, and a link it does not hold.
+ * @param {string} cwd @param {string} unit @param {{phase: number, parent: string, order: string[]}[]|null} phases @param {TaskRef} task @param {TaskRef} after
  */
 function unlinkAdopted(cwd, unit, phases, task, after) {
   const said = `${shownTask(task)} after ${unlinkedAfter(unit, after)}`;
   return withTracker(cwd, unit, `take the link of ${said} off`, (driver, root) => {
-    const held = driver.adoption(root, unit, phases).flatMap(({ tasks }) => tasks).find(({ ref }) => sameTask(ref, task));
-    if (held === undefined) throw new TaskRefusal(`no phase the cut adopts holds task ${shownTask(task)}`);
+    const held = phases === null ? driver.show(root, task) : driver.adoption(root, unit, phases).flatMap(({ tasks }) => tasks).find(({ ref }) => sameTask(ref, task)) ?? null;
+    if (held === null) throw new TaskRefusal(phases === null ? `the tracker holds no task ${shownTask(task)} of ${unit}` : `no phase the cut adopts holds task ${shownTask(task)}`);
     if (!held.after.some((ref) => sameTask(ref, after))) throw new TaskRefusal(`task ${shownTask(task)} is held after no task ${unlinkedAfter(unit, after)} — the link is not there to take off`);
-    driver.unlink(root, unit, phases, task, after);
+    driver.unlink(root, unit, phases ?? [], task, after);
     return { task: shownTask(task), after: unlinkedAfter(unit, after) };
   });
 }
@@ -707,6 +708,19 @@ function migratedTracker(cwd, unit, phases, type, topics, corrections = []) {
       open: unbuilt.filter(({ status }) => !ENDED.includes(status)).map(({ ref, text }) => ({ task: shownTask(ref), text })),
     };
   });
+}
+
+/**
+ * The tracker as a directive's check reads it (directives.cjs): a phase's
+ * tasks, and one task, through the project's task driver, chosen at the
+ * first read and writing nothing — not even the driver's setting.
+ * @param {string} cwd
+ * @returns {{tasks: (unit: string, phase: number) => TaskDetail[]|null, show: (ref: TaskRef) => TaskDetail|null}}
+ */
+function trackerReads(cwd) {
+  const root = stateRoot(cwd);
+  const driver = () => /** @type {TaskDriver} */ (chosenDriver(cwd, 'task').driver);
+  return { tasks: (unit, phase) => driver().tasks(root, unit, phase), show: (ref) => driver().show(root, ref) };
 }
 
 /**
@@ -1367,7 +1381,7 @@ const TASK_VERBS = Object.freeze({
   type: { usage: '<unit> <task> <type>', arity: 3, run: (cwd, [unit, task, type]) => typeTask(cwd, unit, task, type) },
   'close-plan': { usage: '<unit> --parent <tracker-id>', arity: 1, flags: ['parent'], run: (cwd, [unit], parent) => closePlan(cwd, unit, parent) },
   link: { usage: '<unit> <task> --after <task>', arity: 2, flags: ['after'], run: (cwd, [unit, task], after) => linkTask(cwd, unit, task, after) },
-  unlink: { usage: '<unit> <task> --after <task> --file <plan.json>', arity: 2, flags: ['after', 'file'], run: (cwd, [unit, task], after, file) => migrating().unlinkMigrating(cwd, unit, task, after, file) },
+  unlink: { usage: '<unit> <task> --after <task> [--file <plan.json>]', arity: 2, flags: ['after'], mayTake: ['file'], run: (cwd, [unit, task], after, file) => migrating().unlinkMigrating(cwd, unit, task, after, file) },
   ready: { usage: '<unit> [<N>]', arity: 1, optional: 1, run: (cwd, [unit, phase]) => readyTasks(cwd, unit, phase) },
   start: { usage: '<unit> <task>', arity: 2, run: (cwd, [unit, task]) => startTask(cwd, unit, task) },
   done: { usage: '<unit> <task>', arity: 2, run: (cwd, [unit, task]) => doneTask(cwd, unit, task) },
@@ -1397,4 +1411,4 @@ function runTaskVerb(cwd, verb, positional, opts) {
   return run(cwd, positional, ...values, .../** @type {string[]} */ (given));
 }
 
-module.exports = { TASK_VERBS, ENDED, STATUS_WORDS, runTaskVerb, closeForMove, migratedTracker, adoptionRead, unlinkAdopted, writePhase, trackedTask, trackedPhases, trackedLists, trackedPhase, trackedBuild, removeBuild, trackedUnit, goingOn, goesOn, phaseOpen, takesTurns, stepTurn, turnOf, turnEnds, turnRefusal, turnWords, checkoutHold, refuseNotHolding, phaseWritten, givenText, trackedStart, copiedTasks };
+module.exports = { TASK_VERBS, ENDED, STATUS_WORDS, runTaskVerb, closeForMove, migratedTracker, adoptionRead, trackerReads, unlinkAdopted, writePhase, trackedTask, trackedPhases, trackedLists, trackedPhase, trackedBuild, removeBuild, trackedUnit, goingOn, goesOn, phaseOpen, takesTurns, stepTurn, turnOf, turnEnds, turnRefusal, turnWords, checkoutHold, refuseNotHolding, phaseWritten, givenText, trackedStart, copiedTasks };

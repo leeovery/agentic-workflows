@@ -449,14 +449,19 @@ describe('the migration\'s cut of a unit whose building started (21.7.1, 21.8.6�
     assert.deepStrictEqual([after(2)?.includes('shop-5-1'), after(3)?.includes('memo-1-1'), after(3)?.includes('shop-3-1')], [false, false, true]);
   });
 
-  it('task unlink refuses a link the tracker does not hold, a task no adopted phase holds, and a unit cut already, writing nothing', () => {
+  it('task unlink refuses a link the tracker does not hold, a task no adopted phase holds, a unit cut already given a plan and one not cut yet given none, and, once cut, a task the tracker does not hold, writing nothing', () => {
     const plan = String(cutArgs('shop', shopPlan()).at(-1));
-    const unlink = (/** @type {string} */ task, /** @type {string} */ after) => trackerUntouched('shop', ['task', 'unlink', 'shop', task, '--after', after, '--file', plan]);
-    assert.deepStrictEqual([unlink('4.2', '5.1'), unlink('9.1', '5.1')], [
+    const unlink = (/** @type {string} */ task, /** @type {string} */ after, /** @type {string[]} */ file = ['--file', plan]) => trackerUntouched('shop', ['task', 'unlink', 'shop', task, '--after', after, ...file]);
+    const before = [unlink('4.2', '5.1'), unlink('9.1', '5.1'), unlink('4.2', '5.1', [])];
+    cut('shop', shopPlan());
+
+    assert.deepStrictEqual([...before, unlink('4.2', '5.1', []), unlink('9.1', '5.1', [])], [
       'task 4.2 is held after no task 5.1 — the link is not there to take off',
       'no phase the cut adopts holds task 9.1',
+      'task unlink: the migration has not cut shop yet — its tasks are named as the cut\'s adoption of its plan names them, so name the plan, --file <plan.json>',
+      'task 4.2 is held after no task 5.1 — the link is not there to take off',
+      'the tracker holds no task 9.1 of shop',
     ]);
-    cut('shop', shopPlan());
     assert.match(unlink('4.2', '5.1'), /^task unlink: the migration has cut shop already/);
   });
 
