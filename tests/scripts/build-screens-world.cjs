@@ -199,7 +199,7 @@ const buildScreensWorld = fixtureFrom('engine-build-screens-', (dir) => {
   callFor(dir, '1.1', 'The till beeps', 'person');
   made.printed = callFor(dir, '1.2', 'The receipt is printed');
   made.asked = QUESTIONS.map((text) => write(dir, 'ask', [], { text }));
-});
+}, { kept: made });
 
 /** Claude's call on the first question, which a test parks tasks on — on another, asking that. */
 const CALL = Object.freeze({

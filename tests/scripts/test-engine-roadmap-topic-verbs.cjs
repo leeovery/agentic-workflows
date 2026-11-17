@@ -28,7 +28,7 @@ const { roadmapWorld, runOk, runFail, readProject, projectManifestText, writeSou
 
 describe('engine CLI: the postpone — a topic leaves the epic for the roadmap and comes back by the pull', () => {
   let dir;
-  const setup = roadmapWorld((at) => {
+  const setup = roadmapWorld('engine-roadmap-topics-', (at) => {
     createManifest(at, 'mvp', {
       work_type: 'epic',
       status: 'in-progress',
@@ -393,7 +393,7 @@ describe('engine CLI: the postpone — a topic leaves the epic for the roadmap a
 
 describe('engine CLI: the cancel-revert hop', () => {
   let dir;
-  const setup = roadmapWorld((at) => {
+  const setup = roadmapWorld('engine-roadmap-topics-more-', (at) => {
     runOk(at, ['add', 'ordering', '--horizon', 'mvp', '--summary', 's']);
     runOk(at, ['add', 'menus', '--horizon', 'mvp', '--summary', 's']);
     createManifest(at, 'mvp', {

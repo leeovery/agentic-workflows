@@ -29,7 +29,7 @@ const side = require('./landing.cjs');
 const { GH_ENV, bareOf, calls, headDeleted, pulls, ok, refused, tipOnGithub, squashedByHand, madeSince } = require('./world.cjs');
 const { call, git } = require('../../scripts/engine-harness.cjs');
 
-const project = useLandingWorld('github-landing-again-', side.prepare);
+const project = useLandingWorld('github-landing-again-', side.prepare, 'landing-github-');
 
 /** Whether step's merge gate for a phase stands, drawn rather than refused. @param {string} dir @param {number} phase */
 function gateDrawn(dir, phase) {

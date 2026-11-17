@@ -16,7 +16,7 @@
 // phase 2 of `crash` past its cut, its one task 2.1, which no branch holds.
 // `unproven` is that world; `proven`, the same with the test's series run
 // on the unfixed code through `verify run … --unfixed`, five failures —
-// each built once per process and copied for each test. A landing of phase
+// each built once per run and copied for each test. A landing of phase
 // 1's tasks on main is made as every landing driver makes one, a commit
 // whose message names the task (`landedOnMain`).
 // ---------------------------------------------------------------------------

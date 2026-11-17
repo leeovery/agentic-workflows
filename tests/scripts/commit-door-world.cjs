@@ -5,7 +5,7 @@
 // test-engine-commit-door-code.cjs, test-engine-commit-door-guards.cjs, and
 // the task test-engine-code.cjs's code commits are made under): an
 // epic, `payments`, its two topics in progress, their logs and briefs
-// committed clean, built once per process and copied — with code
+// committed clean, built once per run and copied — with code
 // committed beside it and the checkout on the branch of the task a code
 // commit is made under where a suite needs one — the task in flight in the
 // conversation the code commits are made in, and the reads of what a commit
@@ -119,7 +119,7 @@ function startBuilding() {
   cleanupFixture(dir);
 }
 
-const setupTwoTopicFixture = fixtureFrom('engine-commit-', twoTopics);
+const setupTwoTopicFixture = fixtureFrom('engine-commit-two-topics-', twoTopics);
 
 module.exports = {
   headFiles, statusLines, codeHeadFiles, codeStatusLines, holdStateRef, epicManifest, twoTopics, implementing, setupTwoTopicFixture,

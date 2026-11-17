@@ -20,7 +20,7 @@
 // again to the whole of it.
 //
 // Layer: migration. World: codeintel on today's layout (migration-world.cjs,
-// `splitProject`), made once per process and copied for each test.
+// `splitProject`), made once per run and copied for each test.
 //
 
 require('./hermetic-env.cjs');

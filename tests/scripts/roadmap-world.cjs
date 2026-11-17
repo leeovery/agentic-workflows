@@ -15,17 +15,17 @@ const harness = require('./engine-harness.cjs');
 const { commitAll, ok, refuses } = harness;
 
 /**
- * A world made once per process from a temp-dir git repo with an empty
- * project manifest committed, and `build`'s own fixture on top; each call
- * answers a copy.
- * @param {(dir: string) => void} [build]
+ * A world made once per run from a temp-dir git repo with an empty
+ * project manifest committed, and `build`'s own fixture on top, named
+ * `name`; each call answers a copy.
+ * @param {string} name @param {(dir: string) => void} [build]
  */
-function roadmapWorld(build = () => {}) {
-  return harness.fixtureFrom('engine-roadmap-', (dir) => {
+function roadmapWorld(name, build = () => {}) {
+  return harness.fixtureFrom(name, (dir) => {
     fs.writeFileSync(path.join(dir, '.ledger', 'manifest.json'), '{}\n');
     commitAll(dir, 'init');
     build(dir);
-  });
+  }, { by: [build] });
 }
 
 /** A path in the state as a state commit names it: from the state root. */

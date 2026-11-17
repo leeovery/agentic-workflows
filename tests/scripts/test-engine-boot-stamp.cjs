@@ -15,7 +15,7 @@
 //
 // Layer: verb, with one process test, the boot killed as it stamps. World:
 // the project fixture, a git repository with its state worktree and the
-// workflows' hooks in its settings, made once per process and copied for
+// workflows' hooks in its settings, made once per run and copied for
 // each test, beside it a second project where a test needs one; each test
 // under a system config of its own, every call made in a conversation the
 // harness stamps nothing for (`unbooted`); boot runs the repo's real
@@ -50,7 +50,7 @@ const WORK = Object.freeze(['brownfield', 'record', 'native']);
 
 /**
  * A project: its state worktree, the workflows' hooks committed in its
- * settings, so boot writes nothing of its own there. Made once per process.
+ * settings, so boot writes nothing of its own there. Made once per run.
  */
 const projectWorld = fixtureFrom('engine-boot-stamp-', (dir) => {
   createFile(dir, '.claude/settings.json', hooked(WORKFLOW_HOOKS));

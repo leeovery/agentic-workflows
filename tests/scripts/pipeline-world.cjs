@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // The pipeline simulation's world (tests/README.md §11): the project every
-// scenario starts from, made once per process and copied for each; the
+// scenario starts from, made once per run and copied for each; the
 // named worlds several scenario files start from, each built once per run
 // (`worlds`); a scenario file's own world built through the verbs once, on
 // either (`worldFrom`); `Sim`, which drives the engine through its
@@ -48,7 +48,7 @@ const decisionPoint = require(path.join(ROOT, 'skills/ledger-engine/scripts/doma
 
 /** @typedef {import('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs').Next} Next */
 
-// The project every scenario starts from, made once per process.
+// The project every scenario starts from, made once per run.
 // The topic family's map verbs, which answer their one-line report after
 // their JSON (8.8.7).
 const MAP_VERBS = Object.freeze(['add', 'add-batch', 'edit', 'rename', 'remove', 'order', 'brief']);
@@ -413,7 +413,7 @@ function worldFrom(prefix, build, base = simWorld) {
 // then copied for each sim made from it.
 /** @param {string} name @param {(sim: Sim) => void} build @param {() => string} [base] @returns {() => string} */
 function namedWorld(name, build, base = simWorld) {
-  return () => copyWorld(worldOfTheRun(name, (dir) => { builtAt(build, dir, base); }).dir,
+  return () => copyWorld(worldOfTheRun(name, (dir) => { builtAt(build, dir, base); }, { by: [build, base] }).dir,
     fs.mkdtempSync(path.join(os.tmpdir(), `pipeline-${name}-`)));
 }
 

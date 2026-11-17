@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // What the quick-fix board suites share (test-engine-board-quick-fix*.cjs):
-// the worlds, each built once per process and copied at every call, `typo`
+// the worlds, each built once per run and copied at every call, `typo`
 // entered by a conversation gone since — made from its inbox note, fixes 1.1
 // and 1.2 written and 1.1 started, a call of Claude's made in it and a
 // person's decision of the completed `restore` replaced there by Claude,
@@ -68,7 +68,7 @@ const working = fixtureFrom('engine-board-quick-fix-', (dir) => {
       ...as, stdin: JSON.stringify({ by: 'claude', who_moved_whom: 'none', given: 'your-call', text: 'Pressing m marks the highlighted row.', why: 'The note pins it.', drops: ['the empty set'] }),
     }).id;
   });
-});
+}, { kept: made });
 
 const closable = fixtureFrom('engine-board-quick-fix-close-', (dir) => {
   quickFix(dir);
@@ -77,7 +77,7 @@ const closable = fixtureFrom('engine-board-quick-fix-close-', (dir) => {
     fixBuilt(dir, 1, SET[0].title, SET[0].file, SET[0].text, as);
     fixesRecorded(dir, 1, as);
   });
-});
+}, { kept: made });
 
 const recorded = fixtureFrom('engine-board-quick-fix-recorded-', (dir) => {
   twoFixesBuilt(dir);
@@ -85,12 +85,12 @@ const recorded = fixtureFrom('engine-board-quick-fix-recorded-', (dir) => {
     for (const n of [1, 2]) ok(dir, ['quick-fix', 'record', UNIT, `1.${n}`, '--file', recordFile(dir, n, RECORDS[n])], as);
     createFix(dir, 3, SET[2].title, as);
   });
-});
+}, { kept: made });
 
 const unwritten = fixtureFrom('engine-board-quick-fix-unwritten-', (dir) => {
   quickFix(dir, { seeded: false });
   asGone((as) => entered(dir, as));
-});
+}, { kept: made });
 
 /** A fix's line as the view holds it. @param {string} task @param {string} title @param {string} state @param {{since?: string|null, on?: string[], rounds?: object}} [more] */
 const fix = (task, title, state, { since = null, on = [], rounds = {} } = {}) => ({ task, title, state, since, on, rounds: { sent_back: 0, reading: null, passed: null, settled: false, ...rounds } });

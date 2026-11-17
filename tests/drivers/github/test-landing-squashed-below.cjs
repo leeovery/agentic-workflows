@@ -27,7 +27,7 @@ const side = require('./landing.cjs');
 const { bareOf, madeOnGithub, tipOnGithub, ok, refused } = require('./world.cjs');
 
 const { card } = TASKS;
-const project = useLandingWorld('github-landing-squashed-below-', side.prepare);
+const project = useLandingWorld('github-landing-squashed-below-', side.prepare, 'landing-github-');
 
 /** Each command the refusal names between backticks, as git's arguments. @param {string} refusal */
 const named = (refusal) => [...refusal.matchAll(/`git ([^`]+)`/g)].map(([, args]) => args.split(' '));

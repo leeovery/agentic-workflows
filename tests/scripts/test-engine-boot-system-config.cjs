@@ -6,7 +6,7 @@
 // absent, valid or invalid, never key material.
 //
 // Layer: verb. World: the project fixture (boot-world.cjs), a git repository
-// with its state worktree and the workflows' hooks, made once per process and
+// with its state worktree and the workflows' hooks, made once per run and
 // copied; boot runs from a copy of the engine beside a stand-in migration
 // runner whose behaviour the test picks through the environment.
 // ---------------------------------------------------------------------------

@@ -216,9 +216,9 @@ function twoFixesBuilt(dir, { ready = () => {}, env = {} } = {}) {
  * (tests/drivers/{name}/landing.cjs); the calls' options under the side's
  * environment, in the suite's conversation; a copy at each call of the
  * quick-fix readied for the driver, its code tagged `landing-base`, built
- * once per process, entered — every copy removed after its test — or of
+ * once per run, entered — every copy removed after its test — or of
  * that world with fix 1.1 of `SET` built by a conversation gone since, built
- * once per process too, for the suites whose tests all begin there; fix `n`
+ * once per run too, for the suites whose tests all begin there; fix `n`
  * of `SET` changed (`fixChanged`) and recorded; what the default branch
  * gained, each landing by its subject and the paths it changed; and fixes
  * 1.1 and 1.2 recorded and the close made, landing them.
@@ -234,14 +234,14 @@ function quickFixConformance(name, prefix) {
     git(dir, ['tag', 'landing-base']);
     side.prepare(dir);
   };
-  const world = fixtureFrom(prefix, readied);
-  const firstWorld = fixtureFrom(`${prefix}first-`, (dir) => {
+  const world = fixtureFrom(`quick-fix-${name}-`, readied, { by: [side.prepare] });
+  const firstWorld = fixtureFrom(`quick-fix-first-${name}-`, (dir) => {
     readied(dir);
     asGone((gone) => {
       entered(dir, gone);
       fixBuilt(dir, 1, SET[0].title, SET[0].file, SET[0].text, gone);
     }, side.env);
-  });
+  }, { by: [side.prepare] });
   /** @type {string[]} */
   let made = [];
   afterEach(() => {
@@ -252,9 +252,9 @@ function quickFixConformance(name, prefix) {
   const as = () => ({ env: { ...side.env, LEDGER_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: 'sess-1', TMUX: undefined, TMUX_PANE: undefined } });
   /** @param {string} at @param {number} n */
   const record = (at, n) => ok(at, ['quick-fix', 'record', UNIT, `1.${n}`, '--file', recordFile(at, n, { changed: `${SET[n - 1].title}.`, why: 'It was spelt the American way.', leaves: 'Nothing.' })], as());
-  /** A copy of the world `from` makes, the quick-fix entered by the suite's conversation. @param {() => string} from */
+  /** A copy of the world `from` makes, the quick-fix entered by the suite's conversation. @param {(dir: string) => string} from */
   const copied = (from) => {
-    const dir = from();
+    const dir = from(fs.mkdtempSync(path.join(os.tmpdir(), prefix)));
     made.push(dir);
     entered(dir, as());
     return dir;
@@ -288,7 +288,7 @@ function quickFixConformance(name, prefix) {
 /**
  * The quick-fix in a project nesting two clones it ignores (landing-
  * world.cjs's `NESTED`), each repository's code tagged `landing-base`, no
- * landing driver yet readying it: built once per process and copied into
+ * landing driver yet readying it: built once per run and copied into
  * each driver's world (`quickFixNestedConformance`).
  */
 const nestedQuickFix = folderFrom('quick-fix-nested-', (folder) => {
@@ -311,8 +311,8 @@ const nestedQuickFix = folderFrom('quick-fix-nested-', (folder) => {
  * What a quick-fix suite across nested repositories reads a landing driver
  * by (7.2.24): its side; the calls' options in the suite's conversation; a
  * copy at each call of the quick-fix in a project nesting two clones
- * (`nestedQuickFix`, built once per process for every driver),
- * readied for the driver once per process, entered — every copy removed
+ * (`nestedQuickFix`, built once per run for every driver),
+ * readied for the driver once per run, entered — every copy removed
  * after its test; fix `n` opened through the
  * door from the files it writes, each by its path in the project —
  * started, committed and opened, the opening's answer; ended, done and
@@ -328,12 +328,12 @@ function quickFixNestedConformance(name, prefix) {
   /** @type {import('./landing-world.cjs').DriverSide} */
   const side = require(path.join(__dirname, '..', 'drivers', name, 'landing.cjs'));
   const config = useTempFolder(`${prefix}config-`);
-  const world = folderFrom(prefix, (folder) => {
+  const world = folderFrom(`quick-fix-nested-${name}-`, (folder) => {
     nestedQuickFix(folder);
     const dir = path.join(folder, 'project');
     side.prepare(dir);
     for (const { folder: at, into } of Object.values(NESTED)) side.nest(path.join(dir, at), into);
-  });
+  }, { by: [side.prepare, side.nest] });
   /** @type {string[]} */
   let made = [];
   afterEach(() => {

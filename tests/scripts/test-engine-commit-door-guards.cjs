@@ -243,7 +243,7 @@ describe('commit door: never a code commit inside an operation git holds open', 
 });
 
 describe('commit door: a confined commit that does not land leaves the index as it found it', () => {
-  const setup = fixtureFrom('engine-commit-', (at) => {
+  const setup = fixtureFrom('engine-commit-guards-', (at) => {
     for (const folder of ['.', 'apps/web']) {
       createFile(at, `${folder}/a.txt`, 'one\n');
       createFile(at, `${folder}/gone.txt`, 'gone\n');
@@ -292,7 +292,7 @@ describe('commit door: a confined commit that does not land leaves the index as 
 
 describe('commit door: index.lock retry and the commit lock', () => {
   before(startBuilding);
-  const setup = fixtureFrom('engine-commit-', implementing);
+  const setup = fixtureFrom('engine-commit-implementing-', implementing);
   let dir;
   beforeEach(() => {
     dir = setup();

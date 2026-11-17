@@ -41,7 +41,7 @@ const RECORDS = Object.freeze({
   ...BUILT, 3: { changed: 'The docs name --colour.', why: 'The docs matched the old flag.', leaves: 'Nothing.' },
 });
 
-const world = fixtureFrom('quick-fix-record-', twoFixesBuilt);
+const world = fixtureFrom('quick-fix-two-fixes-', twoFixesBuilt);
 
 let dir = ''; // the project
 const config = useTempFolder('quick-fix-record-config-');

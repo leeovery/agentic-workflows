@@ -44,7 +44,7 @@ const { changeOf } = require('../../../skills/ledger-engine/scripts/domain/revie
 const { unitLanded } = require('../../../skills/ledger-engine/scripts/domain/task-landed.cjs');
 const { projectRepos } = require('../../../skills/ledger-engine/scripts/kernel/repos.cjs');
 
-const project = useLandingWorld('github-landing-by-hand-read-', side.prepare);
+const project = useLandingWorld('github-landing-by-hand-read-', side.prepare, 'landing-github-');
 
 /** A repository's squash default making each squash's message the pull request's title alone, as a person's own message has no `Task:` line. */
 const OWN_MESSAGE = Object.freeze({ squash_merge_commit_title: 'PR_TITLE', squash_merge_commit_message: 'BLANK' });

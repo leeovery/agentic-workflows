@@ -33,7 +33,7 @@ const { TRAILER } = require('../../../skills/ledger-engine/scripts/domain/commit
 
 const { ok, git, fixtureFrom, cleanupFixture } = harness;
 
-const world = fixtureFrom('github-landing-quick-fix-host-', (dir) => twoFixesBuilt(dir, { ready: side.prepare, env: GH_ENV }));
+const world = fixtureFrom('quick-fix-two-fixes-github-', (dir) => twoFixesBuilt(dir, { ready: side.prepare, env: GH_ENV }));
 const config = useTempFolder('github-landing-quick-fix-host-config-');
 const SUGGESTED = 'const flag = \'colour\'; // suggested\n';
 /** Fix 1.1's line as its later commit, made elsewhere, writes it. */

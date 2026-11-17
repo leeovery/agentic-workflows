@@ -2,7 +2,7 @@
 
 // The world the boot suites share (test-engine-boot-*.cjs): the project
 // fixture, a git repository with its state worktree and the workflows' own
-// hooks in its settings, made once per process and copied (`bootProject`,
+// hooks in its settings, made once per run and copied (`bootProject`,
 // `setupProject`); a real project on the layout before Ledger's, with no
 // `.ledger/`, its settings holding the hooks today's product leaves
 // (`legacyProject`), with labels on or off, and the SessionEnd hooks a
@@ -76,7 +76,7 @@ const STORE_FILES = ['store.bin', 'metadata.json', 'config.json'].map((name) => 
  * booted project reaches, so boot's own plumbing commits never join the
  * history a test reads. A test about the install takes the hooks away first.
  * The gate mod is not installed, so boot reports it unavailable; a test
- * about the mod installs it. Made once per process, copied for each test.
+ * about the mod installs it. Made once per run, copied for each test.
  */
 const projectWorld = fixtureFrom('engine-boot-project-', (project) => {
   writeState(project, layout.manifest('payments'), '{"name":"payments"}\n');

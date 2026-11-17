@@ -23,7 +23,7 @@ const { git, stateGit, commitAll, cleanupFixture: cleanup, ok, withFrozenClock }
 const { roadmapWorld, runOk, runFail, readProject, projectManifestText, writeSource, joinItem, joinedTo } = require('./roadmap-world.cjs');
 
 /** A temp-dir git repo with an empty project manifest committed. */
-const setupGitFixture = roadmapWorld();
+const setupGitFixture = roadmapWorld('engine-roadmap-');
 
 describe('engine CLI: roadmap add / add-batch', () => {
   let dir;
@@ -214,7 +214,7 @@ describe('engine CLI: roadmap add / add-batch', () => {
 });
 
 describe('engine CLI: roadmap item ops and the joined-item guards', () => {
-  const setup = roadmapWorld((at) => {
+  const setup = roadmapWorld('engine-roadmap-items-', (at) => {
     runOk(at, ['add', 'ordering', '--horizon', 'mvp', '--summary', 'customers order']);
     runOk(at, ['add', 'loyalty', '--horizon', 'v1', '--summary', 'rewards']);
     createManifest(at, 'mvp', { work_type: 'epic', status: 'in-progress' });
@@ -319,7 +319,7 @@ describe('engine CLI: roadmap item ops and the joined-item guards', () => {
 });
 
 describe('engine CLI: an archived item\'s name stays taken (18.8.21)', () => {
-  const setup = roadmapWorld((at) => {
+  const setup = roadmapWorld('engine-roadmap-archived-', (at) => {
     runOk(at, ['add', 'preferences-ui', '--horizon', 'v1', '--summary', 'settings screens']);
     runOk(at, ['add', 'loyalty', '--horizon', 'v1', '--summary', 'rewards']);
     runOk(at, ['archive', 'preferences-ui']);
@@ -376,7 +376,7 @@ describe('engine CLI: an archived item\'s name stays taken (18.8.21)', () => {
 });
 
 describe('engine CLI: roadmap horizon ops', () => {
-  const setup = roadmapWorld((at) => {
+  const setup = roadmapWorld('engine-roadmap-horizons-', (at) => {
     runOk(at, ['add', 'ordering', '--horizon', 'mvp', '--summary', 's']);
     runOk(at, ['add', 'menus', '--horizon', 'mvp', '--summary', 's']);
     runOk(at, ['add', 'loyalty', '--horizon', 'v1', '--summary', 's']);
@@ -458,7 +458,7 @@ describe('engine CLI: roadmap horizon ops', () => {
 });
 
 describe('engine CLI: roadmap pull-forward', () => {
-  const setup = roadmapWorld((at) => {
+  const setup = roadmapWorld('engine-roadmap-pulled-', (at) => {
     runOk(at, ['add', 'ordering', '--horizon', 'mvp', '--summary', 'customers order']);
     runOk(at, ['add', 'menus', '--horizon', 'mvp', '--summary', 'operators maintain']);
     runOk(at, ['add', 'kds', '--horizon', 'mvp', '--summary', 'orders reach the kitchen']);
@@ -617,7 +617,7 @@ describe('engine CLI: roadmap state — lifecycle by join', () => {
 
 describe('engine CLI: roadmap guards the first pass left unexercised', () => {
   let dir;
-  const setup = roadmapWorld((at) => {
+  const setup = roadmapWorld('engine-roadmap-joined-', (at) => {
     runOk(at, ['add', 'ordering', '--horizon', 'mvp', '--summary', 'customers order']);
     runOk(at, ['add', 'menus', '--horizon', 'mvp', '--summary', 'operators maintain']);
     runOk(at, ['add', 'loyalty', '--horizon', 'v1', '--summary', 'rewards']);
@@ -646,7 +646,7 @@ describe('engine CLI: roadmap guards the first pass left unexercised', () => {
 
 describe('engine CLI: the re-aim — absorb moves a join, never orphans it', () => {
   let dir;
-  const setup = roadmapWorld((at) => {
+  const setup = roadmapWorld('engine-roadmap-joined-more-', (at) => {
     runOk(at, ['add', 'loyalty', '--horizon', 'v1', '--summary', 'rewards']);
     createManifest(at, 'mvp', { work_type: 'epic', status: 'in-progress', phases: { discovery: { items: {} } } });
     commitAll(at, 'fixture');

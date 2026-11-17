@@ -34,7 +34,7 @@ const ONE_REPO_COMMIT = 17;
 const NESTED_COMMIT = 33;
 
 describe('engine commit --paths: the code commit', () => {
-  const setup = fixtureFrom('engine-commit-', (at) => implementing(at, { 'src/other.js': 'const y = 1;\n', 'src/gone.js': 'const z = 1;\n' }));
+  const setup = fixtureFrom('engine-commit-code-', (at) => implementing(at, { 'src/other.js': 'const y = 1;\n', 'src/gone.js': 'const z = 1;\n' }));
   let dir;
   beforeEach(() => { dir = setup(); });
   afterEach(() => { cleanupFixture(dir); });
@@ -203,7 +203,7 @@ describe('engine commit --paths: the code commit', () => {
 });
 
 describe('engine commit --paths: code in repos of its own', () => {
-  const setup = fixtureFrom('engine-commit-', (at) => {
+  const setup = fixtureFrom('engine-commit-code-repos-', (at) => {
     implementing(at, { '.gitignore': '.ledger/\napi/\n' });
     // An ignored clone: a repo of its own that the root's .gitignore lists.
     const clone = harness.initRepo(path.join(at, 'api'));

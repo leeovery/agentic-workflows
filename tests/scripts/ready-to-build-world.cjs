@@ -20,7 +20,7 @@
 // same with the person's change of a call of Claude's on the topic before
 // its close and of one at the spec, logged in a trust log the world carries
 // (`worldConfig`) — `featureDeparted`. Each
-// built once per process and copied for each test, its trust log in a
+// built once per run and copied for each test, its trust log in a
 // config folder of the test's own.
 // ---------------------------------------------------------------------------
 
@@ -192,19 +192,19 @@ function buildFeature(dir, { departed = false } = {}) {
   closeReady(dir, FEATURE);
 }
 
-const landed = fixtureFrom('ready-to-build-', buildLanded);
+const landed = fixtureFrom('ready-to-build-', buildLanded, { kept: made });
 
 const closed = fixtureFrom('ready-to-build-closed-', (at) => {
   buildLanded(at);
   closeReady(at);
-});
+}, { kept: made });
 
-const feature = fixtureFrom('ready-to-build-feature-', (dir) => buildFeature(dir));
+const feature = fixtureFrom('ready-to-build-feature-', (dir) => buildFeature(dir), { kept: made });
 
 /** Where the departed world keeps the trust log its departures were logged in, carried with each copy. @param {string} dir */
 const worldConfig = (dir) => path.join(dir, '.trust');
 
-const featureDeparted = fixtureFrom('ready-to-build-feature-departed-', (dir) => withEnv({ LEDGER_CONFIG_DIR: worldConfig(dir) }, () => buildFeature(dir, { departed: true })));
+const featureDeparted = fixtureFrom('ready-to-build-feature-departed-', (dir) => withEnv({ LEDGER_CONFIG_DIR: worldConfig(dir) }, () => buildFeature(dir, { departed: true })), { kept: made });
 
 /**
  * Each test of the calling file on a copy of `world`, removed after it, its

@@ -28,7 +28,7 @@ const { call, git } = require('../../scripts/engine-harness.cjs');
 
 const { card } = TASKS;
 const PHASE = ['land', 'phase', UNIT, '1'];
-const project = useLandingWorld('github-landing-site-moved-', side.prepare);
+const project = useLandingWorld('github-landing-site-moved-', side.prepare, 'landing-github-');
 
 /** A review's suggestion committed on the site to 1.1's pull request: the head GitHub then holds. @param {string} dir */
 const suggested = (dir) => madeOnGithub(dir, card.branch, { 'card.txt': 'card, as suggested\n' }, 'Apply suggestions from code review');

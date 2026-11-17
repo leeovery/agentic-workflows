@@ -73,7 +73,7 @@ for (const { name } of listDrivers('landing')) {
   const side = require(path.join(__dirname, '..', 'drivers', name, 'landing.cjs'));
   const ok = (/** @type {string} */ at, /** @type {string[]} */ args) => harness.ok(at, args, { env: side.env });
   const refuses = (/** @type {string} */ at, /** @type {string[]} */ args) => harness.refuses(at, args, { env: side.env });
-  const world = fixtureFrom(`engine-unit-branch-current-${name}-`, (dir) => unitBranchLanded(dir, side));
+  const world = fixtureFrom(`landing-unit-landed-${name}-`, (dir) => unitBranchLanded(dir, side));
 
   describe(`a unit's own branch kept current through the ${name} landing driver (7.2.36)`, () => {
     /** @type {string|null} */

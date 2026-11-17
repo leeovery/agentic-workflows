@@ -243,7 +243,7 @@ const WAYS = {
  * `way` names: its side; the verbs under the side's environment, each
  * committing a second past the last; and a copy of the landing world at
  * each call, readied for the driver, the phase cut, opened and landed so —
- * built once per process, every commit a second past the last.
+ * built once per run, every commit a second past the last.
  * @param {string} name @param {keyof typeof WAYS} way
  */
 function againConformance(name, way) {

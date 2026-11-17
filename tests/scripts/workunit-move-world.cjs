@@ -128,7 +128,7 @@ const world = fixtureFrom('workunit-move-', (dir) => {
     ...MADE, text: 'Every save takes the session list as the whole truth.', how: 'Read the capture.', known: 'read', cites: [{ path: INVESTIGATION_LOG, section: 'Symptoms' }],
   }).id;
   ok(dir, ['commit', BUG, '-m', 'investigation(hunt): the hunt so far']);
-});
+}, { kept: made });
 
 /**
  * The calls a suite's tests make in their conversation, in the project

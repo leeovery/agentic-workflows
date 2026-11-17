@@ -32,7 +32,7 @@ const side = require('./landing.cjs');
 const { bareOf, calls, mergeByHand, headDeleted, pulls, ok, stackOfTwo } = require('./world.cjs');
 
 const { card, total } = TASKS;
-const project = useLandingWorld('github-landing-by-hand-', side.prepare);
+const project = useLandingWorld('github-landing-by-hand-', side.prepare, 'landing-github-');
 
 describe('a feature\'s stack merged by hand on GitHub\'s site (R12 (c), (e))', () => {
   it('a stack merged by hand on GitHub\'s site, each pull request into its own base, so it never reached main: a stack still, its tasks chained, a task opened into it onto main, never onto a merged pull request\'s branch, and the phase landed whole by its merge — the one merged into the branch below opened again onto main', () => {

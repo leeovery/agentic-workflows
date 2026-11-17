@@ -463,29 +463,36 @@ const landingCommits = (dir, into = 'main') => git(dir, ['log', '--reverse', '--
 
 /**
  * A copy of the landing world at each call in a test of the calling file,
- * every copy removed after the test; the world built once per process, and
- * `ready` run on it then.
+ * every copy removed after the test; the world built once per run, and
+ * `ready` run on it then — under `name`, which names what `ready` does:
+ * the suite's own name where it is the suite's own, the world every suite
+ * with no `ready` shares where there is none.
  * @param {string} prefix temp-directory prefix, so a leftover names its suite
  * @param {(dir: string) => void} [ready]
+ * @param {string} [name] the world's
+ * @param {unknown[]} [by] what a helper that wraps `ready` was given (`fixtureFrom`)
  * @returns {() => string}
  */
-function useLandingWorld(prefix, ready = () => {}) {
-  return copiesOf(prefix, fixtureFrom(prefix, (dir) => {
+function useLandingWorld(prefix, ready, name = ready === undefined ? 'landing-' : prefix, by = []) {
+  return copiesOf(prefix, fixtureFrom(name, (dir) => {
     buildLanding(dir);
-    ready(dir);
-  }));
+    ready?.(dir);
+  }, { by: [ready, ...by] }));
 }
 
 /** A copy of the nested world: the project, and its clones' checkouts. @typedef {{dir: string, ext: string, lib: string}} Nested */
 
 /**
  * A copy of the nested world at each call, as `useLandingWorld` copies the
- * landing world, `ready` run on its project.
- * @param {string} prefix @param {(dir: string) => void} [ready]
+ * landing world, `ready` run on its project, under `name` as there.
+ * @param {string} prefix @param {(dir: string) => void} [ready] @param {string} [name] @param {unknown[]} [by]
  * @returns {() => Nested}
  */
-function useNestedWorld(prefix, ready = () => {}) {
-  const copy = copiesOf(prefix, folderFrom(prefix, (folder) => ready(buildNested(folder))));
+function useNestedWorld(prefix, ready, name = ready === undefined ? 'landing-nested-' : prefix, by = []) {
+  const copy = copiesOf(prefix, folderFrom(name, (folder) => {
+    const dir = buildNested(folder);
+    ready?.(dir);
+  }, { by: [ready, ...by] }));
   return () => {
     const dir = path.join(copy(), NESTED_PROJECT);
     return { dir, ext: path.join(dir, NESTED.ext.folder), lib: path.join(dir, NESTED.lib.folder) };
@@ -523,7 +530,7 @@ function useNestedWorld(prefix, ready = () => {}) {
 /**
  * What a nested conformance suite reads a driver by: its side; the verbs
  * under the side's environment; a copy of the nested world readied for it
- * at each call, built once per process (`useNestedWorld`); each
+ * at each call, built once per run (`useNestedWorld`); each
  * repository's checkout and default branch, by the name an answer gives it;
  * and the tasks each default branch gained.
  * @param {string} name the driver's
@@ -536,7 +543,7 @@ function nestedConformance(name, prefix) {
   const project = useNestedWorld(prefix, (dir) => {
     side.prepare(dir);
     for (const { folder, into } of Object.values(NESTED)) side.nest(path.join(dir, folder), into);
-  });
+  }, `landing-nested-${name}-`, [side.prepare, side.nest]);
   /** @param {Nested} at @returns {Record<string, [string, string]>} */
   const repos = (at) => ({ '.': [at.dir, 'main'], ext: [at.ext, NESTED.ext.into], lib: [at.lib, NESTED.lib.into] });
   return {
@@ -845,7 +852,7 @@ function personState(kind, prefix, ready = () => {}) {
     ready(dir);
     makeSigningKey(dir);
   };
-  const project = useLandingWorld(kind === 'busy' ? `${prefix}the person's path ` : prefix, world);
+  const project = useLandingWorld(kind === 'busy' ? `${prefix}the person's path ` : prefix, world, undefined, [ready]);
   return { project, apply: PERSON_STATES[kind], signs };
 }
 

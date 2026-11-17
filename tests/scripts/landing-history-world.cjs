@@ -146,7 +146,7 @@ function historyWorld(prefix, side) {
     for (const spec of [...POOL, LATER]) track(dir, spec.shown, spec.type, spec.title);
     commitAll(dir, 'the histories\' tasks');
     side.prepare(dir);
-  });
+  }, { by: [side.prepare] });
 }
 
 /** A seeded draw in [0, 1), the same for the same seed (mulberry32). @param {number} seed */

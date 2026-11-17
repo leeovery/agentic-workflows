@@ -23,10 +23,10 @@ const { resolveDriver } = require('../../skills/ledger-engine/scripts/domain/dri
 const SHIPPED = path.join(__dirname, '..', 'fixtures', 'drivers', 'shipped');
 const ON_GITHUB = 'https://github.com/acme/pay.git';
 
-/** @param {string} url @returns {(dir?: string) => string} */
-const withOrigin = (url) => fixtureFrom('engine-drivers-remote-', (project) => git(project, ['remote', 'add', 'origin', url]));
-const onGithub = withOrigin(ON_GITHUB);
-const elsewhere = withOrigin('https://git.example.org/acme/pay.git');
+/** @param {string} name @param {string} url @returns {(dir?: string) => string} */
+const withOrigin = (name, url) => fixtureFrom(name, (project) => git(project, ['remote', 'add', 'origin', url]));
+const onGithub = withOrigin('engine-drivers-remote-github-', ON_GITHUB);
+const elsewhere = withOrigin('engine-drivers-remote-elsewhere-', 'https://git.example.org/acme/pay.git');
 
 /** @param {string} project */
 const landingSetting = (project) => JSON.parse(fs.readFileSync(path.join(project, '.ledger', 'manifest.json'), 'utf8')).drivers.landing;

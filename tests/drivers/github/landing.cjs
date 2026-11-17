@@ -158,7 +158,7 @@ module.exports = {
   env: GH_ENV,
   /** The most git commands the engine runs for each land verb in the landing world (test-engine-landing-conformance-record.cjs). */
   gitCalls: { open: 44, phase: 85, again: 29, finish: 89 },
-  /** The world readied for the driver, once per process. @param {string} dir */
+  /** The world readied for the driver, once per run. @param {string} dir */
   prepare: (dir) => {
     setLandingDriver(dir, 'github');
     githubWorld(dir);

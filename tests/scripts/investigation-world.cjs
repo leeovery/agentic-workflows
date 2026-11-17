@@ -4,7 +4,7 @@
 // The investigation suites' world and helpers (test-engine-investigation.cjs:
 // its entry, its log, its plan and check-in gates; and
 // test-engine-investigation-conclude.cjs: its validations' briefs and its
-// conclude). The world, built once per process and copied
+// conclude). The world, built once per run and copied
 // for each test: a bugfix, `crash`, from two seeds, with its brief and
 // discovery's log, not yet started; a bugfix, `hunt`, its investigation
 // entered, with the ledger entries its hunt rests on — the root cause
@@ -101,7 +101,7 @@ const world = fixtureFrom('engine-investigation-', (dir) => {
   ripe.fix = write('decide', RIPE_AT, ['--answers', ripe.asked], { ...CLAUDE, text: 'Never save an empty capture over a full one.', why: 'The empty capture is the cause.' }).id;
   hunted('fix-direction', ['--question', ripe.asked]);
   validated(dir, RIPE, 'fix-validation');
-});
+}, { kept: { made, ripe } });
 
 /** A DATA section of `lines`, as the entry draws it. @param {string[]} lines */
 const data = (lines) => `=== DATA (reason from this — never display or parse the sections below) ===\n${lines.join('\n')}\n`;

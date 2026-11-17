@@ -9,7 +9,7 @@
 // measured finding and a decision relying on it; on `refunds` a product-wide
 // decision and a finding read in documentation; at the spec, a replacement
 // of a decision of another unit, `billing`; and the sweep taken. Built once
-// per process and copied for each test.
+// per run and copied for each test.
 // ---------------------------------------------------------------------------
 
 const { beforeEach, afterEach } = require('node:test');
@@ -94,7 +94,7 @@ const world = fixtureFrom('spec-review-', (dir) => {
   payments(dir);
   writeState(dir, layout.unit(UNIT, 'sweep-taken.json'), JSON.stringify({ candidates: [], builder_calls: [] }));
   commitAll(dir, 'topics settled');
-});
+}, { kept: made });
 
 /**
  * The world for each test of the calling file, copied before it and

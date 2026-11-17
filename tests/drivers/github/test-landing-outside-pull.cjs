@@ -32,7 +32,7 @@ const { git, readManifest } = require('../../scripts/engine-harness.cjs');
 const { card, total } = TASKS;
 const PHASE = ['land', 'phase', UNIT, '1'];
 
-const project = useLandingWorld('github-landing-outside-pull-', side.prepare);
+const project = useLandingWorld('github-landing-outside-pull-', side.prepare, 'landing-github-');
 
 /** The ways a person lands card's branch outside its pull request, in their terminal, pushed to GitHub. @type {Record<string, (dir: string) => void>} */
 const OUTSIDE = {

@@ -31,7 +31,7 @@ describe('engine CLI: inbox notes onto the roadmap, kept in the product\'s notes
   const IDEA_NOTE = '.ledger/.product/notes/2026-03-01--dark-mode.md';
   const BUG_NOTE = '.ledger/.product/notes/2026-03-02--login-crash.md';
 
-  const setup = roadmapWorld((at) => {
+  const setup = roadmapWorld('engine-roadmap-inbox-', (at) => {
     for (const rel of [IDEA, BUG, QUICKFIX]) {
       fs.mkdirSync(path.dirname(path.join(at, rel)), { recursive: true });
       fs.writeFileSync(path.join(at, rel), `# ${path.basename(rel)}\n`);

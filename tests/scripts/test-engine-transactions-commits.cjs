@@ -31,14 +31,14 @@ function shortHead(dir) {
   return stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim();
 }
 
-/** A world built once from `build`, every test given a copy. @param {(dir: string) => void} build */
-const world = (build) => harness.fixtureFrom('engine-tx-commits-', build);
+/** A world built once from `build`, named `name`, every test given a copy. @param {string} name @param {(dir: string) => void} build */
+const world = (name, build) => harness.fixtureFrom(name, build);
 
 /** A manifest's file text. @param {Record<string, unknown>} manifest */
 const json = (manifest) => JSON.stringify(manifest, null, 2) + '\n';
 
 describe('engine inbox archive / restore / delete', () => {
-  const inbox = world((dir) => {
+  const inbox = world('engine-tx-commits-inbox-', (dir) => {
     writeFile(dir, '.ledger/.inbox/ideas/2026-06-01--smart-retry.md', '# Smart Retry\n');
     writeFile(dir, '.ledger/.inbox/bugs/2026-06-02--login-loop.md', '# Login Loop\n');
     commitAll(dir, 'init');
@@ -184,7 +184,7 @@ describe('inbox moveFiles rollback', () => {
   const A = { from: 'in/a.md', to: 'out/a.md' };
   const B = { from: 'in/b.md', to: 'out/b.md' };
   const C = { from: 'in/c.md', to: 'out/c.md' };
-  const files = world((dir) => {
+  const files = world('engine-tx-commits-files-', (dir) => {
     for (const name of ['a', 'b', 'c']) writeFile(dir, `.ledger/in/${name}.md`, `# ${name}\n`);
   });
   beforeEach(() => {
@@ -247,7 +247,7 @@ describe('inbox moveFiles rollback', () => {
 });
 
 describe('engine commit', () => {
-  const unit = world((dir) => {
+  const unit = world('engine-tx-commits-unit-', (dir) => {
     writeFile(dir, '.ledger/payments/manifest.json', '{"name":"payments"}\n');
     writeFile(dir, '.ledger/.inbox/ideas/2026-06-01--x.md', '# X\n');
     commitAll(dir, 'init');
@@ -294,7 +294,7 @@ describe('engine commit', () => {
 });
 
 describe('the knowledge store never rides an engine commit', () => {
-  const dirty = world((dir) => {
+  const dirty = world('engine-tx-commits-dirty-', (dir) => {
     writeFile(dir, '.ledger/payments/manifest.json', json({
       name: 'payments', work_type: 'epic', status: 'in-progress',
       phases: { discovery: { items: { 'auth-flow': { source: 'discovery' } } } },
@@ -336,7 +336,7 @@ describe('the transactions\' knowledge changes — a real store, its other chunk
   // An epic with a topic still in discussion and two decided, one decided
   // topic's record indexed; and a quick-fix beside it, its short record
   // indexed.
-  const indexedWorld = world((dir) => {
+  const indexedWorld = world('engine-tx-commits-indexed-', (dir) => {
     writeFile(dir, '.ledger/payments/manifest.json', json({
       name: 'payments', work_type: 'epic', status: 'in-progress',
       phases: {

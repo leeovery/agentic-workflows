@@ -19,7 +19,7 @@
 // has a commit, there is nothing to apply.
 //
 // Layer: migration. World: codeintel on today's layout (migration-world.cjs,
-// `splitProject`), made once per process and copied for each test, the
+// `splitProject`), made once per run and copied for each test, the
 // detection's sources and the plans staged in each copy.
 //
 

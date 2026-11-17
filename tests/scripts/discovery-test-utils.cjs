@@ -4,10 +4,10 @@
 // worktree is in place at `.ledger/`, made by the machinery, and whose
 // default branch holds one commit, the code tree's `.gitignore` naming it.
 // Both first commits carry one fixed date, so a suite's own commits always
-// come after them. One template is made per process and copied for each
-// fixture, its state worktree relinked by the machinery's repair
-// (`copyWorld`) — as is every richer world the harness makes once per
-// process (`fixtureFrom`, engine-harness.cjs). A world of several
+// come after them. It is built once per run (run-worlds.cjs) and copied for
+// each fixture, its state worktree relinked by the machinery's repair
+// (`copyWorld`) — as is every richer world the harness builds once per run
+// (`fixtureFrom`, engine-harness.cjs). A world of several
 // repositories — a project and its remote, two machines — is made once in a
 // folder and copied whole, every repository in the copy moved onto the
 // copy's own paths (`copyFolder`).
@@ -122,13 +122,8 @@ function templateFolder(prefix) {
   return dir;
 }
 
-/** @type {string|null} */
-let template = null;
-
-/** The process's template world, made at its first fixture. @returns {string} */
-function fixtureTemplate() {
-  if (template !== null) return template;
-  const dir = templateFolder('ledger-template-');
+/** The project world, built into `dir`. @param {string} dir */
+function buildProjectWorld(dir) {
   git(dir, ['init', '-q', '--template=', '-b', 'main']);
   testIdentity(dir);
   fs.writeFileSync(path.join(dir, '.gitignore'), `${STATE_DIR_NAME}/\n`);
@@ -137,8 +132,11 @@ function fixtureTemplate() {
     git(dir, ['commit', '-q', '-m', 'ignore the state']);
     createState(path.join(dir, STATE_DIR_NAME));
   });
-  template = dir;
-  return dir;
+}
+
+/** The project world, built once per run (run-worlds.cjs, which needs this module loaded first). @returns {string} */
+function fixtureTemplate() {
+  return require('./run-worlds.cjs').worldOfTheRun('project', buildProjectWorld).dir;
 }
 
 /**

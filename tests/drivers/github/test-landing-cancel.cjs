@@ -37,7 +37,7 @@ const { GH_ENV, calls, github, onGithub, ok, refused } = require('./world.cjs');
 
 const { card, total, rounding } = TASKS;
 
-const project = useLandingWorld('github-landing-cancel-', side.prepare);
+const project = useLandingWorld('github-landing-cancel-', side.prepare, 'landing-github-');
 
 /** The gh calls made since `before` of them, each by its first two words. @param {string} dir @param {number} before */
 const madeSince = (dir, before) => calls(dir).slice(before).map((call) => call.split(' ').slice(0, 2).join(' '));
