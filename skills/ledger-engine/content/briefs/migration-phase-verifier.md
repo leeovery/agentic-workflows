@@ -14,7 +14,7 @@ The piece passes when nothing material is missing or misstated:
 - each correction says what was wrong, what was found and what was changed, and the code bears out what it found: read the code for it;
 - the piece is lean: no scenario or note that says again what another does — judged in the first round, and later on what changed since alone.
 
-Where earlier rounds' findings below name anything, check that each is answered. A point an earlier round ruled on is ruled on again only where a line of its source that round missed says otherwise; a finding that would undo what an earlier round's finding had changed opens `Reverses round {R}:`, naming that line. A point the session settled is closed: it is no finding.
+Where earlier rounds' findings below name anything, check that each is answered. A point the session settled is closed: it is raised again only where a line of its source or the code that settlement missed says otherwise, and that finding is a reversal, opening `Reverses the session:`, naming that line. A new point on what an earlier round passed, or on what its findings changed, is a finding as any other, never a reversal.
 
 Wording, the phase's name and goal, and how its criteria are gathered into scenarios are the composer's.
 

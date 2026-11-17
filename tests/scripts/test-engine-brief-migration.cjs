@@ -436,8 +436,9 @@ describe('a verifier\'s rulings', () => {
         'check that each finding is answered and each ruling kept.',
         'Write the findings file the brief names afresh: each finding one list item, the section of the source and what the record misses or misstates,',
       ]),
+      unsaid('migration-phase-verifier', ['A point the session settled is closed: it is raised again only where a line of its source or the code that settlement missed says otherwise, and that finding is a reversal, opening `Reverses the session:`, naming that line. A new point on what an earlier round passed, or on what its findings changed, is a finding as any other, never a reversal.']),
       unsaid('migration-topic', ['Never carry a point the verifier\'s rulings below set aside, unless a point the session settled says otherwise. A finding asking for a point the rulings set aside, which no point the session settled covers, is not yours to answer: write it into the hand-back file the brief names, one line each, the finding and why you hand it back, for the session to settle as a reversal.', 'and how many findings you wrote into the hand-back file.']),
-    ], [[], []]);
+    ], [[], [], []]);
   });
 });
 

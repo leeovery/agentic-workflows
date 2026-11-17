@@ -477,22 +477,28 @@ function filesPlaced(state, units, old, olds, holders) {
     .map(([rel]) => ({ check: 'files-placed', found: `${OLD}/${rel} is ${CACHE_REPORT.test(rel) ? 'not in the cache\'s earlier/ as it was' : 'neither placed nor kept as legacy'}` }));
 }
 
-/** A document's text outside its fenced blocks and code spans, where a link is one. @param {string} text */
+/**
+ * A document's text with its fenced blocks and code spans blanked, each
+ * character a space, so a link is read where it stands outside them and
+ * written as the document has it, a code span in its words among it.
+ * @param {string} text
+ */
 function proseOf(text) {
   /** @type {string|null} */
   let fence = null;
+  const blank = (/** @type {string} */ part) => ' '.repeat(part.length);
   return text.split('\n').map((line) => {
     const run = FENCE.exec(line)?.[1];
-    if (fence === null && run === undefined) return line.replace(CODE_SPANS, '');
+    if (fence === null && run === undefined) return line.replace(CODE_SPANS, blank);
     if (fence === null) fence = run ?? null;
     else if (run !== undefined && run[0] === fence[0] && run.length >= fence.length && FENCE_CLOSE.test(line)) fence = null;
-    return '';
+    return blank(line);
   }).join('\n');
 }
 
 /** Each relative link and embed of a document, `[words](target)` as written, with its target. @param {string} text */
 function linksIn(text) {
-  return [...proseOf(text).matchAll(LINK)].map(([written, , , target]) => ({ written, target }))
+  return [...proseOf(text).matchAll(LINK)].map((link) => ({ written: text.slice(link.index, link.index + link[0].length), target: link[3] }))
     .filter(({ target }) => !SCHEME.test(target) && !target.startsWith('#') && !target.startsWith('/'));
 }
 

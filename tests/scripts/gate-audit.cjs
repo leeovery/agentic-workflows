@@ -19,12 +19,16 @@ const GATE_MARKER = '=== GATE (json for a gate surface — never display) ===';
 const MENU_RULE = '· · · · · · · · · · · ·';
 const CONTINUATION = /^ +/;
 const GLYPHED_LINE = /^\*\*`◆ (.*)`\*\*$/;
-const MARKUP = /`([^`]*)`|\\([!-/:-@[-`{-~])|\*\*|~~|[`*]/g;
+const MARKUP = /(?<!`)(`+)(?!`)(.*?[^`])\1(?!`)|\\([!-/:-@[-`{-~])|\*\*|~~|[`*]/g;
+// The gates that draw another's words as written, each code span in them
+// kept whole in the payload: the raise, Claude's (projections/raise.cjs,
+// `wordsAsWritten`).
+const LITERAL_GATES = new Set(['raise']);
 
 // The same markup one token at a time: a code span and an escape carry their
 // text, a strike or an italic marker toggles its span, bold and a stray
 // backtick drop, and everything else is text.
-const LABEL_TOKEN = /`([^`]*)`|\\([!-/:-@[-`{-~])|\*\*|~~|[`*]|[^`\\*~]+|[\s\S]/g;
+const LABEL_TOKEN = /(?<!`)(`+)(?!`)(.*?[^`])\1(?!`)|\\([!-/:-@[-`{-~])|\*\*|~~|[`*]|[^`\\*~]+|[\s\S]/g;
 
 const TAIL_SEPARATOR = ' — ';
 const NOTE_SEPARATOR = ' · ';
@@ -71,12 +75,12 @@ function squashed(text) {
 
 /**
  * Menu text read plain, as the payload has to state it: a code span's
- * content and an escaped character stay as text, every other marker comes
- * off.
- * @param {string} text
+ * content — the span whole, in a gate drawing another's words as written —
+ * and an escaped character stay as text, every other marker comes off.
+ * @param {string} text @param {boolean} literal
  */
-function plainText(text) {
-  return squash(text.replace(MARKUP, (_, code, escaped) => code ?? escaped ?? ''));
+function plainText(text, literal) {
+  return squash(text.replace(MARKUP, (whole, _run, code, escaped) => (code === undefined ? escaped ?? '' : literal ? whole : code)));
 }
 
 // A MENU line read back as the row it draws: a code span is a key the user
@@ -107,17 +111,17 @@ function squashGlyphs(glyphs) {
  * A drawn label read as the characters it shows, each marked with the spans
  * it sits in. Whitespace runs read as one space, so a span a wrap closed and
  * reopened reads whole.
- * @param {string|null} label @returns {Glyph[]}
+ * @param {string|null} label @param {boolean} literal @returns {Glyph[]}
  */
-function drawnGlyphs(label) {
+function drawnGlyphs(label, literal) {
   /** @type {Glyph[]} */
   const glyphs = [];
   let struck = false;
   let italic = false;
-  for (const [token, code, escaped] of (label ?? '').matchAll(LABEL_TOKEN)) {
+  for (const [token, , code, escaped] of (label ?? '').matchAll(LABEL_TOKEN)) {
     if (token === '~~') struck = !struck;
     else if (token === '*') italic = !italic;
-    else if (token !== '**' && token !== '`') for (const ch of code ?? escaped ?? token) glyphs.push({ ch, struck, italic });
+    else if (token !== '**' && token !== '`') for (const ch of (literal && code !== undefined ? token : code) ?? escaped ?? token) glyphs.push({ ch, struck, italic });
   }
   return squashGlyphs(glyphs);
 }
@@ -162,8 +166,8 @@ function reading(glyphs) {
 // its glyphed line — is the question; every other line is the statement, in
 // order. Every value the payload states is held as it stands against the menu
 // read plain.
-/** @param {GatePayload} gate @param {string[]} body @param {string} label @returns {void} */
-function assertPayloadDrawsMenu(gate, body, label) {
+/** @param {GatePayload} gate @param {string[]} body @param {string} label @param {boolean} literal a gate drawing another's words as written @returns {void} */
+function assertPayloadDrawsMenu(gate, body, label, literal) {
   /** @type {DrawnRow[]} */ const rows = [];
   /** @type {{text: string, glyphed: boolean}[]} */ const prose = [];
   /** @type {DrawnRow|null} */ let under = null;
@@ -180,9 +184,9 @@ function assertPayloadDrawsMenu(gate, body, label) {
       rows.push(row);
       under = row;
     } else if (under !== null && !glyphed) {
-      under.detail = plainText(`${under.detail ?? ''} ${line}`);
+      under.detail = plainText(`${under.detail ?? ''} ${line}`, literal);
     } else {
-      prose.push({ text: plainText(glyphed?.[1] ?? line), glyphed: glyphed !== null });
+      prose.push({ text: plainText(glyphed?.[1] ?? line, literal), glyphed: glyphed !== null });
     }
   }
   const askAt = prose.findIndex((p) => p.glyphed);
@@ -195,13 +199,13 @@ function assertPayloadDrawsMenu(gate, body, label) {
   const typed = rows.filter((r) => r.typed);
   assert.deepStrictEqual(gate.options.map((o) => (o.word ? `${o.key}/${o.word}` : o.key)), keys.map((r) => r.name),
     `[${label}] the payload's keys are not the menu's`);
-  const drawn = keys.map((r) => drawnGlyphs(r.label));
+  const drawn = keys.map((r) => drawnGlyphs(r.label, literal));
   assert.deepStrictEqual(
     gate.options.map((o, i) => [reading(partsGlyphs(o, drawn[i])), o.struck, squashed(o.detail)]),
     keys.map((r, i) => [reading(drawn[i]), drawn[i].some((g) => g.struck), r.detail]),
     `[${label}] the payload's option parts are not what the menu's rows draw — text, strike, italics, detail`);
   assert.deepStrictEqual(gate.typed.map((t) => [t.label, squash(t.description), squashed(t.detail)]),
-    typed.map((r) => [plainText(r.name), plainText(r.label ?? ''), r.detail]),
+    typed.map((r) => [plainText(r.name, literal), plainText(r.label ?? '', literal), r.detail]),
     `[${label}] the payload's typed rows are not the menu's`);
 }
 
@@ -252,7 +256,7 @@ function auditGate(out, label) {
   assert.ok(GATE_NAME?.test(name), `[${label}] the gate "${name}" is no name the trust log keys — ${GATE_NAME?.is}`);
   assert.notStrictEqual(gate.question, '', `[${label}] every menu asks — the payload states no question`);
   assert.ok(gate.options.length > 0, `[${label}] every menu has a row to press — the payload states none`);
-  assertPayloadDrawsMenu(gate, body, label);
+  assertPayloadDrawsMenu(gate, body, label, LITERAL_GATES.has(name));
   return gate;
 }
 

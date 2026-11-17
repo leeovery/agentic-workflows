@@ -176,19 +176,19 @@ describe('the draw (16.S30, 16.9.2)', () => {
     assert.strictEqual(sections, screen(res.raise));
   });
 
-  it('Claude\'s words read as written, never as markup, on the screen and in its payload alike — a code span in them drawn one, never its backticks escaped', async () => {
-    const probe = 'Should `sync --force` retry 2*3 times, or *never*?';
+  it('Claude\'s words read as written, never as markup, on the screen and in its payload alike — a code span in them drawn one, of any backtick run, never its backticks escaped, and kept whole in the payload', async () => {
+    const probe = 'Should `sync --force` retry 2*3 times, or *never*, or ``a`b``?';
     const call = { ...CALL, question: probe, rows: [CURSOR, { ...MAIN, text: 'Retry *never*', notice: 'a `--force` sync fails at once' }] };
 
     const { sections } = await draw(call, { env: { LEDGER_GATE_SURFACE: '1' } });
 
     const menu = sections.split('\n');
-    assert.ok(menu.includes('Should `sync --force` retry 2\\*3 times, or \\*never\\*?'), sections);
+    assert.ok(menu.includes('Should `sync --force` retry 2\\*3 times, or \\*never\\*, or ``a`b``?'), sections);
     assert.ok(menu.includes('- Main: a `--force` sync fails at once'), sections);
     assert.ok(menu.includes('**`2`**           → Retry \\*never\\*'), sections);
     const gate = /** @type {Record<string, any>} */ (auditGate(sections, 'raise'));
-    assert.ok(gate.statement.split('\n').includes('Should sync --force retry 2*3 times, or *never*?'), gate.statement);
-    assert.ok(gate.statement.split('\n').includes('- Main: a --force sync fails at once'), gate.statement);
+    assert.ok(gate.statement.split('\n').includes(probe), gate.statement);
+    assert.ok(gate.statement.split('\n').includes('- Main: a `--force` sync fails at once'), gate.statement);
     assert.strictEqual(gate.options[1].head, 'Retry *never*');
   });
 

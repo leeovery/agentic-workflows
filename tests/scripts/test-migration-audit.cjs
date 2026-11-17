@@ -288,10 +288,10 @@ describe('each check refuses a world made to fail it', () => {
     assert.deepStrictEqual(faults(old), [`names-resolve: memo/topics/memo/log.md links ${OLD_RFC}, which names nothing`]);
   });
 
-  it('names-resolve: a link\'s shape in a code span or a fence is code, naming nothing to resolve', () => {
-    appendState(layout.topic('memo', 'memo', 'log.md'), 'Logs go through `p.log[level](text)`, and ``[a](b)`` too.\n\n```js\nlog[level](text);\n```\n\n~~~~\n[x](y.md)\n```\n~~~~');
+  it('names-resolve: a link\'s shape in a code span or a fence is code, naming nothing to resolve; a link whose words hold a code span is a link, named with its words as written', () => {
+    appendState(layout.topic('memo', 'memo', 'log.md'), 'Logs go through `p.log[level](text)`, and ``[a](b)`` too.\n\n```js\nlog[level](text);\n```\n\n~~~~\n[x](y.md)\n```\n~~~~\n\nSee [`spec.md`](gone.md).');
 
-    assert.deepStrictEqual(faults(), []);
+    assert.deepStrictEqual(faults(), ['names-resolve: memo/topics/memo/log.md links [`spec.md`](gone.md), which names nothing']);
   });
 
   it('names-resolve: the links dead before excused in every document holding their old one — twice in one, in two, and in a document kept byte for byte in one place and rewritten in another, a roadmap import mailed to a topic, as portal\'s — counted over the same documents before and after, each occurrence, those landing in legacy apart, and each old one listed once', () => {

@@ -31,11 +31,12 @@
 // Every line above the rows is the menu's statement, so a surface drawing
 // the gate payload draws it all. Claude's words are escaped, so they read
 // as written, never as markup, but each code span in them, which reads as
-// written only kept one; the mechanism keeps its lines, each drawn
+// written only kept one, and kept whole in the gate payload; the mechanism
+// keeps its lines, each drawn
 // from its first word: a leading indent in a menu is a row's continuation.
 // ---------------------------------------------------------------------------
 
-const { section, menu, cmdOption, promptOption, MENU_INSTRUCTION, CONTINUE_INSTRUCTION, escapeProse } = require('./surfaces.cjs');
+const { section, menu, cmdOption, promptOption, MENU_INSTRUCTION, CONTINUE_INSTRUCTION, escapeProse, wordsAsWritten } = require('./surfaces.cjs');
 const { titlecase, TREE_WIDTH } = require('../conventions.cjs');
 const { wrapWithPrefix } = require('../../kernel/render.cjs');
 const { titled } = require('../derivations.cjs');
@@ -151,6 +152,7 @@ function statement(seal, technical, titles) {
  */
 function raiseScreen(seal, { technical = false, titles }) {
   const { id } = seal;
+  wordsAsWritten();
   const { question, prompt } = asking(seal);
   const rows = [
     ...drawnRows(seal).map((row) => cmdOption(row.key, null, { head: escapeProse(row.text), recommended: row.key === leanShown(seal) }, { next: engine(['raise', 'answer', id, '--pick', row.key]) })),
