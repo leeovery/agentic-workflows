@@ -448,8 +448,8 @@
 //                  topic of that it is in, the state's place and the
 //                  project's in the main checkout, each file of the topic's
 //                  folder but its mail, the unit's discovery sessions, the
-//                  other topics they may speak of with their briefs'
-//                  subjects, to judge whose a point is by, and
+//                  other topics they may speak of with their subjects, to
+//                  judge whose a point is by, and
 //                  as the directive's check reads them its specs — each where it is cited, the part of the
 //                  unit's spec.md it makes where it was joined there, and
 //                  whether it was approved or is a draft — its old map and
@@ -1194,16 +1194,16 @@ function recordGoes(root, unit, topic) {
 
 /**
  * Each topic a record's sessions may speak of besides its own, as its brief
- * lists them: of another unit, or moved to one, so named, and its brief's
- * subject.
+ * lists them: of another unit, or moved to one, so named, and its subject
+ * where it has one.
  * @param {{topic: string, unit: string, to: string|null, subject: string|null}[]} others @param {string} unit
  */
-const otherLines = (others, unit) => others.map(({ topic, unit: of, to, subject }) => `- ${topic}${of === unit ? '' : `, of ${of}`}${to === null ? '' : `, moved to ${to}`}${subject === null ? ', no brief' : `: ${subject}`}`);
+const otherLines = (others, unit) => others.map(({ topic, unit: of, to, subject }) => `- ${topic}${of === unit ? '' : `, of ${of}`}${to === null ? '' : `, moved to ${to}`}${subject === null ? '' : `: ${subject}`}`);
 
 /**
  * A unit's own record as its brief draws it: the unit, the discovery
- * sessions it is composed from, the unit's topics with their briefs'
- * subjects, each of which carries what the sessions say of it — one moved
+ * sessions it is composed from, the unit's topics with their subjects,
+ * each of which carries what the sessions say of it — one moved
  * to another unit, that unit — its assets and where the record goes.
  * @param {Filling} filling @param {string} root @param {string} unit
  */

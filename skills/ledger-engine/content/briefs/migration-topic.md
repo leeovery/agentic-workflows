@@ -1,8 +1,8 @@
 # Your task
 
-Carry the migration's records step for one record, a topic's or a unit's own: compose it from its sources, as the directive below says of it, and write it as JSON where the brief below says the record goes. Its sources are those the brief below lists, and no other: never another topic's log, brief or record, nor another unit's. The other topics the brief below lists, with their briefs' subjects, are for judging whose a point is, never sources.
+Carry the migration's records step for one record, a topic's or a unit's own: compose it from its sources, as the directive below says of it, and write it as JSON where the brief below says the record goes. Its sources are those the brief below lists, and no other: never another topic's log, brief or record, nor another unit's. The other topics the brief below lists, with what each is about, are for judging whose a point is, never sources.
 
-Where the record is composed already, amend it in place: answer each of the verifier's findings and each fault of the carry's refusal below, make it agree with each point the session settled, and keep everything no finding or fault asks you to change. Never carry a point the verifier's rulings below set aside, unless a point the session settled says otherwise.
+Where the record is composed already, amend it in place: answer each of the verifier's findings and each fault of the carry's refusal below, make it agree with each point the session settled, and keep everything no finding or fault asks you to change. Never carry a point the verifier's rulings below set aside, unless a point the session settled says otherwise. A finding asking for a point the rulings set aside, which no point the session settled covers, is not yours to answer: hand it back unanswered, for the session to settle as a reversal.
 
 Where you compose the record from the start, walk its sources section by section, as the brief below lists them: its files, its log, its brief and its experiments among them; each section of its specs it draws on, every section the record cites among them; and what the discovery sessions say of it. For each section, confirm that each current decision, finding and open question it holds is carried by an entry, or is not this record's, and carry each it misses. Where you amend it, the findings stand in for the walk.
 
@@ -10,7 +10,7 @@ Before you hand back, check the record. This names every fault the carry would r
 
 {{record-check}}
 
-Hand back how many entries the record holds, and the refs of the points it marks to raise, or that there are none.
+Hand back how many entries the record holds, the refs of the points it marks to raise, or that there are none, and each finding you handed back unanswered.
 
 # Whose record
 

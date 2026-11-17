@@ -716,7 +716,7 @@ describe('the directive\'s example record, frozen with 079', () => {
   it('a reversal the session settles: a ruling that changes the record becomes a finding to amend to, one that keeps it takes the finding out — so an empty findings file is only ever a pass', () => {
     const text = fs.readFileSync(DIRECTIVE, 'utf8');
 
-    assert.deepStrictEqual(['Where the ruling has the record change, replace the finding with `Settled: {point}, amend to agree`', 'Where the ruling keeps the record as it stands, take the finding out of the findings file', 'An empty findings file is only ever a pass.'].filter((rule) => !text.includes(rule)), []);
+    assert.deepStrictEqual(['Write what settles it, a line naming the point and the source or answer it rests on, into the settled file beside the record', 'Where it has the record change, replace the finding with `Settled: {point}, amend to agree`', 'Where it keeps the record as it stands, take the finding out of the findings file', 'An empty findings file is only ever a pass.'].filter((rule) => !text.includes(rule)), []);
   });
 
   it('a verifier\'s rulings are kept with its round, a reversal of one settled by the session as any, and every amend brief carries them', () => {
@@ -725,18 +725,20 @@ describe('the directive\'s example record, frozen with 079', () => {
     assert.deepStrictEqual([
       'writes its findings beside it, an empty file its pass, and its rulings: each point of the sources it ruled is not this record\'s, or is replaced by a later answer, one line each, with its source.',
       'keeps the last as a round in the rounds file beside the record, its rulings with it, and clears both',
-      'A finding that opens `Reverses round {R}:` would undo what an earlier round had the record changed to, or carry a point an earlier round\'s rulings set aside: it goes to no agent.',
+      'A finding that opens `Reverses round {R}:` would undo what an earlier round had the record changed to, or carry a point an earlier round\'s rulings set aside: it goes to no agent, nor does a finding a per-topic agent handed back unanswered, asking for a point the rulings set aside.',
+      'Where that topic\'s rulings set the section aside, write what settles it into its settled file instead, a line naming the section as the topic\'s, and the finding as `Settled: {section}, amend to agree`.',
       'each brief carries the verifier\'s findings, every round\'s rulings, the carry\'s refusal and the points this session settled',
     ].filter((rule) => !text.includes(rule)), []);
   });
 
-  it('a point of a shared source is the record\'s of the topic whose subject it bears on, named or not, one bearing on none the unit\'s own; other topics are listed to judge by, never sources', () => {
+  it('a point of a shared source, a shared spec\'s among them, is the record\'s of the topic whose subject it bears on, named or not, one bearing on none the unit\'s own where it has one, else its one topic\'s; other topics are listed to judge by, never sources — each line the agents\' briefs draw', () => {
     const text = fs.readFileSync(DIRECTIVE, 'utf8');
-    const sources = text.slice(text.indexOf('## A Topic\'s Sources'), text.indexOf('## A Topic\'s Record'));
+    const sources = text.slice(text.indexOf('## A Topic\'s Sources'), text.indexOf('## Working Through the Topics'));
 
     assert.deepStrictEqual([
-      'A point in a shared source — a discovery session, a spec several topics draw on, research that fed several topics — belongs to the record of the topic whose subject it bears on, whether or not it names the topic. A point bearing on no topic\'s subject is the unit\'s own record\'s, `{unit}.discovery`.',
-      'and the unit\'s other topics, each with its brief\'s subject, to judge whose a point is by: they are not sources. Each record is carried from its own sources alone, never another topic\'s log, brief or record',
+      'A point in a shared source — a discovery session, a spec several topics draw on, research that fed several topics — belongs to the record of the topic whose subject it bears on, whether or not it names the topic. A point bearing on no topic\'s subject is the unit\'s own record\'s, `{unit}.discovery`, where the unit has one, an epic\'s; in a unit of one topic, it is that topic\'s.',
+      '- **A shared spec.** From a spec several topics draw on, carry each point bearing on this topic\'s subject, its log discussing it or not, and each section its findings send it.',
+      'and the unit\'s other topics, each with what it is about, to judge whose a point is by: they are not sources. Each record is carried from its own sources alone, never another topic\'s log, brief or record',
     ].filter((rule) => !sources.includes(rule)), []);
   });
 

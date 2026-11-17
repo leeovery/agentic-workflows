@@ -15,16 +15,15 @@
 // linked worktree too; the unit's assets with where each came in from,
 // those the topic owes a link and those whose file is gone marked, where
 // its record goes and whether it is composed yet, the other topics its
-// sessions may speak of with their briefs' subjects, for judging whose a
-// point is and never sources, the verifier's findings kept until a
-// verifier reads the record again and every round's rulings, the carry's refusal taken
-// by the brief and cleared, the call that checks the record writing
+// sessions may speak of with what each is about, for judging whose a point
+// is and never sources, the verifier's findings kept until a verifier
+// reads the record again and every round's rulings, the carry's refusal
+// taken by the brief and cleared, the call that checks the record writing
 // nothing, and of the directive the sections its check names briefed, the
 // session's own work none of them; a cancelled unit's topic briefed as any
-// other; the verifier's — the topic, its record as composed, verbatim, every
-// round of findings and rulings before, the last kept as a round and
-// cleared, the points
-// the session settled, and the directive; every
+// other; the verifier's — the topic, its record as composed, verbatim,
+// every round of findings and rulings before, the last kept as a round and
+// cleared, the points the session settled, and the directive; every
 // refusal storing nothing; and the two agents' definitions (21.S35): each
 // fixes its model and effort, and its shell is for reading, the per-topic
 // agent's for its record's check besides, so no other engine call and no
@@ -113,10 +112,10 @@ const licensingDrawn = (composed = false) => [
   '',
   '## The unit\'s other topics: for judging whose a point is, never sources',
   '',
-  '- auth, moved to platform, no brief',
-  '- billing, no brief',
-  '- search, no brief',
-  '- support, no brief',
+  '- auth, moved to platform: Thirty days, then sign in again, with tokens renewed on each.',
+  '- billing',
+  '- search: Still digging.',
+  '- support',
   '',
   '## Its old map, as `.workflows/` holds it',
   '',
@@ -170,7 +169,7 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
     assert.ok(search.includes([
       '## Its specs', '', 'None recorded.', '',
       '## The unit\'s discovery sessions', '', 'None recorded.', '',
-      '## The unit\'s other topics: for judging whose a point is, never sources', '', '- auth, moved to platform, no brief', '- billing, no brief', '- licensing: How the trial works.', '- support, no brief', '',
+      '## The unit\'s other topics: for judging whose a point is, never sources', '', '- auth, moved to platform: Thirty days, then sign in again, with tokens renewed on each.', '- billing', '- licensing: How the trial works.', '- support', '',
       '## Its old map, as `.workflows/` holds it', '', '- ranking: decided', '- typo-tolerance: exploring', '- synonyms: deferred', '',
       '## Its research\'s threads still open', '', '- index-size, digging: How big does the index grow?', '',
       '## The unit\'s assets', '',
@@ -236,9 +235,9 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
 
     assert.ok(composer.includes(`# The verifier's findings\n\n${FINDINGS}\n\n# The verifier's rulings\n\nNone recorded.\n\n# The carry's refusal`), composer);
     assert.ok(composer.includes('- The record composed: .cache/migrate/records/fumi/licensing.json, composed already'), composer);
-    assert.ok(verifier.includes(`# The earlier rounds' findings\n\n## Round 1\n\n${FINDINGS}\n\n# Points the session settled\n\nNone recorded.\n\n# The directive`), verifier);
+    assert.ok(verifier.includes(`# The earlier rounds' findings and rulings\n\n## Round 1\n\n${FINDINGS}\n\n# Points the session settled\n\nNone recorded.\n\n# The directive`), verifier);
     assert.ok(settled.includes(`# Points the session settled\n\n${SETTLED}\n\n# The directive`), settled);
-    assert.ok(second.includes(`# The earlier rounds' findings\n\n## Round 1\n\n${FINDINGS}\n\n## Round 2\n\n${REVERSED}\n\n# Points the session settled\n\n${SETTLED}\n\n# The directive`), second);
+    assert.ok(second.includes(`# The earlier rounds' findings and rulings\n\n## Round 1\n\n${FINDINGS}\n\n## Round 2\n\n${REVERSED}\n\n# Points the session settled\n\n${SETTLED}\n\n# The directive`), second);
     assert.ok(third.includes(`## Round 2\n\n${REVERSED}\n\n## Round 3\n\nNone: the verifier passed it.\n\n# Points the session settled`), third);
     assert.strictEqual(fs.existsSync(statePath(dir, findingsPath('fumi', 'licensing'))), false);
   });
@@ -253,15 +252,15 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
 
     const composer = issued(['migration-topic', ...LICENSING]).brief;
     const verifier = issued(['migration-verifier', ...LICENSING]).brief;
-    const cleared = fs.existsSync(statePath(dir, rulingsPath('fumi', 'licensing')));
+    const rulingsLeft = fs.existsSync(statePath(dir, rulingsPath('fumi', 'licensing')));
     writeState(dir, findingsPath('fumi', 'licensing'), '');
     writeState(dir, rulingsPath('fumi', 'licensing'), `${REPLACED}\n`);
     const later = issued(['migration-topic', ...LICENSING]).brief;
     issued(['migration-verifier', ...LICENSING]);
 
     assert.ok(composer.includes(`# The verifier's rulings\n\n## Round 1\n\n${RULED}\n\n# The carry's refusal`), composer);
-    assert.ok(verifier.includes(`# The earlier rounds' findings\n\n## Round 1\n\n${FINDINGS}\n\n### Rulings\n\n${RULED}\n\n# Points the session settled`), verifier);
-    assert.strictEqual(cleared, false);
+    assert.ok(verifier.includes(`# The earlier rounds' findings and rulings\n\n## Round 1\n\n${FINDINGS}\n\n### Rulings\n\n${RULED}\n\n# Points the session settled`), verifier);
+    assert.strictEqual(rulingsLeft, false);
     assert.ok(later.includes(`# The verifier's rulings\n\n## Round 1\n\n${RULED}\n\n## Round 2\n\n${REPLACED}\n\n# The carry's refusal`), later);
     assert.strictEqual(readState(dir, roundsPath('fumi', 'licensing')), `## Round 1\n\n${FINDINGS}\n\n### Rulings\n\n${RULED}\n\n## Round 2\n\nNone: the verifier passed it.\n\n### Rulings\n\n${REPLACED}\n`);
   });
@@ -273,7 +272,7 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
 
     for (const part of [
       '- **Unit:** shop, epic, in-progress\n- **The record:** the unit\'s own, carried in discovery — what its discovery sessions hold of the unit as a whole, or of no one topic',
-      '## The unit\'s discovery sessions\n\n- shop/discovery/session-001.md\n\n## The unit\'s topics, each carrying what the sessions say of it: for judging whose a point is, never sources\n\n- weights, no brief\n',
+      '## The unit\'s discovery sessions\n\n- shop/discovery/session-001.md\n\n## The unit\'s topics, each carrying what the sessions say of it: for judging whose a point is, never sources\n\n- weights: By name.\n',
       '- shop/assets/vision.md, which came in from discovery — this record\'s to link',
       '- The record composed: .cache/migrate/records/shop.json, not composed yet',
       `\`${ENGINE_RUN} ledger carry shop.discovery --dry-run\``,
@@ -292,17 +291,23 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
     const own = issued(['migration-topic', '--topic', 'fumi.discovery', '--directive', '079-records']).brief;
 
     assert.ok(brief.includes('## The unit\'s discovery sessions\n\n- fumi/discovery/session-001.md, of fumi, which it moved from\n'), brief);
-    assert.ok(brief.includes('## The unit\'s other topics: for judging whose a point is, never sources\n\n- billing, of fumi, no brief\n- licensing, of fumi: How the trial works.\n- search, of fumi, no brief\n- support, of fumi, no brief\n\n'), brief);
-    assert.ok(own.includes('## The unit\'s topics, each carrying what the sessions say of it: for judging whose a point is, never sources\n\n- auth, moved to platform: Who signs in, and for how long.\n- billing, no brief\n- licensing: How the trial works.\n'), own);
+    assert.ok(brief.includes('## The unit\'s other topics: for judging whose a point is, never sources\n\n- billing, of fumi\n- licensing, of fumi: How the trial works.\n- search, of fumi: Still digging.\n- support, of fumi\n\n'), brief);
+    assert.ok(own.includes('## The unit\'s topics, each carrying what the sessions say of it: for judging whose a point is, never sources\n\n- auth, moved to platform: Who signs in, and for how long.\n- billing\n- licensing: How the trial works.\n'), own);
   });
 
-  it('each other topic\'s subject is its brief\'s first line past its headings, else its first heading', () => {
-    writeState(dir, layout.topic('fumi', 'search', 'brief.md'), '# Search\n\n## Scope\n\nFinding a product by name.\nAnd by tag.\n');
-    writeState(dir, layout.topic('fumi', 'billing', 'brief.md'), '\n# Invoices and refunds\n');
+  it('what each other topic is about, the first that holds: its map row\'s summary; its brief\'s first line of prose, the old brief\'s provenance line passed over; its log\'s first line of prose, past a section\'s frontmatter; else its name alone', () => {
+    const manifest = JSON.parse(readState(dir, layout.manifest('fumi')));
+    manifest.phases.discovery.items.billing.summary = 'Invoices, refunds and seat billing.';
+    writeState(dir, layout.manifest('fumi'), JSON.stringify(manifest));
+    writeState(dir, layout.topic('fumi', 'billing', 'brief.md'), '# Discovery Brief — Billing\n\nDrawn from discovery session 001.\n\n## Soft decisions\n\n- Seats bill monthly.\n');
+    writeState(dir, layout.topic('fumi', 'search', 'brief.md'), '# Discovery Brief — Search\n\nDrawn from discovery session 001.\n\n## Soft decisions\n\n- **Ranking**: newest first.\n');
+    writeState(dir, layout.topic('fumi', 'support', 'brief.md'), '# Discovery Brief — Support\n\nDrawn from discovery sessions 001–002.\n');
+    writeState(dir, layout.topic('fumi', 'support', 'log.md'), '## Discussion\n\n---\ntopic: support\nstatus: concluded\n---\n\n## Discussion: Support\n\n### Context\n\nCustomers reach us by email alone.\n');
 
     const { brief } = issued(['migration-topic', ...LICENSING]);
 
-    assert.ok(brief.includes('- billing: Invoices and refunds\n- search: Finding a product by name.\n'), brief);
+    assert.ok(brief.includes('- billing: Invoices, refunds and seat billing.\n- search: **Ranking**: newest first.\n- support: Customers reach us by email alone.\n'), brief);
+    assert.ok(issued(['migration-topic', '--topic', 'fumi.discussion.search', '--directive', '079-records']).brief.includes('- auth, moved to platform: Thirty days'), 'a promoted topic\'s log read where it went');
   });
 
   it('lists the unit\'s discovery sessions, the migration\'s research session among them, and nothing else its discovery holds; an epic\'s topic never started carried in discovery, and shown so', () => {
@@ -348,10 +353,10 @@ describe('a cite of a heading held more than once', () => {
 });
 
 describe('the walk of a record\'s sources', () => {
-  const CONFINED = 'Its sources are those the brief below lists, and no other: never another topic\'s log, brief or record, nor another unit\'s. The other topics the brief below lists, with their briefs\' subjects, are for judging whose a point is, never sources.';
+  const CONFINED = 'Its sources are those the brief below lists, and no other: never another topic\'s log, brief or record, nor another unit\'s. The other topics the brief below lists, with what each is about, are for judging whose a point is, never sources.';
   const LISTED = 'its sources section by section, as the brief below lists them: its files, its log, its brief and its experiments among them; each section of its specs it draws on, every section the record cites among them; and what the discovery sessions say of it.';
 
-  it('the composer composing a record from the start walks its sources section by section, each current decision, finding and open question carried or not the record\'s, an amend answering the findings in its place and keeping everything else; the verifier walks every one, its findings every gap the walk turns up, a cited section carried whole; neither reads a record composed for another topic or unit', () => {
+  it('the composer composing a record from the start walks its sources section by section, each current decision, finding and open question carried or not the record\'s, an amend answering the findings in its place and keeping everything else; the verifier walks every one, its findings every gap the walk turns up, a cited section carried whole; neither reads another topic\'s log, brief or record, nor another unit\'s, the other topics listed to judge whose a point is by', () => {
     assert.deepStrictEqual([
       unsaid('migration-topic', [CONFINED, 'keep everything no finding or fault asks you to change.', `Where you compose the record from the start, walk ${LISTED} For each section, confirm that each current decision, finding and open question it holds is carried by an entry, or is not this record's, and carry each it misses. Where you amend it, the findings stand in for the walk.`]),
       unsaid('migration-verifier', [
@@ -372,7 +377,7 @@ describe('a verifier\'s rulings', () => {
         'Where you ruled that a point of the sources is not this record\'s, or is replaced by a later answer, write each such ruling into the rulings file the brief names, one line each, naming the point and its source\'s section.',
         'a finding that would undo what an earlier round\'s finding had changed, or carry a point an earlier round\'s rulings set aside, opens `Reverses round {R}:`, naming that line.',
       ]),
-      unsaid('migration-topic', ['Never carry a point the verifier\'s rulings below set aside, unless a point the session settled says otherwise.']),
+      unsaid('migration-topic', ['Never carry a point the verifier\'s rulings below set aside, unless a point the session settled says otherwise. A finding asking for a point the rulings set aside, which no point the session settled covers, is not yours to answer: hand it back unanswered, for the session to settle as a reversal.', 'and each finding you handed back unanswered.']),
     ], [[], []]);
   });
 });
@@ -405,6 +410,7 @@ describe('the migration\'s agents and the plain search (21.S35, 26.5.1)', () => 
   const CHECKING = '**The shell is for reading and searching, and for the check your brief names:** `rg`, `find`, `ls`, `cat`, `head`, `tail`, `wc` and their like. Never run the engine for anything else, never run git, and never write, move or delete a file through it.';
 
   it('each searches through a shell confined to reading, the per-topic agent\'s running its record\'s check besides — Claude Code giving no Glob or Grep tool — and no agent file names an engine call, nor any brief but the check it names: only the session writes the ledger and the state', () => {
+    assert.ok(fs.readFileSync(path.join(AGENTS, 'ledger-migration-verifier.md'), 'utf8').includes('- Write only the findings file, and the rulings file where your brief names one, the `.txt` files your brief names, with the Write tool.'), 'the verifier writes its rulings');
     for (const [agent, rule] of [['ledger-migration-topic', CHECKING], ['ledger-migration-verifier', CONFINED], ['ledger-plain-search', CONFINED]]) {
       const text = fs.readFileSync(path.join(AGENTS, `${agent}.md`), 'utf8');
       const tools = String(/^tools: (.*)$/m.exec(text)?.[1]).split(', ');

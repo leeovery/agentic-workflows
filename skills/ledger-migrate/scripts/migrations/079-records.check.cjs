@@ -444,36 +444,53 @@ function threadsOf(project, unit, topic) {
 /** A file of the topic's own, or '' where it has none. @param {Project} project @param {Unit} unit @param {string} topic @param {string} file */
 const ownOf = (project, unit, topic, file) => readText(path.join(project.stateDir, unit.name, 'topics', topic, file)) ?? '';
 
+// A log section's frontmatter, a block of `key: value` lines between rules.
+const FRONTMATTER = /^---\n(?:[^\n]*:[^\n]*\n)*---$/gm;
+const RULE = /^ {0,3}([-*_])(?: *\1){2,} *$/;
+// The line the old discovery brief opens on, naming the sessions it was drawn from.
+const PROVENANCE = /^Drawn from\b/;
+
+const LIST_MARK = /^(?:[-*+]|\d+[.)])[ \t]+/;
+
+/** A text's lines of prose, trimmed, a list item's mark dropped: past its headings, rules, fences and frontmatter. @param {string} text */
+const proseOf = (text) => text.replace(FRONTMATTER, '').split('\n').map((line) => line.trim())
+  .filter((line) => line !== '' && HEADING.exec(line) === null && !RULE.test(line) && !FENCE.test(line))
+  .map((line) => line.replace(LIST_MARK, ''));
+
 /**
- * What a topic's brief says it is about: its first line of text past its
- * headings, else its first heading; null where it has no brief, or one of
- * nothing.
- * @param {string} stateDir @param {string} unit @param {string} topic @returns {string|null}
+ * What a topic is about, first that holds: its map row's summary in the
+ * unit that names it; its brief's first line of prose but its provenance;
+ * its log's first line of prose; or null, its name alone.
+ * @param {string} stateDir @param {Record<string, any>} manifest the unit naming the topic @param {string} at the unit whose folder holds it @param {string} topic
+ * @returns {string|null}
  */
-function subjectOf(stateDir, unit, topic) {
-  const lines = (readText(path.join(stateDir, unit, 'topics', topic, 'brief.md')) ?? '').split('\n').filter((line) => line.trim() !== '');
-  const text = lines.find((line) => HEADING.exec(line) === null) ?? HEADING.exec(lines[0] ?? '')?.[1] ?? '';
-  return text.trim() === '' ? null : text.trim();
+function subjectOf(stateDir, manifest, at, topic) {
+  const summary = itemsOf(manifest.phases?.discovery?.items)[topic]?.summary;
+  if (typeof summary === 'string' && summary.trim() !== '') return summary.trim();
+  const own = (/** @type {string} */ file) => proseOf(readText(path.join(stateDir, at, 'topics', topic, file)) ?? '');
+  return own('brief.md').find((line) => !PROVENANCE.test(line)) ?? own('log.md')[0] ?? null;
 }
 
 /**
  * The topics a record's discovery sessions may speak of besides its own,
  * once each: those of each unit whose sessions it draws on, by name, each
- * with the unit it was promoted to where it was, and its brief's subject —
- * what a point of a shared source is judged whose by, never a source.
+ * with the unit it was promoted to where it was, and its subject — what a
+ * point of a shared source is judged whose by, never a source.
  * @param {Project} project @param {Unit} unit @param {string|null} topic
  * @returns {{topic: string, unit: string, to: string|null, subject: string|null}[]}
  */
 function othersOf(project, unit, topic) {
   const homes = topic === null ? [unit.name] : homesOf(project, unit, topic);
-  /** @type {Map<string, {topic: string, unit: string, to: string|null}>} */
+  /** @type {Map<string, {topic: string, unit: string, to: string|null, subject: string|null}>} */
   const others = new Map();
   for (const home of homes) {
     const { manifest } = home === unit.name ? unit : unitOf(project, home);
     const named = [...topicsOf(manifest).map((other) => ({ topic: other, to: null })), ...movedOf(manifest)];
-    for (const { topic: other, to } of named) if (other !== topic && !others.has(other)) others.set(other, { topic: other, unit: home, to });
+    for (const { topic: other, to } of named) {
+      if (other !== topic && !others.has(other)) others.set(other, { topic: other, unit: home, to, subject: subjectOf(project.stateDir, manifest, to ?? home, other) });
+    }
   }
-  return [...others.values()].sort((a, b) => (a.topic < b.topic ? -1 : 1)).map((other) => ({ ...other, subject: subjectOf(project.stateDir, other.to ?? other.unit, other.topic) }));
+  return [...others.values()].sort((a, b) => (a.topic < b.topic ? -1 : 1));
 }
 
 /** Whether the unit has its spec, past which a point is raised at its specification: its `spec.md`, or its specs joined. @param {Project} project @param {Unit} unit */
