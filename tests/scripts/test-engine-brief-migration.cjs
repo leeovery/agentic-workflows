@@ -384,15 +384,25 @@ describe('the walk of a record\'s sources', () => {
 
   it('the composer composing a record from the start walks its sources section by section, each current decision, finding and open question carried or not the record\'s, an amend answering the findings in its place and keeping everything else; the verifier walks every one, its findings every gap the walk turns up, a cited section carried whole; neither reads another topic\'s log, brief or record, nor another unit\'s, the other topics listed to judge whose a point is by', () => {
     assert.deepStrictEqual([
-      unsaid('migration-topic', [CONFINED, 'keep everything no finding or fault asks you to change.', `Where you compose the record from the start, walk ${LISTED} For each section, confirm that each current decision, finding and open question it holds is carried by an entry, or is not this record's, and carry each it misses. Where you amend it, the findings stand in for the walk.`]),
+      unsaid('migration-topic', [CONFINED, 'keep everything no finding or fault asks you to change.', `Where you compose the record from the start, walk ${LISTED} For each section, confirm that each current decision, finding and open question it holds is carried by an entry, or is not this record's, and carry each it misses.`, 'Where you amend it, the findings stand in for the walk.']),
       unsaid('migration-verifier', [
         CONFINED,
         'The record passes when it holds each current decision, finding and open question its sources hold,',
-        'Walk the sheet below section by section: it lays the record against its sources, each section of each file with its lines and every entry citing it. Read each section in its source, then check that what each entry listed beneath it takes from the section is what the section says, and that each current decision, finding and open question the section holds is carried, by an entry listed there or elsewhere, or is not this record\'s; of the discovery sessions, each point bearing on its subject, or for a unit\'s own record on no topic\'s subject. That a cited heading exists is no check. Walk every section: your findings are every gap the walk turns up, never a sample.',
+        'Walk the sheet below section by section: it lays the record against its sources, each section of each file with its lines and every entry citing it. Read each section in its source, then check that what each entry listed beneath it takes from the section is what the section says, and that each current decision, finding and open question the section holds is carried, by an entry listed there or elsewhere, or is not this record\'s; of the discovery sessions, each point bearing on its subject, or for a unit\'s own record on no topic\'s subject. That a cited heading exists is no check.',
+        'Walk every section: your findings are every gap the walk turns up, never a sample.',
         'Write the checked file the brief names afresh, a line for each entry of the record, by its ref: `{ref}: ok`, or `{ref}: see finding` where a finding names it.',
         '- each spec section it cites is carried whole: each current decision, finding and open question of it that concerns this record is carried;',
         '- nothing is carried that you rule is not this record\'s: such an entry is a finding, to remove, with the ruling beside it.',
       ]),
+    ], [[], []]);
+  });
+});
+
+describe('what no one measured, and sources at odds', () => {
+  it('the composer carries each point a section leaves unmeasured and names each contradiction no later section settles; the verifier\'s walk checks both, setting the first aside only where a later section measured it or made it moot', () => {
+    assert.deepStrictEqual([
+      unsaid('migration-topic', ['Carry each point a section leaves unmeasured, untested, unverified or to check, and where two sections contradict each other on a point no later one settles, have the record name the contradiction.']),
+      unsaid('migration-verifier', ['That a cited heading exists is no check. Check that each point a section leaves unmeasured, untested, unverified or to check is carried, a ruling setting it aside only where a later section measured it or made it moot; and that where a section contradicts another on a point no later one settles, the record names the contradiction. Walk every section']),
     ], [[], []]);
   });
 });

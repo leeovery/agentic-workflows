@@ -56,6 +56,8 @@ Each current decision, finding and open question the topic's sources hold, and n
 - **A unit's own record** is carried in discovery too, so it holds questions and findings alone, none product-wide. A record of no entries is one, where every point of the sessions bears on a topic's subject.
 - **Assets.** Each of the unit's assets its brief marks the record's to link, and any other its log or brief links to, is linked as `reference` from the entry that draws on it. One its brief shows gone is linked from none.
 - **A record at least.** A topic that draws on a spec, or whose log, brief or experiments' records — its markdown files — hold text past their headings, has an entry at least.
+- **What no one measured.** A point a source names unmeasured, untested, unverified or left to check is carried: an open question, or a finding stating that it is unmeasured. A ruling sets it aside only where a later source measured it, or made it moot.
+- **Sources at odds.** Where the sources, or the sections of one, contradict each other on a point, and no later source settles it, the record says so: the entries carrying each side name the other, or an open question names the contradiction and cites both.
 - **Points no source settles** are open questions marked `raise` `true`, for the raises at the end: a log unclear on what was decided, with no approved spec to settle it; a draft spec at odds with its log; a spec at odds with itself. Where an approved spec settles it, it is settled.
 - **Nothing invented.** An entry says what a source says, and nothing more.
 
