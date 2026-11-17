@@ -38,10 +38,9 @@ const {
   ORIGINS: WALKTHROUGH_ORIGINS, loadScreen, loadCard, walkthroughOffer, walkthroughScreen, walkthroughTopic,
 } = require('./projections/walkthrough.cjs');
 const { helpTopicsSurface } = require('./projections/help-topics.cjs');
-const { migrationsApplied, migrationGate, stateLostGate, repoStop, migrationGuardStop, migrationChecksStop, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, banner, workPick, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS } = require('./projections/boot.cjs');
+const { migrationsApplied, migrationGate, stateLostGate, repoStop, migrationGuardStop, migrationChecksStop, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, banner, workPick, knowledgeGate, knowledgeAsk, KEY_PROVIDERS } = require('./projections/boot.cjs');
+const { detectSystemConfig } = require('./boot.cjs');
 const { pickRows } = require('./boot-route.cjs');
-const { knowledgeFiles } = require('../kernel/knowledge/files.cjs');
-const { readMetadata } = require('../kernel/knowledge/store.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { githubSquashNested } = require('./github-setup.cjs');
 const { beatQuietly } = require('./presence.cjs');
@@ -1069,53 +1068,63 @@ function walkthroughTopicSurface(_cwd, args) {
   return walkthroughTopic(card, args['content-only'] ? 'content' : 'whole');
 }
 
-// The flags each knowledge gate variant takes: the reuse variant's system
-// configuration (its yes row names it), the retry variant's provider (whose
-// missing key its display says how to store). Every other variant takes none.
-/** @type {Record<string, string[]>} */
-const KNOWLEDGE_GATE_FLAGS = { reuse: ['provider', 'model'], retry: ['provider'] };
+/** The knowledge gate's variants a row draws by name; with none, the gate opens on reuse or mode. */
+const KNOWLEDGE_VARIANTS = Object.freeze(['deviate', 'wizard', 'retry']);
+
+/** The flags of a setup's provider form the retry variant runs again, `from-system` aside. */
+const PROVIDER_FORM_FLAGS = Object.freeze(['provider', 'model', 'base-url', 'dimensions']);
 
 /**
- * ledger's knowledge gate menus. A reuse provider stands without a
- * model (the provider defaults it); a model without a provider names
- * nothing. The retry variant names the provider its key is for.
+ * ledger's knowledge gate. With no `--variant` it opens on the system
+ * configuration: reused where one is valid, its provider and model named;
+ * else the search-mode pick. A row draws `deviate` or `wizard` by name, and
+ * a setup refused for its provider's key `retry`, given the setup's flags —
+ * `--from-system`, the key the system configuration's provider's, or the
+ * provider form's — which its yes runs again.
  * @param {string} _cwd @param {Record<string, string|undefined>} args @returns {string}
  */
-function knowledgeGateSurface(_cwd, { variant, provider, model }) {
-  if (variant === undefined || !KNOWLEDGE_GATE_VARIANTS.includes(variant)) {
-    throw new Error(`render knowledge-gate: --variant must be one of ${KNOWLEDGE_GATE_VARIANTS.join(', ')}, got "${variant ?? ''}"`);
+function knowledgeGateSurface(_cwd, args) {
+  const { variant } = args;
+  const given = [...PROVIDER_FORM_FLAGS, 'from-system'].filter((flag) => args[flag] !== undefined);
+  if (variant === 'retry') return knowledgeGate('retry', retrySetup(args, given));
+  if (given.length > 0) throw new Error(`render knowledge-gate: --${given[0]} names the setup the retry variant runs again — it takes --variant retry`);
+  if (variant === undefined) {
+    const system = detectSystemConfig();
+    return system.status === 'valid' ? knowledgeGate('reuse', system) : knowledgeGate('mode');
   }
-  const takes = KNOWLEDGE_GATE_FLAGS[variant] ?? [];
-  const stray = Object.entries({ provider, model }).find(([flag, value]) => value !== undefined && !takes.includes(flag));
-  if (stray) {
-    throw new Error(`render knowledge-gate: --${stray[0]} does not belong to the ${variant} variant — --provider/--model name the reuse variant's configuration, --provider the retry variant's key`);
-  }
-  if (variant === 'retry' && !KEY_PROVIDERS.includes(provider ?? '')) {
-    throw new Error(`render knowledge-gate: the retry variant needs --provider ${KEY_PROVIDERS.join('|')} — the provider whose key the setup could not find, got "${provider ?? ''}"`);
-  }
-  if (isFilled(model) && !isFilled(provider)) {
-    throw new Error('render knowledge-gate: --model names nothing without --provider — the provider is the configuration, the model rides with it');
-  }
-  return knowledgeGate(variant, { provider, model });
+  if (!KNOWLEDGE_VARIANTS.includes(variant)) throw new Error(`render knowledge-gate: --variant must be one of ${KNOWLEDGE_VARIANTS.join(', ')}, or none to open the gate, got "${variant}"`);
+  return knowledgeGate(variant);
 }
 
 /**
- * The knowledge gate's closing line, read from this checkout's store
- * metadata — the configuration the store was built with.
- * @param {string} cwd @returns {string}
+ * The provider whose key the retry variant asks for, and the setup's flags
+ * it runs again: `--from-system` alone, the system configuration's provider;
+ * or the provider form's, as the setup was given them.
+ * @param {Record<string, string|undefined>} args @param {string[]} given
+ * @returns {{provider: string, setup: string[]}}
  */
-function knowledgeReadySurface(cwd) {
-  const file = knowledgeFiles(stateRoot(cwd)).metadata;
-  if (!fs.existsSync(file)) {
-    throw new Error(`render knowledge-ready: no ${file} — this checkout has no knowledge store yet`);
+function retrySetup(args, given) {
+  if (args['from-system'] !== undefined) {
+    if (given.length > 1) throw new Error('render knowledge-gate: --from-system runs the system configuration again, and takes none of the provider form\'s flags');
+    const { provider } = detectSystemConfig();
+    if (!KEY_PROVIDERS.includes(provider ?? '')) throw new Error(`render knowledge-gate: the system configuration's provider is "${provider ?? 'none'}", no provider of ${KEY_PROVIDERS.join('|')} whose key could be missing`);
+    return { provider: /** @type {string} */ (provider), setup: ['--from-system'] };
   }
-  let metadata;
-  try {
-    metadata = readMetadata(file);
-  } catch (err) {
-    throw new Error(`render knowledge-ready: ${file} is not valid JSON — ${messageOf(err)}`);
+  const { provider, model } = args;
+  if (!KEY_PROVIDERS.includes(provider ?? '') || !isFilled(model)) {
+    throw new Error(`render knowledge-gate: the retry variant takes the setup it runs again — --from-system, or --provider ${KEY_PROVIDERS.join('|')} with its --model and any --base-url and --dimensions — got "${given.map((flag) => `--${flag}`).join(' ')}"`);
   }
-  return knowledgeReady(metadata);
+  return { provider: /** @type {string} */ (provider), setup: given.flatMap((flag) => [`--${flag}`, /** @type {string} */ (args[flag])]) };
+}
+
+/**
+ * The knowledge gate's questions for a provider's setup, which the person
+ * answers in words.
+ * @param {string} _cwd @param {Record<string, string|undefined>} args @returns {string}
+ */
+function knowledgeAskSurface(_cwd, { provider }) {
+  if (!KEY_PROVIDERS.includes(provider ?? '')) throw new Error(`render knowledge-ask: --provider must be one of ${KEY_PROVIDERS.join(', ')}, got "${provider ?? ''}"`);
+  return knowledgeAsk(/** @type {string} */ (provider));
 }
 
 /** The catalogue: surface name → handler. @type {Record<string, (cwd: string, args: {dotpath: string} & Record<string, string|undefined>, lists: Record<string, string[]>) => string>} */
@@ -1154,7 +1163,7 @@ const SURFACES = {
   'github-squash-gate': (cwd) => githubSquashGate(projectName(cwd), githubSquashNested(cwd)),
   'label-gate': () => labelGate(),
   'knowledge-gate': knowledgeGateSurface,
-  'knowledge-ready': knowledgeReadySurface,
+  'knowledge-ask': knowledgeAskSurface,
   'state-merge-gate': stateMergeGateSurface,
   'ledger-stop': ledgerStopSurface,
   'directive-stop': directiveStopSurface,

@@ -42,6 +42,7 @@ const FAILURES = {
   quota: { status: 429, headers: {}, body: { error: { code: 'insufficient_quota', message: 'You exceeded your current quota.' } } },
   'rate-limited': { status: 429, headers: { 'retry-after': '20' }, body: { error: { message: 'Rate limit reached. Please try again in 20s.' } } },
   down: { status: 503, headers: {}, body: { error: { message: 'Service unavailable.' } } },
+  rejected: { status: 401, headers: {}, body: { error: { message: 'Incorrect API key provided.' } } },
 };
 
 /**

@@ -439,8 +439,8 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render github-rule-gate
   render github-squash-gate
   render label-gate
-  render knowledge-gate --variant reuse|deviate|mode|retry|wizard [--provider <name> --model <name>]
-  render knowledge-ready
+  render knowledge-gate [--variant deviate|wizard | --variant retry (--from-system | --provider <name> --model <name> [--base-url <url>] [--dimensions <n>])]
+  render knowledge-ask --provider openai|openai-compatible
   render state-merge-gate
   render ledger-stop
   render directive-stop --directive <id>
@@ -2490,7 +2490,7 @@ function runHandoff(call, argv) {
   }
 }
 
-const RENDER_FLAGS = ['warn', 'menu-only', 'content-only', 'calls', 'sweep', 'page', 'revised', 'asked'];
+const RENDER_FLAGS = ['warn', 'from-system', 'menu-only', 'content-only', 'calls', 'sweep', 'page', 'revised', 'asked'];
 // The flags a surface takes more than once, each value its own, by surface:
 // every other surface takes each flag once.
 /** @type {Record<string, string[]>} */

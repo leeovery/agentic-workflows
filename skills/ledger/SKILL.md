@@ -61,15 +61,23 @@ Then work each of boot's `gates` in its order, as **The Setup Gates** says, and 
 - `migration-review`: Load **[migration-review.md](references/migration-review.md)** and follow its instructions as written.
 - `claude-code-floor`, `mod-notice`: Load **[claude-code-setup.md](references/claude-code-setup.md)** and follow its instructions as written, with gate = `{gate}`.
 - `effort`: where boot's `effort` is a level below medium, say ``This session runs at `{effort}` effort; Ledger recommends medium or above.`` once, and carry on. At medium or above, say nothing.
-- `walkthrough`: Load **[walkthrough-offer.md](references/walkthrough-offer.md)** and follow its instructions as written.
-- `session-labels`: Load **[session-label-prompt.md](references/session-label-prompt.md)** and follow its instructions as written.
-- `knowledge`: Load **[knowledge-gate.md](references/knowledge-gate.md)** and follow its instructions as written.
+- `knowledge`: Load **[knowledge-gate.md](references/knowledge-gate.md)** and follow its instructions as written, then work the screen `knowledge-gate`.
 - `brownfield`: Load **[brownfield-offer.md](references/brownfield-offer.md)** and follow its instructions as written.
-- `github-rule`, `github-squash`: fetch the offer and emit its sections verbatim per their markers. The answer goes to `gate`; run the `next` it returns, which records it.
+- `walkthrough`, `session-labels`, `github-rule`, `github-squash`: work the screen `walkthrough-offer`, `label-gate`, `github-rule-gate` or `github-squash-gate`. The walkthrough's `continue` is the walk: Load **[walk.md](references/walk.md)** with origin = `first-run`. A question at the offer puts back its menu alone, the screen's call with `--menu-only` added.
 
-  ```bash
-  node .claude/skills/ledger-engine/scripts/engine.cjs render {gate:[github-rule|github-squash]}-gate
-  ```
+### A Setup Screen
+
+Fetch the screen and emit its sections verbatim per their markers:
+
+```bash
+node .claude/skills/ledger-engine/scripts/engine.cjs render {screen}
+```
+
+The answer goes to `gate`. Run the `next` it returns, and each `next` a call answers after it, until one answers none: the screen is done, and the start goes on to the next gate.
+- **An engine call**: emit its sections verbatim per their markers, and surface its `warnings`. Surface a refusal, and run the way on it names; one that names none ends the start. **STOP.** Do not proceed — terminal condition.
+- **`boot`**: run it as **Boot** says, words and all, and work its `gates` from this screen's place in their order: this screen again where it is still due, then those after it.
+- **A handoff**: Load **[handing-off.md](../ledger-shared/references/handing-off.md)** with route = `/{skill} {args}`.
+- **`continue`**: as the screen's own line says.
 
 ## Where the Start Goes
 

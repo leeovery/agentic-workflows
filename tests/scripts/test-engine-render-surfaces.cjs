@@ -19,7 +19,8 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { DOTS } = require('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs');
+const { DOTS, gateShown } = require('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs');
+const { systemConfigPath } = require('../../skills/ledger-engine/scripts/kernel/knowledge/config.cjs');
 const { titlecase } = require('../../skills/ledger-engine/scripts/domain/conventions.cjs');
 const { renderSurface, NB, unwrap, setup, teardown, writeManifest, writePayload } = require('./render-surfaces-world.cjs');
 const { output } = require('./engine-harness.cjs');
@@ -585,7 +586,20 @@ describe('roadmap surfaces', () => {
 describe('the boot and knowledge gate surfaces', () => {
   let dir;
   beforeEach(() => { dir = setup(); });
-  afterEach(() => { teardown(dir); });
+  afterEach(() => {
+    systemConfig(null);
+    teardown(dir);
+  });
+
+  /** The system configuration's knowledge settings written, a file that does not parse, or none. @param {object|string|null} knowledge */
+  const systemConfig = (knowledge) => {
+    const file = systemConfigPath();
+    if (knowledge === null) fs.rmSync(file, { force: true });
+    else fs.writeFileSync(file, typeof knowledge === 'string' ? knowledge : JSON.stringify({ knowledge }));
+  };
+
+  /** What each row of the gate just drawn leads to, by its key. */
+  const rowsLeadTo = () => /** @type {any} */ (gateShown()).options.map((/** @type {any} */ { key, next }) => [key, next.argv]);
 
   it('migrations-applied: the session\'s summary above the run\'s counts, the counts left out where no file was updated', () => {
     const counted = writePayload(dir, '.ledger/.cache/migrations-applied.json', {
@@ -639,25 +653,30 @@ describe('the boot and knowledge gate surfaces', () => {
     }
   });
 
-  it('the boot gates are static menus: the migration confirm and the tmux label opt-in', () => {
+  it('the setup screens\' rows each lead to the verb that records their answer: the migration confirm\'s yes its commit, the tmux label opt-in saying what labels do', () => {
     const migration = renderSurface(dir, 'migration-gate', {});
     assert.match(migration, /=== MENU: migration gate/);
     assert.match(migration, /\*\*`◆ Ready to continue\?`\*\*/);
     assert.match(migration, /\*\*`y\/yes`\*\*\s+→ Proceed/);
     assert.match(unwrap(migration), /\*\*Ask\*\*\s+→ Ask questions about the changes/);
+    assert.deepStrictEqual(rowsLeadTo(), [['y', ['commit', '--migrations', '-m', "chore: apply Ledger's migrations"]]]);
     const label = renderSurface(dir, 'label-gate', {});
     assert.match(label, /=== MENU: label gate/);
+    assert.ok(unwrap(label).includes("You're running inside tmux. Ledger can rename your tmux session to show where you're working"), label);
     assert.match(label, /\*\*`◆ Label your tmux session as you work\?`\*\*/);
     assert.match(label, /\*\*`y\/yes`\*\* → Turn session labels on/);
     assert.match(unwrap(label), /\*\*`n\/no`\*\*\s+→ Leave session names alone/);
+    assert.deepStrictEqual(rowsLeadTo(), [['y', ['session', 'label-config', 'true']], ['n', ['session', 'label-config', 'false']]]);
   });
 
-  it('the brownfield offer: a yes/no gate drawn only while nothing is recorded — any answer refuses it (8.12.11)', () => {
+  it('the brownfield offer: a yes/no gate drawn only while nothing is recorded, each row recording its answer — any answer refuses it (8.12.11)', () => {
     const offer = renderSurface(dir, 'brownfield-offer-gate', {});
     assert.match(offer, /=== MENU: brownfield offer/);
+    assert.ok(unwrap(offer).includes('This project has code Ledger knows nothing about. The product researcher can read it first'), offer);
     assert.match(offer, /\*\*`◆ Have the existing code read first\?`\*\*/);
     assert.match(offer, /\*\*`y\/yes`\*\* → Read it now, then talk the product through/);
     assert.match(unwrap(offer), /\*\*`n\/no`\*\*\s+→ Skip — it is not offered again/);
+    assert.deepStrictEqual(rowsLeadTo(), [['y', ['brownfield', 'record', 'accepted']], ['n', ['brownfield', 'record', 'skipped']]]);
     for (const answer of ['native', 'skipped', 'accepted', 'completed']) {
       fs.writeFileSync(path.join(dir, '.ledger', 'manifest.json'), JSON.stringify({ work_units: {}, brownfield_offer: answer }));
       assert.throws(() => renderSurface(dir, 'brownfield-offer-gate', {}), new RegExp(`the offer's answer is "${answer}" — the offer is made once, while nothing is recorded`));
@@ -700,10 +719,13 @@ describe('the boot and knowledge gate surfaces', () => {
     assert.strictEqual(out, await fixture('menu-state-lost.mjs'));
   });
 
-  it('the knowledge gate: four menus keyed by what each asks; the reuse row names the configuration it adopts', () => {
-    assert.strictEqual(renderSurface(dir, 'knowledge-gate', { variant: 'reuse', provider: 'openai', model: 'text-embedding-3-small' }), [
+  it('the knowledge gate opens on the system configuration where one is valid, its yes naming and reusing it, else on the search-mode pick', () => {
+    systemConfig({ provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536 });
+    assert.strictEqual(renderSurface(dir, 'knowledge-gate', {}), [
       "=== MENU: knowledge reuse gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
+      'The knowledge base powers recall across work units and within them — later phases draw on earlier work. It is required infrastructure: Ledger runs nothing until it is initialised. Your machine already has a system configuration this project can reuse.',
+      '',
       '**`◆ Use the existing configuration for this project?`**',
       '',
       '**`y/yes`**       → Use the existing configuration (openai ·',
@@ -712,41 +734,44 @@ describe('the boot and knowledge gate surfaces', () => {
       '**`t/terminal`**  → Run the interactive wizard in your terminal instead',
       '',
     ].join('\n'));
-    assert.strictEqual(renderSurface(dir, 'knowledge-gate', { variant: 'reuse' }), [
-      "=== MENU: knowledge reuse gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
-      DOTS,
-      '**`◆ Use the existing configuration for this project?`**',
-      '',
-      '**`y/yes`**       → Use the existing configuration (keyword-only)',
-      '**`d/different`** → Choose a different mode for this project',
-      '**`t/terminal`**  → Run the interactive wizard in your terminal instead',
-      '',
-    ].join('\n'));
+    assert.deepStrictEqual(rowsLeadTo(), [
+      ['y', ['knowledge', 'setup', '--from-system']],
+      ['d', ['render', 'knowledge-gate', '--variant', 'deviate']],
+      ['t', ['render', 'knowledge-gate', '--variant', 'wizard']],
+    ]);
+    systemConfig({ provider: null });
+    assert.match(unwrap(renderSurface(dir, 'knowledge-gate', {})), /\*\*`y\/yes`\*\* +→ Use the existing configuration \(keyword-only\)/);
 
+    for (const config of [null, '{not json']) {
+      systemConfig(config);
+      const mode = renderSurface(dir, 'knowledge-gate', {});
+      assert.match(mode, /=== MENU: knowledge mode gate/);
+      assert.ok(unwrap(mode).includes("Pick how this project's knowledge base should search. OpenAI needs an API key"), mode);
+      assert.match(mode, /\*\*`◆ How should this project's knowledge base work\?`\*\*/);
+      assert.match(unwrap(mode), /\*\*`o\/openai`\*\*\s+→ OpenAI embeddings — full semantic search \(recommended; needs an API key\)/);
+      assert.match(unwrap(mode), /\*\*`c\/compatible`\*\* → A local or self-hosted OpenAI-compatible endpoint \(LM Studio, Ollama, vLLM\)/);
+      assert.match(unwrap(mode), /\*\*`k\/keyword`\*\*\s+→ Keyword-only search — the no-key backstop; upgrade anytime later/);
+      assert.match(unwrap(mode), /\*\*`t\/terminal`\*\*\s+→ Run the interactive wizard in your terminal instead/);
+      assert.deepStrictEqual(rowsLeadTo(), [
+        ['o', ['render', 'knowledge-ask', '--provider', 'openai']],
+        ['c', ['render', 'knowledge-ask', '--provider', 'openai-compatible']],
+        ['k', ['knowledge', 'setup', '--keyword-only']],
+        ['t', ['render', 'knowledge-gate', '--variant', 'wizard']],
+      ]);
+    }
+  });
+
+  it('the knowledge gate\'s deviation: keyword-only for this project, or the wizard', () => {
     const deviate = renderSurface(dir, 'knowledge-gate', { variant: 'deviate' });
     assert.match(deviate, /=== MENU: knowledge deviate gate/);
     assert.match(deviate, /\*\*`◆ How should this project deviate\?`\*\*/);
     assert.match(unwrap(deviate), /\*\*`k\/keyword`\*\*\s+→ Keyword-only for this project \(the system configuration stays untouched for every other project\)/);
     assert.match(unwrap(deviate), /\*\*`t\/terminal`\*\* → Run the interactive wizard to change the system-wide configuration/);
-
-    const mode = renderSurface(dir, 'knowledge-gate', { variant: 'mode' });
-    assert.match(mode, /=== MENU: knowledge mode gate/);
-    assert.match(mode, /\*\*`◆ How should this project's knowledge base work\?`\*\*/);
-    assert.match(unwrap(mode), /\*\*`o\/openai`\*\*\s+→ OpenAI embeddings — full semantic search \(recommended; needs an API key\)/);
-    assert.match(unwrap(mode), /\*\*`c\/compatible`\*\* → A local or self-hosted OpenAI-compatible endpoint \(LM Studio, Ollama, vLLM\)/);
-    assert.match(unwrap(mode), /\*\*`k\/keyword`\*\*\s+→ Keyword-only search — the no-key backstop; upgrade anytime later/);
-    assert.match(unwrap(mode), /\*\*`t\/terminal`\*\*\s+→ Run the interactive wizard in your terminal instead/);
-
-    const retry = renderSurface(dir, 'knowledge-gate', { variant: 'retry', provider: 'openai' });
-    assert.match(retry, /=== MENU: knowledge retry gate/);
-    assert.match(retry, /\*\*`◆ Ready to retry\?`\*\*/);
-    assert.match(unwrap(retry), /\*\*`y\/yes`\*\*\s+→ The key is stored — re-run the setup/);
-    assert.match(unwrap(retry), /\*\*`k\/keyword`\*\* → Skip the key for now — use keyword-only search instead/);
-    assert.doesNotMatch(retry, /d\/done/);
+    assert.deepStrictEqual(rowsLeadTo(), [['k', ['knowledge', 'setup', '--keyword-only']], ['t', ['render', 'knowledge-gate', '--variant', 'wizard']]]);
   });
 
-  it('the knowledge gate\'s retry: an OpenAI key is stored at the private prompt or the shell, the guidance against pasting it going between the commands and the menu', () => {
-    assert.strictEqual(renderSurface(dir, 'knowledge-gate', { variant: 'retry', provider: 'openai' }), [
+  it('the knowledge gate\'s retry: an OpenAI key is stored at the private prompt or the shell, the guidance against pasting it above the question, its yes the setup again', () => {
+    assert.strictEqual(renderSurface(dir, 'knowledge-gate', { variant: 'retry', provider: 'openai', model: 'text-embedding-3-large', dimensions: '3072' }), [
       '=== DISPLAY: knowledge retry (emit verbatim as a text code block (```text fence)) ===',
       'No OpenAI API key was found. Store one without it touching this',
       'chat — run ONE of these in your terminal, then come back:',
@@ -760,6 +785,8 @@ describe('the boot and knowledge gate surfaces', () => {
       '',
       "=== MENU: knowledge retry gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
+      'Do not paste the API key into this chat — not even partially. Store it in your terminal with one of the commands above, then come back here.',
+      '',
       '**`◆ Ready to retry?`**',
       '',
       '**`y/yes`**     → The key is stored — re-run the setup',
@@ -767,10 +794,14 @@ describe('the boot and knowledge gate surfaces', () => {
       `${NB(12)}instead`,
       '',
     ].join('\n'));
+    assert.deepStrictEqual(rowsLeadTo(), [
+      ['y', ['knowledge', 'setup', '--provider', 'openai', '--model', 'text-embedding-3-large', '--dimensions', '3072']],
+      ['k', ['knowledge', 'setup', '--keyword-only']],
+    ]);
   });
 
-  it('the knowledge gate\'s retry: an OpenAI-compatible endpoint\'s key is stored at the private prompt alone', () => {
-    const out = renderSurface(dir, 'knowledge-gate', { variant: 'retry', provider: 'openai-compatible' });
+  it('the knowledge gate\'s retry: an OpenAI-compatible endpoint\'s key is stored at the private prompt alone; a reuse refused runs the system configuration again, the key its provider\'s', () => {
+    const out = renderSurface(dir, 'knowledge-gate', { variant: 'retry', provider: 'openai-compatible', model: 'nomic', 'base-url': 'http://localhost:1234/v1', dimensions: '768' });
     assert.ok(out.startsWith([
       '=== DISPLAY: knowledge retry (emit verbatim as a text code block (```text fence)) ===',
       'The endpoint requires an API key. Store one without it touching',
@@ -783,9 +814,14 @@ describe('the boot and knowledge gate surfaces', () => {
       "=== MENU: knowledge retry gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
     ].join('\n')), out);
     assert.doesNotMatch(out, /OPENAI_API_KEY/);
+    assert.deepStrictEqual(rowsLeadTo()[0], ['y', ['knowledge', 'setup', '--provider', 'openai-compatible', '--model', 'nomic', '--base-url', 'http://localhost:1234/v1', '--dimensions', '768']]);
+
+    systemConfig({ provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536 });
+    assert.match(renderSurface(dir, 'knowledge-gate', { variant: 'retry', 'from-system': '1' }), /No OpenAI API key was found/);
+    assert.deepStrictEqual(rowsLeadTo()[0], ['y', ['knowledge', 'setup', '--from-system']]);
   });
 
-  it('the knowledge gate\'s wizard wait: the command to run above a gate that asks whether it completed', () => {
+  it('the knowledge gate\'s wizard wait: the command to run above a gate that asks whether it completed, its yes boot run again', () => {
     assert.strictEqual(renderSurface(dir, 'knowledge-gate', { variant: 'wizard' }), [
       '=== DISPLAY: knowledge wizard (emit verbatim as a text code block (```text fence), directly above the menu) ===',
       'Run the wizard in your terminal:',
@@ -797,40 +833,43 @@ describe('the boot and knowledge gate surfaces', () => {
       '',
       "=== MENU: knowledge wizard gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
+      'The interactive wizard runs in your terminal. It walks provider choice, key entry (input hidden), and project store setup.',
+      '',
       '**`◆ Has the wizard completed?`**',
       '',
       '**`y/yes`** → It completed — check the knowledge base again',
       '',
     ].join('\n'));
-    assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'wizard', provider: 'openai' }), /--provider does not belong to the wizard variant/);
+    assert.deepStrictEqual(rowsLeadTo(), [['y', ['boot']]]);
   });
 
-  it('knowledge-ready names the configuration this checkout\'s store was built with, read from its metadata', () => {
-    const metadata = path.join(dir, '.ledger/.knowledge/metadata.json');
-    assert.throws(() => renderSurface(dir, 'knowledge-ready', {}), new RegExp(`render knowledge-ready: no ${esc(metadata)} — this checkout has no knowledge store yet`));
-    fs.mkdirSync(path.dirname(metadata), { recursive: true });
-    fs.writeFileSync(metadata, JSON.stringify({ provider: 'openai', model: 'text-embedding-3-small', dimensions: 1536 }));
-    assert.strictEqual(renderSurface(dir, 'knowledge-ready', {}), [
-      '=== DISPLAY: knowledge ready (emit verbatim as a text code block (```text fence) — do not stop; continue as the skill instructs) ===',
-      'Knowledge base ready — openai · text-embedding-3-small.',
+  it('a provider\'s questions are asked in words, the DATA naming the setup the reply runs', () => {
+    assert.strictEqual(renderSurface(dir, 'knowledge-ask', { provider: 'openai' }), [
+      '=== DATA (reason from this — never display or parse the sections below) ===',
+      'the reply: node .claude/skills/ledger-engine/scripts/engine.cjs knowledge setup --provider openai --model <the model named, text-embedding-3-small for "default">',
+      '',
+      "=== DISPLAY: knowledge openai questions (emit verbatim as a text code block (```text fence), then STOP for the user's response) ===",
+      'Which OpenAI embedding model?',
+      '',
+      '- Reply with a model name, or "default" for text-embedding-3-small.',
       '',
     ].join('\n'));
-    fs.writeFileSync(metadata, JSON.stringify({ provider: null, model: null, dimensions: null }));
-    assert.match(renderSurface(dir, 'knowledge-ready', {}), /^Knowledge base ready — keyword-only\.$/m);
-    fs.writeFileSync(metadata, '{not json');
-    assert.throws(() => renderSurface(dir, 'knowledge-ready', {}), new RegExp(`render knowledge-ready: ${esc(metadata)} is not valid JSON`));
+    const compatible = renderSurface(dir, 'knowledge-ask', { provider: 'openai-compatible' });
+    assert.ok(compatible.includes('knowledge setup --provider openai-compatible --base-url <the base URL> --model <the model> --dimensions <the dimensions>'), compatible);
+    assert.match(compatible, /Where is the embeddings endpoint\?\n\n- Base URL \(e\.g\. http:\/\/localhost:1234\/v1\)\n- Model name\n- Vector dimensions — must match the model's native output\n/);
+    assert.throws(() => renderSurface(dir, 'knowledge-ask', { provider: 'ollama' }), /render knowledge-ask: --provider must be one of openai, openai-compatible, got "ollama"/);
   });
 
-  it('the knowledge gate refuses a missing or unknown variant, a lone model, a configuration off the reuse variant, and a retry naming no provider it can store a key for', () => {
-    assert.throws(() => renderSurface(dir, 'knowledge-gate', {}), /--variant must be one of reuse, deviate, mode, retry, wizard, got ""/);
-    assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'setup' }), /--variant must be one of reuse, deviate, mode, retry, wizard, got "setup"/);
-    assert.match(renderSurface(dir, 'knowledge-gate', { variant: 'reuse', provider: 'openai' }), /Use the existing configuration \(openai\)/);
-    assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'reuse', model: 'text-embedding-3-small' }), /--model names nothing without --provider/);
-    assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'mode', provider: 'openai', model: 'text-embedding-3-small' }), /--provider does not belong to the mode variant/);
-    assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'deviate', model: 'x' }), /--model does not belong to the deviate variant/);
-    assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'retry', provider: 'openai', model: 'x' }), /--model does not belong to the retry variant/);
-    assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'retry' }), /the retry variant needs --provider openai\|openai-compatible — the provider whose key the setup could not find, got ""/);
-    assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'retry', provider: 'ollama' }), /the retry variant needs --provider openai\|openai-compatible — .*got "ollama"/);
+  it('the knowledge gate refuses an unknown variant, a setup\'s flags off the retry, and a retry naming no setup it can run again', () => {
+    assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'reuse' }), /--variant must be one of deviate, wizard, retry, or none to open the gate, got "reuse"/);
+    assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'wizard', provider: 'openai' }), /--provider names the setup the retry variant runs again — it takes --variant retry/);
+    assert.throws(() => renderSurface(dir, 'knowledge-gate', { 'from-system': '1' }), /--from-system names the setup the retry variant runs again/);
+    assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'retry' }), /the retry variant takes the setup it runs again — .* got ""/);
+    assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'retry', provider: 'openai' }), /the retry variant takes the setup it runs again — .* got "--provider"/);
+    assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'retry', provider: 'ollama', model: 'x' }), /the retry variant takes the setup it runs again/);
+    assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'retry', 'from-system': '1', model: 'x' }), /--from-system runs the system configuration again, and takes none of the provider form's flags/);
+    systemConfig({ provider: null });
+    assert.throws(() => renderSurface(dir, 'knowledge-gate', { variant: 'retry', 'from-system': '1' }), /the system configuration's provider is "none"/);
   });
 });
 

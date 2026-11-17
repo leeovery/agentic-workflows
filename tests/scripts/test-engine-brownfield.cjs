@@ -60,11 +60,13 @@ describe('engine brownfield record', () => {
     assert.deepStrictEqual(status, [' M pay/summary.md', '?? pay/spec.md'], 'the peer\'s files are as it left them');
   });
 
-  it('skipped and accepted answer the offer too, each under its own message', () => {
-    for (const [answer, subject] of [['skipped', 'brownfield: decline the research offer'], ['accepted', 'brownfield: accept the research offer']]) {
+  it('skipped and accepted answer the offer too, each under its own message — the acceptance leading into the product\'s conversation, which opens on the research', () => {
+    const into = { kind: 'handoff', skill: 'ledger-discovery', args: ['none', 'none'] };
+    for (const [answer, subject, next] of [['skipped', 'brownfield: decline the research offer', undefined], ['accepted', 'brownfield: accept the research offer', into]]) {
       writeState(dir, layout.projectManifest, JSON.stringify({ work_units: {} }) + '\n');
       commitAll(dir, `reset for ${answer}`);
-      assert.strictEqual(harness.ok(dir, ['brownfield', 'record', answer]).answer, answer);
+      const res = harness.ok(dir, ['brownfield', 'record', answer]);
+      assert.deepStrictEqual([res.answer, res.next], [answer, next]);
       assert.deepStrictEqual([projectManifest(dir).brownfield_offer, lastSubject(dir)], [answer, subject]);
     }
   });

@@ -9,12 +9,14 @@
 // at the reshape's guard, and at the checks before its move and a directive
 // of the migration not yet done, this session carrying the migration on or
 // another, the question where a building unit's leaving topics go, the
-// knowledge gate's displays, and the banner the bare command opens on. Pure renderers; none reads state (the calling prose follows the
+// knowledge gate's screens and its questions for a provider's setup, and the
+// banner the bare command opens on. Each setup screen's row leads to the
+// call that answers it. Pure renderers; none reads state (the calling prose follows the
 // boot response and fetches the gate at its display point, and the render
 // surface reads what a display names).
 // ---------------------------------------------------------------------------
 
-const { section, titleSection, menu, cmdOption, promptOption, treeList, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, emitAs, MENU_INSTRUCTION, escapeMarkdown } = require('./surfaces.cjs');
+const { section, titleSection, dataSection, menu, cmdOption, promptOption, treeList, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, emitAs, STOP_CLAUSE, MENU_INSTRUCTION, escapeMarkdown } = require('./surfaces.cjs');
 const { wrapWithPrefix } = require('../../kernel/render.cjs');
 const { displayWidth } = require('../../kernel/terminal.cjs');
 const { ENGINE_COMMAND } = require('../../kernel/call.cjs');
@@ -43,10 +45,13 @@ function migrationsApplied({ summary, notices, counts }) {
   ].join('\n'));
 }
 
+/** The commit the migration gate's yes makes: the migrations' changes, on each side they changed. */
+const MIGRATIONS_COMMIT = Object.freeze(['commit', '--migrations', '-m', "chore: apply Ledger's migrations"]);
+
 /**
  * The migration confirm gate — after the summary of what the migrations did;
  * where the reshape's commit is part made, saying only the code branch's
- * remains (21.9.5).
+ * remains (21.9.5). Its yes makes the migrations' commit.
  * @param {{codeOnly?: boolean}} [opts]
  * @returns {string}
  */
@@ -54,7 +59,7 @@ function migrationGate({ codeOnly = false } = {}) {
   const body = menu(
     codeOnly ? "The state branch's first commit is made: only the code branch's commit remains." : '',
     [
-      cmdOption('y', 'yes', 'Proceed'),
+      cmdOption('y', 'yes', 'Proceed', { next: { kind: 'engine', argv: [...MIGRATIONS_COMMIT] } }),
       promptOption('Ask', 'Ask questions about the changes'),
     ],
     { question: 'Ready to continue?' },
@@ -307,15 +312,16 @@ function githubSquashGate(project, nested) {
 }
 
 /**
- * The one-time tmux session-label opt-in.
+ * The one-time tmux session-label opt-in, saying what labels do; each answer
+ * leads to the verb that records it.
  * @returns {string}
  */
 function labelGate() {
   const body = menu(
-    '',
+    "You're running inside tmux. Ledger can rename your tmux session to show where you're working — `myproject · payments · discussion · auth-flow` inside a phase, `myproject · payments` at its menu — putting the original name back at the start menu and when the session ends, and bringing the label back when you resume the session. You're asked once per project.",
     [
-      cmdOption('y', 'yes', 'Turn session labels on'),
-      cmdOption('n', 'no', 'Leave session names alone'),
+      cmdOption('y', 'yes', 'Turn session labels on', { next: { kind: 'engine', argv: ['session', 'label-config', 'true'] } }),
+      cmdOption('n', 'no', 'Leave session names alone', { next: { kind: 'engine', argv: ['session', 'label-config', 'false'] } }),
     ],
     { question: 'Label your tmux session as you work?' },
   );
@@ -324,15 +330,17 @@ function labelGate() {
 
 /**
  * The one-time offer to have the product researcher read a codebase that
- * predates Ledger, before the product's conversation opens on it.
+ * predates Ledger, before the product's conversation opens on it; each
+ * answer leads to the verb that records it, the yes's record answering the
+ * move into the product's conversation.
  * @returns {string}
  */
 function brownfieldOfferGate() {
   const body = menu(
-    '',
+    "This project has code Ledger knows nothing about. The product researcher can read it first, then the product's conversation opens on what the code shows and the intent it can't.",
     [
-      cmdOption('y', 'yes', 'Read it now, then talk the product through'),
-      cmdOption('n', 'no', 'Skip — it is not offered again'),
+      cmdOption('y', 'yes', 'Read it now, then talk the product through', { next: { kind: 'engine', argv: ['brownfield', 'record', 'accepted'] } }),
+      cmdOption('n', 'no', 'Skip — it is not offered again', { next: { kind: 'engine', argv: ['brownfield', 'record', 'skipped'] } }),
     ],
     { question: 'Have the existing code read first?' },
   );
@@ -412,47 +420,76 @@ const KEY_INSTRUCTIONS = {
 
 const KEY_PROVIDERS = Object.keys(KEY_INSTRUCTIONS);
 
+/** @typedef {import('./surfaces.cjs').Next} Next */
+
+/** A knowledge setup, by its form's flags. @param {string[]} flags @returns {Next} */
+const setupRun = (flags) => ({ kind: 'engine', argv: ['knowledge', 'setup', ...flags] });
+
+/** Another of the knowledge gate's screens, by its render's arguments. @param {...string} args @returns {Next} */
+const knowledgeScreen = (...args) => ({ kind: 'engine', argv: ['render', ...args] });
+
+const KEYWORD_ONLY = setupRun(['--keyword-only']);
+const TO_WIZARD = knowledgeScreen('knowledge-gate', '--variant', 'wizard');
+
+/**
+ * What a knowledge gate's menu is drawn from: what it asks, the statement
+ * above the question, its rows, and the display above the menu a variant
+ * carries.
+ * @typedef {{question: string, lead?: string, options: string[], display?: string[], displayInstruction?: string}} KnowledgeMenu
+ */
+
+/**
+ * What a knowledge gate is drawn for: the system configuration the reuse
+ * variant offers — the provider, with its model where the configuration
+ * names one; neither for keyword-only — or, for the retry variant, the
+ * provider whose key is missing and the flags of the setup to run again.
+ * @typedef {{provider?: string|null, model?: string|null, setup?: string[]}} KnowledgeConfig
+ */
+
 // The knowledge gate's menus, keyed by what each asks: reuse = adopt the
 // system configuration (its yes row names it — provider · model, or
 // keyword-only), deviate = the per-project alternatives to it, mode = the
 // search-mode pick with no system configuration to lean on, retry = the
-// re-run once the provider's missing key is stored (its display says how,
-// with the guidance against pasting the key between it and the menu),
-// wizard = the wait while the terminal wizard runs (its display names the
-// command).
-/** @type {Record<string, (config: {provider?: string, model?: string}) => {question: string, options: string[], display?: string[], displayInstruction?: string}>} */
+// setup run again once the provider's missing key is stored (its display
+// says how), wizard = the wait while the terminal wizard runs (its display
+// names the command), its yes boot run again. Each row leads to the setup,
+// the screen or the boot it runs.
+/** @type {Record<string, (config: KnowledgeConfig) => KnowledgeMenu>} */
 const KNOWLEDGE_GATES = {
   reuse: ({ provider, model }) => ({
+    lead: 'The knowledge base powers recall across work units and within them — later phases draw on earlier work. It is required infrastructure: Ledger runs nothing until it is initialised. Your machine already has a system configuration this project can reuse.',
     question: 'Use the existing configuration for this project?',
     options: [
-      cmdOption('y', 'yes', `Use the existing configuration (${configurationName({ provider, model })})`),
-      cmdOption('d', 'different', 'Choose a different mode for this project'),
-      cmdOption('t', 'terminal', 'Run the interactive wizard in your terminal instead'),
+      cmdOption('y', 'yes', `Use the existing configuration (${configurationName({ provider, model })})`, { next: setupRun(['--from-system']) }),
+      cmdOption('d', 'different', 'Choose a different mode for this project', { next: knowledgeScreen('knowledge-gate', '--variant', 'deviate') }),
+      cmdOption('t', 'terminal', 'Run the interactive wizard in your terminal instead', { next: TO_WIZARD }),
     ],
   }),
   deviate: () => ({
     question: 'How should this project deviate?',
     options: [
-      cmdOption('k', 'keyword', 'Keyword-only for this project (the system configuration stays untouched for every other project)'),
-      cmdOption('t', 'terminal', 'Run the interactive wizard to change the system-wide configuration'),
+      cmdOption('k', 'keyword', 'Keyword-only for this project (the system configuration stays untouched for every other project)', { next: KEYWORD_ONLY }),
+      cmdOption('t', 'terminal', 'Run the interactive wizard to change the system-wide configuration', { next: TO_WIZARD }),
     ],
   }),
   mode: () => ({
+    lead: "Pick how this project's knowledge base should search. OpenAI needs an API key — stored in your terminal, never pasted here. Keyword-only needs no key and can be upgraded anytime.",
     question: "How should this project's knowledge base work?",
     options: [
-      cmdOption('o', 'openai', 'OpenAI embeddings — full semantic search (recommended; needs an API key)'),
-      cmdOption('c', 'compatible', 'A local or self-hosted OpenAI-compatible endpoint (LM Studio, Ollama, vLLM)'),
-      cmdOption('k', 'keyword', 'Keyword-only search — the no-key backstop; upgrade anytime later'),
-      cmdOption('t', 'terminal', 'Run the interactive wizard in your terminal instead'),
+      cmdOption('o', 'openai', 'OpenAI embeddings — full semantic search (recommended; needs an API key)', { next: knowledgeScreen('knowledge-ask', '--provider', 'openai') }),
+      cmdOption('c', 'compatible', 'A local or self-hosted OpenAI-compatible endpoint (LM Studio, Ollama, vLLM)', { next: knowledgeScreen('knowledge-ask', '--provider', 'openai-compatible') }),
+      cmdOption('k', 'keyword', 'Keyword-only search — the no-key backstop; upgrade anytime later', { next: KEYWORD_ONLY }),
+      cmdOption('t', 'terminal', 'Run the interactive wizard in your terminal instead', { next: TO_WIZARD }),
     ],
   }),
-  retry: ({ provider }) => ({
+  retry: ({ provider, setup = [] }) => ({
     display: KEY_INSTRUCTIONS[/** @type {string} */ (provider)](),
     displayInstruction: emitAs('text'),
+    lead: 'Do not paste the API key into this chat — not even partially. Store it in your terminal with one of the commands above, then come back here.',
     question: 'Ready to retry?',
     options: [
-      cmdOption('y', 'yes', 'The key is stored — re-run the setup'),
-      cmdOption('k', 'keyword', 'Skip the key for now — use keyword-only search instead'),
+      cmdOption('y', 'yes', 'The key is stored — re-run the setup', { next: setupRun(setup) }),
+      cmdOption('k', 'keyword', 'Skip the key for now — use keyword-only search instead', { next: KEYWORD_ONLY }),
     ],
   }),
   wizard: () => ({
@@ -463,28 +500,53 @@ const KNOWLEDGE_GATES = {
       '',
       ...wrapWithPrefix('It configures system defaults, initialises the project store, and runs the initial indexing pass.', { width: displayWidth() }),
     ],
+    lead: 'The interactive wizard runs in your terminal. It walks provider choice, key entry (input hidden), and project store setup.',
     question: 'Has the wizard completed?',
     options: [
-      cmdOption('y', 'yes', 'It completed — check the knowledge base again'),
+      cmdOption('y', 'yes', 'It completed — check the knowledge base again', { next: { kind: 'engine', argv: ['boot'] } }),
     ],
   }),
 };
 
-const KNOWLEDGE_GATE_VARIANTS = Object.keys(KNOWLEDGE_GATES);
-
 /**
  * One of the knowledge gate's menus, beneath the display a variant carries.
- * `config` is the system configuration the reuse variant offers — the
- * provider, with its model when the configuration names one; neither for
- * keyword-only — or the provider whose key the retry variant asks for.
- * @param {string} variant @param {{provider?: string, model?: string}} [config]
+ * @param {string} variant @param {KnowledgeConfig} [config]
  * @returns {string}
  */
 function knowledgeGate(variant, config = {}) {
   const gate = KNOWLEDGE_GATES[variant](config);
-  const gateMenu = section(`MENU: knowledge ${variant} gate`, MENU_INSTRUCTION, menu('', gate.options, { question: gate.question }));
+  const gateMenu = section(`MENU: knowledge ${variant} gate`, MENU_INSTRUCTION, menu(gate.lead ?? '', gate.options, { question: gate.question }));
   if (!gate.display) return gateMenu;
   return [section(`DISPLAY: knowledge ${variant}`, gate.displayInstruction ?? ABOVE_MENU_INSTRUCTION, gate.display.join('\n')), gateMenu].join('\n');
+}
+
+// What a provider's setup needs that only the person can say, asked in
+// words: the questions, and the setup their answers run. A keyless
+// openai-compatible endpoint is fine: a key stored for it is picked up.
+/** @type {Record<string, {questions: string[], setup: string}>} */
+const KNOWLEDGE_ASKS = {
+  openai: {
+    questions: ['Which OpenAI embedding model?', '', '- Reply with a model name, or "default" for text-embedding-3-small.'],
+    setup: `${ENGINE_COMMAND} knowledge setup --provider openai --model <the model named, text-embedding-3-small for "default">`,
+  },
+  'openai-compatible': {
+    questions: ['Where is the embeddings endpoint?', '', '- Base URL (e.g. http://localhost:1234/v1)', '- Model name', "- Vector dimensions — must match the model's native output"],
+    setup: `${ENGINE_COMMAND} knowledge setup --provider openai-compatible --base-url <the base URL> --model <the model> --dimensions <the dimensions>`,
+  },
+};
+
+/**
+ * The knowledge gate's questions for a provider's setup, its DATA naming the
+ * setup the reply runs.
+ * @param {string} provider one of `KEY_PROVIDERS`
+ * @returns {string}
+ */
+function knowledgeAsk(provider) {
+  const { questions, setup } = KNOWLEDGE_ASKS[provider];
+  return [
+    dataSection([`the reply: ${setup}`]),
+    section(`DISPLAY: knowledge ${provider} questions`, emitAs('text', STOP_CLAUSE), questions.join('\n')),
+  ].join('\n');
 }
 
 /**
@@ -497,4 +559,4 @@ function knowledgeReady(store) {
   return section('DISPLAY: knowledge ready', CONTINUE_INSTRUCTION, `Knowledge base ready — ${configurationName(store)}.`);
 }
 
-module.exports = { migrationsApplied, migrationGate, stateLostGate, gitFloorStop, repoStop, migrationGuardStop, migrationChecksStop, directiveStop, leavingQuestion, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, banner, workPick, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS };
+module.exports = { migrationsApplied, migrationGate, stateLostGate, gitFloorStop, repoStop, migrationGuardStop, migrationChecksStop, directiveStop, leavingQuestion, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, banner, workPick, knowledgeGate, knowledgeAsk, knowledgeReady, KEY_PROVIDERS };

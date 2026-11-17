@@ -176,7 +176,7 @@ describe('the gate shown (3.S6)', () => {
     assert.deepStrictEqual(record, {
       gate: 'migration gate',
       question: 'Ready to continue?',
-      options: [{ key: 'y', word: 'yes', head: 'Proceed', tail: null, detail: null, recommended: false, next: null }],
+      options: [{ key: 'y', word: 'yes', head: 'Proceed', tail: null, detail: null, recommended: false, next: { kind: 'engine', argv: ['commit', '--migrations', '-m', "chore: apply Ledger's migrations"] } }],
       typed: [{ key: 'ask', label: 'Ask', next: null }],
       showing: null,
       place: null,

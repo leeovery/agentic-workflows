@@ -3,7 +3,8 @@
 // `engine knowledge setup` end to end through the door: --key-only refused
 // without a terminal or a provider it knows, the --key flag refused, and each
 // non-interactive form — --keyword-only, --from-system, --provider — from
-// its arguments to the config, the store and the summary it leaves, the key
+// its arguments to the config, the store, the summary and the knowledge
+// gate's closing line it leaves, a refusal for the key naming its way on, the key
 // kept out of every output and file. Verb layer: the door in process
 // (knowledge-harness), over the project world copied for each test with no
 // knowledge set up, the system config a directory of the test's own, an
@@ -25,6 +26,12 @@ const {
 
 const UPGRADE = `Upgrade anytime: \`${ENGINE_COMMAND} knowledge setup --provider ...\` `
   + `or the interactive \`${ENGINE_COMMAND} knowledge setup\`.`;
+
+/** The knowledge gate's closing line a form draws once set up, naming the configuration its store was built with. @param {string} named */
+const ready = (named) => `\n=== DISPLAY: knowledge ready (emit verbatim as a text code block (\`\`\`text fence) — do not stop; continue as the skill instructs) ===\nKnowledge base ready — ${named}.\n`;
+
+/** The way on a refusal for the provider's key names: the knowledge gate's retry, running the same setup again. @param {string} flags */
+const wayOn = (flags) => `\n  The way on: \`${ENGINE_COMMAND} render knowledge-gate --variant retry ${flags}\`\n`;
 
 describe('engine knowledge setup', () => {
   let root;
@@ -82,7 +89,7 @@ describe('engine knowledge setup', () => {
         '  store.bin written', '  metadata.json written', '',
         'Initial indexing', '----------------', '0 new, 0 changed, 0 removed, 0 unchanged.', '',
         'Knowledge base ready — keyword-only (BM25) mode.', 'Semantic search is disabled until an embedding provider is configured.', UPGRADE, '',
-      ].join('\n'));
+      ].join('\n') + ready('keyword-only'));
       assert.deepStrictEqual(readJson(systemConfig()), { knowledge: OPENAI });
       assert.deepStrictEqual(readJson(knowledgeAt(root).config), { knowledge: KEYWORD_ONLY });
       assert.strictEqual(knowledgeMetadata(root).provider, null);
@@ -145,6 +152,15 @@ describe('engine knowledge setup', () => {
       assert.strictEqual(await check(), 'ready\n');
     });
 
+    it('an openai configuration with no key that resolves names its way on: the retry, reusing the system configuration again', async () => {
+      fs.writeFileSync(systemConfig(), JSON.stringify({ knowledge: OPENAI }));
+      const answer = await setup('--from-system');
+      assert.strictEqual(answer.code, 1);
+      assert.match(answer.stderr, /^Error: no OpenAI API key found\./);
+      assert.ok(answer.stderr.endsWith(wayOn('--from-system')), answer.stderr);
+      assert.ok(!fs.existsSync(knowledgeAt(root).store));
+    });
+
     it('validates the system\'s provider by a test embed, indexes what the project holds, and records the provider', async () => {
       fs.writeFileSync(systemConfig(), JSON.stringify({ knowledge: { provider: 'stub', dimensions: 64 } }));
       knowledgeUnit(root, 'decided', 'epic');
@@ -155,19 +171,35 @@ describe('engine knowledge setup', () => {
         'Validating stub via a test embed...', 'Embedding provider works.', '  config.json written', '  store.bin written', '  metadata.json written', '',
         'Initial indexing', '----------------', `Indexed ${statePath(root, layout.record('decided', 'oauth'))} — 1 chunks (new)`,
         '1 new, 0 changed, 0 removed, 0 unchanged.', '', 'Knowledge base ready.', '  provider: stub', '',
-      ].join('\n'));
+      ].join('\n') + ready('stub · stub'));
       assert.strictEqual(knowledgeMetadata(root).provider, 'stub');
       assert.strictEqual(await check(), 'ready\n');
     });
   });
 
   describe('--provider', () => {
-    it('openai refuses with no key that resolves, writing no system config', async () => {
-      const answer = await setup('--provider', 'openai', '--model', 'text-embedding-3-small');
+    it('openai refuses with no key that resolves, writing no system config, and names its way on: the retry, running the same setup again', async () => {
+      const answer = await setup('--provider', 'openai', '--model', 'text-embedding-3-small', '--dimensions', '1536');
       assert.strictEqual(answer.code, 1);
       assert.match(answer.stderr, /^Error: no OpenAI API key found\.\n  Checked \$OPENAI_API_KEY and .*\n  Export OPENAI_API_KEY in your shell, or run\n  `.* knowledge setup --key-only`\n/);
+      assert.ok(answer.stderr.endsWith(wayOn('--provider openai --model text-embedding-3-small --dimensions 1536')), answer.stderr);
       assert.deepStrictEqual(fs.readdirSync(system), []);
       assert.ok(!fs.existsSync(knowledgeAt(root).dir));
+    });
+
+    it('a key the endpoint rejects names the same way on, and a failure no key mends names none', async () => {
+      const flags = ['--provider', 'openai-compatible', '--base-url', endpoint.url, '--model', 'fake-embed', '--dimensions', '4'];
+      endpoint.mode = 'rejected';
+      const rejected = await setup(...flags);
+      endpoint.mode = 'quota';
+      const quota = await setup(...flags);
+      endpoint.mode = 'ok';
+      assert.strictEqual(rejected.code, 1);
+      assert.match(rejected.stderr, /^Error: provider validation failed — system config not written\.\n  The request was rejected \(HTTP 401\)\./);
+      assert.ok(rejected.stderr.endsWith(wayOn(`--provider openai-compatible --model fake-embed --base-url ${endpoint.url} --dimensions 4`)), rejected.stderr);
+      assert.strictEqual(quota.code, 1);
+      assert.doesNotMatch(quota.stderr, /The way on/);
+      assert.deepStrictEqual(fs.readdirSync(system), []);
     });
 
     it('openai-compatible with no key validates against the endpoint, then replaces the provider settings as a set, keeping every other key', async () => {
@@ -178,7 +210,7 @@ describe('engine knowledge setup', () => {
       const answer = await setup('--provider', 'openai-compatible', '--base-url', endpoint.url, '--model', 'fake-embed', '--dimensions', '4');
       assert.strictEqual(answer.code, 0, answer.stderr);
       assert.match(answer.stdout, /^Validating openai-compatible via a test embed/m);
-      assert.ok(answer.stdout.endsWith(`\nKnowledge base ready.\n  provider: openai-compatible\n  model:    fake-embed\n  base URL: ${endpoint.url}\n`), answer.stdout);
+      assert.ok(answer.stdout.endsWith(`\nKnowledge base ready.\n  provider: openai-compatible\n  model:    fake-embed\n  base URL: ${endpoint.url}\n${ready('openai-compatible · fake-embed')}`), answer.stdout);
       assert.ok(endpoint.requests.length > 0, 'the endpoint was asked');
       assert.deepStrictEqual(readJson(systemConfig()), {
         editor: { theme: 'dark' },

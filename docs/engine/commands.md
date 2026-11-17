@@ -97,7 +97,7 @@ The person's answer to setup's offer of the squash default — a squash merge's 
 brownfield record <native|skipped|accepted|completed>
 ```
 
-- **`record`** — writes the brownfield offer's answer, `brownfield_offer` on the project manifest, and commits that file alone: `native`, `skipped` or `accepted` while nothing is recorded, `completed` only after `accepted`, once the product researcher's findings have landed. Answers `{answer, committed}`. Refuses any other value and any answer out of that order.
+- **`record`** — writes the brownfield offer's answer, `brownfield_offer` on the project manifest, and commits that file alone: `native`, `skipped` or `accepted` while nothing is recorded, `completed` only after `accepted`, once the product researcher's findings have landed. Answers `{answer, committed}`, and for `accepted` `next`, the handoff into the product's conversation. Refuses any other value and any answer out of that order.
 
 ### `walkthrough`
 
@@ -105,7 +105,7 @@ brownfield record <native|skipped|accepted|completed>
 walkthrough record <walked|skipped>
 ```
 
-- **`record`** — writes the answer to the one-time walkthrough offer, `walkthrough.status` on the project manifest (`walked` or `skipped`), and commits that file alone. Answers `{status, committed}`. Refuses once an answer is recorded.
+- **`record`** — writes the answer to the one-time walkthrough offer, `walkthrough.status` on the project manifest (`walked` or `skipped`), and commits that file alone. Answers `{status, committed}`, and for `walked` `next: {kind: continue}`, the walk. Refuses once an answer is recorded.
 
 ### `migrate`
 
@@ -306,7 +306,7 @@ The knowledge base: a local store of `.ledger/`'s knowledge in `.ledger/.knowled
 - **`status`** — the health report, for people.
 - **`compact`** — removes units decayed past reach; boot runs it.
 - **`rebuild`** — destructive and human-only: asks for `rebuild` typed back.
-- **`setup`** — the system config and this clone's init. With no flag, the terminal wizard, human-only; the skills run its non-interactive forms, `--from-system`, `--keyword-only`, `--provider …` and `--key-only`. The API key never passes through a flag, a chat or stdout: it resolves from the provider's env var or `credentials.json`.
+- **`setup`** — the system config and this clone's init. With no flag, the terminal wizard, human-only; the skills run its non-interactive forms, `--from-system`, `--keyword-only`, `--provider …` and `--key-only`. The API key never passes through a flag, a chat or stdout: it resolves from the provider's env var or `credentials.json`. A form that sets up prints `DISPLAY: knowledge ready`, the configuration the store was built with; one refused for a key missing or rejected names its way on, `render knowledge-gate --variant retry` over the same setup.
 
 The transactions sync the knowledge base in process; a failure there is a warning, never a block.
 
@@ -1170,8 +1170,8 @@ render repo-stop
 render github-rule-gate
 render github-squash-gate
 render label-gate
-render knowledge-gate --variant reuse|deviate|mode|retry|wizard [--provider <name> --model <name>]
-render knowledge-ready
+render knowledge-gate [--variant deviate|wizard | --variant retry (--from-system | --provider <name> --model <name> [--base-url <url>] [--dimensions <n>])]
+render knowledge-ask --provider openai|openai-compatible
 render state-merge-gate
 render ledger-stop
 render directive-stop --directive <id>
@@ -1209,7 +1209,7 @@ The surface catalogue: named surfaces answering sections (`DISPLAY`, `MENU`, `DA
 
 **The menus** (`domain/menus.cjs`) share one frame: `TITLE`, what the menu shows, its `MENU` and question; the frame adds `h/help` (`render help <menu>`), a back row and a prompt row. The start menu and the project's menus reached from it drop the conversation's position; the epic menu and the roadmap record it there. **The learned process gates** — the plan, check-in and conclude gates, `wait for agents`, `experiment spawn gate` and `import reprompt` — may run their usual row as an automatic step where the person's answers have earned it: the MENU gives way to a `DATA` section (`automatic step: {gate}`, `ran: {key}`, `next: {json}`) and `DISPLAY: automatic step`, shown without stopping; do what `next` says.
 
-Boot's stops and the setup gates, each the screen of the boot `stop` or setup gate it is named for: **`git-floor-stop`**, **`repo-stop`**, **`state-lost-gate`** (its yes `boot --start-again`), **`state-merge-gate`** (each row `state-merge pick`), **`ledger-stop`**, **`migration-guard-stop`**, **`migration-checks-stop`**, **`directive-stop`**, **`migration-taken-stop`**, **`migration-leaving`** (the topics leaving a building unit), **`migrations-applied`** (the migration review's summary, from Claude's payload), **`migration-gate`** (its yes `commit --migrations`), **`label-gate`**, **`knowledge-gate`** (by `--variant`), **`knowledge-ready`**, **`github-rule-gate`**, **`github-squash-gate`**, **`brownfield-offer-gate`**, **`banner`**, and **`work-pick`** (the start's pick between the pieces of work the words name).
+Boot's stops and the setup gates, each the screen of the boot `stop` or setup gate it is named for: **`git-floor-stop`**, **`repo-stop`**, **`state-lost-gate`** (its yes `boot --start-again`), **`state-merge-gate`** (each row `state-merge pick`), **`ledger-stop`**, **`migration-guard-stop`**, **`migration-checks-stop`**, **`directive-stop`**, **`migration-taken-stop`**, **`migration-leaving`** (the topics leaving a building unit), **`migrations-applied`** (the migration review's summary, from Claude's payload), **`migration-gate`** (its yes `commit --migrations`), **`label-gate`** (each row `session label-config`), **`knowledge-gate`** (with no variant, reuse where the system config is valid, else the provider choice; `deviate`, `wizard`, and `retry` over the setup it runs again; each row the setup it runs, the screen it draws or `boot`), **`knowledge-ask`** (a provider's questions, answered in words; its DATA `the reply:` the setup they run), **`github-rule-gate`**, **`github-squash-gate`**, **`brownfield-offer-gate`** (each row `brownfield record`), **`banner`**, and **`work-pick`** (the start's pick between the pieces of work the words name).
 
 Help and the walkthrough: **`walkthrough-offer`**, **`walkthrough-screen`**, **`walkthrough-topic`** (one reference card), **`help`** (a menu's help, its back drawing the menu again as it was) and **`help-topics`**.
 
