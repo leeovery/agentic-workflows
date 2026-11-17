@@ -42,7 +42,7 @@ A phase skill holds five things:
 - **Its goal** — what the phase is for, in a sentence or two.
 - **Its done-condition** — what is true when the phase can be left, stated as what the engine holds.
 - **Its guidance** — what Claude needs told to do the work well, and nothing it would do anyway.
-- **The verbs it names** — one line for each door the phase's work goes through. Each verb's contract is in `skills/ledger-engine/references/commands.md`.
+- **The verbs it names** — one line for each door the phase's work goes through. Each verb's contract for its caller is in `docs/engine/commands.md`.
 - **Its checklists** — each closing point it works towards, by name, where it has any: discussion's decided, at a topic's close; specification's ready to build; the build's phase start and phase close, for each phase of its cut; and the review phase's finish. Discovery, experiment and investigation have none. Two types move them:
   - **A feature's** discussion closes into its spec with no gate, once nothing of the person's is open and the closing pass has run; specification then works decided and ready to build together, on one screen.
   - **A quick-fix's** finish is the close of its own session, and finish's checklist runs there; it reaches the review phase only when the person asks.

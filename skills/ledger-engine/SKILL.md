@@ -8,7 +8,7 @@ allowed-tools: Bash(node .claude/skills/ledger-engine/scripts/engine.cjs *)
 
 The platform behind Ledger's skills: deterministic state, derivation, and rendering. Anything fully determined by data is computed here, in code, and consumed by Claude — never re-derived in prose.
 
-This skill is a reference, not a flow. In normal use Ledger's prose prescribes exact engine calls at exact points; consult this documentation when you need to understand how the engine works — a command's full contract, the library surface, or the architecture — rather than which call to make next.
+This skill is a reference, not a flow. In normal use Ledger's prose prescribes exact engine calls at exact points; consult this documentation when you need to understand how the engine works — the library surface or the architecture — rather than which call to make next.
 
 ## Architecture
 
@@ -30,10 +30,6 @@ Output sections are one-directional: `DATA` is for reasoning and is never displa
 **Sessions run concurrently, so every write is confined.** A command's writes and its commit hold the state's one writer lock; cache state is partitioned per topic, bar a few stores of wider scope, each written atomically or under a lock of its own — per unit the last-looked mark (`.cache/.marks/{unit}.json`), and project-wide the session-label store, keyed per tmux session, and the late check's claim (`.cache/.late-check`); the conversation folders beside the system config are keyed per Claude session id, and each concern writes a file of its own there; and every engine commit — the `commit` helper and every transaction tail — commits the paths its action wrote and nothing else: a pathspec commit, never the shared index. A state commit is made on `ledger-state` from a private index and pushed, taking along the layout's logs changed since, and refused while a file the layout has no place for sits in the state. The migration commit (`commit --migrations`) takes the whole state on the state side; its code side, which records a removal a migration staged, is built from a scratch index holding HEAD with the owned paths as the index records them, so it too carries nothing it did not name. Session liveness rides the same principle: heartbeats are stamped by the engine as a side effect of the verbs a session runs on its own topic (`presence`), never by prose.
 
 **Anything parameterised or state-branching renders in code.** Static chrome lives as literal blocks in skill prose; shared runtime surfaces (gates, menus, parameterised displays) are served by the `render` surface catalogue in `engine.cjs`, which returns demarcated sections the flow emits verbatim per their markers. The engine never parses markdown artifacts to populate a render — address-backed values are JSON state, judgment content is a validated payload file.
-
-## Reference
-
-- **[commands.md](references/commands.md)** — the CLI catalogue: command grammar, the response contract, and every noun's full signature and behaviour (`boot`, `state-merge`, `github-rule`, `github-squash`, `manifest`, `knowledge`, `workunit`, `agent`, `discovery-session`, `topic`, `experiment`, `sources`, `presence`, `session`, `conversation`, `layout`, `ledger`, `gate`, `raise`, `verdict`, `brief`, `cut`, `shell`, `checklist`, `task`, `land`, `inbox`, `brownfield`, `walkthrough`, `roadmap`, `commit`, `code`, `handoff`, `render`), and the guards before a tool call (`layout guard`, `brief guard`, `shell guard`).
 
 ## Tests
 

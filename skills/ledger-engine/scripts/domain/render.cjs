@@ -9,14 +9,16 @@
 // branching renders inside the surface: the caller never chooses between
 // gated and auto output.
 //
-// Surfaces read; they never write a state commit takes, and write three
+// Surfaces read; they never write a state commit takes, and write four
 // things beside. `phase-note` beats the addressed topic, since announcing a
 // phase's start is the session taking it. `map` moves the last-looked mark as
 // it draws, since the map shown in the conversation is the person looking
 // (5.8.14). `decided --file` stages Claude's payload in the topic's cache,
 // what the gate's yes lands (decided.cjs); `start-this-work --file` and
 // `approve-map --file` stage theirs in discovery's cache the same way
-// (start-this-work.cjs, approve-map.cjs).
+// (start-this-work.cjs, approve-map.cjs), and `conclude --file` the recap in
+// the investigation's (investigation-conclude.cjs). A menu leaves the
+// conversation's position where its registry says (menus.cjs).
 
 const fs = require('fs');
 const path = require('path');
