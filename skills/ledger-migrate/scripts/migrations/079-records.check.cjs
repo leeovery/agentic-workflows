@@ -20,8 +20,9 @@
 // them by construction. Each keeps the ledger whole — a ref that resolves,
 // nothing the sources hold lost — and none judges what the record says,
 // which the directive gives the composer and its verifier to judge:
-//   - a topic whose log or brief holds text past its headings has a record
-//     of an entry at least;
+//   - a topic that draws on a spec, or whose own markdown files, but its
+//     mail, hold text past their headings, has a record of an entry at
+//     least;
 //   - every entry cites a section, a heading its file holds or the
 //     heading's path, `{heading} > {heading}`, the outermost first, in a file
 //     that stays where the cite names it wherever the entry goes: its
@@ -114,7 +115,13 @@
 // changed there in the same run, none of it committed (21.5.8). It reads
 // and changes nothing, and calls no model. Beside the check it answers a
 // topic's sources as the rules read them, which the per-topic agent's
-// brief draws (brief-records.cjs).
+// brief draws (brief-records.cjs), and a record laid against them for its
+// verifier's walk (`sheetOf`): the topic's own markdown files, but its
+// mail, its specs, the discovery sessions it draws on and any other file
+// an entry cites, each section by its lines with the entries citing it.
+// The topic's own files the walk and the empty-record rule read are its
+// markdown files alone: a data file an experiment keeps is read through
+// the record that names it.
 //
 // Known edges: a log with CRLF endings has no heading this reads, nor does
 // a fence nested in a four-backtick block end where it should; the carried
@@ -196,16 +203,16 @@ function mainProject(projectDir) {
 const holds = (manifest, phase, topic) => TOPIC_PHASES.includes(phase) && isObject(itemsOf(manifest.phases?.[phase]?.items)[topic]);
 
 /**
- * A joined spec's lines without the front matter each part opens on, the
- * old spec's own: a block between two `---` lines first under the part's
- * heading.
- * @param {string[]} lines @returns {string[]}
+ * The indexes of a joined spec's lines but the front matter each part
+ * opens on, the old spec's own: a block between two `---` lines first
+ * under the part's heading.
+ * @param {string[]} lines @returns {number[]}
  */
 function withoutFrontMatter(lines) {
-  /** @type {string[]} */
+  /** @type {number[]} */
   const kept = [];
   for (let at = 0; at < lines.length; at += 1) {
-    kept.push(lines[at]);
+    kept.push(at);
     if (!PART.test(lines[at])) continue;
     let next = at + 1;
     while (next < lines.length && lines[next].trim() === '') next += 1;
@@ -221,8 +228,9 @@ function withoutFrontMatter(lines) {
  * joined spec the part it is in, the heading at level two over it, or its
  * own at that level, null in a spec kept whole and outside the parts; and
  * whether it holds text of its own, lines past it before the next heading,
- * fenced blocks among them.
- * @typedef {{trail: string[], path: string, part: string|null, text: boolean}} Heading
+ * fenced blocks among them; and the lines it spans, from its own to the
+ * last before the next heading, counted from one.
+ * @typedef {{trail: string[], path: string, part: string|null, text: boolean, line: number, end: number}} Heading
  */
 
 /**
@@ -239,7 +247,8 @@ function outlineOf(text, joined) {
   /** @type {string|null} */
   let part = null;
   const lines = text.split('\n');
-  for (const line of joined ? withoutFrontMatter(lines) : lines) {
+  for (const at of joined ? withoutFrontMatter(lines) : lines.keys()) {
+    const line = lines[at];
     const fence = FENCE.test(line);
     const heading = fenced || fence ? null : HEADING.exec(line);
     if (fence) fenced = !fenced;
@@ -252,7 +261,8 @@ function outlineOf(text, joined) {
     over.push({ level, heading: heading[1] });
     if (joined && PART.test(line)) part = heading[1];
     const trail = over.map((each) => each.heading);
-    headings.push({ trail, path: trail.join(PATH_JOIN), part, text: false });
+    if (headings.length > 0) headings[headings.length - 1].end = at;
+    headings.push({ trail, path: trail.join(PATH_JOIN), part, text: false, line: at + 1, end: lines.at(-1) === '' ? lines.length - 1 : lines.length });
   }
   return headings;
 }
@@ -441,8 +451,113 @@ function threadsOf(project, unit, topic) {
     .map(([thread, row]) => ({ thread, status: row.status, question: String(row.question ?? '') })));
 }
 
-/** A file of the topic's own, or '' where it has none. @param {Project} project @param {Unit} unit @param {string} topic @param {string} file */
-const ownOf = (project, unit, topic, file) => readText(path.join(project.stateDir, unit.name, 'topics', topic, file)) ?? '';
+
+// A log section's frontmatter, a block of `key: value` lines between rules.
+const FRONTMATTER = /^---\n(?:[^\n:]*:[^\n]*\n)*---$/gm;
+const RULE = /^ {0,3}([-*_])(?: *\1){2,} *$/;
+// The line the old discovery brief opens on, naming the sessions it was drawn from.
+const PROVENANCE = /^Drawn from\b/;
+
+const LIST_MARK = /^(?:[-*+]|\d+[.)])[ \t]+/;
+
+/** A text's lines of prose, trimmed, a list item's mark dropped: past its headings, rules, fences and frontmatter. @param {string} text */
+const proseOf = (text) => text.replace(FRONTMATTER, '').split('\n').map((line) => line.trim())
+  .filter((line) => line !== '' && HEADING.exec(line) === null && !RULE.test(line) && !FENCE.test(line))
+  .map((line) => line.replace(LIST_MARK, ''));
+
+/**
+ * What a topic is about, first that holds: its map row's summary in the
+ * unit that names it; its brief's first line of prose but its provenance;
+ * its log's first line of prose; or null, its name alone.
+ * @param {string} stateDir @param {Record<string, any>} manifest the unit naming the topic @param {string} at the unit whose folder holds it @param {string} topic
+ * @returns {string|null}
+ */
+function subjectOf(stateDir, manifest, at, topic) {
+  const summary = itemsOf(manifest.phases?.discovery?.items)[topic]?.summary;
+  if (typeof summary === 'string' && summary.trim() !== '') return summary.trim();
+  const own = (/** @type {string} */ file) => proseOf(readText(path.join(stateDir, at, 'topics', topic, file)) ?? '');
+  return own('brief.md').find((line) => !PROVENANCE.test(line)) ?? own('log.md')[0] ?? null;
+}
+
+/**
+ * The topics a record's discovery sessions may speak of besides its own,
+ * once each: those of each unit whose sessions it draws on, by name, each
+ * with the unit it was promoted to where it was, and its subject — what a
+ * point of a shared source is judged whose by, never a source.
+ * @param {Project} project @param {Unit} unit @param {string|null} topic
+ * @returns {{topic: string, unit: string, to: string|null, subject: string|null}[]}
+ */
+function othersOf(project, unit, topic) {
+  const homes = topic === null ? [unit.name] : homesOf(project, unit, topic);
+  /** @type {Map<string, {topic: string, unit: string, to: string|null, subject: string|null}>} */
+  const others = new Map();
+  for (const home of homes) {
+    const { manifest } = home === unit.name ? unit : unitOf(project, home);
+    const named = [...topicsOf(manifest).map((other) => ({ topic: other, to: null })), ...movedOf(manifest)];
+    for (const { topic: other, to } of named) {
+      if (other !== topic && !others.has(other)) others.set(other, { topic: other, unit: home, to, subject: subjectOf(project.stateDir, manifest, to ?? home, other) });
+    }
+  }
+  return [...others.values()].sort((a, b) => (a.topic < b.topic ? -1 : 1));
+}
+
+/** The markdown files of a topic's own folder but its mail, each from the state's folder, sorted. @param {Project} project @param {Unit} unit @param {string} topic @returns {string[]} */
+function ownFilesOf(project, unit, topic) {
+  const folder = `${unit.name}/topics/${topic}`;
+  /** @param {string} rel @returns {string[]} */
+  const under = (rel) => fs.readdirSync(path.join(project.stateDir, rel), { withFileTypes: true }).flatMap((entry) => {
+    const at = `${rel}/${entry.name}`;
+    if (entry.isDirectory()) return at === `${folder}/mail` ? [] : under(at);
+    return entry.name.endsWith('.md') ? [at] : [];
+  });
+  return fs.existsSync(path.join(project.stateDir, folder)) ? under(folder).sort() : [];
+}
+
+/**
+ * A section of a source as the verifier's walk sheet lays it out: its
+ * heading's path, the lines it spans, and the entries citing it.
+ * @typedef {{section: string, line: number, end: number, entries: {ref: string, event: string, text: string}[]}} SheetSection
+ */
+
+/**
+ * The sections of one file of the walk, in order: those holding text, in
+ * a joined spec in the parts the topic draws on alone, every part where it
+ * draws on none; and those an entry cites, in any part — each with every
+ * entry citing it, once.
+ * @param {Project} project @param {Unit} unit @param {{path: string, part: string|null}[]} specs @param {Record<string, any>[]} entries @param {string} at
+ * @returns {SheetSection[]}
+ */
+function sheetSections(project, unit, specs, entries, at) {
+  const parts = partsDrawn(specs, at);
+  const headings = outlineOf(readText(path.join(project.stateDir, at)) ?? '', at === `${unit.name}/${JOINED_SPEC}`);
+  /** @type {Map<Heading, Record<string, any>[]>} */
+  const citing = new Map();
+  for (const entry of entries) {
+    const names = (Array.isArray(entry.cites) ? entry.cites.filter(isObject) : []).filter((cite) => cite.path === at).map(({ section }) => String(section));
+    const named = new Set([...byPartOf(headings).values()].flatMap((held) => names.flatMap((name) => namedAlone(held, name))));
+    for (const heading of named) citing.set(heading, [...(citing.get(heading) ?? []), entry]);
+  }
+  const drawn = (/** @type {Heading} */ heading) => parts === null || parts.includes(heading.part);
+  return headings.filter((heading) => (heading.text && drawn(heading)) || citing.has(heading)).map((heading) => ({
+    section: heading.path, line: heading.line, end: heading.end,
+    entries: (citing.get(heading) ?? []).map(({ ref, event, text }) => ({ ref: String(ref), event: String(event), text: String(text ?? '') })),
+  }));
+}
+
+/**
+ * A record laid against its sources for its verifier to walk: each file in
+ * the order its brief lists them — the topic's own but its mail, its
+ * specs, the discovery sessions it draws on — then each other file an
+ * entry cites, each with its sections (`sheetSections`).
+ * @param {Project} project @param {Unit} unit @param {string|null} topic @param {Record<string, any>[]} entries
+ * @returns {{path: string, sections: SheetSection[]}[]}
+ */
+function sheetOf(project, unit, topic, entries) {
+  const specs = topic === null ? [] : specsOf(project, unit, topic);
+  const cited = entries.flatMap(({ cites }) => (Array.isArray(cites) ? cites.filter(isObject) : [])).map(({ path: at }) => String(at));
+  const files = [...(topic === null ? [] : ownFilesOf(project, unit, topic)), ...specs.map(({ path: at }) => at), ...sessionsOf(project, unit, topic), ...cited];
+  return [...new Set(files)].filter((at) => isFile(path.join(project.stateDir, at))).map((at) => ({ path: at, sections: sheetSections(project, unit, specs, entries, at) }));
+}
 
 /** Whether the unit has its spec, past which a point is raised at its specification: its `spec.md`, or its specs joined. @param {Project} project @param {Unit} unit */
 const hasSpec = (project, unit) => Array.isArray(unit.manifest?.spec?.joined) || isFile(path.join(project.stateDir, unit.name, JOINED_SPEC));
@@ -583,7 +698,8 @@ function ownProblems(project, unit, record) {
 function problemsOf(project, unit, topic, phase, record) {
   if (topic === null) return ownProblems(project, unit, record);
   const imports = unlinkedImports(project, unit, topic, record);
-  const empty = record.length === 0 && ['log.md', 'brief.md'].some((file) => holdsText(ownOf(project, unit, topic, file))) ? ['its record is empty, and its log or brief holds text past its headings'] : [];
+  const sourced = specsOf(project, unit, topic).length > 0 || ownFilesOf(project, unit, topic).some((at) => holdsText(readText(path.join(project.stateDir, at)) ?? ''));
+  const empty = record.length === 0 && sourced ? ['its record is empty, and it has sources — a spec it draws on, or its own markdown files holding text past their headings: compose it from them'] : [];
   const undecided = phase === 'discovery' ? undecidedProblems(record) : [];
   const narrow = unit.manifest?.work_type === 'cross-cutting' ? narrowProblems(record) : [];
   const cites = citesProblems(project, unit, topic, record);
@@ -815,7 +931,6 @@ module.exports = {
   phases: TOPIC_PHASES,
   holds,
   topicsOf,
-  movedOf,
   /**
    * What a topic's record breaks of the rules, before it is carried in
    * `phase`.
@@ -855,8 +970,9 @@ module.exports = {
    * are read in, a topic's old map, its research's threads still open and
    * its specs, the unit's imports, each with the topic owing its link — none
    * for one the unit's own record owes — and whether the state holds its
-   * file, and the discovery sessions it draws on. A unit's own, `topic`
-   * null, has no map, thread or spec.
+   * file, the discovery sessions it draws on, and the other topics those
+   * sessions may speak of (`othersOf`). A unit's own, `topic` null, has no
+   * map, thread or spec.
    * @param {{projectDir: string, stateDir: string, unit: string, topic: string|null}} at
    */
   sourcesOf({ projectDir, stateDir, unit: name, topic }) {
@@ -870,6 +986,15 @@ module.exports = {
       specs: own ? [] : specsOf(project, unit, topic),
       imports: importsOf(project, unit),
       sessions: sessionsOf(project, unit, topic),
+      others: othersOf(project, unit, topic),
     };
+  },
+  /**
+   * A record laid against its sources for its verifier's walk (`sheetOf`).
+   * @param {{projectDir: string, stateDir: string, unit: string, topic: string|null, entries: Record<string, any>[]}} at
+   */
+  sheetOf({ projectDir, stateDir, unit: name, topic, entries }) {
+    const project = projectOf(projectDir, stateDir);
+    return sheetOf(project, unitOf(project, name), topic, entries);
   },
 };

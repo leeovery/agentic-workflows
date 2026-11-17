@@ -216,7 +216,7 @@ Refused for every write: a place not live; a topic past the unit's spec (settle 
 **Boot's and the migration's own.**
 
 - **`late-check`** — boot's detached job: judges each decision that landed unchecked and commits a `checked` event for it. Answers `ran: false` where another check holds the claim, else `{ran: true, checked, several, owed, cannot?}`.
-- **`carry`** — the migration's: a topic's whole record, or a unit's own (`<wu>.discovery`), composed at `.ledger/.cache/migrate/records/{unit}/{topic}.json`, appended in one write once its verifier has passed it; its commit is held for the migration's. `--dry-run` answers `faults`, writing nothing. A refusal the composer must answer is also written beside the record, `{topic}.refused.md`. Answers `carried` and `ids` (`{ref: short id}`). Refused once the state branch has its first commit, and for a topic the ledger already holds an entry on.
+- **`carry`** — the migration's: a topic's whole record, or a unit's own (`<wu>.discovery`), composed at `.ledger/.cache/migrate/records/{unit}/{topic}.json`, appended in one write once its verifier has passed it; its commit is held for the migration's. `--dry-run` answers `faults`, writing nothing; among them an empty record of a topic that draws on a spec, or whose own markdown files, but its mail, hold text past their headings. A refusal the composer must answer is also written beside the record, `{topic}.refused.md`. Answers `carried` and `ids` (`{ref: short id}`), and keeps the passing round, its findings, rulings and verdicts, in `{topic}.rounds.md` before it clears what is beside the record. Refused once the state branch has its first commit, for a topic the ledger already holds an entry on, while findings its composer handed back stand in `{topic}.handback.txt`, for a record changed since its verifier was briefed on it (`{topic}.verifying.json`: brief a fresh verifier), and while that verifier's verdicts, `{topic}.checked.txt`, miss an entry it read or name one it did not.
 
 ### `asset`
 
@@ -859,7 +859,7 @@ Response `{id, role, agent, pointer}`, with `committed` where reading the tracke
 
 - **`product-researcher`** — drawing on nothing.
 - **`plain-search`** — the conversation's last `knowledge query`.
-- **`migration-topic`**, **`migration-verifier`** — the migration's agent and verifier for one topic's record (`--topic`, `--directive`).
+- **`migration-topic`**, **`migration-verifier`** — the migration's agent and verifier for one topic's record (`--topic`, `--directive`): the topic, the other topics with what each is about, the verifier's findings and every round's rulings, the carry's refusal, the points the session settled and the directive; the verifier's its composed record, the walk sheet — each source's sections in order by heading path and lines, with every entry citing each, the topic's own markdown files but its mail, its specs, the discovery sessions and any other file an entry cites — and every round of findings and rulings. The verifier's brief notes the record it reads, `{topic}.verifying.json`; it, and the per-topic agent's after it, are refused while findings handed back stand, or once that verifier has written findings while its verdicts miss an entry it read or name one it did not.
 - **`migration-phase`**, **`migration-phase-verifier`** — the same for one phase of a building unit's cut (`--phase`).
 
 **The hook.**

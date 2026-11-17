@@ -89,7 +89,18 @@ const MOVED_UNIT = {
 // them, and the code migration after the reshape, which never runs in it.
 const RECORDED = ['090', '091', '092', '093', '094'];
 const MOVE = require(path.join(path.dirname(RUNNER), 'migrations/078-reshape-move.cjs'));
-const { composedPath, findingsPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
+const { composedPath, findingsPath, checkedPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
+
+/**
+ * What a verifier passing a record leaves beside it, each file by its path
+ * from the state's folder: its findings empty, and its verdict on each
+ * entry, `ok`.
+ * @param {string} unit @param {string|null} topic @param {unknown[]} entries @returns {[string, string][]}
+ */
+const passedBeside = (unit, topic, entries) => [
+  [findingsPath(unit, topic), ''],
+  [checkedPath(unit, topic), entries.map((entry) => `${/** @type {{ref?: unknown}} */ (entry)?.ref}: ok\n`).join('')],
+];
 
 /** @type {(ReturnType<typeof harness.harness> & {path: string, migrations: string})|null} */
 let engine = null;
@@ -668,7 +679,7 @@ function buildCut(dir) {
   for (const [place, entries] of Object.entries(CUT_RECORDS)) {
     const [unit, , topic] = place.split('.');
     createFile(statePath(dir), composedPath(unit, topic), JSON.stringify({ entries }));
-    createFile(statePath(dir), findingsPath(unit, topic), '');
+    for (const [rel, text] of passedBeside(unit, topic, entries)) createFile(statePath(dir), rel, text);
   }
   for (const place of Object.keys(CUT_RECORDS)) harness.ok(dir, ['ledger', 'carry', place], { env: SESSION });
 }
@@ -783,5 +794,5 @@ module.exports = {
   UNIT, SESSION, DECIDED, RECORDED, ALL_RECORDED, FIXTURES, OLD_STORE, OLD_LOCAL,
   directiveEngine, midMigration, recordsMigration, finishedMigration, nestedFinished, stateUnborn, codeHead, enter, enterTopic, refusedUntouched, refusedKeeping, recorded,
   SPLIT_EPIC, SPLIT_SOURCES, SPLIT_OLD, SPLIT_PLANS, GUARDED, themeOf, stagedPlan, splitProject, splitMigration, projectTree,
-  CUT_RECORDS, cutMigration, settledState,
+  CUT_RECORDS, cutMigration, settledState, passedBeside,
 };
