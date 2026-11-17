@@ -64,7 +64,7 @@ const { fingerprint } = require('../kernel/fingerprint.cjs');
 const { refusing } = require('./staged-payload.cjs');
 const { refuserFor } = require('./task-account.cjs');
 const { unitInProgress } = require('./topic-standing.cjs');
-const { itemTitle, topicTitles } = require('./derivations.cjs');
+const { itemTitle } = require('./derivations.cjs');
 const { reviewHeld } = require('./review-entry.cjs');
 const { reading, reposOf } = require('./phase-checks.cjs');
 const {
@@ -240,7 +240,7 @@ function setAside(cwd, unit, round, repos, back, refuse) {
 function reviewTreeSurface(cwd, { dotpath: unit = '' }) {
   const said = 'render review-tree';
   const { manifest, round, repos } = roundHeld(cwd, unit, said);
-  const title = itemTitle(topicTitles(manifest), 'review', unit);
+  const title = itemTitle(manifest, 'review', unit);
   const held = snapshotRound(cwd, unit);
   const aside = setAsideHeld(cwd, unit);
   if (held !== round) return reviewTreeScreen(unit, title, round, { lost: lostWords(round, held), changes: [], print: null, aside });

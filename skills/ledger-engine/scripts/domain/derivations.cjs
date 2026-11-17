@@ -1199,12 +1199,14 @@ function itemName(titles, phase, name) {
 }
 
 /**
- * How screens title an item of `phase`: `itemName`, title-cased.
- * @param {Record<string, string>} titles the unit's `topicTitles` @param {string} phase @param {string} name
+ * How screens title an item of `phase`, read from the unit's manifest: a
+ * topic as `topicTitle` titles it, a specification and what is built from
+ * it by its own name, title-cased.
+ * @param {object} manifest @param {string} phase @param {string} name
  * @returns {string}
  */
-function itemTitle(titles, phase, name) {
-  return titlecase(itemName(titles, phase, name));
+function itemTitle(manifest, phase, name) {
+  return TOPIC_PHASES.includes(phase) ? topicTitle(manifest, name) : titlecase(name);
 }
 
 /**

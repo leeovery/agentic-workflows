@@ -80,7 +80,7 @@ const { isCurrent, factsOf, decidedNow } = require('./ledger-fold.cjs');
 /** @typedef {import('./ledger-fold.cjs').IdFacts} IdFacts */
 const { readShown } = require('./ledger-read.cjs');
 const { verdictAsked } = require('./ledger-verdicts.cjs');
-const { buildBegun, itemTitle, topicTitles, cutPhases, quickFixBuild } = require('./derivations.cjs');
+const { buildBegun, itemTitle, cutPhases, quickFixBuild } = require('./derivations.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { knownUnit, noUnit, unitClosure } = require('./topic-standing.cjs');
 const { specEntryRefusal } = require('./spec-entry.cjs');
@@ -222,7 +222,7 @@ function readyToBuildSurface(cwd, { dotpath: unit = '', page, calls }) {
     const open = pageOpen(cwd, unit);
     return readyToBuildScreen({
       unit,
-      title: itemTitle(topicTitles(ready.manifest), 'specification', unit),
+      title: itemTitle(ready.manifest, 'specification', unit),
       calls: ready.calls,
       listed: calls !== undefined,
       outline: headings.filter(({ kind }) => kind === 'area').map(({ number, title }) => ({ number: /** @type {string} */ (number), title })),

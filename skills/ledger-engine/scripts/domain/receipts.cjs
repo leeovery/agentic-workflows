@@ -14,7 +14,7 @@ const { loadWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { keptAside, keptWords } = require('./fix-aside.cjs');
 const { cancelKept } = require('./fix-branch.cjs');
 const { lastClosed } = require('./cancel-closed.cjs');
-const { quickFixBuild, liveUnitItems, itemTitle, topicTitles, postponedItem } = require('./derivations.cjs');
+const { quickFixBuild, liveUnitItems, itemTitle, postponedItem } = require('./derivations.cjs');
 const { loadProjectManifest } = require('./reads.cjs');
 const { roadmapState } = require('./roadmap.cjs');
 const { liveItem, archivedOne, deletedItemTitle } = require('./inbox-set.cjs');
@@ -79,7 +79,7 @@ function unitReceipt(cwd, verb, answered) {
 function topicReceiptOf(cwd, verb, workUnit, answered) {
   const { topic } = answered;
   const manifest = loadWorkUnitManifest(cwd, workUnit);
-  const name = itemTitle(topicTitles(manifest), 'discovery', topic);
+  const name = itemTitle(manifest, 'discovery', topic);
   const warn = warned(answered);
   if (verb === 'cancel') return topicReceipt(verb, name, { warn, inbox: (answered.inbox ?? []).length });
   if (verb === 'postpone') return topicReceipt(verb, name, { warn, horizon: postponedItem(loadProjectManifest(cwd), workUnit, topic)?.horizon ?? null });

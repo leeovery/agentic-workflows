@@ -144,7 +144,7 @@ describe('a topic\'s title keeps each word its own summary or description writes
   /** A unit holding `topic` on its map, its summary and description as given. @param {string} topic @param {Record<string, string>} said @param {string} [title] */
   const holding = (topic, said, title) => ({ phases: { discovery: { items: { [topic]: { ...said, ...(title === undefined ? {} : { title }) } } } } });
 
-  it('the raise screen titles mcp-design, its summary naming MCP, as MCP Design', () => {
+  it('every screen titles mcp-design, its summary naming MCP, as MCP Design: the raise, the map, the epic menu, the pick\'s continue row and a receipt', () => {
     const dir = world();
     try {
       const manifest = readManifest(dir, UNIT);
@@ -153,7 +153,18 @@ describe('a topic\'s title keeps each word its own summary or description writes
       const seal = { id: 'r1', menu: 'raise', fact: false, reason: 'It decides who calls.', replaces: null, parks: null,
         place: { unit: UNIT, phase: 'discussion', topic: 'mcp-design' },
         call: { question: 'Which surface first?', rows: [], lean: 'a', why: 'Habit.', sort: 'one', mechanism: 'The endpoints.', product_wide: false } };
-      assert.ok(raiseScreenOf(dir, /** @type {any} */ (seal)).includes('Fumi · MCP Design'));
+      /** @type {[string, () => string, string][]} */
+      const SCREENS = [
+        ['the raise', () => raiseScreenOf(dir, /** @type {any} */ (seal)), 'Fumi · MCP Design'],
+        ['the map', () => renderSurface(dir, 'map', { dotpath: `${UNIT}.mcp-design` }), 'Map — MCP Design'],
+        ['the epic menu', () => renderSurface(dir, 'epic-menu', { dotpath: UNIT }), 'MCP Design'],
+        ['the pick\'s continue row', () => output(dir, ['render', 'work-pick', '--matches', `${UNIT}/mcp-design`], { env: SESSION }), 'the MCP Design topic'],
+        ['the cancel\'s receipt', () => okSections(dir, ['topic', 'cancel', UNIT, 'discovery', 'mcp-design']).sections, 'Cancelled "MCP Design".'],
+      ];
+      for (const [screen, render, phrase] of SCREENS) {
+        const out = render();
+        assert.ok(out.includes(phrase) && !out.includes('Mcp Design'), `${screen}: no "${phrase}" in:\n${out}`);
+      }
     } finally {
       cleanupFixture(dir);
     }
@@ -324,7 +335,7 @@ describe('every screen names a topic through one helper', () => {
   // which give a started topic its title.
   const NOT_A_TOPIC = {
     'the helpers a topic\'s name goes through': [
-      'derivations.cjs › itemTitle › itemName(titles, phase, name)',
+      'derivations.cjs › itemTitle › name',
       'derivations.cjs › titled › words.join(\' \')',
     ],
     'a work unit, or the project': [

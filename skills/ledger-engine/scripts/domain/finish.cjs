@@ -87,7 +87,7 @@ const { carrying } = require('./ledger.cjs');
 const { readShown } = require('./ledger-read.cjs');
 const { verdictAsked, closeDepartures } = require('./ledger-verdicts.cjs');
 const {
-  itemTitle, topicTitles, buildRefusal, quickFixBuild, reviewAsked, buildLength,
+  itemTitle, buildRefusal, quickFixBuild, reviewAsked, buildLength,
 } = require('./derivations.cjs');
 const { trackedBuild } = require('./task-verbs.cjs');
 const { unitInProgress } = require('./topic-standing.cjs');
@@ -254,7 +254,7 @@ function finishSurface(cwd, { dotpath: unit = '' }) {
     const { manifest, fixes, skips, verdict, warnings } = standing(cwd, unit);
     const view = {
       unit,
-      title: itemTitle(topicTitles(manifest), 'review', unit),
+      title: itemTitle(manifest, 'review', unit),
       lands: landsAt(cwd, unit),
       closed: closedBy(cwd, unit),
       skips: skips.map(({ checklist, text, reason }) => ({ checklist, text, reason })),

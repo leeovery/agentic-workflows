@@ -112,7 +112,7 @@ const { readShown } = require('./ledger-read.cjs');
 const { parseInboxPath, FOLDER_KIND } = require('./inbox.cjs');
 const { titleOf } = require('./start.cjs');
 const { unitInProgress } = require('./topic-standing.cjs');
-const { itemTitle, topicTitles, quickFixBuild, reviewAsked, buildRefusal, specJoined } = require('./derivations.cjs');
+const { itemTitle, quickFixBuild, reviewAsked, buildRefusal, specJoined } = require('./derivations.cjs');
 const { closeNotesPath, answeredAtClose } = require('./notes.cjs');
 const { reading, reposOf } = require('./phase-checks.cjs');
 const { readSpec, specStatements } = require('./spec-sections.cjs');
@@ -638,7 +638,7 @@ function callsCount(cwd, unit, warnings) {
  */
 function reportText(cwd, unit, manifest, rounds, statuses, warnings) {
   const wordings = scenarioWordings(cwd, unit, manifest);
-  const title = itemTitle(topicTitles(manifest), 'review', unit);
+  const title = itemTitle(manifest, 'review', unit);
   const last = /** @type {RoundRecord} */ (rounds.at(-1));
   const view = (/** @type {number} */ round) => roundView(cwd, manifest, rounds[round - 1], round, wordings, statuses);
   const calls = { ...callsCount(cwd, unit, warnings), recorded: statuses === null ? rounds.length : null };
@@ -670,7 +670,7 @@ function reviewCallsSurface(cwd, { dotpath: unit = '' }) {
   return refusing('render review-calls', () => {
     const manifest = unitInProgress(cwd, unit);
     const calls = readShown(stateRoot(cwd), [], (shower) => callsForThePerson(shower, unit));
-    return reviewCallsScreen(unit, itemTitle(topicTitles(manifest), 'review', unit), calls);
+    return reviewCallsScreen(unit, itemTitle(manifest, 'review', unit), calls);
   });
 }
 
