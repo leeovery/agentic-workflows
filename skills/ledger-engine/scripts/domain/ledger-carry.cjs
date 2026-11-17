@@ -66,9 +66,11 @@
 //   — the record as given, and each entry's ref with the id it was given —
 //   so a session that dies leaves the topic with all of its entries or none
 //   (21.10.9), and the check tells the two apart. A topic the ledger holds
-//   an entry on already is refused: its record was carried. Once carried,
-//   the verifier's findings on the record and any refusal of it beside it
-//   are cleared.
+//   an entry on already is refused: its record was carried — asked of the
+//   ledger before the verifier's pass and the unit's order, so a carry run
+//   again is told so, and one killed before its append runs again. Once
+//   carried, the verifier's findings on the record and any refusal of it
+//   beside it are cleared.
 // - Frozen with 079: the record this takes and the carried file it keeps
 //   are the directive's, released with it, so a later ledger version keeps
 //   taking them while 079 can run. The check rests on those two things
@@ -513,9 +515,9 @@ function carryRecord(cwd, args) {
     if (session === null) throw new Error(`${SAID}: no session to tag the entries with — CLAUDE_CODE_SESSION_ID is not set`);
     const place = topicPlace(cwd, dotpath, SAID);
     const { entries, lines, kept } = composedRecord(cwd, place, session);
-    refuseUnsettled(cwd, place);
     const { outcome, short } = withStateLock(place.root, () => {
       const beside = idsBeside(place, warnings);
+      refuseUnsettled(cwd, place);
       keepCarried(place, entries, kept);
       if (lines.length > 0) appendEntries(place.root, lines, warnings);
       return {

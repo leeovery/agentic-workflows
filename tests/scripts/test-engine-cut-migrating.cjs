@@ -472,17 +472,18 @@ describe('the migration\'s cut of a unit whose building started (21.7.1, 21.8.6�
     assert.deepStrictEqual([unlinked.task, unlinked.after, DRIVER.show(root, { unit: 'tally', phase: 2, n: 1 })?.after], ['tally-2-1', '4.3', [{ unit: 'shop', phase: 3, n: 1 }]]);
   });
 
-  it('task unlink refuses a link the tracker does not hold, a task no adopted phase holds, two tasks neither of them the unit\'s, no plan, and a unit cut already, writing nothing', () => {
+  it('task unlink refuses a link the tracker does not hold, a task no adopted phase holds, two tasks neither of them the unit\'s, a link the cut keeps, no plan, and a unit cut already, writing nothing', () => {
     const root = statePath(dir);
     DRIVER.adopt(root, 'memo', 1, PLANS.memo.phases[0]);
     cut('tally', tallyPlan());
-    for (const after of ['Write a memo', 'Email a receipt']) SIDE.linkBy(root, 'Total a week', after);
+    for (const [title, after] of [['Total a week', 'Write a memo'], ['Total a week', 'Email a receipt'], ['Email a receipt', 'Take a card']]) SIDE.linkBy(root, title, after);
     const plan = String(cutArgs('shop', shopPlan()).at(-1));
     const unlink = (/** @type {string} */ task, /** @type {string} */ after, /** @type {string[]} */ file = ['--file', plan]) => trackerUntouched('shop', ['task', 'unlink', 'shop', task, '--after', after, ...file]);
-    assert.deepStrictEqual([unlink('4.2', '5.1'), unlink('9.1', '5.1'), unlink('tally-2-1', 'memo-1-1'), unlink('4.2', '5.1', [])], [
+    assert.deepStrictEqual([unlink('4.2', '5.1'), unlink('1.9', '5.1'), unlink('tally-2-1', 'memo-1-1'), unlink('4.3', '3.1'), unlink('4.2', '5.1', [])], [
       'task 4.2 is held after no task 5.1 — the link is not there to take off',
-      'no phase the cut adopts holds task 9.1',
+      'no phase the cut adopts holds task 1.9',
       'task unlink: neither tally-2-1 nor memo-1-1 is shop\'s — the cut of shop takes off a link one of whose tasks is its own',
+      'task unlink: 4.3 after 3.1 is a link of its own phase or an earlier one\'s, which the cut keeps — it takes off a link the cut refuses',
       'Usage: engine task unlink <unit> <task> --after <task> --file <plan.json>',
     ]);
     cut('shop', shopPlan());

@@ -185,10 +185,10 @@ describe('a redo never duplicates (21.10.9)', () => {
   beforeEach(() => { dir = world(); });
   afterEach(() => cleanupFixture(path.dirname(dir)));
 
-  it('a topic\'s record is carried once: carried again, it is refused, nothing written', () => {
+  it('a topic\'s record is carried once: carried again, its verifier\'s pass gone with the carry, it is refused as carried, nothing written', () => {
     carry(LICENSING, [QUESTION, DECISION]);
 
-    assert.strictEqual(untouched(composed(LICENSING, { entries: [QUESTION, DECISION] })),
+    assert.strictEqual(untouched(['ledger', 'carry', LICENSING]),
       'ledger carry: the ledger holds entries on fumi\'s licensing already — a record is carried once');
     assert.strictEqual(lines().length, 3);
   });

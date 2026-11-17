@@ -33,9 +33,12 @@
 //     folder, which a split may take from under the cite, nor another
 //     unit's, which its retiring may (21.7) — but for a promoted topic the
 //     discovery sessions of the unit it came from, which stay where they
-//     are. A path names a section where a heading's path ends with it,
-//     and one naming several, a heading held more than once among them,
-//     still names a section of the file;
+//     are. A cite names the headings whose path ends with it, at a
+//     heading's start, or the one whose whole path it is, and names one
+//     alone — a heading held more than once by the path that tells it
+//     apart — in each part its topic draws on of a joined spec, every
+//     part where it draws on none: a bare heading each part holds once
+//     names one in each;
 //   - every subtopic its old discussion map holds — in the unit's manifest
 //     under `.workflows/`, which the move dropped the map from (21.5.8) —
 //     named by an entry's map item, a subtopic's name or a list of them
@@ -214,11 +217,12 @@ function withoutFrontMatter(lines) {
 
 /**
  * A heading of a markdown text: its trail, the headings over it, the
- * outermost first, ending in its own; in a joined spec the part it is in,
- * the heading at level two over it, or its own at that level, null in a
- * spec kept whole and outside the parts; and whether it holds text of its
- * own, lines past it before the next heading, fenced blocks among them.
- * @typedef {{trail: string[], part: string|null, text: boolean}} Heading
+ * outermost first, ending in its own, and its path, the trail joined; in a
+ * joined spec the part it is in, the heading at level two over it, or its
+ * own at that level, null in a spec kept whole and outside the parts; and
+ * whether it holds text of its own, lines past it before the next heading,
+ * fenced blocks among them.
+ * @typedef {{trail: string[], path: string, part: string|null, text: boolean}} Heading
  */
 
 /**
@@ -247,27 +251,34 @@ function outlineOf(text, joined) {
     while (over.length > 0 && over[over.length - 1].level >= level) over.pop();
     over.push({ level, heading: heading[1] });
     if (joined && PART.test(line)) part = heading[1];
-    headings.push({ trail: over.map((each) => each.heading), part, text: false });
+    const trail = over.map((each) => each.heading);
+    headings.push({ trail, path: trail.join(PATH_JOIN), part, text: false });
   }
   return headings;
 }
 
-/** A heading's path as a cite or a mark gives it, `{heading} > {heading}`: its headings, the outermost first. @param {unknown} name @returns {string[]} */
-const pathOf = (name) => String(name).split(PATH_JOIN);
-
-/** Whether a heading's trail ends with the path. @param {Heading} heading @param {string[]} names */
-const endsWith = ({ trail }, names) => names.length <= trail.length && names.every((name, at) => name === trail[trail.length - names.length + at]);
+/**
+ * Whether a heading's path ends with `name`, a heading or a path of them,
+ * `{heading} > {heading}`, the outermost first — at a heading's start, so
+ * one whose own text holds the joint is named too.
+ * @param {Heading} heading @param {string} name
+ */
+const endsWith = ({ path: at }, name) => at === name || at.endsWith(`${PATH_JOIN}${name}`);
 
 /**
- * The headings among `headings` a path names alone: each its trail ends
- * with, where all of them share one trail — none where it names headings
- * of several, so a heading held more than once is named by its bare
- * heading in none of its copies, and by the path that tells it apart.
- * @param {Heading[]} headings @param {string[]} names @returns {Heading[]}
+ * The headings among `headings` a name names alone: each whose whole path
+ * it is — a heading at the top of a file with no one root among them —
+ * else each whose path ends with it, where all of them share one path;
+ * none where it names headings of several, so a heading held more than
+ * once is named by its bare heading in none of its copies, and by the path
+ * that tells it apart.
+ * @param {Heading[]} headings @param {string} name @returns {Heading[]}
  */
-function namedAlone(headings, names) {
-  const named = headings.filter((heading) => endsWith(heading, names));
-  return new Set(named.map(({ trail }) => trail.join(PATH_JOIN))).size === 1 ? named : [];
+function namedAlone(headings, name) {
+  const whole = headings.filter(({ path: at }) => at === name);
+  if (whole.length > 0) return whole;
+  const named = headings.filter((heading) => endsWith(heading, name));
+  return new Set(named.map(({ path: at }) => at)).size === 1 ? named : [];
 }
 
 /**
@@ -277,7 +288,7 @@ function namedAlone(headings, names) {
  */
 function nameOf(headings, heading) {
   const { trail } = heading;
-  const from = [...trail.keys()].reverse().find((at) => namedAlone(headings, trail.slice(at)).includes(heading)) ?? 0;
+  const from = [...trail.keys()].reverse().find((at) => namedAlone(headings, trail.slice(at).join(PATH_JOIN)).includes(heading)) ?? 0;
   return trail.slice(from).join(PATH_JOIN);
 }
 
@@ -473,15 +484,40 @@ function lasting(project, unit, topic, cited) {
   return sessionsOf(project, unit, topic).includes(cited);
 }
 
-/** What a cited section lacks, or null. @param {Project} project @param {Unit} unit @param {string|null} topic @param {Record<string, unknown>} cite */
-function citeProblem(project, unit, topic, { path: cited, section }) {
+/**
+ * The parts of the spec at `at` a topic draws on, its specs' parts there:
+ * null where it draws on none of them, so a cite counts in every part.
+ * @param {{path: string, part: string|null}[]} specs @param {unknown} at @returns {(string|null)[]|null}
+ */
+function partsDrawn(specs, at) {
+  const parts = specs.filter((spec) => spec.path === at && spec.part !== null).map(({ part }) => part);
+  return parts.length > 0 ? parts : null;
+}
+
+/**
+ * What a cited section lacks: a file that stays with its entry, which the
+ * state holds, holding a heading the cite names; and in each part the
+ * topic draws on — every part where it draws on none — one heading alone
+ * so named, else the paths that tell those it names apart.
+ * @param {Project} project @param {Unit} unit @param {string|null} topic @param {{path: string, part: string|null}[]} specs the topic's
+ * @param {Record<string, unknown>} cite @returns {string[]}
+ */
+function citeProblems(project, unit, topic, specs, { path: cited, section }) {
   if (typeof cited !== 'string' || !lasting(project, unit, topic, cited)) {
-    return `cites ${cited}, which is neither its topic's own, but its mail, nor the unit's beside its topics, nor a discovery session it draws on — a cite names a file that stays with its entry`;
+    return [`cites ${cited}, which is neither its topic's own, but its mail, nor the unit's beside its topics, nor a discovery session it draws on — a cite names a file that stays with its entry`];
   }
   const text = readText(path.join(project.stateDir, cited));
-  if (text === null) return `cites ${cited}, which the state does not hold`;
-  const names = pathOf(section);
-  return outlineOf(text, false).some((heading) => endsWith(heading, names)) ? null : `cites "${section}" in ${cited}, which has no such heading${names.length > 1 ? ' path' : ''}`;
+  if (text === null) return [`cites ${cited}, which the state does not hold`];
+  const name = String(section);
+  const headings = outlineOf(text, cited === `${unit.name}/${JOINED_SPEC}`);
+  if (!headings.some((heading) => endsWith(heading, name))) return [`cites "${name}" in ${cited}, which has no such heading${name.includes(PATH_JOIN) ? ' path' : ''}`];
+  const parts = partsDrawn(specs, cited);
+  return [...byPartOf(headings)].filter(([part]) => parts === null || parts.includes(part)).flatMap(([part, held]) => {
+    const named = held.filter((heading) => endsWith(heading, name));
+    if (named.length === 0 || namedAlone(held, name).length > 0) return [];
+    const told = [...new Set(named.map((heading) => nameOf(held, heading)))].map((each) => `"${each}"`);
+    return [`cites "${name}" in ${cited}, which holds ${told.length} headings so named${part === null ? '' : ` in part "${part}"`} — a cite names one, by the path that tells it apart: ${told.join(', ')}`];
+  });
 }
 
 /**
@@ -519,9 +555,10 @@ function unlinkedImports(project, unit, topic, record) {
 
 /** Each entry's cite problems, or that it cites nothing. @param {Project} project @param {Unit} unit @param {string|null} topic @param {Record<string, any>[]} record @returns {string[]} */
 function citesProblems(project, unit, topic, record) {
+  const specs = topic === null ? [] : specsOf(project, unit, topic);
   return record.flatMap(({ ref, cites: given }) => {
     if (!Array.isArray(given) || given.length === 0) return [`entry ${ref} cites nothing`];
-    return given.filter(isObject).map((cite) => citeProblem(project, unit, topic, cite)).filter((problem) => problem !== null).map((problem) => `entry ${ref} ${problem}`);
+    return given.filter(isObject).flatMap((cite) => citeProblems(project, unit, topic, specs, cite)).map((problem) => `entry ${ref} ${problem}`);
   });
 }
 
@@ -634,14 +671,11 @@ const sectionKey = (at, part, section) => `${at}\n${part ?? ''}\n${section}`;
  * The cites of a topic's record, each with the parts of its spec the topic
  * draws on — null where it draws on none, so the cite counts in every part.
  * @param {Project} project @param {Unit} unit @param {string} topic @param {Record<string, any>[]} record
- * @returns {{path: string, names: string[], parts: (string|null)[]|null}[]}
+ * @returns {{path: string, name: string, parts: (string|null)[]|null}[]}
  */
 function citesOf(project, unit, topic, record) {
   const specs = specsOf(project, unit, topic);
-  return record.flatMap(({ cites }) => (Array.isArray(cites) ? cites.filter(isObject) : [])).map(({ path: at, section }) => {
-    const parts = specs.filter((spec) => spec.path === at && spec.part !== null).map(({ part }) => part);
-    return { path: String(at), names: pathOf(section), parts: parts.length > 0 ? parts : null };
-  });
+  return record.flatMap(({ cites }) => (Array.isArray(cites) ? cites.filter(isObject) : [])).map(({ path: at, section }) => ({ path: String(at), name: String(section), parts: partsDrawn(specs, at) }));
 }
 
 /**
@@ -693,10 +727,10 @@ function uncitedOf(project, unit) {
     const joined = at === `${unit.name}/${JOINED_SPEC}`;
     for (const [part, held] of byPartOf(outlineOf(readText(path.join(project.stateDir, at)) ?? '', joined))) {
       const named = [
-        ...cites.filter((cite) => cite.path === at && (cite.parts === null || cite.parts.includes(part))).map(({ names }) => names),
-        ...markedIn(marked, at, part).map(pathOf),
+        ...cites.filter((cite) => cite.path === at && (cite.parts === null || cite.parts.includes(part))).map(({ name }) => name),
+        ...markedIn(marked, at, part),
       ];
-      const settled = new Set(named.flatMap((names) => namedAlone(held, names)));
+      const settled = new Set(named.flatMap((name) => namedAlone(held, name)));
       for (const heading of held.filter((each) => each.text && !settled.has(each))) {
         drawnBy(uncited, sectionKey(at, part, nameOf(held, heading)), byPart.get(specKey(at, part)) ?? drawn);
       }

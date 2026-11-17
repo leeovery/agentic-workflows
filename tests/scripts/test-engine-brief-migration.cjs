@@ -289,12 +289,12 @@ describe('the verifier\'s brief (21.10.7)', () => {
 });
 
 describe('a cite of a heading held more than once', () => {
-  it('both briefs say it names the heading\'s path, with an example, a bare heading telling none of its copies apart', () => {
+  it('both briefs say it names the heading\'s path, with an example, the carry refusing a bare one, which tells none of its copies apart', () => {
     writeState(dir, composedPath('fumi', 'licensing'), `${RECORD}\n`);
 
     const briefs = ['migration-topic', 'migration-verifier'].map((role) => issued([role, ...LICENSING]).brief);
 
-    assert.deepStrictEqual(briefs.map((brief) => ['by its path, as many of the headings over it as tell it apart, then its own: `Identity & Naming > Decision`', '`{"path": "{unit}/spec.md", "section": "Identity & Naming > Decision"}`: a bare one tells none of its copies apart'].filter((said) => !brief.includes(said))), [[], []]);
+    assert.deepStrictEqual(briefs.map((brief) => ['more than once in its part — by its path, as many of the headings over it as tell it apart, then its own: `Identity & Naming > Decision`', '`{"path": "{unit}/spec.md", "section": "Identity & Naming > Decision"}`: the carry refuses a cite naming several — a bare one tells none of its copies apart — and names the paths that do'].filter((said) => !brief.includes(said))), [[], []]);
   });
 });
 

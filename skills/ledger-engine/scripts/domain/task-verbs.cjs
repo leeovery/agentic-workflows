@@ -569,6 +569,13 @@ function linkWords(unit, task, after) {
 }
 
 /**
+ * Whether a link of the unit's is one the cut keeps: a task of the unit's
+ * after one of its own phase or an earlier one.
+ * @param {string} unit @param {TaskRef} task @param {TaskRef} after
+ */
+const inOrder = (unit, task, after) => task.unit === unit && after.unit === unit && after.phase <= task.phase;
+
+/**
  * The links the cut refuses (the header's): each holding a task neither
  * done nor closed after one neither, of a later phase or another unit's.
  * @param {TaskDriver} driver @param {string} root @param {string} unit @param {TaskDetail[]} tasks every task of the phases adopted
@@ -576,7 +583,7 @@ function linkWords(unit, task, after) {
 function linkFaults(driver, root, unit, tasks) {
   const held = new Map(tasks.map((task) => [taskId(task.ref), task]));
   return tasks.filter(({ status }) => !ENDED.includes(status)).flatMap((task) => task.after.flatMap((ref) => {
-    if (ref.unit === unit && ref.phase <= task.ref.phase) return [];
+    if (inOrder(unit, task.ref, ref)) return [];
     const on = held.get(taskId(ref)) ?? driver.show(root, ref);
     return on === null || ENDED.includes(on.status) ? [] : [linkWords(unit, task, on)];
   }));
@@ -600,7 +607,8 @@ function waitingFaults(driver, root, unit, phases, tasks) {
  * `task unlink`: the link holding `task` after `after` taken off, for the
  * migration's cut, before its adoption (21.8.8): each named as adopting
  * `phases` in turn would name it, either another unit's by its id, one of
- * the two the unit's. Refuses two tasks of other units, a task none holds
+ * the two the unit's. Refuses two tasks of other units, a link the cut
+ * keeps (`inOrder`), a task none holds
  * — no phase the cut adopts, or no task of another unit held after one of
  * them — and a link it does not hold.
  * @param {string} cwd @param {string} unit @param {{phase: number, parent: string, order: string[]}[]} phases @param {TaskRef} task @param {TaskRef} after
@@ -608,6 +616,7 @@ function waitingFaults(driver, root, unit, phases, tasks) {
 function unlinkAdopted(cwd, unit, phases, task, after) {
   const [shown, afterShown] = [task, after].map((ref) => unlinkName(unit, ref));
   if (task.unit !== unit && after.unit !== unit) throw new Error(`task unlink: neither ${shown} nor ${afterShown} is ${unit}'s — the cut of ${unit} takes off a link one of whose tasks is its own`);
+  if (inOrder(unit, task, after)) throw new Error(`task unlink: ${shown} after ${afterShown} is a link of its own phase or an earlier one's, which the cut keeps — it takes off a link the cut refuses`);
   return withTracker(cwd, unit, `take the link of ${shown} after ${afterShown} off`, (driver, root) => {
     const held = heldFor(driver, root, unit, phases, task);
     if (!held.after.some((ref) => sameTask(ref, after))) throw new TaskRefusal(`task ${shown} is held after no task ${afterShown} — the link is not there to take off`);
