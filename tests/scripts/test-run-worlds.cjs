@@ -41,8 +41,10 @@ const DEAD = JSON.stringify({ pid: 2147483646, pid_start: null });
 // No wait: a claim still held has the asker build its own at once, so one
 // that should have come free fails the test rather than holding it.
 const AT_ONCE = Object.freeze({ limitMs: 0 });
-// A wait long enough to look several times, short enough to cost the suite little.
-const LIMIT_MS = 300;
+// A wait long enough to look several times, short enough to cost the suite
+// little: a waiter's first look and claim can outlast 300 ms on a loaded
+// machine, leaving it one look before the limit.
+const LIMIT_MS = 1500;
 const POLL_MS = 100;
 
 describe('worlds built once per run', () => {
