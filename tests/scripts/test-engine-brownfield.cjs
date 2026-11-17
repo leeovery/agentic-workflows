@@ -60,11 +60,13 @@ describe('engine brownfield record', () => {
     assert.deepStrictEqual(status, [' M pay/summary.md', '?? pay/spec.md'], 'the peer\'s files are as it left them');
   });
 
-  it('skipped and accepted answer the offer too, each under its own message', () => {
-    for (const [answer, subject] of [['skipped', 'brownfield: decline the research offer'], ['accepted', 'brownfield: accept the research offer']]) {
+  it('skipped and accepted answer the offer too, each under its own message — the acceptance leading into the product\'s conversation, which opens on the research', () => {
+    const into = { kind: 'handoff', skill: 'ledger-discovery', args: ['none', 'none'] };
+    for (const [answer, subject, next] of [['skipped', 'brownfield: decline the research offer', undefined], ['accepted', 'brownfield: accept the research offer', into]]) {
       writeState(dir, layout.projectManifest, JSON.stringify({ work_units: {} }) + '\n');
       commitAll(dir, `reset for ${answer}`);
-      assert.strictEqual(harness.ok(dir, ['brownfield', 'record', answer]).answer, answer);
+      const res = harness.ok(dir, ['brownfield', 'record', answer]);
+      assert.deepStrictEqual([res.answer, res.next], [answer, next]);
       assert.deepStrictEqual([projectManifest(dir).brownfield_offer, lastSubject(dir)], [answer, subject]);
     }
   });
@@ -75,14 +77,14 @@ describe('engine brownfield record', () => {
     assert.deepStrictEqual([projectManifest(dir).brownfield_offer, lastSubject(dir)], ['completed', 'brownfield: the research landed']);
   });
 
-  it('refuses any other value, and any answer out of order — the offer is answered once, and only an accepted one completes', () => {
+  it('refuses any other value, and any answer out of order — the offer is answered once, and only an accepted one completes; the offer\'s own answers name carrying on with the start as their way on, the research\'s completion none', () => {
     refusedPristine(dir, ['brownfield', 'record', 'in-progress'], /the answer is one of native, skipped, accepted, completed — got "in-progress"/);
     refusedPristine(dir, ['brownfield', 'record'], /^Usage: engine brownfield record <native\|skipped\|accepted\|completed>$/);
     refusedPristine(dir, ['brownfield', 'record', 'completed'], /the offer's answer is "none" — completed follows "accepted"$/);
 
     harness.ok(dir, ['brownfield', 'record', 'accepted']);
     for (const answer of ['native', 'skipped', 'accepted']) {
-      refusedPristine(dir, ['brownfield', 'record', answer], new RegExp(`the offer's answer is "accepted" — ${answer} follows nothing recorded$`));
+      refusedPristine(dir, ['brownfield', 'record', answer], new RegExp(`the offer's answer is "accepted" — ${answer} follows nothing recorded\\n {2}The way on: carry on with the start\\.$`));
     }
     harness.ok(dir, ['brownfield', 'record', 'completed']);
     refusedPristine(dir, ['brownfield', 'record', 'completed'], /the offer's answer is "completed" — completed follows "accepted"$/);

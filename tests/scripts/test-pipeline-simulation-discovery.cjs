@@ -230,9 +230,9 @@ describe('pipeline simulation: discovery\'s entry', () => {
     sim.run(['topic', 'add', EPIC, 'seats', '--summary', 'How seats are counted', '--brief', briefDraft(sim, EPIC, 'seats')]);
     sim.render(['cancel-gate', `${EPIC}.discovery.pricing`], { expect: 'content' });
     sim.run(answerGate(sim, 'cancel gate', '--pick', 'y').next.argv);
-    assert.match(sim.render(['topic-receipt', `${EPIC}.discovery.pricing`, '--verb', 'cancel'], { expect: 'content' }), /Cancelled "Pricing"\./);
+    assert.match(sim.sections, /Cancelled "Pricing"\./);
     sim.run(['topic', 'reactivate', EPIC, 'discovery', 'pricing']);
-    sim.render(['topic-receipt', `${EPIC}.discovery.pricing`, '--verb', 'reactivate'], { expect: 'content' });
+    assert.match(sim.sections, /Reactivated "Pricing"\./);
 
     // Put aside onto the roadmap from here, then pulled into the epic after all.
     sim.run(['roadmap', 'add', 'offline-notes', '--horizon', 'later', '--summary', 'Notes without a network', '--origin', `park:${EPIC}`, '--source', log]);

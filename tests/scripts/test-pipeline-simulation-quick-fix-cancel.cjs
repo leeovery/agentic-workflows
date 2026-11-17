@@ -45,7 +45,7 @@ describe('pipeline simulation: quick-fix cancelled mid-fix', () => {
 
     sim.render(['cancel-gate', wu], { expect: 'content' });
     const cancelled = sim.run(answerGate(sim, 'cancel gate', '--pick', 'y').next.argv);
-    sim.render(['workunit-receipt', wu, '--verb', 'cancel'], { expect: 'content' });
+    assert.match(sim.sections, /marked as cancelled/);
     const left = git(sim.dir, ['branch', '--show-current']).trim();
 
     sim.run(['workunit', 'reactivate', wu]);

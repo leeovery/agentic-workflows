@@ -238,11 +238,11 @@ function walkthroughScreen(s, origin, menuOnly) {
   ].join('\n');
 }
 
-/** The offer's menu — the same section whether it arrives under the offer or alone. @returns {string} */
+/** The offer's menu — the same section whether it arrives under the offer or alone — each answer leading to the verb that records it. @returns {string} */
 function offerMenu() {
   return section('MENU: walkthrough offer', MENU_INSTRUCTION, menu('', [
-    cmdOption('y', 'yes', "Let's do it"),
-    cmdOption('s', 'skip', "Skip for now — it's under h/help whenever you want it"),
+    cmdOption('y', 'yes', "Let's do it", { next: { kind: 'engine', argv: ['walkthrough', 'record', 'walked'] } }),
+    cmdOption('s', 'skip', "Skip for now — it's under h/help whenever you want it", { next: { kind: 'engine', argv: ['walkthrough', 'record', 'skipped'] } }),
     promptOption('Ask', HELP_ASK_PROMPT),
   ], { question: 'Take the walkthrough?' }));
 }

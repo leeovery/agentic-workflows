@@ -130,14 +130,8 @@ describe('engine workunit pivot — happy path', () => {
       committed: shortHead(fix),
       warnings: [],
     });
-    // The transaction is pure JSON; its receipt, the kb advisory ahead of it
-    // with --warn, is a surface of its own.
-    assert.strictEqual(engine.lastSections, '', 'pivot answers with pure JSON');
-    const receipt = output(fix.project, ['render', 'workunit-receipt', 'auth-flow', '--verb', 'pivot']);
-    assert.match(receipt, /^=== DISPLAY: confirmation [^\n]*===\n"Auth Flow" is an epic now, its discussion the first topic on its map\.\n$/);
-    const advisory = output(fix.project, ['render', 'workunit-receipt', 'auth-flow', '--verb', 'pivot', '--warn']);
-    assert.match(advisory, /=== DISPLAY: kb warning [^\n]*===\n  ⚑ Knowledge indexing warning\n    The pivot is complete\. The next start retries the indexing\.\n/);
-    assert.ok(advisory.endsWith(receipt), 'the advisory leads the receipt');
+    // Its receipt after its JSON, no advisory where it warned of nothing.
+    assert.match(engine.lastSections, /^=== DISPLAY: confirmation [^\n]*===\n"Auth Flow" is an epic now, its discussion the first topic on its map\.\n$/);
 
     const m = readManifest(fix, 'auth-flow');
     assert.strictEqual(m.work_type, 'epic');
@@ -189,6 +183,9 @@ describe('engine workunit pivot — happy path', () => {
     assert.match(res.warnings[1], /^knowledge index failed: loadStore: corrupted store file at /);
     assert.strictEqual(readManifest(fix, 'auth-flow').work_type, 'epic');
     assert.strictEqual(res.committed, shortHead(fix));
+    // Its receipt carries the advisory above the confirmation, drawn from
+    // the warnings it answered — no flag carried.
+    assert.match(engine.lastSections, /^=== DISPLAY: kb warning [^\n]*===\n {2}⚑ Knowledge indexing warning\n {4}The pivot is complete\. The next start retries the indexing\.\n\n=== DISPLAY: confirmation /);
   });
 });
 

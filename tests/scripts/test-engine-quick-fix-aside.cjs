@@ -33,7 +33,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  ok, okSections, okSectionsAsync, refusesAsync, refuses, output, sectionOf, git, createFile, commitAll, fixtureFrom, cleanupFixture,
+  ok, okSections, okSectionsAsync, refusesAsync, refuses, sectionOf, git, createFile, commitAll, fixtureFrom, cleanupFixture,
 } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 const { MADE, ledgerHelpers } = require('./ledger-world.cjs');
@@ -170,8 +170,7 @@ describe('a quick-fix\'s set-aside at its edges (19.5.23)', () => {
     changed();
     await okSectionsAsync(app(), raiseArgs(), { ...as(), stdin: JSON.stringify(CALL) });
     const kept = at(ASIDE);
-    run(['workunit', 'cancel', UNIT]);
-    const receipt = sectionOf(output(app(), ['render', 'workunit-receipt', UNIT, '--verb', 'cancel'], as()), 'DISPLAY: confirmation');
+    const receipt = sectionOf(okSections(app(), ['workunit', 'cancel', UNIT], as()).sections, 'DISPLAY: confirmation');
 
     assert.strictEqual(receipt.replace(/\n {2}/g, ' '), [
       '"Typo" marked as cancelled.',
@@ -184,8 +183,8 @@ describe('a quick-fix\'s set-aside at its edges (19.5.23)', () => {
 
   it('a cancel during the first fix, nothing of it committed, names no branch on its receipt: the branch holds no commit of its own', () => {
     dir = started();
-    ok(dir, ['workunit', 'cancel', UNIT], as());
+    const { sections } = okSections(dir, ['workunit', 'cancel', UNIT], as());
 
-    assert.strictEqual(sectionOf(output(dir, ['render', 'workunit-receipt', UNIT, '--verb', 'cancel'], as()), 'DISPLAY: confirmation'), '"Typo" marked as cancelled.\n');
+    assert.strictEqual(sectionOf(sections, 'DISPLAY: confirmation'), '"Typo" marked as cancelled.\n');
   });
 });

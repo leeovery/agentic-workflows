@@ -30,13 +30,14 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-const { ok, output, refuses, screenOf, sectionOf, commitAll, stateGit, cleanupFixture, fixtureFrom } = require('./engine-harness.cjs');
+const { ok, okSections, output, refuses, screenOf, sectionOf, commitAll, stateGit, cleanupFixture, fixtureFrom } = require('./engine-harness.cjs');
 const { createManifest, writeState, readState, statePath, layout } = require('./discovery-test-utils.cjs');
 const { withFrozenClock } = require('./frozen-clock.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { SHOWN } = require(path.join(SCRIPTS, 'domain/gate.cjs'));
 const { projectName } = require(path.join(SCRIPTS, 'domain/state-checks.cjs'));
+const { deletedReceipt } = require(path.join(SCRIPTS, 'domain/receipts.cjs'));
 
 const SESSION = 'triage-session';
 const ENV = Object.freeze({ CLAUDE_CODE_SESSION_ID: SESSION });
@@ -232,7 +233,9 @@ describe('triage (18.7)', () => {
     assert.deepStrictEqual(ok(dir, ['gate', 'triage', '--pick', 'b'], { env: ENV }).next, { kind: 'engine', argv: ['render', 'start-menu'] });
     assert.strictEqual(stateGit(dir, ['rev-parse', 'HEAD']), head, 'back changes nothing');
     assert.deepStrictEqual(rows.a, { kind: 'engine', argv: ['inbox', 'archive', at(dir, IDEA_NEW), at(dir, BUG_NEW)] });
-    assert.deepStrictEqual(ok(dir, rows.a.argv).archived, [at(dir, layout.archived('ideas', '2025-12-29--session-previews.md')), at(dir, layout.archived('bugs', '2025-12-30--preview-flickers.md'))]);
+    const archived = okSections(dir, rows.a.argv);
+    assert.deepStrictEqual(archived.res.archived, [at(dir, layout.archived('ideas', '2025-12-29--session-previews.md')), at(dir, layout.archived('bugs', '2025-12-30--preview-flickers.md'))]);
+    assert.strictEqual(sectionOf(archived.sections, 'DISPLAY: confirmation'), 'Archived 2 items.\n');
     assert.deepStrictEqual(sectionOf(drawn(dir, ['triage'], 'triage').out, 'DISPLAY: triage').trimEnd().split('\n').filter((line) => line.includes('─')), [
       '  ├─ 1. Group Sessions By Project In The Picker    [12 days]',
       '  └─ 2. Rename A Session From The Picker           [5 weeks]',
@@ -361,7 +364,7 @@ describe('the archived items (18.7.11)', () => {
 
   it('18.S48: a wrong closure restored through unarchive is live again, its record of the close gone and its claim out of the closing unit\'s build log in the same commit, and its receipt says both', () => {
     const { rows } = drawn(dir, ['archived-item', '--path', at(dir, CLOSED_BY_UNIT)], 'archived item');
-    const { restored, unclaimed } = ok(dir, rows.u.argv);
+    const { res: { restored, unclaimed }, sections } = okSections(dir, rows.u.argv);
     const live = at(dir, layout.inbox('ideas', '2025-09-02--enter-should-attach.md'));
 
     assert.deepStrictEqual([restored, unclaimed, Object.keys(JSON.parse(readState(dir, 'manifest.json')).inbox_closed)], [
@@ -371,16 +374,16 @@ describe('the archived items (18.7.11)', () => {
     ]);
     assert.strictEqual(readState(dir, BUILD_LOG), LOG_TEXT.replace('Resolved: .ledger/.inbox/ideas/2025-09-02--enter-should-attach.md\n', ''), 'its claim alone comes out');
     assert.ok(stateGit(dir, ['show', '--name-only', '--format=', 'HEAD']).split('\n').includes(BUILD_LOG), 'the restore commits the log with the move');
-    assert.strictEqual(sectionOf(output(dir, ['render', 'inbox-restore-receipt', '--path', live, '--unclaimed', UNIT]), 'DISPLAY: confirmation'),
+    assert.strictEqual(sectionOf(sections, 'DISPLAY: confirmation'),
       'Restored "Enter In The Preview Should Attach" to the inbox, its Resolved: line taken out of Enter Attaches From Preview\'s build log.\n');
   });
 
-  it('a restore of an item no unit closed — closed by none, or archived from triage — touches no build log, and the receipt refuses a unit whose log claims the item still', () => {
-    const { restored, unclaimed } = ok(dir, ['inbox', 'restore', at(dir, CLOSED_BY_NONE), at(dir, ARCHIVED_OCT)]);
+  it('a restore of an item no unit closed — closed by none, or archived from triage — touches no build log, and its receipt names each item back, no build log among them', () => {
+    const { res: { restored, unclaimed }, sections } = okSections(dir, ['inbox', 'restore', at(dir, CLOSED_BY_NONE), at(dir, ARCHIVED_OCT)]);
 
     assert.deepStrictEqual([restored.length, unclaimed, readState(dir, BUILD_LOG)], [2, undefined, LOG_TEXT]);
-    assert.strictEqual(refuses(dir, ['render', 'inbox-restore-receipt', '--path', restored[0], '--unclaimed', UNIT]).error,
-      `render inbox-restore-receipt: ${UNIT}'s build log claims it still — the restore has not taken its Resolved: line out`);
+    assert.strictEqual(sectionOf(sections, 'DISPLAY: confirmation'),
+      'Restored "Preferences Reset On Upgrade" to the inbox.\nRestored "Tab Completion For Session Names" to the inbox.\n');
   });
 
   it('18.S48: the delete is confirmed first — its no the item again, its yes the item gone from the archive for good, and its receipt names it', () => {
@@ -397,9 +400,10 @@ describe('the archived items (18.7.11)', () => {
       'n/no  → Keep it in the archive',
     ]);
     assert.deepStrictEqual(gate.n, { kind: 'engine', argv: ['render', 'archived-item', '--path', at(dir, ARCHIVED_OCT)] });
-    assert.deepStrictEqual(ok(dir, gate.y.argv).deleted, [at(dir, ARCHIVED_OCT)]);
+    const deleted = okSections(dir, gate.y.argv);
+    assert.deepStrictEqual(deleted.res.deleted, [at(dir, ARCHIVED_OCT)]);
     assert.ok(!fs.existsSync(at(dir, ARCHIVED_OCT)));
-    assert.strictEqual(sectionOf(output(dir, ['render', 'inbox-delete-receipt', '--path', at(dir, ARCHIVED_OCT)]), 'DISPLAY: confirmation'), 'Deleted "Tab Completion For Session Names".\n');
+    assert.strictEqual(sectionOf(deleted.sections, 'DISPLAY: confirmation'), 'Deleted "Tab Completion For Session Names".\n');
   });
 
   it('an archive with nothing in it says so, under the frame\'s own question', () => {
@@ -449,7 +453,7 @@ describe('the archived items (18.7.11)', () => {
   });
 });
 
-describe('the receipts after a restore or a delete', () => {
+describe('the receipts the inbox moves draw', () => {
   /** @type {string} */
   let dir;
   beforeEach(() => { dir = world(); });
@@ -459,53 +463,35 @@ describe('the receipts after a restore or a delete', () => {
   const write = (rel, text) => writeState(dir, rel, text);
   const RECEIPT = '=== DISPLAY: confirmation (emit verbatim as a text code block (```text fence) after the response) ===';
 
-  it('inbox-restore-receipt names the item back in the inbox by its own title — its slug where it has none', () => {
+  it('one item archived is named by its own title, several by their count', () => {
     write(IDEA_NEW, '---\nsource: chat\n---\n\n# Smart Retry\n');
-    assert.strictEqual(output(dir, ['render', 'inbox-restore-receipt', '--path', at(dir, IDEA_NEW)]), `${RECEIPT}\nRestored "Smart Retry" to the inbox.\n`);
-    write(IDEA_NEW, 'no heading here\n');
-    assert.strictEqual(output(dir, ['render', 'inbox-restore-receipt', '--path', at(dir, IDEA_NEW)]), `${RECEIPT}\nRestored "session-previews" to the inbox.\n`);
+    commitAll(dir, 'titled');
+    assert.strictEqual(okSections(dir, ['inbox', 'archive', at(dir, IDEA_NEW)]).sections, `${RECEIPT}\nArchived "Smart Retry".\n`);
   });
 
-  it('inbox-restore-receipt refuses no path, an archived path, and a live path nothing sits at — the inbox is the state it receipts', () => {
-    const ghost = at(dir, layout.inbox('ideas', '2025-12-31--ghost.md'));
-    assert.deepStrictEqual([
-      refuses(dir, ['render', 'inbox-restore-receipt']).error,
-      refuses(dir, ['render', 'inbox-restore-receipt', '--path', at(dir, ARCHIVED_OCT)]).error,
-      refuses(dir, ['render', 'inbox-restore-receipt', '--path', ghost]).error,
-    ], [
-      'render inbox-restore-receipt: --path is required — the live path `inbox restore` answered',
-      `render inbox-restore-receipt: not a live inbox path (expected ${at(dir, '.inbox/{ideas|bugs|quickfixes}/{file}.md')}): "${at(dir, ARCHIVED_OCT)}"`,
-      `render inbox-restore-receipt: not in the live inbox: "${ghost}"`,
-    ]);
+  it('an item restored is named back in the inbox by its own title — its slug where it has none', () => {
+    write(ARCHIVED_OCT, 'no heading here\n');
+    commitAll(dir, 'untitled');
+    assert.strictEqual(okSections(dir, ['inbox', 'restore', at(dir, ARCHIVED_OCT)]).sections, `${RECEIPT}\nRestored "tab-completion" to the inbox.\n`);
   });
 
-  it('inbox-delete-receipt names the deleted item by the title git last held — the deleting commit\'s parent, however many commits sit above it', () => {
+  it('an item deleted is named by the title git last held — the deleting commit\'s parent, however many commits sit above it', () => {
     stateGit(dir, ['rm', '-q', '--', at(dir, ARCHIVED_OCT)]);
     stateGit(dir, ['commit', '-q', '-m', 'delete']);
     write('notes.md', 'later work\n');
     commitAll(dir, 'later work');
-    assert.strictEqual(output(dir, ['render', 'inbox-delete-receipt', '--path', at(dir, ARCHIVED_OCT)]), `${RECEIPT}\nDeleted "Tab Completion For Session Names".\n`);
+    assert.strictEqual(deletedReceipt(dir, { deleted: [at(dir, ARCHIVED_OCT)] }), `${RECEIPT}\nDeleted "Tab Completion For Session Names".\n`);
   });
 
-  it('inbox-delete-receipt reads HEAD while the deletion is only staged — a commit the delete could not land', () => {
+  it('an item deleted reads HEAD while the deletion is only staged — a commit the delete could not land', () => {
     write(ARCHIVED_SEP, 'no heading here\n');
     commitAll(dir, 'reworded');
     stateGit(dir, ['rm', '-q', '--', at(dir, ARCHIVED_SEP)]);
-    assert.strictEqual(output(dir, ['render', 'inbox-delete-receipt', '--path', at(dir, ARCHIVED_SEP)]), `${RECEIPT}\nDeleted "hidden-sessions-flash".\n`);
+    assert.strictEqual(deletedReceipt(dir, { deleted: [at(dir, ARCHIVED_SEP)] }), `${RECEIPT}\nDeleted "hidden-sessions-flash".\n`);
   });
 
-  it('inbox-delete-receipt refuses no path, a live path, a path the archive still holds, and one git holds no copy of', () => {
-    const ghost = at(dir, layout.archived('ideas', '2025-09-09--ghost.md'));
-    assert.deepStrictEqual([
-      refuses(dir, ['render', 'inbox-delete-receipt']).error,
-      refuses(dir, ['render', 'inbox-delete-receipt', '--path', at(dir, IDEA_NEW)]).error,
-      refuses(dir, ['render', 'inbox-delete-receipt', '--path', at(dir, ARCHIVED_OCT)]).error,
-      refuses(dir, ['render', 'inbox-delete-receipt', '--path', ghost]).error,
-    ], [
-      'render inbox-delete-receipt: --path is required — the archived path `inbox delete` answered',
-      `render inbox-delete-receipt: not an archived inbox path (expected ${at(dir, '.inbox/.archived/{ideas|bugs|quickfixes}/{file}.md')}): "${at(dir, IDEA_NEW)}"`,
-      `render inbox-delete-receipt: still in the archived store, so nothing was deleted: "${at(dir, ARCHIVED_OCT)}"`,
-      `render inbox-delete-receipt: git holds no deleted file at "${ghost}"`,
-    ]);
+  it('several deleted are named a line each', () => {
+    assert.strictEqual(okSections(dir, ['inbox', 'delete', at(dir, ARCHIVED_OCT), at(dir, ARCHIVED_SEP)]).sections,
+      `${RECEIPT}\nDeleted "Tab Completion For Session Names".\nDeleted "Hidden Sessions Flash On Startup".\n`);
   });
 });

@@ -35,7 +35,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 
-const { ok, refuses, output, sectionOf, createFile, git } = require('./engine-harness.cjs');
+const { ok, okSections, refuses, output, sectionOf, createFile, git } = require('./engine-harness.cjs');
 const { UNIT, BRANCH, quickFixNestedConformance, entered } = require('./quick-fix-world.cjs');
 const { NESTED } = require('./landing-world.cjs');
 const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
@@ -67,14 +67,14 @@ for (const { name } of listDrivers('landing')) {
       const before = [side.quickFixOpen(at.dir, UNIT), side.quickFixOpen(at.lib, UNIT)];
       const gate = output(at.dir, ['render', 'cancel-gate', UNIT], as());
 
-      const cancelled = ok(at.dir, ['workunit', 'cancel', UNIT], as());
+      const { res: cancelled, sections } = okSections(at.dir, ['workunit', 'cancel', UNIT], as());
       const left = {
         open: [side.quickFixOpen(at.dir, UNIT), side.quickFixOpen(at.lib, UNIT)],
         tips: [at.dir, at.lib].map((repo) => git(repo, ['rev-parse', BRANCH]).trim()),
         out: [out(at.dir), out(at.lib)],
         status: git(at.dir, ['status', '--porcelain', '--untracked-files=all']).trim(),
       };
-      const receipt = sectionOf(output(at.dir, ['render', 'workunit-receipt', UNIT, '--verb', 'cancel'], as()), 'DISPLAY: confirmation');
+      const receipt = sectionOf(sections, 'DISPLAY: confirmation');
       ok(at.dir, ['workunit', 'reactivate', UNIT], as());
       entered(at.dir, as());
       const waits = refuses(at.dir, ['brief', 'builder', UNIT, '1.1'], as()).error;

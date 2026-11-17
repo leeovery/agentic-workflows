@@ -25,23 +25,20 @@ const path = require('path');
 const { loadManifest, loadProjectManifest } = require('./reads.cjs');
 const { titlecase } = require('./conventions.cjs');
 const { section, dataSection, CONTINUE_INSTRUCTION, menu, cmdOption, promptOption, MENU_INSTRUCTION } = require('./projections/surfaces.cjs');
-const { keptAside, keptWords } = require('./fix-aside.cjs');
-const { cancelKept } = require('./fix-branch.cjs');
 const { quickFixBranch } = require('./landing-names.cjs');
 const { mayHoldOpen } = require('./landing.cjs');
-const { lastClosed } = require('./cancel-closed.cjs');
-const { workunitReceipt, topicReceipt, ABSORB_MOVED, absorbReceipt, importReprompt, inboxRestoreReceipt, inboxDeleteReceipt } = require('./projections/transactions.cjs');
-const { liveItem, deletedItemTitle } = require('./inbox-set.cjs');
-const { logClaims } = require('./inbox.cjs');
+const { topicReceipt, importReprompt } = require('./projections/transactions.cjs');
 const { brownfieldOffer } = require('./brownfield.cjs');
 const {
   ORIGINS: WALKTHROUGH_ORIGINS, loadScreen, loadCard, walkthroughOffer, walkthroughScreen, walkthroughTopic,
 } = require('./projections/walkthrough.cjs');
 const { helpTopicsSurface } = require('./projections/help-topics.cjs');
-const { migrationsApplied, migrationGate, stateLostGate, repoStop, migrationGuardStop, migrationChecksStop, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, banner, workPick, knowledgeGate, knowledgeReady, KNOWLEDGE_GATE_VARIANTS, KEY_PROVIDERS } = require('./projections/boot.cjs');
-const { pickRows } = require('./boot-route.cjs');
+const { migrationsApplied, migrationGate, stateLostGate, repoStop, migrationGuardStop, migrationChecksStop, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, banner, workPick, knowledgeGate, knowledgeAsk, knowledgeReady, knowledgeNotDone, KEY_PROVIDERS } = require('./projections/boot.cjs');
+const { readiness } = require('./knowledge/status.cjs');
 const { knowledgeFiles } = require('../kernel/knowledge/files.cjs');
 const { readMetadata } = require('../kernel/knowledge/store.cjs');
+const { detectSystemConfig } = require('./boot.cjs');
+const { pickRows } = require('./boot-route.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { githubSquashNested } = require('./github-setup.cjs');
 const { beatQuietly } = require('./presence.cjs');
@@ -54,8 +51,8 @@ const { lastShown } = require('./gate.cjs');
 const { compareExperimentIds, isParentExperimentId, EXPERIMENT_TERMINAL_STATUSES, EXPERIMENT_SPAWN_PHASES, TOPIC_PHASES, assertLegalName } = require('../kernel/manifest-schema.cjs');
 const {
   computeTopicLifecycle, awaitedExperiments, itemOf,
-  UNIT_PHASES, liveUnitItems, discoveryUnitExists, cancelPlan, unitOpenRecords,
-  postponePlan, postponeTarget, postponedItem, openExperiments,
+  UNIT_PHASES, discoveryUnitExists, cancelPlan, unitOpenRecords,
+  postponePlan, postponeTarget, openExperiments,
   topicTitle, topicTitles, itemTitle, goesBy, dismissedNames, topicKey, noTopicRefusal, briefFile, buildDiscoveryMap, quickFixBuild, fixesBegun,
 } = require('./derivations.cjs');
 const { sendReportOf } = require('./mail.cjs');
@@ -576,180 +573,6 @@ function phaseNote(cwd, { dotpath, verb, noun }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Transaction receipts — fetched by the calling flow right after its
-// lifecycle verb, so the verb's stdout stays one JSON line. Each surface
-// validates that the state it renders from matches the verb it receipts:
-// a receipt fetched out of place refuses loudly. `--warn` prepends the
-// knowledge advisory — the caller sets it when the transaction's JSON
-// carried `warnings`.
-// ---------------------------------------------------------------------------
-
-const WORKUNIT_RECEIPT_STATUS = { cancel: 'cancelled', reactivate: 'in-progress' };
-
-/**
- * How many waiting messages a cancel moved to the inbox, as `--inbox <n>`
- * carries it from the cancel's `inbox` — none where it is not given;
- * refused for another verb, and for a value that is no count.
- * @param {string} surface @param {string|undefined} verb @param {string|undefined} inbox
- * @returns {number}
- */
-function inboxCount(surface, verb, inbox) {
-  if (inbox === undefined) return 0;
-  if (verb !== 'cancel') throw new Error(`render ${surface}: --inbox counts what a cancel moved to the inbox — it takes --verb cancel`);
-  if (!/^(0|[1-9][0-9]*)$/.test(inbox)) throw new Error(`render ${surface}: --inbox takes how many messages the cancel moved, got "${inbox}"`);
-  return Number(inbox);
-}
-
-/**
- * Where each roadmap item a reactivate left stands (18.8.20), as `--stayed
- * <items>` carries them from its `roadmap_stayed`, comma-joined — none where
- * it is not given; refused for another verb, and for an item still waiting
- * or with the unit reactivated, which the reactivate took back.
- * @param {string} cwd @param {string} surface @param {string} unit @param {string|undefined} verb @param {string|undefined} stayed
- * @returns {import('./projections/transactions.cjs').Stayed[]}
- */
-function stayedItems(cwd, surface, unit, verb, stayed) {
-  if (stayed === undefined) return [];
-  if (verb !== 'reactivate') throw new Error(`render ${surface}: --stayed names what a reactivate left where it stands — it takes --verb reactivate`);
-  const state = roadmapState(cwd);
-  return stayed.split(',').map((name) => {
-    if (state.archived.some((row) => row.name === name)) return { name, archived: true };
-    const row = state.items.find((r) => r.name === name);
-    if (row === undefined) return { name };
-    if (row.work_unit === undefined || row.work_unit === unit) throw new Error(`render ${surface}: "${name}" stayed nowhere — the reactivate takes back every item still waiting`);
-    return { name, work_unit: row.work_unit };
-  });
-}
-
-/** @param {string} cwd @param {{dotpath: string, verb?: string, warn?: string, inbox?: string, stayed?: string}} args @returns {string} */
-function workunitReceiptSurface(cwd, args) {
-  const { manifest, workUnit } = resolveWorkUnit(cwd, args.dotpath, 'workunit-receipt');
-  const verb = args.verb;
-  if (verb !== 'cancel' && verb !== 'reactivate' && verb !== 'pivot') {
-    throw new Error(`render workunit-receipt: --verb must be cancel, reactivate, or pivot, got "${verb}"`);
-  }
-  const inbox = inboxCount('workunit-receipt', verb, args.inbox);
-  const stayed = stayedItems(cwd, 'workunit-receipt', workUnit, verb, args.stayed);
-  if (verb === 'pivot') {
-    if (manifest.work_type !== 'epic') {
-      throw new Error(`render workunit-receipt: "${workUnit}" is not an epic — nothing to receipt for a pivot`);
-    }
-  } else if (manifest.status !== WORKUNIT_RECEIPT_STATUS[verb]) {
-    throw new Error(`render workunit-receipt: "${workUnit}" is "${manifest.status}", not "${WORKUNIT_RECEIPT_STATUS[verb]}" — the ${verb} has not run`);
-  }
-  return workunitReceipt(verb, workUnit, {
-    warn: args.warn === '1',
-    inbox,
-    closed: verb === 'cancel' ? lastClosed(manifest) : {},
-    branches: verb === 'cancel' && quickFixBuild(manifest) ? cancelKept(cwd, workUnit) : [],
-    kept: verb === 'cancel' ? keptAside(cwd, workUnit).map(keptWords) : [],
-    stayed,
-  });
-}
-
-/**
- * The statuses a topic's live items stand at — what a reactivate or a pull
- * forward returned them to.
- * @param {object} manifest @param {string} name
- */
-function unitStatuses(manifest, name) {
-  return liveUnitItems(manifest, 'discovery', name).map(({ phase, item }) => ({ phase, status: item.status }));
-}
-
-/**
- * The Discovery unit a unit receipt addresses, refused when the dotpath
- * names another phase or no unit of the name.
- * @param {object} manifest @param {string} phase @param {string} topic @param {string} verb
- */
-function assertDiscoveryUnitAddress(manifest, phase, topic, verb) {
-  if (phase !== 'discovery') {
-    throw new Error(`render topic-receipt: --verb ${verb} addresses the Discovery unit — <work_unit>.discovery.<topic>, got phase "${phase}"`);
-  }
-  if (!discoveryUnitExists(manifest, topic)) {
-    throw new Error(`render topic-receipt: ${noTopicRefusal(manifest, topic)}`);
-  }
-}
-
-/**
- * The topic receipts: `cancel`, `reactivate`, `postpone` and `restore`
- * address the unit, `<wu>.discovery.<topic>`, and read its state after the
- * verb ran.
- * @param {string} cwd @param {{dotpath: string, verb?: string, warn?: string, inbox?: string, stayed?: string}} args @returns {string}
- */
-function topicReceiptSurface(cwd, args) {
-  const { workUnit, phase, topic, manifest } = resolveAddress(cwd, args.dotpath, 'topic-receipt');
-  const verb = args.verb;
-  const warn = args.warn === '1';
-  const inbox = inboxCount('topic-receipt', verb, args.inbox);
-  const stayed = stayedItems(cwd, 'topic-receipt', workUnit, verb, args.stayed);
-  const name = itemTitle(topicTitles(manifest), phase, topic);
-  if (verb === 'postpone') {
-    assertDiscoveryUnitAddress(manifest, phase, topic, verb);
-    if (computeTopicLifecycle(manifest, topic).lifecycle !== 'postponed') {
-      throw new Error(`render topic-receipt: "${topic}" is not postponed — the postpone has not run`);
-    }
-    const waiting = postponedItem(loadProjectManifest(cwd), workUnit, topic);
-    return topicReceipt(verb, name, { warn, horizon: waiting ? waiting.horizon : null });
-  }
-  if (verb === 'restore') {
-    assertDiscoveryUnitAddress(manifest, phase, topic, verb);
-    if (computeTopicLifecycle(manifest, topic).lifecycle === 'postponed') {
-      throw new Error(`render topic-receipt: "${topic}" is still postponed — the pull forward has not run`);
-    }
-    return topicReceipt(verb, name, { warn, restored: unitStatuses(manifest, topic) });
-  }
-  if (verb !== 'cancel' && verb !== 'reactivate') {
-    throw new Error(`render topic-receipt: --verb must be cancel, reactivate, postpone, or restore, got "${verb}"`);
-  }
-  assertDiscoveryUnitAddress(manifest, phase, topic, verb);
-  const cancelled = computeTopicLifecycle(manifest, topic).lifecycle === 'cancelled';
-  if (verb === 'cancel') {
-    if (!cancelled) throw new Error(`render topic-receipt: "${topic}" is not cancelled — the cancel has not run`);
-    return topicReceipt(verb, name, { warn, inbox });
-  }
-  if (cancelled) {
-    throw new Error(`render topic-receipt: "${topic}" is still cancelled — the reactivate has not run`);
-  }
-  return topicReceipt(verb, name, { warn, restored: unitStatuses(manifest, topic), stayed });
-}
-
-/** @param {string} cwd @param {{dotpath: string, topic?: string, moved?: string, experiments?: string, renamed?: string, warn?: string}} args @returns {string} */
-function absorbReceiptSurface(cwd, args) {
-  const { manifest, workUnit } = resolveWorkUnit(cwd, args.dotpath, 'absorb-receipt');
-  if (manifest.work_type !== 'epic') {
-    throw new Error(`render absorb-receipt: "${workUnit}" is not an epic`);
-  }
-  const topic = args.topic;
-  if (!topic) throw new Error('render absorb-receipt: --topic is required');
-  if (!itemOf(manifest, 'discussion', topic)) {
-    throw new Error(`render absorb-receipt: no discussion item "${topic}" on "${workUnit}" — the absorb has not run`);
-  }
-  const moved = (args.moved || '').split(',').map((s) => s.trim()).filter(Boolean);
-  const unknown = moved.filter((m) => !Object.hasOwn(ABSORB_MOVED, m));
-  if (unknown.length > 0) {
-    throw new Error(`render absorb-receipt: --moved entries must be ${Object.keys(ABSORB_MOVED).join(', ')}, got "${unknown.join(', ')}"`);
-  }
-  let experiments = 0;
-  if (args.experiments !== undefined) {
-    experiments = Number(args.experiments);
-    if (!Number.isInteger(experiments) || experiments < 1) {
-      throw new Error(`render absorb-receipt: --experiments must be a positive experiment count, got "${args.experiments}"`);
-    }
-    if (!itemOf(manifest, 'experiment', topic)) {
-      throw new Error(`render absorb-receipt: no experiment series "${topic}" on "${workUnit}" — the receipt renders what the absorb moved`);
-    }
-  }
-  const renamed = (args.renamed || '').split(',').map((s) => s.trim()).filter(Boolean).map((pair) => {
-    const [from, to, ...extra] = pair.split(':');
-    if (!from || !to || extra.length > 0) {
-      throw new Error(`render absorb-receipt: --renamed entries are <from>:<to> pairs, got "${pair}"`);
-    }
-    return { from, to };
-  });
-  return absorbReceipt(workUnit, topic, moved, { warn: args.warn === '1', experiments, renamed });
-}
-
 // import-reprompt — the re-prompt after a landing refused on `missing_imports`,
 // a learned gate (8.8.12). No address: the refusal names paths, and the work
 // unit it was aimed at may not exist yet (the work-type commit's own landing
@@ -768,45 +591,6 @@ function importRepromptSurface(cwd, { file }) {
     if (!isFilled(m)) throw new Error(`render import-reprompt: missing[${i}] must be a non-empty string`);
   });
   return importReprompt(p.missing, decisionPoint.gateStep('import reprompt', { cwd, place: { unit: null, phase: null, topic: null }, key: p.missing }));
-}
-
-/**
- * What a single-item receipt reads over the path the verb answered, after
- * an archived item is restored or deleted: a restore's item must be live
- * again, and a delete's gone from the archive — its title read from git's
- * last copy.
- * @template T
- * @param {string} cwd @param {{dotpath: string, path?: string}} args
- * @param {string} surface @param {string} what @param {(cwd: string, given: string) => T} read
- * @returns {T}
- */
-function receiptRead(cwd, { path: given }, surface, what, read) {
-  if (!isFilled(given)) throw new Error(`render ${surface}: --path is required — ${what}`);
-  try {
-    return read(cwd, /** @type {string} */ (given));
-  } catch (err) {
-    throw new Error(`render ${surface}: ${messageOf(err)}`);
-  }
-}
-
-/**
- * The restore's receipt. `--unclaimed <unit>`, from the restore's
- * `unclaimed`, names the unit whose build log it took the item's claim out
- * of: refused where that log claims the item still.
- * @param {string} cwd @param {{dotpath: string, path?: string, unclaimed?: string}} args @returns {string}
- */
-function inboxRestoreReceiptSurface(cwd, args) {
-  const item = receiptRead(cwd, args, 'inbox-restore-receipt', 'the live path `inbox restore` answered', liveItem);
-  const { unclaimed } = args;
-  if (unclaimed !== undefined && logClaims(cwd, unclaimed).includes(item.path)) {
-    throw new Error(`render inbox-restore-receipt: ${unclaimed}'s build log claims it still — the restore has not taken its Resolved: line out`);
-  }
-  return inboxRestoreReceipt(item.title, unclaimed ?? null);
-}
-
-/** @param {string} cwd @param {{dotpath: string, path?: string}} args @returns {string} */
-function inboxDeleteReceiptSurface(cwd, args) {
-  return inboxDeleteReceipt(receiptRead(cwd, args, 'inbox-delete-receipt', 'the archived path `inbox delete` answered', deletedItemTitle));
 }
 
 // ---------------------------------------------------------------------------
@@ -1069,53 +853,79 @@ function walkthroughTopicSurface(_cwd, args) {
   return walkthroughTopic(card, args['content-only'] ? 'content' : 'whole');
 }
 
-// The flags each knowledge gate variant takes: the reuse variant's system
-// configuration (its yes row names it), the retry variant's provider (whose
-// missing key its display says how to store). Every other variant takes none.
-/** @type {Record<string, string[]>} */
-const KNOWLEDGE_GATE_FLAGS = { reuse: ['provider', 'model'], retry: ['provider'] };
+/** The knowledge gate's variants a row draws by name; with none, the gate opens on reuse or mode. */
+const KNOWLEDGE_VARIANTS = Object.freeze(['deviate', 'wizard', 'retry']);
+
+/** The flags of a setup's provider form the retry variant runs again, `from-system` aside. */
+const PROVIDER_FORM_FLAGS = Object.freeze(['provider', 'model', 'base-url', 'dimensions']);
 
 /**
- * ledger's knowledge gate menus. A reuse provider stands without a
- * model (the provider defaults it); a model without a provider names
- * nothing. The retry variant names the provider its key is for.
+ * ledger's knowledge gate. With no `--variant` it opens on the system
+ * configuration: reused where one is valid, its provider and model named;
+ * else the search-mode pick. A row draws `deviate` or `wizard` by name, and
+ * a setup refused for its provider's key `retry`, given the setup's flags —
+ * `--from-system`, the key the system configuration's provider's, or the
+ * provider form's — which its yes runs again.
  * @param {string} _cwd @param {Record<string, string|undefined>} args @returns {string}
  */
-function knowledgeGateSurface(_cwd, { variant, provider, model }) {
-  if (variant === undefined || !KNOWLEDGE_GATE_VARIANTS.includes(variant)) {
-    throw new Error(`render knowledge-gate: --variant must be one of ${KNOWLEDGE_GATE_VARIANTS.join(', ')}, got "${variant ?? ''}"`);
-  }
-  const takes = KNOWLEDGE_GATE_FLAGS[variant] ?? [];
-  const stray = Object.entries({ provider, model }).find(([flag, value]) => value !== undefined && !takes.includes(flag));
-  if (stray) {
-    throw new Error(`render knowledge-gate: --${stray[0]} does not belong to the ${variant} variant — --provider/--model name the reuse variant's configuration, --provider the retry variant's key`);
-  }
-  if (variant === 'retry' && !KEY_PROVIDERS.includes(provider ?? '')) {
-    throw new Error(`render knowledge-gate: the retry variant needs --provider ${KEY_PROVIDERS.join('|')} — the provider whose key the setup could not find, got "${provider ?? ''}"`);
-  }
-  if (isFilled(model) && !isFilled(provider)) {
-    throw new Error('render knowledge-gate: --model names nothing without --provider — the provider is the configuration, the model rides with it');
-  }
-  return knowledgeGate(variant, { provider, model });
+function knowledgeGateSurface(_cwd, args) {
+  const { variant } = args;
+  const given = [...PROVIDER_FORM_FLAGS, 'from-system'].filter((flag) => args[flag] !== undefined);
+  if (variant === 'retry') return knowledgeGate('retry', retrySetup(args, given));
+  if (given.length > 0) throw new Error(`render knowledge-gate: --${given[0]} names the setup the retry variant runs again — it takes --variant retry`);
+  if (variant === undefined) return knowledgeOpening();
+  if (!KNOWLEDGE_VARIANTS.includes(variant)) throw new Error(`render knowledge-gate: --variant must be one of ${KNOWLEDGE_VARIANTS.join(', ')}, or none to open the gate, got "${variant}"`);
+  return knowledgeGate(variant);
+}
+
+/** The knowledge gate's opening: the system configuration reused where one is valid, else the search-mode pick. @returns {string} */
+function knowledgeOpening() {
+  const system = detectSystemConfig();
+  return system.status === 'valid' ? knowledgeGate('reuse', system) : knowledgeGate('mode');
 }
 
 /**
- * The knowledge gate's closing line, read from this checkout's store
- * metadata — the configuration the store was built with.
+ * The check once the person says the terminal wizard completed: the
+ * configuration the checkout's store was built with where it is ready, as an
+ * in-chat setup says it; else that the wizard did not complete, over the
+ * gate's opening again.
  * @param {string} cwd @returns {string}
  */
-function knowledgeReadySurface(cwd) {
-  const file = knowledgeFiles(stateRoot(cwd)).metadata;
-  if (!fs.existsSync(file)) {
-    throw new Error(`render knowledge-ready: no ${file} — this checkout has no knowledge store yet`);
+function knowledgeDoneSurface(cwd) {
+  const root = stateRoot(cwd);
+  if (readiness(root, () => {}) === 'ready') return knowledgeReady(readMetadata(knowledgeFiles(root).metadata));
+  return [knowledgeNotDone(), knowledgeOpening()].join('\n');
+}
+
+/**
+ * The provider whose key the retry variant asks for, and the setup's flags
+ * it runs again: `--from-system` alone, the system configuration's provider;
+ * or the provider form's, as the setup was given them.
+ * @param {Record<string, string|undefined>} args @param {string[]} given
+ * @returns {{provider: string, setup: string[]}}
+ */
+function retrySetup(args, given) {
+  if (args['from-system'] !== undefined) {
+    if (given.length > 1) throw new Error('render knowledge-gate: --from-system runs the system configuration again, and takes none of the provider form\'s flags');
+    const { provider } = detectSystemConfig();
+    if (!KEY_PROVIDERS.includes(provider ?? '')) throw new Error(`render knowledge-gate: the system configuration's provider is "${provider ?? 'none'}", no provider of ${KEY_PROVIDERS.join('|')} whose key could be missing`);
+    return { provider: /** @type {string} */ (provider), setup: ['--from-system'] };
   }
-  let metadata;
-  try {
-    metadata = readMetadata(file);
-  } catch (err) {
-    throw new Error(`render knowledge-ready: ${file} is not valid JSON — ${messageOf(err)}`);
+  const { provider, model } = args;
+  if (!KEY_PROVIDERS.includes(provider ?? '') || !isFilled(model)) {
+    throw new Error(`render knowledge-gate: the retry variant takes the setup it runs again — --from-system, or --provider ${KEY_PROVIDERS.join('|')} with its --model and any --base-url and --dimensions — got "${given.map((flag) => `--${flag}`).join(' ')}"`);
   }
-  return knowledgeReady(metadata);
+  return { provider: /** @type {string} */ (provider), setup: given.flatMap((flag) => [`--${flag}`, /** @type {string} */ (args[flag])]) };
+}
+
+/**
+ * The knowledge gate's questions for a provider's setup, which the person
+ * answers in words.
+ * @param {string} _cwd @param {Record<string, string|undefined>} args @returns {string}
+ */
+function knowledgeAskSurface(_cwd, { provider }) {
+  if (!KEY_PROVIDERS.includes(provider ?? '')) throw new Error(`render knowledge-ask: --provider must be one of ${KEY_PROVIDERS.join(', ')}, got "${provider ?? ''}"`);
+  return knowledgeAsk(/** @type {string} */ (provider));
 }
 
 /** The catalogue: surface name → handler. @type {Record<string, (cwd: string, args: {dotpath: string} & Record<string, string|undefined>, lists: Record<string, string[]>) => string>} */
@@ -1129,15 +939,10 @@ const SURFACES = {
   'phase-note': phaseNote,
   'cancel-gate': cancelGate,
   'postpone-gate': postponeGate,
-  'workunit-receipt': workunitReceiptSurface,
-  'topic-receipt': topicReceiptSurface,
-  'absorb-receipt': absorbReceiptSurface,
   'import-reprompt': importRepromptSurface,
   'absorb-target': (cwd, { dotpath }) => absorbTargetSurface(cwd, dotpath),
   'absorb-confirm-gate': absorbConfirmSurface,
   'archived-delete-gate': (cwd, { path: given, file }) => archivedDeleteGateSurface(cwd, given, file),
-  'inbox-restore-receipt': inboxRestoreReceiptSurface,
-  'inbox-delete-receipt': inboxDeleteReceiptSurface,
   'horizon-pick': horizonPick,
   banner: bannerSurface,
   'work-pick': workPickSurface,
@@ -1154,7 +959,8 @@ const SURFACES = {
   'github-squash-gate': (cwd) => githubSquashGate(projectName(cwd), githubSquashNested(cwd)),
   'label-gate': () => labelGate(),
   'knowledge-gate': knowledgeGateSurface,
-  'knowledge-ready': knowledgeReadySurface,
+  'knowledge-ask': knowledgeAskSurface,
+  'knowledge-done': knowledgeDoneSurface,
   'state-merge-gate': stateMergeGateSurface,
   'ledger-stop': ledgerStopSurface,
   'directive-stop': directiveStopSurface,

@@ -121,7 +121,7 @@ Content is one JSON object on stdin; `{place}` is `{work_unit}.discussion.{topic
 - Earlier work → `knowledge query "{term}" …`; a search in depth after one → `brief plain-search`.
 - An experiment → `experiment create`, then `render experiment-spawn-gate`; one no one will run → `experiment abandon {work_unit} {topic} {id} --reason "{reason}"`.
 - Something put off for later → `render horizon-pick --park`, `roadmap add`, then for a question `ledger move --to roadmap:{item}`.
-- A topic leaving → `render postpone-gate|horizon-pick|cancel-gate`, whose `next` runs `topic postpone`, `topic cancel` or `workunit cancel`; then `render topic-receipt|workunit-receipt`.
+- A topic leaving → `render postpone-gate|horizon-pick|cancel-gate`, whose `next` runs `topic postpone`, `topic cancel` or `workunit cancel`, each answering its receipt.
 - The talk moving up → `render wait-agents`, then `enter discovery {work_unit}|product --move`.
 - The close → `checklist show|done|skip|close decided {work_unit} {topic}`, `render wait-agents`, `render decided`, `decided unstrike`; a feature's → `decided stage`.
 - A gate's answer → `gate "{name}" --pick {key}`, or `--typed {key}` for a typed row such as a Comment.
@@ -176,23 +176,15 @@ The person pushes a topic back to the roadmap — "postpone this", "move the loy
 
 Where the topic postponed is this one, postponing leaves it: bring the log up to date, then fetch `render wait-agents {work_unit}.{topic}`; where it draws a MENU, emit it verbatim per its marker and follow the answer's `next`. Another topic of the epic, named, leaves this one as it is. Then, where the person named a horizon, fetch the confirm, `render postpone-gate {work_unit}.discovery.{name} --horizon "{horizon}"`; otherwise the pick over the roadmap's horizons, `render horizon-pick {work_unit}.discovery.{name}`. A pick that refuses has none to offer: ask for the horizon in the conversation, then fetch the confirm. Emit each MENU verbatim per its marker and follow the answer's `next`; a horizon named in words, or a Comment changing it, leads to the confirm again with it. A refusal names what holds the topic: say it in a line.
 
-The postpone answers `closed_agents`: stop the task behind each one you dispatched with the TaskStop tool. Fetch the receipt, adding `--warn` where the response carries warnings, and emit its sections verbatim per their markers; then follow the postpone's `next`:
-
-```bash
-node .claude/skills/ledger-engine/scripts/engine.cjs render topic-receipt {work_unit}.discovery.{name} --verb postpone [--warn]
-```
+The postpone answers `closed_agents`: stop the task behind each one you dispatched with the TaskStop tool. It answers its receipt: emit its sections verbatim per their markers, then follow the postpone's `next`.
 
 ## Cancelling the Topic
 
 The person calls the topic off, or the conversation agrees it is not worth pursuing; a topic wanted later is postponed instead. Bring the log up to date, then fetch `render wait-agents {work_unit}.{topic}`; where it draws a MENU, emit it verbatim per its marker and follow the answer's `next`. Then fetch the confirm — an epic's topic `render cancel-gate {work_unit}.discovery.{topic}`, a single-topic unit `render cancel-gate {work_unit}` — emit its MENU verbatim per its marker and follow the answer's `next`. A refusal names what holds the topic: say it in a line.
 
-An epic's cancel answers `closed_agents`: stop the task behind each one you dispatched with the TaskStop tool. Fetch its receipt, adding `--warn` where the response carries warnings and `--inbox {n}` where its `inbox` lists the waiting messages the cancel moved, `{n}` their count, and emit its sections verbatim per their markers; say in a line which experiments went with it where the response's `abandoned` names any, and where each wait in `released_waits` stands: the point it held is open again, raised when the topic is reactivated. Then follow the cancel's `next`:
+An epic's cancel answers `closed_agents`: stop the task behind each one you dispatched with the TaskStop tool. It answers its receipt: emit its sections verbatim per their markers; say in a line which experiments went with it where the response's `abandoned` names any, and where each wait in `released_waits` stands: the point it held is open again, raised when the topic is reactivated. Then follow the cancel's `next`.
 
-```bash
-node .claude/skills/ledger-engine/scripts/engine.cjs render topic-receipt {work_unit}.discovery.{topic} --verb cancel [--warn] [--inbox {n}]
-```
-
-A single-topic unit's cancel takes the unit's cache, its agents' rows with it: stop every task you dispatched. Its receipt is `render workunit-receipt {work_unit} --verb cancel [--warn] [--inbox {n}]`, the flags as for an epic's; then follow the cancel's `next`.
+A single-topic unit's cancel takes the unit's cache, its agents' rows with it: stop every task you dispatched. The cancel answers its receipt: emit its sections verbatim per their markers, then follow the cancel's `next`.
 
 ## Moving Up
 

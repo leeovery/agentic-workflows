@@ -18,11 +18,7 @@ node .claude/skills/ledger-engine/scripts/engine.cjs render {list:[manage|closed
 
 ## Pivot
 
-`p/pivot` carries on here: load **[pivot-to-epic.md](../../ledger-shared/references/pivot-to-epic.md)** with work_unit = `{work_unit}`. Once it has pivoted, fetch the receipt and emit its sections verbatim per their markers, `--warn` where the pivot's `warnings` is non-empty:
-
-```bash
-node .claude/skills/ledger-engine/scripts/engine.cjs render workunit-receipt {work_unit} --verb pivot [--warn]
-```
+`p/pivot` carries on here: load **[pivot-to-epic.md](../../ledger-shared/references/pivot-to-epic.md)** with work_unit = `{work_unit}`.
 
 ## Absorb
 
@@ -30,10 +26,4 @@ node .claude/skills/ledger-engine/scripts/engine.cjs render workunit-receipt {wo
 
 ## Cancel and Reactivate
 
-`c/cancel` draws the cancel's confirm, whose yes runs `workunit cancel {work_unit}`; `r/reactivate` runs `workunit reactivate {work_unit}`. Once either has run, fetch its receipt and emit its sections verbatim per their markers — `--warn` where the response's `warnings` is non-empty, for a cancel `--inbox {n}` where its `inbox` lists the waiting messages it moved, and for a reactivate `--stayed {items}` where its `roadmap_stayed` names any, comma-joined:
-
-```bash
-node .claude/skills/ledger-engine/scripts/engine.cjs render workunit-receipt {work_unit} --verb {verb:[cancel|reactivate]} [--warn] [--inbox {n}] [--stayed {items}]
-```
-
-Then follow the cancel's `next`.
+`c/cancel` draws the cancel's confirm, whose yes runs `workunit cancel {work_unit}`; `r/reactivate` runs `workunit reactivate {work_unit}`. Either answers its receipt: emit its sections verbatim per their markers, then follow the cancel's `next`.

@@ -61,15 +61,25 @@ Then work each of boot's `gates` in its order, as **The Setup Gates** says, and 
 - `migration-review`: Load **[migration-review.md](references/migration-review.md)** and follow its instructions as written.
 - `claude-code-floor`, `mod-notice`: Load **[claude-code-setup.md](references/claude-code-setup.md)** and follow its instructions as written, with gate = `{gate}`.
 - `effort`: where boot's `effort` is a level below medium, say ``This session runs at `{effort}` effort; Ledger recommends medium or above.`` once, and carry on. At medium or above, say nothing.
-- `walkthrough`: Load **[walkthrough-offer.md](references/walkthrough-offer.md)** and follow its instructions as written.
-- `session-labels`: Load **[session-label-prompt.md](references/session-label-prompt.md)** and follow its instructions as written.
 - `knowledge`: Load **[knowledge-gate.md](references/knowledge-gate.md)** and follow its instructions as written.
 - `brownfield`: Load **[brownfield-offer.md](references/brownfield-offer.md)** and follow its instructions as written.
-- `github-rule`, `github-squash`: fetch the offer and emit its sections verbatim per their markers. The answer goes to `gate`; run the `next` it returns, which records it.
+- `session-labels`: Load **[session-label-prompt.md](references/session-label-prompt.md)** and follow its instructions as written.
+- `walkthrough`, `github-rule`, `github-squash`: work the screen `walkthrough-offer`, `github-rule-gate` or `github-squash-gate`. The walkthrough's `continue` is the walk: Load **[walk.md](references/walk.md)** with origin = `first-run`. A question at the offer puts back its menu alone, the screen's call with `--menu-only` added.
 
-  ```bash
-  node .claude/skills/ledger-engine/scripts/engine.cjs render {gate:[github-rule|github-squash]}-gate
-  ```
+### A Setup Screen
+
+Fetch the screen and emit its sections verbatim per their markers:
+
+```bash
+node .claude/skills/ledger-engine/scripts/engine.cjs render {screen}
+```
+
+A MENU's answer goes to `gate`: run the `next` it returns, and each `next` a call answers after it, until one answers none: the screen is done. A DATA naming the call the person's words answer — `knowledge-ask`'s `the reply:` — is the next to run once they have answered.
+- **An engine call**: emit its sections verbatim per their markers, and surface its `warnings`.
+- **A refusal that names its way on**: take that way. A call it names draws the screen that tells the person what they need: run it, showing neither the refusal's text nor the call. Carrying on with the start: say the refusal in a line, and go on.
+- **A refusal that names none**: surface it; the start ends. **STOP.** Do not proceed — terminal condition.
+- **A handoff**: Load **[handing-off.md](../ledger-shared/references/handing-off.md)** with route = `/{skill} {args}`.
+- **`continue`**: as the screen's own line says.
 
 ## Where the Start Goes
 

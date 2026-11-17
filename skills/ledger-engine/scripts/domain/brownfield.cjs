@@ -43,6 +43,11 @@ const MESSAGES = {
   completed: 'brownfield: the research landed',
 };
 
+/** @typedef {import('./projections/surfaces.cjs').Next} Next */
+
+/** Where an accepted offer leads: the product's conversation, which opens on the research owed. @type {Next} */
+const INTO_THE_PRODUCT = Object.freeze({ kind: 'handoff', skill: 'ledger-discovery', args: ['none', 'none'] });
+
 /**
  * The offer's answer on a project manifest; `none` for anything else.
  * @param {unknown} project
@@ -341,9 +346,10 @@ function brownfieldSignal(cwd) {
  * Record the offer's answer and commit it confined to the project manifest:
  * `native`, `skipped` or `accepted` while nothing is recorded, `completed`
  * once the offer was accepted. Refuses any other answer, and any answer out
- * of that order.
+ * of that order. An accepted offer answers its next, the move into the
+ * product's conversation.
  * @param {string} cwd @param {string} answer
- * @returns {{answer: BrownfieldAnswer, committed: string|null, note?: string, warnings?: string[]}}
+ * @returns {{answer: BrownfieldAnswer, committed: string|null, note?: string, warnings?: string[], next?: Next}}
  */
 function recordBrownfield(cwd, answer) {
   const recorded = ANSWERS.find((a) => a === answer);
@@ -358,10 +364,11 @@ function recordBrownfield(cwd, answer) {
     writeProjectManifestAtomic(cwd, { ...manifest, brownfield_offer: recorded });
   });
   const { committed, warnings } = commitStateScoped(cwd, PROJECT_MANIFEST_SPEC, MESSAGES[recorded]);
-  /** @type {{answer: BrownfieldAnswer, committed: string|null, note?: string, warnings?: string[]}} */
+  /** @type {{answer: BrownfieldAnswer, committed: string|null, note?: string, warnings?: string[], next?: Next}} */
   const result = { answer: recorded, committed };
   noteIfNothingCommitted(result, committed);
   if (warnings.length > 0) result.warnings = warnings;
+  if (recorded === 'accepted') result.next = INTO_THE_PRODUCT;
   return result;
 }
 

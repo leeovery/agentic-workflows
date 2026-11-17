@@ -2,7 +2,8 @@
 
 // ---------------------------------------------------------------------------
 // The pipeline simulation's sessions: background agents from dispatch to
-// incorporation; the migration gate's yes;
+// incorporation; the setup screens, each row's next run; the migration
+// gate's yes;
 // and boot's stops — an old git, a folder in no repository, a project
 // whose reshape the guard refuses, lost state and its yes through the gate
 // — and the GitHub offer. Concurrent sessions are
@@ -24,7 +25,7 @@ const ROOT = path.join(__dirname, '../..');
 const { KNOWLEDGE_DIR } = require(path.join(ROOT, 'skills/ledger-engine/scripts/kernel/knowledge/files.cjs'));
 const { githubOffline, git, stateGit, initRepo, createFile, commitCode } = require('./engine-harness.cjs');
 const { STATE_DIR_NAME, statePath } = require(path.join(ROOT, 'skills/ledger-engine/scripts/kernel/state-root.cjs'));
-const { Sim, sessionLog, mappedEpic, enterEntry, decideTopic, askedOn, answerGate } = require('./pipeline-world.cjs');
+const { Sim, sessionLog, mappedEpic, enterEntry, decideTopic, askedOn, answerGate, follow } = require('./pipeline-world.cjs');
 
 describe('pipeline simulation: sessions', () => {
   let sim;
@@ -163,7 +164,7 @@ describe('pipeline simulation: sessions', () => {
     assert.match(sim.render(['migrations-applied', '--file', applied], { expect: 'content' }),
       /\*\*Migrations Applied\*\*\n\nRestored the settings and the worktree include\.\n\nA setting you may want back was removed\.\n\n1 migration\(s\), 3 file\(s\) updated\./);
     assert.match(sim.render(['migration-gate'], { expect: 'content' }), /Ready to continue\?/);
-    const landed = sim.run(['commit', '--migrations', '-m', "chore: apply Ledger's migrations"]);
+    const landed = sim.run(answerGate(sim, 'migration gate', '--pick', 'y').next.argv);
     assert.strictEqual(landed.committed, stateGit(sim.dir, ['rev-parse', '--short', 'HEAD']).trim());
     assert.strictEqual(landed.code_committed, git(sim.dir, ['rev-parse', '--short', 'HEAD']).trim());
     assert.deepStrictEqual(stateGit(sim.dir, ['show', '--name-status', '--pretty=format:', 'HEAD']).split('\n').filter(Boolean).sort(), [
@@ -181,6 +182,53 @@ describe('pipeline simulation: sessions', () => {
     sim.write(`.ledger/${wu}/topics/${wu}/log.md`, '# Discussion — Upgraded\n\nCarried on.\n');
     sim.run(['ledger', 'ask', `${wu}.discussion.${wu}`], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'What survives the upgrade?' }));
     assert.strictEqual(stateGit(sim.dir, ['status', '--porcelain', '--', wu]).trim(), '', 'the question\'s commit carries the log along');
+  });
+
+  it('the setup screens: each answered at its gate, the next it returns run as the start runs it, and each next that call answers after it', async () => {
+    const wu = 'payments';
+    sim.run(['workunit', 'create', wu, 'feature', '--description', 'Take payments', '--session-log-file', sessionLog(sim, wu)]);
+    fs.rmSync(statePath(sim.dir, KNOWLEDGE_DIR), { recursive: true, force: true });
+    const bare = sim.run(['boot']);
+    assert.deepStrictEqual(['knowledge', 'walkthrough', 'brownfield'].map((gate) => bare.gates.includes(gate)), [true, true, true], bare.gates.join(', '));
+
+    // The knowledge gate opens on the search-mode pick, no system
+    // configuration to reuse. The wizard said done while it is not draws
+    // that it did not complete over the pick again; keyword-only runs its
+    // setup, which draws the gate's closing line, the next none; and the
+    // wizard's yes once the knowledge base is ready draws that same line.
+    const READY = '=== DISPLAY: knowledge ready (emit verbatim as a text code block (```text fence) — do not stop; continue as the skill instructs) ===\nKnowledge base ready — keyword-only.\n';
+    assert.match(sim.render(['knowledge-gate'], { expect: 'content' }), /=== MENU: knowledge mode gate/);
+    /** The screen a gate's row draws next. @param {string} gate @param {string} key */
+    const drawnBy = (gate, key) => sim.render(answerGate(sim, gate, '--pick', key).next.argv.slice(1), { expect: 'content' });
+    drawnBy('knowledge mode gate', 't');
+    const notDone = drawnBy('knowledge wizard gate', 'y');
+    assert.match(notDone, /^=== DISPLAY: knowledge not done [^\n]*===\nThe wizard did not complete — the knowledge base is not set up in this checkout yet\.\n\n=== MENU: knowledge mode gate /);
+    const setup = await sim.engineAsync(answerGate(sim, 'knowledge mode gate', '--pick', 'k').next.argv);
+    assert.strictEqual(setup.code, 0, setup.stderr);
+    assert.ok(setup.stdout.endsWith(READY), setup.stdout);
+    sim.render(['knowledge-gate', '--variant', 'wizard'], { expect: 'content' });
+    assert.strictEqual(drawnBy('knowledge wizard gate', 'y'), READY);
+
+    // The walkthrough's yes records the walk and carries on into it.
+    sim.render(['walkthrough-offer'], { expect: 'content' });
+    const walked = sim.run(answerGate(sim, 'walkthrough offer', '--pick', 'y').next.argv);
+    assert.deepStrictEqual([walked.status, walked.next], ['walked', { kind: 'continue' }]);
+
+    // The brownfield offer's yes records the acceptance and hands off into
+    // the product's conversation, which opens on the research owed.
+    sim.render(['brownfield-offer-gate'], { expect: 'content' });
+    const accepted = sim.run(answerGate(sim, 'brownfield offer', '--pick', 'y').next.argv);
+    assert.strictEqual(accepted.answer, 'accepted');
+    follow(sim, accepted.next);
+
+    // The label opt-in's no records the choice, and leads nowhere further.
+    sim.render(['label-gate'], { expect: 'content' });
+    const labels = sim.run(answerGate(sim, 'label gate', '--pick', 'n').next.argv);
+    assert.deepStrictEqual([labels.tmux_labels, 'next' in labels], [false, false]);
+
+    const answered = sim.run(['boot']);
+    assert.deepStrictEqual(['knowledge', 'walkthrough', 'brownfield'].filter((gate) => answered.gates.includes(gate)), [], 'every screen answered is due no more');
+    assert.strictEqual(JSON.parse(fs.readFileSync(statePath(sim.dir, 'manifest.json'), 'utf8')).defaults.tmux_labels, false);
   });
 
   it('boot: a git below the floor stops at its screen, as a folder in no repository does at its own, and a project whose reshape the guard refuses at its own; lost state stops at its screen and the gate\'s yes starts it again; a GitHub remote gets the rule\'s offer and the squash default\'s once each, and each no is recorded', () => {

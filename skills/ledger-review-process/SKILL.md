@@ -124,9 +124,9 @@ The review runs without the person but for its reports and finish. Every questio
 - A question for the person → `ledger ask {work_unit}.review [--task {task}]`, then `raise {work_unit}.review --answers {question_id} [--parks {task}]`.
 - A question waiting → `raise waiting|draw|aside {work_unit} …`, its answer `raise answer {id} …`.
 - An inbox item the work resolved → `inbox close {work_unit} {path} …`.
-- An inbox item closed wrongly, asked back → `inbox restore {path}`, its archived path.
+- An inbox item closed wrongly, asked back → `inbox restore {path}`, its archived path, which answers its receipt.
 - The close → `checklist show|done|skip|close finish {work_unit}`, then `render finish {work_unit}`, whose yes runs `finish yes`.
-- The work leaving → `render cancel-gate {work_unit}`, whose `next` runs `workunit cancel`; then `render workunit-receipt`.
+- The work leaving → `render cancel-gate {work_unit}`, whose `next` runs `workunit cancel`, which answers its receipt.
 - A gate's answer → `gate "{name}" --pick {key}`, or `--typed {key}` for a typed row such as a Comment.
 
 ## Closing
@@ -177,8 +177,4 @@ The person puts an idea, a bug or a fix aside — "roadmap it", "inbox it", "bac
 
 The person calls the work off. Bring the build's log up to date, then fetch the confirm, `render cancel-gate {work_unit}`, emit its MENU verbatim per its marker and follow the answer's `next`. A refusal names what holds the unit: say it in a line.
 
-The cancel takes the unit's cache, its agents' rows with it: stop every agent you dispatched with the TaskStop tool. Fetch its receipt, adding `--warn` where the response carries warnings and `--inbox {n}` where its `inbox` lists the waiting messages the cancel moved, `{n}` their count, and emit its sections verbatim per their markers; then follow the cancel's `next`:
-
-```bash
-node .claude/skills/ledger-engine/scripts/engine.cjs render workunit-receipt {work_unit} --verb cancel [--warn] [--inbox {n}]
-```
+The cancel takes the unit's cache, its agents' rows with it: stop every agent you dispatched with the TaskStop tool. The cancel answers its receipt: emit its sections verbatim per their markers, then follow the cancel's `next`.

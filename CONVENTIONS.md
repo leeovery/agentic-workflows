@@ -217,7 +217,7 @@ An engine call that renders answers in sections, each opened by a marker, `=== N
 - `TITLE`, `DISPLAY`, `MENU` — emitted verbatim, as the marker says.
 - `GATE`, `HANDOFF`, `POSITION` — for the gate mod; never shown or restated.
 
-A sentence that emits a section says `…section verbatim per its marker` (`…sections verbatim per their markers`) and never states a form of its own: the marker is the one instruction (lint check 21). A section is emitted from the call that produced it, in the turn that shows it: never carried to a later moment, never redrawn, reflowed, trimmed or composed from memory. A transaction verb answers one JSON line and renders nothing.
+A sentence that emits a section says `…section verbatim per its marker` (`…sections verbatim per their markers`) and never states a form of its own: the marker is the one instruction (lint check 21). A section is emitted from the call that produced it, in the turn that shows it: never carried to a later moment, never redrawn, reflowed, trimmed or composed from memory. A transaction verb answers one JSON line, then the sections of the receipt or the screen it draws, where it draws one.
 
 **A MENU in a tool result is a live gate at that call**: `gate` takes the answer against the gate last shown. A call returns a MENU only where the skill shows that gate there; a view fetched for its data or its display is fetched without one.
 

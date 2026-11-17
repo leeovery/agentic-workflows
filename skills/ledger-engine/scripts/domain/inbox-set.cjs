@@ -4,7 +4,7 @@
 // Domain ring: what triage reads (projections/triage.cjs) — the inbox's
 // items by kind, and the archived items, each with how it left the inbox;
 // one item by its store path, live or archived, for the screens over it and
-// the receipts after a restore or a delete. Pure over the state's inbox and
+// the receipts after an archive, a restore or a delete. Pure over the state's inbox and
 // the project manifest's record of closures, and the state branch's history
 // for when an item was archived and for an item deleted out of the tree.
 // Path validation is domain/inbox's, the rules the inbox's verbs keep.
@@ -177,6 +177,17 @@ function liveItem(cwd, given) {
 }
 
 /**
+ * One archived item by its path, how it left the inbox unread — what
+ * `inbox archive` moved there.
+ * @param {string} cwd
+ * @param {string} given  archived inbox path
+ * @returns {PickupItem}
+ */
+function archivedOne(cwd, given) {
+  return storeItem(cwd, combinedInbox(discoverInbox(cwd).archived), given, true);
+}
+
+/**
  * The content the state branch last held at a path the state no longer has:
  * HEAD's while the deletion is uncommitted, else the parent of the commit
  * that deleted it — read in the state worktree.
@@ -206,4 +217,4 @@ function deletedItemTitle(cwd, given) {
   return titleOf(content) || parsed.slug;
 }
 
-module.exports = { inboxByKind, storeItem, archivedItems, archivedItem, liveItem, deletedItemTitle };
+module.exports = { inboxByKind, storeItem, archivedItems, archivedItem, archivedOne, liveItem, deletedItemTitle };

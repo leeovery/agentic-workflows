@@ -1,6 +1,6 @@
 # The Walk
 
-*Reference for **[ledger](../SKILL.md)** — loaded by [walkthrough-offer.md](walkthrough-offer.md) when its offer is taken, with origin = `first-run`, and by [start-menu.md](start-menu.md) from the start menu's help, with origin = `help`.*
+*Reference for **[ledger](../SKILL.md)** — loaded by the start when its walkthrough offer is taken, with origin = `first-run`, and by [start-menu.md](start-menu.md) from the start menu's help, with origin = `help`.*
 
 ---
 

@@ -85,7 +85,7 @@ function pivoted(sim, wu) {
   assert.deepStrictEqual(managed(sim, wu).rows.p, { kind: 'continue' }, 'pivot carries on in the conversation');
   answerGate(sim, 'manage unit', '--pick', 'p');
   const res = sim.run(['workunit', 'pivot', wu, '--summary', 'Outgrew a feature', '--description', 'The work grew past one topic.']);
-  assert.match(sim.render(['workunit-receipt', wu, '--verb', 'pivot'], { expect: 'content' }), /is an epic now, its discussion the first topic on its map\./);
+  assert.match(sim.sections, /is an epic now, its discussion the first topic on its map\./);
   return res;
 }
 
@@ -103,13 +103,13 @@ describe('pipeline simulation: workunit', () => {
     assert.ok(managed(sim, wu).rows.c, 'manage offers the unit in progress its cancel');
     assert.match(picked(sim, 'manage unit', 'c').out, /Cancelling \*\*Flip\*\* calls off the whole feature/);
     assert.deepStrictEqual(ran(sim, answerGate(sim, 'cancel gate', '--pick', 'y').next).next, { kind: 'continue' }, 'nothing waits on a horizon, so the cancel goes on in manage');
+    assert.match(sim.sections, /marked as cancelled/);
     assert.strictEqual(sim.manifest(wu).status, 'cancelled');
-    assert.match(sim.render(['workunit-receipt', wu, '--verb', 'cancel'], { expect: 'content' }), /marked as cancelled/);
 
     assert.deepStrictEqual(Object.keys(closedPicked(sim, wu).rows), ['r', 'h', 'b'], 'a cancelled unit is brought back from the closed units');
     ran(sim, answerGate(sim, 'manage unit', '--pick', 'r').next);
+    assert.match(sim.sections, /reactivated/);
     assert.strictEqual(sim.manifest(wu).status, 'in-progress');
-    assert.match(sim.render(['workunit-receipt', wu, '--verb', 'reactivate'], { expect: 'content' }), /reactivated/);
 
     completeUnit(sim.dir, wu);
     assert.ok(sim.manifest(wu).completed_at, 'complete stamps completed_at');
@@ -128,7 +128,6 @@ describe('pipeline simulation: workunit', () => {
     const again = picked(sim, 'manage unit', 'b');
     picked(sim, 'work pick', '1');
     ran(sim, answerGate(sim, 'manage unit', '--pick', 'r').next);
-    sim.render(['workunit-receipt', wu, '--verb', 'reactivate'], { expect: 'content' });
     const brought = drawn(sim, [pick.surface, ...pick.args]);
 
     assert.deepStrictEqual([go, Object.keys(unit.rows), again.rows], ['pick', ['r', 'h', 'b'], first.rows], 'the pick drawn again as the words drew it');
@@ -249,6 +248,7 @@ describe('pipeline simulation: workunit', () => {
     assert.match(drawn(sim, ['absorb-confirm-gate', feat, '--into', epic, '--topic', feat, ...words]).out, /Experiments: {2}1 experiment\(s\)/,
       'the summary over the confirm derives from the feature manifest — top-level records only');
     const absorbed = ran(sim, answerGate(sim, 'absorb confirm gate', '--pick', 'y').next);
+    assert.match(sim.sections, /• Experiments: 1 moved/, 'the absorb\'s receipt names the moved series');
     assert.ok(!fs.existsSync(path.join(sim.dir, '.ledger', feat)), 'feature directory removed');
     assert.deepStrictEqual(absorbed.mail_moved, { path: path.join(sim.dir, `.ledger/${epic}/topics/${feat}/mail`), count: 1 });
     assert.deepStrictEqual(sim.run(['topic', 'mailbox', epic, feat]).files,
@@ -287,9 +287,6 @@ describe('pipeline simulation: workunit', () => {
     const epicAt = `${epic}.discussion.${feat}`;
     sim.refuses(['ledger', 'decide', epicAt, '--answers', cost], /is measured by experiment E1, still running/, null,
       JSON.stringify({ ...made, text: 'A day.', why: 'A guess.' }));
-
-    assert.match(sim.render(['absorb-receipt', epic, '--topic', feat, '--experiments', '1'], { expect: 'content' }),
-      /• Experiments: 1 moved/, 'absorb receipt renders from the epic post-state and names the moved series');
 
     // A feature made again under the absorbed one's name holds none of it,
     // and the epic topic keeps it all.
@@ -337,13 +334,10 @@ describe('pipeline simulation: workunit', () => {
     const topic = 'ledger-work';
     const absorbed = sim.run(['workunit', 'absorb', feat, '--into', epic, '--topic', topic, '--summary', 'The ledger\'s work']);
     assert.deepStrictEqual(absorbed.renamed_assets, [{ from: 'dockset-05.png', to: 'dockset-05-2.png' }]);
+    assert.match(sim.sections, /• Renamed: dockset-05\.png → dockset-05-2\.png \(links rewritten\)/);
     const read = (rel) => fs.readFileSync(path.join(sim.dir, rel), 'utf8');
     assert.match(read(`.ledger/${epic}/topics/${topic}/log.md`), /\.\.\/\.\.\/assets\/dockset-05-2\.png/);
     assert.deepStrictEqual(fs.readdirSync(path.join(sim.dir, `.ledger/${epic}/assets`)).sort(), ['dockset-05-2.png', 'dockset-05.png', 'onboarding.md']);
-    const renamedArg = absorbed.renamed_assets.map((r) => `${r.from}:${r.to}`).join(',');
-    assert.match(sim.render(['absorb-receipt', epic, '--topic', topic, '--moved', 'assets',
-      '--renamed', renamedArg], { expect: 'content' }),
-    /• Renamed: dockset-05\.png → dockset-05-2\.png \(links rewritten\)/);
   });
 
   it('guards hold mid-pipeline: shadow fields, empty segments, a name already taken, bad statuses', () => {
@@ -376,18 +370,14 @@ describe('pipeline simulation: workunit', () => {
     // Start's gates render at any state, each at its own moment.
     assert.match(sim.render(['migration-gate'], { expect: 'content' }), /Ready to continue\?/);
     assert.match(sim.render(['label-gate'], { expect: 'content' }), /Label your tmux session/);
-    assert.match(sim.render(['knowledge-gate', '--variant', 'reuse', '--provider', 'openai', '--model', 'text-embedding-3-small'], { expect: 'content' }), /Use the existing configuration for this project\?[\s\S]*openai ·\s+text-embedding-3-small/);
-    assert.match(sim.render(['knowledge-gate', '--variant', 'reuse'], { expect: 'content' }), /keyword-only/);
+    assert.match(sim.render(['knowledge-gate'], { expect: 'content' }), /How should this project's knowledge base work\?/);
     assert.match(sim.render(['knowledge-gate', '--variant', 'deviate'], { expect: 'content' }), /How should this project deviate\?/);
-    assert.match(sim.render(['knowledge-gate', '--variant', 'mode'], { expect: 'content' }), /How should this project's knowledge base work\?/);
-    assert.match(sim.render(['knowledge-gate', '--variant', 'retry', '--provider', 'openai'], { expect: 'content' }), /No OpenAI API key was found[\s\S]*Ready to retry\?/);
-    assert.match(sim.render(['knowledge-gate', '--variant', 'retry', '--provider', 'openai-compatible'], { expect: 'content' }), /The endpoint requires an API key[\s\S]*Ready to retry\?/);
-    sim.refuses(['render', 'knowledge-gate', '--variant', 'retry'], /the retry variant needs --provider openai\|openai-compatible/);
+    assert.match(sim.render(['knowledge-gate', '--variant', 'retry', '--provider', 'openai', '--model', 'text-embedding-3-small'], { expect: 'content' }), /No OpenAI API key was found[\s\S]*Ready to retry\?/);
+    assert.match(sim.render(['knowledge-gate', '--variant', 'retry', '--provider', 'openai-compatible', '--model', 'nomic', '--base-url', 'http://localhost:1234/v1'], { expect: 'content' }), /The endpoint requires an API key[\s\S]*Ready to retry\?/);
+    sim.refuses(['render', 'knowledge-gate', '--variant', 'retry'], /the retry variant takes the setup it runs again/);
     assert.match(sim.render(['knowledge-gate', '--variant', 'wizard'], { expect: 'content' }), /engine\.cjs knowledge setup[\s\S]*Has the wizard completed\?/);
-    sim.refuses(['render', 'knowledge-gate'], /--variant must be one of reuse, deviate, mode, retry/);
-    assert.match(sim.render(['knowledge-gate', '--variant', 'reuse', '--provider', 'openai'], { expect: 'content' }), /\(openai\)/);
-    sim.refuses(['render', 'knowledge-gate', '--variant', 'reuse', '--model', 'x'], /names nothing without --provider/);
-    sim.refuses(['render', 'knowledge-gate', '--variant', 'retry', '--provider', 'openai', '--model', 'x'], /--model does not belong to the retry variant/);
+    sim.refuses(['render', 'knowledge-gate', '--variant', 'reuse'], /--variant must be one of deviate, wizard, retry, or none to open the gate/);
+    sim.refuses(['render', 'knowledge-gate', '--model', 'x'], /--model names the setup the retry variant runs again — it takes --variant retry/);
 
     // The walkthrough is a one-time record of the project's, and the same
     // shape: refuse anything but the two answers, write once, and stay

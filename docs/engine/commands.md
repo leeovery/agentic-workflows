@@ -24,7 +24,7 @@ Two carve-outs. The **`render`** surfaces pass every value but the address as a 
 - **`warnings`** carry what went wrong without blocking: the knowledge base's syncs, a failed push, a trust-log append that waits in the conversation.
 - **`committed`** is the commit's short sha; `null` with `note: "nothing to commit"` on a clean scope; `null` with a note naming the retry, verbatim, where git refused the commit (the state write stands); `null` with `note: "held for the migration's commit"` while the migration runs. The code commit lists `[{repo, sha}]`.
 - **`next`** is what follows, for the caller to do as it says: `{"kind": "engine", "argv"}`, `{"kind": "handoff", "skill", "args"}`, `{"kind": "invoke", "skill", "args"}` (in this conversation, nothing cleared), `{"kind": "continue"}`, or null.
-- **Sections.** A surface, and a verb that draws a screen, answers in sections after its JSON line: `DATA` for reasoning, never displayed; `DISPLAY`, `MENU` and `TITLE`, emitted verbatim per their markers and never parsed for decisions; `GATE`, `POSITION` and `HANDOFF`, for code alone (`skills/ledger-engine/SKILL.md`).
+- **Sections.** A surface, and a verb that draws a screen or a receipt, answers in sections after its JSON line: `DATA` for reasoning, never displayed; `DISPLAY`, `MENU` and `TITLE`, emitted verbatim per their markers and never parsed for decisions; `GATE`, `POSITION` and `HANDOFF`, for code alone (`skills/ledger-engine/SKILL.md`).
 - **The exceptions.** `manifest` reads print bare stdout; `knowledge` answers in text; `code diff` prints the diff; the guards answer in Claude Code's hook terms — silent where the call goes through, the changed input on stdout, a refusal on stderr with exit 2.
 
 **The state** is `.ledger/` in the repository's main checkout, a worktree of its own branch, `ledger-state`. A state commit is made there and pushed; a code commit on the branch checked out. A command's writes and commit hold the state's writer lock, `.ledger/.lock`; every engine commit is confined to the paths its action wrote.
@@ -97,7 +97,7 @@ The person's answer to setup's offer of the squash default — a squash merge's 
 brownfield record <native|skipped|accepted|completed>
 ```
 
-- **`record`** — writes the brownfield offer's answer, `brownfield_offer` on the project manifest, and commits that file alone: `native`, `skipped` or `accepted` while nothing is recorded, `completed` only after `accepted`, once the product researcher's findings have landed. Answers `{answer, committed}`. Refuses any other value and any answer out of that order.
+- **`record`** — writes the brownfield offer's answer, `brownfield_offer` on the project manifest, and commits that file alone: `native`, `skipped` or `accepted` while nothing is recorded, `completed` only after `accepted`, once the product researcher's findings have landed. Answers `{answer, committed}`, and for `accepted` `next`, the handoff into the product's conversation. Refuses any other value and any answer out of that order; the offer's own answers, all but `completed`, name carrying on with the start as the way on.
 
 ### `walkthrough`
 
@@ -105,7 +105,7 @@ brownfield record <native|skipped|accepted|completed>
 walkthrough record <walked|skipped>
 ```
 
-- **`record`** — writes the answer to the one-time walkthrough offer, `walkthrough.status` on the project manifest (`walked` or `skipped`), and commits that file alone. Answers `{status, committed}`. Refuses once an answer is recorded.
+- **`record`** — writes the answer to the one-time walkthrough offer, `walkthrough.status` on the project manifest (`walked` or `skipped`), and commits that file alone. Answers `{status, committed}`, and for `walked` `next: {kind: continue}`, the walk. Refuses once an answer is recorded, naming carrying on with the start as the way on.
 
 ### `migrate`
 
@@ -306,7 +306,7 @@ The knowledge base: a local store of `.ledger/`'s knowledge in `.ledger/.knowled
 - **`status`** — the health report, for people.
 - **`compact`** — removes units decayed past reach; boot runs it.
 - **`rebuild`** — destructive and human-only: asks for `rebuild` typed back.
-- **`setup`** — the system config and this clone's init. With no flag, the terminal wizard, human-only; the skills run its non-interactive forms, `--from-system`, `--keyword-only`, `--provider …` and `--key-only`. The API key never passes through a flag, a chat or stdout: it resolves from the provider's env var or `credentials.json`.
+- **`setup`** — the system config and this clone's init. With no flag, the terminal wizard, human-only; the skills run its non-interactive forms, `--from-system`, `--keyword-only`, `--provider …` and `--key-only`. The API key never passes through a flag, a chat or stdout: it resolves from the provider's env var or `credentials.json`. A form that sets up prints `DISPLAY: knowledge ready`, the configuration the store was built with; one refused for a key missing or rejected names its way on, `render knowledge-gate --variant retry` over the same setup.
 
 The transactions sync the knowledge base in process; a failure there is a warning, never a block.
 
@@ -425,7 +425,7 @@ workunit retire <work-unit>
 workunit position <work-unit> auto|step
 ```
 
-Work-unit lifecycle. Each verb is one transaction: its manifest writes, the knowledge base's sync (a failure a warning) and a commit of what it touched. Each answers `work_unit`, `committed` and `warnings`, but `absorb`, `position` and `move`, whose answers are their own.
+Work-unit lifecycle. Each verb is one transaction: its manifest writes, the knowledge base's sync (a failure a warning) and a commit of what it touched. Each answers `work_unit`, `committed` and `warnings`, but `absorb`, `position` and `move`, whose answers are their own. `cancel`, `reactivate`, `pivot` and `absorb` print their receipt after the JSON line, drawn from what the verb answered and the state it left: `DISPLAY: confirmation`, and above it `DISPLAY: kb warning` where the answer carried `warnings`. The receipt is drawn before either is printed, so one that cannot be drawn leaves the one refusal.
 
 - **`create`** — the work-type commit at start this work: writes `.ledger/{wu}/manifest.json` and the unit's row on the project manifest, moves each `--seed` (a live inbox path) into `{wu}/seeds/`, and installs the session log verbatim as `{wu}/discovery/session-001.md`. Answers `work_type`, `seeds` (`[{path, source}]`, `source` the inbox folder's tag) and `session_log`. A name a unit already holds is refused, nothing moved: derive another.
 - **`cancel`** — sets `status: cancelled`. First it leaves the unit's code: a quick-fix's uncommitted fix set aside at `refs/ledger/aside/{wu}/{task}` and its checkout taken back, every pull request open on the unit's branches closed (`closed_by_cancel`), the branches kept for a reactivate. It abandons open experiments, moves waiting mail to the inbox as ideas, returns joined roadmap items to waiting, and removes the unit's chunks and cache. Answers `status`, `pull_requests_closed`, and where they apply `checkout`, `abandoned`, `inbox`, `roadmap_reverted`, `roadmap_horizon_gone` and `next` (the horizon pick for each item put back on none, then the start menu from inside the unit, else `continue`). Refused while the checkout holds the person's uncommitted changes, or the host cannot be reached: cancel again once settled.
@@ -474,7 +474,7 @@ A topic's mail, an epic's map, and a topic's leaving. A topic phase's item is st
 - **`order`** — the topics' order; answers `ordered` and `titles`. A closed topic takes none.
 - **`brief`** — rewrites an unstarted topic's brief; a started one is refused (what bears on it goes as a message).
 
-**Leaving.** An epic's topic, at `discovery`.
+**Leaving.** An epic's topic, at `discovery`. Each prints its receipt after its JSON line, drawn from what it answered and the epic it left: `DISPLAY: confirmation` — the topic by its title; a cancel's waiting messages moved to the inbox, counted; the horizon a postpone left it under; the statuses a reactivate gave its items back, and each roadmap item its cancel put back that it left where it stands — with `DISPLAY: kb warning` above it where the answer carried `warnings`.
 
 - **`cancel`** — marks the map row and its discussion `cancelled`, abandons its open experiments, moves its mail to the inbox, returns its roadmap joins to waiting, closes its agents still running, and commits the unit's manifest. Answers `topic`, `status`, `cancelled`, `abandoned`, `released_waits`, `roadmap_reverted`, `inbox`, `closed_agents`, `committed`, and `next`: the horizon pick for each item put back on no horizon, then the epic's menu from inside the topic's discussion, else `continue`. Refused past the unit's spec (abandoning the work is the unit's cancel) and for a postponed topic (pull it forward).
 - **`reactivate`** — restores a cancelled topic, its order where the number is free, and the roadmap joins its cancel put back. Answers `restored`, and `roadmap_rejoined` / `roadmap_stayed` where any. Refused past the unit's spec.
@@ -1005,7 +1005,7 @@ session resume [session-id]
 The opt-in tmux label, `{original} · {work-unit} · {phase} · {topic}`, and the conversation's position, which every `label` records whether labels are on or off. A label is a courtesy, never state: outside tmux, with labels off, or on a tmux error it renames nothing and says so, never blocking a flow.
 
 - **`label`** — labels the session on arrival at a place: a name alone (a work unit, `roadmap`, `product`), or a name, phase and topic. Answers `labelled`, and where it renamed nothing `reason`: `disabled`, `no-tmux`, `tmux-error` or `stash-error`. A phase without its topic, an unknown phase, or a name that is no unit or project identity is refused.
-- **`label-config`** — records the opt-in as `defaults.tmux_labels` and syncs the session hooks in `.claude/settings.json`; commits the manifest on the state branch and the settings file on the branch checked out, holding the settings back where the person has edits of their own there (a warning). Answers `tmux_labels`, and `warnings`.
+- **`label-config`** — records the opt-in as `defaults.tmux_labels` and syncs the session hooks in `.claude/settings.json`; commits the manifest on the state branch and the settings file on the branch checked out, holding the settings back where the person has edits of their own there (a warning). Answers `tmux_labels`, and `warnings`. A refusal names carrying on with the start as its way on, as the walkthrough's and the brownfield offer's answers do: an answer not recorded holds no work back.
 - **`repair`** — boot's pass: drops the calling conversation's position (kept for tasks in flight) and puts back the original name of a label this session, or a dead one, applied. Answers `repaired`.
 - **`cleanup`** — the SessionEnd hook: restores the original names of the session's labels, its id from the argument or stdin; never errors. Answers `restored`.
 - **`resume`** — the SessionStart hook on `claude --resume`: re-applies the label of the conversation's position. Answers `resumed` on **stderr**, stdout empty, since Claude Code injects a SessionStart hook's stdout into the conversation.
@@ -1069,7 +1069,7 @@ inbox capture <idea|bug|quick-fix> [--project <folder>]
 
 The inbox, `.ledger/.inbox/{ideas|bugs|quickfixes}/`, its archived items under `.inbox/.archived/`. A name is taken across every kind, live or archived, and the product's notes. Each verb validates every path before anything moves and makes one commit.
 
-- **`archive`**, **`restore`**, **`delete`** — move live items to the archive, back, or delete archived ones. Answer `archived`, `restored` or `deleted`, and `committed`. `restore` takes the item's `Resolved:` line out of the build log of the unit that closed it, answering `unclaimed: [{path, unit}]`.
+- **`archive`**, **`restore`**, **`delete`** — move live items to the archive, back, or delete archived ones. Answer `archived`, `restored` or `deleted`, and `committed`, then the receipt, `DISPLAY: confirmation`: the archive names one item by its title and several by their count; the restore and the delete a line an item, the delete's title read from git's last copy of the file. `restore` takes the item's `Resolved:` line out of the build log of the unit that closed it, answering `unclaimed: [{path, unit}]`.
 - **`close`** — archives live items and records who resolved each on the project manifest (`inbox_closed`): the unit whose work resolved it, or `none` for one the person fixed straight away. Answers `{closed, unit, committed}`.
 - **`capture`** — the capture skills' one line: the item's text on stdin, titled by its first `# Title`, written at `.inbox/{folder}/{date}--{slug}.md`, committed and pushed. `--project` captures into another project's folder. Answers `{captured, committed}`, then a one-line `DISPLAY`, `Logged {kind}: "{title}"`. A failed commit is noted with its retry, `engine commit --inbox`. Refuses a folder with no Ledger state and a text with no title.
 - **`file`** — files a review finding out of scope, or a quick-fix's note at its close, from `{kind, text, call}`, `call` Claude's filing decision at `{unit}.review` (`{unit}.implementation` at the close). Answers `{filed, committed}`. Refuses an item filed already at that path (group the finding with it, or title it apart).
@@ -1102,7 +1102,7 @@ The product roadmap, the project manifest's `roadmap`: ordered `horizons`, and `
 - **`rename`** — every field carried, its join included. Answers `renamed_from`, `preserved_fields`.
 - **`move`** — re-buckets a waiting item, or brings an archived one back (`from_archive`). With `--from`, an item a cancel or removal put back on no horizon, answering `next`: the horizon pick for the next of `--then`, else where the cancel goes. Answers `moved_from`.
 - **`archive`** — takes a waiting item off its horizon, kept and its name still taken; a postponed item's archive cancels its epic's row too (`epic_row_cancelled`, `inbox`). Answers `{op, name, horizon, state, committed}`.
-- **`pull-forward`** — an idea into an epic before its spec as a new map topic, joined; back into the epic that postponed it, it restores that row (`restored`). `--force-dismissed` passes a struck name the person asked back. Refuses a bug or quick-fix (it starts as work of its own), a joined item, and an epic past its spec.
+- **`pull-forward`** — an idea into an epic before its spec as a new map topic, joined; back into the epic that postponed it, it restores that row (`restored`). Prints its receipt after its JSON line, as a topic's leaving does: `Pulled "{Topic}" forward.`, and the statuses a return gave its items back. `--force-dismissed` passes a struck name the person asked back. Refuses a bug or quick-fix (it starts as work of its own), a joined item, and an epic past its spec.
 - **`horizon`** — `horizon add`, `rename` (cascading to its items), `reorder` (the complete order), `merge`, `split` and `remove` (refused while a waiting item is on it, naming them). Each answers `horizons` and `items_updated` or `items_moved`.
 
 Names hold no dot or slash.
@@ -1121,16 +1121,10 @@ render experiment-spawn-gate <wu.discussion.topic> --id <E{n}>
 render phase-note        <wu.phase.topic> --verb <Word> [--noun <word>]
 render cancel-gate       <wu.discovery.name> | <wu>
 render postpone-gate     <wu.discovery.topic> --horizon "<horizon>"
-render workunit-receipt  <wu> --verb cancel|reactivate|pivot [--warn] [--inbox <n>]
-render topic-receipt     <wu.discovery.name> --verb cancel|reactivate [--warn] [--inbox <n>]
-render topic-receipt     <wu.discovery.topic> --verb postpone|restore [--warn]
-render absorb-receipt    <epic> --topic <name> [--moved seeds,assets,spikes] [--experiments <N>] [--renamed <from>:<to>[,…]] [--warn]
 render import-reprompt   --file <payload.json>   # {"missing": ["path", …]} — the re-prompt after a landing refused
 render absorb-target     <feature>
 render absorb-confirm-gate <feature> --into <epic> --topic <name> --summary <text> [--description <text>]
 render archived-delete-gate --path <archived path> [--file <pick.json>]
-render inbox-restore-receipt --path <live path> [--unclaimed <wu>]
-render inbox-delete-receipt --path <archived path>
 render horizon-pick      <wu.discovery.topic> | --park <name>[,<name>…] | --back <name> --from <wu>|<wu>.discovery.<topic> [--then <item>,…]
 render banner
 render work-pick --matches <unit>[/<topic>],…
@@ -1170,8 +1164,9 @@ render repo-stop
 render github-rule-gate
 render github-squash-gate
 render label-gate
-render knowledge-gate --variant reuse|deviate|mode|retry|wizard [--provider <name> --model <name>]
-render knowledge-ready
+render knowledge-gate [--variant deviate|wizard | --variant retry (--from-system | --provider <name> --model <name> [--base-url <url>] [--dimensions <n>])]
+render knowledge-ask --provider openai|openai-compatible
+render knowledge-done
 render state-merge-gate
 render ledger-stop
 render directive-stop --directive <id>
@@ -1209,7 +1204,7 @@ The surface catalogue: named surfaces answering sections (`DISPLAY`, `MENU`, `DA
 
 **The menus** (`domain/menus.cjs`) share one frame: `TITLE`, what the menu shows, its `MENU` and question; the frame adds `h/help` (`render help <menu>`), a back row and a prompt row. The start menu and the project's menus reached from it drop the conversation's position; the epic menu and the roadmap record it there. **The learned process gates** — the plan, check-in and conclude gates, `wait for agents`, `experiment spawn gate` and `import reprompt` — may run their usual row as an automatic step where the person's answers have earned it: the MENU gives way to a `DATA` section (`automatic step: {gate}`, `ran: {key}`, `next: {json}`) and `DISPLAY: automatic step`, shown without stopping; do what `next` says.
 
-Boot's stops and the setup gates, each the screen of the boot `stop` or setup gate it is named for: **`git-floor-stop`**, **`repo-stop`**, **`state-lost-gate`** (its yes `boot --start-again`), **`state-merge-gate`** (each row `state-merge pick`), **`ledger-stop`**, **`migration-guard-stop`**, **`migration-checks-stop`**, **`directive-stop`**, **`migration-taken-stop`**, **`migration-leaving`** (the topics leaving a building unit), **`migrations-applied`** (the migration review's summary, from Claude's payload), **`migration-gate`** (its yes `commit --migrations`), **`label-gate`**, **`knowledge-gate`** (by `--variant`), **`knowledge-ready`**, **`github-rule-gate`**, **`github-squash-gate`**, **`brownfield-offer-gate`**, **`banner`**, and **`work-pick`** (the start's pick between the pieces of work the words name).
+Boot's stops and the setup gates, each the screen of the boot `stop` or setup gate it is named for: **`git-floor-stop`**, **`repo-stop`**, **`state-lost-gate`** (its yes `boot --start-again`), **`state-merge-gate`** (each row `state-merge pick`), **`ledger-stop`**, **`migration-guard-stop`**, **`migration-checks-stop`**, **`directive-stop`**, **`migration-taken-stop`**, **`migration-leaving`** (the topics leaving a building unit), **`migrations-applied`** (the migration review's summary, from Claude's payload), **`migration-gate`** (its yes `commit --migrations`), **`label-gate`** (each row `session label-config`), **`knowledge-gate`** (with no variant, reuse where the system config is valid, else the provider choice; `deviate`, `wizard`, and `retry` over the setup it runs again; each row the setup it runs or the screen it draws), **`knowledge-ask`** (a provider's questions, answered in words; its DATA `the reply:` the setup they run), **`knowledge-done`** (the wizard's yes: the ready line where the checkout's knowledge base is ready, else that the wizard did not complete over the gate's opening again), **`github-rule-gate`**, **`github-squash-gate`**, **`brownfield-offer-gate`** (each row `brownfield record`), **`banner`**, and **`work-pick`** (the start's pick between the pieces of work the words name).
 
 Help and the walkthrough: **`walkthrough-offer`**, **`walkthrough-screen`**, **`walkthrough-topic`** (one reference card), **`help`** (a menu's help, its back drawing the menu again as it was) and **`help-topics`**.
 
@@ -1237,7 +1232,7 @@ The authority gates, each drawn from Claude's staged payload (`--file`), its yes
 - **`ready-to-build`** — the spec's gate: outline, phase cut, position; `--page` the review page's row.
 - **`finish`** — finish's gate, or a quick-fix's close.
 
-Confirms and receipts — a lifecycle verb answers its JSON alone, and its receipt comes from these, `--warn` adding the knowledge advisory where its JSON carried `warnings`: **`cancel-gate`**, **`postpone-gate`**, **`workunit-receipt`**, **`topic-receipt`**, **`absorb-target`**, **`absorb-confirm-gate`**, **`absorb-receipt`**, **`import-reprompt`** (after an import refused paths), **`archived-delete-gate`**, **`inbox-restore-receipt`** and **`inbox-delete-receipt`**.
+The confirms before a lifecycle verb, which prints its own receipt: **`cancel-gate`**, **`postpone-gate`**, **`absorb-target`**, **`absorb-confirm-gate`**, **`import-reprompt`** (after an import refused paths) and **`archived-delete-gate`**.
 
 The investigation, each a learned gate:
 

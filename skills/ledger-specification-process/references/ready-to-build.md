@@ -47,11 +47,7 @@ An epic's size is never capped by a number: splitting it is a judgement. Put it 
 Say in a few lines the split you lean on — the topics that would move, and the seam they part at — then ask each move of the person through the postpone gate, one topic at a time. Where they named a horizon, fetch the confirm, `render postpone-gate {work_unit}.discovery.{topic} --horizon "{horizon}"`; otherwise the pick over the roadmap's horizons, `render horizon-pick {work_unit}.discovery.{topic}`. A pick that refuses has none to offer: ask for the horizon in the conversation, then fetch the confirm. Emit each MENU verbatim per its marker; the answer goes to `gate`:
 - **A horizon picked** — follow its `next`, the confirm.
 - **A new horizon** (`n/new`) — ask for its name in the conversation, then fetch the confirm with it.
-- **Postpone it** (`y/yes`) — follow its `next`, which postpones the topic, then fetch the receipt and emit its sections verbatim per their markers:
-
-  ```bash
-  node .claude/skills/ledger-engine/scripts/engine.cjs render topic-receipt {work_unit}.discovery.{topic} --verb postpone
-  ```
+- **Postpone it** (`y/yes`) — follow its `next`, which postpones the topic and answers its receipt: emit its sections verbatim per their markers.
 
 - **Keep it here** (`n/no`) — the topic stays in the epic: say so in a line.
 - **A Comment** — a change to the horizon: fetch the confirm again with the one they give.

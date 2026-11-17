@@ -39,26 +39,6 @@ Files were updated, a migration handed over checks its code could not perform, a
 node .claude/skills/ledger-engine/scripts/engine.cjs render migrations-applied --file {state}/.cache/migrations-applied.json
 ```
 
-5. Fetch the confirm gate and emit its `MENU: migration gate` section verbatim per its marker:
+5. Work the screen `migration-gate` as the start's **A Setup Screen** says: its yes commits the migration's changes, one commit on each side that changed, or, for the migration into Ledger, each commit `reshape` named in `commits`.
 
-```bash
-node .claude/skills/ledger-engine/scripts/engine.cjs render migration-gate
-```
-
-**STOP.** Wait for user response.
-
-**If `yes`:**
-
-Commit the migration changes — one commit on each side that changed, or, for the migration into Ledger, each commit `reshape` named in `commits`:
-
-```bash
-node .claude/skills/ledger-engine/scripts/engine.cjs commit --migrations -m "chore: apply Ledger's migrations"
-```
-
-→ Return to caller.
-
-**If ask:**
-
-Answer the user's question. The question sets the gate aside; once the exchange looks settled, ask in conversation whether they are ready to move on, and on yes put it back — fetch the confirm gate again and emit it as above.
-
-**STOP.** Wait for user response.
+   → Return to caller.

@@ -13,6 +13,11 @@
 //                    flags, then as --from-system. The key resolves from
 //                    env/credentials — never from argv.
 //
+// Each form, once set up, draws the knowledge gate's closing line from the
+// store it built; a form refused for its provider's key — none found, or one
+// the provider rejects — names its way on: the knowledge gate's retry,
+// which runs the same setup again once the key is stored.
+//
 // There is deliberately no --key flag on any form: argv lands in shell
 // history and process listings, so keys never transit it.
 // ---------------------------------------------------------------------------
@@ -25,6 +30,9 @@ const { OpenAIProvider } = require('../../kernel/knowledge/providers/openai.cjs'
 const { OpenAICompatibleProvider } = require('../../kernel/knowledge/providers/openai-compatible.cjs');
 const { UserError } = require('../../kernel/knowledge/retry.cjs');
 const { ENGINE_COMMAND, messageOf } = require('../../kernel/call.cjs');
+const { AuthError } = require('../../kernel/knowledge/providers/openai-engine.cjs');
+const { readMetadata } = require('../../kernel/knowledge/store.cjs');
+const { knowledgeReady } = require('../projections/boot.cjs');
 const { metadataMissing } = require('./embedder.cjs');
 const setup = require('./setup.cjs');
 
@@ -47,6 +55,9 @@ const FORM_CONFLICT_REFUSAL =
   'choose one setup form: --from-system, --keyword-only, --provider, or --key-only.';
 
 /** @typedef {'wizard'|'from-system'|'keyword-only'|'provider'|'key-only'} SetupForm */
+
+/** The `--from-system` form's flags, as its way on runs it again. */
+const FROM_SYSTEM = Object.freeze(['--from-system']);
 
 /**
  * The setup form the flags select. `--provider` doubles as `--key-only`'s
@@ -119,17 +130,31 @@ function summaryLines(k) {
 }
 
 /**
- * Validate a provider by one test embed, said on stdout; refuse on failure.
+ * A refusal for the provider's key, naming its way on: the knowledge gate's
+ * retry, given the setup's own flags to run again once the key is stored.
+ * @param {string} message @param {readonly string[]} setupFlags
+ * @returns {never}
+ */
+function refuseForKey(message, setupFlags) {
+  refuse(`${message}\n  The way on: \`${ENGINE_COMMAND} render knowledge-gate --variant retry ${setupFlags.join(' ')}\``);
+}
+
+/**
+ * Validate a provider by one test embed, said on stdout; refuse on failure,
+ * a key the provider rejects naming its way on.
  * @param {Call} call @param {string} name @param {EmbeddingProvider} provider @param {number} dimensions
  * @param {string} refusal  the refusal's first line
+ * @param {readonly string[]} setupFlags  the setup's own flags, which the way on runs again
  */
-async function validateOrRefuse(call, name, provider, dimensions, refusal) {
+async function validateOrRefuse(call, name, provider, dimensions, refusal, setupFlags) {
   call.out(`Validating ${name} via a test embed...\n`);
   try {
     await setup.validateProvider(provider, dimensions);
   } catch (err) {
     const { message, hint } = setup.describeValidationError(err, {});
-    refuse(`${refusal}\n  ${message}\n  ${hint}`);
+    const said = `${refusal}\n  ${message}\n  ${hint}`;
+    if (err instanceof AuthError) refuseForKey(said, setupFlags);
+    refuse(said);
   }
   call.out('Embedding provider works.\n');
 }
@@ -142,7 +167,7 @@ async function validateOrRefuse(call, name, provider, dimensions, refusal) {
  */
 async function validateConfiguredProvider(call, cfg) {
   if (!cfg.provider) return;
-  if (cfg.provider === 'openai' && !cfg._api_key) refuse(missingOpenAiKeyMessage());
+  if (cfg.provider === 'openai' && !cfg._api_key) refuseForKey(missingOpenAiKeyMessage(), FROM_SYSTEM);
   /** @type {EmbeddingProvider|null} */
   let provider = null;
   try {
@@ -151,7 +176,16 @@ async function validateConfiguredProvider(call, cfg) {
     refuse(`cannot use the configured provider: ${messageOf(err)}`);
   }
   if (!provider) refuse(`provider "${cfg.provider}" could not be initialised from the config.`);
-  await validateOrRefuse(call, cfg.provider, provider, provider.dimensions(), 'provider validation failed.');
+  await validateOrRefuse(call, cfg.provider, provider, provider.dimensions(), 'provider validation failed.', FROM_SYSTEM);
+}
+
+/**
+ * The knowledge gate's closing line, drawn from the store the setup built:
+ * the configuration its metadata records.
+ * @param {Call} call @param {KnowledgeFiles} files
+ */
+function sayReady(call, files) {
+  call.out(`\n${knowledgeReady(readMetadata(files.metadata))}`);
 }
 
 /**
@@ -212,6 +246,7 @@ async function runFromSystem(call, root) {
     model: cfg.model || null,
     base_url: cfg.base_url || null,
   }).join('\n') + '\n');
+  sayReady(call, files);
 }
 
 /**
@@ -235,6 +270,7 @@ async function runKeywordOnly(call, root) {
   initProjectStore(call, files);
   await setup.runInitialIndexStep(call, root, files);
   call.out('\n' + summaryLines(null).join('\n') + '\n');
+  sayReady(call, files);
 }
 
 /**
@@ -273,10 +309,11 @@ async function runProviderForm(call, root, flags) {
   /** @type {import('./setup.cjs').ConfigPayload} */
   let payload;
   const baseUrl = flags['base-url'];
+  const formFlags = ['--provider', providerId, '--model', model, ...givenFlags(flags, ['base-url', 'dimensions'])];
   if (providerId === 'openai') {
     if (dimensions === undefined) dimensions = setup.OPENAI_DEFAULT_DIMENSIONS;
     const key = config.resolveApiKey('openai', { credentialsPath: config.credentialsPath() });
-    if (!key) refuse(missingOpenAiKeyMessage());
+    if (!key) refuseForKey(missingOpenAiKeyMessage(), formFlags);
     provider = new OpenAIProvider({ apiKey: key, model, dimensions });
     payload = setup.buildSystemConfigOpenAI({ model, dimensions });
   } else {
@@ -294,7 +331,7 @@ async function runProviderForm(call, root, flags) {
   }
 
   // Validated before anything is written: a broken provider must never land on disk.
-  await validateOrRefuse(call, providerId, provider, dimensions, 'provider validation failed — system config not written.');
+  await validateOrRefuse(call, providerId, provider, dimensions, 'provider validation failed — system config not written.', formFlags);
 
   const sysPath = config.systemConfigPath();
   config.writeConfigFile(sysPath, payload);
@@ -308,6 +345,15 @@ async function runProviderForm(call, root, flags) {
     model,
     base_url: providerId === 'openai-compatible' ? /** @type {string} */ (baseUrl) : null,
   }).join('\n') + '\n');
+  sayReady(call, files);
+}
+
+/**
+ * The flags of `names` the setup was given, each with its value, in that order.
+ * @param {Flags} flags @param {string[]} names @returns {string[]}
+ */
+function givenFlags(flags, names) {
+  return names.flatMap((name) => (typeof flags[name] === 'string' ? [`--${name}`, /** @type {string} */ (flags[name])] : []));
 }
 
 module.exports = {

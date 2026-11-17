@@ -30,7 +30,7 @@ const path = require('path');
 const harness = require('./engine-harness.cjs');
 const { computeTopicLifecycle } = require('../../skills/ledger-engine/scripts/domain/derivations.cjs');
 
-const { git, stateGit, commitAll, cleanupFixture, call, ok: engine, okSections, refuses: engineFails, completeUnit, startItem } = harness;
+const { git, stateGit, commitAll, cleanupFixture, call, ok: engine, okSections, refuses: engineFails, completeUnit, startItem, sectionOf } = harness;
 
 /** Run `engine render` expecting success; returns the whole stdout (sections). */
 const render = (dir, args) => harness.output(dir, ['render', ...args]);
@@ -135,14 +135,12 @@ describe('engine topic cancel — the discovery unit', () => {
     assert.deepStrictEqual(readManifest(dir, 'payments').phases.discovery.items['data-export'],
       { source: 'discovery', cancelled: true, previous_order: 1 });
     assert.strictEqual(lastMessage(dir), 'ledger(payments): cancel data-export (discovery)');
-    assert.strictEqual(sections, '', 'transactions answer with pure JSON');
-    assert.match(render(dir, ['topic-receipt', 'payments.discovery.data-export', '--verb', 'cancel']),
-      /DISPLAY: confirmation[\s\S]*Cancelled "Data Export"\.\n/);
+    assert.strictEqual(sectionOf(sections, 'DISPLAY: confirmation'), 'Cancelled "Data Export".\n', 'its receipt after its JSON');
   });
 
   it('a started topic takes every conversation, releasing the waits before the holders close, abandoning the records', () => {
     harness.unreadableKnowledge(dir);
-    const res = engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'auth-flow']);
+    const { res, sections } = okSections(dir, ['topic', 'cancel', 'payments', 'discovery', 'auth-flow']);
     assert.deepStrictEqual(res.cancelled, [{ phase: 'discussion', previous_status: 'in-progress' }]);
     assert.deepStrictEqual(res.abandoned, ['E1', 'E1.1'], 'every open record ends abandoned, the split with its parent');
     assert.deepStrictEqual(res.released_waits, [{ phase: 'discussion', released: ['E1'], remaining: [] }]);
@@ -157,8 +155,7 @@ describe('engine topic cancel — the discovery unit', () => {
     assert.deepStrictEqual(m.phases.discovery.items['auth-flow'],
       { source: 'discovery', cancelled: true, previous_order: 2 });
     assert.strictEqual(lastMessage(dir), 'ledger(payments): cancel auth-flow (discovery)');
-    assert.match(render(dir, ['topic-receipt', 'payments.discovery.auth-flow', '--verb', 'cancel']),
-      /Cancelled "Auth Flow"\./);
+    assert.strictEqual(sectionOf(sections, 'DISPLAY: confirmation'), 'Cancelled "Auth Flow".\n');
   });
 
   it('a parked stub is taken with the topic — unstarted stashed like any status', () => {
@@ -227,7 +224,7 @@ describe('engine topic reactivate', () => {
 
   it('a never-started topic returns with nothing to restore — the marker cleared, the order back', () => {
     engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'data-export']);
-    const res = engine(dir, ['topic', 'reactivate', 'payments', 'discovery', 'data-export']);
+    const { res, sections } = okSections(dir, ['topic', 'reactivate', 'payments', 'discovery', 'data-export']);
     assert.deepStrictEqual(res, {
       ok: true, topic: 'data-export', phase: 'discovery', status: 'reactivated', restored: [],
       committed: shortHead(dir), warnings: [],
@@ -235,13 +232,12 @@ describe('engine topic reactivate', () => {
     assert.deepStrictEqual(readManifest(dir, 'payments').phases.discovery.items['data-export'],
       { source: 'discovery', order: 1 });
     assert.strictEqual(lastMessage(dir), 'ledger(payments): reactivate data-export (discovery)');
-    assert.match(render(dir, ['topic-receipt', 'payments.discovery.data-export', '--verb', 'reactivate']),
-      /Reactivated "Data Export"\.\n/);
+    assert.strictEqual(sectionOf(sections, 'DISPLAY: confirmation'), 'Reactivated "Data Export".\n');
   });
 
   it('a started topic restores every item', () => {
     engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'auth-flow']);
-    const res = engine(dir, ['topic', 'reactivate', 'payments', 'discovery', 'auth-flow']);
+    const { res, sections } = okSections(dir, ['topic', 'reactivate', 'payments', 'discovery', 'auth-flow']);
     assert.deepStrictEqual(res.restored, [{ phase: 'discussion', status: 'in-progress' }]);
     assert.strictEqual(res.status, 'reactivated');
     assert.deepStrictEqual(res.warnings, []);
@@ -251,8 +247,7 @@ describe('engine topic reactivate', () => {
     assert.deepStrictEqual(m.phases.discovery.items['auth-flow'], { source: 'discovery', order: 2 });
     assert.strictEqual(m.phases.experiment.items['auth-flow'].experiments.E1.status, 'abandoned', 'the abandoned records stand on the register');
     assert.strictEqual(lastMessage(dir), 'ledger(payments): reactivate auth-flow (discovery)');
-    assert.match(render(dir, ['topic-receipt', 'payments.discovery.auth-flow', '--verb', 'reactivate']),
-      /Reactivated "Auth Flow"\. Restored discussion \[in-progress\]\./);
+    assert.strictEqual(sectionOf(sections, 'DISPLAY: confirmation'), 'Reactivated "Auth Flow". Restored discussion [in-progress].\n');
   });
 
   it('a stash-less cancelled item returns to never-attempted — the per-item cancel of a status-less item stashed nothing', () => {
@@ -284,15 +279,6 @@ describe('engine topic reactivate', () => {
       /Usage: engine topic reactivate <work-unit> discovery <topic>/);
   });
 
-  it('the receipts refuse a state the verb has not produced', () => {
-    assert.match(engineFails(dir, ['render', 'topic-receipt', 'payments.discovery.auth-flow', '--verb', 'cancel']).error,
-      /"auth-flow" is not cancelled — the cancel has not run/);
-    engine(dir, ['topic', 'cancel', 'payments', 'discovery', 'auth-flow']);
-    assert.match(engineFails(dir, ['render', 'topic-receipt', 'payments.discovery.auth-flow', '--verb', 'reactivate']).error,
-      /"auth-flow" is still cancelled — the reactivate has not run/);
-    assert.match(engineFails(dir, ['render', 'topic-receipt', 'payments.discussion.auth-flow', '--verb', 'cancel']).error,
-      /--verb cancel addresses the Discovery unit — <work_unit>\.discovery\.<topic>, got phase "discussion"/);
-  });
 });
 
 describe('a topic\'s start — the function `enter` runs', () => {
@@ -490,8 +476,6 @@ describe('work-unit completion — finish\'s, in process', () => {
     // Scoped: the unrelated file stays uncommitted.
     assert.match(git(dir, ['status', '--porcelain']), /\?\? unrelated\.txt/);
     assert.strictEqual(res.work_type, 'feature');
-    assert.match(engineFails(dir, ['render', 'workunit-receipt', 'auth-flow', '--verb', 'complete']).error,
-      /--verb must be cancel, reactivate, or pivot, got "complete"/, 'finish draws its own close');
   });
 
   it('purges the work unit\'s scratch cache on complete, the old cache\'s reports the migration copied into its earlier/ with it — untracked scratch leaves no dirt', () => {
@@ -502,19 +486,21 @@ describe('work-unit completion — finish\'s, in process', () => {
     assert.strictEqual(git(dir, ['status', '--porcelain']).trim() + stateGit(dir, ['status', '--porcelain']).trim(), '', 'no stray dirt');
   });
 
-  it('reactivate renders its confirmation via the receipt surface', () => {
+  it('reactivate answers its receipt after its JSON, the indexing warning above it where the reindex warned', () => {
     engine(dir, ['workunit', 'cancel', 'auth-flow']);
-    assert.strictEqual(okSections(dir, ['workunit', 'reactivate', 'auth-flow']).sections, '',
-      'transactions answer with pure JSON');
-    assert.match(render(dir, ['workunit-receipt', 'auth-flow', '--verb', 'reactivate']), /"Auth Flow" reactivated\./);
-    assert.match(engineFails(dir, ['render', 'workunit-receipt', 'auth-flow', '--verb', 'cancel']).error,
-      /not "cancelled" — the cancel has not run/);
+    const { res, sections } = okSections(dir, ['workunit', 'reactivate', 'auth-flow']);
+    assert.strictEqual(sectionOf(sections, 'DISPLAY: confirmation'), '"Auth Flow" reactivated.\n');
+    assert.strictEqual(sections.includes('⚑ Knowledge indexing warning'), res.warnings.length > 0);
   });
 
-  it('the receipt refuses an address that is no bare work unit, and a unit the project does not hold', () => {
-    assert.deepStrictEqual(['auth-flow.discussion.auth-flow', 'ghost'].map((address) => engineFails(dir, ['render', 'workunit-receipt', address, '--verb', 'cancel']).error), [
-      'render workunit-receipt: address must be a bare <work_unit>, got "auth-flow.discussion.auth-flow"',
-      'render workunit-receipt: work unit "ghost" not found',
+  it('a surface read at a unit refuses an address that is no bare work unit, and a unit the project does not hold', () => {
+    assert.deepStrictEqual([
+      ...['auth-flow.discussion.auth-flow', 'ghost'].map((address) => engineFails(dir, ['render', 'discovery-map', address]).error),
+      engineFails(dir, ['render', 'cancel-gate', 'ghost']).error,
+    ], [
+      'render discovery-map: address must be a bare <work_unit>, got "auth-flow.discussion.auth-flow"',
+      'render discovery-map: work unit "ghost" not found',
+      'render cancel-gate: work unit "ghost" not found',
     ]);
   });
 
@@ -565,12 +551,12 @@ describe('engine workunit cancel', () => {
     assert.strictEqual(m.status, 'cancelled');
     assert.strictEqual(m.completed_at, undefined);
     assert.strictEqual(lastMessage(dir), 'ledger(auth-flow): mark as cancelled');
-    assert.strictEqual(sections, '', 'transactions answer with pure JSON');
-    // Receipt: warning above confirmation, fetched from the cancelled state.
-    // Conventions-form callout: 2-space flag, 4-space continuation.
-    const receipt = render(dir, ['workunit-receipt', 'auth-flow', '--verb', 'cancel', '--warn']);
-    assert.match(receipt, /  ⚑ Knowledge removal warning\n    The work unit is cancelled\./);
-    assert.match(receipt, /"Auth Flow" marked as cancelled\./);
+    // Its receipt after its JSON: the warning it answered above the
+    // confirmation, with no flag carried — the conventions-form callout,
+    // 2-space flag, 4-space continuation.
+    assert.match(sections, /  ⚑ Knowledge removal warning\n    The work unit is cancelled\./);
+    assert.ok(sections.indexOf('DISPLAY: kb warning') < sections.indexOf('DISPLAY: confirmation'), sections);
+    assert.match(sectionOf(sections, 'DISPLAY: confirmation'), /^"Auth Flow" marked as cancelled\.\n$/);
   });
 
   it('rejects an already-cancelled unit, and a completed one, which stays finished', () => {

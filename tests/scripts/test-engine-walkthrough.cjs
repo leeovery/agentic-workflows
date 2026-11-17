@@ -70,7 +70,7 @@ describe('engine walkthrough record', () => {
   });
   afterEach(() => cleanupFixture(dir));
 
-  it('walked: writes the answer and commits it confined to the project manifest — a peer session\'s dirt never rides', () => {
+  it('walked: writes the answer and commits it confined to the project manifest — a peer session\'s dirt never rides — and carries on into the walk', () => {
     // A peer mid-write: an untracked spec and a modified brief.
     writeFile(dir, '.ledger/pay/spec.md', 'peer scratch\n');
     writeFile(dir, '.ledger/pay/topics/pay/brief.md', '# Pay\n\npeer session dirt\n');
@@ -78,6 +78,7 @@ describe('engine walkthrough record', () => {
     const res = run(dir, ['walkthrough', 'record', 'walked']);
     assert.strictEqual(res.ok, true);
     assert.strictEqual(res.status, 'walked');
+    assert.deepStrictEqual(res.next, { kind: 'continue' });
     assert.match(res.committed, /^[0-9a-f]+$/);
     assert.deepStrictEqual(projectManifest(dir).walkthrough, { status: 'walked' });
     assert.deepStrictEqual(projectManifest(dir).work_units, { pay: { work_type: 'feature' } }, 'sibling keys survive');
@@ -90,21 +91,22 @@ describe('engine walkthrough record', () => {
     assert.ok(status.some((l) => l.startsWith(' M ') && l.includes('topics/pay/brief.md')), `the peer's modified brief is still dirty:\n${status.join('\n')}`);
   });
 
-  it('skipped: the decline, with its own message', () => {
+  it('skipped: the decline, with its own message, leading nowhere further', () => {
     const res = run(dir, ['walkthrough', 'record', 'skipped']);
     assert.strictEqual(res.status, 'skipped');
+    assert.ok(!('next' in res), JSON.stringify(res));
     assert.deepStrictEqual(projectManifest(dir).walkthrough, { status: 'skipped' });
     assert.strictEqual(stateGit(dir, ['log', '-1', '--pretty=%s']).trim(), 'chore(help): walkthrough skipped');
   });
 
-  it('refuses any other value, and refuses once anything is recorded — the offer is answered once', () => {
+  it('refuses any other value, and refuses once anything is recorded — the offer is answered once, the refusal naming carrying on with the start as its way on', () => {
     refuses(dir, ['walkthrough', 'record', 'bananas'], /one of walked, skipped — got "bananas"/);
     refuses(dir, ['walkthrough', 'record'], /Usage: engine walkthrough record/);
     refuses(dir, ['walkthrough', 'record', 'walked', 'skipped'], /Usage: engine walkthrough record/);
     assert.strictEqual(projectManifest(dir).walkthrough, undefined, 'a refused answer writes nothing');
 
     run(dir, ['walkthrough', 'record', 'walked']);
-    refuses(dir, ['walkthrough', 'record', 'skipped'], /the walkthrough is "walked" — the answer is recorded once/);
+    refuses(dir, ['walkthrough', 'record', 'skipped'], /the walkthrough is "walked" — the answer is recorded once, while nothing is recorded\n {2}The way on: carry on with the start\.$/);
     refuses(dir, ['walkthrough', 'record', 'walked'], /recorded once/);
     setProjectManifest(dir, (m) => { m.walkthrough = { status: 'skipped' }; });
     refuses(dir, ['walkthrough', 'record', 'walked'], /the walkthrough is "skipped"/);

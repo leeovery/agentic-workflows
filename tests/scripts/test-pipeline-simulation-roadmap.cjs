@@ -222,7 +222,7 @@ describe('pipeline simulation: roadmap', () => {
     state = sim.run(['roadmap', 'state']);
     assert.strictEqual(state.items.find((i) => i.name === 'menu-management').state, 'waiting');
     assert.deepStrictEqual(sim.run(['topic', 'reactivate', 'mvp', 'discovery', 'menu-management']).roadmap_rejoined, ['menu-management']);
-    assert.match(sim.render(['topic-receipt', 'mvp.discovery.menu-management', '--verb', 'reactivate'], { expect: 'content' }), /^Reactivated "Menu Management"\. Restored discussion \[in-progress\]\.$/m);
+    assert.match(sim.sections, /^Reactivated "Menu Management"\. Restored discussion \[in-progress\]\.$/m);
     state = sim.run(['roadmap', 'state']);
     const retaken = state.items.find((i) => i.name === 'menu-management');
     assert.deepStrictEqual([retaken.state, retaken.work_unit, retaken.topic], ['in-flight', 'mvp', 'menu-management']);
@@ -342,7 +342,7 @@ describe('pipeline simulation: roadmap', () => {
     sim.run(['roadmap', 'archive', 'menus']);
     const back = sim.run(['workunit', 'reactivate', 'mvp']);
     assert.deepStrictEqual([back.roadmap_rejoined, back.roadmap_stayed], [['ordering'], ['menus']]);
-    assert.match(sim.render(['workunit-receipt', 'mvp', '--verb', 'reactivate', '--stayed', 'menus'], { expect: 'content' }), /^"Mvp" reactivated\. "Menus" stays archived\.$/m);
+    assert.match(sim.sections, /^"Mvp" reactivated\. "Menus" stays archived\.$/m);
     const state = sim.run(['roadmap', 'state']);
     assert.deepStrictEqual([state.totals.in_flight, state.items.find((i) => i.name === 'ordering').work_unit], [1, 'mvp']);
   });
