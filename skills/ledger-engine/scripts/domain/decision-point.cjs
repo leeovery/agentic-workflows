@@ -37,25 +37,25 @@
 // topic — with the key it draws the gate's showing from, and draws what it
 // answers (projections/surfaces.cjs). The showing is drawn from the place,
 // when it was last entered — for a gate at no place, the place the
-// conversation sits at (place-entry.cjs) — and the key. A showing held at the gate's place
-// (showing-hold.cjs) — waiting for its answer, set aside by free text, or
-// left open by a row that shows the gate again — shows again on its hold
-// and is never drawn again, the person having engaged with it, while it is
-// of the subject the draw's key names (`heldFor`); one of a subject gone is
-// ended, and the gate drawn afresh. A surface's draw that shows the gate on
-// a new showing opens its hold; a verb's check of the step reads the hold
-// and opens none. Where no showing is held: in a build in step, the gate
-// shows, the position read from the unit at each gate so a switch bites at
-// once (3.3.3, 3.3.6); else — only the build has a position (3.3.1) — it
-// steps as the gate's count stands for the
-// project and the session's model as of the time, at the person's
-// threshold, its showing's blind ask drawn. A gate off the list shows, and
-// nothing is read for it. A surface's draw that runs the gate as a step
-// logs the step in the trust log (trust-events.cjs), its id drawn from the
-// project, the gate and the showing, so a redraw of the showing is read
-// once and another project's step on a showing drawn alike is read too,
-// the warnings of an append that fails on the step for its surface to
-// draw (16.13.3); a verb's check logs none.
+// conversation sits at (place-entry.cjs) — and the key. A showing held at
+// the gate's place (showing-hold.cjs) — waiting for its answer, set aside by
+// free text, or left open by a row that shows the gate again — shows again
+// on its hold and is never drawn again, the person having engaged with it,
+// while it is of the subject the draw's key names (`heldFor`); one of a
+// subject gone is ended, and the gate drawn afresh. A surface's draw that
+// shows the gate on a new showing opens its hold; a verb's check of the step
+// reads the hold and opens none. Where no showing is held: in a build in
+// step, the gate shows, the position read from the unit at each gate so a
+// switch bites at once (3.3.3, 3.3.6); else — only the build has a position
+// (3.3.1) — it steps as the gate's count stands for the project and the
+// session's model as of the time, at the person's threshold, its showing's
+// blind ask drawn. A gate off the list shows, and nothing is read for it. A
+// surface's draw that runs the gate as a step logs the step in the trust log
+// (trust-events.cjs), its id drawn from the project, the gate and the
+// showing, so a redraw of the showing is read once and another project's
+// step on a showing drawn alike is read too, the warnings of an append that
+// fails on the step for its surface to draw (16.13.3); a verb's check logs
+// none.
 // ---------------------------------------------------------------------------
 
 const { rule } = require('./ask-rule.cjs');
@@ -65,6 +65,7 @@ const { projectId, modelOf, readPersonEvents, record } = require('./trust-log.cj
 const { idFrom } = require('./ledger-ids.cjs');
 const { trustSettings } = require('./trust-settings.cjs');
 const { careEntries } = require('./person.cjs');
+const { offerDue } = require('./convergence.cjs');
 const { learnedGate, heldFor, showingOf, shows, stepOf } = require('./learned-gates.cjs');
 const { heldShowing, holdShowing, endShowing } = require('./showing-hold.cjs');
 const { enteredAt, sittingPlace } = require('./place-entry.cjs');
@@ -114,8 +115,7 @@ function decide(call, { project: { root, name }, model, now, chain, ...at }) {
  * @returns {number|null}
  */
 function convergenceDue(cwd, unit, topic) {
-  // Required here: convergence.cjs reads the ledger through modules that require this one.
-  return require('./convergence.cjs').offerDue(cwd, unit, topic);
+  return offerDue(cwd, unit, topic);
 }
 
 /**

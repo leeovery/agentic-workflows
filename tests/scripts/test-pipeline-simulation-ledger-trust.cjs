@@ -39,9 +39,8 @@ const { DAY, UNDRAWN, idOf, lines, history } = require('./trust-world.cjs');
 
 const DOMAIN = path.join(__dirname, '../../skills/ledger-engine/scripts/domain');
 const decisionPoint = require(path.join(DOMAIN, 'decision-point.cjs'));
-const { TRUST_LOG } = require(path.join(DOMAIN, 'trust-log.cjs'));
-
 const { decide } = decisionPoint;
+const { TRUST_LOG } = require(path.join(DOMAIN, 'trust-log.cjs'));
 
 /**
  * The trust log of `sim` holding the person's answers on behaviour in

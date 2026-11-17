@@ -52,7 +52,6 @@ const { labelled } = require('./labels.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
-
 const { decide } = decisionPoint;
 const { projectName } = require(path.join(SCRIPTS, 'domain/state-checks.cjs'));
 const { MODEL_LINES, countsFrom, stateOf } = require(path.join(SCRIPTS, 'domain/trust-counts.cjs'));

@@ -41,6 +41,7 @@ const { auditGate } = require('./gate-audit.cjs');
 const { huntIn } = require('../../skills/ledger-engine/scripts/domain/investigation-log.cjs');
 const decisionPoint = require('../../skills/ledger-engine/scripts/domain/decision-point.cjs');
 const { showingAnswers } = require('./trust-world.cjs');
+const { labelling } = require('./labels.cjs');
 const { BUG, HUNT, FEATURE, ENGINE, TODAY, GONE, data, useInvestigationWorld, AT, CLAUDE, made } = require('./investigation-world.cjs');
 
 let dir = ''; // the project
@@ -271,6 +272,18 @@ describe('investigation-log — the hunt under its fixed headings (19.4.1–19.4
 
     log('fix-direction', ['--question', made.fix]);
 
+    assert.deepStrictEqual(huntIn(huntLog(), 'log.md', []).fixDirection?.body, STEPPED_BACK);
+  });
+
+  it('a fix direction the rule lets proceed lands Claude\'s call carrying what the step back found as its evidence (5.1.1), which the fix direction takes as its body in any conversation, the seal holding nothing; a body given besides passed over, said so', async () => {
+    log('root-cause', ['--entry', made.rootCause]);
+    const { res } = await okSectionsAsync(dir, ['raise', AT, '--answers', made.fix], { env: { ...env(), ...labelling(FIX_CALL.question, 'behaviour') }, stdin: JSON.stringify({ ...FIX_CALL, stepped_back: STEPPED_BACK }) });
+    const decision = JSON.parse(readState(dir, '.ledger.jsonl').trim().split('\n').at(-1));
+
+    const logged = ok(dir, ['investigation-log', 'fix-direction', HUNT, '--question', made.fix, '--body', staged('fix.md', 'My own words.')], { env: NEXT() });
+
+    assert.deepStrictEqual([res.decision, decision.id, decision.by, decision.evidence], ['proceed', full(res.id), 'claude', STEPPED_BACK]);
+    assert.deepStrictEqual(logged.warnings, [`--body ${path.join(config, 'fix.md')} is passed over: the fix direction's body is what the step back found, as Claude's call deciding the question carries it`]);
     assert.deepStrictEqual(huntIn(huntLog(), 'log.md', []).fixDirection?.body, STEPPED_BACK);
   });
 

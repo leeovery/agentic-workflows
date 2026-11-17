@@ -31,7 +31,7 @@ A claim about the code, a number or the platform is checked before it is said. W
 
 Until the topic's shape is agreed, what it covers and how it broadly works, Claude makes no call of intent or taste on it alone. Where several ways are open it puts ideas forward and asks what you think; where one way is clear it sets out how it sees it working and invites you to pull it apart.
 
-<!-- 19.12 -->Once the shape is agreed, Claude fills in the rest. A call it leans on goes on the map as a question and is raised at a natural pause; whether it reaches you is decided by the ask rule, from how often Claude's answers on calls of that kind would have cost the product, read from your verdicts, never by Claude's own confidence. A call that reaches you usually shows Claude's lean beside it, sealed before you answer; now and then one is asked blind, Claude's answer held back until you have given yours. One that does not is recorded on the ledger as Claude's, and shows first on the map the next time you look. A fact only you hold, such as a deadline or an outside constraint, is always asked. [Trust](trust.md) covers the rule.
+Once the shape is agreed, Claude fills in the rest. A call it leans on goes on the map as a question and is raised at a natural pause; whether it reaches you is decided by the ask rule, from how often Claude's answers on calls of that kind would have cost the product, read from your verdicts, never by Claude's own confidence. A call that reaches you usually shows Claude's lean beside it, sealed before you answer; now and then one is asked blind, Claude's answer held back until you have given yours. One that does not is recorded on the ledger as Claude's, and shows first on the map the next time you look. A fact only you hold, such as a deadline or an outside constraint, is always asked. [Trust](trust.md) covers the rule.
 
 ### The map
 
@@ -65,7 +65,7 @@ A feature has no other topic. A point of its own that needs decisions of its own
 
 ## Closing a topic
 
-<!-- 19.12 -->After eight agreements in a row, or on your word, Claude offers to settle the rest: how many points are open, how many it would settle, and which still come to you by the rule, by kind. On yes its points go on the ledger, yours come one at a time, and the topic moves to its close. Declined, the offer waits for the next run of agreements.
+After eight agreements in a row, or on your word, Claude offers to settle the rest: how many points are open, how many it would settle, and which still come to you by the rule, by kind. On yes its points go on the ledger, yours come one at a time, and the topic moves to its close. Declined, the offer waits for the next run of agreements.
 
 A topic closes once nothing of yours is open on its map, through a **closing pass** with two readers. A fresh agent, unanchored by the conversation, reads the topic's entries and log against the other topics' records and the product record, looking for a question with no answer, a contradiction with another record, and work the decision creates that no topic owns. Claude, who was in the conversation, checks that every decision made in it has its entry, that each replacement holds up against what it replaced, that no two current answers contradict each other, and runs again each measurement a decision rests on. Anything the pass finds lands somewhere, and where it changed what the topic decides, another pass reads what changed, until one changes nothing.
 

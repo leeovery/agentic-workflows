@@ -53,7 +53,6 @@ const { fixture } = require('./board-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
-
 const { decide } = decisionPoint;
 const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 const { projectName } = require(path.join(SCRIPTS, 'domain/state-checks.cjs'));

@@ -86,17 +86,16 @@ const RAISED: Readonly<Record<'root-cause' | 'fix' | 'fix-direction', string>> =
 }
 
 /**
- * What raised a wait and why it reached the person, as its second line says
- * them: a validation, or the fix direction where the wait is no setting out
- * of its options, which says nothing more; then why, where the engine gives it.
+ * What raised a wait, as its second line names it: a validation, or the fix
+ * direction where the wait is no setting out of its options, whose first
+ * line says it already.
  */
-function saidOf(wait: RaiseWait): string {
-  if (wait.raised_by === 'fix-direction' && wait.options !== null) {
-    return ''
-  }
-
-  return [...(wait.raised_by === null ? [] : [RAISED[wait.raised_by]]), ...(wait.why === null ? [] : [wait.why])].join(' · ')
+function raiserOf(wait: RaiseWait): string[] {
+  return wait.raised_by === null || (wait.raised_by === 'fix-direction' && wait.options !== null) ? [] : [RAISED[wait.raised_by]]
 }
+
+/** What raised a wait and why it reached the person, as its second line says them: why where the engine gives it. */
+const saidOf = (wait: RaiseWait): string => [...raiserOf(wait), ...(wait.why === null ? [] : [wait.why])].join(' · ')
 
 /** Where Claude's lean stands among the fix direction's options, as its wait says it: nothing where a blind question holds it back. */
 const LEAN_SAID: Readonly<Record<'first' | 'marked' | 'held', string>> = {

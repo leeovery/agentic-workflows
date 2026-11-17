@@ -49,7 +49,7 @@ A finding that does not hold up is declined, with why in the log.
 
 Before any fix is set out, Claude steps back from the bug. Was the implementation wrong, or was it right and an edge case has turned up? Is there another way to do it, a different abstraction or mechanism, that thinking higher up reveals?
 
-<!-- 19.12 -->The **fix direction** is then a question, each answer a way to fix it said as what you would notice, with what the step back found beside it. Where the cause sits in the design, or the area keeps breaking, it carries one way more: rework the area as a feature. Where the root cause is a design problem, the fix direction always comes to you; any other goes through the [ask rule](trust.md) like any call. The direction says what the fix does, never how it is written; that is the specification's.
+The **fix direction** is then a question, each answer a way to fix it said as what you would notice, with what the step back found beside it. Where the cause sits in the design, or the area keeps breaking, it carries one way more: rework the area as a feature. Where the root cause is a design problem, the fix direction always comes to you; any other goes through the [ask rule](trust.md) like any call. The direction says what the fix does, never how it is written; that is the specification's.
 
 ## Reworking it as a feature
 

@@ -431,15 +431,17 @@ describe('a keep changes nothing current (5.6.10)', () => {
 });
 
 describe('Claude\'s own replacement of the person\'s decision (16.5.7)', () => {
-  it('is refused, writing nothing, naming the raise: the person\'s decision as written, at once while a peer holds the lock, and Claude\'s once the person kept it, their keep landing while the write waited on the lock; the person\'s own replacement lands, and one they hand Claude', async (t) => {
+  /** Claude's replacement of the decision `entry` for `why`, its reason and any cause, `given` over its content: the call's argv and options. @param {string} entry @param {Record<string, unknown>} [given] @param {string[]} [why] @returns {[string[], {env: Record<string, string|undefined>, stdin: string}]} */
+  const changing = (entry, given = {}, why = ['--reason', 'changed-mind']) => [
+    ['ledger', 'replace', NOTE, '--replaces', entry, ...why],
+    { env: conversation(), stdin: JSON.stringify({ ...MADE, drops: [], text: 'Wherever the last note was.', why: 'Notes gather.', ...given }) },
+  ];
+
+  it('is refused, writing nothing, naming the raise in full: the person\'s decision as written, at once while a peer holds the lock, and Claude\'s once the person kept it, their keep landing while the write waited on the lock; the person\'s own replacement lands, and one they hand Claude', async (t) => {
     const theirs = ledgerHelpers(() => dir).write('decide', NOTE, ['--answers', made.focus], { by: 'person', who_moved_whom: 'none', text: 'It takes the focus', why: 'Typing starts at once.' }).id;
     const kept = await draw();
-    /** Claude's replacement of the decision `entry`, `given` over its content: the call's argv and options. @param {string} entry @param {Record<string, unknown>} [given] @returns {[string[], {env: Record<string, string|undefined>, stdin: string}]} */
-    const changing = (entry, given = {}) => [
-      ['ledger', 'replace', NOTE, '--replaces', entry, '--reason', 'changed-mind'],
-      { env: conversation(), stdin: JSON.stringify({ ...MADE, drops: [], text: 'Wherever the last note was.', why: 'Notes gather.', ...given }) },
-    ];
-    const refusal = (/** @type {string} */ entry) => `ledger replace: ${entry} is the person's decision — Claude's change to it always comes to them: raise --replaces ${entry}`;
+    const refusal = (/** @type {string} */ entry, /** @type {string} */ why) => `ledger replace: ${entry} is the person's decision — Claude's change to it always comes to them: raise ${NOTE} --replaces ${entry} ${why}`;
+    const newFact = ['--reason', 'new-fact', '--cause', made.screens];
     const lock = statePath(dir, layout.lock);
     fs.writeFileSync(lock, JSON.stringify({ pid: process.pid, pid_start: processStartTime(process.pid) }));
     const attempts = lockAttempts(t, lock, () => {
@@ -450,14 +452,29 @@ describe('Claude\'s own replacement of the person\'s decision (16.5.7)', () => {
 
     const atOnce = refuses(dir, ...changing(theirs)).error;
     const unlocked = [...attempts];
-    const keptMeanwhile = refuses(dir, ...changing(made.opens)).error;
+    const keptMeanwhile = refuses(dir, ...changing(made.opens, {}, newFact)).error;
 
-    assert.deepStrictEqual([atOnce, unlocked, keptMeanwhile], [refusal(theirs), [], refusal(made.opens)]);
+    assert.deepStrictEqual([atOnce, unlocked, keptMeanwhile], [refusal(theirs, '--reason changed-mind'), [], refusal(made.opens, newFact.join(' '))]);
     assert.deepStrictEqual([attempts[0], attempts.at(-1)], ['taken', 'made']);
     assert.deepStrictEqual(entries().slice(count).map((e) => [e.event, full(e.id)]), [['kept', kept]]);
     ok(dir, ...changing(theirs, { given: 'your-call' }));
     ok(dir, ...changing(made.opens, { by: 'person', who_moved_whom: 'person-moved-claude' }));
     assert.deepStrictEqual(entries().slice(-2).map((e) => [e.by, e.given, e.replaces]), [['claude', 'your-call', full(theirs)], ['person', 'own', full(made.opens)]]);
+  });
+
+  it('lets it through where the decision is not the person\'s: one the migration carried over, and one the person handed Claude, by "your call" or "don\'t care" — each landing as Claude\'s', () => {
+    const { write, carriedOver } = ledgerHelpers(() => dir);
+    const asked = (/** @type {string} */ text) => write('ask', NOTE, [], { ...MADE, text }).id;
+    const handed = (/** @type {string} */ text, /** @type {string} */ given) => write('decide', NOTE, ['--answers', asked(text)], { ...MADE, text: 'It keeps it.', why: 'Handed over.', given }).id;
+    const decisions = [
+      carriedOver(NOTE, asked('Does a note keep its colour?'), 'It keeps it.'),
+      handed('Does a note keep its size?', 'your-call'),
+      handed('Does a note keep its font?', 'dont-care'),
+    ];
+
+    for (const entry of decisions) ok(dir, ...changing(entry));
+
+    assert.deepStrictEqual(entries().slice(-3).map((e) => [e.by, e.given, e.replaces]), decisions.map((entry) => ['claude', 'own', full(entry)]));
   });
 });
 

@@ -416,31 +416,33 @@ function unparked(said) {
 /**
  * Claude's own replacement of a decision that is the person's (16.5.7) —
  * theirs as written, or as their keep of it since gives it — refused in the
- * words of `said`: changing it always comes to them, through a raise.
- * @param {string} said
+ * words of `said`: changing it always comes to them, through a raise at the
+ * write's `place` for its reason and cause.
+ * @param {string} said @param {string} place
  * @returns {LinksCheck}
  */
-function theirsUnreplaced(said) {
-  return ({ replaces }, read) => {
+function theirsUnreplaced(said, place) {
+  return ({ replaces, reason, cause }, read) => {
     const entry = oneId(replaces);
     if (entry === null || whoseDecision(read, entry) !== 'person') return;
-    const short = shortId(entry, read.facts.keys());
-    throw new Error(`${said}: ${short} is the person's decision — Claude's change to it always comes to them: raise --replaces ${short}`);
+    const short = (/** @type {string} */ id) => shortId(id, read.facts.keys());
+    const caused = oneId(cause);
+    throw new Error(`${said}: ${short(entry)} is the person's decision — Claude's change to it always comes to them: raise ${place} --replaces ${short(entry)} --reason ${reason}${caused === null ? '' : ` --cause ${short(caused)}`}`);
   };
 }
 
 /**
  * What a ledger verb checks of its links under the lock, and before it for
  * a decision: what a question waiting in the build is about, where it
- * answers one, and the person's decision, where Claude's own call would
- * replace one.
- * @param {string} said @param {Write} write @param {EntryKind|null} kind @param {Record<string, unknown>} content
+ * answers one, and the person's decision, where Claude's own call at
+ * `place` would replace one.
+ * @param {string} said @param {Write} write @param {EntryKind|null} kind @param {Record<string, unknown>} content @param {string} place
  * @returns {LinksCheck}
  */
-function linksChecked(said, write, kind, { by, given }) {
+function linksChecked(said, write, kind, { by, given }, place) {
   const checks = [
     ...(ANSWERING.has(write) ? [unparked(said)] : []),
-    ...(write === WRITES.replace && kind === 'decision' && by === 'claude' && given === 'own' ? [theirsUnreplaced(said)] : []),
+    ...(write === WRITES.replace && kind === 'decision' && by === 'claude' && given === 'own' ? [theirsUnreplaced(said, place)] : []),
   ];
   return (linked, read) => {
     for (const check of checks) check(linked, read);
@@ -1240,7 +1242,7 @@ function requestOf(cwd, verb, args, stdin, warnings) {
     label: null,
     id: null,
     checkRead: nothingToCheck,
-    checkLinks: linksChecked(said, write, kind, fields),
+    checkLinks: linksChecked(said, write, kind, fields, at.dotpath),
     mints: NOTHING_MINTED,
     logs: trustEventOf(kind, fields, reason, replaced),
     before,

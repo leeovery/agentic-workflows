@@ -18,7 +18,7 @@ Every call you can't settle by checking goes to `raise`, the obvious ones includ
 
 A fact only the person holds, such as a deadline or an outside constraint, goes to `raise` with `--fact`: no lean, and rows only where the answers are few and known. It is always asked, and counts for nothing in the trust layer, which takes only intent and taste. The person's answer in their own words, given through the Comment row too, goes to `raise answer {id} --own`.
 
-In a call's raise you say whether it has one defensible answer or several. It has one where the record — decisions already made, sibling work, the brief — platform or industry convention, or first principles admit exactly one; it has several where the answer turns on what the person wants or knows. Your lean goes in the call's `lean` alone, never in the rows' words or the mechanism: the engine may hold it back and ask the call cold.
+In a call's raise you say whether it has one defensible answer or several. It has one where the record — decisions already made, sibling work, the brief — platform or industry convention, or first principles admit exactly one; it has several where the answer turns on what the person wants or knows. Your lean goes in the call's `lean` alone, never in the rows' words, the mechanism or `stepped_back`: the engine may hold it back and ask the call cold.
 
 A raise may draw nothing. A call it lets proceed has landed as yours: carry on from it. One it sends back to check, check, and raise it again only if checking can't settle it. A raise drawn without your lean is answered as any other.
 

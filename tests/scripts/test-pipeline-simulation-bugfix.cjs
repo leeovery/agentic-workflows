@@ -48,17 +48,16 @@ const { trustLines } = require('./pipeline-oracle.cjs');
 const { FROZEN_AT } = require('./engine-harness.cjs');
 const { statePath } = require('./discovery-test-utils.cjs');
 const decisionPoint = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/decision-point.cjs'));
-
 const { gateStep } = decisionPoint;
 const { TRUST_LOG } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/trust-log.cjs'));
 
 const CLAUDES = Object.freeze({ by: 'claude', who_moved_whom: 'none' });
 
-/** A call raised to the person, a row for each key, the first its lean. @param {string} question @param {string[]} keys */
-const callOf = (question, keys) => JSON.stringify({
+/** A call raised to the person, a row for each key, the first its lean, sorted `sort`. @param {string} question @param {string[]} keys @param {'one'|'several'} sort */
+const callOf = (question, keys, sort) => JSON.stringify({
   question,
   rows: keys.map((key) => ({ key, name: `Option ${key}`, text: `The save does ${key}`, notice: `a save does ${key}` })),
-  lean: keys[0], why: 'It stops the crash at its cause.', sort: 'one', mechanism: 'The save checks the field.', product_wide: false,
+  lean: keys[0], why: 'It stops the crash at its cause.', sort, mechanism: 'The save checks the field.', product_wide: false,
 });
 
 /**
@@ -96,7 +95,7 @@ async function huntedAsking(sim, wu) {
   const rootCheck = reported(sim, wu, 'root-cause', ['F1']);
   landed('A crash mid-save leaves a half-written file.');
   const asked = sim.run(['ledger', 'ask', at], null, JSON.stringify({ ...CLAUDES, text: 'Should a crashed save keep the half-written file?' })).id;
-  const kept = (await sim.runAsync(['raise', at, '--answers', asked], null, callOf('Should a crashed save keep the half-written file?', ['hold', 'drop']))).raise;
+  const kept = (await sim.runAsync(['raise', at, '--answers', asked], null, callOf('Should a crashed save keep the half-written file?', ['hold', 'drop'], 'several'))).raise;
   sim.run(['agent', 'surface', wu, 'investigation', wu, rootCheck, 'F1', '--question', asked]);
   sim.run(['agent', 'incorporate', wu, 'investigation', wu, rootCheck]);
   const byRoot = raisersOn(sim);
@@ -107,7 +106,7 @@ async function huntedAsking(sim, wu) {
   const fix = JSON.parse(sim.read(['ledger', 'record', wu, wu])).decisions.find((/** @type {{text: string}} */ d) => d.text === 'Check the field before the save writes it').id;
   const fixCheck = reported(sim, wu, 'fix', ['F1']);
   const cause = landed('Checking the field leaves the half-written file a crash makes.');
-  const replaced = (await sim.runAsync(['raise', at, '--replaces', fix, '--reason', 'new-fact', '--cause', cause], null, callOf('Should the fix also write the save atomically?', ['atomic', 'check']))).raise;
+  const replaced = (await sim.runAsync(['raise', at, '--replaces', fix, '--reason', 'new-fact', '--cause', cause], null, callOf('Should the fix also write the save atomically?', ['atomic', 'check'], 'one'))).raise;
   sim.run(['agent', 'surface', wu, 'investigation', wu, fixCheck, 'F1', '--replaces', fix, '--reason', 'new-fact']);
   sim.run(['agent', 'incorporate', wu, 'investigation', wu, fixCheck]);
   const byFix = raisersOn(sim);

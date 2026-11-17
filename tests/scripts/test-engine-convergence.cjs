@@ -49,7 +49,6 @@ const { auditGate } = require('./gate-audit.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
-
 const { decide } = decisionPoint;
 const { SHOWN } = require(path.join(SCRIPTS, 'domain/gate.cjs'));
 const { offerDue } = require(path.join(SCRIPTS, 'domain/convergence.cjs'));
@@ -265,7 +264,7 @@ describe('the run (16.8.7)', () => {
     assert.strictEqual(due(SPACE), null);
   });
 
-  it('after the person\'s yes, no offer comes while a question open at the yes is still open, however long the run since; once each is closed, one comes on a question asked since', (t) => {
+  it('after the person\'s yes, no offer comes while a question open at the yes is still open, however long the run since — none cued, and its render refused unasked; once each is closed, one comes on a question asked since', (t) => {
     const { asked, decided } = planting(statePath(dir));
     t.mock.timers.enable({ apis: ['Date'], now: Date.now() - 2 * DAY });
     const before = asked(TOPIC, 'Does a note keep its place?');
@@ -274,11 +273,11 @@ describe('the run (16.8.7)', () => {
       h.converged(UNIT, TOPIC);
       Object.values(made.open).forEach((question, n) => h.answered(decided(TOPIC, question, n), '1'));
     });
-    const settling = due();
+    const settling = [due(), notDue()];
     asked(TOPIC, 'Does a note pin to the desktop?');
     logOf((h) => h.answered(decided(TOPIC, before, 8), '1'), Date.now());
 
-    assert.deepStrictEqual([settling, due()], [null, 9]);
+    assert.deepStrictEqual([settling, due()], [[null, 'render convergence: no offer is due on Note Window at 8 agreements in a row; on the person\'s word, --asked'], 9]);
   });
 });
 

@@ -39,6 +39,7 @@ const { boardOf, BOARD_USAGE } = require('../../skills/ledger-engine/scripts/dom
 const { startMenuRead } = require('../../skills/ledger-engine/scripts/domain/start-menu.cjs');
 const { ledgerHelpers } = require('./ledger-world.cjs');
 const { fixture, misfits, emptyLists, place, standingOn } = require('./board-world.cjs');
+const { labelling } = require('./labels.cjs');
 
 const BUG = 'kill-all';
 const EARLIER = 'empty-save';
@@ -399,6 +400,18 @@ describe('This session in an investigation (20.12.1)', () => {
     const { view } = board([], 'sess-2');
 
     assert.deepStrictEqual([view.fix_direction, view.decided], [{ state: 'picked', stepped_back: FIX_CALL.stepped_back, options: [], pick: null, fix: 'Only stop reading a dying tmux as no sessions' }, []]);
+  });
+
+  it('a fix direction the rule let proceed, once logged, reads what stepping back found as Claude\'s call carries it, picked by no one and its options unknown', async () => {
+    takenIn(dispatched('root-cause-validation', []).id);
+    const { res } = await okSectionsAsync(dir, ['raise', AT, '--answers', made.fix], { env: { ...env(), ...labelling(FIX_CALL.question, 'behaviour') }, stdin: JSON.stringify(FIX_CALL) });
+    run(['investigation-log', 'fix-direction', BUG, '--question', made.fix]);
+    atTheHunt();
+
+    const { view } = board();
+
+    assert.strictEqual(res.decision, 'proceed');
+    assert.deepStrictEqual(view.fix_direction, { state: 'picked', stepped_back: FIX_CALL.stepped_back, options: [], pick: null, fix: FIX_CALL.rows[0].text });
   });
 
   it('a validation lost with its conversation is lost, and nothing validates', () => {

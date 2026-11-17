@@ -34,14 +34,16 @@
 //   first logged; a later line for it, `hypothesis <bugfix> H{n}` with its
 //   `--title`, its `--state` or both, says it as it is now, what it does not
 //   give carried, and stands over the earlier. An experiment is numbered as
-//   it is logged. The fix direction's body is what the step back found, as
-//   the conversation's latest raise down its question's chain sealed it —
-//   one answering the question, or one replacing a decision that did or
-//   replaced one that did (raise.cjs) — and `--body`, one finding a line as
-//   the seal's are, where it sealed none: a body given besides is passed
-//   over, said among the warnings. Nothing is committed: every state commit
-//   takes the log along (6.3.2). It answers what the reads passed over, the
-//   log's lines among them, as warnings.
+//   it is logged. The fix direction's body is what the step back found: as
+//   its question's current decision carries it, the evidence of Claude's
+//   call landed as Claude's — proceeding, or left to Claude by "don't care"
+//   (raise.cjs) — else as the conversation's latest raise down the
+//   question's chain sealed it, one answering the question, or one
+//   replacing a decision that did or replaced one that did; and `--body`,
+//   one finding a line as the seal's are, where neither holds it: a body
+//   given besides is passed over, said among the warnings. Nothing is
+//   committed: every state commit takes the log along (6.3.2). It answers
+//   what the reads passed over, the log's lines among them, as warnings.
 // - It refuses, writing nothing: a kind it lacks, an argument out of its
 //   shape; a place whose investigation cannot take work — as the entry
 //   refuses one (topic-standing.cjs) — or has not started; a value missing,
@@ -341,6 +343,24 @@ function assertRootCauseAt(cwd, unit, said, warnings) {
  * @typedef {{usage: string, takes: number, flags: string[], may: string[], line: (given: Given) => string, body?: (given: Given, line: string, warnings: string[]) => string[]}} Form
  */
 
+/**
+ * What the step back found for the fix direction's question, and where it
+ * was read: the evidence its current decision carries — Claude's call,
+ * landed as Claude's (raise.cjs) — else what this conversation's latest
+ * raise down its chain sealed; null where neither holds any.
+ * @param {UnitView} view @param {string} question
+ * @returns {{lines: string[], from: string}|null}
+ */
+function steppedBackOf(view, question) {
+  const carried = answersOf(view.folded, question)
+    .map((id) => /** @type {string[]|undefined} */ (view.entries.get(id)?.line.evidence) ?? [])
+    .filter((lines) => lines.length > 0).at(-1);
+  if (carried !== undefined) return { lines: carried, from: 'Claude\'s call deciding the question carries it' };
+  // Required here, not above: raise.cjs requires this module.
+  const sealed = require('./raise.cjs').steppedBackSealed(view.folded, question);
+  return sealed === null ? null : { lines: sealed, from: 'this conversation\'s raise of the question sealed it' };
+}
+
 /** A hypothesis's title, one line holding no ` · `. @param {string|undefined} title */
 const titleOf = (title) => unbroken(SAID, oneLine(SAID, title, 'title'), 'title', [DOT]);
 
@@ -450,11 +470,10 @@ const ENTRIES = Object.freeze({
         return `${wordsOf(view(), id)} [${id}]`;
       },
       body: (given, line, warnings) => {
-        // Required here, not above: raise.cjs requires this module.
-        const sealed = require('./raise.cjs').steppedBackSealed(given.view().folded, /** @type {RegExpExecArray} */ (POINTED_LINE.exec(line))[2]);
-        if (sealed === null) return given.body();
-        if (given.opts[BODY] !== undefined) warnings.push(`--${BODY} ${given.opts[BODY]} is passed over: the fix direction's body is what the step back found, as this conversation's raise of the question sealed it`);
-        return sealed;
+        const found = steppedBackOf(given.view(), /** @type {RegExpExecArray} */ (POINTED_LINE.exec(line))[2]);
+        if (found === null) return given.body();
+        if (given.opts[BODY] !== undefined) warnings.push(`--${BODY} ${given.opts[BODY]} is passed over: the fix direction's body is what the step back found, as ${found.from}`);
+        return found.lines;
       },
     }],
   },
