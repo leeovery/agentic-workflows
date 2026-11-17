@@ -31,4 +31,4 @@ function helpTopicsScreen() {
 /** `render help-topics`: the reference cards (the header's). @param {string} cwd @returns {string} */
 const helpTopicsSurface = (cwd) => drawMenu(cwd, MENUS['help-topics'], {}, helpTopicsScreen());
 
-module.exports = { helpTopicsScreen, helpTopicsSurface };
+module.exports = { helpTopicsSurface };

@@ -79,7 +79,7 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 const twoDigits = (value: number) => String(value).padStart(2, '0')
 
 /** A moment as the board says it: "20 Oct 00:03". */
-export function dayAndTime(at: string): string {
+function dayAndTime(at: string): string {
   const when = new Date(at)
 
   return `${when.getDate()} ${MONTHS[when.getMonth()] ?? ''} ${twoDigits(when.getHours())}:${twoDigits(when.getMinutes())}`

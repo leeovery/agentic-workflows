@@ -11,9 +11,9 @@
 //   `gate-shown.json`: its name, its question, each row by its key with its
 //   word, its head, its tail and any detail beneath it, whether the engine
 //   recommended it and what answering it leads to; each typed row by its
-//   key with its label, whether the person answers it in words, and what it
-//   leads to; the time it was drawn and the time its showing opened, a
-//   learned gate's showing (learned-gates.cjs), and its answer once given. The engine's
+//   key with its label and what it leads to; the time it was drawn and the
+//   time its showing opened, a learned gate's showing (learned-gates.cjs),
+//   and its answer once given. The engine's
 //   dispatch writes it once the command has answered, never as the MENU is
 //   built; a command that states no gate, or fails, leaves the last one
 //   standing. Nothing is kept for a command Claude
@@ -28,7 +28,7 @@
 //   is `in-session gate`), and `gate` takes either. The name is never made
 //   to fit: one the trust log cannot key refuses the answer
 //   (trust-events.cjs). A typed row's key is its label's words, lowercase,
-//   joined by hyphens: `comment`, `tell-me-what-to-change`, a span `1-4`.
+//   joined by hyphens: `comment`, `tell-me-what-to-change`.
 // - An answer is a row picked by its key; a typed row, by its key; or free
 //   text, naming no row, the person's words given with it. The separate
 //   call reads the words against the gate's question and its rows, as the
@@ -59,8 +59,7 @@
 //   answers no row (6.6.2). At a learned gate every pick leaves it but a row
 //   whose next shows the gate again at its place — the Comment at the
 //   investigation's gates, the wait's wait (learned-gates.cjs); at any other,
-//   every pick but a typed row the person answers in words, a Comment or an
-//   Ask, which sets it aside. Drawn again while it lasts, the gate shown
+//   every pick but a typed row, a Comment or an Ask, which sets it aside. Drawn again while it lasts, the gate shown
 //   keeps the time the showing opened and the showing it was drawn on, so
 //   the showing is one event under one id however many replies it took, the
 //   first read (16.13.3); the time it was drawn is this draw's,
@@ -103,7 +102,7 @@ const { stateRoot } = require('../kernel/state-root.cjs');
 
 /** @typedef {import('./projections/surfaces.cjs').Next} Next */
 /** @typedef {import('./projections/surfaces.cjs').ShownOption} ShownOption */
-/** @typedef {{key: string, label: string, prompt: boolean, next: Next|null}} ShownTypedRow */
+/** @typedef {{key: string, label: string, next: Next|null}} ShownTypedRow */
 /** @typedef {{at: string, picked: string|null, via: 'pressed'|'typed'}} Answered */
 /**
  * @typedef {object} ShownRecord
@@ -172,7 +171,7 @@ function recordGateShown() {
       gate,
       question: shown.question,
       options: shown.options,
-      typed: shown.typed.map(({ label, prompt, next }) => ({ key: typedKey(label), label, prompt, next })),
+      typed: shown.typed.map(({ label, next }) => ({ key: typedKey(label), label, next })),
       at,
       opened: shown.hold?.opened ?? openShowing(session, gate)?.opened ?? at,
       showing: shown.showing,
@@ -227,13 +226,12 @@ function openShowing(session, name) {
  * Whether the answer `picked` at the gate `shown` — a row's key, a typed
  * row's, or null for free text — is a pick that leaves the gate, ending its
  * showing: never free text; at a learned gate, any row but one whose next
- * shows the gate again at its place; at any other, any row but a typed row
- * the person answers in words.
+ * shows the gate again at its place; at any other, any row but a typed row.
  * @param {ShownRecord} shown @param {string|null} picked
  */
 function leaves(shown, picked) {
   if (picked === null) return false;
-  return learnedGate(shown.gate) === null ? !shown.typed.some((t) => t.key === picked && t.prompt) : !keepsShowing(shown.gate, picked);
+  return learnedGate(shown.gate) === null ? !shown.typed.some((t) => t.key === picked) : !keepsShowing(shown.gate, picked);
 }
 
 /** Forget the gate the conversation `session` was shown. @param {string} session */

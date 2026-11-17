@@ -23,7 +23,7 @@ const { ok, output, refusedPristine, FROZEN_MS } = require('./engine-harness.cjs
 const { DAY, lines, history, shownIn, showingAnswers } = require('./trust-world.cjs');
 const { setupFixture, cleanupFixture, createManifest, createFile } = require('./discovery-test-utils.cjs');
 const { GATE_MARKER, announced, auditGate, auditMarkers } = require('./gate-audit.cjs');
-const { openGate, gateShown, section, menu, menuFrame, cmdOption, promptOption, optionDetail } = require('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs');
+const { openGate, gateShown, section, menu, menuFrame, cmdOption, promptOption } = require('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs');
 const decisionPoint = require('../../skills/ledger-engine/scripts/domain/decision-point.cjs');
 const { showingOf, drawnBlind } = require('../../skills/ledger-engine/scripts/domain/learned-gates.cjs');
 
@@ -464,8 +464,7 @@ describe('gate payload — every row shape', () => {
 });
 
 describe('gate payload — a row\'s detail', () => {
-  it('lines directly beneath a row are its detail: separate lines keep their break, a wrapped description joins back', () => {
-    const description = 'A description long enough that the engine has to wrap it across several lines.';
+  it('lines directly beneath a row are its detail, each line kept on its own', () => {
     const gate = collect(() => menuFrame([
       'Pick one?',
       '',
@@ -474,13 +473,13 @@ describe('gate payload — a row\'s detail', () => {
       'A second note.',
       cmdOption('2', null, 'Second'),
       promptOption('Comment', 'Tell me more'),
-      ...optionDetail(description, 30),
+      'A note on the comment.',
       '',
       'Reply with a number.',
     ]));
 
     assert.deepStrictEqual(gate.options.map((/** @type {{detail: string|null}} */ o) => o.detail), ['A note on the first.\nA second note.', null]);
-    assert.strictEqual(gate.typed[0].detail, description);
+    assert.strictEqual(gate.typed[0].detail, 'A note on the comment.');
     assert.strictEqual(gate.question, 'Pick one?');
     assert.strictEqual(gate.statement, 'Reply with a number.');
   });

@@ -7,7 +7,7 @@ require('./hermetic-env.cjs');
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-const { StubProvider, STUB_MODEL_ID, DEFAULT_STUB_DIMENSIONS } = require('../../skills/ledger-engine/scripts/kernel/knowledge/embeddings.cjs');
+const { StubProvider, STUB_MODEL_ID } = require('../../skills/ledger-engine/scripts/kernel/knowledge/embeddings.cjs');
 
 describe('StubProvider', () => {
   it('returns a vector of correct length for a single string', () => {
@@ -15,7 +15,7 @@ describe('StubProvider', () => {
     const v = p.embed('hello');
     assert.ok(Array.isArray(v));
     assert.strictEqual(v.length, p.dimensions());
-    assert.strictEqual(v.length, DEFAULT_STUB_DIMENSIONS);
+    assert.strictEqual(v.length, 128);
     for (const n of v) assert.strictEqual(typeof n, 'number');
   });
 

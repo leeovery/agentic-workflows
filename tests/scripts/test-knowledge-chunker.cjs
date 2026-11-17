@@ -466,10 +466,9 @@ describe('phase chunking configs', () => {
 
   const chunkingDir = CHUNKING_DIR;
 
-  // Every indexable phase ships a validated config — driven from the source
-  // of truth so a new phase cannot land without one.
-  const { INDEXED_PHASES } = require('../../skills/ledger-engine/scripts/domain/knowledge/artifacts.cjs');
-  const phases = INDEXED_PHASES;
+  // Every phase a chunk carries ships a validated config.
+  const { RECORD_PHASE, SUMMARY_PHASE } = require('../../skills/ledger-engine/scripts/domain/knowledge/artifacts.cjs');
+  const phases = [RECORD_PHASE, SUMMARY_PHASE];
 
   for (const phase of phases) {
     it('has a valid ' + phase + '.json config with required fields', () => {
@@ -483,7 +482,7 @@ describe('phase chunking configs', () => {
       // A record's copy, and a quick-fix's short record, cut at every heading
       // however short it is, so each question, finding and entry from
       // elsewhere, and each fix's record, is a chunk of its own.
-      assert.strictEqual(cfg.keep_whole_below, ['record', 'summary'].includes(phase) ? 0 : 50);
+      assert.strictEqual(cfg.keep_whole_below, 0);
       assert.strictEqual(cfg.strip_frontmatter, true);
       assert.strictEqual(cfg.skip_empty_sections, true);
       assert.strictEqual(typeof cfg.confidence, 'string');

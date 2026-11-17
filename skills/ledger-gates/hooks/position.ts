@@ -4,14 +4,14 @@
  */
 
 /** A task in flight: its `{phase}.{n}`, and the agent ids of its builder and its reviewers. */
-export type InFlight = {
+type InFlight = {
   task: string
   builder: string | null
   reviewers: string[]
 }
 
 /** Where the conversation is working: a work unit, its phase and topic, every task in flight there. */
-export type Position = {
+type Position = {
   name: string
   phase?: string
   topic?: string

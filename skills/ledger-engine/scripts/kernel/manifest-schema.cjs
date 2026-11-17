@@ -39,9 +39,6 @@ const WORK_TYPE_PIPELINES = {
   'quick-fix':     ['implementation', 'review'],
 };
 
-/** Every phase an epic holds: discovery, its map, then its pipeline. */
-const EPIC_PHASES = Object.freeze(['discovery', ...WORK_TYPE_PIPELINES.epic]);
-
 // Derived-bookkeeping phases: the item is computed over its own records — no
 // hand lifecycle, no resume or reactivate; the phase's own verbs maintain the
 // item. Every generic surface keys on this list, never on a phase name.
@@ -125,15 +122,6 @@ function compareExperimentIds(a, b) {
 // pattern unanchored, for a pattern that holds one.
 const KEBAB_SLUG = '[a-z0-9]+(?:-[a-z0-9]+)*';
 const KEBAB_SLUG_PATTERN = new RegExp(`^${KEBAB_SLUG}$`);
-
-/**
- * A plain name: any name the discovery map accepts — no slashes, no dots,
- * one line with no surrounding whitespace, since these names render as tags.
- * @param {string} name
- */
-function isPlainName(name) {
-  return name !== '' && name.trim() === name && !/[\x00-\x1f\x7f\\/.]/.test(name);
-}
 
 /**
  * Why a manifest key or label is illegal, or null when it is fine: dots break
@@ -261,7 +249,6 @@ module.exports = {
   PHASE_STAGES,
   VALID_PHASES,
   WORK_TYPE_PIPELINES,
-  EPIC_PHASES,
   DERIVED_PHASES,
   TOPIC_PHASES,
   isTopicPhase,
@@ -273,7 +260,6 @@ module.exports = {
   compareExperimentIds,
   KEBAB_SLUG,
   KEBAB_SLUG_PATTERN,
-  isPlainName,
   illegalNameReason,
   assertLegalName,
   EXPERIMENT_SPAWN_PHASES,

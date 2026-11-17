@@ -282,5 +282,5 @@ function setupOf(cwd) {
 }
 
 module.exports = {
-  VERIFY_PARTS, SETUP_PLACES, PARTS, linters, tests, verifySetup, concurrency, confirmedAt, stepsAt, setupOf, setupFaults, environmentFaults, filled, instant,
+  VERIFY_PARTS, SETUP_PLACES, PARTS, linters, tests, verifySetup, concurrency, confirmedAt, stepsAt, setupOf, setupFaults, environmentFaults, filled,
 };

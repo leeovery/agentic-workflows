@@ -85,7 +85,6 @@ describe('the engine\'s phase tables (3.S1)', () => {
     'the phase table': Object.keys(schema.PHASE_STAGES),
     'the status vocabularies': Object.keys(schema.VALID_PHASE_STATUSES),
     'the pipelines': Object.values(schema.WORK_TYPE_PIPELINES).flat(),
-    'the epic\'s phases': schema.EPIC_PHASES,
     'the topic\'s phases': schema.TOPIC_PHASES,
     'the build\'s phases': schema.BUILD_PHASES,
     'the derived phases': schema.DERIVED_PHASES,

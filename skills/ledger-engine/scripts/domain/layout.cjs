@@ -289,4 +289,4 @@ function engineRefusal(at, rel) {
   return `${at.what} (${rel}) changes only through the engine's commands${at.verb === undefined ? '' : ` — engine ${at.verb}`}`;
 }
 
-module.exports = { LAYOUT, TODAY, SPEC_PLACE, PRODUCT_DIR, PRODUCT_SESSIONS, PRODUCT_NOTES, ASSET_HOMES, SPIKE_HOMES, AS_WRITTEN, IN_LOWER_CASE, folding, layoutPlace, stagedPlace, assetHome, engineRefusal };
+module.exports = { LAYOUT, TODAY, SPEC_PLACE, PRODUCT_DIR, PRODUCT_SESSIONS, PRODUCT_NOTES, SPIKE_HOMES, IN_LOWER_CASE, folding, layoutPlace, stagedPlace, assetHome, engineRefusal };

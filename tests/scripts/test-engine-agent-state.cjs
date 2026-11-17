@@ -76,14 +76,14 @@ describe('engine agent — lifecycle store', () => {
     assert.deepStrictEqual([dispatcher(named.id), dispatcher(unnamed.id)], [['sess-1', process.pid, processStartTime(process.pid)], [null, null, null]]);
   });
 
-  it('dispatch numbers past legacy files already in the cache dir', () => {
-    writeContent(dir, '.ledger/.cache/pay/discussion/alpha/review-003.md', '---\nstatus: pending\n---\nlegacy');
+  it('dispatch numbers past reports already in the cache dir', () => {
+    writeContent(dir, '.ledger/.cache/pay/discussion/alpha/review-003.md', 'a report whose row was lost');
     const a = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'review', '--final']);
-    assert.strictEqual(a.id, 'review-004', 'never collides with pre-programme files');
+    assert.strictEqual(a.id, 'review-004', 'never collides with a report already there');
   });
 
   it('numbering survives past 999 — ids and sets stay distinct at four digits', () => {
-    writeContent(dir, '.ledger/.cache/pay/discussion/alpha/deep-dive-999-auth.md', 'legacy');
+    writeContent(dir, '.ledger/.cache/pay/discussion/alpha/deep-dive-999-auth.md', 'a report');
     const a = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'deep-dive', '--label', 'auth']);
     assert.strictEqual(a.id, 'deep-dive-1000-auth');
     writeContent(dir, `.ledger/.cache/pay/discussion/alpha/${a.id}.md`);
@@ -258,16 +258,16 @@ describe('engine agent — lifecycle store', () => {
       /legal only with --kind synthesis/);
     assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'synthesis']).error,
       /always joins a perspective set/);
-    // A dead synthesis closes and re-dispatches; a legacy file blocks the name.
+    // A dead synthesis closes and re-dispatches; a report with no row blocks the name.
     runJson(dir, ['incorporate', 'pay', 'discussion', 'alpha', 'synthesis-001']);
     const again = runJson(dir, ['dispatch', 'pay', 'discussion', 'alpha', '--kind', 'synthesis', '--set', '001']);
     assert.strictEqual(again.id, 'synthesis-001', 'recovery re-dispatch after closing the dead row');
-    writeContent(dir, '.ledger/.cache/pay/discussion/beta/synthesis-001.md', 'stale legacy report');
+    writeContent(dir, '.ledger/.cache/pay/discussion/beta/synthesis-001.md', 'a report whose row was lost');
     const p2 = runJson(dir, ['dispatch', 'pay', 'discussion', 'beta', '--kind', 'perspective', '--label', 'common-path', '--label', 'tail-risk']);
     for (const a of p2.agents) writeContent(dir, a.file);
     runJson(dir, ['scan', 'pay', 'discussion', 'beta']);
     assert.match(runFails(dir, ['dispatch', 'pay', 'discussion', 'beta', '--kind', 'synthesis', '--set', p2.set]).error,
-      /legacy file/, 'a dead session file never becomes this council synthesis');
+      /with no row already occupies that name/, 'a dead session file never becomes this council synthesis');
   });
 
   it('perspectives are never acknowledged, and sit alongside a mid-drain review', () => {

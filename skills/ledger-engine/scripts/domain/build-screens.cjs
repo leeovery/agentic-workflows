@@ -405,6 +405,6 @@ function buildProgressSurface(cwd, { dotpath: unit = '' }) {
 }
 
 module.exports = {
-  phaseNamed, phaseLets, buildGoesOn, taskOf, takenAccount, takenFigures, callsOf, ranOf, taskHead, runsAt,
+  phaseNamed, phaseLets, buildGoesOn, takenAccount, callsOf, ranOf, taskHead, runsAt,
   buildHeadlineSurface, taskLandedSurface, taskAccountSurface, stepGateSurface, phaseMergeGateSurface, buildStopSurface, buildProgressSurface,
 };

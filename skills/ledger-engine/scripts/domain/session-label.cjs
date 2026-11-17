@@ -739,6 +739,6 @@ function repairSessionLabels(cwd) {
 }
 
 module.exports = {
-  arriveAt, applySessionLabel, restoreSessionLabel, repairSessionLabels, resumeSessionLabel,
+  arriveAt, restoreSessionLabel, repairSessionLabels, resumeSessionLabel,
   resolveEnabled, labelConfigStatus, syncSessionHooks, commitSessionHooks, carriesOurHooks, recordLabelChoice,
 };

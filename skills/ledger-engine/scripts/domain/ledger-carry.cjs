@@ -539,4 +539,4 @@ function carryRecord(cwd, args) {
   }
 }
 
-module.exports = { CARRY_VERB, CARRY_USAGE, DRY_RUN, placePath, recordName, carriedPath, composedPath, findingsPath, refusedPath, roundsPath, settledPath, topicPlace, recordsRules, carryRecord };
+module.exports = { CARRY_VERB, CARRY_USAGE, DRY_RUN, placePath, recordName, carriedPath, composedPath, findingsPath, refusedPath, roundsPath, settledPath, topicPlace, carryRecord };

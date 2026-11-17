@@ -11,7 +11,7 @@ const path = require('path');
 const { setupFixture, cleanupFixture, createFile, statePath } = require('./discovery-test-utils.cjs');
 
 const {
-  fileExists, listFiles, listDirs, filesChecksum,
+  fileExists, listDirs,
   loadManifest, loadActiveManifests, loadAllManifests,
   loadProjectManifest,
 } = require('../../skills/ledger-engine/scripts/domain/reads.cjs');
@@ -52,20 +52,6 @@ describe('reads + derivations', () => {
     });
   });
 
-  describe('listFiles', () => {
-    it('returns sorted .md files', () => {
-      createFile(dir, 'sub/b.md', '');
-      createFile(dir, 'sub/a.md', '');
-      createFile(dir, 'sub/c.txt', '');
-      const files = listFiles(path.join(dir, 'sub'), '.md');
-      assert.deepStrictEqual(files, ['a.md', 'b.md']);
-    });
-
-    it('returns empty array for missing dir', () => {
-      assert.deepStrictEqual(listFiles(path.join(dir, 'missing'), '.md'), []);
-    });
-  });
-
   describe('listDirs', () => {
     it('returns sorted directories', () => {
       fs.mkdirSync(path.join(dir, 'sub', 'beta'), { recursive: true });
@@ -77,40 +63,6 @@ describe('reads + derivations', () => {
 
     it('returns empty for missing dir', () => {
       assert.deepStrictEqual(listDirs(path.join(dir, 'missing')), []);
-    });
-  });
-
-  describe('filesChecksum', () => {
-    it('returns null for empty array', () => {
-      assert.strictEqual(filesChecksum([]), null);
-    });
-
-    it('returns null for null/undefined', () => {
-      assert.strictEqual(filesChecksum(null), null);
-      assert.strictEqual(filesChecksum(undefined), null);
-    });
-
-    it('returns consistent checksum for same content', () => {
-      createFile(dir, 'a.txt', 'hello');
-      const p = path.join(dir, 'a.txt');
-      const c1 = filesChecksum([p]);
-      const c2 = filesChecksum([p]);
-      assert.strictEqual(c1, c2);
-      assert.ok(typeof c1 === 'string' && c1.length === 32);
-    });
-
-    it('returns different checksum for different content', () => {
-      createFile(dir, 'a.txt', 'hello');
-      createFile(dir, 'b.txt', 'world');
-      const c1 = filesChecksum([path.join(dir, 'a.txt')]);
-      const c2 = filesChecksum([path.join(dir, 'b.txt')]);
-      assert.notStrictEqual(c1, c2);
-    });
-
-    it('ignores missing files gracefully', () => {
-      createFile(dir, 'a.txt', 'hello');
-      const result = filesChecksum([path.join(dir, 'a.txt'), path.join(dir, 'missing.txt')]);
-      assert.ok(typeof result === 'string' && result.length === 32);
     });
   });
 

@@ -587,7 +587,6 @@ function askedAt(conflicts) {
 }
 
 module.exports = {
-  MIGRATIONS,
   MergeError,
   fromRoot,
   ruleOf,

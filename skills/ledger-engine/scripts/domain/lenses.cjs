@@ -42,4 +42,4 @@ function pairProblem(labels) {
   return null;
 }
 
-module.exports = { POLARITY_PAIRS, counterLens, pairProblem };
+module.exports = { POLARITY_PAIRS, pairProblem };

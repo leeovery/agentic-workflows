@@ -296,4 +296,4 @@ function replay(events, { project, settings, proposed, care, now, blocking }) {
   };
 }
 
-module.exports = { PERIOD_DAYS, PERIOD_FLOOR, replay };
+module.exports = { replay };

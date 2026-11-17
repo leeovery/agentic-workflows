@@ -33,7 +33,7 @@ const { BOARD_VERSION } = require(path.join(SCRIPTS, 'domain/board-model.cjs'));
 const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 const { phaseViewOf } = require(path.join(SCRIPTS, 'domain/board.cjs'));
 const { roundReportPath, settlementPath } = require(path.join(SCRIPTS, 'domain/round-report.cjs'));
-const { WORK_TYPE_PIPELINES, EPIC_PHASES } = require(path.join(SCRIPTS, 'kernel/manifest-schema.cjs'));
+const { WORK_TYPE_PIPELINES } = require(path.join(SCRIPTS, 'kernel/manifest-schema.cjs'));
 
 let dir = ''; // the project
 const { run, board, refOf, atTheFixes, issued, reported, briefedRound, parkedOn, rows, replaced } = quickFixBoard(() => dir);
@@ -236,7 +236,7 @@ describe('a quick-fix\'s fixes on the board (20.14)', () => {
 });
 
 describe('27.S8: every phase a session can be in draws a view of its own', () => {
-  const places = Object.entries(WORK_TYPE_PIPELINES).flatMap(([type, pipeline]) => (type === 'epic' ? EPIC_PHASES : pipeline).map((phase) => [type, phase]));
+  const places = Object.entries(WORK_TYPE_PIPELINES).flatMap(([type, pipeline]) => (type === 'epic' ? ['discovery', ...pipeline] : pipeline).map((phase) => [type, phase]));
 
   it('This session draws each type\'s every phase by a view of that phase, a quick-fix\'s one session by its own (27.2.9)', () => {
     const unviewed = places.filter(([type, phase]) => phaseViewOf(type, phase) === null);

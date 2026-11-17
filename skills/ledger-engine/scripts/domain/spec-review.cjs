@@ -433,5 +433,5 @@ function holdNumbers(cwd, unit, landed, lines) {
 }
 
 module.exports = {
-  MARKS_USAGE, REVIEW_FILE, marksFile, pageDir, publishedFile, publishedPage, readBackFile, openPage, pageOpen, pageRefusal, storeMarks, reviewStates, settleReview, heldPlaces, heldNumberFaults, holdNumbers,
+  MARKS_USAGE, pageDir, publishedFile, publishedPage, readBackFile, openPage, pageOpen, pageRefusal, storeMarks, reviewStates, settleReview, heldPlaces, heldNumberFaults, holdNumbers,
 };

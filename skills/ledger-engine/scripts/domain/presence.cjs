@@ -95,12 +95,12 @@ function assertArgs(cwd, workUnit, phase, topic) {
  * @property {string} checkout         the work tree its session works in
  */
 
-/** Parse a heartbeat's identity record; null for legacy/unreadable content. @param {string} file @returns {PresenceRecord|null} */
+/** Parse a heartbeat's identity record; null for unreadable content. @param {string} file @returns {PresenceRecord|null} */
 function readRecord(file) {
   try {
     const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed;
-  } catch { /* legacy bare-pid content */ }
+  } catch { /* unreadable content */ }
   return null;
 }
 
@@ -463,5 +463,5 @@ module.exports = {
   beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, clearOwnQuietly,
   scanPresence, scanProject, heldCodeSessions, peerHold, cleanupPresence,
   migrationCarrier, beatMigrationQuietly, refreshMigrationQuietly, dropMigrationRow,
-  fmtAge, ownsRow,
+  fmtAge,
 };

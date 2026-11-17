@@ -703,8 +703,8 @@ function roundUnderReview(cwd, ref, letters = REVIEWER_LETTERS) {
 }
 
 module.exports = {
-  passes, readReport, reportFaults, taskFolder, roundReportPath, settlementPath, changedPath, briefedPath, briefedOf, recordReviewer, recordBuilder, laidOutPath, laidOutOf, recordLaidOut,
+  readReport, reportFaults, taskFolder, roundReportPath, settlementPath, briefedOf, recordReviewer, recordBuilder, laidOutOf, recordLaidOut,
   roundStanding, beingRead, readRefusal, pendingChange,
-  taskRounds, wholeRounds, pairPassed, endedWords, taskPassed, passedWhole, passedUntil, markChanged, changedIn, changedUnder, changedRefusal, unbuiltRefusal, roundUnderReview, phaseReviewPath,
+  taskRounds, wholeRounds, pairPassed, endedWords, taskPassed, passedWhole, passedUntil, markChanged, changedUnder, changedRefusal, unbuiltRefusal, roundUnderReview, phaseReviewPath,
   phaseFolder, phaseReviewBegun, phaseReports, phaseRecords,
 };

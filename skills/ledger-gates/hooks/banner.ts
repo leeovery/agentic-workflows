@@ -49,10 +49,10 @@ export function bannerParts({ state, name, facts }: Banner): Part[] {
 }
 
 /** What the board's button reads: "▸ show board" while it is hidden, "hide board" while it is up. */
-export const toggleLabel = (isOpen: boolean) => (isOpen ? 'hide board' : '▸ show board')
+const toggleLabel = (isOpen: boolean) => (isOpen ? 'hide board' : '▸ show board')
 
 /** The banner to draw, the buttons before the board's, and whether the board is up. */
-export type Shown = { banner: Banner; buttons: readonly Button[]; isOpen: boolean }
+type Shown = { banner: Banner; buttons: readonly Button[]; isOpen: boolean }
 
 /** The banner as drawn, `width` cells across. */
 export const drawBanner = (els: ElementTable, { banner, buttons, isOpen }: Shown, width: number): RenderElement =>

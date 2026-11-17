@@ -1336,7 +1336,6 @@ function buildDiscoveryMap(manifest, stateDir) {
 }
 
 module.exports = {
-  decidedCloseStands,
   voidDecidedClose,
   closedIntoSpec,
   phaseData,

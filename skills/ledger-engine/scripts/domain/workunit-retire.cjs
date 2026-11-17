@@ -226,4 +226,4 @@ function retireWorkUnit(cwd, unit) {
   }
 }
 
-module.exports = { retireWorkUnit, keptAt };
+module.exports = { retireWorkUnit };

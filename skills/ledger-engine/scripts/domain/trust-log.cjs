@@ -73,8 +73,8 @@
 // - A read streams the file a line at a time and never waits on the lock.
 //   A line it cannot read — an unterminated last line, which an append may
 //   still be writing, or a line no event of this engine's schema — is
-//   skipped and counted as unread, never a stop: engines of several releases
-//   share the file (trust-events.cjs). An event is read once by its id,
+//   skipped, never a stop: engines of several releases share the file
+//   (trust-events.cjs). An event is read once by its id,
 //   however often it landed: an append that landed but failed is appended
 //   again. A project's events are read from the log and from what every
 //   conversation keeps waiting — an event whose append failed, and one kept
@@ -532,9 +532,6 @@ function record(type, fields, { cwd, warnings, id, model }) {
  * @typedef {(awaits: {ledger: string, entry: string}) => boolean} Landed
  */
 
-/** A read that takes no kept line's entry as landed. @type {Landed} */
-const NONE_LANDED = () => false;
-
 /**
  * A kept line's event, where it is of this version and the entry it awaits
  * has `landed`; or why it is not read.
@@ -565,36 +562,18 @@ function* linesOfEach(files) {
 /**
  * Read `files` through once each, in turn: `visit` is given each event this
  * engine reads, in the order written, once by its id across them all — a
- * kept line's among them where its entry has `landed`. Answers how many
- * lines it could not read.
- * @param {string[]} files @param {(event: Record<string, unknown>) => void} visit @param {Landed} [landed]
- * @returns {{unread: number}}
+ * kept line's among them where its entry has `landed`.
+ * @param {string[]} files @param {(event: Record<string, unknown>) => void} visit @param {Landed} landed
  */
-function readEvents(files, visit, landed = NONE_LANDED) {
-  let unread = 0;
+function readEvents(files, visit, landed) {
   const seen = new Set();
   for (const line of linesOfEach(files)) {
-    const ended = line[line.length - 1] === NEWLINE;
-    const read = ended ? readLine(line.toString('utf8', 0, line.length - 1), landed) : null;
-    if (read === null || 'not' in read) {
-      unread += 1;
-    } else if (!seen.has(read.event.id)) {
-      seen.add(read.event.id);
-      visit(read.event);
-    }
+    if (line[line.length - 1] !== NEWLINE) continue;
+    const read = readLine(line.toString('utf8', 0, line.length - 1), landed);
+    if ('not' in read || seen.has(read.event.id)) continue;
+    seen.add(read.event.id);
+    visit(read.event);
   }
-  return { unread };
-}
-
-/**
- * Read the trust log through once: `visit` is given each event this engine
- * reads, in the order written, once by its id. Answers how many lines it
- * could not read.
- * @param {(event: Record<string, unknown>) => void} visit
- * @returns {{unread: number}}
- */
-function readTrustLog(visit) {
-  return readEvents([trustLogPath()], visit);
 }
 
 /**
@@ -628,4 +607,4 @@ function readProjectEvents(root, visit) {
   });
 }
 
-module.exports = { TRUST_LOG, PENDING, trustLogPath, projectId, projectOf, modelOf, newEvent, keepEvent, landKept, record, appendWaiting, holdsWaiting, readTrustLog, readPersonEvents, readProjectEvents };
+module.exports = { TRUST_LOG, PENDING, trustLogPath, projectId, projectOf, modelOf, newEvent, keepEvent, landKept, record, appendWaiting, holdsWaiting, readPersonEvents, readProjectEvents };

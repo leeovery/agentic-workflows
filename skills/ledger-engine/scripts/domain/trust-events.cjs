@@ -337,4 +337,4 @@ function trustEvent(type, header, fields) {
   return read.event;
 }
 
-module.exports = { SCHEMA, HEADER, KEY, SESSION, VERDICTS, VERDICT_POINTS, readTrustEvent, trustEvent };
+module.exports = { SCHEMA, SESSION, VERDICTS, VERDICT_POINTS, readTrustEvent, trustEvent };

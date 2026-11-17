@@ -52,24 +52,17 @@ function tag(term) {
   return `[${term}]`;
 }
 
-// `↳ Derived-from` line — provenance, capitalised. Feeds a tree node's body[]
-// as a hanging paragraph: the marker is two columns wide, so continuation
-// lines indent past it and the provenance reads as one block rather than
-// wrapping back under the arrow. The domain owns the marker, so it owns its
-// width; the renderer only applies the hang it is given.
-const PROVENANCE_HANG = '↳ '.length;
+// The `↳` marker is two columns wide, so a note's continuation lines indent
+// past it and the note reads as one block rather than wrapping back under the
+// arrow. The domain owns the marker, so it owns its width; the renderer only
+// applies the hang it is given.
+const NOTE_HANG = '↳ '.length;
 
-/** @param {string} text @returns {{text: string, hang: number}} */
-function derivedFrom(text) {
-  return { text: '↳ ' + capitalise(String(text).trim()), hang: PROVENANCE_HANG };
-}
-
-// `↳ state` line — a row's computed lifecycle spelled out beneath its summary,
-// same marker and hang as provenance. The discovery views carry no tag column;
-// state rides here instead.
+// `↳ state` line — a row's computed lifecycle spelled out beneath its summary.
+// The discovery views carry no tag column; state rides here instead.
 /** @param {string} text @returns {{text: string, hang: number}} */
 function stateNote(text) {
-  return { text: '↳ ' + capitalise(String(text).trim()), hang: PROVENANCE_HANG };
+  return { text: '↳ ' + capitalise(String(text).trim()), hang: NOTE_HANG };
 }
 
 // Compose a tree node's title from its parts: `glyph label [tag]`. Any part may
@@ -129,29 +122,7 @@ function discoveryLifecycleLabel(lifecycle, mailWaiting, waits) {
   return label;
 }
 
-// Worklist glyph vocabulary — walk states on a transient list (the
-// worklist projection's rows). A symbol set shared with the discovery
-// tiers, keyed to approval outcomes.
-const WORKLIST_GLYPH = { pending: '○', approved: '✓', skipped: '⊘' };
-
-// Specification legend vocabulary — the Key block's term descriptions, by
-// category. Projections compose a Key from whichever terms the display shows.
-const SPEC_LEGEND = {
-  discussion: {
-    extracted: 'content has been incorporated into the specification',
-    pending: 'listed as source but content not yet extracted',
-    stale: 'was extracted but the discussion was re-decided since — reconcile',
-    ready: 'completed and available to be specified',
-    reopened: 'back in-progress — the spec waits on it',
-  },
-  spec: {
-    'in-progress': 'specification work is ongoing',
-    completed: 'specification is done',
-  },
-};
-
 module.exports = {
-  TREE_WIDTH, treeHeader, capitalise, titlecase, tag, derivedFrom, stateNote, title,
-  discoveryGlyph, DISCOVERY_GLYPH, discoveryLifecycleLabel,
-  WORKLIST_GLYPH, SPEC_LEGEND,
+  TREE_WIDTH, treeHeader, capitalise, titlecase, tag, stateNote, title,
+  discoveryGlyph, discoveryLifecycleLabel,
 };

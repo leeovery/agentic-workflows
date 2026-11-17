@@ -138,4 +138,4 @@ function putBackNext(cwd, from, names) {
     : { kind: 'engine', argv: ['render', 'horizon-pick', '--back', first, '--from', from, ...thenArgs(rest)] };
 }
 
-module.exports = { ONTO_START, ontoEpic, ontoMenu, leaveNext, putBackNext, putBackBy, stillToAsk, thenArgs };
+module.exports = { ontoEpic, ontoMenu, leaveNext, putBackNext, putBackBy, stillToAsk, thenArgs };

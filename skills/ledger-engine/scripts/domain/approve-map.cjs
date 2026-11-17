@@ -676,4 +676,4 @@ function runApproveMapVerb(cwd, [verb, ...args]) {
   throw new Error(`Usage: ${APPROVE_MAP_USAGE.split('\n').map((line) => `engine ${line}`).join(' | ')}`);
 }
 
-module.exports = { APPROVE_MAP_USAGE, runApproveMapVerb, approveMapSurface, approveMapStrikeSurface, openMap, isLive, checkCandidates, stageSwept, sweptStaged, stagedOrNone, liveInOrder, candidatesStanding };
+module.exports = { APPROVE_MAP_USAGE, runApproveMapVerb, approveMapSurface, approveMapStrikeSurface, isLive, checkCandidates, stageSwept, sweptStaged, stagedOrNone, liveInOrder, candidatesStanding };

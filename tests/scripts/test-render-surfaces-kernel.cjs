@@ -2,8 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // The render kernel: the surface primitives
-// (domain/projections/surfaces.cjs), the worklist
-// (domain/projections/worklist.cjs), the catalogue's dispatch
+// (domain/projections/surfaces.cjs), the catalogue's dispatch
 // (domain/render.cjs), the single-source invariants that keep the menu
 // grammar and the render forms in surfaces.cjs alone, and the CLI boundary:
 // `engine render` through the argv entry. Each phase's surfaces are in
@@ -26,7 +25,7 @@ const path = require('path');
 
 const harness = require('./engine-harness.cjs');
 const { announced, auditGate, auditMarkers } = require('./gate-audit.cjs');
-const { DOTS, section, timedInstruction, STOP_CLAUSE, CONTINUE_CLAUSE, AUTO_GATE_CLAUSE, menuFrame, menu, cmdOption, bareOption, promptOption, rangeOption, callout, indentedBody, bulletRow, treeList } = require('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs');
+const { DOTS, section, timedInstruction, STOP_CLAUSE, CONTINUE_CLAUSE, menuFrame, menu, cmdOption, bareOption, promptOption, escapeMarkdown, callout, indentedBody, bulletRow, treeList } = require('../../skills/ledger-engine/scripts/domain/projections/surfaces.cjs');
 const { renderSurface, NB, setup, teardown, writeManifest, writePayload } = require('./render-surfaces-world.cjs');
 
 /**
@@ -43,14 +42,16 @@ function render(dir, args) {
 
 describe('surfaces primitives', () => {
   it('a timed instruction is built from its parts — the form, the moment, then the behaviour clause where there is one', () => {
-    assert.strictEqual(timedInstruction('text', 'after the result summary', AUTO_GATE_CLAUSE),
-      'emit verbatim as a text code block (```text fence) after the result summary — the user set this gate to auto: do not stop; continue as the skill instructs');
     assert.strictEqual(timedInstruction('text', 'after the receipt', CONTINUE_CLAUSE),
       'emit verbatim as a text code block (```text fence) after the receipt — do not stop; continue as the skill instructs');
     assert.strictEqual(timedInstruction('markdown', 'after the response', STOP_CLAUSE),
       "emit verbatim as markdown (not a code block) after the response, then STOP for the user's response");
     assert.strictEqual(timedInstruction('text', 'after the response'),
       'emit verbatim as a text code block (```text fence) after the response');
+  });
+
+  it('escapeMarkdown backslash-escapes the markdown-active characters and angle brackets, and nothing else', () => {
+    assert.strictEqual(escapeMarkdown('a *b* _c_ ~d~ `e` [f] <g> \\h, i.'), 'a \\*b\\* \\_c\\_ \\~d\\~ \\`e\\` \\[f\\] \\<g\\> \\\\h, i.');
   });
 
   it('menu opens on the rule, glyphs a short label, and never closes the frame', () => {
@@ -119,18 +120,6 @@ describe('surfaces primitives', () => {
     assert.throws(() => menu('Which one?', ['a plain line']), /no row to press/);
     assert.throws(() => menu('Which one?', ['**Comment** → Tell me what you think']), /no row to press/);
     assert.throws(() => menuFrame(['**`◆ Which one?`**']), /no row to press/);
-  });
-
-  it('refuses a menu whose only keyed rows are ranges — a range is typed, never pressed', () => {
-    const typedOnly = [rangeOption(1, 3, 'Select item(s)'), promptOption('Comment', 'Tell me what you think')];
-    assert.throws(() => menu('Which items?', typedOnly), /no row to press — a menu offers at least one single key .*; a range row is typed, never pressed/);
-    assert.throws(() => menu('Which items?', [rangeOption(1, 3, 'Select item(s)')]), /no row to press/);
-  });
-
-  it('a range row passes beside a single key — the ask still stands above the range', () => {
-    const rows = [rangeOption(1, 3, 'Select item(s)'), cmdOption('b', 'back', 'Return to menu')];
-    assert.match(menu('Which items?', rows), /◆ Which items\?/);
-    assert.throws(() => menuFrame([rows[0], '', '**`◆ Which items?`**', '', rows[1]]), /no `◆ …\?` line stands above the rows/);
   });
 
   it('command and bare option builders make a row to press', () => {
@@ -279,102 +268,6 @@ describe('surfaces primitives', () => {
   });
 });
 
-describe('worklist shape', () => {
-  const { worklist } = require('../../skills/ledger-engine/scripts/domain/projections/worklist.cjs');
-  const { displayWidth } = require('../../skills/ledger-engine/scripts/kernel/terminal.cjs');
-
-  // Rendered width: escapes and code-span backticks are zero-width, `~~` is
-  // consumed — byte length over-counts a correct row, so width properties
-  // are asserted on the rendered measure, against the resolved width.
-  const renderedLen = (line) => line.replace(/\\(.)/g, '$1').replace(/~~/g, '').replace(/`/g, '').length;
-
-  /** A walked list under a heading, the rows a cycle's synthesis works through. @param {Array<{title: string, tag?: string, note?: string}>} items @param {string} [label] */
-  const walkedList = (items, label = 'Cycle') => worklist({ heading: { label, noun: 'item' }, items, walked: true });
-
-  /** A list's rows, its heading and the blank beneath it dropped — the heading is a prose line left to soft-wrap. @param {string} out */
-  const rows = (out) => out.split('\n').slice(2);
-
-  it('a tag that cannot fit the last title line drops to its own line at the title column', () => {
-    const body = rows(walkedList([{ title: 'The traceability matrix omits three acceptance criteria', tag: 'Important' }]));
-    assert.ok(body.some((l) => l === `${NB(5)}\`[Important]\``), `tag line missing: ${JSON.stringify(body)}`);
-    for (const line of body) assert.ok(renderedLen(line) <= displayWidth(), `overflowing row: ${line}`);
-  });
-
-  it('every row holds the rendered width, tags, notes and escapes included', () => {
-    const long = 'Collapse the *duplicated* retry_budget into one constant shared by both callers';
-    const out = walkedList([
-      { title: long, tag: 'Important', note: 'A summary long enough to wrap beneath the arrow and hold its hang.' },
-      { title: 'Short', tag: 'low' },
-    ]);
-    for (const line of rows(out)) assert.ok(renderedLen(line) <= displayWidth(), `overflowing row: ${line}`);
-  });
-
-  it('the tag-fit boundary is exact — at budget it stays inline, one over it drops', () => {
-    // Walked 1-digit head is 5 columns; budget 60 at width 65. Tag
-    // `Important` costs 12 rendered (space + brackets + 9 letters). A
-    // 48-char title fits inline at exactly the width; 49 forces the drop.
-    const at = walkedList([{ title: 'x'.repeat(48), tag: 'Important' }]);
-    assert.ok(at.includes('x'.repeat(48) + ' `[Important]`'), `expected inline tag: ${at}`);
-    const over = walkedList([{ title: 'x'.repeat(49), tag: 'Important' }]);
-    assert.ok(over.includes(`${NB(5)}\`[Important]\``), `expected dropped tag: ${over}`);
-    assert.ok(!over.includes('x `[Important]`'), 'tag not inline past the boundary');
-  });
-
-  it('escapes markdown-active characters in the label, title, and note', () => {
-    const out = walkedList([{ title: 'Escape <script> and ~tilde~', tag: 'low', note: 'see foo_bar and [link] and \\slash' }], 'Rev *2* [beta]');
-    assert.ok(out.includes('**Rev \\*2\\* \\[beta\\]**'), 'label escaped');
-    assert.ok(out.includes('Escape \\<script\\> and \\~tilde\\~'), 'title escaped, angle brackets included');
-    assert.ok(out.includes('↳ see foo\\_bar and \\[link\\] and \\\\slash'), 'note escaped');
-  });
-
-  it('a wrapped note hangs its continuation two columns past the arrow', () => {
-    const lines = walkedList([{ title: 'T', tag: 'low', note: 'This note is deliberately long enough that the wrap point lands inside it and produces a continuation line beneath the arrow.' }]).split('\n');
-    const noteAt = lines.findIndex((l) => l.includes('↳ '));
-    assert.ok(noteAt > 0, 'note rendered');
-    assert.ok(lines[noteAt].startsWith(`${NB(7)}↳ `), 'note at title column + 2');
-    assert.ok(lines[noteAt + 1].startsWith(NB(9)), 'continuation hangs past the arrow');
-  });
-
-  it('worklist fails loudly on shape errors its callers cannot reach', () => {
-    assert.throws(() => worklist({ items: [{ title: 'x' }] }), /exactly one of "heading"\/"intro"/);
-    assert.throws(() => worklist({ heading: { label: 'H', noun: 'x' }, intro: 'I', items: [{ title: 'x' }] }), /exactly one of "heading"\/"intro"/);
-    assert.throws(() => worklist({ intro: 'I', items: [] }), /"items" must be a non-empty array/);
-    assert.throws(() => worklist({ intro: 'I', items: [{ title: 'x', state: 'banana' }] }), /unknown state "banana"/);
-    assert.throws(() => worklist({ intro: 'I', items: [{ title: 'x', tag: 'has`tick' }] }), /a tag must not contain backticks/);
-    assert.throws(() => worklist({ intro: 'I', items: [{ detail: 'no title' }] }), /item 1 needs a non-empty string "title"/);
-    assert.throws(() => worklist({ intro: 'I', items: [{ title: 'x', tag: 'y'.repeat(70) }] }), /cannot fit the display width/);
-  });
-
-  it('walked rows pad 10+ numbering with NBSP, never a leading space', () => {
-    const items = Array.from({ length: 11 }, (_, i) => ({ title: `T${i + 1}`, tag: 'low', note: `Detail ${i + 1}` }));
-    const out = worklist({ heading: { label: 'H', noun: 'item' }, items, walked: true });
-    assert.ok(out.includes(`○ ${NB(1)}1. T1`), `walked pad is NBSP: ${out.split('\n')[2]}`);
-    assert.ok(out.includes('○ 11. T11'), 'two-digit walked row unpadded');
-    // A markdown renderer strips a leading real space.
-    for (const line of out.split('\n')) {
-      assert.ok(!/^ /.test(line), `line leads with a real space: ${JSON.stringify(line)}`);
-    }
-  });
-
-  it('unglyphed rows pad 10+ numbering with a leading NBSP, never a space', () => {
-    // No production surface reaches an unglyphed list past the batch cap;
-    // the mechanism is pinned directly so an uncapped future caller
-    // inherits it working.
-    const items = Array.from({ length: 11 }, (_, i) => ({ title: `T${i + 1}` }));
-    const out = worklist({ intro: 'I', items });
-    assert.ok(out.includes(`${NB(1)}1\\. T1`), `unglyphed pad is a leading NBSP: ${out.split('\n')[2]}`);
-    assert.ok(out.includes('11\\. T11'), 'two-digit unglyphed row unpadded');
-    for (const line of out.split('\n')) {
-      assert.ok(!/^ /.test(line), `line leads with a real space: ${JSON.stringify(line)}`);
-    }
-  });
-
-  it('an unwalked heading never counts remaining', () => {
-    const out = worklist({ heading: { label: 'H', noun: 'item' }, items: [{ title: 'a', state: 'approved' }, { title: 'b' }] });
-    assert.ok(out.startsWith('**H** — 2 items\n'), `unexpected header: ${out.split('\n')[0]}`);
-  });
-});
-
 describe('CLI boundary — engine render through the argv entry', () => {
   let dir;
   beforeEach(() => {
@@ -448,13 +341,13 @@ describe('single-source invariants', () => {
       for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
         const p = path.join(dir, entry.name);
         if (entry.isDirectory()) walk(p);
-        else if (entry.isFile() && p.endsWith('.cjs') && /\*\*\\?`[^`]+\\?`\*\* →/.test(fs.readFileSync(p, 'utf8'))) {
+        else if (entry.isFile() && p.endsWith('.cjs') && /\*\*\\?`.+?\\?`\*\* →/.test(fs.readFileSync(p, 'utf8'))) {
           offenders.push(path.relative(scriptsRoot, p));
         }
       }
     })(scriptsRoot);
     assert.deepStrictEqual(offenders, [path.join('domain', 'projections', 'surfaces.cjs')],
-      'option lines must build through cmdOption/rangeOption — hand-formatted options reintroduce the drift class');
+      'option lines must build through cmdOption — hand-formatted options reintroduce the drift class');
   });
 
   it('the render forms, the menu\'s stop and the continuation exist in exactly one module — surfaces.cjs', () => {

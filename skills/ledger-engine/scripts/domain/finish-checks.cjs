@@ -167,5 +167,5 @@ function reviewOverRefusal(at) {
 
 module.exports = {
   reviewOverRefusal, stillOpen, notesLeft,
-  hasReviewPhase, reviewPassed, reviewWay, questionsAnswered, questionsWay, answersNotes, notesAnswered, notesWay, askedWay, inboxClosed, inboxWay, knowledgeSetUp, recordsIndexed, recordsWay,
+  hasReviewPhase, reviewPassed, reviewWay, questionsAnswered, questionsWay, answersNotes, notesAnswered, notesWay, inboxClosed, inboxWay, knowledgeSetUp, recordsIndexed, recordsWay,
 };

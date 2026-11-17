@@ -248,7 +248,7 @@ describe('engine presence', () => {
     assert.strictEqual(res.held, 0);
   });
 
-  it('a legacy bare-pid heartbeat is never held', () => {
+  it('a heartbeat that is no record is never held', () => {
     const p = presenceFile(dir, 'discussion', 'beta');
     fs.mkdirSync(path.dirname(p), { recursive: true });
     fs.writeFileSync(p, '12345\n');

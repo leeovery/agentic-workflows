@@ -174,6 +174,4 @@ module.exports = {
   FALLBACK,
   CAP,
   MIN,
-  GUTTER,
-  HEADROOM,
 };

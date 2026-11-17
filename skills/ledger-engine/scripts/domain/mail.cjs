@@ -497,4 +497,4 @@ function sendReportOf(cwd, address, sent) {
   return sendReport({ unit, topic, named: topicTitle(manifest, topic), title: titleOf(fs.readFileSync(at, 'utf8')), landing, gone });
 }
 
-module.exports = { SEND_USAGE, MAILBOX_USAGE, ANSWERED_USAGE, SEND_REPORT_USAGE, sendMessage, mailboxOf, answerMessage, waitingMessages, messageParts, moveWaitingToInbox, moveUnitMailToInbox, sendReportOf };
+module.exports = { SEND_USAGE, MAILBOX_USAGE, ANSWERED_USAGE, sendMessage, mailboxOf, answerMessage, waitingMessages, messageParts, moveWaitingToInbox, moveUnitMailToInbox, sendReportOf };
