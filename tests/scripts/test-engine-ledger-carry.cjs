@@ -92,6 +92,17 @@ const broken = (...faults) => `ledger carry: fumi's licensing breaks the records
 /** @param {string} dotpath @param {unknown[]} entries */
 const carry = (dotpath, entries) => ok(dir, composed(dotpath, { entries }), { env: SESSION });
 
+/**
+ * The note a verifier's brief writes beside licensing's record of its
+ * question and decision: the refs it asks a verdict of, and the entries it
+ * reads, none passed before.
+ * @param {string[]} asked @param {string[]} held
+ */
+const noted = (asked, held) => JSON.stringify({
+  hash: crypto.createHash('sha256').update(JSON.stringify({ entries: [QUESTION, DECISION] })).digest('hex'),
+  refs: asked, entries: Object.fromEntries(held.map((ref) => [ref, `${ref}-hash`])), sections: {}, before: { entries: null, passed: {}, walked: {} },
+});
+
 /** What was kept of a topic carried. @param {string} unit @param {string} topic */
 const kept = (unit, topic) => JSON.parse(readState(dir, carriedPath(unit, topic)));
 
@@ -175,7 +186,7 @@ describe('a topic\'s record carried (21.6, 21.10.9)', () => {
     const RULED = '- The session\'s pricing is not this record\'s: fumi/discovery/session-001.md "Pricing".';
     writeState(dir, refusedPath('fumi', 'licensing'), 'ledger carry: refused.\n');
     writeState(dir, roundsPath('fumi', 'licensing'), '## Round 1\n\nThe trial is wrong.\n');
-    writeState(dir, verifyingPath('fumi', 'licensing'), JSON.stringify({ hash: crypto.createHash('sha256').update(JSON.stringify({ entries: [QUESTION, DECISION] })).digest('hex'), refs: ['q1', 'd1'] }));
+    writeState(dir, verifyingPath('fumi', 'licensing'), noted(['q1', 'd1'], ['q1', 'd1']));
     writeState(dir, rulingsPath('fumi', 'licensing'), `${RULED}\n`);
 
     carry(LICENSING, [QUESTION, DECISION]);
@@ -202,24 +213,24 @@ describe('a topic\'s record carried (21.6, 21.10.9)', () => {
     assert.strictEqual(changed, 'ledger carry: fumi\'s licensing has changed since its verifier was briefed on it: a record is carried as its verifier read it — brief a fresh verifier');
   });
 
-  it('a record whose verifier gave no verdict on every entry it read refused, nothing written: one missing, one it never read, or none at all — read as its brief recorded them, else as the record holds them', () => {
+  it('a record whose verifier gave no verdict on every entry its brief asked one of refused, nothing written: one missing, one it never read, or none at all — asked as its brief recorded them, an entry it read but was not asked of given one or not, else as the record holds them', () => {
     const args = composed(LICENSING, { entries: [QUESTION, DECISION] });
     const checked = checkedPath('fumi', 'licensing');
-    const way = `: a verifier writes a line for each entry, \`{ref}: ok\` or \`{ref}: see finding\`, and one that does not has given no verdict — remove ${findingsPath('fumi', 'licensing')}, ${rulingsPath('fumi', 'licensing')} and ${checked}, and brief a fresh verifier`;
-    const told = (said) => `ledger carry: fumi's licensing has no verdict from its last verifier on every entry it read — ${said}${way}`;
+    const way = `: a verifier writes a line for each entry its walk sheet does not mark passed, \`{ref}: ok\` or \`{ref}: see finding\`, and one that does not has given no verdict — remove ${findingsPath('fumi', 'licensing')}, ${rulingsPath('fumi', 'licensing')} and ${checked}, and brief a fresh verifier`;
+    const told = (said) => `ledger carry: fumi's licensing has no verdict from its last verifier on every entry its brief asked one of — ${said}${way}`;
     writeState(dir, checked, 'q1: ok\n');
     const missing = untouched(args);
     writeState(dir, checked, 'q1: ok\nd1: ok\nf9: ok\n');
     const unknown = untouched(args);
     fs.rmSync(statePath(dir, checked));
     const none = untouched(args);
-    writeState(dir, checked, 'q1: ok\nd1: ok\n');
-    writeState(dir, verifyingPath('fumi', 'licensing'), JSON.stringify({ hash: crypto.createHash('sha256').update(JSON.stringify({ entries: [QUESTION, DECISION] })).digest('hex'), refs: ['q1'] }));
+    writeState(dir, checked, 'q1: ok\nf9: ok\n');
+    writeState(dir, verifyingPath('fumi', 'licensing'), noted(['d1'], ['q1', 'd1']));
     const briefed = untouched(args);
 
     assert.deepStrictEqual([missing, unknown, none, briefed], [
       told('it names no verdict on d1'), told('it names f9, which the record it read does not hold'),
-      told(`${checked} is no file; it names no verdict on q1, d1`), told('it names d1, which the record it read does not hold'),
+      told(`${checked} is no file; it names no verdict on q1, d1`), told('it names no verdict on d1; it names f9, which the record it read does not hold'),
     ]);
   });
 

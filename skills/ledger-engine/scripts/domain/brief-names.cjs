@@ -81,7 +81,7 @@ const ROLES = Object.freeze({
   'migration-topic': { agent: 'ledger-migration-topic', whose: 'the migration\'s, for one topic', records: ['migrated-topic', 'verifier-findings', 'verifier-rulings', 'carry-refusal', 'settled-points', 'record-check', 'directive'] },
   'migration-verifier': { agent: 'ledger-migration-verifier', whose: 'the migration verifier\'s', records: ['migrated-topic', 'composed-record', 'walk-sheet', 'earlier-findings', 'settled-points', 'directive'] },
   'migration-phase': { agent: 'ledger-migration-topic', whose: 'the migration\'s, for one phase', records: ['migrated-phase', 'piece-findings', 'settled-piece-points', 'piece-check', 'directive'] },
-  'migration-phase-verifier': { agent: 'ledger-migration-verifier', whose: 'the migration verifier\'s, for one phase', records: ['migrated-phase', 'composed-piece', 'earlier-piece-findings', 'settled-piece-points', 'directive'] },
+  'migration-phase-verifier': { agent: 'ledger-migration-verifier', whose: 'the migration verifier\'s, for one phase', records: ['migrated-phase', 'composed-piece', 'piece-changes', 'earlier-piece-findings', 'settled-piece-points', 'directive'] },
   'phase-cut': { agent: 'ledger-phase-cut', whose: 'the phase cut\'s', records: ['spec-outline', 'spec-scenarios', 'relies-on-graph', 'cut-requests', 'cut-refusal', 'cut-to'] },
   sweep: { agent: 'ledger-sweep', whose: 'the sweep\'s', records: ['unit-records', 'product-record', 'dismissed', 'sweep-refusal', 'sweep-to'] },
   'spec-writer': {

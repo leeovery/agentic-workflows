@@ -58,7 +58,9 @@
 //   carry clears them, and a record is carried once, so a finding left
 //   standing would never be answered — the record unchanged since that
 //   verifier's brief was issued on it (`briefedOn`), and its verdicts
-//   naming every entry it read and no other (`unchecked`); and a topic of
+//   naming every entry its brief asked a verdict of — in a later round
+//   those not passed unchanged since (later-rounds.cjs) — and none the
+//   record it read does not hold (`unchecked`); and a topic of
 //   a unit drawing on an approved spec only once every topic of the unit
 //   has its record so passed and no section of those specs goes uncited
 //   (`unitWaits`), a topic carried taking no section found later; refused,
@@ -259,17 +261,16 @@ const linesOf = (file) => (fs.existsSync(file) ? fs.readFileSync(file, 'utf8').s
 const recordHash = (root, unit, topic) => crypto.createHash('sha256').update(fs.readFileSync(path.join(root, composedPath(unit, topic)))).digest('hex');
 
 /**
- * The record a verifier's brief is issued on noted beside it: its hash,
- * and the refs of its entries, which the verifier's verdicts are held to.
- * @param {string} root @param {string} unit @param {string|null} topic
+ * The record a verifier's brief is issued on noted beside it: its hash;
+ * the refs of the entries it gives a verdict on, which its verdicts are
+ * held to; and what a later round reads of it (later-rounds.cjs, `Note`).
+ * @param {string} root @param {string} unit @param {string|null} topic @param {Omit<import('./later-rounds.cjs').Note, 'hash'>} round
  */
-function noteVerifying(root, unit, topic) {
-  const { entries } = JSON.parse(fs.readFileSync(path.join(root, composedPath(unit, topic)), 'utf8'));
-  const refs = (Array.isArray(entries) ? entries : []).map((entry) => String(entry?.ref));
-  fs.writeFileSync(path.join(root, verifyingPath(unit, topic)), `${JSON.stringify({ hash: recordHash(root, unit, topic), refs })}\n`);
+function noteVerifying(root, unit, topic, round) {
+  fs.writeFileSync(path.join(root, verifyingPath(unit, topic)), `${JSON.stringify({ hash: recordHash(root, unit, topic), ...round })}\n`);
 }
 
-/** The record the last verifier was briefed on, or null where none was. @param {string} root @param {string} unit @param {string|null} topic @returns {{hash: string, refs: string[]}|null} */
+/** The record the last verifier was briefed on, or null where none was. @param {string} root @param {string} unit @param {string|null} topic @returns {import('./later-rounds.cjs').Note|null} */
 function briefedOn(root, unit, topic) {
   const file = path.join(root, verifyingPath(unit, topic));
   return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null;
@@ -279,26 +280,40 @@ function briefedOn(root, unit, topic) {
 const verdictRef = (line) => line.replace(/^(?:[-*+]|\d+[.)])\s+/, '').split(':')[0].replace(/`/g, '').trim();
 
 /**
- * Where the last verifier's verdicts do not name each entry it read, once
- * and no other — the refs its brief was issued on, else, where none was,
- * `refs` — what is missing, and the way on; else null. A consistency guard
- * alone: what each verdict says is the verifier's.
+ * The last verifier's verdicts, each ref's `ok` or not, where it has
+ * written its findings since its brief; null where it has not, its round
+ * counting for nothing.
+ * @param {string} root @param {string} unit @param {string|null} topic @returns {Map<string, boolean>|null}
+ */
+function lastVerdicts(root, unit, topic) {
+  if (!fs.existsSync(path.join(root, findingsPath(unit, topic)))) return null;
+  return new Map(linesOf(path.join(root, checkedPath(unit, topic))).map((line) => [verdictRef(line), /^ok\b/i.test(line.slice(line.indexOf(':') + 1).trim())]));
+}
+
+/**
+ * Where the last verifier's verdicts do not name each entry its brief
+ * asked a verdict of, or name one the record it read does not hold — the
+ * note its brief was issued on, else, where none was, `refs` for both —
+ * what is missing, and the way on; else null. A consistency guard alone:
+ * what each verdict says is the verifier's.
  * @param {string} root @param {string} unit @param {string|null} topic @param {string[]} refs
  * @returns {string|null}
  */
 function unchecked(root, unit, topic, refs) {
-  const read = briefedOn(root, unit, topic)?.refs ?? refs;
+  const note = briefedOn(root, unit, topic);
+  const asked = note?.refs ?? refs;
+  const held = note === null ? refs : Object.keys(note.entries);
   const checked = checkedPath(unit, topic);
   const named = linesOf(path.join(root, checked)).map(verdictRef);
-  const missing = read.filter((ref) => !named.includes(ref));
-  const unknown = [...new Set(named.filter((ref) => !read.includes(ref)))];
+  const missing = asked.filter((ref) => !named.includes(ref));
+  const unknown = [...new Set(named.filter((ref) => !held.includes(ref)))];
   const told = [
-    ...(fs.existsSync(path.join(root, checked)) || read.length === 0 ? [] : [`${checked} is no file`]),
+    ...(fs.existsSync(path.join(root, checked)) || asked.length === 0 ? [] : [`${checked} is no file`]),
     ...(missing.length > 0 ? [`it names no verdict on ${missing.join(', ')}`] : []),
     ...(unknown.length > 0 ? [`it names ${unknown.join(', ')}, which the record it read does not hold`] : []),
   ];
   if (told.length === 0) return null;
-  return `${recordName({ unit, topic })} has no verdict from its last verifier on every entry it read — ${told.join('; ')}: a verifier writes a line for each entry, \`{ref}: ok\` or \`{ref}: see finding\`, and one that does not has given no verdict — remove ${findingsPath(unit, topic)}, ${rulingsPath(unit, topic)} and ${checked}, and brief a fresh verifier`;
+  return `${recordName({ unit, topic })} has no verdict from its last verifier on every entry its brief asked one of — ${told.join('; ')}: a verifier writes a line for each entry its walk sheet does not mark passed, \`{ref}: ok\` or \`{ref}: see finding\`, and one that does not has given no verdict — remove ${findingsPath(unit, topic)}, ${rulingsPath(unit, topic)} and ${checked}, and brief a fresh verifier`;
 }
 
 /**
@@ -685,4 +700,4 @@ function carryRecord(cwd, args) {
   }
 }
 
-module.exports = { CARRY_VERB, CARRY_USAGE, DRY_RUN, placePath, recordName, carriedPath, composedPath, findingsPath, rulingsPath, handbackPath, handedBack, checkedPath, verifyingPath, noteVerifying, uncheckedRound, lastRound, keepRound, keepRecordRound, besideFindings, refusedPath, roundsPath, settledPath, topicPlace, carryRecord };
+module.exports = { CARRY_VERB, CARRY_USAGE, DRY_RUN, placePath, recordName, carriedPath, composedPath, findingsPath, rulingsPath, handbackPath, handedBack, checkedPath, verifyingPath, noteVerifying, briefedOn, lastVerdicts, uncheckedRound, lastRound, keepRound, keepRecordRound, besideFindings, refusedPath, roundsPath, settledPath, topicPlace, carryRecord };

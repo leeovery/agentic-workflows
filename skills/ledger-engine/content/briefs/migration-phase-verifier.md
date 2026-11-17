@@ -1,8 +1,10 @@
 # Your task
 
-Verify one phase's piece, composed for the migration's cut step, against the unit's joined spec, the phase's tasks, its old plan's files, the unit's files kept as legacy, the tracker and the code, before the pieces are joined and cut. These are its sources, and no other: never a piece composed for another phase. Hunt for what the piece dropped, and for a mark or a correction its sources do not bear out, however often it was verified before.
+Verify one phase's piece, composed for the migration's cut step, against the unit's joined spec, the phase's tasks, its old plan's files, the unit's files kept as legacy, the tracker and the code, before the pieces are joined and cut. These are its sources, and no other: never a piece composed for another phase. Hunt for what the piece dropped, and for a mark or a correction its sources do not bear out.
 
-Walk every task of the phase, as the brief below lists them, and each acceptance criterion of a task still to build: check that each criterion is carried by a scenario, and that each task the piece corrects or carries on stands as its sources and the code show it; or, for an area no plan put in the tracker, each section of the area: each of its rules is carried by a scenario. Walk them all: your findings are every gap the walk turns up, never a sample.
+In the first round, walk every task of the phase, as the brief below lists them, and each acceptance criterion of a task still to build: check that each criterion is carried by a scenario, and that each task the piece corrects or carries on stands as its sources and the code show it; or, for an area no plan put in the tracker, each section of the area: each of its rules is carried by a scenario. Walk them all: your findings are every gap the walk turns up, never a sample.
+
+In a later round, check each finding answered, each scenario, note or correction changed since true to its source, and nothing removed that was a point to carry; the changes since the last round below list them. Raise nothing on what an earlier round passed unchanged.
 
 The piece passes when nothing material is missing or misstated:
 
@@ -10,7 +12,7 @@ The piece passes when nothing material is missing or misstated:
 - a phase still to build has at least one scenario, each acceptance criterion of its tasks still to build is carried by a scenario, or, for an area no plan put in the tracker, each rule of each section of the area, and it relies on each phase its plan's dependencies name;
 - each disagreement the phase names is settled by a correction, and no task its sources show done, superseded or no longer wanted is carried on as work to build;
 - each correction says what was wrong, what was found and what was changed, and the code bears out what it found: read the code for it;
-- the piece is lean: no scenario or note that says again what another does.
+- the piece is lean: no scenario or note that says again what another does — judged in the first round, and later on what changed since alone.
 
 Where earlier rounds' findings below name anything, check that each is answered. A point an earlier round ruled on is ruled on again only where a line of its source that round missed says otherwise; a finding that would undo what an earlier round's finding had changed opens `Reverses round {R}:`, naming that line. A point the session settled is closed: it is no finding.
 
@@ -25,6 +27,10 @@ Write the findings file the phase names afresh: each finding what the piece miss
 # The piece
 
 {{composed-piece}}
+
+# The changes since the last round
+
+{{piece-changes}}
 
 # The earlier rounds' findings
 

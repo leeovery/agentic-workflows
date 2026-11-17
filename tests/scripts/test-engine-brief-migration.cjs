@@ -23,7 +23,8 @@
 // session's own work none of them; a cancelled unit's topic briefed as any
 // other; the verifier's — the topic, its record as composed, verbatim,
 // every round of findings and rulings before, the last kept as a round and
-// cleared, the points the session settled, and the directive; every
+// cleared, from the second round its walk sheet marking each entry and
+// section against the rounds before so a later round walks what changed, the points the session settled, and the directive; every
 // refusal storing nothing; and the two agents' definitions (21.S35): each
 // fixes its model and effort, and its shell is for reading, the per-topic
 // agent's for its record's check besides, so no other engine call and no
@@ -396,8 +397,6 @@ describe('the walk of a record\'s sources', () => {
         CONFINED,
         'The record passes when it holds each current decision, finding and open question its sources hold,',
         'Walk the sheet below section by section: it lays the record against its sources, each section of each file with its lines and every entry citing it. Read each section in its source, then check that what each entry listed beneath it takes from the section is what the section says, and that each current decision, finding and open question the section holds is carried, by an entry listed there or elsewhere, or is not this record\'s; of the discovery sessions, each point bearing on its subject, or for a unit\'s own record on no topic\'s subject. That a cited heading exists is no check.',
-        'Walk every section: your findings are every gap the walk turns up, never a sample.',
-        'Write the checked file the brief names afresh, a line for each entry of the record, by its ref: `{ref}: ok`, or `{ref}: see finding` where a finding names it.',
         '- each section it cites of a spec drawing on it is carried whole: each current decision, finding and open question of it that concerns this record is carried; one it cites of a spec it does not draw on, the later answer, gives that answer alone;',
         'Check each decision and open question against the unit\'s approved specs the brief below lists as the later answer, searching them for its subject rather than walking them: one they decide otherwise or answer, carried as the log has it, is a finding.',
         '- nothing is carried that you rule is not this record\'s: such an entry is a finding, to remove, with the ruling beside it.',
@@ -410,7 +409,7 @@ describe('what no one measured, and sources at odds', () => {
   it('the composer carries each point a section leaves unmeasured and names each contradiction no later section settles; the verifier\'s walk checks both, setting the first aside only where a later section measured it or made it moot', () => {
     assert.deepStrictEqual([
       unsaid('migration-topic', ['Carry each point a section leaves unmeasured, untested, unverified or to check, and where two sections contradict each other on a point no later one settles, have the record name the contradiction.']),
-      unsaid('migration-verifier', ['That a cited heading exists is no check. Check that each point a section leaves unmeasured, untested, unverified or to check is carried, a ruling setting it aside only where a later section measured it or made it moot; and that where a section contradicts another on a point no later one settles, the record names the contradiction. Walk every section']),
+      unsaid('migration-verifier', ['That a cited heading exists is no check. Check that each point a section leaves unmeasured, untested, unverified or to check is carried, a ruling setting it aside only where a later section measured it or made it moot; and that where a section contradicts another on a point no later one settles, the record names the contradiction. Walk every open section']),
     ], [[], []]);
   });
 });
@@ -506,14 +505,14 @@ describe('the walk sheet (the verifier\'s brief)', () => {
 });
 
 describe('the verifier\'s verdict on each entry', () => {
-  it('its brief issued, the refs it reads written beside the record; once it has written its findings, the next brief refused until its verdicts name each entry it read and no other, naming what is wrong and the way on; a complete one kept with its round', () => {
+  it('its brief issued, the refs it gives a verdict on written beside the record; once it has written its findings, the next brief refused until its verdicts name each of them, and none the record it read does not hold, naming what is wrong and the way on; a complete one kept with its round', () => {
     const RECORD2 = JSON.stringify({ entries: [{ ref: 'q1', event: 'asked', text: 'How long is the trial?', by: 'person' }, { ref: 'q2', event: 'asked', text: 'Is a card needed?', by: 'person' }] });
     writeState(dir, composedPath('fumi', 'licensing'), RECORD2);
     issued(['migration-verifier', ...LICENSING]);
     const read = JSON.parse(readState(dir, verifyingPath('fumi', 'licensing')));
-    const way = 'a verifier writes a line for each entry, `{ref}: ok` or `{ref}: see finding`, and one that does not has given no verdict — remove .cache/migrate/records/fumi/licensing.findings.txt, .cache/migrate/records/fumi/licensing.rulings.txt and .cache/migrate/records/fumi/licensing.checked.txt, and brief a fresh verifier';
+    const way = 'a verifier writes a line for each entry its walk sheet does not mark passed, `{ref}: ok` or `{ref}: see finding`, and one that does not has given no verdict — remove .cache/migrate/records/fumi/licensing.findings.txt, .cache/migrate/records/fumi/licensing.rulings.txt and .cache/migrate/records/fumi/licensing.checked.txt, and brief a fresh verifier';
     const refusedBrief = (/** @type {string[]} */ args, /** @type {RegExp} */ pattern) => assert.match(refusedUntouched(dir, ['brief', ...args], { env: SESSION }, harness), pattern);
-    const refusal = (/** @type {string} */ told) => new RegExp(`^brief: fumi's licensing has no verdict from its last verifier on every entry it read — ${told.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}: ${way.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
+    const refusal = (/** @type {string} */ told) => new RegExp(`^brief: fumi's licensing has no verdict from its last verifier on every entry its brief asked one of — ${told.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}: ${way.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
 
     verdict('The trial is wrong.\n', 'q1: see finding\n');
     refusedBrief(['migration-topic', ...LICENSING], refusal('it names no verdict on q2'));
@@ -526,7 +525,7 @@ describe('the verifier\'s verdict on each entry', () => {
     issued(['migration-topic', ...LICENSING]);
     issued(['migration-verifier', ...LICENSING]);
 
-    assert.deepStrictEqual(read, { hash: crypto.createHash('sha256').update(RECORD2).digest('hex'), refs: ['q1', 'q2'] });
+    assert.deepStrictEqual([read.hash, read.refs], [crypto.createHash('sha256').update(RECORD2).digest('hex'), ['q1', 'q2']]);
     assert.strictEqual(readState(dir, roundsPath('fumi', 'licensing')), '## Round 1\n\nThe trial is wrong.\n\n### Checked\n\nq1: see finding\nq2: ok\n');
     assert.deepStrictEqual(JSON.parse(readState(dir, verifyingPath('fumi', 'licensing'))).refs, ['q1']);
   });
@@ -537,6 +536,73 @@ describe('the verifier\'s verdict on each entry', () => {
     issued(['migration-verifier', ...LICENSING]);
 
     assert.ok(issued(['migration-verifier', ...LICENSING]).brief.includes('# The walk sheet'));
+  });
+});
+
+describe('a later round (21.10.18)', () => {
+  const log = { path: 'fumi/topics/licensing/log.md', section: 'Trial Length > Decision' };
+  const report = { path: 'fumi/topics/licensing/experiments/E2-trial/report.md', section: 'Result' };
+  const Q1 = { ref: 'q1', event: 'asked', text: 'How long is the trial?', by: 'person', cites: [log] };
+  const D1 = { ref: 'd1', event: 'decided', answers: 'q1', text: 'Thirty days.', cites: [log] };
+  const F1 = { ref: 'f1', event: 'found', text: 'A week converts as well.', cites: [report] };
+  const Q2 = { ref: 'q2', event: 'asked', text: 'Does the corrigendum hold?', cites: [{ path: 'fumi/assets/specs/commerce.md', section: 'Corrigenda' }] };
+  const CLOSED = 'closed — an earlier round passed it, and nothing citing it changed since';
+
+  /** The verifier's brief issued on licensing's record of `entries`: its walk sheet, and the refs it gives a verdict on. @param {Record<string, unknown>[]} entries */
+  function round(entries) {
+    writeState(dir, composedPath('fumi', 'licensing'), JSON.stringify({ entries }));
+    const { brief } = issued(['migration-verifier', ...LICENSING]);
+    const sheet = brief.slice(brief.indexOf('# The walk sheet\n\n') + '# The walk sheet\n\n'.length, brief.indexOf('\n\n# The earlier rounds'));
+    return { sheet, asked: JSON.parse(readState(dir, verifyingPath('fumi', 'licensing'))).refs };
+  }
+
+  it('the first walks everything; from the second, a section passed unchanged is closed and an entry passed unchanged asked no verdict, each other marked changed — passed before or not — new or not passed; a section an entry left reopened, and a round whose verifier never wrote counting for nothing', () => {
+    const first = round([Q1, D1, F1]);
+    verdict('Trial Length > Decision: d1 says thirty days, the log fourteen.\n', 'q1: ok\nd1: see finding\nf1: ok\n');
+    const second = round([Q1, { ...D1, text: 'Fourteen days.' }, F1, Q2]);
+    verdict('Corrigenda: q2 asks what the section settles.\n', 'q1: ok\nd1: ok\nq2: see finding\n');
+    const third = round([{ ...Q1, text: 'How long does the trial run?' }, { ...D1, text: 'Fourteen days.' }, Q2]);
+    const again = round([{ ...Q1, text: 'How long does the trial run?' }, { ...D1, text: 'Fourteen days.' }, Q2]);
+
+    assert.deepStrictEqual([first.asked, second, third, again], [
+      ['q1', 'd1', 'f1'],
+      {
+        sheet: [
+          '## fumi/topics/licensing/brief.md', '', `- Licensing, lines 1–3: ${CLOSED}`, '',
+          '## fumi/topics/licensing/experiments/E2-trial/report.md', '', `- Report > Result, lines 3–5: ${CLOSED}`, '',
+          '## fumi/topics/licensing/log.md', '', '- Discussion: Licensing > Trial Length > Decision, lines 7–9', '  - q1, asked, passed unchanged: How long is the trial?', '  - d1, decided, changed: Fourteen days.', '',
+          '## fumi/assets/specs/commerce.md', '', '- Specification: Commerce > Corrigenda, lines 3–5', '  - q2, asked, new: Does the corrigendum hold?',
+        ].join('\n'),
+        asked: ['d1', 'q2'],
+      },
+      {
+        sheet: [
+          '## fumi/topics/licensing/brief.md', '', `- Licensing, lines 1–3: ${CLOSED}`, '',
+          '## fumi/topics/licensing/experiments/E2-trial/report.md', '', '- Report > Result, lines 3–5: no entry cites it', '',
+          '## fumi/topics/licensing/log.md', '', '- Discussion: Licensing > Trial Length > Decision, lines 7–9', '  - q1, asked, changed: How long does the trial run?', '  - d1, decided, passed unchanged: Fourteen days.', '',
+          '## fumi/assets/specs/commerce.md', '', '- Specification: Commerce > Corrigenda, lines 3–5', '  - q2, asked, not passed: Does the corrigendum hold?',
+        ].join('\n'),
+        asked: ['q1', 'q2'],
+      },
+      third,
+    ]);
+    assert.ok(!first.sheet.includes('closed') && !first.sheet.includes('passed'), first.sheet);
+  });
+
+  it('the verifiers\' briefs: an open section walked, a closed one no finding; a later round checks what changed and raises nothing on what an earlier one passed unchanged, leanness judged on it alone; a verdict on each entry not passed unchanged', () => {
+    assert.deepStrictEqual([
+      unsaid('migration-verifier', [
+        'Walk every open section of the sheet, every section in a first round: a closed one passed an earlier round unchanged and is no finding, and your findings are every gap the walk turns up, never a sample.',
+        'In a later round, check each finding answered, each entry or line changed since true to its source, and nothing removed that was a point to carry; raise nothing on what an earlier round passed unchanged.',
+        '- nothing is carried twice — in a later round, judged on what changed since alone;',
+        'Write the checked file the brief names afresh, a line for each entry of the record the sheet does not mark passed unchanged, by its ref: `{ref}: ok`, or `{ref}: see finding` where a finding names it.',
+      ]),
+      unsaid('migration-phase-verifier', [
+        'In a later round, check each finding answered, each scenario, note or correction changed since true to its source, and nothing removed that was a point to carry; the changes since the last round below list them. Raise nothing on what an earlier round passed unchanged.',
+        '- the piece is lean: no scenario or note that says again what another does — judged in the first round, and later on what changed since alone.',
+      ]),
+      ['migration-verifier', 'migration-phase-verifier'].filter((role) => fs.readFileSync(path.join(TEMPLATES, `${role}.md`), 'utf8').includes('however often')),
+    ], [[], [], []]);
   });
 });
 

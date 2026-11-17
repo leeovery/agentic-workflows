@@ -28,7 +28,8 @@
 // the cut's names with the text of each still to build, what its plan
 // depends on and where the manifest and the tracker disagree, and of the
 // directive the section its check names briefed, a phase's piece; the
-// verifier's, the piece verbatim; the join of the pieces into the plan the
+// verifier's, the piece verbatim, and from the second round what changed
+// in it since the last verifier to write read it; the join of the pieces into the plan the
 // cut takes, a note of several lines taken as the cut takes it, a missing
 // or misshapen piece, a note the cut would refuse and an old dependency
 // left unrelied refused; each record refused for a directive whose check
@@ -325,8 +326,8 @@ describe('the directive\'s ways on', () => {
   /** Each rule the directive does not state. @param {string[]} rules */
   const unstated = (rules) => rules.filter((rule) => !TEXT.includes(rule));
 
-  it('a reversal the session settles: a ruling that changes the piece becomes a finding to amend to, one that keeps it takes the finding out — so an empty findings file is only ever a pass', () => {
-    assert.deepStrictEqual(unstated(['Where the ruling has the piece change, replace the finding with `Settled: {point}, amend to agree`', 'Where the ruling keeps the piece as it stands, take the finding out of the findings file', 'An empty findings file is only ever a pass.']), []);
+  it('a reversal the session settles: a ruling that changes the piece becomes a finding to amend to, one that keeps it takes the finding out — so an empty findings file is only ever a pass; a finding the third round or a later one writes settled by the session as a reversal is', () => {
+    assert.deepStrictEqual(unstated(['Where the ruling has the piece change, replace the finding with `Settled: {point}, amend to agree`', 'Where the ruling keeps the piece as it stands, take the finding out of the findings file', 'An empty findings file is only ever a pass.', 'it goes to no agent, nor does a finding the third round or a later one writes.']), []);
   });
 
   it('a task\'s criteria carried whole, and an area no plan put in the tracker section by section: the composer composing a piece from the start walks the phase, an amend answering the findings in its place and keeping everything else, the verifier every task, criterion and section, its findings every gap, never a sample; neither reads a piece composed for another phase, the unit\'s legacy files among their sources', () => {
@@ -343,7 +344,7 @@ describe('the directive\'s ways on', () => {
       ].filter((rule) => !template('migration-phase').includes(rule)),
       [
         SOURCES, CONFINED,
-        `Walk every task of the phase, as the brief below lists them, and each acceptance criterion of a task still to build: check that each criterion is carried by a scenario, and that each task the piece corrects or carries on stands as its sources and the code show it; ${AREA}. Walk them all: your findings are every gap the walk turns up, never a sample.`,
+        `In the first round, walk every task of the phase, as the brief below lists them, and each acceptance criterion of a task still to build: check that each criterion is carried by a scenario, and that each task the piece corrects or carries on stands as its sources and the code show it; ${AREA}. Walk them all: your findings are every gap the walk turns up, never a sample.`,
         'each acceptance criterion of its tasks still to build is carried by a scenario, or, for an area no plan put in the tracker, each rule of each section of the area, and it relies',
       ].filter((rule) => !template('migration-phase-verifier').includes(rule)),
     ], [[], [], []]);
@@ -506,6 +507,34 @@ describe('the per-phase agents and the join (21.10.5, E7)', () => {
     assert.ok(composer('5').includes('# Points the session settled\n\n- The export names CSV as its format: the person said so.\n\n# The directive'));
     writeState(dir, String(where), '');
     assert.ok(verifier('5').includes('## Round 3\n\nNone: the verifier passed it.\n\n# Points the session settled'));
+  });
+
+  it('21.10.18: the first verifier walks the whole piece; a later one is briefed with what changed since the last verifier to write read it — the phase\'s fields, each scenario, note and correction added or removed — a verifier that never wrote counting for nothing', () => {
+    const changes = (/** @type {string} */ brief) => brief.slice(brief.indexOf('# The changes since the last round\n\n') + '# The changes since the last round\n\n'.length, brief.indexOf('\n\n# The earlier rounds'));
+    const amend = (/** @type {Record<string, unknown>} */ piece) => writeState(dir, staged(5, 'json'), JSON.stringify(piece, null, 2));
+    const amended = exported({ phase: { name: 'Export', goal: 'Payments exported.', sections: ['2'], relies_on: [3, 4] }, scenarios: ['Given a month of payments, when they are exported, then a CSV file holds each.'], notes: ['The format is CSV.'] });
+    compose(5, exported(), null);
+
+    const first = changes(verifier('5'));
+    writeState(dir, staged(5, 'findings.txt'), '- The export names no file format.\n');
+    amend(amended);
+    const second = changes(verifier('5'));
+    const unwritten = [changes(verifier('5')), changes(verifier('5'))];
+    writeState(dir, staged(5, 'findings.txt'), '- The note says CSV, the till says otherwise.\n');
+    const unchanged = changes(verifier('5'));
+
+    assert.deepStrictEqual([first, second, unwritten, unchanged], [
+      'None: this is the first round, which walks the whole piece.',
+      [
+        '- The phase\'s relies_on: was [4], now [3,4]',
+        '- A scenario added: Given a month of payments, when they are exported, then a CSV file holds each.',
+        '- A scenario removed: Given a month of payments, when they are exported, then a file holds each.',
+        '- A note added: The format is CSV.',
+      ].join('\n'),
+      [second, second],
+      'None: the piece is as the last round read it.',
+    ]);
+    assert.deepStrictEqual(JSON.parse(readState(dir, staged(5, 'verified.json'))), amended);
   });
 
   it('checks one phase\'s piece as the join would, writing nothing: the faults of the piece alone, its verdict and the reliances between phases the join\'s; refused for a phase the join writes, one the cut lacks, and a piece that will not read', () => {
