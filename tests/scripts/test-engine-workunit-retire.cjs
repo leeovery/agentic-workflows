@@ -8,14 +8,15 @@
 // the registry, its name free for a unit made later, which meets none of its
 // entries; its ledger lines the product's, `ledger product` showing its
 // product-wide entries and its questions with each cite where the move took
-// its file, and no unit's record or copy showing any, so the knowledge store
-// holds none, read at once; its cache purged; each epic's topic promoted to
+// its file, and no unit's record showing any; no copy rendered nor the
+// knowledge base told, which the migration's finish does (21.9.1); its
+// cache purged; each epic's topic promoted to
 // it gone from that epic's map and items (P4); a roadmap source under its
 // folder following its file; its legacy files among the product's, a log's
 // links to one and to their folder following them, once; the commit held
 // for the migration's. Retired again it finds everything done; a session
 // killed after each step, retired again, leaves what a run never killed
-// leaves, the store among it. Every refusal writes nothing.
+// leaves. Every refusal writes nothing.
 // The records directive's rule that a cross-cutting unit's entries are
 // product-wide is test-migration-079.cjs's.
 //
@@ -33,7 +34,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
-const { ok, callAsync, git, statePath, layout, writeState, treeSnapshot, refusedPristine, killedAt, cleanupFixture, keywordOnlyKnowledge, indexedFiles } = harness;
+const { ok, git, statePath, layout, writeState, treeSnapshot, refusedPristine, killedAt, cleanupFixture } = harness;
 const { SESSION, cutMigration, settledState, stateUnborn, refusedUntouched } = require('./migration-world.cjs');
 
 const RETIRE = ['workunit', 'retire', 'caching'];
@@ -58,7 +59,7 @@ describe('a cross-cutting unit leaves the registry (21.7.3, 21.7.5, 19.6.7)', ()
   beforeEach(() => { dir = world(); });
   afterEach(() => cleanupFixture(path.dirname(dir)));
 
-  it('21.S26: its folder kept whole in the product\'s assets, off the registry, its entries the product record\'s and no unit\'s, its questions the product\'s, each cite where its file went; the epic\'s promoted topic gone (P4); the roadmap\'s source following; the commit held', () => {
+  it('21.S26: its folder kept whole in the product\'s assets, off the registry, its entries the product record\'s and no unit\'s, its questions the product\'s, each cite where its file went; the epic\'s promoted topic gone (P4); the roadmap\'s source following; no copy rendered, which the finish does (21.9.1); the commit held', () => {
     const before = treeSnapshot(dir);
 
     assert.deepStrictEqual(run(RETIRE), {
@@ -97,24 +98,16 @@ describe('a cross-cutting unit leaves the registry (21.7.3, 21.7.5, 19.6.7)', ()
       [['When is a cached key purged?', [log]], ['Do reads ever purge a key?', [log]]],
     ]);
     assert.ok(!Object.hasOwn(run(['ledger', 'product', 'gateway', 'errors']), 'questions'), 'read for a topic, the product record alone: its questions are the product\'s conversation\'s');
-    assert.deepStrictEqual(Object.keys(afterwards).filter((rel) => rel.startsWith(layout.knowledge('records'))).sort(),
-      [layout.record('gateway', 'auth'), layout.record('gateway', 'errors'), layout.record('gateway', 'limits'), layout.record('shop', 'gifts'), layout.record('shop', 'reviews'), layout.record('shop', 'weights'), layout.record('shop', 'wishlist')]);
-    assert.match(afterwards[layout.knowledge('product.md')], /^Every write purges its keys\.$[\s\S]*^## Finding: An entry lives an hour at most\.$/m);
+    assert.deepStrictEqual(Object.entries(afterwards).filter(([rel]) => rel.startsWith(layout.knowledge())), Object.entries(before).filter(([rel]) => rel.startsWith(layout.knowledge())), 'no copy rendered');
     assert.ok(stateUnborn(dir));
   });
 
-  it('the knowledge store read at once: the unit\'s record copies gone from it, every other unit\'s there still; its cache purged, the old cache\'s reports the migration copied into its earlier/ with it', async () => {
-    keywordOnlyKnowledge(dir);
-    const indexed = await callAsync(dir, ['knowledge', 'index'], { env: SESSION });
-    assert.strictEqual(indexed.code, 0, indexed.stderr);
+  it('its cache purged, the old cache\'s reports the migration copied into its earlier/ with it', () => {
     writeState(dir, layout.cache('caching', 'discussion', 'invalidation', 'entered.json'), '{}\n');
     writeState(dir, `${layout.cache('caching')}/earlier/discussion/invalidation/review-001.md`, 'an old report\n');
-    const others = indexedFiles(dir).filter((file) => file !== layout.record('caching', 'invalidation'));
-    assert.strictEqual(others.length, indexedFiles(dir).length - 1, 'the store held the unit\'s record copy');
 
     run(RETIRE);
 
-    assert.deepStrictEqual(indexedFiles(dir), others);
     assert.ok(!fs.existsSync(statePath(dir, layout.cache('caching'))), 'its cache purged');
   });
 
@@ -184,7 +177,7 @@ describe('a retire killed part-way finishes on its next run', () => {
     ['its lines carried, its folder not moved', { method: 'renameSync', file: layout.ledger, when: 'after' }],
     ['its folder moved, the epic still holding the topic promoted to it', { method: 'renameSync', file: layout.productAssets('caching'), when: 'after' }],
     ['the promoted topic gone, the unit still on the registry', { method: 'renameSync', file: layout.manifest('gateway'), when: 'after' }],
-    ['the unit off the registry, the copies not yet following', { method: 'renameSync', file: `.ledger/${layout.projectManifest}`, when: 'after' }],
+    ['the unit off the registry', { method: 'renameSync', file: `.ledger/${layout.projectManifest}`, when: 'after' }],
   ])) {
     it(`killed with ${when}: retired again, the state is a clean run's`, () => {
       killedAt(at, dir, RETIRE, { env: SESSION });
@@ -194,18 +187,6 @@ describe('a retire killed part-way finishes on its next run', () => {
       assert.deepStrictEqual(settledState(dir), clean);
     });
   }
-
-  it('killed with the unit\'s copy gone, the store not yet told: retired again, the store is a clean run\'s, the unit\'s documents out of it', async () => {
-    keywordOnlyKnowledge(dir);
-    const indexed = await callAsync(dir, ['knowledge', 'index'], { env: SESSION });
-    assert.strictEqual(indexed.code, 0, indexed.stderr);
-    const others = indexedFiles(dir).filter((file) => file !== layout.record('caching', 'invalidation'));
-    killedAt({ method: 'rmSync', file: layout.record('caching', 'invalidation'), when: 'after' }, dir, RETIRE, { env: SESSION });
-
-    run(RETIRE);
-
-    assert.deepStrictEqual(indexedFiles(dir), others);
-  });
 });
 
 describe('the refusals, nothing written', () => {

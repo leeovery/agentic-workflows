@@ -56,7 +56,10 @@
 //   knowledge base is set up: each copy written indexed and each removed
 //   taken out. The keyword side lands at once, the vectors left to the
 //   background fill (knowledge/sync.cjs). Boot renders before its own
-//   knowledge pass, which brings the store in line with the copies.
+//   knowledge pass, which brings the store in line with the copies. While
+//   the migration runs nothing is rendered or indexed after a write: its
+//   finish renders and indexes the whole set, where the knowledge question
+//   is asked, so a store not yet set up says nothing mid-migration (21.9.1).
 // - A render or an index that fails is a warning, never a refusal: what
 //   called it stands, and the next start renders and indexes it again
 //   (22.6.15).
@@ -74,7 +77,7 @@ const { PRODUCT } = require('./ledger-events.cjs');
 const { factsOf, standingOf, wordingOf, answersOf, laterOf, placeRecords, productOf } = require('./ledger-fold.cjs');
 const { readShown } = require('./ledger-read.cjs');
 const { manifestOf, unitMark, livenessMarks, manifestStamps, changedUnits } = require('./ledger-units.cjs');
-const { withStateLock } = require('./state-worktree.cjs');
+const { withStateLock, migrationRuns } = require('./state-worktree.cjs');
 const { recordCopy, productCopy } = require('./projections/ledger-copy.cjs');
 const { recordFile, recordScope } = require('./knowledge/artifacts.cjs');
 const { syncKnowledge } = require('./knowledge/sync.cjs');
@@ -397,29 +400,20 @@ function renderLedgerCopies(cwd, warnings, after = () => {}) {
 }
 
 /**
- * What a caller moved, told to the knowledge base whatever the render
- * found: the scopes it takes out, and the copies it indexes where they are
- * on disk — so a redo after a run killed between the copies and the store
- * leaves the store as a clean run does.
- * @typedef {{remove?: import('./knowledge/maintenance.cjs').Scope[], index?: string[]}} Following
- */
-
-/**
  * The copies rendered against the ledger and, where the checkout's knowledge
  * base is set up, indexed under the same lock: each written indexed, each
- * removed taken out, and what `following` names with them. A failure of
- * either is a warning.
- * @param {string} cwd @param {string[]} warnings @param {Following} [following]
+ * removed taken out. A failure of either is a warning. Nothing while the
+ * migration runs, whose finish does it all.
+ * @param {string} cwd @param {string[]} warnings
  */
-function refreshLedgerCopies(cwd, warnings, following = {}) {
+function refreshLedgerCopies(cwd, warnings) {
+  if (migrationRuns(stateRoot(cwd))) return;
   renderLedgerCopies(cwd, warnings, (rendered) => {
     const root = stateRoot(cwd);
     if (!fs.existsSync(knowledgeFiles(root).config)) return;
-    const held = (following.index ?? []).filter((file) => fs.existsSync(path.join(root, file)));
     syncKnowledge(cwd, [
-      ...(following.remove ?? []).map((scope) => ({ remove: scope, label: `knowledge remove (${scope.workUnit})` })),
       ...rendered.removed.map((file) => ({ remove: recordScope(file), label: `knowledge remove (${file})` })),
-      ...[...new Set([...rendered.written, ...held])].map((file) => ({ index: file, label: `knowledge index (${file})` })),
+      ...rendered.written.map((file) => ({ index: file, label: `knowledge index (${file})` })),
     ], warnings);
   });
 }

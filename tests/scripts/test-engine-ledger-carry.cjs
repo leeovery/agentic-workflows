@@ -140,11 +140,12 @@ describe('a topic\'s record carried (21.6, 21.10.9)', () => {
     assert.deepStrictEqual(ok(dir, ['ledger', 'record', 'fumi', 'licensing'], { env: SESSION }).decisions.map(({ session }) => session), ['migration'], 'ledger record shows the mark');
   });
 
-  it('21.9.1: renders and indexes nothing for the knowledge base, which the finish does, so a store it cannot build says nothing mid-migration', () => {
+  it('21.9.1: nothing written while the migration runs renders or indexes for the knowledge base — the carry, nor a write after it — which the finish does, so a store it cannot build says nothing mid-migration', () => {
     writeState(dir, layout.knowledge('config.json'), '{"knowledge":{}}\n');
-    const res = carry(LICENSING, [QUESTION, DECISION, FINDING]);
+    const carried = carry(LICENSING, [QUESTION, DECISION, FINDING]);
+    const asked = ok(dir, ['ledger', 'ask', 'fumi.discussion.search'], { env: SESSION, stdin: JSON.stringify({ text: 'Who pays for the trial?', by: 'claude', who_moved_whom: 'none' }) });
 
-    assert.deepStrictEqual([res.warnings, fs.readdirSync(statePath(dir, layout.knowledge())).sort()], [undefined, ['config.json']]);
+    assert.deepStrictEqual([carried.warnings, asked.warnings, fs.readdirSync(statePath(dir, layout.knowledge())).sort()], [undefined, undefined, ['config.json']]);
   });
 
   it('21.S44: a cancelled unit\'s topic is carried as any other, its entries in the ledger', () => {
