@@ -790,6 +790,16 @@ describe('the directive\'s example record, frozen with 079', () => {
     assert.ok(text.includes('- **A cited section, whole.** A spec section the record cites is carried whole: each current decision, finding and open question it holds that concerns this topic is an entry. Citing a section for one of its rules and leaving its others out is a gap.'));
   });
 
+  it('a point a source leaves unmeasured is carried, set aside only where a later source measured it or made it moot; a contradiction no later source settles is named — each in what the record holds, which the agents\' briefs draw', () => {
+    const text = fs.readFileSync(DIRECTIVE, 'utf8');
+    const holds = text.slice(text.indexOf('### What It Holds'), text.indexOf('### Its Shape'));
+
+    assert.deepStrictEqual([
+      '- **What no one measured.** A point a source names unmeasured, untested, unverified or left to check is carried: an open question, or a finding stating that it is unmeasured. A ruling sets it aside only where a later source measured it, or made it moot.',
+      '- **Sources at odds.** Where the sources, or the sections of one, contradict each other on a point, and no later source settles it, the record says so: the entries carrying each side name the other, or an open question names the contradiction and cites both.',
+    ].filter((rule) => !holds.includes(rule)), []);
+  });
+
   it('carries nothing of a cancelled unit holding an approved spec and no topic: its spec the reference it is, governing nothing', () => {
     const text = fs.readFileSync(DIRECTIVE, 'utf8');
 
