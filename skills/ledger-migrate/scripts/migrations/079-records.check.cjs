@@ -114,14 +114,15 @@
 // unit in progress, which the engine answers, once the check passes, where
 // it has no raise yet: raised at the topic, or at the unit's specification
 // where the unit has its spec — its `spec.md`, or its specs joined — past
-// which a topic takes no raise. A topic never started, and a unit's own
-// record, are carried in discovery, where nothing is decided (8.3.4): their
-// points stay open questions, which their first opening reads. A
-// cross-cutting unit's record is the product's: its points stay open
-// questions, the product's once the cut and the merges retire the unit
-// (21.7.5), which the product's conversation opens on. A completed unit's
-// points are settled by the code it built; a cancelled or postponed unit's,
-// and a topic's set aside, wait with it (21.6.11). A record marking one of
+// which a topic takes no raise. A unit's own record is carried in
+// discovery, where nothing is decided (8.3.4), and a topic never started —
+// carried in discovery, or its item `unstarted` — reads its open questions
+// at its first opening: their points stay open questions. A cross-cutting
+// unit's record is the product's: its points stay open questions, the
+// product's once the cut and the merges retire the unit (21.7.5), which
+// the product's conversation opens on. A completed unit's points are
+// settled by the code it built; a cancelled unit's, and a topic's set
+// aside, wait with it (21.6.11). A record marking one of
 // these to raise breaks a rule (`unraised`), so the carry refuses the mark
 // that would never be raised.
 //
@@ -166,6 +167,7 @@ const LEDGER = '.ledger.jsonl';
 const OPEN_THREADS = ['open', 'digging'];
 const SET_ASIDE = ['cancelled', 'postponed'];
 const IN_PROGRESS = 'in-progress';
+const UNSTARTED = 'unstarted';
 // A spec item the person approved, in the old manifest.
 const APPROVED_SPEC = 'completed';
 // The spec a building unit's specs are joined into (078).
@@ -672,11 +674,13 @@ const hasSpec = (project, unit) => Array.isArray(unit.manifest?.spec?.joined) ||
 
 /**
  * Why a point a record marks to raise is never raised at the directive's
- * end, or null where it is: a unit's own record and a topic never started
- * are carried in discovery, where nothing is decided (8.3.4); a
- * cross-cutting unit's record is the product's (21.7.5); a unit not in
- * progress — completed, its code the truth of what was built, cancelled
- * or postponed — and a topic set aside raise nothing (21.6.11).
+ * end, or null where it is: a unit's own record is carried in discovery,
+ * where nothing is decided (8.3.4); a topic never started — carried in
+ * discovery, or its item in the phase it is carried in `unstarted`, a
+ * message parked on it never opened — has its open questions read at its
+ * first opening; a cross-cutting unit's record is the product's (21.7.5);
+ * a unit not in progress — completed, its code the truth of what was
+ * built, or cancelled — and a topic set aside raise nothing (21.6.11).
  * @param {Unit} unit @param {string|null} topic @param {string} phase the record's
  * @returns {string|null}
  */
@@ -685,7 +689,8 @@ function unraised(unit, topic, phase) {
   if (unit.manifest?.work_type === 'cross-cutting') return 'a cross-cutting unit\'s record is the product\'s';
   if (unit.manifest?.status !== IN_PROGRESS) return `its unit is ${unit.manifest?.status}, and only a unit in progress raises its points`;
   if (TOPIC_PHASES.some((each) => SET_ASIDE.includes(itemsOf(unit.manifest.phases?.[each]?.items)[topic]?.status))) return 'its topic is set aside';
-  return phase === 'discovery' ? 'its topic never started, so is carried in discovery, where nothing is raised' : null;
+  const started = phase !== 'discovery' && itemsOf(unit.manifest.phases?.[phase]?.items)[topic]?.status !== UNSTARTED;
+  return started ? null : 'its topic never started, and its first opening reads its open questions';
 }
 
 /** Each entry a record marks to raise where its point is never raised. @param {Unit} unit @param {string|null} topic @param {string} phase @param {Record<string, any>[]} record @returns {string[]} */

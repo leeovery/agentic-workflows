@@ -563,25 +563,27 @@ describe('the points to raise (21.6.10, 21.S25)', () => {
     assert.deepStrictEqual([building, raises({ projectDir: dir, stateDir: statePath(dir) })], [[{ place: 'shop.specification', answers: 'weights-id', text: 'What of weights?' }], []]);
   });
 
-  it('a point marked to raise where nothing raises it refused at the carry, naming why — a topic never started, a unit\'s own record, a cross-cutting unit\'s, a completed unit\'s, a cancelled unit\'s and a topic set aside — its point an open question carried unmarked (21.6.11)', () => {
+  it('a point marked to raise where nothing raises it refused at the carry, naming why — a topic never started, carried in discovery or its item unstarted, a unit\'s own record, a cross-cutting unit\'s, a completed unit\'s, a cancelled unit\'s and a topic set aside — its point an open question carried unmarked (21.6.11)', () => {
     dir = world();
     writeState(dir, layout.unit('shop', 'discovery', 'session-001.md'), '## Discovery Session 001\n\n### Selling\n\nWho sets the case size?\n');
     const vision = { ref: 'f1', event: 'found', text: 'The shop sells to the trade.', how: 'read in the discovery session', known: 'read', by: 'claude', cites: [{ path: 'shop/discovery/session-001.md', section: 'Selling' }], assets: [{ path: layout.assets('shop', 'vision.md'), status: 'reference' }] };
     const search = JSON.parse(readState(dir, layout.manifest('fumi')));
     search.phases.discussion.items.search.status = 'cancelled';
+    search.phases.discussion.items.licensing.status = 'unstarted';
     writeState(dir, layout.manifest('fumi'), JSON.stringify(search));
     const shop = JSON.parse(readState(dir, layout.manifest('shop')));
     const open = (/** @type {unknown} */ cites) => ({ ref: 'q9', event: 'asked', text: 'Is it settled?', by: 'claude', raise: true, cites });
     const marked = (/** @type {string} */ dotpath) => refused(dotpath, [...GOOD[dotpath], open(GOOD[dotpath][0].cites)]);
     const why = (/** @type {string} */ reason) => [`entry q9 is marked to raise, and ${reason}: its point is an open question, carried unmarked`];
 
-    const refusals = ['fumi.discovery.billing', 'platform.discussion.auth', 'gone.discussion.gone', 'fumi.discussion.search'].map(marked);
+    const refusals = ['fumi.discovery.billing', 'fumi.discussion.licensing', 'platform.discussion.auth', 'gone.discussion.gone', 'fumi.discussion.search'].map(marked);
     const own = refusedKeeping(dir, carryArgs(dir, 'shop.discovery', [vision, open(vision.cites)]), refusedPath('shop', null));
     writeState(dir, layout.manifest('shop'), JSON.stringify({ ...shop, status: 'completed' }));
     const completed = marked('shop.discussion.weights');
 
     assert.deepStrictEqual([...refusals, own, completed], [
-      breaks('fumi', 'billing', why('its topic never started, so is carried in discovery, where nothing is raised')),
+      breaks('fumi', 'billing', why('its topic never started, and its first opening reads its open questions')),
+      breaks('fumi', 'licensing', why('its topic never started, and its first opening reads its open questions')),
       breaks('platform', 'auth', why('a cross-cutting unit\'s record is the product\'s')),
       breaks('gone', 'gone', why('its unit is cancelled, and only a unit in progress raises its points')),
       breaks('fumi', 'search', why('its topic is set aside')),
@@ -595,7 +597,7 @@ describe('the points to raise (21.6.10, 21.S25)', () => {
 
     assert.deepStrictEqual([
       '- At the end, each point no source settles on a started topic of a unit\n  in progress, raised one at a time: answered, or left open.',
-      'So is such a point where nothing raises it, and the carry refuses the mark there: on a topic never started, or a unit\'s own record, carried in discovery, where nothing is decided, for its first opening to read; of a cross-cutting unit, whose record is the product\'s, for the product\'s conversation; of a completed unit, whose code settled what it built; and of a cancelled or postponed unit, or a topic set aside, waiting with it.',
+      'So is such a point where nothing raises it, and the carry refuses the mark there: on a topic never started, carried in discovery or its item `unstarted`, for its first opening to read; on a unit\'s own record, carried in discovery, where nothing is decided; of a cross-cutting unit, whose record is the product\'s, for the product\'s conversation; of a completed unit, whose code settled what it built; and of a cancelled unit, or a topic set aside, waiting with it.',
       'raise each, one at a time, as a decision only the person can make, at its `place`, answering its question. A point two records carry, listed twice, is raised once.',
       'each `{"key", "name", "text", "notice"}` — its key, a short name for the answer, the answer, and what the person would notice were it the one, each one line;',
       'node .claude/skills/ledger-engine/scripts/engine.cjs ledger merge {place} --question {answers} --into {answered}',
