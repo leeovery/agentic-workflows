@@ -57,7 +57,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
       assert.deepStrictEqual(boot(main).warnings, []);
 
       assert.deepStrictEqual(git(main, ['log', '-2', '--format=%s']).trim().split('\n'),
-        ['chore: install Ledger session hooks', 'chore: ignore .ledger/, the workflows state']);
+        ['chore: install Ledger session hooks', 'chore: ignore .ledger/, Ledger\'s state']);
       assert.strictEqual(git(main, ['status', '--porcelain']), '');
     });
 
@@ -78,7 +78,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
       ]);
       assert.strictEqual(readFile(main, '.claude/settings.json'), theirs);
       assert.strictEqual(git(main, ['ls-tree', '--name-only', 'HEAD', '--', '.claude']), '', 'nothing of the file committed');
-      assert.strictEqual(git(main, ['log', '-1', '--format=%s']).trim(), 'chore: ignore .ledger/, the workflows state', 'the line, the workflows\' alone, committed');
+      assert.strictEqual(git(main, ['log', '-1', '--format=%s']).trim(), 'chore: ignore .ledger/, Ledger\'s state', 'the line, the workflows\' alone, committed');
     });
 
     it('a .gitignore of the person\'s never committed takes the line, and is left for them to commit, with a warning', () => {
@@ -106,7 +106,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
       for (const res of [boot(main), boot(main)]) assert.deepStrictEqual([res.state, res.warnings], ['ready', []]);
 
       assert.ok(fs.existsSync(path.join(main, '.claude/settings.json')), 'the hooks are on disk');
-      assert.strictEqual(git(main, ['log', '--format=%s', `${head}..main`]).trim(), 'chore: ignore .ledger/, the workflows state');
+      assert.strictEqual(git(main, ['log', '--format=%s', `${head}..main`]).trim(), 'chore: ignore .ledger/, Ledger\'s state');
       assert.strictEqual(git(main, ['status', '--porcelain']), '');
     });
 
@@ -150,7 +150,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
       git(main, ['bisect', 'reset']);
       assert.deepStrictEqual(boot(main).warnings, []);
       assert.deepStrictEqual(git(main, ['log', '-2', '--format=%s']).trim().split('\n'),
-        ['chore: install Ledger session hooks', 'chore: ignore .ledger/, the workflows state']);
+        ['chore: install Ledger session hooks', 'chore: ignore .ledger/, Ledger\'s state']);
     });
 
     it('a boot from a code worktree reads its own tree\'s bisect, not the main checkout\'s, and commits on its branch', () => {
@@ -163,7 +163,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
 
       assert.strictEqual(tip(main, 'HEAD'), testing);
       assert.deepStrictEqual(git(main, ['log', '-2', '--format=%s', 'feature']).trim().split('\n'),
-        ['chore: install Ledger session hooks', 'chore: ignore .ledger/, the workflows state']);
+        ['chore: install Ledger session hooks', 'chore: ignore .ledger/, Ledger\'s state']);
     });
   });
 
@@ -198,7 +198,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
       assert.deepStrictEqual(boot(main).warnings, []);
       assert.strictEqual(readFile(main, '.gitignore'), '.ledger/\n');
       assert.deepStrictEqual(git(main, ['log', '-2', '--format=%s']).trim().split('\n'),
-        ['chore: install Ledger session hooks', 'chore: ignore .ledger/, the workflows state']);
+        ['chore: install Ledger session hooks', 'chore: ignore .ledger/, Ledger\'s state']);
       assert.strictEqual(git(main, ['status', '--porcelain']), '');
     });
 

@@ -116,7 +116,7 @@ describe('two boots at once (4.S3)', () => {
     assert.deepStrictEqual(placed(statePath(main)), IN_PLACE);
     assert.deepStrictEqual(madeOnce(main), {
       roots: 1, registrations: ['-ledger'], ignore: '.ledger/\n',
-      code: ['chore: install Ledger session hooks', 'chore: ignore .ledger/, the workflows state', 'code'],
+      code: ['chore: install Ledger session hooks', 'chore: ignore .ledger/, Ledger\'s state', 'code'],
     });
     bootsWithNothingToDo(main, null);
   });

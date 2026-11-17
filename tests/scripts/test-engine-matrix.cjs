@@ -28,12 +28,12 @@ const path = require('path');
 const { refuses, screenOf, statePath, withFrozenClock, FROZEN_MS } = require('./engine-harness.cjs');
 const { DAY, MODEL, UNDRAWN, SESSION, history } = require('./trust-world.cjs');
 const { labelled } = require('./labels.cjs');
-const { UNIT, OTHER, engine, CARRY_ON, render, run, refused, pick, screen, useMatrixWorld } = require('./matrix-world.cjs');
+const { UNIT, OTHER, engine, CARRY_ON, render, audited, run, refused, pick, screen, useMatrixWorld } = require('./matrix-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { appendEntries } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 const { newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
-const { ruled } = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
+const { decide } = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
 const { MODEL_LINES } = require(path.join(SCRIPTS, 'domain/trust-counts.cjs'));
 
 const { logPath, logHolding, settingsFile, settingsHolding, fumi, careHeld } = useMatrixWorld('engine-matrix-');
@@ -160,7 +160,7 @@ function drawnHistory(project) {
 
 /** The decision point's ruling on a behaviour question in the project at `dir`, blocking build work where `blocks`, its id one the blind draw never takes. @param {string} dir @param {boolean} blocks */
 function behaviourRuled(dir, blocks) {
-  return withFrozenClock(() => ruled(/** @type {any} */ ({ sort: 'several' }), {
+  return withFrozenClock(() => decide(/** @type {any} */ ({ sort: 'several' }), {
     label: labelled('behaviour'), place: { unit: UNIT, phase: 'implementation', topic: null }, blocks_build: blocks, replaced_by: null, always: null, measured: null, checked: false,
     project: { root: statePath(dir), name: 'Fumi' }, model: MODEL, now: FROZEN_MS, chain: UNDRAWN,
   }));
@@ -170,7 +170,7 @@ function behaviourRuled(dir, blocks) {
 const behaviourAt = (dir, blocks) => behaviourRuled(dir, blocks).decision;
 
 describe('the matrix (16.15.1, 17.1.2, 17.1.3)', () => {
-  it('17.S1: the matrix as 16.15.1 draws it — each kind\'s overturned and lost of its answered and the rate the rule runs on, from the trust log; Claude\'s one-answer calls; the threshold mid-build; and how review findings split, from the ledger; its rows the threshold\'s and the build\'s replays, care, help and back to manage', () => {
+  it('17.S1: the matrix as 16.15.1 draws it — each kind\'s overturned and lost of its answered and the rate the rule runs on, from the trust log; Claude\'s one-answer calls; the threshold mid-build; and how review findings split, from the ledger; its rows the threshold\'s and the build\'s replays, care, help and back to manage; the screen keeps the design system (18.S41)', () => {
     const { dir, id } = fumi();
     logHolding(drawnHistory(id));
     addCare(dir, 'look');
@@ -238,6 +238,7 @@ describe('the matrix (16.15.1, 17.1.2, 17.1.3)', () => {
       return pick(dir, 'matrix', key).next;
     });
     assert.deepStrictEqual(nexts, [CARRY_ON, CARRY_ON, engine('render', 'care'), engine('render', 'manage')]);
+    audited(dir, ['matrix']);
   });
 
   it('17.S8: a kind whose departures hold one judged a real loss, one a fix later and one not yet judged — lost counts the judged loss and the unjudged one, at the rate the rule runs on; overturned counts all three', () => {
@@ -249,7 +250,7 @@ describe('the matrix (16.15.1, 17.1.2, 17.1.3)', () => {
     h.depart(null, 'behaviour');
     logHolding(h.events);
 
-    const reason = withFrozenClock(() => ruled(/** @type {any} */ ({ sort: 'several' }), {
+    const reason = withFrozenClock(() => decide(/** @type {any} */ ({ sort: 'several' }), {
       label: labelled('behaviour'), place: { unit: UNIT, phase: 'discussion', topic: 'note-window' }, blocks_build: false, replaced_by: null, always: null, measured: null, checked: false,
       project: { root: statePath(dir), name: 'Fumi' }, model: null, now: FROZEN_MS,
     }).reason);

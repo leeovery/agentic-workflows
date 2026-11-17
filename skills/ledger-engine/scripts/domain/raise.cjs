@@ -20,10 +20,13 @@
 //   the lean — never in the build, whose park keeps the call's own fields
 //   alone in the ledger, nor at an investigation's place, where it makes the
 //   screen the fix direction's, while the root cause points at no current
-//   entry (investigation-log.cjs); the fix direction's log line takes it
-//   from the seal as its body (`steppedBackSealed`). Every field of text is
-//   one line but the mechanism, drawn as written; nothing else is taken.
-// - A raise on a replacement (16.5.7, 29.5.2): `raise <unit>.<phase>[.<topic>]
+//   entry (investigation-log.cjs). Claude's call landing as Claude's —
+//   proceeding, or left to Claude by the person's "don't care" — carries it
+//   as its evidence (5.1.1); the fix direction's log line takes it as its
+//   body from there, else from the seal (`steppedBackSealed`). Every field
+//   of text is one line but the mechanism, drawn as written; nothing else
+//   is taken.
+// - A raise on a replacement (16.5.7, 29.19.2): `raise <unit>.<phase>[.<topic>]
 //   --replaces <entry> --reason <reason> [--cause <id>] [--relies-on <id>
 //   …] [--always <mark>]`, the same call on stdin, its rows Claude's
 //   proposed answers in place
@@ -1052,12 +1055,16 @@ function landsAs({ answers, relies_on: reliesOn, replaces }, stands, task) {
 /**
  * Claude's answer as its line holds it, beyond what its landing holds
  * (`content`): Claude's, moving no one, the lean row's answer, the other
- * rows what it rules out, Claude's why, and whether it is product-wide.
+ * rows what it rules out, Claude's why, whether it is product-wide, and
+ * what its step back found as its evidence (5.1.1), where it stepped back.
  * @param {Call} call @param {Record<string, unknown>} content
  */
 function claudesAnswer(call, content) {
   const lean = leanRow(call);
-  return { by: 'claude', who_moved_whom: 'none', ...content, text: lean.text, why: call.why, rules_out: othersOf(call, lean), product_wide: call.product_wide };
+  return {
+    by: 'claude', who_moved_whom: 'none', ...content, text: lean.text, why: call.why, rules_out: othersOf(call, lean), product_wide: call.product_wide,
+    ...(call.stepped_back === undefined ? {} : { evidence: call.stepped_back }),
+  };
 }
 
 /**

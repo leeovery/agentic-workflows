@@ -28,9 +28,8 @@
 // decision of Claude's — built once and copied for each test, the questions
 // a blind draw orders rows by planted at ids chosen for the order they give
 // (`ASKED`); each test keeps its conversation and the trust log in a config
-// folder of its own, the log holding a quiet kind. The decision point is
-// the rule, as switching it on makes it, drawing a question on an id that
-// draws blind (trust-world.cjs). The world has no tracker, so the check
+// folder of its own, the log holding a quiet kind. The decision point
+// draws a question on an id that draws blind (trust-world.cjs). The world has no tracker, so the check
 // that the tracker holds the task a raise parks is passed over here
 // (test-engine-task-parks.cjs). The separate call is the stub binary,
 // labelling the call's question, and reading no answer unless told.
@@ -54,6 +53,7 @@ const { fixture } = require('./board-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
+const { decide } = decisionPoint;
 const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
 const { projectName } = require(path.join(SCRIPTS, 'domain/state-checks.cjs'));
 const { evidenceOf } = require(path.join(SCRIPTS, 'domain/trust-evidence.cjs'));
@@ -153,14 +153,13 @@ const { write, full, entries } = ledgerHelpers(() => dir);
 const { conversation, inFolder, seals, logged, project, quietOn, labelledAs, raised } = raiseHelpers(() => dir, config, CALL);
 
 /**
- * The decision point forced to the rule, as switching it on makes it, for
- * test `t`, a question drawn on an id that draws blind — a replacement,
- * which has none, left without: the questions it was given, each by the
- * id it would hash.
+ * The decision point for test `t`, a question drawn on an id that draws
+ * blind — a replacement, which has none, left without: the questions it
+ * was given, each by the id it would hash.
  * @param {import('node:test').TestContext} t
  */
 function drawingBlind(t) {
-  return t.mock.method(decisionPoint, 'decide', (/** @type {any} */ call, /** @type {any} */ at) => decisionPoint.ruled(call, { ...at, chain: at.chain === null ? null : DRAWN }));
+  return t.mock.method(decisionPoint, 'decide', (/** @type {any} */ call, /** @type {any} */ at) => decide(call, { ...at, chain: at.chain === null ? null : DRAWN }));
 }
 
 /**
@@ -289,16 +288,15 @@ describe('the draw (16.17.1–16.17.5)', () => {
 
   it('16.S52: a draw is logged only for a seal sealed blind by that raise — another raise of the question, sealed in the conversation while this one\'s call was decided, is drawn as it was sealed, no draw logged (16.17.5)', async (t) => {
     quietOn('behaviour');
-    const env = labelledAs(CALL, 'behaviour');
-    const asked = (await raised(NOTE, ['--answers', ASKED.note], CALL, env)).res;
+    const asked = (await raised(NOTE, ['--answers', ASKED.note], CALL, conversation())).res;
     const sealedMeanwhile = fs.readFileSync(inFolder(RAISE_SHOWN));
     fs.rmSync(inFolder(RAISE_SHOWN));
     t.mock.method(decisionPoint, 'decide', (/** @type {any} */ call, /** @type {any} */ at) => {
       fs.writeFileSync(inFolder(RAISE_SHOWN), sealedMeanwhile);
-      return decisionPoint.ruled(call, { ...at, chain: DRAWN });
+      return decide(call, { ...at, chain: DRAWN });
     });
 
-    const raced = (await raised(NOTE, ['--answers', ASKED.note], CALL, env)).res;
+    const raced = (await raised(NOTE, ['--answers', ASKED.note], CALL, labelledAs(CALL, 'behaviour'))).res;
 
     assert.deepStrictEqual(raced, { ...asked, redrawn: true });
     assert.deepStrictEqual(loggedOf('blind-draw'), []);
@@ -306,7 +304,7 @@ describe('the draw (16.17.1–16.17.5)', () => {
 });
 
 describe('the reveal (16.17.7, 16.10.10)', () => {
-  it('the person\'s pick of Claude\'s answer, revealed as it lands: what they picked, as written, that Claude would have picked the same, and of the kind\'s last 25 answers in the project how many Claude picked as they did — the quiet kind\'s 30 and this one; its raise event marked blind; never said to have come round to Claude\'s answer, which they never saw; answered again, nothing revealed; shown again, the raise holds Claude\'s answer back no longer (16.17.2)', async (t) => {
+  it('the person\'s pick of Claude\'s answer, revealed as it lands: what they picked, as written, that Claude would have picked the same, and of the kind\'s last 25 answers in the project how many Claude picked as they did — the quiet kind\'s 30 and this one; its raise event marked blind; never said to have come round to Claude\'s answer, which they never saw; answered again, nothing revealed; shown again, the raise holds Claude\'s answer back no longer (16.17.2); the reveal keeps the design system (18.S41)', async (t) => {
     drawingBlind(t);
     quietOn('behaviour');
     const { raise } = (await raised(NOTE, ['--answers', ASKED.note], CALL, labelledAs(CALL, 'behaviour'))).res;
@@ -317,6 +315,7 @@ describe('the reveal (16.17.7, 16.10.10)', () => {
     const shown = okSections(dir, ['raise', 'show', raise], { env: conversation() }).sections.split('\n');
 
     assert.strictEqual(cameRound, 'raise answer: the answer has no field who_moved_whom — it holds why', 'the person never saw the lean, so never came round to it');
+    auditGate(first.sections, 'the reveal');
     assert.deepStrictEqual(readReveal(first.sections), [REVEALED, `You picked: On the screen the cursor is on. I'd have picked the same. On behaviour in ${projectName(dir)}, I've picked the same as you 25 of the last 25 times.`]);
     assert.deepStrictEqual([again.res.already, again.sections], [true, '']);
     assert.deepStrictEqual(loggedOf('raise').map(({ sealed, answer, blind }) => [sealed, answer, blind]), [['2', '2', true]]);

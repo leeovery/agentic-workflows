@@ -20,12 +20,11 @@
 // of its own, start this work's screen and its yes, the feature's
 // discussion reading the investigation as its earlier log at its first
 // opening. And a bugfix whose investigation's gates the person has always
-// said yes at, the decision point stepping them as it will once the learned
-// gates are switched on: the plan, the check-in and the conclude each run as
-// a learned step, logged as one, the conclude's yes standing over a call the
-// person changed, and ready to build, its count as long, stopping before any
-// code; then the replay of a lower threshold, which would have stopped at
-// each of those steps.
+// said yes at, the decision point stepping them: the plan, the check-in and
+// the conclude each run as a learned step, logged as one, the conclude's
+// yes standing over a call the person changed, and ready to build, its
+// count as long, stopping before any code; then the replay of a lower
+// threshold, which would have stopped at each of those steps.
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -49,15 +48,16 @@ const { trustLines } = require('./pipeline-oracle.cjs');
 const { FROZEN_AT } = require('./engine-harness.cjs');
 const { statePath } = require('./discovery-test-utils.cjs');
 const decisionPoint = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/decision-point.cjs'));
+const { gateStep } = decisionPoint;
 const { TRUST_LOG } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/trust-log.cjs'));
 
 const CLAUDES = Object.freeze({ by: 'claude', who_moved_whom: 'none' });
 
-/** A call raised to the person, a row for each key, the first its lean. @param {string} question @param {string[]} keys */
-const callOf = (question, keys) => JSON.stringify({
+/** A call raised to the person, a row for each key, the first its lean, sorted `sort`. @param {string} question @param {string[]} keys @param {'one'|'several'} sort */
+const callOf = (question, keys, sort) => JSON.stringify({
   question,
   rows: keys.map((key) => ({ key, name: `Option ${key}`, text: `The save does ${key}`, notice: `a save does ${key}` })),
-  lean: keys[0], why: 'It stops the crash at its cause.', sort: 'one', mechanism: 'The save checks the field.', product_wide: false,
+  lean: keys[0], why: 'It stops the crash at its cause.', sort, mechanism: 'The save checks the field.', product_wide: false,
 });
 
 /**
@@ -95,7 +95,7 @@ async function huntedAsking(sim, wu) {
   const rootCheck = reported(sim, wu, 'root-cause', ['F1']);
   landed('A crash mid-save leaves a half-written file.');
   const asked = sim.run(['ledger', 'ask', at], null, JSON.stringify({ ...CLAUDES, text: 'Should a crashed save keep the half-written file?' })).id;
-  const kept = (await sim.runAsync(['raise', at, '--answers', asked], null, callOf('Should a crashed save keep the half-written file?', ['hold', 'drop']))).raise;
+  const kept = (await sim.runAsync(['raise', at, '--answers', asked], null, callOf('Should a crashed save keep the half-written file?', ['hold', 'drop'], 'several'))).raise;
   sim.run(['agent', 'surface', wu, 'investigation', wu, rootCheck, 'F1', '--question', asked]);
   sim.run(['agent', 'incorporate', wu, 'investigation', wu, rootCheck]);
   const byRoot = raisersOn(sim);
@@ -106,7 +106,7 @@ async function huntedAsking(sim, wu) {
   const fix = JSON.parse(sim.read(['ledger', 'record', wu, wu])).decisions.find((/** @type {{text: string}} */ d) => d.text === 'Check the field before the save writes it').id;
   const fixCheck = reported(sim, wu, 'fix', ['F1']);
   const cause = landed('Checking the field leaves the half-written file a crash makes.');
-  const replaced = (await sim.runAsync(['raise', at, '--replaces', fix, '--reason', 'new-fact', '--cause', cause], null, callOf('Should the fix also write the save atomically?', ['atomic', 'check']))).raise;
+  const replaced = (await sim.runAsync(['raise', at, '--replaces', fix, '--reason', 'new-fact', '--cause', cause], null, callOf('Should the fix also write the save atomically?', ['atomic', 'check'], 'one'))).raise;
   sim.run(['agent', 'surface', wu, 'investigation', wu, fixCheck, 'F1', '--replaces', fix, '--reason', 'new-fact']);
   sim.run(['agent', 'incorporate', wu, 'investigation', wu, fixCheck]);
   const byFix = raisersOn(sim);
@@ -223,7 +223,7 @@ describe('pipeline simulation: bugfix', () => {
     for (const gate of ['plan gate', 'check-in gate', 'conclude gate']) for (let i = 0; i < 13; i += 1) seeded.gate(gate, { picked: 'y' });
     for (let i = 0; i < 13; i += 1) seeded.gate('ready to build', { picked: 's' });
     fs.writeFileSync(path.join(sim.configDir, TRUST_LOG), lines(...seeded.events));
-    t.mock.method(decisionPoint, 'gateStep', (/** @type {string} */ name, /** @type {any} */ at) => decisionPoint.learned(name, { ...at, key: null }));
+    t.mock.method(decisionPoint, 'gateStep', (/** @type {string} */ name, /** @type {any} */ at) => gateStep(name, { ...at, key: null }));
     enteredFrozen(t, sim);
 
     startNew(sim);

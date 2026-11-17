@@ -61,7 +61,17 @@ Ask in the conversation; each answer lands through `ledger` as it is given.
 
 ### Calls
 
-Until the topic's shape is agreed — what it covers and how it broadly works — make no call of intent or taste on it alone, whatever the counts. Where several ways are open, put ideas forward and ask what the person thinks; where one way is clear, set out how you see it working and invite them to pull it apart; never in set phrases. Once the shape is agreed, fill in the rest: a call you lean on is a question on the map answered through `raise`, which decides whether it reaches the person, slotted in at a natural pause.
+Until the topic's shape is agreed — what it covers and how it broadly works — make no call of intent or taste on it alone. Where several ways are open, put ideas forward and ask what the person thinks; where one way is clear, set out how you see it working and invite them to pull it apart; never in set phrases. Once the shape is agreed, fill in the rest: a call you lean on is a question on the map answered through `raise`, which decides whether it reaches the person, slotted in at a natural pause.
+
+### Settling the Rest
+
+Where a raise's answer carries `convergence`, or the person asks you to settle the rest of the topic, offer it, adding `--asked` on their word, and emit its sections verbatim per their markers:
+
+```bash
+node .claude/skills/ledger-engine/scripts/engine.cjs render convergence {work_unit}.{topic} [--asked]
+```
+
+The answer goes to `gate`: follow its `next`. Once they say yes, raise each question still open on the map, one after another: the engine settles each it lets proceed as your call, and the rest come to the person one at a time. Then close (**Closing**).
 
 ### Facts and Findings
 
@@ -103,6 +113,7 @@ Content is one JSON object on stdin; `{place}` is `{work_unit}.discussion.{topic
 - A changed answer → `ledger replace {place} --replaces {id} --reason {reason:[new-fact|other-topic|changed-mind|was-wrong]} [--cause {id}]`, the content of the kind it replaces with `"drops"`, a line for each part of the old it drops; an entry that still holds after it → `ledger hold {place} --entry {id} --after {id}`, `{"by", "who_moved_whom"}`.
 - A question moved → `ledger move {place} --question {id} --to {target:[topic|roadmap:item]}`; one already answered → `ledger merge {place} --question {id} --into {id}`; each `{"by", "who_moved_whom"}`.
 - A call you lean on → `raise {place} --answers {id}`; a fact only the person holds → the same with `--fact`; a decision you would replace → `raise {place} --replaces {id} --reason {reason}`.
+- Settling the rest → `render convergence {work_unit}.{topic} [--asked]`, whose rows run `convergence accept|decline`.
 - The topic as it stands → `ledger record|map|since|affected|product {work_unit} {topic}`, `render map {work_unit}.{topic}`.
 - A spike, and the files an entry links → `asset spike|add|status|lift`.
 - Mail → `topic mailbox`, `topic answered`; a message out → `topic send`; a single-topic unit's point of its own → `workunit pivot`, `topic add`.

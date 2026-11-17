@@ -279,7 +279,6 @@ describe('the wait for agents (9.7.8, 9.S63)', () => {
     const went = history({ project, start: Date.now() - DAY });
     for (let i = 0; i < 13; i += 1) went.gate('wait for agents', { picked: 'g' });
     fs.writeFileSync(path.join(config, 'trust.jsonl'), lines(...went.events));
-    t.mock.method(decisionPoint, 'gateStep', (/** @type {string} */ name, /** @type {any} */ at) => decisionPoint.learned(name, at));
     const { id } = ok(dir(), ['agent', 'dispatch', UNIT, 'discussion', 'note-window', '--kind', 'review'], { env: RUNNING });
     /** The topic entered, the clock at `ms`: when it was entered, as recorded. @param {number} ms */
     const entered = (ms) => {

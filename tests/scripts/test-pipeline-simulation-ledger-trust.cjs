@@ -9,8 +9,11 @@
 // a care entry added on its screens, the "don't care" answers that cue its
 // drop, the drop and a preference kept on the proposal screen; convergence
 // — the run of answers cueing the offer, the person's yes, and the rest of
-// the topic settled under the rule, the decision point and its convergence
-// seam forced to what switching the rule on makes them; and the matrix —
+// the topic settled under the rule, one point Claude's and the rest asked
+// one raise at a time; a quiet kind's calls proceeding — a discussion
+// review's finding of intent and the spec review's contradiction, each
+// settled as Claude's call where the rule lets it, the question's id
+// pinned so no blind question is drawn; and the matrix —
 // the threshold and its raise mid-build each picked from its replay, a
 // lower threshold replayed and kept from, and the person's corrections of
 // a kind and a verdict in words.
@@ -28,23 +31,35 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const { startItem } = require('./engine-harness.cjs');
-const { Sim, mappedEpic, answerGate, startPick } = require('./pipeline-world.cjs');
+const { Sim, mappedEpic, answerGate, startPick, startUnit, handoff, enterEntry, decideTopic, specEntry, passTakenIn, passSurfaced } = require('./pipeline-world.cjs');
 const { trustLines } = require('./pipeline-oracle.cjs');
 const { leaningCall } = require('./ledger-world.cjs');
 const { labelAnswers } = require('./labels.cjs');
-const { DAY, UNDRAWN, lines, history } = require('./trust-world.cjs');
+const { DAY, idOf, lines, history } = require('./trust-world.cjs');
+const { undrawn } = require('./raise-world.cjs');
 
 const DOMAIN = path.join(__dirname, '../../skills/ledger-engine/scripts/domain');
-const decisionPoint = require(path.join(DOMAIN, 'decision-point.cjs'));
-const { offerDue } = require(path.join(DOMAIN, 'convergence.cjs'));
 const { TRUST_LOG } = require(path.join(DOMAIN, 'trust-log.cjs'));
+
+/**
+ * The trust log of `sim` holding the person's answers on behaviour in
+ * another project of theirs, thirty taking Claude's lean, so three clean
+ * answers in this one make the kind quiet here (16.S47).
+ * @param {Sim} sim
+ */
+function trustedElsewhere(sim) {
+  const elsewhere = history({ project: idOf('Aircon'), start: Date.now() - DAY });
+  elsewhere.agree(30, 'behaviour');
+  fs.mkdirSync(sim.configDir, { recursive: true });
+  fs.appendFileSync(path.join(sim.configDir, TRUST_LOG), lines(...elsewhere.events));
+}
 
 describe('pipeline simulation: the trust log', () => {
   let sim;
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('the trust log: Claude\'s call, the person\'s reversal of it, the verdicts on that departure — skipped on the decided screen, a real loss from the verdict page the start menu\'s row opens (16.S37) — Claude\'s call replacing it, the person\'s answers to Claude\'s lean through a raise, one taking it, one standing over it and one in their own words read as it, owed no verdict, and their keep of a call Claude proposed to replace, each land as a line of the trust log in the command that writes it; the person\'s own decision, changed, lands none, nor does their answer to a fact or their not following one; then the matrix, opened from manage (16.S49), the threshold and its raise mid-build each picked from its replay, a lower one replayed and kept from, and the person\'s corrections of a call\'s kind and of the verdict they gave', async () => {
+  it('the trust log: Claude\'s call, the person\'s reversal of it, the verdicts on that departure — skipped on the decided screen, a real loss from the verdict page the start menu\'s row opens (16.S37) — Claude\'s call replacing it on the person\'s word, the person\'s answers to Claude\'s lean through a raise, one taking it, one standing over it and one in their own words read as it, owed no verdict, and their keep of a call Claude proposed to replace, each land as a line of the trust log in the command that writes it; the person\'s own decision, changed, lands none, nor does their answer to a fact or their not following one; then the matrix, opened from manage (16.S49), the threshold and its raise mid-build each picked from its replay, a lower one replayed and kept from, and the person\'s corrections of a call\'s kind and of the verdict they gave', async () => {
     const wu = 'fumi';
     sim.env = {
       ...sim.env,
@@ -74,7 +89,7 @@ describe('pipeline simulation: the trust log', () => {
     const given = answerGate(sim, 'verdicts', '--pick', 'l').next;
     assert.deepStrictEqual(sim.run(given.argv).next, { kind: 'engine', argv: ['render', 'start-menu'] }, '16.S37: the verdict given from the start menu\'s row, the last waiting, goes back to the start menu');
     sim.render(['verdicts'], { expect: 'empty' });
-    ledger(['replace', note, '--replaces', reversal, '--reason', 'changed-mind'], { ...made, drops: ['a document window'], text: 'A floating panel after all.', why: 'It follows the person.' });
+    ledger(['replace', note, '--replaces', reversal, '--reason', 'changed-mind'], { ...made, given: 'your-call', drops: ['a document window'], text: 'A floating panel after all.', why: 'It follows the person.' });
 
     /** Claude's lean on a question of its own, raised, and the person's pick of row `key`. @param {string} text @param {'1'|'2'} key */
     const raised = async (text, key) => {
@@ -173,19 +188,23 @@ describe('pipeline simulation: the trust log', () => {
     assert.ok(sim.sections.includes(`\nperson: ${path.join(sim.configDir, 'person.md')}\n`), 'the entry names no record of the person');
   });
 
-  it('convergence: eight of the person\'s answers in a row taking Claude\'s lean on a topic with questions open, the eighth cueing the offer; the offer drawn, its forecast the rule\'s, and accepted, its yes in the trust log; then each open question raised as any call under the rule — a behaviour point, quiet across the person\'s other projects and here, settled as Claude\'s call, a danger point still coming to the person', async (t) => {
+  it('convergence: eight of the person\'s answers in a row taking Claude\'s lean on a topic with questions open, the eighth cueing the offer; the offer drawn, its forecast the rule\'s, and accepted, its yes in the trust log; the last three of the run on behaviour, which the person\'s other projects trust, so it goes quiet here; then each open question raised as any call under the rule — a behaviour point settled as Claude\'s call and standing on the map and in the ledger, a danger point and a contract point each coming to the person in a raise of its own (16.S25, 16.S29, 9.S45)', async (t) => {
     const wu = 'sora';
     const FLOAT = 'Does a note float over the rest?';
     const BIN = 'Does deleting a note skip the bin?';
+    const SYNC = 'Does a note sync before it is saved?';
     sim.env = {
       ...sim.env,
-      CLAUDE_STUB_ANSWERS: JSON.stringify({ [FLOAT]: labelAnswers('behaviour'), [BIN]: labelAnswers('danger'), 'Settled point': labelAnswers('behaviour'), '': 'no-login' }),
+      CLAUDE_STUB_ANSWERS: JSON.stringify({
+        [FLOAT]: labelAnswers('behaviour'),
+        [BIN]: labelAnswers('danger'),
+        [SYNC]: labelAnswers('contract'),
+        ...Object.fromEntries([6, 7, 8].map((n) => [`Settled point ${n}`, labelAnswers('behaviour')])),
+        'Settled point': labelAnswers('words'),
+        '': 'no-login',
+      }),
     };
-    const elsewhere = history({ start: Date.now() - DAY });
-    elsewhere.agree(30, 'behaviour');
-    fs.mkdirSync(sim.configDir, { recursive: true });
-    fs.appendFileSync(path.join(sim.configDir, TRUST_LOG), lines(...elsewhere.events));
-    t.mock.method(decisionPoint, 'convergenceDue', offerDue);
+    trustedElsewhere(sim);
     mappedEpic(sim, wu, ['note-window']);
     startItem(sim.dir, wu, 'discussion', 'note-window');
     const note = `${wu}.discussion.note-window`;
@@ -195,7 +214,7 @@ describe('pipeline simulation: the trust log', () => {
     const raise = (question, text) => sim.runAsync(['raise', note, '--answers', question], null, JSON.stringify({ ...leaningCall('It floats.', 'It stays put.'), question: text }));
     /** The person's pick of the lean on the raise `id`: the answer. @param {string} id */
     const lean = (id) => sim.run(['raise', 'answer', id, '--pick', '1'], null, JSON.stringify({ why: 'The person said why.' }));
-    const open = { float: ask(FLOAT), bin: ask(BIN) };
+    const open = { float: ask(FLOAT), bin: ask(BIN), sync: ask(SYNC) };
 
     /** @type {unknown[]} */
     const cues = [];
@@ -206,14 +225,69 @@ describe('pipeline simulation: the trust log', () => {
     assert.deepStrictEqual(cues, [...Array(7).fill(null), { unit: wu, topic: 'note-window', agreements: 8 }]);
 
     const offered = sim.render(['convergence', `${wu}.note-window`], { expect: 'content' });
-    assert.ok(offered.includes('\n2 open: I\'d settle 1; 1 comes to you — 1 danger.\n'), `the forecast is not the rule's:\n${offered}`);
+    assert.ok(offered.includes('\n3 open: I\'d settle 1; 2 come to you — 1 danger, 1 contract.\n'), `the forecast is not the rule's:\n${offered}`);
     sim.run(answerGate(sim, 'convergence offer', '--pick', 'y').next.argv);
     assert.deepStrictEqual(trustLines(sim).map((line) => JSON.parse(line)).filter(({ type }) => type === 'convergence').map(({ unit, topic }) => `${unit}.${topic}`), [`${wu}.note-window`]);
 
-    t.mock.method(decisionPoint, 'decide', (/** @type {any} */ call, /** @type {any} */ at) => decisionPoint.ruled(call, { ...at, chain: UNDRAWN }));
+    undrawn(t);
     const settled = await raise(open.float, FLOAT);
     const danger = await raise(open.bin, BIN);
     lean(danger.raise);
-    assert.deepStrictEqual([settled.decision, danger.decision], ['proceed', 'ask']);
+    const synced = await raise(open.sync, SYNC);
+    lean(synced.raise);
+    assert.deepStrictEqual([settled.decision, danger.decision, synced.decision], ['proceed', 'ask', 'ask']);
+    assert.deepStrictEqual(sim.run(['ledger', 'since', wu, 'note-window']).calls.map((/** @type {{id: string}} */ { id }) => id), [settled.id]);
+    assert.match(sim.render(['map', `${wu}.note-window`], { expect: 'content' }), /^SINCE YOU LAST LOOKED \(1 call by Claude\)\n.*Does a note float over the rest\?/m);
+  });
+
+  it('a quiet kind proceeding: behaviour quiet in the project — trusted in the person\'s other projects, and three answers here taking Claude\'s lean — a background review\'s finding of intent raised in the discussion lands as Claude\'s call, never drawn — in the ledger and on the map since the person last looked; and the spec review\'s finding of two decisions contradicting each other, raised at the unit\'s level, is settled there as Claude\'s, with no topic, the person not asked (16.S5, 9.S24, 11.S10)', async (t) => {
+    const wu = 'yuki';
+    const KEEPS = 'Does a note keep its place?';
+    const CLASH = 'Which holds when a note is both pinned and archived?';
+    sim.env = { ...sim.env, CLAUDE_STUB_ANSWERS: JSON.stringify({ [KEEPS]: labelAnswers('behaviour'), [CLASH]: labelAnswers('behaviour'), 'Agreed point': labelAnswers('behaviour'), '': 'no-login' }) };
+    trustedElsewhere(sim);
+    undrawn(t);
+    startUnit(sim, 'feature', wu, 'Notes that stay put');
+    handoff(sim, `/ledger-discussion-process feature ${wu}`);
+    enterEntry(sim, wu, 'discussion', wu);
+    const at = `${wu}.discussion.${wu}`;
+    for (const n of [1, 2, 3]) {
+      const text = `Agreed point ${n}: does a note keep its size?`;
+      const asked = sim.run(['ledger', 'ask', at], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text })).id;
+      const { raise } = await sim.runAsync(['raise', at, '--answers', asked], null, JSON.stringify({ ...leaningCall('It keeps it.', 'It resets.'), question: text }));
+      sim.run(['raise', 'answer', raise, '--pick', '1'], null, JSON.stringify({ why: 'The person said why.' }));
+    }
+    const review = sim.run(['agent', 'dispatch', wu, 'discussion', wu, '--kind', 'review']);
+    sim.write(review.file, '# Review findings\n\n## F1\n\nWhether a note keeps its place after a restart is left open.\n');
+    sim.run(['agent', 'scan', wu, 'discussion', wu]);
+    sim.run(['agent', 'ack', wu, 'discussion', wu, review.id, '--findings', 'F1']);
+    const finding = sim.run(['ledger', 'ask', at], null, JSON.stringify({ by: 'review', who_moved_whom: 'none', text: KEEPS })).id;
+    sim.run(['agent', 'surface', wu, 'discussion', wu, review.id, 'F1']);
+
+    const kept = await sim.runAsync(['raise', at, '--answers', finding], null, JSON.stringify({ ...leaningCall('It keeps its place.', 'It opens centred.'), question: KEEPS }));
+
+    assert.deepStrictEqual([kept.decision, kept.raise], ['proceed', undefined]);
+    assert.deepStrictEqual(sim.run(['ledger', 'since', wu, wu]).calls.map((/** @type {{id: string}} */ { id }) => id), [kept.id]);
+    assert.match(sim.render(['map', `${wu}.${wu}`], { expect: 'content' }), /^SINCE YOU LAST LOOKED \(1 call by Claude\)\n.*Does a note keep its place\?/m);
+    sim.write(`.ledger/${wu}/topics/${wu}/log.md`, `# ${wu}\n\n${KEEPS} It keeps its place.\n`);
+    const { next } = decideTopic(sim, wu, wu);
+    handoff(sim, [`/${next.skill}`, ...next.args].join(' '));
+    specEntry(sim, wu, [wu]);
+    const decision = JSON.parse(sim.read(['ledger', 'record', wu, wu])).decisions.find((/** @type {{id: string}} */ { id }) => id === kept.id);
+    sim.run(['brief', 'spec-writer', wu]);
+    sim.write(`.ledger/${wu}/spec.md`, [
+      '# Yuki', '', '## 1. Placing', '', '### 1.1 After a restart', '', `1.1.1 A note keeps its place after a restart. [${decision.id}]`, '',
+      '## 1-S. Scenarios for §1', '', '1.S1 Given a note, when the app restarts, then the note is where it was. (1.1.1)', '',
+    ].join('\n'));
+    sim.run(['spec', 'land', wu]);
+    const gap = /** @type {const} */ ([{ lane: 'gap' }]);
+    const pass = passTakenIn(sim, wu, [...gap]);
+    const clash = sim.run(['ledger', 'ask', `${wu}.specification`], null, JSON.stringify({ by: 'review', who_moved_whom: 'none', text: CLASH })).id;
+
+    const settled = await sim.runAsync(['raise', `${wu}.specification`, '--answers', clash], null, JSON.stringify({ ...leaningCall('Pinned holds.', 'Archived holds.'), question: CLASH }));
+    passSurfaced(sim, wu, pass, [...gap], { 0: clash });
+
+    const entry = fs.readFileSync(path.join(sim.dir, '.ledger/.ledger.jsonl'), 'utf8').trim().split('\n').map((line) => JSON.parse(line)).find(({ id }) => id.startsWith(settled.id));
+    assert.deepStrictEqual([settled.decision, settled.raise, entry.event, entry.by, entry.unit, entry.phase, entry.topic], ['proceed', undefined, 'decided', 'claude', wu, 'specification', null]);
   });
 });

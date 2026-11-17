@@ -840,14 +840,15 @@ async function rootCaused(sim, wu, { live = false } = {}) {
 /**
  * Whether the save may run against the live server, raised as the person's
  * call at the investigation's own level, `{wu}.investigation` — a
- * permission for the hunt, never a rule its fix keeps — and answered no.
+ * permission for the hunt, never a rule its fix keeps — marked to always
+ * ask as live-server danger (19.4.20), and answered no.
  * @param {Sim} sim @param {string} wu
  */
 async function permitted(sim, wu) {
   const at = `${wu}.investigation`;
   const question = 'May I run the save against the live server to reproduce it?';
   const asked = sim.run(['ledger', 'ask', at], null, JSON.stringify({ ...CLAUDES, text: question })).id;
-  const { raise } = await sim.runAsync(['raise', at, '--answers', asked], null, JSON.stringify({
+  const { raise } = await sim.runAsync(['raise', at, '--answers', asked, '--always', 'live-server'], null, JSON.stringify({
     question,
     rows: [
       { key: 'yes', name: 'Live', text: 'Run the save against the live server', notice: 'a save lands on live data' },
@@ -889,15 +890,16 @@ function validated(sim, wu, which) {
 /**
  * The fix direction as the investigation sets it out (19.4.13, 19.4.21): a
  * question on the map, raised with what the step back found — where the
- * cause sits in the design, with a row to rework the area as a feature —
- * the person's pick answered, and the fix direction logged once it is
- * decided. Answers the question's id.
+ * cause sits in the design, with a row to rework the area as a feature,
+ * marked to always ask as a design problem — the person's pick answered,
+ * and the fix direction logged once it is decided. Answers the question's
+ * id.
  * @param {Sim} sim @param {string} wu @param {{pick?: '1'|'2'|'rework', design?: boolean}} [opts]
  */
 async function fixDirected(sim, wu, { pick = '1', design = false } = {}) {
   const at = `${wu}.investigation.${wu}`;
   const fix = sim.run(['ledger', 'ask', at], null, JSON.stringify({ ...CLAUDES, text: 'How should the save stop crashing?' })).id;
-  const { raise } = await sim.runAsync(['raise', at, '--answers', fix], null, JSON.stringify({
+  const { raise } = await sim.runAsync(['raise', at, '--answers', fix, ...(design ? ['--always', 'design-problem'] : [])], null, JSON.stringify({
     question: 'How should the save stop crashing?',
     rows: [
       { key: '1', name: 'Check', text: 'Check the field before the save writes it', notice: 'a save never crashes' },

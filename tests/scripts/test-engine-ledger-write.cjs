@@ -204,7 +204,7 @@ describe('scenarios', () => {
 
     const question = ask().id;
     const persons = decide(question, { by: 'person' }).id;
-    write('replace', NOTE, ['--replaces', persons, '--reason', 'was-wrong'], { ...MADE, drops: ['near-frameless'], text: 'A plain window after all.', why: 'Frameless notes got lost.' });
+    write('replace', NOTE, ['--replaces', persons, '--reason', 'was-wrong'], { by: 'person', who_moved_whom: 'none', drops: ['near-frameless'], text: 'A plain window after all.', why: 'Frameless notes got lost.' });
     assert.deepStrictEqual([entries().at(-1).replaces, entries().at(-1).reason, entries().find((e) => e.id === full(persons)).by], [full(persons), 'was-wrong', 'person']);
   });
 

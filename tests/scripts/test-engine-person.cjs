@@ -38,11 +38,12 @@ const { NO_SPACE, ok, okSections, output, refuses, screenOf, statePath, withFroz
 const { filesUnder } = require('./discovery-test-utils.cjs');
 const { idOf, PROJECT_ID, SESSION, DAY, MODEL, UNDRAWN, lines, waitingPath, useTrustWorld, history } = require('./trust-world.cjs');
 const { labelled } = require('./labels.cjs');
+const { auditGate } = require('./gate-audit.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { recordToRead, careEntries, dropCue, personPath } = require(path.join(SCRIPTS, 'domain/person.cjs'));
 const { droppedLine } = require(path.join(SCRIPTS, 'domain/projections/care.cjs'));
-const { ruled } = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
+const { decide } = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
 
 const { folder, logPath, project } = useTrustWorld('engine-person-');
 
@@ -176,7 +177,7 @@ const screen = (out, sections) => sections.flatMap((name) => (name === 'TITLE' ?
 
 /** A call on look in the project at `dir` named `name`, as the decision point is given it, on a question never drawn blind. @param {string} dir @param {string} name */
 function lookAt(dir, name) {
-  return ruled(/** @type {any} */ ({ sort: 'several' }), {
+  return decide(/** @type {any} */ ({ sort: 'several' }), {
     label: labelled('look'), place: { unit: 'fumi', phase: 'discussion', topic: 'note-window' }, blocks_build: false, replaced_by: null, measured: null, always: null, checked: false,
     project: { root: statePath(dir), name }, model: MODEL, now: FROZEN_MS, chain: UNDRAWN,
   });
@@ -386,7 +387,7 @@ describe('the record\'s file (P5, 16.18.8, 4.S27)', () => {
 });
 
 describe('Claude\'s proposal and the person\'s yes (16.18.2, 16.18.3, 16.S54)', () => {
-  it('16.18.3: the proposal screen states the preference in words with its why and examples, what keeping it would change, and takes the person\'s yes to keep it, their no to let it go, or their comment to carry on', () => {
+  it('16.18.3: the proposal screen states the preference in words with its why and examples, what keeping it would change, and takes the person\'s yes to keep it, their no to let it go, or their comment to carry on; the screen keeps the design system, its gate stating the whole menu (18.S41)', () => {
     const fumi = project('fumi');
     const { res, sections } = propose(fumi, SHOW_FIRST);
 
@@ -412,7 +413,7 @@ describe('Claude\'s proposal and the person\'s yes (16.18.2, 16.18.3, 16.S54)', 
       'Comment → Tell me how to word it',
     ]);
     assert.deepStrictEqual(pick(fumi, 'record proposal', 'n').next, engine('person', 'discard'));
-    propose(fumi, SHOW_FIRST);
+    auditGate(propose(fumi, SHOW_FIRST, [], { ...ENV, LEDGER_GATE_SURFACE: '1' }).sections, 'person propose');
     assert.deepStrictEqual(ok(fumi, ['gate', 'record proposal', '--typed', 'comment'], { env: ENV }).next, { kind: 'continue' });
   });
 
@@ -581,7 +582,7 @@ describe('Claude\'s proposal and the person\'s yes (16.18.2, 16.18.3, 16.S54)', 
 });
 
 describe('the care entries\' screens (16.5.6)', () => {
-  it('the care entries: what one does, this project\'s by its name now, a new row while a kind is left, the one entry dropped at once, help and back; the line reporting one added above them', () => {
+  it('the care entries: what one does, this project\'s by its name now, a new row while a kind is left, the one entry dropped at once, help and back; the line reporting one added above them; the screen keeps the design system (18.S41)', () => {
     const fumi = project('fumi');
     const added = addCare(fumi, 'look');
     assert.deepStrictEqual(added, { ok: true, kept: 'Fumi: look', next: engine('render', 'care', '--added', 'look') });
@@ -606,6 +607,7 @@ describe('the care entries\' screens (16.5.6)', () => {
       'b/back → Back to the matrix',
     ]);
     assert.deepStrictEqual(pick(fumi, 'care entries', 'd').next, engine('person', 'drop', '--care', 'look'));
+    auditGate(output(fumi, ['render', 'care'], { env: { ...ENV, LEDGER_GATE_SURFACE: '1' } }), 'render care');
   });
 
   it('the kind pick lists each kind with no entry here in the order drawn, look among them and danger never (F3), each keeping its entry; the drop pick, each entry here, each dropping it; with none, the screen says so and offers no drop, and with every kind taken, no new', () => {

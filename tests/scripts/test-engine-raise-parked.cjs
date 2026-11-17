@@ -60,7 +60,8 @@ const { recordReviewer } = require(path.join(SCRIPTS, 'domain/round-report.cjs')
 
 mock.method(require(path.join(SCRIPTS, 'domain/task-parks.cjs')), 'checkParkable', () => {});
 
-const EVERY_CALL_ASKS = 'Every call comes to you for now: I don\'t decide on my own yet.';
+const UNLABELLED = 'I couldn\'t tell what kind of question this is, so it comes to you.';
+const DANGER = 'An answer here could lose data or weaken security, so it always comes to you.';
 const BUILD = `${UNIT}.implementation`;
 const REVIEW = `${UNIT}.review`;
 const TOPIC = `${UNIT}.discussion.note-window`;
@@ -239,7 +240,7 @@ function parkedLine(own = {}) {
   return {
     v: 1, event: 'parked', unit: UNIT, topic: null, phase: 'implementation', session: SESSION,
     question, replaces: null, reason: null, cause: null, relies_on: [], task, went_ahead: null, number: 1,
-    call: CALL, rows_judged: [], why_asking: EVERY_CALL_ASKS, label: null, model: null, blocks_build: task !== null, replaced_by: null, always: null, measured: null, chain: question, blind: false, ...own,
+    call: CALL, rows_judged: [], why_asking: UNLABELLED, label: null, model: null, blocks_build: task !== null, replaced_by: null, always: null, measured: null, chain: question, blind: false, ...own,
   };
 }
 
@@ -254,7 +255,7 @@ function parked(number, task, own = {}) {
   const question = Object.hasOwn(own, 'question') ? own.question : made.where;
   const { id } = appendEntry(statePath(dir), {
     event: 'parked', unit: UNIT, topic: null, phase: 'implementation', session: SESSION,
-    question, replaces: null, reason: null, cause: null, relies_on: [], task, went_ahead: null, number, call: CALL, rows_judged: [], why_asking: EVERY_CALL_ASKS, label: null, model: null,
+    question, replaces: null, reason: null, cause: null, relies_on: [], task, went_ahead: null, number, call: CALL, rows_judged: [], why_asking: UNLABELLED, label: null, model: null,
     blocks_build: task !== null, replaced_by: null, always: null, measured: null, chain: question, blind: false, ...own,
   }, []);
   return /** @type {string} */ (id);
@@ -329,7 +330,7 @@ function screen(id, name, task, asks = CALL.question) {
     '',
     'WHY I\'M ASKING',
     '',
-    EVERY_CALL_ASKS,
+    UNLABELLED,
     '',
     '**`◆ Which way?`**',
     '',
@@ -350,7 +351,7 @@ describe('a question parked in the build (12.13.2–12.13.4, 12.13.9, 12.S28, 12
 
     const line = lastEntry();
     assert.deepStrictEqual([res, sections], [{
-      ok: true, decision: 'ask', reason: EVERY_CALL_ASKS, parked: 'Q1', task: '2.3', id: res.id, committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(),
+      ok: true, decision: 'ask', reason: UNLABELLED, parked: 'Q1', task: '2.3', id: res.id, committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(),
       line: 'Task 2.3 parks on Q1, waiting for you: When you make a new note, where should its window open? The other tasks carry on.',
     }, '']);
     assert.deepStrictEqual(line, { ...parkedLine({ relies_on: [made.frameless] }), id: full(res.id) });
@@ -379,7 +380,7 @@ describe('a question parked in the build (12.13.2–12.13.4, 12.13.9, 12.S28, 12
 
     const again = (await park(made.where, '2.3')).res;
     assert.deepStrictEqual(again, {
-      ok: true, decision: 'ask', reason: EVERY_CALL_ASKS, parked: 'Q1', task: '2.3', id: short(first), committed: null, already: true,
+      ok: true, decision: 'ask', reason: UNLABELLED, parked: 'Q1', task: '2.3', id: short(first), committed: null, already: true,
       line: 'Task 2.3 parks on Q1, waiting for you: When you make a new note, where should its window open? The other tasks carry on.',
     });
     assert.strictEqual(ledgerText(), text, 'a park raised again appended a line');
@@ -416,7 +417,7 @@ describe('a question parked in the build (12.13.2–12.13.4, 12.13.9, 12.S28, 12
     const { res, sections } = await outsideTask(made.where, REVIEW);
 
     assert.deepStrictEqual([res, sections], [{
-      ok: true, decision: 'ask', reason: EVERY_CALL_ASKS, parked: 'Q1', task: null, id: res.id, committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(),
+      ok: true, decision: 'ask', reason: UNLABELLED, parked: 'Q1', task: null, id: res.id, committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(),
       line: 'Q1 waits for you, parking no task: When you make a new note, where should its window open? The review carries on.',
     }, '']);
     assert.deepStrictEqual(lastEntry(), { ...parkedLine({ phase: 'review', task: null }), id: full(res.id) });
@@ -485,7 +486,7 @@ describe('the label a park seals (16.11.5)', () => {
   it('labels the call it parks beside its rows\' checks, sealing the label on the parked line; raise draw seals it from the park, and the answer lands its kind and hard-to-undo mark, its raise event the label and blocking build work, as the call was decided (16.4.7)', async () => {
     const { res } = await park(made.where, '2.3', { env: labelled() });
 
-    assert.deepStrictEqual(lastEntry(), { ...parkedLine({ label: LABEL }), id: full(res.id) });
+    assert.deepStrictEqual(lastEntry(), { ...parkedLine({ label: LABEL, why_asking: DANGER }), id: full(res.id) });
     const drawn = draw('Q1').res.raise;
     assert.deepStrictEqual(seals()?.[drawn].label, LABEL);
     answer(drawn, ['--pick', '1']);
@@ -598,7 +599,7 @@ describe('raise draw (12.13.10, 12.13.18–12.13.20, 12.S33, 12.S34)', () => {
     const { at, ...sealed } = seals()?.[res.raise];
     assert.deepStrictEqual(sealed, {
       v: 1, id: res.raise, menu: `raise — ${res.raise}`, place: { unit: UNIT, phase: 'implementation', topic: null },
-      answers: made.where, relies_on: [made.frameless], replaces: null, call: CALL, fact: false, rows_judged: ['1'], label: null, model: null, blocks_build: true, replaced_by: null, always: null, measured: null, chain: made.where, reason: EVERY_CALL_ASKS, blind: false,
+      answers: made.where, relies_on: [made.frameless], replaces: null, call: CALL, fact: false, rows_judged: ['1'], label: null, model: null, blocks_build: true, replaced_by: null, always: null, measured: null, chain: made.where, reason: UNLABELLED, blind: false,
       raised: entries().find((e) => e.id === park)?.at, answered: null, didnt_follow: 0, parks: { park, number: 1, tasks: ['2.3'], went_ahead: null },
     });
 

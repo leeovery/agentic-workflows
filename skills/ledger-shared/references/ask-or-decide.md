@@ -18,7 +18,9 @@ Every call you can't settle by checking goes to `raise`, the obvious ones includ
 
 A fact only the person holds, such as a deadline or an outside constraint, goes to `raise` with `--fact`: no lean, and rows only where the answers are few and known. It is always asked, and counts for nothing in the trust layer, which takes only intent and taste. The person's answer in their own words, given through the Comment row too, goes to `raise answer {id} --own`.
 
-In a call's raise you say whether it has one defensible answer or several. It has one where the record — decisions already made, sibling work, the brief — platform or industry convention, or first principles admit exactly one; it has several where the answer turns on what the person wants or knows.
+In a call's raise you say whether it has one defensible answer or several. It has one where the record — decisions already made, sibling work, the brief — platform or industry convention, or first principles admit exactly one; it has several where the answer turns on what the person wants or knows. Your lean goes in the call's `lean` alone, never in the rows' words, the mechanism or `stepped_back`: the engine may hold it back and ask the call cold.
+
+A raise may draw nothing. A call it lets proceed has landed as yours: carry on from it. One it sends back to check, check, and raise it again only if checking can't settle it. A raise drawn without your lean is answered as any other.
 
 ## Answering a Raise
 
@@ -28,3 +30,13 @@ In a call's raise you say whether it has one defensible answer or several. It ha
 - **A comment or a question** at a raise is talked through, then the raise is drawn again with `raise show {id}`. On a fact, a comment that gives the answer is the person's own words; only a question about it is talked through and the fact drawn again.
 
 Questions reach the person one at a time. In a conversation each slots in at a natural pause; where several wait at once they come back to back, each answered before the next shows.
+
+## The Record of the Person
+
+Where `enter`'s DATA names `person`, the record of the person, read it: its preferences shape what you pick, whether you decide or lean as you ask, and never whether you ask.
+
+A preference the person states outright, or one their answers keep showing, is proposed for the record: `person propose`, with `{"preference", "why", "examples"}` on stdin. A kind they want always to come to them in this project is proposed the same way as `{"care": "{kind}", "why", "examples"}`. Where a raise's answer carries `care_drop`, propose dropping that care entry: `person propose --drop`, with `{"care": "{kind}", "why", "examples"}`, its examples the questions answered "don't care". Emit the proposal's sections verbatim per their markers; the answer goes to `gate`: follow its `next`.
+
+## Corrections
+
+The person says a question was of another kind, or that a verdict they gave was wrong: record it, naming the entry the call or the answer landed as, `trust correct {entry} --kind {kind}` or `trust correct {entry} --verdict {verdict:[nothing|fix|loss]}`, and say it in a line.

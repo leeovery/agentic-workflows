@@ -54,6 +54,7 @@ const { createManifest, useTempFolder } = require('./discovery-test-utils.cjs');
 const { UNIT, SESSION, MADE, NOTE, SPACE, row, askedWorld, ledgerHelpers, leaningCall, answeredRaise } = require('./ledger-world.cjs');
 const { trustLogHelpers } = require('./trust-world.cjs');
 const { labelling } = require('./labels.cjs');
+const { auditGate } = require('./gate-audit.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { TRUST_LOG, record } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
@@ -470,7 +471,7 @@ describe('the verdict page (16.10.6, 16.10.7, 16.10.12, 18.4.2)', () => {
     return write('replace', address, ['--replaces', call, '--reason', 'changed-mind'], { by: 'person', drops: ['the call'], text: 'The person\'s answer.', why: 'The person wants it so.' });
   }
 
-  it('draws the queue\'s first departure in 16.10.7\'s shape: the count waiting, the project and topic with the point and day of its latest skip by time, the question, Claude\'s answer and the person\'s, then the three verdicts each given at the queue, help, and back to the start menu', async () => {
+  it('draws the queue\'s first departure in 16.10.7\'s shape: the count waiting, the project and topic with the point and day of its latest skip by time, the question, Claude\'s answer and the person\'s, then the three verdicts each given at the queue, help, and back to the start menu; the page keeps the design system (18.S41)', async () => {
     const first = await answered('A sheet.');
     await answered('A frameless window.');
     withFrozenClock(() => record('verdict', { entry: full(first), verdict: 'skip', point: 'conclusion' }, { cwd: dir, warnings: [] }));
@@ -500,6 +501,7 @@ describe('the verdict page (16.10.6, 16.10.7, 16.10.12, 18.4.2)', () => {
       showing: null,
       hold: null,
     });
+    auditGate(output(dir, ['render', 'verdicts'], { env: { ...SESSION, LEDGER_GATE_SURFACE: '1' } }), 'render verdicts');
   });
 
   it('each verdict given from it draws the next departure — one never asked shown by the day it was made, never with another\'s skip — and the last leads to the start menu, the page drawing nothing once none waits', async () => {

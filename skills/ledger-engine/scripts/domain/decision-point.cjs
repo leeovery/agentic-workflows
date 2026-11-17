@@ -17,23 +17,19 @@
 // replacement; whether it was sent to check once already; the project; the
 // model of the session making it; and the time.
 //
-// Until the ask rule is switched on (29.19.2), every call asks (29.5.2),
-// with the rule's own reason. `ruled` is what it decides once switched: the
-// ask rule (ask-rule.cjs) over the trust log's counts for the project and
-// the model as of the time (trust-counts.cjs), the person's settings
-// (trust-settings.cjs) and their care entries, from the record of the
-// person (person.cjs); and where the rule lets the call proceed — a quiet
-// kind's, or a one-answer call's (16.3.7) — on a question, never a
-// replacement, which sets out Claude's proposals beside the decision as it
-// stands, so its rows tell where Claude leans, a blind question drawn at
-// the share over those counts (blind-draw.cjs, 16.17.3). Claude never
-// chooses which calls are drawn.
+// It decides by the ask rule (ask-rule.cjs, 29.19.2) over the trust log's
+// counts for the project and the model as of the time (trust-counts.cjs),
+// the person's settings (trust-settings.cjs) and their care entries, from
+// the record of the person (person.cjs); and where the rule lets the call
+// proceed — a quiet kind's, or a one-answer call's (16.3.7) — on a
+// question, never a replacement, which sets out Claude's proposals beside
+// the decision as it stands, so its rows tell where Claude leans, a blind
+// question drawn at the share over those counts (blind-draw.cjs, 16.17.3).
+// Claude never chooses which calls are drawn.
 //
 // Beside it, whether Claude offers to settle the rest of a topic, asked once
-// the person has answered a raise there and by the offer's own render
-// (16.8.1): until the ask rule is switched on, no offer comes. Once
-// switched, it is convergence.cjs's `offerDue`: the topic's run of
-// agreements, where it has come to the offer.
+// the person has answered a raise there (16.8.1): convergence.cjs's
+// `offerDue`, the topic's run of agreements, where it has come to the offer.
 //
 // Beside it, `gateStep`: whether a learned process gate (learned-gates.cjs)
 // shows, or runs as an automatic step on one of its rows (3.2.7). Every
@@ -41,26 +37,25 @@
 // topic — with the key it draws the gate's showing from, and draws what it
 // answers (projections/surfaces.cjs). The showing is drawn from the place,
 // when it was last entered — for a gate at no place, the place the
-// conversation sits at (place-entry.cjs) — and the key. A showing held at the gate's place
-// (showing-hold.cjs) — waiting for its answer, set aside by free text, or
-// left open by a row that shows the gate again — shows again on its hold
-// and is never drawn again, the person having engaged with it, while it is
-// of the subject the draw's key names (`heldFor`); one of a subject gone is
-// ended, and the gate drawn afresh. A surface's draw that shows the gate on
-// a new showing opens its hold; a verb's check of the step reads the hold
-// and opens none. Until the learned gates are switched on (29.19.2), every
-// gate shows. `learned` is what it decides once switched, where no showing
-// is held: in a build in step, the gate shows, the position read from the
-// unit at each gate so a switch bites at once (3.3.3, 3.3.6); else — only
-// the build has a position (3.3.1) — as the gate's count stands for the
-// project and the session's model as of the time, at the person's
-// threshold, its showing's blind ask drawn. A gate off the list shows, and
-// nothing is read for it. A surface's draw that runs the gate as a step
-// logs the step in the trust log (trust-events.cjs), its id drawn from the
-// project, the gate and the showing, so a redraw of the showing is read
-// once and another project's step on a showing drawn alike is read too,
-// the warnings of an append that fails on the step for its surface to
-// draw (16.13.3); a verb's check logs none.
+// conversation sits at (place-entry.cjs) — and the key. A showing held at
+// the gate's place (showing-hold.cjs) — waiting for its answer, set aside by
+// free text, or left open by a row that shows the gate again — shows again
+// on its hold and is never drawn again, the person having engaged with it,
+// while it is of the subject the draw's key names (`heldFor`); one of a
+// subject gone is ended, and the gate drawn afresh. A surface's draw that
+// shows the gate on a new showing opens its hold; a verb's check of the step
+// reads the hold and opens none. Where no showing is held: in a build in
+// step, the gate shows, the position read from the unit at each gate so a
+// switch bites at once (3.3.3, 3.3.6); else — only the build has a position
+// (3.3.1) — it steps as the gate's count stands for the project and the
+// session's model as of the time, at the person's threshold, its showing's
+// blind ask drawn. A gate off the list shows, and nothing is read for it. A
+// surface's draw that runs the gate as a step logs the step in the trust log
+// (trust-events.cjs), its id drawn from the project, the gate and the
+// showing, so a redraw of the showing is read once and another project's
+// step on a showing drawn alike is read too, the warnings of an append that
+// fails on the step for its surface to draw (16.13.3); a verb's check logs
+// none.
 // ---------------------------------------------------------------------------
 
 const { rule } = require('./ask-rule.cjs');
@@ -70,6 +65,7 @@ const { projectId, modelOf, readPersonEvents, record } = require('./trust-log.cj
 const { idFrom } = require('./ledger-ids.cjs');
 const { trustSettings } = require('./trust-settings.cjs');
 const { careEntries } = require('./person.cjs');
+const { offerDue } = require('./convergence.cjs');
 const { learnedGate, heldFor, showingOf, shows, stepOf } = require('./learned-gates.cjs');
 const { heldShowing, holdShowing, endShowing } = require('./showing-hold.cjs');
 const { enteredAt, sittingPlace } = require('./place-entry.cjs');
@@ -93,28 +89,19 @@ const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
  * @typedef {{cwd: string, place: import('./learned-gates.cjs').Place, key: unknown, check?: boolean}} GateAt
  */
 
-const EVERY_CALL_ASKS = 'Every call comes to you for now: I don\'t decide on my own yet.';
 const BLIND = 'I\'m asking you this one cold, keeping my answer back until you\'ve given yours, to check my calls against yours.';
 
 /**
- * Whether the call goes to the person, and why.
- * @param {import('./raise.cjs').Call} _call @param {At} _at
- * @returns {{decision: Decision, reason: string}}
- */
-function decide(_call, _at) {
-  return { decision: 'ask', reason: EVERY_CALL_ASKS };
-}
-
-/**
- * The ask rule's decision on the call: over the counts the trust log holds
- * on the project, for the session's model as of the time, the person's
- * settings, and their care entries, which the record of the person holds,
- * each project's by its id (person.cjs); where it lets a question's call
- * proceed, asked blind where the question's id draws so.
+ * Whether the call goes to the person, and why: the ask rule's decision on
+ * it, over the counts the trust log holds on the project, for the session's
+ * model as of the time, the person's settings, and their care entries,
+ * which the record of the person holds, each project's by its id
+ * (person.cjs); where it lets a question's call proceed, asked blind where
+ * the question's id draws so.
  * @param {import('./raise.cjs').Call} call @param {At} at
  * @returns {{decision: Decision, reason: string}}
  */
-function ruled(call, { project: { root, name }, model, now, chain, ...at }) {
+function decide(call, { project: { root, name }, model, now, chain, ...at }) {
   const counts = countsOf(root, { model, now });
   const ruling = rule(call, { ...at, project: { id: projectId(root), name }, counts, settings: trustSettings(), care: careEntries() });
   if (ruling.decision !== 'proceed') return ruling;
@@ -124,21 +111,26 @@ function ruled(call, { project: { root, name }, model, now, chain, ...at }) {
 /**
  * The agreements in a row in the topic `topic` of `unit` where Claude offers
  * to settle the rest of it (16.8.1), else null.
- * @param {string} _cwd @param {string} _unit @param {string} _topic
+ * @param {string} cwd @param {string} unit @param {string} topic
  * @returns {number|null}
  */
-function convergenceDue(_cwd, _unit, _topic) {
-  return null;
+function convergenceDue(cwd, unit, topic) {
+  return offerDue(cwd, unit, topic);
 }
 
 /**
  * Whether the learned gate `name` shows, or runs as an automatic step, on
- * its showing.
+ * its showing: shown on the showing held at its place, and in a build in
+ * step; else as its count stands on the project for the session's model as
+ * of now, at the person's threshold, its showing's blind ask drawn. A gate
+ * off the list shows, reading nothing.
  * @param {string} name @param {GateAt} at
  * @returns {GateStep}
  */
 function gateStep(name, at) {
-  return drawn(name, at, (showing) => shows(name, showing));
+  const gate = learnedGate(name);
+  if (gate === null) return shows(name, null);
+  return drawn(gate, at, (showing, root) => (inStep(root, at.place) ? shows(gate, showing) : counted(gate, at.cwd, root, showing)));
 }
 
 /**
@@ -200,20 +192,6 @@ function inStep(root, { unit, phase }) {
 }
 
 /**
- * The learned gates' step on the gate `name`: shown on the showing held at
- * its place, and in a build in step; else as its count stands on the
- * project for the session's model as of now, at the person's threshold, its
- * showing's blind ask drawn. A gate off the list shows, reading nothing.
- * @param {string} name @param {GateAt} at
- * @returns {GateStep}
- */
-function learned(name, at) {
-  const gate = learnedGate(name);
-  if (gate === null) return shows(name, null);
-  return drawn(gate, at, (showing, root) => (inStep(root, at.place) ? shows(gate, showing) : counted(gate, at.cwd, root, showing)));
-}
-
-/**
  * The learned gate `gate`'s step on its showing `showing`, as its count
  * stands on the project for the session's model as of now, at the person's
  * threshold.
@@ -230,4 +208,4 @@ function counted(gate, cwd, root, showing) {
   return stepOf(gate, stateOf(gateCount(counts, gate), trustSettings().threshold), showing);
 }
 
-module.exports = { decide, ruled, convergenceDue, gateStep, learned };
+module.exports = { decide, convergenceDue, gateStep };

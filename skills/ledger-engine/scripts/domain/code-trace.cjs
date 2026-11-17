@@ -190,7 +190,7 @@ function keepStateIgnored(cwd, warnings) {
   }
   commitOwnChange(
     root, GITIGNORE, (committed) => withLine(committed ?? '', STATE_IGNORE_LINE),
-    `chore: ignore ${STATE_IGNORE_LINE}, the workflows state`, `the state's ignore line is in ${file} but was not committed`, warnings,
+    `chore: ignore ${STATE_IGNORE_LINE}, Ledger's state`, `the state's ignore line is in ${file} but was not committed`, warnings,
   );
 }
 

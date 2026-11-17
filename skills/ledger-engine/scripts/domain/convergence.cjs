@@ -20,12 +20,11 @@
 //   person's latest yes is closed, so no offer comes back while the
 //   settling it started goes on (`offerDue`). The decision point asks it
 //   once the person answers a raise in a topic's discussion
-//   (decision-point.cjs `convergenceDue`, raise.cjs); until the ask rule is
-//   switched on, it never offers.
+//   (decision-point.cjs `convergenceDue`, raise.cjs).
 // - `render convergence <wu>.<topic> [--asked]` (16.8.2): the offer, the
 //   topic named by its key or the title a rename gave it, under discussion
-//   in a unit in progress; drawn where the decision point says it is due,
-//   or on the person's word whatever the run, `--asked` (16.S28); refused
+//   in a unit in progress; drawn where it is due, or on the person's word
+//   whatever the run, `--asked` (16.S28); refused
 //   where nothing is open. Its forecast is the ask rule's (ask-rule.cjs) on
 //   each open question as the counts stand now — each labelled from its
 //   wording alone, the calls put at once (labeller.cjs), one that fails
@@ -173,13 +172,12 @@ const dueIn = ({ run, open, settling }) => run >= CONVERGENCE_RUN && open.length
 
 /**
  * The agreements in a row in the topic where the offer is due on it, else
- * null (the header's): the decision point's once the ask rule is switched
- * on. What the ledger's read said is pushed to `warnings`.
- * @param {string} cwd @param {string} unit @param {string} topic @param {string[]} [warnings]
+ * null (the header's).
+ * @param {string} cwd @param {string} unit @param {string} topic
  * @returns {number|null}
  */
-function offerDue(cwd, unit, topic, warnings = []) {
-  const standing = topicStanding(cwd, unit, topic, warnings);
+function offerDue(cwd, unit, topic) {
+  const standing = topicStanding(cwd, unit, topic, []);
   return dueIn(standing) ? standing.run : null;
 }
 
@@ -228,17 +226,6 @@ function topicOf(cwd, dotpath, said) {
 }
 
 /**
- * The decision point's word on the offer on the topic `topic` of `unit`:
- * its agreements in a row where due, else null.
- * @param {string} cwd @param {string} unit @param {string} topic
- * @returns {number|null}
- */
-function offerSaid(cwd, unit, topic) {
-  // Required here: switched on, the decision point reads `offerDue` from this module.
-  return require('./decision-point.cjs').convergenceDue(cwd, unit, topic);
-}
-
-/**
  * `render convergence <wu>.<topic> [--asked]` (the header's).
  * @param {string} cwd @param {{dotpath?: string, asked?: string}} args
  * @returns {string}
@@ -251,8 +238,8 @@ function convergenceSurface(cwd, { dotpath, asked }) {
   const warnings = [];
   const standing = topicStanding(cwd, unit, topic, warnings);
   if (standing.open.length === 0) throw new Error(`${said}: nothing is open on ${title} to settle`);
-  if (asked === undefined && offerSaid(cwd, unit, topic) === null) {
-    throw new Error(`${said}: no offer is due on ${title} — the decision point offers none at ${standing.run} agreement${standing.run === 1 ? '' : 's'} in a row; on the person's word, --asked`);
+  if (asked === undefined && !dueIn(standing)) {
+    throw new Error(`${said}: no offer is due on ${title} at ${standing.run} agreement${standing.run === 1 ? '' : 's'} in a row; on the person's word, --asked`);
   }
   return offerScreen({ title, unit, topic, run: asked === undefined ? standing.run : null, forecast: forecastOf(cwd, unit, topic, standing.open), warnings });
 }

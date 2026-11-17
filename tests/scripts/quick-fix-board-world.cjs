@@ -5,8 +5,8 @@
 // the worlds, each built once per process and copied at every call, `typo`
 // entered by a conversation gone since — made from its inbox note, fixes 1.1
 // and 1.2 written and 1.1 started, a call of Claude's made in it and a
-// person's decision of the completed `restore` replaced there by Claude
-// (`working`); fix 1.1 built, recorded and finish's checklist closed
+// person's decision of the completed `restore` replaced there by Claude,
+// the person handing it the change (`working`); fix 1.1 built, recorded and finish's checklist closed
 // (`closable`); fixes 1.1 and 1.2 built and recorded, 1.3 written
 // (`recorded`); and made from no note, no fix written (`unwritten`) — the
 // entries `working` made; Claude's raise there; and the board as a test's
@@ -47,7 +47,7 @@ const CALL = Object.freeze({
   product_wide: false,
 });
 
-/** The entries `working` made, by short id: the question Claude's call answers and the call, the earlier unit's decision, and Claude's replacing it. */
+/** The entries `working` made, by short id: the question Claude's call answers and the call, the earlier unit's decision, and Claude's replacing it on the person's word. */
 const made = { asked: '', call: '', ruled: '', replacing: '' };
 
 const working = fixtureFrom('engine-board-quick-fix-', (dir) => {
@@ -65,7 +65,7 @@ const working = fixtureFrom('engine-board-quick-fix-', (dir) => {
     made.asked = ask(PLACE, 'What does the README say entering does?');
     made.call = decide(PLACE, made.asked, CALL_TEXT);
     made.replacing = ok(dir, ['ledger', 'replace', PLACE, '--replaces', made.ruled, '--reason', 'changed-mind'], {
-      ...as, stdin: JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'Pressing m marks the highlighted row.', why: 'The note pins it.', drops: ['the empty set'] }),
+      ...as, stdin: JSON.stringify({ by: 'claude', who_moved_whom: 'none', given: 'your-call', text: 'Pressing m marks the highlighted row.', why: 'The note pins it.', drops: ['the empty set'] }),
     }).id;
   });
 });

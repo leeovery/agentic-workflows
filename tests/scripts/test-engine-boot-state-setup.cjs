@@ -79,7 +79,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     assert.deepStrictEqual(placed(root), IN_PLACE);
     assert.strictEqual(readFile(main, '.gitignore'), '.ledger/\n');
     const ignored = git(main, ['log', '--format=%H %s', '--', '.gitignore']).trim();
-    assert.match(ignored, / chore: ignore \.ledger\/, the workflows state$/);
+    assert.match(ignored, / chore: ignore \.ledger\/, Ledger's state$/);
     assert.deepStrictEqual(git(main, ['show', '--name-only', '--format=', ignored.split(' ')[0]]).trim().split('\n'), ['.gitignore']);
     assert.strictEqual(git(main, ['status', '--porcelain', '--', '.gitignore', '.ledger']), '');
 
@@ -232,7 +232,7 @@ describe('a project being set up (4.S12, 4.5.2)', () => {
     assert.strictEqual(tip(fresh, 'main'), before.main, 'the main checkout\'s branch gained nothing');
     assert.strictEqual(git(fresh, ['status', '--porcelain']), '');
     assert.deepStrictEqual(git(fresh, ['log', '--format=%s', `${before.feature}..feature`]).trim().split('\n'),
-      ['chore: install Ledger session hooks', 'chore: ignore .ledger/, the workflows state']);
+      ['chore: install Ledger session hooks', 'chore: ignore .ledger/, Ledger\'s state']);
     assert.strictEqual(readFile(code, '.gitignore'), '.ledger/\n');
     assert.ok(!fs.existsSync(path.join(code, STATE_DIR_NAME)));
   });

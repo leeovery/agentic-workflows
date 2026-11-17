@@ -8,10 +8,9 @@
 // discussion, placed by the ledger, broken by a departure and by nothing
 // else, and started again from the person's yes or no to the offer
 // (16.8.7); no offer while the settling a yes started goes on; the cue on
-// the answer that brings it to the offer, never until the ask rule is
-// switched on (16.S25), never on a fact's answer, a rerun or outside a
-// topic's discussion; the offer drawn where the decision point says it is
-// due or on the person's word, its forecast the rule's on each open
+// the answer that brings it to the offer (16.S25), never on a fact's
+// answer, a rerun or outside a topic's discussion; the offer drawn where it
+// is due or on the person's word, its forecast the rule's on each open
 // question, each labelled at once, under the person's care entries, a
 // question an experiment measures coming to them (16.8.2, 16.S25, 16.S28,
 // 9.1.11); the yes logged in the trust log as stated intent, keyed by the
@@ -29,8 +28,8 @@
 // test keeps its conversation and the trust log in a config folder of its
 // own, the log written with the answers the run counts, each naming the
 // entry it landed as. The separate call is the stub binary, labelling the
-// open questions where a test arms it; the decision point and its seam
-// forced in process, as switching the rule on makes them.
+// open questions where a test arms it; the decision point forced in
+// process onto a question never drawn blind where a test settles a point.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -43,8 +42,8 @@ const path = require('path');
 const { ok, output, refusedPristine, screenOf, sectionOf, statePath, fixtureFrom, cleanupFixture, withEnv } = require('./engine-harness.cjs');
 const { useTempFolder, createManifest } = require('./discovery-test-utils.cjs');
 const { UNIT, MADE, NOTE, PHASES, SESSION_ID, ledgerHelpers } = require('./ledger-world.cjs');
-const { SESSION, raiseHelpers } = require('./raise-world.cjs');
-const { DAY, UNDRAWN, lines, history, trustLogHelpers } = require('./trust-world.cjs');
+const { SESSION, raiseHelpers, undrawn } = require('./raise-world.cjs');
+const { DAY, lines, history, trustLogHelpers } = require('./trust-world.cjs');
 const { labelAnswers } = require('./labels.cjs');
 const { auditGate } = require('./gate-audit.cjs');
 
@@ -156,14 +155,8 @@ function logOf(build, start = Date.now() - DAY) {
 /** `n` of the person's agreements, each on one of the note window's answered questions, from the one `from` names. @param {History} h @param {number} n @param {number} [from] */
 const agreeing = (h, n, from = 0) => made.here.slice(from, from + n).forEach((entry) => h.answered(entry, '1'));
 
-/** The offer due on `topic` as the decision point reads it once switched on: its run, or null. */
+/** The offer due on `topic` as the decision point reads it: its run, or null. */
 const due = (topic = TOPIC) => withEnv({ LEDGER_CONFIG_DIR: config() }, () => offerDue(dir, UNIT, topic));
-
-/** The decision point's seam as switching the rule on makes it, for the test `t`. @param {TestContext} t */
-const switchedOn = (t) => t.mock.method(decisionPoint, 'convergenceDue', offerDue);
-
-/** The decision point as switching the rule on makes it, for the test `t`, on a question never drawn blind. @param {TestContext} t */
-const ruledOn = (t) => t.mock.method(decisionPoint, 'decide', (/** @type {any} */ call, /** @type {any} */ at) => decisionPoint.ruled(call, { ...at, chain: UNDRAWN }));
 
 /** Why the offer is refused on the note window, drawn as it comes with no word of the person's. */
 const notDue = () => refusedPristine(dir, ['render', 'convergence', AT], { env: conversation() }).error;
@@ -267,7 +260,7 @@ describe('the run (16.8.7)', () => {
     assert.strictEqual(due(SPACE), null);
   });
 
-  it('after the person\'s yes, no offer comes while a question open at the yes is still open, however long the run since; once each is closed, one comes on a question asked since', (t) => {
+  it('after the person\'s yes, no offer comes while a question open at the yes is still open, however long the run since — none cued, and its render refused unasked; once each is closed, one comes on a question asked since', (t) => {
     const { asked, decided } = planting(statePath(dir));
     t.mock.timers.enable({ apis: ['Date'], now: Date.now() - 2 * DAY });
     const before = asked(TOPIC, 'Does a note keep its place?');
@@ -276,32 +269,23 @@ describe('the run (16.8.7)', () => {
       h.converged(UNIT, TOPIC);
       Object.values(made.open).forEach((question, n) => h.answered(decided(TOPIC, question, n), '1'));
     });
-    const settling = due();
+    const settling = [due(), notDue()];
     asked(TOPIC, 'Does a note pin to the desktop?');
     logOf((h) => h.answered(decided(TOPIC, before, 8), '1'), Date.now());
 
-    assert.deepStrictEqual([settling, due()], [null, 9]);
+    assert.deepStrictEqual([settling, due()], [[null, 'render convergence: no offer is due on Note Window at 8 agreements in a row; on the person\'s word, --asked'], 9]);
   });
 });
 
 describe('the cue on a raise\'s answer (16.8.1)', () => {
-  it('until the ask rule is switched on, no offer comes: the answer bringing the run to 8 cues nothing', async () => {
-    logOf((h) => agreeing(h, 7));
-    const { raise } = (await raised(NOTE, ['--answers', made.open.opens], callOn(OPEN.opens), conversation())).res;
-
-    assert.deepStrictEqual(answer(raise, ['--pick', '1']).convergence, undefined);
-  });
-
-  it('16.S25: switched on, the answer bringing the run to 8 cues the offer — the unit, the topic and the agreements in a row there — and its rerun cues nothing', async (t) => {
-    switchedOn(t);
+  it('16.S25: the answer bringing the run to 8 cues the offer — the unit, the topic and the agreements in a row there — and its rerun cues nothing', async () => {
     logOf((h) => agreeing(h, 7));
     const { raise } = (await raised(NOTE, ['--answers', made.open.opens], callOn(OPEN.opens), conversation())).res;
 
     assert.deepStrictEqual([answer(raise, ['--pick', '1']).convergence, answer(raise, ['--pick', '1']).convergence], [{ unit: UNIT, topic: TOPIC, agreements: 8 }, undefined]);
   });
 
-  it('a fact\'s answer cues nothing, though the offer is due', async (t) => {
-    switchedOn(t);
+  it('a fact\'s answer cues nothing, though the offer is due', async () => {
     logOf((h) => agreeing(h, 8));
     const fact = { question: OPEN.keeps, rows: [], mechanism: 'Outside the code.', product_wide: false };
     const { raise } = (await raised(NOTE, ['--answers', made.open.keeps, '--fact'], fact, conversation())).res;
@@ -321,19 +305,16 @@ describe('the cue on a raise\'s answer (16.8.1)', () => {
 });
 
 describe('the offer (16.8.2)', () => {
-  it('16.S25: drawn where the decision point says it is due — the run, how many are open, how many I\'d settle and which come to the person by kind, the most first, kinds tied in the labeller\'s order and those whose label failed last — each open question labelled at once, its DATA saying each one\'s forecast and that a point may still draw blind; refused at the same run while the decision point offers none, as until the ask rule is switched on', (t) => {
+  it('16.S25: drawn where it is due — the run, how many are open, how many I\'d settle and which come to the person by kind, the most first, kinds tied in the labeller\'s order and those whose label failed last — each open question labelled at once, its DATA saying each one\'s forecast and that a point may still draw blind', () => {
     logOf((h) => {
       h.agree(30, 'behaviour');
       agreeing(h, 8);
     });
-    const offersNone = notDue();
-    switchedOn(t);
     const meet = fs.mkdtempSync(path.join(config(), 'meet-'));
 
     const out = offer([], { CLAUDE_STUB_ANSWERS: LABELS, CLAUDE_STUB_MEET: `${Object.keys(OPEN).length}:${meet}` });
 
     const gate = auditGate(out, 'render convergence');
-    assert.strictEqual(offersNone, 'render convergence: no offer is due on Note Window — the decision point offers none at 8 agreements in a row; on the person\'s word, --asked');
     assert.deepStrictEqual(screenOf(out, 'MENU: convergence offer'), [
       '· · · · · · · · · · · ·',
       '8 agreements in a row on Note Window.',
@@ -378,7 +359,7 @@ describe('the offer (16.8.2)', () => {
       '        decided screen',
     ]);
     assert.strictEqual(sectionOf(out, 'DATA').split('\n')[0], 'offer: on the person\'s word');
-    assert.strictEqual(notDue(), 'render convergence: no offer is due on Note Window — the decision point offers none at 3 agreements in a row; on the person\'s word, --asked');
+    assert.strictEqual(notDue(), 'render convergence: no offer is due on Note Window at 3 agreements in a row; on the person\'s word, --asked');
   });
 
   it('16.8.5: the forecast reads the person\'s care entries — a quiet kind under one in this project comes to them', () => {
@@ -403,8 +384,7 @@ describe('the offer (16.8.2)', () => {
 });
 
 describe('the person\'s answer (16.8.3, 16.8.4, 16.8.6)', () => {
-  it('16.S26, 16.S45: their yes is stated intent, logged in the trust log under the project\'s id, with no kind — a rerun read once, another yes its own — and the run starts again from it', (t) => {
-    switchedOn(t);
+  it('16.S26, 16.S45: their yes is stated intent, logged in the trust log under the project\'s id, with no kind — a rerun read once, another yes its own — and the run starts again from it', () => {
     logOf((h) => agreeing(h, 8));
     offer();
     answerOffer('y');
@@ -417,11 +397,10 @@ describe('the person\'s answer (16.8.3, 16.8.4, 16.8.6)', () => {
     assert.deepStrictEqual(yes, { ok: true, convergence: 'accepted', unit: UNIT, topic: TOPIC });
     const [{ id, at: _at, project_name: _name, ...event }, ...more] = accepted();
     assert.deepStrictEqual([event, more.map((again) => again.id === id)], [{ v: 1, type: 'convergence', project: project(), model: null, session: SESSION, unit: UNIT, topic: TOPIC }, [true, false]]);
-    assert.deepStrictEqual(restarted, [null, 'render convergence: no offer is due on Note Window — the decision point offers none at 0 agreements in a row; on the person\'s word, --asked']);
+    assert.deepStrictEqual(restarted, [null, 'render convergence: no offer is due on Note Window at 0 agreements in a row; on the person\'s word, --asked']);
   });
 
-  it('16.S27: their no is kept in the topic\'s cache, when they gave it, and no offer comes again until the next run of 8', (t) => {
-    switchedOn(t);
+  it('16.S27: their no is kept in the topic\'s cache, when they gave it, and no offer comes again until the next run of 8', () => {
     logOf((h) => agreeing(h, 8));
     offer();
     answerOffer('n');
@@ -458,7 +437,7 @@ describe('the person\'s answer (16.8.3, 16.8.4, 16.8.6)', () => {
 
 describe('settling (16.8.5)', () => {
   it('16.S26, 16.S29: once accepted, each point is raised as usual and the rule still holds — a quiet kind\'s call lands in the ledger as mine, a danger point still comes to the person', async (t) => {
-    ruledOn(t);
+    undrawn(t);
     logOf((h) => h.agree(30, 'behaviour'));
     const env = conversation({ CLAUDE_STUB_ANSWERS: LABELS });
     accept();
@@ -471,7 +450,7 @@ describe('settling (16.8.5)', () => {
   });
 
   it('9.1.11: a question an experiment still running measures always comes to the person — the forecast counts it theirs, as the rule does, and its raise under the rule asks, naming the experiment', async (t) => {
-    ruledOn(t);
+    undrawn(t);
     logOf((h) => h.agree(30, 'behaviour'));
     const problem = statePath(dir, '.cache', UNIT, 'discussion', TOPIC, 'problem.md');
     fs.mkdirSync(path.dirname(problem), { recursive: true });

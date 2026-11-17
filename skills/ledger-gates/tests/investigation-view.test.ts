@@ -22,7 +22,7 @@ const fixture = KILL_ALL as View & Record<string, any>
 const VALIDATING = {
   ...fixture,
   standing: 'validating-root-cause',
-  waiting: [{ kind: 'raise', id: 'q9Zp1c', text: ASKED, page: null, raised_by: 'root-cause', options: null, lean: null }],
+  waiting: [{ kind: 'raise', id: 'q9Zp1c', text: ASKED, page: null, raised_by: 'root-cause', why: 'deleted scrollback cannot be got back', options: null, lean: null }],
   decided: [],
   hypotheses: fixture.hypotheses.map((each: { name: string }) => (each.name === 'H1' ? { ...each, state: 'confirmed' } : each)),
   root_cause: { ...fixture.root_cause, validated: false },
@@ -35,7 +35,7 @@ const VALIDATING = {
 } as View
 
 describe('a bug\'s investigation on the board (20.12)', () => {
-  test('20.S19: the fix direction waiting on the person is §20.12\'s second drawing at 64 columns: the ruling theirs, H1 intended by it, the step back and the options, Claude\'s lean marked', () => {
+  test('20.S19: the fix direction waiting on the person is §20.12\'s second drawing at 64 columns: its wait saying why it reached them, the ruling theirs, H1 intended by it, the step back and the options, Claude\'s lean marked', () => {
     expect(drawn(INVESTIGATION, KILL_ALL).text).toEqual(
       block(`
 Killing All Sessions Wipes Restore State · investigation
@@ -45,6 +45,8 @@ direction waits on you
 
 WAITING ON YOU ───────────────── 1 · asked in the conversation
 ⚑ Which fix: 3 options, Claude's lean first
+     The root cause is a design problem, so it always comes to
+     you.
 
 DECIDED ──────────────────────────────────────────── 1 · yours
 ✓ A session you kill never comes back; a session you detach
@@ -109,10 +111,10 @@ snapshot every 15 minutes and never promise a kill is final.
     )
   })
 
-  test('20.S18: a question the root-cause validation raised is §20.12\'s first drawing: WAITING ON YOU asked in the conversation with what raised it and nothing more, the validation read with its clock, the fix direction after it', () => {
+  test('20.S18: a question the root-cause validation raised is §20.12\'s first drawing: WAITING ON YOU asked in the conversation with what raised it and why it reached the person, the validation read with its clock, the fix direction after it', () => {
     const { text, holds } = drawn(INVESTIGATION, VALIDATING)
 
-    expect([text.slice(2, 10), sectionOf(text, 'ROOT CAUSE ')[0], sectionOf(text, 'VALIDATION '), sectionOf(text, 'FIX DIRECTION ')]).toEqual([
+    expect([text.slice(2, 11), sectionOf(text, 'ROOT CAUSE ')[0], sectionOf(text, 'VALIDATION '), sectionOf(text, 'FIX DIRECTION ')]).toEqual([
       block(`
 6 hypotheses · 4 confirmed · 10 experiments · ◐ validating the
 root cause
@@ -121,7 +123,8 @@ WAITING ON YOU ───────────────── 1 · asked in
 ⚑ A session you kill yourself: should it ever come back?
   Killing every one today empties the saved state and deletes
   its scrollback.
-     raised by the root-cause validation
+     raised by the root-cause validation · deleted scrollback
+     cannot be got back
 `),
       'ROOT CAUSE ─────────────────────────────────── being validated',
       block(`
@@ -138,28 +141,29 @@ FIX DIRECTION ──────────────────────
     expect(holds).toEqual({ turns: true, clocks: true })
   })
 
-  test('a question no validation raised draws no second line', () => {
-    const view = { ...VALIDATING, waiting: [{ ...(VALIDATING.waiting as object[])[0], raised_by: null }] } as View
-
-    expect(sectionOf(drawn(INVESTIGATION, view).text, 'WAITING ON YOU').slice(1)).toEqual([
+  test('a question nothing raised says only why it reached the person; one asked blind, which says no why, draws no second line', () => {
+    const lines = (wait: object) => sectionOf(drawn(INVESTIGATION, { ...VALIDATING, waiting: [{ ...(VALIDATING.waiting as object[])[0], raised_by: null, ...wait }] } as View).text, 'WAITING ON YOU').slice(1)
+    const asked = [
       '⚑ A session you kill yourself: should it ever come back?',
       '  Killing every one today empties the saved state and deletes',
       '  its scrollback.',
-    ])
+    ]
+
+    expect([lines({}), lines({ why: null })]).toEqual([[...asked, '     deleted scrollback cannot be got back'], asked])
   })
 
-  test('the fix direction\'s wait says Claude\'s lean is first only where it is the first row, else marked; one the fix validation raised replacing the fix says so', () => {
+  test('the fix direction\'s wait says Claude\'s lean is first only where it is the first row, else marked, and why it reached the person; one the fix validation raised replacing the fix says so', () => {
     const wait = fixture.waiting[0]
     const lines = (waiting: object) => sectionOf(drawn(INVESTIGATION, { ...fixture, waiting: [{ ...wait, ...waiting }] } as View).text, 'WAITING ON YOU').slice(1)
 
     expect([lines({ lean: 'marked' }), lines({ raised_by: 'fix', options: 3 })]).toEqual([
-      ["⚑ Which fix: 3 options, Claude's lean marked"],
-      ["⚑ Which fix: 3 options, Claude's lean first", '     raised by the fix validation'],
+      ["⚑ Which fix: 3 options, Claude's lean marked", '     The root cause is a design problem, so it always comes to', '     you.'],
+      ["⚑ Which fix: 3 options, Claude's lean first", '     raised by the fix validation · The root cause is a design', '     problem, so it always comes to you.'],
     ])
   })
 
   test('16.17.2: a fix direction asked blind says how many options it sets out and nothing of where Claude\'s lean stands, on the investigation and on the unit\'s tab', () => {
-    const waiting = [{ ...fixture.waiting[0], lean: 'held' }]
+    const waiting = [{ ...fixture.waiting[0], lean: 'held', why: null }]
     const tab = { ...MINT, type: 'bugfix', here: false, waiting, phases: [phase('discovery', 'complete', 'from your inbox note'), phase('investigation', 'waits', '6 hypotheses')] } as View
 
     expect([sectionOf(drawn(INVESTIGATION, { ...fixture, waiting } as View).text, 'WAITING ON YOU').slice(1), sectionOf(drawn(UNIT, tab).text, 'WAITING ON YOU').slice(1)]).toEqual([
@@ -168,18 +172,18 @@ FIX DIRECTION ──────────────────────
     ])
   })
 
-  test('a question the fix direction raised, not its options, says so; its options say nothing of what raised them', () => {
+  test('a question the fix direction raised, not its options, says so and why it reached the person; its options say only why, their first line naming what raised them', () => {
     const wait = fixture.waiting[0]
     const lines = (waiting: object) => sectionOf(drawn(INVESTIGATION, { ...fixture, waiting: [{ ...wait, ...waiting }] } as View).text, 'WAITING ON YOU').slice(1)
 
     expect([lines({ text: 'Should a save keep the sessions it dropped?', options: null, lean: null }), lines({})]).toEqual([
-      ['⚑ Should a save keep the sessions it dropped?', '     raised by the fix direction'],
-      ["⚑ Which fix: 3 options, Claude's lean first"],
+      ['⚑ Should a save keep the sessions it dropped?', '     raised by the fix direction · The root cause is a design', '     problem, so it always comes to you.'],
+      ["⚑ Which fix: 3 options, Claude's lean first", '     The root cause is a design problem, so it always comes to', '     you.'],
     ])
   })
 
   test('its conclude drawn, the facts line flags it waiting and WAITING ON YOU asks for its yes in the conversation, as the unit\'s tab does', () => {
-    const conclude = { kind: 'conclude', id: 'conclude', text: "Conclude: the hunt's recap, the root cause and the fix, for your yes", page: null, raised_by: null, options: null, lean: null }
+    const conclude = { kind: 'conclude', id: 'conclude', text: "Conclude: the hunt's recap, the root cause and the fix, for your yes", page: null, raised_by: null, why: null, options: null, lean: null }
     const waits = { ...fixture, standing: 'conclude-waits', waiting: [conclude], fix_direction: { ...fixture.fix_direction, state: 'picked', pick: '1', fix: 'Harden the reads.' } } as View
     const tab = { ...MINT, type: 'bugfix', here: false, waiting: [conclude], phases: [phase('discovery', 'complete', 'from your inbox note'), phase('investigation', 'waits', '6 hypotheses')] } as View
     const { text, holds } = drawn(INVESTIGATION, waits)
@@ -196,7 +200,7 @@ WAITING ON YOU ───────────────── 1 · asked in
     expect(sectionOf(drawn(UNIT, tab).text, 'WAITING ON YOU')).toEqual(sectionOf(text, 'WAITING ON YOU'))
   })
 
-  test('20.15: the unit\'s tab draws a raise as the investigation does, with what raised it', () => {
+  test('20.15: the unit\'s tab draws a raise as the investigation does, with what raised it and why it reached the person', () => {
     const tab = { ...MINT, type: 'bugfix', here: false, waiting: VALIDATING.waiting, phases: [phase('discovery', 'complete', 'from your inbox note'), phase('investigation', 'waits', '6 hypotheses')] } as View
 
     expect(sectionOf(drawn(UNIT, tab).text, 'WAITING ON YOU')).toEqual(sectionOf(drawn(INVESTIGATION, VALIDATING).text, 'WAITING ON YOU'))

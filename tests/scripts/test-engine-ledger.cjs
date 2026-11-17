@@ -100,7 +100,7 @@ function parked(question, fields = {}) {
       rows: [{ key: '1', name: 'Cursor', text: 'On the cursor\'s screen', notice: 'it opens where you look' }, { key: '2', name: 'Main', text: 'On the main screen', notice: 'it always opens there' }],
       lean: '1', why: 'A note follows the person.', sort: 'several', mechanism: 'The pointer\'s screen.', product_wide: false,
     },
-    rows_judged: [], why_asking: 'Every call comes to you for now.', label: null, model: null, blocks_build: true, replaced_by: null, always: null, measured: null, chain: question, blind: false, ...fields,
+    rows_judged: [], why_asking: 'I couldn\'t tell what kind of question this is, so it comes to you.', label: null, model: null, blocks_build: true, replaced_by: null, always: null, measured: null, chain: question, blind: false, ...fields,
   };
 }
 

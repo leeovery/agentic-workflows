@@ -21,7 +21,7 @@ const path = require('path');
 
 const { screenOf, FROZEN_MS } = require('./engine-harness.cjs');
 const { idOf, DRAWN, NARROW, UNDRAWN, DAY, lines, history } = require('./trust-world.cjs');
-const { OTHER, engine, CARRY_ON, render, run, refused, pick, screen, useMatrixWorld } = require('./matrix-world.cjs');
+const { OTHER, engine, CARRY_ON, render, audited, run, refused, pick, screen, useMatrixWorld } = require('./matrix-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
@@ -80,7 +80,7 @@ function inZone(zone, fn) {
 const found = (dir, args) => inZone('UTC', () => screenOf(render(dir, ['matrix-replay', ...args]), 'DISPLAY: matrix replay').slice(1).join(' ').replace(/ {2,}/g, ' ').trim());
 
 describe('the replay (16.15.2, 16.15.3, P14)', () => {
-  it('16.15.3: 25% in place of the 20% — last month\'s questions decided again by the rule at 25%, each over the counts as they stood before it: 6 skipped, 1 of them overruled; the lines it moves; y/yes sets it, n/no keeps 20%, Comment tries another number', () => {
+  it('16.15.3: 25% in place of the 20% — last month\'s questions decided again by the rule at 25%, each over the counts as they stood before it: 6 skipped, 1 of them overruled; the lines it moves; y/yes sets it, n/no keeps 20%, Comment tries another number; the screen keeps the design system (18.S41)', () => {
     const { dir, id } = fumi();
     logHolding(replayedHistory(id).events);
 
@@ -106,6 +106,7 @@ describe('the replay (16.15.2, 16.15.3, P14)', () => {
     assert.deepStrictEqual(pick(dir, 'matrix replay', 'n').next, engine('render', 'matrix'));
     render(dir, ['matrix-replay', '--threshold', '25']);
     assert.deepStrictEqual(run(dir, ['gate', 'matrix replay', '--typed', 'comment']).next, CARRY_ON);
+    audited(dir, ['matrix-replay', '--threshold', '25']);
   });
 
   it('P14: the period is the last 30 days while they hold 20 questions or more, else the whole log, the line naming it; a question counts once its answer landed; overruled counts a reversal since as it counts a departure', () => {

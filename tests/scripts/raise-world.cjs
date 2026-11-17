@@ -10,7 +10,9 @@
 // ledger's last line, and a raise event as the trust log holds it. And what
 // the suites raising under the ask rule share (test-engine-raise-rule.cjs,
 // test-engine-raise-blind.cjs): a kind made quiet in the trust log, the
-// conversation with the stand-in labelling a call, and a raise drawn.
+// conversation with the stand-in labelling a call, and a raise drawn;
+// and, for every suite whose call must proceed, the decision point on a
+// question the blind draw never draws (`undrawn`).
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -19,12 +21,14 @@ const fs = require('fs');
 const path = require('path');
 const { ok, okSectionsAsync } = require('./engine-harness.cjs');
 const { ledgerHelpers } = require('./ledger-world.cjs');
-const { DAY, lines, history, trustLogHelpers } = require('./trust-world.cjs');
+const { DAY, UNDRAWN, lines, history, trustLogHelpers } = require('./trust-world.cjs');
 const { labelling } = require('./labels.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { RAISE_SHOWN } = require(path.join(SCRIPTS, 'domain/gate.cjs'));
 const { TRUST_LOG } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
+const decisionPoint = require(path.join(SCRIPTS, 'domain/decision-point.cjs'));
+const { decide } = decisionPoint;
 
 /** @typedef {import('../../skills/ledger-engine/scripts/domain/event-fields.cjs').Kind} Kind */
 /** @typedef {import('./labels.cjs').Marks} Marks */
@@ -108,4 +112,12 @@ function raiseHelpers(dir, config, call) {
   return { conversation, inFolder, seals, logText, logged, project, answer, lastEntry, raiseEvent, quietOn, labelledAs, raised };
 }
 
-module.exports = { SESSION, WHY, raiseHelpers };
+/**
+ * The decision point for test `t` on a question whose id draws no blind
+ * question, so a call the rule lets proceed proceeds
+ * (test-engine-raise-blind.cjs).
+ * @param {import('node:test').TestContext} t
+ */
+const undrawn = (t) => t.mock.method(decisionPoint, 'decide', (/** @type {any} */ call, /** @type {any} */ at) => decide(call, { ...at, chain: UNDRAWN }));
+
+module.exports = { SESSION, WHY, raiseHelpers, undrawn };
