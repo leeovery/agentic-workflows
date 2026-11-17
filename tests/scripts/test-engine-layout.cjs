@@ -9,11 +9,9 @@
 // report place takes a letter per reviewer of the count (13.3.4), and an
 // area's report the area's number and slug, so none is named as another's;
 // names are compared as the fold spells them; the tracker's store is each
-// shipped task driver's; each of today's places holds its sample, is no
-// log, and names the phase from 29.11 to 29.18 that retires it (E4); the
-// product's conversation keeps one folder of logs; the asset homes, and the
-// spike folders among them; and the suites' layout helper names only places
-// the table holds.
+// shipped task driver's; the product's conversation keeps one folder of
+// logs; the asset homes, and the spike folders among them; and the suites'
+// layout helper names only places the table holds.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -22,7 +20,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 
-const { LAYOUT, TODAY, IN_LOWER_CASE, layoutPlace, assetHome } = require('../../skills/ledger-engine/scripts/domain/layout.cjs');
+const { LAYOUT, IN_LOWER_CASE, layoutPlace, assetHome } = require('../../skills/ledger-engine/scripts/domain/layout.cjs');
 const { REVIEWER_LETTERS } = require('../../skills/ledger-engine/scripts/kernel/reviewers.cjs');
 const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
 const { WRITE_VERBS } = require('../../skills/ledger-engine/scripts/domain/ledger-write.cjs');
@@ -90,11 +88,6 @@ const DRAWN = Object.freeze({
   'pay/review/round-2-reads.json': 'engine {unit}/review/round-{N}-reads.json',
   'pay/review/round-1/tests-b.md': 'file {unit}/review/round-{N}/tests-{letter}.md',
   'pay/review/round-1/3-checkout-a.md': 'file {unit}/review/round-{N}/{area}-{letter}.md',
-});
-
-/** A path in each of today's places, and the place's path. */
-const TODAYS = Object.freeze({
-  '.state/environment-setup.md': '.state/environment-setup.md',
 });
 
 /** Paths outside every place: beside each folder's places, a free folder named as a file, a name a placeholder refuses, and a unit's .state/. */
@@ -209,18 +202,8 @@ describe('the asset homes (4.11.5, 4.11.12)', () => {
   });
 });
 
-describe('today\'s places (E4)', () => {
-  it('every one names the phase from 29.11 to 29.18 that retires it', () => {
-    assert.deepStrictEqual(TODAY.filter((at) => !/^29\.1[1-8]$/.test(at.retires ?? '')).map((at) => at.path), []);
-  });
-
-  it('every one holds its sample, and none is a log or the engine\'s alone', () => {
-    assert.deepStrictEqual(Object.fromEntries(Object.keys(TODAYS).map((rel) => [rel, layoutPlace(rel)?.path ?? null])), TODAYS);
-    assert.deepStrictEqual(new Set(Object.values(TODAYS)), new Set(TODAY.map((at) => at.path)));
-    assert.deepStrictEqual(TODAY.filter((at) => at.kind === 'log' || at.kind === 'engine').map((at) => at.path), []);
-  });
-
-  it('the suites\' layout helper names only places the table holds (discovery-test-utils.cjs)', () => {
+describe('the suites\' layout helper (discovery-test-utils.cjs)', () => {
+  it('names only places the table holds', () => {
     const samples = {
       projectManifest: layout.projectManifest,
       ledger: layout.ledger,

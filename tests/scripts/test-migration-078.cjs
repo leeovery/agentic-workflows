@@ -31,7 +31,8 @@
 // the state; the hooks naming the engine's new path and the `.workflows/` lines
 // gone from `.worktreeinclude`; the user-level folder moved and linked;
 // every file written in a place the layout holds; every file the layout has
-// no other place for — implementation folders and the reviews' tracking
+// no other place for — the environment setup file, free text no environment
+// field takes, implementation folders and the reviews' tracking
 // files, a research folder of its own as evvi's sessions kept one, a unit's
 // design images as portal's — kept byte for byte as legacy, in its unit's
 // assets or the product's, and named; the old cache's reports, folded in or
@@ -59,8 +60,8 @@
 // lowercase name, as portal's quick-fix was, every reference following,
 // a merge stopped in the main checkout, an epic's topics never started,
 // each on the map given its row's description as its brief where none came
-// to it, whatever its items,
-// the projects with nothing to move, a native baseline, a completed one and
+// to it, whatever its items, an old `.state/` holding only the old engine's
+// record, which keeps nothing as legacy, the projects with nothing to move, a native baseline, a completed one and
 // one under way, defaults of the plan's format and the project skills alone,
 // read for its task driver after, a task driver's folder whose declaration
 // does not read, a `.worktreeinclude` of `.workflows/` lines alone,
@@ -646,7 +647,7 @@ describe('migration 078: the move into the layout in .ledger/', () => {
         verify: 'These had no place of their own in .ledger/, so each is kept, as it was, as legacy, under its unit\'s assets/legacy/ or the product\'s, .product/assets/legacy/: '
           + '.ledger/.product/assets/legacy/.inbox/ideas/rough-notes.md, .ledger/.product/assets/legacy/.roadmap/draft.txt, '
           + '.ledger/.product/assets/legacy/.roadmap/notes/ideas/2026-01-03--points-expiry.md, .ledger/.product/assets/legacy/.baseline/.state/dossier-auth.md, '
-          + '.ledger/.product/assets/legacy/README.md, .ledger/.product/assets/legacy/scratch/notes.txt, '
+          + '.ledger/.product/assets/legacy/README.md, .ledger/.product/assets/legacy/scratch/notes.txt, .ledger/.product/assets/legacy/.state/environment-setup.md, '
           + '.ledger/core/assets/legacy/discovery/briefs/zeta.md, .ledger/core/assets/legacy/discussion/stray.md, '
           + '.ledger/core/assets/legacy/experiment/alpha/notes.md, .ledger/core/assets/legacy/experiment/alpha/scratch/try.txt, '
           + '.ledger/core/assets/legacy/experiment/exploration-superseded-2026-01-01-1200/E3-cache-size/report.md, .ledger/core/assets/legacy/notes.txt, '
@@ -745,12 +746,12 @@ describe('migration 078: the move into the layout in .ledger/', () => {
       assert.strictEqual(Object.keys(project)[0], 'project_id');
     });
 
-    it('carries the inbox and the environment setup as they are, and writes the state\'s own ignore file, ignoring the files the tracker\'s tool keeps local (7.5.4)', () => {
+    it('carries the inbox as it is, keeps the environment setup file, free text no environment field takes, as legacy byte for byte, and writes the state\'s own ignore file, ignoring the files the tracker\'s tool keeps local (7.5.4)', () => {
       assert.deepStrictEqual(tree(state, '.inbox').filter((rel) => !rel.startsWith('ideas/' + TODAY)), [
         '.archived/bugs/2026-01-02--old-crash.md', 'ideas/2026-02-01--dark-mode.md',
       ]);
       assert.strictEqual(read('.inbox/ideas/2026-02-01--dark-mode.md'), '# Dark mode\n');
-      assert.strictEqual(read('.state/environment-setup.md'), 'No special setup required.\n');
+      assert.deepStrictEqual([read('.product/assets/legacy/.state/environment-setup.md'), fs.existsSync(path.join(state, '.state/environment-setup.md'))], ['No special setup required.\n', false]);
       assert.strictEqual(read('.gitignore'), `${STATE_GITIGNORE}${PRE_LEDGER.localFiles.join('\n')}\n`);
     });
 
@@ -782,6 +783,7 @@ describe('migration 078: the move into the layout in .ledger/', () => {
         'assets/legacy/.inbox/ideas/rough-notes.md',
         'assets/legacy/.roadmap/draft.txt',
         'assets/legacy/.roadmap/notes/ideas/2026-01-03--points-expiry.md',
+        'assets/legacy/.state/environment-setup.md',
         'assets/legacy/README.md',
         'assets/legacy/scratch/notes.txt',
         'assets/market.md',
@@ -1227,6 +1229,19 @@ describe('migration 078: a small project', () => {
       const { project_id: _id, ...project } = movedProject();
       const { driver, set } = chosenDriver(dir, 'task');
       assert.deepStrictEqual([project, driver.name, set], [{ work_units: {} }, listDrivers('task').find(({ isDefault }) => isDefault)?.name, false]);
+    } finally {
+      cleanupFixture(dir);
+    }
+  });
+
+  it('keeps nothing as legacy from an old .state/ holding only the old engine\'s record', () => {
+    dir = tempProject('migration-078-old-record-');
+    try {
+      write(dir, '.workflows/manifest.json', json({ work_units: {} }));
+      write(dir, '.workflows/.state/migrations', '001\n072\n');
+      commitAll(dir);
+      const { returned } = run(dir);
+      assert.deepStrictEqual([tree(path.join(dir, '.ledger'), '.product'), returned?.verify ?? null], [[], null]);
     } finally {
       cleanupFixture(dir);
     }
