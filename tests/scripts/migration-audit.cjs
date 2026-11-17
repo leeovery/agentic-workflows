@@ -318,6 +318,12 @@ function manifestsValid(state, units) {
 /** A unit's manifest as the listing holds it from before the migration, empty where it holds none. @param {Listing} old @param {string} unit @returns {any} */
 const oldManifest = (old, unit) => JSON.parse(old.files[`${unit}/manifest.json`]?.text ?? '{}');
 
+/** The old state's units, by the names their folders had. @param {Listing} old */
+const oldUnits = (old) => Object.keys(old.files).filter((rel) => /^[^/]+\/manifest\.json$/.test(rel)).map((rel) => rel.split('/')[0]);
+
+/** Whether an old unit's name is `unit`'s: its own, or the one the move lowercased. @param {string} name @param {string} unit */
+const namesUnit = (name, unit) => name === unit || name.toLowerCase() === unit;
+
 // The discussion statuses a topic concluded under before the move, as the move (078) reads them.
 const CONCLUDED = ['completed', 'promoted'];
 
@@ -328,11 +334,10 @@ const CONCLUDED = ['completed', 'promoted'];
  * @param {Listing} old @param {string} unit @param {string} topic
  */
 function discussedBefore(old, unit, topic) {
-  return Object.keys(old.files).filter((rel) => /^[^/]+\/manifest\.json$/.test(rel)).some((rel) => {
-    const name = rel.split('/')[0];
+  return oldUnits(old).some((name) => {
     const item = oldManifest(old, name).phases?.discussion?.items?.[topic];
     const promotedHere = typeof item?.promoted_to === 'string' && item.promoted_to.toLowerCase() === unit;
-    return (name === unit || name.toLowerCase() === unit || promotedHere) && CONCLUDED.includes(item?.status);
+    return (namesUnit(name, unit) || promotedHere) && CONCLUDED.includes(item?.status);
   });
 }
 
@@ -352,8 +357,8 @@ function noCutWaiting(units) {
 
 /** The tracker parents of each old plan's phases a unit kept, from its old manifest. @param {Listing} old @param {string} unit @returns {string[]} */
 function oldPlanPhases(old, unit) {
-  return Object.entries(oldManifest(old, unit).phases?.planning?.items ?? {}).flatMap(([topic, item]) => Object.entries(item?.task_map ?? {})
-    .filter(([id]) => new RegExp(`^${topic}-\\d+$`).test(id)).map(([, parent]) => /** @type {string} */ (parent)));
+  return oldUnits(old).filter((name) => namesUnit(name, unit)).flatMap((name) => Object.entries(oldManifest(old, name).phases?.planning?.items ?? {})
+    .flatMap(([topic, item]) => Object.entries(item?.task_map ?? {}).filter(([id]) => new RegExp(`^${topic}-\\d+$`).test(id)).map(([, parent]) => /** @type {string} */ (parent))));
 }
 
 /**

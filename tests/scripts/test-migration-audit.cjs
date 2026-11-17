@@ -324,6 +324,16 @@ describe('each check refuses a world made to fail it', () => {
     ]);
   });
 
+  it('cut-holds-tracker: the old plan\'s phases read under the unit\'s name before the move, its own or the one the move lowercased', () => {
+    const old = structuredClone(world.old);
+    const memo = JSON.parse(/** @type {string} */ (old.files['memo/manifest.json'].text));
+    memo.phases.planning.items.memo.task_map['memo-3'] = 'tracker-gone';
+    old.files['Memo/manifest.json'] = { ...old.files['memo/manifest.json'], text: JSON.stringify(memo) };
+    delete old.files['memo/manifest.json'];
+
+    assert.deepStrictEqual(faults(old), ['cut-holds-tracker: memo\'s cut lacks the old plan\'s phase tracker-gone']);
+  });
+
   it('cut-holds-tracker: a tracker the cut cannot be read against, a cut phase\'s parent gone or the tracker\'s store gone, a fault of its own, the rest of the report kept', () => {
     const second = migratedProject(path.join(root, 'second'));
     SIDE.removeTask(statePath(world.dir), 'Phase 2: Sharing');
