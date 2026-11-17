@@ -116,7 +116,7 @@ The shell tier is closing. The frozen `.sh` migration fleet stays as it is. The 
 
 - **A golden is for a display surface only,** one per surface. Its variants are asserted by structure: sections, rows.
 - **About 40 lines at most,** written as the screen reads.
-- **Continuations read as indentation,** built with shared row helpers, not `${NB(14)}` spelled inside the text. The row helpers are a library target; today `NB` is defined in five suites.
+- **Continuations read as indentation,** built with shared row helpers, not `${NB(14)}` spelled inside the text. The row helpers are a library target; today `NB` is defined in `render-surfaces-world.cjs`.
 - **A moved golden is rewritten in the change that moves its surface.** Read the new render against the design before writing it in; never paste a failure's actual output unread. A node golden has no regeneration tool: the diff of the golden is the review.
 
 ## 8. Replaced behaviour

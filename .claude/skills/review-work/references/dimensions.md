@@ -17,21 +17,20 @@ CONVENTIONS.md for skill authoring. CONVENTIONS.md is dense, exact, and
 frequently updated; pattern-matching from sibling files has repeatedly
 shipped silently non-compliant work.
 
-- Display and output conventions — visual hierarchy, phase titles, step and
-  sub-step markers, signpost blockquotes, list display, status terms,
-  callout flags, dividers, menus, bullet characters, spacing.
-- Structural conventions — stop-gate wording (`**STOP.**`, exactly),
-  heading hierarchy, step numbering, navigation arrows, command preludes,
-  reference file headers and structure, the zero output rule, auto-mode
-  gates.
+- Display conventions — who draws what, the engine's sections and their
+  markers, and the design system: glyphs, chrome, forms, menus, lists,
+  callouts and blockers.
+- Structural conventions — heading hierarchy, reference file headers and
+  structure, the zero output rule, gates entered and left through the
+  engine.
 - Skill file structure — the backbone, the `## Instructions` load directive
   pointing at `framework.md`, load directive format, reference file naming.
 - Prose economy — the exact words to describe the task perfectly. WHY cut
   where WHAT suffices, and no instruction, path, or distinction the agent
   needs removed in the name of brevity.
 - Presentation register, and the line between it and stored artifact prose.
-- Output format names appear **only** in the four sanctioned places named
-  by CLAUDE.md. Anywhere else is a violation.
+- A tool a driver wraps is named **only** in the places CLAUDE.md's Tool
+  Names allows. Anywhere else is a violation.
 - No convention invented for the occasion. This project is mature and
   usually already has one. Where a genuinely new pattern seems needed, that
   is a finding for the user to agree, not a decision to make in the diff.
@@ -124,8 +123,8 @@ A change lands in one place and is owed in several. Enumerate them.
   shape the prose then consumes.
 - Values that zsh would interpret are single-quoted in every documented
   call.
-- Gate modes are tracked in the manifest — every gate, no exceptions, so
-  they survive a context refresh.
+- No prose says whether a gate stops: the engine decides, a process gate
+  learned from the trust log.
 - Migrations read and write `manifest.json` directly and never call
   `engine manifest`. Shipped migrations are never edited; a correction is a
   new numbered migration.
