@@ -148,7 +148,7 @@ const RECORDS_DIRECTIVE = '079-records';
  *   phases: string[],
  *   holds: (manifest: Record<string, any>, phase: string, topic: string) => boolean,
  *   topicsOf: (manifest: Record<string, any>) => string[],
- *   promotedOf: (manifest: Record<string, any>) => {topic: string, to: string}[],
+ *   movedOf: (manifest: Record<string, any>) => {topic: string, to: string}[],
  *   recordProblems: (at: Record<string, unknown>) => string[],
  *   unitWaits: (at: Record<string, unknown>) => string[],
  *   unverified: (at: Record<string, unknown>) => string|null,

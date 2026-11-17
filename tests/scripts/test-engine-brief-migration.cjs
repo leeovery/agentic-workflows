@@ -252,8 +252,8 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
     const { brief } = issued(['migration-topic', '--topic', 'platform.discussion.auth', '--directive', '079-records']);
     const own = issued(['migration-topic', '--topic', 'fumi.discovery', '--directive', '079-records']).brief;
 
-    assert.ok(brief.includes('## The unit\'s discovery sessions\n\n- fumi/discovery/session-001.md, of fumi, which it was promoted from\n'), brief);
-    assert.ok(own.includes('## The unit\'s topics, each carrying what the sessions say of it\n\n- auth, promoted to platform, which carries what the sessions say of it\n- billing, its folder fumi/topics/billing/\n'), own);
+    assert.ok(brief.includes('## The unit\'s discovery sessions\n\n- fumi/discovery/session-001.md, of fumi, which it moved from\n'), brief);
+    assert.ok(own.includes('## The unit\'s topics, each carrying what the sessions say of it\n\n- auth, moved to platform, which carries what the sessions say of it\n- billing, its folder fumi/topics/billing/\n'), own);
   });
 
   it('lists the unit\'s discovery sessions, the migration\'s research session among them, and nothing else its discovery holds; an epic\'s topic never started carried in discovery, and shown so', () => {

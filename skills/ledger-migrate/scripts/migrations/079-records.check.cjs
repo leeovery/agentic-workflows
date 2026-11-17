@@ -303,13 +303,13 @@ function byPartOf(headings) {
 /** Whether a text holds anything past its headings and blank lines. @param {string} text */
 const holdsText = (text) => text.split('\n').some((line) => line.trim() !== '' && (FENCE.test(line) || HEADING.exec(line) === null));
 
-/** The topics a unit promoted to a cross-cutting unit, each with the unit it went to, which carries its record. @param {Record<string, any>} manifest @returns {{topic: string, to: string}[]} */
-const promotedOf = (manifest) => Object.entries(itemsOf(manifest.phases?.discussion?.items))
+/** The topics a unit moved to a cross-cutting unit, promoted, each with the unit it went to, which carries its record. @param {Record<string, any>} manifest @returns {{topic: string, to: string}[]} */
+const movedOf = (manifest) => Object.entries(itemsOf(manifest.phases?.discussion?.items))
   .filter(([, item]) => isObject(item) && item.status === 'promoted').map(([topic, item]) => ({ topic, to: String(item.promoted_to) }));
 
 /** The topics of a unit's manifest the directive carries, once each, sorted. @param {Record<string, any>} manifest @returns {string[]} */
 function topicsOf(manifest) {
-  const promoted = new Set(promotedOf(manifest).map(({ topic }) => topic));
+  const promoted = new Set(movedOf(manifest).map(({ topic }) => topic));
   return [...new Set(TOPIC_PHASES.flatMap((phase) => Object.keys(itemsOf(manifest.phases?.[phase]?.items))))].filter((topic) => !promoted.has(topic)).sort();
 }
 
@@ -815,7 +815,7 @@ module.exports = {
   phases: TOPIC_PHASES,
   holds,
   topicsOf,
-  promotedOf,
+  movedOf,
   /**
    * What a topic's record breaks of the rules, before it is carried in
    * `phase`.

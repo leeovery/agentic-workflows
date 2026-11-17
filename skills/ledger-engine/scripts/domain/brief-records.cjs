@@ -1189,7 +1189,7 @@ function recordGoes(root, unit, topic) {
 /**
  * A unit's own record as its brief draws it: the unit, the discovery
  * sessions it is composed from, the unit's topics, each of which carries
- * what the sessions say of it — one promoted, the unit it went to — its
+ * what the sessions say of it — one moved to another unit, that unit — its
  * assets and where the record goes.
  * @param {Filling} filling @param {string} root @param {string} unit
  */
@@ -1199,7 +1199,7 @@ function drawOwnRecord(filling, root, unit) {
   const sources = rules.sourcesOf({ projectDir: codeRoot(filling.cwd), stateDir: root, unit, topic: null });
   const topics = [
     ...rules.topicsOf(manifest).map((/** @type {string} */ topic) => [topic, `- ${topic}, its folder ${unit}/topics/${topic}/`]),
-    ...rules.promotedOf(manifest).map((/** @type {{topic: string, to: string}} */ { topic, to }) => [topic, `- ${topic}, promoted to ${to}, which carries what the sessions say of it`]),
+    ...rules.movedOf(manifest).map((/** @type {{topic: string, to: string}} */ { topic, to }) => [topic, `- ${topic}, moved to ${to}, which carries what the sessions say of it`]),
   ].sort(([a], [b]) => (a < b ? -1 : 1)).map(([, line]) => line);
   return [
     `- **Unit:** ${unit}, ${manifest.work_type}, ${manifest.status}`,
@@ -1237,7 +1237,7 @@ function drawMigratedTopic(filling) {
   const folder = path.join(root, unit, 'topics', topic);
   const files = (fs.existsSync(folder) ? filesUnder(folder) : []).filter((file) => !file.startsWith('mail/')).map((file) => `${unit}/topics/${topic}/${file}`).sort();
   const sources = rules.sourcesOf({ projectDir: codeRoot(filling.cwd), stateDir: root, unit, topic });
-  const sessions = sources.sessions.map((/** @type {string} */ at) => (at.startsWith(`${unit}/`) ? `- ${at}` : `- ${at}, of ${at.split('/')[0]}, which it was promoted from`));
+  const sessions = sources.sessions.map((/** @type {string} */ at) => (at.startsWith(`${unit}/`) ? `- ${at}` : `- ${at}, of ${at.split('/')[0]}, which it moved from`));
   const assets = importLines(sources.imports, topic);
   const specs = sources.specs.map((/** @type {{path: string, part: string|null, approved: boolean}} */ { path: at, part, approved }) => `- ${at}${part === null ? '' : `, its part "${part}"`}, ${approved ? 'approved' : 'a draft'}`);
   return [
