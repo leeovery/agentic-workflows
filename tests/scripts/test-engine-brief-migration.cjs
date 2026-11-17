@@ -432,7 +432,7 @@ describe('a verifier\'s rulings', () => {
     assert.deepStrictEqual([
       unsaid('migration-verifier', [
         'Where you ruled that a point of the sources is not this record\'s, or is replaced by a later answer, write each such ruling into the rulings file the brief names, one line each, naming the point and its source\'s section.',
-        'a finding that would undo what an earlier round\'s finding had changed, or carry a point an earlier round\'s rulings set aside, opens `Reverses round {R}:`, naming that line.',
+        'A point an earlier round\'s rulings set aside, or the session settled, is closed: it is raised again only where a line of its source that ruling or settlement missed says otherwise, and that finding is a reversal, opening `Reverses round {R}:`, R the round that ruled, or `Reverses the session:`, naming that line. A new point on what an earlier round passed, or on what its findings changed, is a finding as any other, never a reversal.',
         'check that each finding is answered and each ruling kept.',
       ]),
       unsaid('migration-topic', ['Never carry a point the verifier\'s rulings below set aside, unless a point the session settled says otherwise. A finding asking for a point the rulings set aside, which no point the session settled covers, is not yours to answer: write it into the hand-back file the brief names, one line each, the finding and why you hand it back, for the session to settle as a reversal.', 'and how many findings you wrote into the hand-back file.']),
