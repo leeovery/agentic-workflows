@@ -530,7 +530,7 @@ describe('a cite of a heading held more than once', () => {
 
     assert.deepStrictEqual(briefs.map((brief) => [
       'more than once, by its path, as many of the headings over it as tell it apart, then its own: `Identity & Naming > Decision`; in a spec joined into `spec.md`, where another part holds it too, by its part\'s heading first, whatever headings stand between: `2. Switching > Dependencies`; and where headings share their whole path, siblings of one heading, by that path and its place among them, from one: `Skill Identity > Decision > revised [2]`, the second.',
-      '`{"path": "{unit}/spec.md", "section": "Identity & Naming > Decision"}`, and one of headings sharing their whole path by its place among them, `"Skill Identity > Decision > revised [2]"`, as the walk sheet shows it: the carry refuses a cite naming several — a bare one tells none of its copies apart — and names those that tell them apart',
+      'the section, named as **Cited** says, `{"path": "{unit}/spec.md", "section": "2. Switching > Dependencies"}`: the carry refuses a cite naming several — a bare one tells none of its copies apart — and names those that tell them apart',
     ].filter((said) => !brief.includes(said))), [[], []]);
   });
 });
@@ -565,27 +565,19 @@ describe('what no one measured, and sources at odds', () => {
   });
 });
 
-describe('who decided', () => {
-  it('21.6.5: the composer gives a decision carried unless a line shows who made the call, a recommendation or a proposal no one is shown taking up, research\'s among them, carried; the verifier holds a decision Claude is given as its own to a line of Claude making the call', () => {
-    assert.deepStrictEqual([
-      unsaid('migration-topic', ['Give a decision `given` `carried` unless a line of its source shows who made the call, as the directive says: a recommendation or a proposal no line shows anyone taking up, research\'s among them, is `carried`.']),
-      unsaid('migration-verifier', ['- an entry crediting the person holds a line of its source where they decided, in those words where they handed the call over, and a decision given `own` by Claude a line where Claude made the call: a recommendation or a proposal no line shows anyone taking up, research\'s among them, is `carried`;']),
-    ], [[], []]);
-  });
-});
-
 describe('a verifier\'s rulings', () => {
 
   it('the verifier writes each point it ruled is not the record\'s, or a later answer replaced, one line with its source, and asks for one an earlier round ruled out only as a reversal; the composer never carries one the session has not settled otherwise', () => {
     assert.deepStrictEqual([
       unsaid('migration-verifier', [
-        'Where you ruled that a point of the sources is not this record\'s, or is replaced by a later answer, write each such ruling into the rulings file the brief names, one line each, naming the point and its source\'s section.',
+        'Where you ruled that a point of the sources is not this record\'s, or is replaced by a later answer, in whole or in part, naming what still stands, write each such ruling into the rulings file the brief names, one line each, naming the point and its source\'s section.',
+        '- no decision carries a side of a contradiction the record names: a point at odds is settled on neither side;',
         'A point an earlier round\'s rulings set aside, or the session settled, is closed: it is raised again only where a line of its source that ruling or settlement missed says otherwise, and that finding is a reversal, opening `Reverses round {R}:`, R the round that ruled, or `Reverses the session:`, naming that line. A new point on what an earlier round passed, or on what its findings changed, is a finding as any other, never a reversal.',
         'check that each finding is answered and each ruling kept.',
         'Write the findings file the brief names afresh: each finding one list item, the section of the source and what the record misses or misstates,',
       ]),
       unsaid('migration-phase-verifier', ['A point the session settled is closed: it is raised again only where a line of its source or the code that settlement missed says otherwise, and that finding is a reversal, opening `Reverses the session:`, naming that line. A new point on what an earlier round passed, or on what its findings changed, is a finding as any other, never a reversal.']),
-      unsaid('migration-topic', ['Never carry a point the verifier\'s rulings below set aside, unless a point the session settled says otherwise. A finding asking for a point the rulings set aside, which no point the session settled covers, is not yours to answer: write it into the hand-back file the brief names, one line each, the finding and why you hand it back, for the session to settle as a reversal.', 'and how many findings you wrote into the hand-back file.']),
+      unsaid('migration-topic', ['Never carry a point the verifier\'s rulings below set aside, unless a point the session settled says otherwise; of a point a ruling names replaced in part, carry what it names as still standing. A finding asking for a point the rulings set aside, which no point the session settled covers, is not yours to answer: write it into the hand-back file the brief names, one line each, the finding and why you hand it back, for the session to settle as a reversal.', 'and how many findings you wrote into the hand-back file.']),
     ], [[], [], []]);
   });
 });

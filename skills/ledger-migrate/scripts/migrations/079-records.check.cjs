@@ -163,9 +163,10 @@
 // would leave its answer with the unit it left, so its points stay open
 // questions for its discussion where it goes. A
 // record marking one of these to raise breaks a rule (`unraised`), so the
-// carry refuses the mark that would never be raised. Questions of several
-// records naming one contradiction, their `at_odds` holding the same
-// sections, are one point, listed once with the others' ids beside it.
+// carry refuses the mark that would never be raised. Each question is
+// listed until it is answered or merged, and beside it each other record's
+// whose `at_odds` holds the same sections, a candidate for the session to
+// judge one point with it or not.
 //
 // `.workflows/` is read where the move read it: the working tree of the
 // project's folder in the repository's main checkout, whichever checkout
@@ -512,12 +513,19 @@ function summaryOf(manifest, topic) {
 }
 
 /**
- * Whether a topic's record says what the topic is about: where no map row
- * of its unit, nor of a unit that promoted it there, says it.
+ * Whether a topic's record says what the topic is about: where another
+ * record's brief lists the topic among the others (`othersOf`) — a home of
+ * it, its unit or one that promoted it there, holds a record besides its
+ * own, or a topic promoted from there — and no map row of those units says
+ * it. A unit of one topic has none.
  * @param {Project} project @param {Unit} unit @param {string} topic
  */
-const describes = (project, unit, topic) => homesOf(project, unit, topic)
-  .every((home) => summaryOf(home === unit.name ? unit.manifest : unitOf(project, home).manifest, topic) === null);
+const describes = (project, unit, topic) => {
+  const homes = homesOf(project, unit, topic).map((home) => (home === unit.name ? unit : unitOf(project, home)));
+  const listed = homes.some(({ name, manifest }) => hasOwnRecord(project.stateDir, name, manifest)
+    || [...topicsOf(manifest), ...movedOf(manifest).map(({ topic: moved }) => moved)].some((other) => other !== topic));
+  return listed && homes.every(({ manifest }) => summaryOf(manifest, topic) === null);
+};
 
 /** What a record that says what its topic is about lacks: the line. */
 const UNDESCRIBED = 'no map row says what its topic is about, and its record says it in no line: give it "description", beside its entries, one line saying what the topic is about';
@@ -1251,7 +1259,7 @@ function unsharedOf(project, unit) {
 
 /** What a contradiction left unshared asks of the record it is named on. @param {Unit} unit @param {Unshared} unshared */
 function unsharedProblem(unit, { place, sides, cited, by }) {
-  return `${sidesSaid(sides)} are at odds, as ${inWords(by)} ${by.length === 1 ? 'names' : 'name'} them, and this record cites ${sidesSaid(cited)} without naming that contradiction — where it carries a side of the point at odds, it names the contradiction, an entry holding those sections as its at_odds, and carries neither side as settled; where what it cites of them is not that point, it is marked in ${atOddsMarked(unit.name)} as ${JSON.stringify({ [place]: [sides] })}`;
+  return `${sidesSaid(sides)} are at odds, as ${inWords(by)} ${by.length === 1 ? 'names' : 'name'} them, and this record cites ${sidesSaid(cited)} without naming that contradiction — where it carries a side of the point at odds, it names the contradiction, an open question or findings holding those sections as their at_odds, and carries neither side as settled; where what it cites of them is not that point, it is marked in ${atOddsMarked(unit.name)} as ${JSON.stringify({ [place]: [sides] })}`;
 }
 
 /**
@@ -1376,35 +1384,30 @@ module.exports = {
    * started topic not set aside of a unit in progress, staying in its unit
    * (`unraised`) — its place,
    * the topic's or, where the unit has its spec, its specification's, the
-   * question's id and its text; and where questions of several records name
-   * one contradiction, their `at_odds` holding the same sections of the
-   * sources the unit's records share, one point, the first, with each of the
-   * others' ids as `also`, so the point is raised once.
+   * question's id and its text; and beside it, as `candidates`, each other
+   * record's question so marked whose `at_odds` holds the same sections of
+   * the sources the unit's records share, with its place, for the session
+   * to judge whether they are one point: sections alone never say so.
    * @param {{projectDir: string, stateDir: string}} dirs
-   * @returns {{place: string, answers: string, text: string, also?: string[]}[]}
+   * @returns {{place: string, answers: string, text: string, candidates?: {place: string, answers: string}[]}[]}
    */
   raises({ projectDir, stateDir }) {
     const project = projectOf(projectDir, stateDir);
     return unitsOf(project).flatMap((unit) => {
       const sides = sidesReader(project, unit);
-      /** @type {Map<string, {place: string, answers: string, text: string, also?: string[]}>} */
-      const once = new Map();
-      return topicsOf(unit.manifest).flatMap((topic) => {
+      const points = topicsOf(unit.manifest).flatMap((topic) => {
         const carried = carriedOf(project, unit, topic);
         if (carried === null || unraised(project, unit, topic, carried.phase) !== null) return [];
         const ids = new Map(carried.entries.map(({ ref, id }) => [ref, id]));
         const place = hasSpec(project, unit) ? `${unit.name}.specification` : `${unit.name}.${carried.phase}.${topic}`;
-        return carried.record.entries.filter((entry) => entry.raise === true).flatMap((entry) => {
-          const point = { place, answers: ids.get(entry.ref), text: entry.text };
+        return carried.record.entries.filter((entry) => entry.raise === true).map((entry) => {
           const odds = sides(Array.isArray(entry.at_odds) ? entry.at_odds.filter(isObject) : []);
-          const first = odds.size > 1 ? once.get(keyOfSides(odds)) : undefined;
-          if (first === undefined) {
-            if (odds.size > 1) once.set(keyOfSides(odds), point);
-            return [point];
-          }
-          first.also = [...(first.also ?? []), point.answers];
-          return [];
+          return { topic, key: odds.size > 1 ? keyOfSides(odds) : null, point: { place, answers: String(ids.get(entry.ref)), text: String(entry.text) } };
         });
+      });
+      return points.map(({ topic, key, point }) => {
+        const candidates = points.filter((other) => key !== null && other.key === key && other.topic !== topic).map(({ point: { place, answers } }) => ({ place, answers }));
+        return candidates.length === 0 ? point : { ...point, candidates };
       });
     });
   },

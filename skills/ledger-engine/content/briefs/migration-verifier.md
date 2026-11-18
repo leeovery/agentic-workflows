@@ -8,7 +8,8 @@ The record passes when it holds each current decision, finding and open question
 
 - each entry is true to the section it cites;
 - each section it cites of a spec drawing on it is carried whole: each current decision, finding and open question of it that concerns this record is carried; one it cites of a spec it does not draw on, the later answer, gives that answer alone;
-- an entry crediting the person holds a line of its source where they decided, in those words where they handed the call over, and a decision given `own` by Claude a line where Claude made the call: a recommendation or a proposal no line shows anyone taking up, research's among them, is `carried`;
+- an entry crediting the person holds a line of its source where they decided, in those words where they handed the call over;
+- no decision carries a side of a contradiction the record names: a point at odds is settled on neither side;
 - nothing is carried twice — in a later round, judged on what changed since alone;
 - nothing is carried that you rule is not this record's: such an entry is a finding, to remove, with the ruling beside it.
 
@@ -16,7 +17,7 @@ In a later round, check each finding answered, each entry or line changed since 
 
 Wording, order, and how a section's points are shared out among entries are the composer's.
 
-Write the findings file the brief names afresh: each finding one list item, the section of the source and what the record misses or misstates, or the file empty where the record passes — an empty file is the pass. Where you ruled that a point of the sources is not this record's, or is replaced by a later answer, write each such ruling into the rulings file the brief names, one line each, naming the point and its source's section. Write the checked file the brief names afresh, a line for each entry of the record the sheet does not mark passed unchanged, by its ref: `{ref}: ok`, or `{ref}: see finding` where a finding names it. Hand back whether it passes, and how many findings you wrote.
+Write the findings file the brief names afresh: each finding one list item, the section of the source and what the record misses or misstates, or the file empty where the record passes — an empty file is the pass. Where you ruled that a point of the sources is not this record's, or is replaced by a later answer, in whole or in part, naming what still stands, write each such ruling into the rulings file the brief names, one line each, naming the point and its source's section. Write the checked file the brief names afresh, a line for each entry of the record the sheet does not mark passed unchanged, by its ref: `{ref}: ok`, or `{ref}: see finding` where a finding names it. Hand back whether it passes, and how many findings you wrote.
 
 # Whose record
 

@@ -2203,9 +2203,9 @@ function raiseWaits([verb]) {
  * Of the points a migration directive raises at its end, each still to
  * raise: its question in the ledger and open, and no raise of it sealed in
  * the calling conversation — drawn, answered or left open. Each answers
- * with its question's short id, and the questions it is raised for besides,
- * `also`, where it has any, by theirs.
- * @template {{place: string, answers: string, text: string, also?: string[]}} P
+ * with its question's short id, and each of its `candidates`, where it has
+ * any, by its own, with the answers it holds already, `answered`, short.
+ * @template {{place: string, answers: string, text: string, candidates?: {place: string, answers: string}[]}} P
  * @param {string} cwd @param {P[]} points
  * @returns {P[]}
  */
@@ -2217,7 +2217,14 @@ function unraised(cwd, points) {
   const sealed = new Set(Object.values(session === null ? {} : readSeals(session)).filter(isSeal).map((seal) => seal.answers));
   const short = (/** @type {string} */ id) => shortId(id, read.facts.keys());
   return points.filter(({ answers }) => read.facts.has(answers) && questionStands(read, answers) === 'open' && !sealed.has(answers)).map((point) => ({
-    ...point, answers: short(point.answers), ...(point.also === undefined ? {} : { also: point.also.map(short) }),
+    ...point,
+    answers: short(point.answers),
+    ...(point.candidates === undefined ? {} : {
+      candidates: point.candidates.map(({ place, answers }) => {
+        const answered = answersOf(read, answers).map(short);
+        return { place, answers: short(answers), ...(answered.length === 0 ? {} : { answered }) };
+      }),
+    }),
   }));
 }
 

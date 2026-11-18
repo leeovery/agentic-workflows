@@ -36,9 +36,11 @@
 //   research it carries, each a name or, where one entry carries several, a
 //   list of them; an open question's `raise`, `true`, marking a point no
 //   source settles, to raise at the end (21.6.10), never one a decision of
-//   the record answers, which `raise` refuses; an entry's `at_odds`, the
-//   sections at odds of a contradiction it names, two at least, each one
-//   of its cites, kept with the record and never written to the ledger;
+//   the record answers, which `raise` refuses; a question's or a
+//   finding's `at_odds`, the sections at odds of a contradiction it names,
+//   two at least, each one of its cites, kept with the record and never
+//   written to the ledger — never a decision's, a point at odds being
+//   settled on neither side;
 //   and its `assets`, each
 //   `{path, status}`, a file the state holds, linked as it is canonical or
 //   reference. An entry's words — its text, why and how, what it rules
@@ -414,7 +416,8 @@ function markFaults(entry, event, fault) {
   if (entry.map_item !== undefined && !isNamed(entry.map_item)) fault('a map item is a name, or a list of names');
   if (entry.thread !== undefined && !isNamed(entry.thread)) fault('a thread is a name, or a list of names');
   if (entry.raise !== undefined && (event !== 'asked' || entry.raise !== true)) fault('raise marks a question to raise, true');
-  if (entry.at_odds !== undefined && !atOddsCited(entry)) fault('at_odds is the sections at odds, two at least, each {path, section} and one of its cites');
+  if (entry.at_odds !== undefined && event === 'decided') fault('a decision holds no at_odds — a point at odds is settled on neither side: an open question names it, or the findings carrying each side name each other');
+  else if (entry.at_odds !== undefined && !atOddsCited(entry)) fault('at_odds is the sections at odds, two at least, each {path, section} and one of its cites');
 }
 
 /**

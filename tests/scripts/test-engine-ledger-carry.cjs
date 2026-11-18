@@ -455,7 +455,7 @@ describe('the refusals, nothing written', () => {
     }
   });
 
-  it('an entry of no ref, a ref twice, another event, who moved whom given, a link naming no earlier entry of its kind or given in another shape, a map item or a thread of another shape, a point to raise that is no open question or marked otherwise, sections at odds fewer than two or not among its cites, and content its write refuses — the person\'s decision given other than own, a question product-wide among it', () => {
+  it('an entry of no ref, a ref twice, another event, who moved whom given, a link naming no earlier entry of its kind or given in another shape, a map item or a thread of another shape, a point to raise that is no open question or marked otherwise, sections at odds fewer than two, not among its cites, or on a decision, and content its write refuses — the person\'s decision given other than own, a question product-wide among it', () => {
     const refused = (/** @type {unknown[]} */ entries) => mend(entries);
     const { assets: _, ...decision } = DECISION;
     assert.deepStrictEqual([
@@ -479,6 +479,7 @@ describe('the refusals, nothing written', () => {
       refused([{ ...QUESTION, raise: true }, decision]),
       refused([{ ...QUESTION, at_odds: QUESTION.cites }]),
       refused([{ ...QUESTION, at_odds: [...QUESTION.cites, FINDING.cites[0]] }]),
+      refused([QUESTION, { ...decision, cites: [...decision.cites, FINDING.cites[0]], at_odds: [...decision.cites, FINDING.cites[0]] }]),
       refused([{ ...QUESTION, text: '' }]),
       refused([{ ...QUESTION, why: 'Because.' }]),
       refused([QUESTION, { ...decision, by: 'person' }]),
@@ -506,6 +507,7 @@ describe('the refusals, nothing written', () => {
       broken('entry q1: is marked to raise, and a decision of the record answers it — raise refuses a question answered already, so a point to raise is an open question'),
       broken('entry q1: at_odds is the sections at odds, two at least, each {path, section} and one of its cites'),
       broken('entry q1: at_odds is the sections at odds, two at least, each {path, section} and one of its cites'),
+      broken('entry d1: a decision holds no at_odds — a point at odds is settled on neither side: an open question names it, or the findings carrying each side name each other'),
       broken('entry q1: the content\'s text is not non-empty text'),
       broken('entry q1: the content has no field why — it holds by, text, cites'),
       broken('entry d1: the person\'s decision is given carried — the person\'s own is given own, and what they hand over, or what is carried over, is Claude\'s line, by claude'),
