@@ -66,33 +66,46 @@
 // discovery as a whole that no topic owes; a record of none is its own.
 // And a unit's: once every topic of it has a record composed or carried,
 // every section of its approved specs holding text — a spec kept in its
-// assets, or its `spec.md` where its specs were joined — cited by one of
-// its records, or marked by the session as holding no topic's
+// assets, or its `spec.md` where its specs were joined — cited by one of its
+// records, or marked by the session as holding no topic's
 // (`.cache/migrate/records/{unit}.sections.json`): what the spec stage
 // decided, found or left open on a subject no log discusses exists nowhere
 // else (21.6.4), and the session sends each such section to the topic it
 // belongs to, one of those it is named on. A section is its heading's path
 // within its part — a kept spec's, within the file — named by the shortest
 // path naming it alone there, its heading or with as many of those over it
-// as tell it apart, and its place among those sharing its path; a cite or
-// a mark counts for the section it names alone, as the carry reads it, so
-// a bare heading held more than once counts for none of its copies; and a
-// cite counts only where its topic draws on the spec,
-// never of a spec it draws no part of, its later answer, which it cites
-// for that answer alone (21.6.3). In a joined spec a section is its part's:
-// a cite counts in the parts of its topic's specs, a mark is its part's,
+// as tell it apart, and its place among those sharing its path; a cite or a
+// mark counts for the section it names alone, as the carry reads it, so a
+// bare heading held more than once counts for none of its copies; and a cite
+// counts only where its topic draws on the spec, never of a spec it draws no
+// part of, its later answer, which it cites for that answer alone (21.6.3).
+// In a joined spec a section is its part's: a cite counts in the parts of
+// its topic's specs, a mark is its part's,
 // `{"{path}": {"{part}": ["{section}", …]}}`, and the front matter a part
 // opens on, the old spec's, holds none of its text; any other section is
-// marked `{"{path}": ["{section}", …]}`. It is named on each topic drawing on it — in a
-// joined spec, each whose part holds it, any section outside the parts
-// every topic's of the spec — and asks no composer for an entry. A record
-// is carried once its verifier has passed it, the findings beside it as
-// composed an empty file, or the session has settled a late round's
-// findings, the note beside it marked so (`unverified`, which `ledger
-// carry` asks); and
-// until each topic of a unit drawing on an approved spec has its record so
-// passed, and no such section is named, none of its topics is carried
-// (`unitWaits`): a topic carried could take no section found later. A
+// marked `{"{path}": ["{section}", …]}`. It is named on each topic drawing
+// on it — in a joined spec, each whose part holds it, any section outside
+// the parts every topic's of the spec — and asks no composer for an entry.
+// The sources a unit's records walk in common, its discovery sessions and
+// its walked assets, are held the same way, each once every record walking
+// it has one composed or carried — of a session the unit's own, and a topic
+// it promoted, among them: each section of one holding text cited by any
+// record of the unit, of a session a topic it promoted too, or held word for
+// word in the own markdown files of any of those topics, which its verifier
+// walks there, or marked as a kept spec's is, else named — the walkers
+// deciding only when and where — on the topic an import came in from, or a
+// split's research was copied from, else on the unit's own record, else on
+// each of its topics. A topic's walk sheet and brief leave off what its own
+// files hold so, a copy ending where a line does — but a section whose text
+// is one line under 40 characters, which an unrelated topic's could match,
+// is held by none. A record is carried once its verifier has passed it, the
+// findings beside it as composed an empty file, or the session has settled a
+// late round's findings, the note beside it marked so (`unverified`, which
+// `ledger carry` asks); and until each topic of a unit drawing on an
+// approved spec has its record so passed — and each record walking a shared
+// source of text, where the unit holds one — and no such section is named,
+// no record of the unit is carried, nor of a unit a topic of it was promoted
+// to (`unitWaits`): a record carried could take no section found later. A
 // record not yet carried is named where it stands: none composed, what the
 // carry would refuse it for on its own, through the carry's own guards, or
 // passed and waiting to be carried.
@@ -134,12 +147,24 @@
 // topic's sources as the rules read them, which the per-topic agent's
 // brief draws (brief-records.cjs), and a record laid against them for its
 // verifier's walk (`sheetOf`): the topic's own markdown files, but its
-// mail, its specs, the discovery sessions it draws on and any other file
-// an entry cites, each section by its lines with the entries citing it —
-// of a spec of the unit's it draws no part of, only the sections cited.
+// mail, its specs, the discovery sessions it draws on, the unit's walked
+// assets and any other file an entry cites, each section by its lines with
+// the entries citing it — of a file it does not walk, a spec of the unit's
+// it draws no part of among them, only the sections cited. The unit's assets are every file under its
+// `assets/` but a dotfile, each with where it came from, and an import
+// whose file is gone; those walked are its markdown files but its specs,
+// read as specs, its plans and old reviews, the building's reference,
+// which the cut reads where building started, and its legacy files, which
+// the person sorts after the migration (21.5.24): the documents the person
+// shared, walked by each of the unit's records, and the research a legacy
+// split superseded (21.5.25), walked by the topic it was copied from alone
+// where the split kept its name for a topic, else by the unit's own record
+// alone, where it has one — what of it is current decided as any source's
+// is, by its later answers.
 // A topic's sources take the unit's approved specs it does not draw on
 // too, the later answer to each of its points (21.6.3): searched for the
-// answer, never walked.
+// answer, never walked; and the project's other units cancelled, so a
+// corrigendum one wrote into a spec is known for no later answer.
 // The topic's own files the walk and the empty-record rule read are its
 // markdown files alone: a data file an experiment keeps is read through
 // the record that names it.
@@ -181,6 +206,17 @@ const PATH_JOIN = ' > ';
 const FENCE = /^ {0,3}(```|~~~)/;
 const PART = /^ {0,3}##[ \t]/;
 const FRONT_MATTER = /^---[ \t]*$/;
+const ASSETS = 'assets';
+// The directive this checks, by its file's name.
+const DIRECTIVE = path.basename(__filename, '.check.cjs');
+// The folders of a unit's assets the move fills (078), by what each holds.
+const ASSET_FOLDERS = new Map([['specs', 'spec'], ['plans', 'plan'], ['reviews', 'review'], ['legacy', 'legacy'], ['research', 'research']]);
+// The kinds of asset no record walks: a spec, read as a spec; a plan and an
+// old review, the building's reference; a legacy file, the person's to sort.
+const UNWALKED = Object.freeze(['spec', 'plan', 'review', 'legacy']);
+// A legacy split's copy of the research it superseded (077), by the name of
+// the research it copied.
+const SUPERSEDED_COPY = /^(.+)-superseded-[^/]+\.md$/;
 
 /** @param {unknown} v @returns {v is Record<string, any>} */
 const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
@@ -505,20 +541,23 @@ function joinedPart(project, unit, name) {
  * A spec of the unit's, as its manifest under `.workflows/` names it: where
  * the state keeps it, in `assets/specs/`, or joined into the unit's
  * `spec.md` (078, the topics `spec.joined` names), the part of it it makes;
- * whether it was approved, its item completed, or is a draft; and the
- * topics it draws on, its sources and the one it bears the name of.
- * @typedef {{name: string, path: string, part: string|null, approved: boolean, topics: string[]}} Spec
+ * whether it was approved, its item completed, or is a draft, and an
+ * approved one's item's date, when it was approved, where the item has
+ * one; and the topics it draws on, its sources and the one it bears the
+ * name of.
+ * @typedef {{name: string, path: string, part: string|null, approved: boolean, approvedOn: string|null, topics: string[]}} Spec
  */
 
 /** The unit's specs the state holds (`Spec`). @param {Project} project @param {Unit} unit @returns {Spec[]} */
 function unitSpecs(project, unit) {
   return Object.entries(itemsOf(unit.before?.phases?.specification?.items)).flatMap(([name, item]) => {
     const approved = isObject(item) && item.status === APPROVED_SPEC;
+    const approvedOn = approved && typeof item.date === 'string' ? item.date : null;
     const topics = [name, ...(isObject(item) ? sourceNames(item.sources) : [])];
     const kept = `${unit.name}/assets/specs/${name}.md`;
-    if (fs.existsSync(path.join(project.stateDir, kept))) return [{ name, path: kept, part: null, approved, topics }];
+    if (fs.existsSync(path.join(project.stateDir, kept))) return [{ name, path: kept, part: null, approved, approvedOn, topics }];
     if (!Array.isArray(unit.manifest.spec?.joined) || !unit.manifest.spec.joined.includes(name)) return [];
-    return [{ name, path: `${unit.name}/${JOINED_SPEC}`, part: joinedPart(project, unit, name), approved, topics }];
+    return [{ name, path: `${unit.name}/${JOINED_SPEC}`, part: joinedPart(project, unit, name), approved, approvedOn, topics }];
   });
 }
 
@@ -532,6 +571,14 @@ const specsOf = (project, unit, topic) => unitSpecs(project, unit).filter(({ top
  * @param {Project} project @param {Unit} unit @param {string} topic @returns {Spec[]}
  */
 const laterOf = (project, unit, topic) => unitSpecs(project, unit).filter(({ approved, topics }) => approved && !topics.includes(topic));
+
+/**
+ * The project's units cancelled but `unit`, by name: a corrigendum one
+ * wrote into another's spec is no later answer, a cancelled unit's
+ * decisions governing nothing.
+ * @param {Project} project @param {Unit} unit @returns {string[]}
+ */
+const cancelledOf = (project, unit) => unitsOf(project).filter(({ name, manifest }) => name !== unit.name && manifest?.status === 'cancelled').map(({ name }) => name);
 
 /** The subtopics of the topic's old map, each with its state. @param {Unit} unit @param {string} topic @returns {{item: string, status: string}[]} */
 function mapOf(unit, topic) {
@@ -606,16 +653,52 @@ function othersOf(project, unit, topic) {
   return [...others.values()].sort((a, b) => (a.topic < b.topic ? -1 : 1));
 }
 
+/** Each file beneath a folder of the state, from the state's folder, sorted; none where it is no folder. @param {string} stateDir @param {string} rel @returns {string[]} */
+function filesUnder(stateDir, rel) {
+  /** @param {string} at @returns {string[]} */
+  const under = (at) => fs.readdirSync(path.join(stateDir, at), { withFileTypes: true }).flatMap((entry) => (entry.isDirectory() ? under(`${at}/${entry.name}`) : [`${at}/${entry.name}`]));
+  return fs.existsSync(path.join(stateDir, rel)) ? under(rel).sort() : [];
+}
+
 /** The markdown files of a topic's own folder but its mail, each from the state's folder, sorted. @param {Project} project @param {Unit} unit @param {string} topic @returns {string[]} */
 function ownFilesOf(project, unit, topic) {
   const folder = `${unit.name}/topics/${topic}`;
-  /** @param {string} rel @returns {string[]} */
-  const under = (rel) => fs.readdirSync(path.join(project.stateDir, rel), { withFileTypes: true }).flatMap((entry) => {
-    const at = `${rel}/${entry.name}`;
-    if (entry.isDirectory()) return at === `${folder}/mail` ? [] : under(at);
-    return entry.name.endsWith('.md') ? [at] : [];
-  });
-  return fs.existsSync(path.join(project.stateDir, folder)) ? under(folder).sort() : [];
+  return filesUnder(project.stateDir, folder).filter((at) => at.endsWith('.md') && !at.startsWith(`${folder}/mail/`));
+}
+
+/** The text of a topic's own markdown files but its mail, none of a unit's own record, which has none. @param {Project} project @param {Unit} unit @param {string|null} topic */
+const ownTextOf = (project, unit, topic) => (topic === null ? '' : ownFilesOf(project, unit, topic).map((at) => readText(path.join(project.stateDir, at)) ?? '').join('\n'));
+
+const SHORT = 40;
+
+/**
+ * Whether `text` holds a section of a source word for word, its heading and
+ * its text, the copy ending where a line does: a split's research the move
+ * put into a topic's log, which the topic's verifier walks there. A section
+ * whose text is one line under `SHORT` characters is never held.
+ * @param {string[]} lines the source's @param {Heading} heading @param {string} text
+ */
+function heldIn(lines, { line, end }, text) {
+  const body = lines.slice(line, end).join('\n').trim();
+  if (!body.includes('\n') && body.length < SHORT) return false;
+  const copy = lines.slice(line - 1, end).join('\n').trim();
+  for (let at = text.indexOf(copy); at !== -1; at = text.indexOf(copy, at + 1)) {
+    if ((text[at + copy.length] ?? '\n') === '\n') return true;
+  }
+  return false;
+}
+
+/**
+ * Whether a record's own files hold a source word for word, each of its
+ * sections holding text (`heldIn`), it holding one at least.
+ * @param {Project} project @param {Unit} unit @param {string|null} topic @param {string} at
+ */
+function heldWhole(project, unit, topic, at) {
+  const text = readText(path.join(project.stateDir, at)) ?? '';
+  const lines = text.split('\n');
+  const own = ownTextOf(project, unit, topic);
+  const sections = outlineOf(text, false).filter((heading) => heading.text);
+  return sections.length > 0 && sections.every((heading) => heldIn(lines, heading, own));
 }
 
 /**
@@ -626,19 +709,23 @@ function ownFilesOf(project, unit, topic) {
 
 /**
  * The sections of one file of the walk, in order: those holding text, in
- * a joined spec in the parts the topic draws on alone, but none of a spec
- * of the unit's it draws no part of, its later answer; and those an entry
- * cites — a cite naming its section, as the carry reads it, within the
+ * a joined spec in the parts the topic draws on alone, but none of a file
+ * it does not walk, a spec of the unit's it draws no part of, its later
+ * answer, among them; and those an entry cites — a cite naming its section, as the carry reads it, within the
  * parts the topic draws on, so a heading several parts hold is the one in
  * the topic's part, and in any other only where none of those holds it —
- * each with every entry citing it, once.
- * @param {Project} project @param {Unit} unit @param {{specs: Spec[], later: Set<string>}} drawing the topic's specs, and the paths of the unit's it draws no part of
+ * each with every entry citing it, once; but no section of a shared source,
+ * a discovery session or a walked asset, the record's own files hold word
+ * for word (`heldIn`) and no entry cites, which its walk of them reads.
+ * @param {Project} project @param {Unit} unit @param {{specs: Spec[], walks: Set<string>, shared: Set<string>, own: string}} drawing the topic's specs, the paths of the files it walks, those of its shared sources, and its own files' text
  * @param {Record<string, any>[]} entries @param {string} at
  * @returns {SheetSection[]}
  */
-function sheetSections(project, unit, { specs, later }, entries, at) {
+function sheetSections(project, unit, { specs, walks, shared, own }, entries, at) {
   const parts = partsDrawn(specs, at);
-  const headings = outlineOf(readText(path.join(project.stateDir, at)) ?? '', at === `${unit.name}/${JOINED_SPEC}`);
+  const text = readText(path.join(project.stateDir, at)) ?? '';
+  const lines = text.split('\n');
+  const headings = outlineOf(text, at === `${unit.name}/${JOINED_SPEC}`);
   /** @type {Map<Heading, Record<string, any>[]>} */
   const citing = new Map();
   for (const entry of entries) {
@@ -646,7 +733,8 @@ function sheetSections(project, unit, { specs, later }, entries, at) {
     const named = new Set(names.flatMap((name) => citedBy(headings, name, parts)));
     for (const heading of named) citing.set(heading, [...(citing.get(heading) ?? []), entry]);
   }
-  const drawn = (/** @type {Heading} */ heading) => !later.has(at) && (parts === null || parts.includes(heading.part));
+  const drawn = (/** @type {Heading} */ heading) => walks.has(at) && (parts === null || parts.includes(heading.part))
+    && !(shared.has(at) && heldIn(lines, heading, own));
   return headings.filter((heading) => (heading.text && drawn(heading)) || citing.has(heading)).map((heading) => ({
     section: shownPath(headings, heading), line: heading.line, end: heading.end,
     entries: (citing.get(heading) ?? []).map(({ ref, event, text }) => ({ ref: String(ref), event: String(event), text: String(text ?? '') })),
@@ -656,17 +744,21 @@ function sheetSections(project, unit, { specs, later }, entries, at) {
 /**
  * A record laid against its sources for its verifier to walk: each file in
  * the order its brief lists them — the topic's own but its mail, its
- * specs, the discovery sessions it draws on — then each other file an
- * entry cites, each with its sections (`sheetSections`).
+ * specs, the discovery sessions it draws on, the assets it walks — then
+ * each other file an entry cites, each with its sections (`sheetSections`),
+ * a file of none left out.
  * @param {Project} project @param {Unit} unit @param {string|null} topic @param {Record<string, any>[]} entries
  * @returns {{path: string, sections: SheetSection[]}[]}
  */
 function sheetOf(project, unit, topic, entries) {
   const specs = topic === null ? [] : specsOf(project, unit, topic);
-  const later = new Set(unitSpecs(project, unit).map(({ path: at }) => at).filter((at) => !specs.some((spec) => spec.path === at)));
   const cited = entries.flatMap(({ cites }) => (Array.isArray(cites) ? cites.filter(isObject) : [])).map(({ path: at }) => String(at));
-  const files = [...(topic === null ? [] : ownFilesOf(project, unit, topic)), ...specs.map(({ path: at }) => at), ...sessionsOf(project, unit, topic), ...cited];
-  return [...new Set(files)].filter((at) => isFile(path.join(project.stateDir, at))).map((at) => ({ path: at, sections: sheetSections(project, unit, { specs, later }, entries, at) }));
+  const walked = assetsOf(project, unit).filter(({ walkers }) => walkers.includes(topic)).map(({ path: at }) => at);
+  const sessions = sessionsOf(project, unit, topic);
+  const walks = [...(topic === null ? [] : ownFilesOf(project, unit, topic)), ...specs.map(({ path: at }) => at), ...sessions, ...walked];
+  const drawing = { specs, walks: new Set(walks), shared: new Set([...sessions, ...walked]), own: ownTextOf(project, unit, topic) };
+  return [...new Set([...walks, ...cited])].filter((at) => isFile(path.join(project.stateDir, at)))
+    .map((at) => ({ path: at, sections: sheetSections(project, unit, drawing, entries, at) })).filter(({ sections }) => sections.length > 0);
 }
 
 /** Whether the unit has its spec, past which a point is raised at its specification: its `spec.md`, or its specs joined. @param {Project} project @param {Unit} unit */
@@ -717,6 +809,53 @@ function importsOf(project, unit) {
     const at = `${unit.name}/${entry.path}`;
     return { path: at, origin: typeof entry.origin === 'string' ? entry.origin : null, owner: ownerOf(unit, entry.origin), held: isFile(path.join(project.stateDir, at)) };
   });
+}
+
+/**
+ * One of the unit's assets: its path from the state; what it is, an
+ * `import` — one the manifest lists, or a file come in with them — or the
+ * kind its folder holds (`ASSET_FOLDERS`); where an import came in from,
+ * and the record owing its link, a listed import's alone, a topic or the
+ * unit's own, null; whether the state holds it; and the records walking
+ * it (`walkersOf`).
+ * @typedef {{path: string, kind: string, origin: string|null, owner: string|null, listed: boolean, held: boolean, walkers: (string|null)[]}} Asset
+ */
+
+/**
+ * The records of the unit walking an asset of its: none of a file not
+ * markdown, nor of a kind `UNWALKED` names; of a split's research, the
+ * topic it was copied from, where the split kept its name for one, else
+ * the unit's own record, where it has one; of any other, each.
+ * @param {Project} project @param {Unit} unit @param {string} at @param {string} kind @returns {(string|null)[]}
+ */
+function walkersOf(project, unit, at, kind) {
+  if (!at.endsWith('.md') || UNWALKED.includes(kind)) return [];
+  const records = recordsOfUnit(project, unit);
+  if (kind !== 'research') return records;
+  const copied = SUPERSEDED_COPY.exec(path.posix.basename(at))?.[1] ?? null;
+  return copied !== null && records.includes(copied) ? [copied] : records.filter((record) => record === null);
+}
+
+/**
+ * The unit's assets (`Asset`): each file under its `assets/` but a
+ * dotfile, sorted, then each import whose file is gone.
+ * @param {Project} project @param {Unit} unit @returns {Asset[]}
+ */
+function assetsOf(project, unit) {
+  const imports = importsOf(project, unit);
+  const root = `${unit.name}/${ASSETS}`;
+  /** @param {string} at */
+  const kindOf = (at) => {
+    const folder = at.slice(root.length + 1).split('/');
+    return folder.length > 1 ? ASSET_FOLDERS.get(folder[0]) ?? 'import' : 'import';
+  };
+  const held = filesUnder(project.stateDir, root).filter((at) => !at.slice(root.length + 1).split('/').some((name) => name.startsWith('.'))).map((at) => {
+    const listed = imports.find((entry) => entry.path === at);
+    const kind = listed === undefined ? kindOf(at) : 'import';
+    return { path: at, kind, origin: listed?.origin ?? null, owner: listed?.owner ?? null, listed: listed !== undefined, held: true, walkers: walkersOf(project, unit, at, kind) };
+  });
+  const gone = imports.filter((entry) => !entry.held).map((entry) => ({ ...entry, kind: 'import', listed: true, walkers: [] }));
+  return [...held, ...gone];
 }
 
 /**
@@ -911,9 +1050,7 @@ function strayRecordFiles(project, unit) {
   const topics = topicsOf(unit.manifest);
   const kept = (/** @type {string} */ name, /** @type {string} */ stem) => RECORD_FILES.some((ending) => name === `${stem}${ending}`);
   const folder = `${COMPOSED}/${unit.name}`;
-  /** @param {string} rel @returns {string[]} */
-  const under = (rel) => fs.readdirSync(path.join(project.stateDir, rel), { withFileTypes: true }).flatMap((entry) => (entry.isDirectory() ? under(`${rel}/${entry.name}`) : [`${rel}/${entry.name}`]));
-  const inFolder = fs.existsSync(path.join(project.stateDir, folder)) ? under(folder).filter((at) => !topics.some((topic) => kept(at.slice(folder.length + 1), topic))) : [];
+  const inFolder = filesUnder(project.stateDir, folder).filter((at) => !topics.some((topic) => kept(at.slice(folder.length + 1), topic)));
   const beside = fs.existsSync(path.join(project.stateDir, COMPOSED)) ? fs.readdirSync(path.join(project.stateDir, COMPOSED), { withFileTypes: true })
     .filter((entry) => entry.isFile() && entry.name.startsWith(`${unit.name}.`) && !kept(entry.name, unit.name) && entry.name !== `${unit.name}.sections.json`)
     .map((entry) => `${COMPOSED}/${entry.name}`) : [];
@@ -984,13 +1121,20 @@ const markOf = (at, part, section) => JSON.stringify({ [at]: part === null ? [se
 const drawnBy = (map, key, topics) => map.set(key, new Set([...(map.get(key) ?? []), ...topics]));
 
 /**
- * The sections of a unit's approved specs holding text that none of its
- * records cites, nor the session marked as holding no topic's — each by
- * the shortest path naming it alone in its part, in a joined spec with its
- * part — each with the topics drawing on it: in a joined spec, those whose
- * part holds it, any other section the spec's every topic's — once every
- * topic of it has a record composed or carried; none before.
- * @param {Project} project @param {Unit} unit @returns {{path: string, part: string|null, section: string, topics: string[]}[]}
+ * A section of a source holding text that no record of its unit cites, nor
+ * the session marked as holding no record's: its file, its part of a joined
+ * spec, the shortest path naming it alone there, the records it is named
+ * on, a unit's own `null`, and the kind of source it is in: an approved
+ * spec, a discovery session or an asset.
+ * @typedef {{path: string, part: string|null, section: string, topics: (string|null)[], kind: 'spec'|'session'|'asset'}} Uncited
+ */
+
+/**
+ * The sections of a unit's approved specs no record cites (`Uncited`), each
+ * named on the topics drawing on it: in a joined spec, those whose part
+ * holds it, any other section the spec's every topic's — once every topic
+ * of it has a record composed or carried; none before.
+ * @param {Project} project @param {Unit} unit @returns {Uncited[]}
  */
 function uncitedOf(project, unit) {
   const topics = topicsOf(unit.manifest);
@@ -1024,30 +1168,124 @@ function uncitedOf(project, unit) {
   }
   return [...uncited].map(([key, drawn]) => {
     const [at, part, section] = key.split('\n');
-    return { path: at, part: part === '' ? null : part, section, topics: [...drawn] };
+    return { path: at, part: part === '' ? null : part, section, topics: [...drawn], kind: /** @type {const} */ ('spec') };
+  });
+}
+
+/** A record of a unit's, a topic's by its name or its own, null. @typedef {{unit: Unit, topic: string|null}} RecordOf */
+
+/** The records of a unit: each topic's, by its name, and its own, `null`, where it has one. @param {Project} project @param {Unit} unit @returns {(string|null)[]} */
+const recordsOfUnit = (project, unit) => [...topicsOf(unit.manifest), ...(hasOwnRecord(project.stateDir, unit.name, unit.manifest) ? [null] : [])];
+
+/**
+ * The sources a unit's records walk in common, holding text past their
+ * headings, each by its path with what it is, the topic owing it, an
+ * import's; the records walking it; and the records whose cites, and own
+ * files word for word, settle its sections, any record of the unit, of a
+ * session a topic it promoted too: the unit's discovery sessions, walked
+ * by each of its records and each topic it promoted, carried where it
+ * went; and its walked assets.
+ * @param {Project} project @param {Unit} unit
+ * @returns {{path: string, kind: 'session'|'asset', owner: string|null, walkers: RecordOf[], readers: RecordOf[]}[]}
+ */
+function sharedOf(project, unit) {
+  const promoted = movedOf(unit.manifest).map(({ topic, to }) => ({ unit: unitOf(project, to), topic }));
+  const ours = (/** @type {(string|null)[]} */ topics) => topics.map((topic) => ({ unit, topic }));
+  const records = ours(recordsOfUnit(project, unit));
+  const sessions = discoverySessions(project.stateDir, unit.name)
+    .map((at) => ({ path: at, kind: /** @type {const} */ ('session'), owner: null, walkers: [...records, ...promoted], readers: [...records, ...promoted] }));
+  const assets = assetsOf(project, unit).filter(({ walkers }) => walkers.length > 0).map(({ path: at, owner, walkers }) => ({
+    path: at, kind: /** @type {const} */ ('asset'), owner, walkers: ours(walkers), readers: records,
+  }));
+  return [...sessions, ...assets].filter(({ path: at }) => holdsText(readText(path.join(project.stateDir, at)) ?? ''));
+}
+
+/**
+ * The sections of a unit's shared sources no record of it cites
+ * (`Uncited`), each named on the topic an import came in from, or a
+ * split's research was copied from, else on the unit's own record, else
+ * on each of its topics — a source's once every record walking it has one
+ * composed or carried; none before. A section a topic holds word for word
+ * in its own markdown files (`heldIn`) is that topic's verifier's to walk
+ * there, with its log's later word, and settled.
+ * @param {Project} project @param {Unit} unit @returns {Uncited[]}
+ */
+function uncitedSharedOf(project, unit) {
+  const marked = marksOf(project, unit);
+  const topics = topicsOf(unit.manifest);
+  /** @type {Map<string, {entries: Record<string, any>[]|null, own: string}>} */
+  const read = new Map();
+  const readOf = (/** @type {RecordOf} */ { unit: of, topic }) => {
+    const key = `${of.name}/${topic}`;
+    if (!read.has(key)) read.set(key, { entries: recordOf(project, of, topic), own: ownTextOf(project, of, topic) });
+    return /** @type {{entries: Record<string, any>[]|null, own: string}} */ (read.get(key));
+  };
+  return sharedOf(project, unit).flatMap(({ path: at, kind, owner, walkers, readers }) => {
+    if (walkers.some((walker) => readOf(walker).entries === null)) return [];
+    const cites = readers.flatMap((reader) => readOf(reader).entries ?? []).flatMap(({ cites: given }) => (Array.isArray(given) ? given.filter(isObject) : []));
+    const text = readText(path.join(project.stateDir, at)) ?? '';
+    const lines = text.split('\n');
+    const held = outlineOf(text, false);
+    const named = [...cites.filter((cite) => cite.path === at).map(({ section }) => String(section)), ...markedIn(marked, at, null)];
+    const settled = new Set(named.flatMap((name) => namedAlone(held, name)));
+    const copied = (/** @type {Heading} */ heading) => readers.some((reader) => heldIn(lines, heading, readOf(reader).own));
+    const inUnit = walkers.filter((walker) => walker.unit.name === unit.name).map(({ topic }) => topic);
+    const on = owner !== null && topics.includes(owner) ? [owner] : inUnit.includes(null) ? [null] : inUnit;
+    return held.filter((heading) => heading.text && !settled.has(heading) && !copied(heading))
+      .map((heading) => ({ path: at, part: null, section: nameOf(held, heading), topics: on, kind }));
   });
 }
 
 /**
- * What a unit's topics wait on before any of them is carried, where any
- * draws on an approved spec: each topic not carried with no record
- * composed, or one its verifier has not passed, and, once each has passed,
- * each section of its specs no record cites.
+ * What a unit's records wait on before any of them is carried, where any
+ * topic draws on an approved spec or the unit holds a shared source of
+ * text: each record not carried with no record composed, or one its
+ * verifier has not passed — each topic of the unit drawing on a spec, and
+ * every record walking a shared source — and, once each has passed, how
+ * many sections of the unit's specs and shared sources no record cites,
+ * which the check names.
  * @param {Project} project @param {Unit} unit @returns {string[]}
  */
-function unitWaits(project, unit) {
+function waitsOf(project, unit) {
   const topics = topicsOf(unit.manifest);
-  if (!topics.some((topic) => specsOf(project, unit, topic).some(({ approved }) => approved))) return [];
-  const unpassed = topics.filter((topic) => carriedOf(project, unit, topic) === null).flatMap((topic) => {
-    const said = uncarried(project, unit, topic);
-    return WAITING.includes(said) ? [] : [`${unit.name}'s ${topic} ${said}`];
+  const drawing = topics.some((topic) => specsOf(project, unit, topic).some(({ approved }) => approved)) ? topics.map((topic) => ({ unit, topic })) : [];
+  /** @type {Map<string, RecordOf>} */
+  const records = new Map([...drawing, ...sharedOf(project, unit).flatMap(({ walkers }) => walkers)].map((record) => [`${record.unit.name}/${record.topic}`, record]));
+  if (records.size === 0) return [];
+  const unpassed = [...records.values()].filter(({ unit: of, topic }) => carriedOf(project, of, topic) === null).flatMap(({ unit: of, topic }) => {
+    const said = uncarried(project, of, topic);
+    return WAITING.includes(said) ? [] : [`${of.name}'s ${topic ?? 'own record'} ${said}`];
   });
   if (unpassed.length > 0) return unpassed;
-  return uncitedOf(project, unit).map((each) => uncitedProblem(unit, each));
+  const uncited = uncitedOf(project, unit).length + uncitedSharedOf(project, unit).length;
+  if (uncited === 0) return [];
+  return [`${uncited === 1 ? 'a section' : `${uncited} sections`} of ${unit.name}'s approved specs, discovery sessions and walked assets ${uncited === 1 ? 'holds' : 'hold'} text no record cites — \`migrate check ${DIRECTIVE}\` names each where it is named`];
 }
 
-/** What a section no record cites lacks, as the topics drawing on it are told it. @param {Unit} unit @param {{path: string, part: string|null, section: string}} uncited */
-const uncitedProblem = (unit, { path: at, part, section }) => `"${section}" in ${part === null ? '' : `part "${part}" of `}${at}, an approved spec, holds text no record of ${unit.name} cites — what the spec stage decided, found or left open is carried by the topic it belongs to; a section holding none of it is marked in ${sectionsMarked(unit.name)} as ${markOf(at, part, section)}`;
+/**
+ * What a unit's records wait on before any of them is carried (`waitsOf`),
+ * by the unit waited on: its own, and those of each unit a topic of it was
+ * promoted from, whose discovery sessions the topic walks; a unit waiting
+ * on nothing left out.
+ * @param {Project} project @param {Unit} unit @returns {{unit: string, waits: string[]}[]}
+ */
+function unitWaits(project, unit) {
+  const homes = new Set(topicsOf(unit.manifest).flatMap((topic) => homesOf(project, unit, topic).filter((home) => home !== unit.name)));
+  return [unit, ...[...homes].map((home) => unitOf(project, home))].map((each) => ({ unit: each.name, waits: waitsOf(project, each) })).filter(({ waits }) => waits.length > 0);
+}
+
+/** What an uncited section is, by the kind of source it is in, and who carries what it holds. */
+const UNCITED_SAYS = new Map([
+  ['spec', { what: 'an approved spec', carried: 'what the spec stage decided, found or left open, still current, is carried by the topic it belongs to' }],
+  ['session', { what: 'a discovery session', carried: 'a current point it makes, which no topic\'s own files hold word for word, is carried by the record its subject belongs to' }],
+  ['asset', { what: 'an asset', carried: 'a current point it makes, which no topic\'s own files hold word for word, is carried by the record its subject belongs to' }],
+]);
+
+/** What a section no record cites lacks, as the records it is named on are told it. @param {Unit} unit @param {Uncited} uncited */
+function uncitedProblem(unit, { path: at, part, section, kind }) {
+  const { what, carried } = /** @type {{what: string, carried: string}} */ (UNCITED_SAYS.get(kind));
+  return `"${section}" in ${part === null ? '' : `part "${part}" of `}${at}, ${what}, holds text no record of ${unit.name} cites — ${carried}; a section holding none, or only what a later answer replaced or a cancelled unit alone decided, is marked in ${sectionsMarked(unit.name)} as ${markOf(at, part, section)}`;
+}
 
 /** A record its verifier has passed, waiting for the carry. */
 const PASSED = 'has passed its verifier, and waits to be carried';
@@ -1099,15 +1337,16 @@ module.exports = {
     const project = projectOf(projectDir, stateDir);
     const ids = ledgerIds(stateDir);
     return unitsOf(project).flatMap((unit) => {
-      const uncited = uncitedOf(project, unit);
+      const uncited = [...uncitedOf(project, unit), ...uncitedSharedOf(project, unit)];
       const hasOwn = hasOwnRecord(stateDir, unit.name, unit.manifest);
       const strays = strayRecordFiles(project, unit);
       const strayOn = (/** @type {string|null} */ topic) => strays.filter((stray) => stray.topic === topic || (stray.topic === null && !hasOwn))
         .map(({ at }) => `${at} is no file a record is kept in — an agent left it: remove it`);
-      const own = hasOwn ? [{ name: `${unit.name}.discovery`, problems: [...topicProblems(project, ids, unit, null), ...strayOn(null)] }] : [];
+      const uncitedOn = (/** @type {string|null} */ topic) => uncited.filter(({ topics }) => topics.includes(topic)).map((each) => uncitedProblem(unit, each));
+      const own = hasOwn ? [{ name: `${unit.name}.discovery`, problems: [...topicProblems(project, ids, unit, null), ...uncitedOn(null), ...strayOn(null)] }] : [];
       return [...topicsOf(unit.manifest).map((topic) => ({
         name: topicPlace(unit, topic),
-        problems: [...topicProblems(project, ids, unit, topic), ...uncited.filter(({ topics }) => topics.includes(topic)).map((each) => uncitedProblem(unit, each)), ...strayOn(topic)],
+        problems: [...topicProblems(project, ids, unit, topic), ...uncitedOn(topic), ...strayOn(topic)],
       })), ...own];
     });
   },
@@ -1143,8 +1382,8 @@ module.exports = {
     return problemsOf(project, unitOf(project, unit), topic, phase, entries);
   },
   /**
-   * What a unit's topics wait on before any is carried (the header's), none
-   * where nothing does.
+   * What a unit's records wait on before any is carried (the header's), by
+   * the unit waited on, none where nothing does.
    * @param {{projectDir: string, stateDir: string, unit: string}} at
    */
   unitWaits({ projectDir, stateDir, unit }) {
@@ -1170,13 +1409,15 @@ module.exports = {
   /**
    * A record's sources as the rules read them: the project's folder they
    * are read in, a topic's old map, its research's threads still open and
-   * its specs, the unit's imports, each with the topic owing its link — none
-   * for one the unit's own record owes — and whether the state holds its
-   * file, the discovery sessions it draws on, the other topics those
+   * its specs, the unit's assets (`assetsOf`), each import with the topic
+   * owing its link — none for one the unit's own record owes — those it
+   * walks that its own files hold word for word (`heldWhole`), the
+   * discovery sessions it draws on, the other topics those
    * sessions may speak of (`othersOf`), and the unit's approved specs it
-   * does not draw on, the later answer (`laterOf`). A unit's own, `topic`
-   * null, has no map, thread or spec, and no later answer: nothing is
-   * decided in discovery.
+   * does not draw on, the later answer (`laterOf`), and the project's other
+   * units cancelled, a corrigendum one wrote no later answer
+   * (`cancelledOf`). A unit's own, `topic` null, has no map, thread or
+   * spec, and no later answer: nothing is decided in discovery.
    * @param {{projectDir: string, stateDir: string, unit: string, topic: string|null}} at
    */
   sourcesOf({ projectDir, stateDir, unit: name, topic }) {
@@ -1188,10 +1429,12 @@ module.exports = {
       map: own ? [] : mapOf(unit, topic),
       threads: own ? [] : threadsOf(project, unit, topic),
       specs: own ? [] : specsOf(project, unit, topic),
-      imports: importsOf(project, unit),
+      assets: assetsOf(project, unit),
+      held: assetsOf(project, unit).filter(({ path: at, walkers }) => walkers.includes(topic) && heldWhole(project, unit, topic, at)).map(({ path: at }) => at),
       sessions: sessionsOf(project, unit, topic),
       others: othersOf(project, unit, topic),
       later: own ? [] : laterOf(project, unit, topic),
+      cancelled: own ? [] : cancelledOf(project, unit),
     };
   },
   /**
