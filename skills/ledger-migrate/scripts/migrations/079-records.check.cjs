@@ -128,7 +128,8 @@
 // or the session marks it as carrying no side of the point, or as its
 // own log's, settled after the approval
 // (`.cache/migrate/records/{unit}.at-odds.json`, `{"{place}": [[{"path",
-// "section"}, …]]}`), else it is named on that record; and the unit's
+// "section"}, …]]}`, a log's `[{"log": [...]}]`), else it is named on that
+// record, each side dated where its source shows when it was settled; and the unit's
 // records wait on it as on a section no record cites. A section is read as
 // the carry reads a cite (cited-sections.cjs), a mark's alike; whether two
 // sections disagree, and whether a record carries a side of the point, is
@@ -170,7 +171,9 @@
 // listed until it is answered or merged, and beside it each other record's
 // marked to raise whose `at_odds` holds the same sections, a candidate for
 // the session to judge one point with it or not by the texts the engine
-// gives it.
+// gives it; and each record marked as its own log's for them, its
+// decisions citing a side, listed until the person's answer replaces
+// them or the session marks that it agrees.
 //
 // `.workflows/` is read where the move read it: the working tree of the
 // project's folder in the repository's main checkout, whichever checkout
@@ -955,6 +958,10 @@ function oddsShapeProblem(project, unit, { at_odds: odds, ...question }) {
   return new Set(named).size > 1 ? null : 'its at_odds names one section';
 }
 
+// The way out of a point at odds a later answer settles, as a record's
+// faults name it beside keeping the question open.
+const SETTLED_WAY = 'where a later answer settles the point, it is no point at odds: no entry holds at_odds for it, its question is not marked to raise, and the decision answers it';
+
 /**
  * What a record's points at odds break of the rules: no decision settles
  * one while the migration runs (`settlesOdds`); only an open question
@@ -966,7 +973,7 @@ function oddsProblems(project, unit, topic, phase, record) {
   const raises = unraised(project, unit, topic, phase) === null;
   return record.flatMap((entry) => {
     const how = entry.event === 'decided' ? settlesOdds(record, entry) : null;
-    if (how !== null) return [`entry ${entry.ref}: a decision settles no point at odds while the migration runs — ${how}: the question stays open, and the findings carrying each side name each other`];
+    if (how !== null) return [`entry ${entry.ref}: a decision settles no point at odds while the migration runs — ${how}: ${SETTLED_WAY}; where none does, the question stays open, and the findings carrying each side name each other`];
     if (entry.at_odds === undefined) return [];
     if (entry.event !== 'asked') return [`entry ${entry.ref}: at_odds is an open question's — the findings carrying each side of a point at odds name each other in words`];
     const shape = oddsShapeProblem(project, unit, entry);
@@ -1267,8 +1274,8 @@ const keyOfSides = (sides) => [...sides.keys()].sort().join('\n\n');
 /** Names in a sentence: `a and b`, `a, b and c`. @param {string[]} names */
 const inWords = (names) => (names.length < 3 ? names.join(' and ') : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`);
 
-/** Sections as a sentence names them. @param {Side[]} sides */
-const sidesSaid = (sides) => inWords(sides.map(({ path: at, section }) => `"${section}" in ${at}`));
+/** Sections as a sentence names them, each with when it was settled where that shows. @param {Side[]} sides @param {(string|null)[]} [dates] */
+const sidesSaid = (sides, dates = []) => inWords(sides.map(({ path: at, section }, index) => `"${section}" in ${at}${dates[index] ? ` (${dates[index]})` : ''}`));
 
 /**
  * How the sections a contradiction sits in are read, in the sources a
@@ -1280,12 +1287,7 @@ const sidesSaid = (sides) => inWords(sides.map(({ path: at, section }) => `"${se
  */
 function sidesReader(project, unit) {
   const shared = new Set([...unitSpecs(project, unit).filter(({ approved }) => approved).map(({ path: at }) => at), ...sharedOf(project, unit).map(({ path: at }) => at)]);
-  /** @type {Map<string, Heading[]>} */
-  const outlines = new Map();
-  const outline = (/** @type {string} */ at) => {
-    if (!outlines.has(at)) outlines.set(at, outlineOf(readText(path.join(project.stateDir, at)) ?? '', at === `${unit.name}/${JOINED_SPEC}`));
-    return /** @type {Heading[]} */ (outlines.get(at));
-  };
+  const outline = outlinesOf(project, unit);
   return (cites) => new Map(cites.flatMap(({ path: at, section }) => {
     if (typeof at !== 'string' || !shared.has(at)) return [];
     const headings = outline(at);
@@ -1294,11 +1296,41 @@ function sidesReader(project, unit) {
   }));
 }
 
+/** Each file's headings, read once (`outlineOf`). @param {Project} project @param {Unit} unit @returns {(at: string) => Heading[]} */
+function outlinesOf(project, unit) {
+  /** @type {Map<string, Heading[]>} */
+  const outlines = new Map();
+  return (at) => {
+    if (!outlines.has(at)) outlines.set(at, outlineOf(readText(path.join(project.stateDir, at)) ?? '', at === `${unit.name}/${JOINED_SPEC}`));
+    return /** @type {Heading[]} */ (outlines.get(at));
+  };
+}
+
+/**
+ * When a side of a contradiction was settled in its source, by its key
+ * (`Sides`): an approved spec's approval, the part of the unit's spec.md
+ * it sits in by that part's, as the old manifest dates it; a discovery
+ * session's date, as its `Date:` line gives it; null where none shows.
+ * @param {Project} project @param {Unit} unit @returns {(key: string) => string|null}
+ */
+function datesOf(project, unit) {
+  const specs = unitSpecs(project, unit).filter(({ approved }) => approved);
+  const outline = outlinesOf(project, unit);
+  return (key) => {
+    const [at, line] = key.split('\n');
+    const heading = outline(at).find((each) => String(each.line) === line);
+    const spec = specs.find((each) => each.path === at && (each.part === null || each.part === heading?.part));
+    if (spec !== undefined) return spec.approvedOn === null ? null : `approved on ${spec.approvedOn}`;
+    const written = /^\**Date\**:\**\s*(\d{4}-\d{2}-\d{2})/m.exec(readText(path.join(project.stateDir, at)) ?? '')?.[1];
+    return written === undefined ? null : `written on ${written}`;
+  };
+}
+
 /**
  * A contradiction one record of a unit names that another, citing a side
  * of it, does not: the record that does not, by its topic and its place;
  * the sections at odds; those of them it cites; and the records naming it.
- * @typedef {{topic: string|null, place: string, sides: Side[], cited: Side[], by: string[]}} Unshared
+ * @typedef {{topic: string|null, place: string, sides: Side[], dates: (string|null)[], cited: Side[], by: string[]}} Unshared
  */
 
 /**
@@ -1317,13 +1349,14 @@ function unsharedOf(project, unit) {
   const records = recordsOfUnit(project, unit).map((topic) => ({ topic, entries: recordOf(project, unit, topic) }));
   if (records.some(({ entries }) => entries === null)) return [];
   const sides = sidesReader(project, unit);
+  const dateOf = datesOf(project, unit);
   const marks = marksIn(project, atOddsMarked(unit.name));
   const read = records.map(({ topic, entries }) => {
     const place = recordPlace(unit, topic);
     const answered = new Set(/** @type {Record<string, any>[]} */ (entries).filter(({ event }) => event === 'decided').map(({ answers }) => answers));
     const named = /** @type {Record<string, any>[]} */ (entries).filter(({ event, ref, at_odds: odds }) => event === 'asked' && Array.isArray(odds) && !answered.has(ref))
       .map(({ at_odds: odds }) => sides(odds.filter(isObject))).filter((each) => each.size > 1);
-    const settled = new Set([...named, ...(Array.isArray(marks[place]) ? marks[place] : []).map((/** @type {unknown} */ mark) => sides(Array.isArray(mark) ? mark.filter(isObject) : []))].map(keyOfSides));
+    const settled = new Set([...named, ...markedSides(marks, place).map(({ sides: marked }) => sides(marked))].map(keyOfSides));
     return { topic, place, named, settled, cited: sides(/** @type {Record<string, any>[]} */ (entries).flatMap(citesIn)) };
   });
   /** @type {Map<string, {sides: Sides, by: string[]}>} */
@@ -1334,13 +1367,37 @@ function unsharedOf(project, unit) {
   return read.flatMap(({ topic, place, settled, cited }) => [...naming].flatMap(([key, { sides: odds, by }]) => {
     const citing = [...odds.keys()].filter((side) => cited.has(side));
     if (settled.has(key) || citing.length === 0) return [];
-    return [{ topic, place, sides: [...odds.values()], cited: citing.map((side) => /** @type {Side} */ (cited.get(side))), by }];
+    return [{ topic, place, sides: [...odds.values()], dates: [...odds.keys()].map(dateOf), cited: citing.map((side) => /** @type {Side} */ (cited.get(side))), by }];
   }));
 }
 
-/** What a contradiction left unshared asks of the record it is named on. @param {Unit} unit @param {Unshared} unshared */
-function unsharedProblem(unit, { place, sides, cited, by }) {
-  return `${sidesSaid(sides)} are at odds, as ${inWords(by)} ${by.length === 1 ? 'names' : 'name'} them, and this record cites ${sidesSaid(cited)} without naming that contradiction — judge first whether it stands: where a later answer settles it, it is settled on each record naming it, and on this one where it carries the side the later answer replaced, this record keeping its answer only where it is the later one; where it stands and this record carries a side of the point at odds, it names the contradiction, an open question holding those sections as its at_odds, and carries neither side as settled; where what it cites of them is not that point, or its own log settled the point after the approval, it is marked in ${atOddsMarked(unit.name)} as ${JSON.stringify({ [place]: [sides] })}`;
+/**
+ * The sections each contradiction the session marked on a record's place
+ * names, and whether it marked it as the record's own log's, settled after
+ * the approval (`{"log": [...]}`), and that the person's answer agrees
+ * with that log (`"agrees": true`), rather than as no side of the point.
+ * @param {Record<string, unknown>} marks @param {string} place
+ * @returns {{sides: Record<string, unknown>[], log: boolean, agrees: boolean}[]}
+ */
+function markedSides(marks, place) {
+  const listed = marks[place];
+  return (Array.isArray(listed) ? listed : []).map((mark) => {
+    const log = isObject(mark) && Array.isArray(mark.log);
+    const sides = log ? /** @type {unknown[]} */ (mark.log) : Array.isArray(mark) ? mark : [];
+    return { sides: sides.filter(isObject), log, agrees: log && mark.agrees === true };
+  });
+}
+
+/** What a contradiction left unshared asks of the record it is named on, in the directive's order. @param {Unit} unit @param {Unshared} unshared */
+function unsharedProblem(unit, { place, sides, dates, cited, by }) {
+  const marked = atOddsMarked(unit.name);
+  return [
+    `${sidesSaid(sides, dates)} are at odds, as ${inWords(by)} ${by.length === 1 ? 'names' : 'name'} them, and this record cites ${sidesSaid(cited)} without naming that contradiction — judge first whether it stands.`,
+    'Where a later answer settles it — an approved spec, or a part of one, approved after the other side was written — it is settled on each record naming it, and on this one where it carries the side the later answer replaced, this record keeping its answer only where it is the later one.',
+    `Where this record's own log settled the point after the approval, its answer is its log's: it is marked in ${marked} as ${JSON.stringify({ [place]: [{ log: sides }] })}, and each record naming the contradiction keeps naming what its own sources hold.`,
+    'Where it stands and this record carries a side of the point at odds, it names the contradiction, an open question holding those sections as its at_odds, and carries neither side as settled.',
+    `Where what it cites of them is not that point, it is marked in ${marked} as ${JSON.stringify({ [place]: [sides] })}`,
+  ].join(' ');
 }
 
 /**
@@ -1468,27 +1525,40 @@ module.exports = {
    * question's id and its text; and beside it, as `candidates`, each other
    * record's question so marked whose `at_odds` holds the same sections of
    * the sources the unit's records share, with its place, for the session
-   * to judge whether they are one point: sections alone never say so.
+   * to judge whether they are one point: sections alone never say so; and,
+   * as `settled_on`, each record the session marked as its own log's for
+   * those sections, unless the person's answer agrees with it, with its
+   * decisions citing a side of them.
    * @param {{projectDir: string, stateDir: string}} dirs
-   * @returns {{place: string, answers: string, text: string, candidates?: {place: string, answers: string, text: string}[]}[]}
+   * @returns {{place: string, answers: string, text: string, candidates?: {place: string, answers: string, text: string}[], settled_on?: {place: string, decisions: {id: string, text: string}[]}[]}[]}
    */
   raises({ projectDir, stateDir }) {
     const project = projectOf(projectDir, stateDir);
     return unitsOf(project).flatMap((unit) => {
       const sides = sidesReader(project, unit);
-      const points = topicsOf(unit.manifest).flatMap((topic) => {
+      const placeOf = (/** @type {string} */ topic, /** @type {string} */ phase) => (hasSpec(project, unit) ? `${unit.name}.specification` : `${unit.name}.${phase}.${topic}`);
+      const carriedTopics = topicsOf(unit.manifest).flatMap((topic) => {
         const carried = carriedOf(project, unit, topic);
-        if (carried === null || unraised(project, unit, topic, carried.phase) !== null) return [];
-        const ids = new Map(carried.entries.map(({ ref, id }) => [ref, id]));
-        const place = hasSpec(project, unit) ? `${unit.name}.specification` : `${unit.name}.${carried.phase}.${topic}`;
+        return carried === null ? [] : [{ topic, carried, ids: new Map(carried.entries.map(({ ref, id }) => [ref, id])) }];
+      });
+      const points = carriedTopics.flatMap(({ topic, carried, ids }) => {
+        if (unraised(project, unit, topic, carried.phase) !== null) return [];
         return carried.record.entries.filter((entry) => entry.raise === true).map((entry) => {
           const odds = sides(Array.isArray(entry.at_odds) ? entry.at_odds.filter(isObject) : []);
-          return { topic, key: odds.size > 1 ? keyOfSides(odds) : null, point: { place, answers: String(ids.get(entry.ref)), text: String(entry.text) } };
+          return { topic, odds, key: odds.size > 1 ? keyOfSides(odds) : null, point: { place: placeOf(topic, carried.phase), answers: String(ids.get(entry.ref)), text: String(entry.text) } };
         });
       });
-      return points.map(({ topic, key, point }) => {
+      const marks = marksIn(project, atOddsMarked(unit.name));
+      const settledOn = (/** @type {Sides} */ odds, /** @type {string} */ key) => carriedTopics.flatMap(({ topic, carried, ids }) => {
+        if (!markedSides(marks, recordPlace(unit, topic)).some((mark) => mark.log && !mark.agrees && keyOfSides(sides(mark.sides)) === key)) return [];
+        const decisions = carried.record.entries.filter((entry) => entry.event === 'decided' && [...sides(citesIn(entry)).keys()].some((side) => odds.has(side)))
+          .map((entry) => ({ id: String(ids.get(entry.ref)), text: String(entry.text) }));
+        return decisions.length === 0 ? [] : [{ place: placeOf(topic, carried.phase), decisions }];
+      });
+      return points.map(({ topic, odds, key, point }) => {
         const candidates = points.filter((other) => key !== null && other.key === key && other.topic !== topic).map(({ point: { place, answers, text } }) => ({ place, answers, text }));
-        return candidates.length === 0 ? point : { ...point, candidates };
+        const settled = key === null ? [] : settledOn(odds, key);
+        return { ...point, ...(candidates.length === 0 ? {} : { candidates }), ...(settled.length === 0 ? {} : { settled_on: settled }) };
       });
     });
   },

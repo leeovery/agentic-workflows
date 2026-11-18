@@ -503,8 +503,9 @@ function drawnRecord(cwd, place, { entries, description }) {
   const tags = { unit, topic, phase, session: CARRIED_SESSION };
   const drawn = entries.map((entry, at) => entryLines(place, entry, at, before, tags));
   const answered = new Set(entries.filter(({ event }) => event === 'decided').map(({ answers }) => answers));
+  const odds = new Set(entries.filter((entry) => entry.at_odds !== undefined).map(({ ref }) => ref));
   const settled = [...before].filter(([ref, { raised }]) => raised && answered.has(ref))
-    .map(([ref]) => `entry ${ref}: is marked to raise, and a decision of the record answers it — raise refuses a question answered already, so a point to raise is an open question`);
+    .map(([ref]) => `entry ${ref}: is marked to raise, and a decision of the record answers it — raise refuses a question answered already, so a point to raise is an open question${odds.has(ref) ? '; where a later answer settles the point, it is no point at odds: no entry holds at_odds for it, its question is not marked to raise, and the decision answers it' : ''}`);
   const problems = recordsRules().recordProblems({ projectDir: codeRoot(cwd), stateDir: root, unit, topic, phase, entries, description });
   return {
     lines: drawn.flatMap(({ lines }) => lines),

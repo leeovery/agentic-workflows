@@ -2206,8 +2206,11 @@ function raiseWaits([verb]) {
  * with its question's short id; and each of its `candidates`, where it has
  * any, by its own, with its text, `raised` where this conversation drew it,
  * and the answers it holds already, `answered`, each by its short id and
- * text.
- * @template {{place: string, answers: string, text: string, candidates?: {place: string, answers: string, text: string}[]}} P
+ * text. A point `settled_on` a record's own log keeps there each decision
+ * still current, and is listed, answered or raised, while any is — its
+ * `answered` beside it once it is answered — until the person's answer is
+ * recorded on that record too, or the session marks that it agrees.
+ * @template {{place: string, answers: string, text: string, candidates?: {place: string, answers: string, text: string}[], settled_on?: {place: string, decisions: {id: string, text: string}[]}[]}} P
  * @param {string} cwd @param {P[]} points
  * @returns {P[]}
  */
@@ -2220,9 +2223,16 @@ function unraised(cwd, points) {
     const sealed = new Set(Object.values(session === null ? {} : readSeals(session)).filter(isSeal).map((seal) => seal.answers));
     const short = (/** @type {string} */ id) => shortId(id, facts.keys());
     const answer = (/** @type {string} */ id) => ({ id: short(id), text: String(entryAt(factsOf(read, id).place).text ?? '') });
-    return points.filter(({ answers }) => facts.has(answers) && questionStands(read, answers) === 'open' && !sealed.has(answers)).map((point) => ({
+    const standing = (/** @type {P} */ point) => (point.settled_on ?? [])
+      .map(({ place, decisions }) => ({ place, decisions: decisions.filter(({ id }) => facts.has(id) && !notCurrent(read, id)).map(({ id, text }) => ({ id: short(id), text })) }))
+      .filter(({ decisions }) => decisions.length > 0);
+    const stands = (/** @type {P} */ { answers }) => (facts.has(answers) ? questionStands(read, answers) : null);
+    const listed = (/** @type {P} */ point) => (stands(point) === 'open' && !sealed.has(point.answers)) || ((stands(point) === 'open' || stands(point) === 'answered') && standing(point).length > 0);
+    return points.filter(listed).map((point) => ({
       ...point,
       answers: short(point.answers),
+      ...(stands(point) === 'answered' ? { answered: answersOf(read, point.answers).map(answer) } : {}),
+      ...(point.settled_on === undefined ? {} : { settled_on: standing(point) }),
       ...(point.candidates === undefined ? {} : {
         candidates: point.candidates.map(({ place, answers, text }) => {
           const answered = answersOf(read, answers).map(answer);
