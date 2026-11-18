@@ -19,15 +19,19 @@
 //     (21.5.22). The person says once per unit where its leaving topics go,
 //     kept with the unit's plan as `answers.leaving`, so a run again never
 //     asks twice. A plan of the unit kept in plain files, with no tracker
-//     root, is refused by name (21.8.13); so is a unit none of whose specs
+//     root, is refused by name (21.8.13) — one whose format is a tracker's,
+//     the name of a task driver's folder, is a plan still being written
+//     that put nothing in the tracker yet, its area no plan's (21.7.1);
+//     so is a unit none of whose specs
 //     was joined. Each file its agents left under its staged phases that is
 //     none of a piece's — the piece, its findings, its rounds, the points
 //     settled, and the pieces its verifiers read — is named, to remove;
 //   - `{unit}`, a unit nothing of which was built — no old plan's items
-//     left, and not completed — whose old plans put tasks in the tracker,
-//     each a planning item with a tracker root and a task map: done once
-//     `task close-plan` has marked each root closed
-//     (`.cache/migrate/closed/{unit}/{root}.json`, 21.8.4, 21.8.12);
+//     left, and not completed — or a cancelled one, its specs joined or
+//     not, whose old plans put tasks in the tracker, each a planning item
+//     with a tracker root and a task map: done once `task close-plan` has
+//     marked each root closed (`.cache/migrate/closed/{unit}/{root}.json`,
+//     21.8.4, 21.8.12);
 //   - `{unit}`, a cross-cutting unit: done once it has left the registry,
 //     its folder kept in the product's assets, and no epic holds a topic
 //     promoted to it (21.7.3, 21.7.5) — its entries product-wide, which the
@@ -50,9 +54,10 @@
 // the cut reads them (`unitSourcesOf`), from which the engine lays its cut
 // out, phase by phase, for the agents and the join (cut-merges.cjs) — the
 // joined spec's areas, each old plan's files, tracker root and phases, each
-// phase's name as its plan heads it, its parent and its tasks in the plan's
-// own order with the manifest's credit of each, the dependencies between
-// the old plans, the folder kept as legacy and the unit's staging. And the
+// phase's name as its plan heads it and its goal as its plan gives it, its
+// parent and its tasks in the plan's own order with the manifest's credit
+// of each, the dependencies between the old plans, the folder kept as
+// legacy and the unit's staging. And the
 // section of the directive its agents' briefs draw, `briefed`: a phase's
 // piece, never the session's work.
 // It reads and changes nothing, and calls no model.
@@ -68,6 +73,9 @@ const path = require('path');
 const { OLD_STATE, mainCheckout, projectInMain } = require('./reshape/shared.cjs');
 
 const OLD_PLAN = ['specification', 'planning', 'implementation'];
+// The task drivers' folders, each named for the format an old plan kept in
+// its tracker took.
+const TASK_DRIVERS = path.join(__dirname, '../../../ledger-engine/scripts/drivers/task');
 const STAGING = '.cache/migrate/cut-and-merges';
 const CUT_MARKS = '.cache/migrate/cut';
 const CLOSED_MARKS = '.cache/migrate/closed';
@@ -91,10 +99,11 @@ const SESSION_FILE = /^session-([0-9]{3,})\.md$/;
 // a level down reading the same way.
 const RESEARCH_HEADING = /^## Research: (.+)$/;
 const RESEARCH_FILE = /^(.+)\.md$/;
-// An old plan's file, and its heading for one of its phases: `Phase {N}`,
-// then the phase's name.
+// An old plan's file, its heading for one of its phases — `Phase {N}`, then
+// the phase's name — and the line beneath it giving the phase's goal.
 const OLD_PLAN_FILE = 'planning.md';
 const PHASE_HEADING = /^#{1,6} Phase ([0-9]+)(?![0-9])[ \t]*[:.—–-]?[ \t]*(.*?)[ \t#]*$/;
+const GOAL_LINE = /^\*\*Goal\*\*:[ \t]*(.*?)[ \t]*$/;
 
 /** @param {unknown} v @returns {v is Record<string, any>} */
 const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
@@ -258,7 +267,8 @@ const listed = (names) => names.join(', ');
  */
 function buildingProblems(project, unit, now, before) {
   if (joinedOf(now).length === 0) return ['holds the old plan\'s items, and the move joined none of its specs into its spec.md — the cut takes only a unit whose specs it joined'];
-  const filed = Object.entries(phaseItems(before, 'planning')).filter(([, item]) => isObject(item) && typeof item.external_id !== 'string').map(([topic]) => topic);
+  const trackers = foldersIn(TASK_DRIVERS);
+  const filed = Object.entries(phaseItems(before, 'planning')).filter(([, item]) => isObject(item) && typeof item.external_id !== 'string' && !trackers.includes(item.format)).map(([topic]) => topic);
   if (filed.length > 0) return [`its plans ${listed(filed)} are kept in plain files, with no tracker root, and the cut adopts a plan from the tracker alone (21.8.13) — it needs a migration of its own`];
   const { leaving } = leavingTopics(now, before);
   const answered = isObject(stagedPlan(project, unit)?.answers?.leaving);
@@ -446,26 +456,38 @@ function piecesOfUnit(project, unit) {
 }
 
 /**
- * The name the plan in `folder` gives each of its phases, by its number:
- * its heading's words after `Phase {N}`, the first heading of the phase
- * naming it; none where its plan file is not there.
- * @param {string} folder @returns {Map<number, string>}
+ * What the plan in `folder` says of each of its phases, by its number: its
+ * name, its heading's words after `Phase {N}`, the first heading of the
+ * phase naming it; and its goal, the first `**Goal**:` line under a heading
+ * of the phase before another phase's; none where its plan file is not
+ * there.
+ * @param {string} folder @returns {Map<number, {title: string|null, goal: string|null}>}
  */
-function phaseTitles(folder) {
-  /** @type {Map<number, string>} */
-  const titles = new Map();
+function phaseHeads(folder) {
+  /** @type {Map<number, {title: string|null, goal: string|null}>} */
+  const heads = new Map();
+  /** @type {{title: string|null, goal: string|null}|null} */
+  let under = null;
   for (const line of (readText(path.join(folder, OLD_PLAN_FILE)) ?? '').split('\n')) {
     const [, number, title = ''] = PHASE_HEADING.exec(line) ?? [];
-    if (number !== undefined && title !== '' && !titles.has(Number(number))) titles.set(Number(number), title);
+    if (number !== undefined) {
+      if (!heads.has(Number(number))) heads.set(Number(number), { title: null, goal: null });
+      under = /** @type {{title: string|null, goal: string|null}} */ (heads.get(Number(number)));
+      under.title ??= title || null;
+      continue;
+    }
+    const goal = GOAL_LINE.exec(line)?.[1];
+    if (under !== null && goal) under.goal ??= goal;
   }
-  return titles;
+  return heads;
 }
 
 /**
  * Each old plan of a building unit as the cut reads it: its topic, its
  * files kept in the unit's assets, its tracker root, its phases — each its
- * number, the name its plan heads it with, null where it heads it with
- * none, its parent in the tracker and its tasks in the plan's own order,
+ * number, the name its plan heads it with and the goal it gives it, each
+ * null where it gives none, its parent in the tracker and its tasks in the
+ * plan's own order,
  * by the plan's id and the tracker's, and whether the manifest credits the
  * phase built and each task done — and the dependencies it named on
  * another spec.
@@ -475,15 +497,16 @@ function plansOf(project, unit, before) {
   const implementation = phaseItems(before, 'implementation');
   return Object.entries(phaseItems(before, 'planning')).filter(([, item]) => isObject(item)).map(([topic, item]) => {
     const folder = path.join(project.stateDir, unit, 'assets', 'plans', topic);
-    const titles = phaseTitles(folder);
+    const heads = phaseHeads(folder);
     const map = itemsOf(item.task_map);
     const credited = new Set(Array.isArray(implementation[topic]?.completed_tasks) ? implementation[topic].completed_tasks.map(String) : []);
     const built = new Set(Array.isArray(implementation[topic]?.completed_phases) ? implementation[topic].completed_phases.map(Number) : []);
-    /** @type {Map<number, {number: number, title: string|null, parent: string|null, tasks: {id: string, tracker: string, credited: boolean}[]}>} */
+    /** @typedef {{number: number, title: string|null, goal: string|null, parent: string|null, tasks: {id: string, tracker: string, credited: boolean}[]}} PlanPhase */
+    /** @type {Map<number, PlanPhase>} */
     const phases = new Map();
     const phaseOf = (/** @type {number} */ number) => {
-      if (!phases.has(number)) phases.set(number, { number, title: titles.get(number) ?? null, parent: null, tasks: [] });
-      return /** @type {{number: number, title: string|null, parent: string|null, tasks: {id: string, tracker: string, credited: boolean}[]}} */ (phases.get(number));
+      if (!phases.has(number)) phases.set(number, { number, title: null, goal: null, ...heads.get(number), parent: null, tasks: [] });
+      return /** @type {PlanPhase} */ (phases.get(number));
     };
     for (const [id, tracker] of Object.entries(map)) {
       const named = id.startsWith(`${topic}-`) ? /^([0-9]+)(?:-([0-9]+)([a-z]*))?$/.exec(id.slice(topic.length + 1)) : null;

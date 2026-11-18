@@ -548,16 +548,16 @@ function adopt(root, unit, phase, parent, order = []) {
   });
 }
 
-/** @param {string} root @param {string} unit @param {string} parent @param {string} reason @returns {number} */
-function closePlan(root, unit, parent, reason) {
+/** @param {string} root @param {string} unit @param {string} parent @param {string} reason @param {boolean} [keepDone] @returns {number} */
+function closePlan(root, unit, parent, reason, keepDone = false) {
   const ids = idsIn(root);
   if (!ids.held.has(parent)) throw new Error(`the tracker holds no task ${parent} to close as the root of a plan from before Ledger of ${unitName(unit)}`);
   const leaves = descendants(ids, parent).filter(({ id }) => (ids.children.get(id) ?? []).length === 0);
   const done = leaves.filter(({ status }) => status === 'done');
-  if (done.length > 0) {
+  if (done.length > 0 && !keepDone) {
     throw new Error(`the plan from before Ledger under ${parent} holds ${done.map(({ title }) => `"${title}"`).join(', ')} done, so ${unitName(unit)} built some of it — the tracker wins: none of it is closed, and the migration stops there, telling the person so`);
   }
-  const open = leaves.filter(({ status }) => status !== 'cancelled');
+  const open = leaves.filter(({ status }) => status !== 'cancelled' && status !== 'done');
   for (const { id } of open) {
     tick(root, ['note', 'add', id, '--', `${CLOSED}${reason}`]);
     tick(root, ['cancel', id]);

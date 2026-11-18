@@ -211,6 +211,22 @@ function correctionFaults(corrections, phases) {
   });
 }
 
+/**
+ * The tasks the plan's corrections end, as the cut's tracker steps take
+ * them: each by the name its phase's adoption gives it, its title, how it
+ * ends, and what was found, the reason a close keeps.
+ * @param {string} unit @param {Correction[]} corrections @returns {import('./task-verbs.cjs').TrackerCorrection[]}
+ */
+const trackerCorrections = (unit, corrections) => corrections.flatMap(({ task, title, to, found }) => (task === undefined ? [] : [{ ref: parseShownTask(unit, task), title: /** @type {string} */ (title), to: /** @type {'done'|'closed'} */ (to), why: found }]));
+
+/**
+ * The topics joined, area by area, against which a phase built names its
+ * sections: an epic's; null for a single-topic unit, whose plan built the
+ * whole spec (task-verbs.cjs, `areaFaults`).
+ * @param {Record<string, any>} manifest @returns {string[]|null}
+ */
+const cutTopics = (manifest) => (manifest.work_type === 'epic' ? joinedTopics(manifest) : null);
+
 /** An old plan's task id below its phase's: its number, and the letters after it. */
 const OLD_TASK = /^([0-9]+)([a-z]*)$/;
 
@@ -439,9 +455,7 @@ function cutMigrating(cwd, unit, file) {
   const faults = [...trackerFaults(plan.phases), ...migratedFaults(plan.phases), ...placedFaults(text, plan.phases), ...againstSpec(cwd, unit, plan.phases.map(placing), specIn(text, true))];
   if (faults.length > 0) refuse(faults);
   const parents = adoptedPhases(manifest, plan.phases);
-  const topics = manifest.work_type === 'epic' ? joinedTopics(manifest) : null;
-  const ends = plan.corrections.flatMap(({ task, title, to, found }) => (task === undefined ? [] : [{ ref: parseShownTask(unit, task), title: /** @type {string} */ (title), to: /** @type {'done'|'closed'} */ (to), why: found }]));
-  const tracker = parents.length === 0 ? { adopted: [], typed: [], ended: [], done: [], open: [] } : cutTracker(cwd, unit, parents, migratedType(manifest.work_type), topics, ends);
+  const tracker = parents.length === 0 ? { adopted: [], typed: [], ended: [], done: [], open: [] } : cutTracker(cwd, unit, parents, migratedType(manifest.work_type), cutTopics(manifest), trackerCorrections(unit, plan.corrections));
   const notes = withWorkUnitLock(cwd, unit, () => {
     writeTextAtomic(specPath(cwd, unit), text);
     const wrote = writeNotes(cwd, unit, plan.notes);
@@ -472,4 +486,4 @@ function cutMigrating(cwd, unit, file) {
   return result;
 }
 
-module.exports = { MIGRATING_USAGE, cutMigrating, unlinkMigrating, markPath, migratedType, oldPlanOrder, noteFaults, correctionFaults };
+module.exports = { MIGRATING_USAGE, cutMigrating, unlinkMigrating, markPath, migratedType, oldPlanOrder, noteFaults, correctionFaults, trackerCorrections, cutTopics };

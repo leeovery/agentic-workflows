@@ -9,7 +9,10 @@
 // pieces over a project moved by the real move: an epic being built, done
 // once its topics in no spec it joined have left it and the cut has marked
 // it, a dead end staying in it, decided; a unit nothing of which was built,
-// done once its old plan is closed in the tracker; a cross-cutting unit,
+// done once its old plan is closed in the tracker, and a cancelled one
+// whose building started so too, its tasks done standing; a plan still
+// being written in the tracker's format an area no plan put there, one in
+// plain files refused; a cross-cutting unit,
 // done once retired; a completed quick-fix, its building's item its own, no
 // piece; research that fed several topics, done once its
 // placement names where each source went and each topic's log holds it
@@ -23,7 +26,8 @@
 // a correction of another shape or naming a task otherwise than the tracker
 // refused, every correction listed in the migration's review; and one of a
 // task no disagreement names, joined and cut all the same. The cut
-// laid out phase by phase, the plans ordered by their dependencies; each
+// laid out phase by phase, the plans ordered by their dependencies, a
+// phase the join writes given its plan's goal; each
 // phase's brief drawn from the directive's check, the tracker's tasks by
 // the cut's names with the text of each still to build, what its plan
 // depends on and where the manifest and the tracker disagree, and of the
@@ -32,7 +36,9 @@
 // in it since the last verifier to write read it; the join of the pieces into the plan the
 // cut takes, a note of several lines taken as the cut takes it, a missing
 // or misshapen piece, a note the cut would refuse and an old dependency
-// left unrelied refused; each record refused for a directive whose check
+// left unrelied refused, and the cut's own refusals of the tracker named
+// at a piece's dry run; the phase verifier's rule of a phase built
+// (21.8.14); each record refused for a directive whose check
 // carries no such piece; and an issued brief dispatched through the brief
 // hook, a hand-written one refused and recorded (13.S15).
 //
@@ -51,7 +57,7 @@ const harness = require('./engine-harness.cjs');
 const { ok, call, output, refuses, statePath, layout, readState, writeState, cleanupFixture } = harness;
 const { templateFolder, copyWorld } = require('./discovery-test-utils.cjs');
 const { SESSION, refusedUntouched } = require('./migration-world.cjs');
-const { DRIVER, cutAndMergesProject } = require('./migrated-world.cjs');
+const { DRIVER, SIDE, cutAndMergesProject } = require('./migrated-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { BRIEF_REFUSALS, briefPath } = require(path.join(SCRIPTS, 'domain/brief-names.cjs'));
@@ -199,6 +205,25 @@ describe('the pieces (21.7, 21.8)', () => {
     oldManifest((before) => { delete before.phases.planning.items.cart.external_id; });
 
     assert.deepStrictEqual(lacks('shop'), ['its plans cart are kept in plain files, with no tracker root, and the cut adopts a plan from the tracker alone (21.8.13) — it needs a migration of its own']);
+  });
+
+  it('a building unit\'s plan still being written in the tracker\'s format, with no root yet, is an area no plan put in the tracker, which the cut lays out as one phase (21.7.1, 21.8.13)', () => {
+    oldManifest((before) => { before.phases.planning.items.cart = { status: 'in-progress', format: DRIVER.name }; });
+
+    assert.deepStrictEqual(lacks('shop'), ['its topics reviews, gifts are in no spec it joined, so they leave it, and the person has not said where — ask once (21.8.10)', 'is not cut yet']);
+    assert.strictEqual(harness.refuses(dir, ['migrate', 'join', 'shop', '--directive', DIRECTIVE, '--phase', '5', '--dry-run'], { env: SESSION }).error, 'migrate join: shop\'s cut has no phase 5 — its phases are numbered 1 to 4');
+  });
+
+  it('a cancelled unit whose building started, its specs joined: its plan in the tracker closed all the same, each task done standing and the rest closed for the cancel (21.8.4, 21.8.11)', () => {
+    const manifest = JSON.parse(readState(dir, layout.manifest('memo')));
+    writeState(dir, layout.manifest('memo'), JSON.stringify({ ...manifest, status: 'cancelled', spec: { joined: ['memo'] } }, null, 2));
+    SIDE.taskByHand(statePath(dir), 'done', 'Write a memo');
+
+    assert.deepStrictEqual(lacks('memo'), [`its plan memo, in the tracker under ${PLANS.memo.root}, is not closed yet`]);
+    assert.strictEqual(run(['task', 'close-plan', 'memo', '--parent', PLANS.memo.root]).closed, 1);
+    assert.deepStrictEqual([lacks('memo'), SIDE.planStanding(statePath(dir), 'memo')], [null, {
+      'Write a memo': ['done', null], 'Pin a memo': ['closed', 'closed by the migration — its unit was cancelled before Ledger, so nothing more of it is built'],
+    }]);
   });
 });
 
@@ -348,6 +373,11 @@ describe('the directive\'s ways on', () => {
         'each acceptance criterion of its tasks still to build is carried by a scenario, or, for an area no plan put in the tracker, each rule of each section of the area, and it relies',
       ].filter((rule) => !template('migration-phase-verifier').includes(rule)),
     ], [[], [], []]);
+  });
+
+  it('the phase verifier counts built a phase whose every task the tracker holds ended, whatever the manifest counted, and a task the tracker holds done that the code lacks a note, never a finding (21.8.14)', () => {
+    const verifier = fs.readFileSync(path.join(__dirname, '../../skills/ledger-engine/content/briefs/migration-phase-verifier.md'), 'utf8');
+    assert.ok(verifier.includes('- a phase found built is one whose every task the tracker holds done or closed once the piece\'s corrections are made, whatever the manifest counted, and each task the piece ends the code holds; a task the tracker holds done that the code lacks stays done, a note saying what is missing, never a finding;'));
   });
 
   it('says only a `## Research:` heading naming a research file opens a source, any other under one part of the source above it, as the check reads them', () => {
@@ -598,7 +628,7 @@ describe('the per-phase agents and the join (21.10.5, E7)', () => {
     ]);
   });
 
-  it('joins the pieces into the plan the cut takes — the phases the join writes, each named as its plan heads it, or as the tracker titles its parent where its plan heads it with none, and naming that parent (21.8.6); each phase\'s scenarios numbered on in its area — the person\'s answers kept, its path from the project\'s folder; the cut applies it', () => {
+  it('joins the pieces into the plan the cut takes — the phases the join writes, each named as its plan heads it, or as the tracker titles its parent where its plan heads it with none, its goal its plan\'s, and naming that parent (21.8.6); each phase\'s scenarios numbered on in its area — the person\'s answers kept, its path from the project\'s folder; the cut applies it', () => {
     stage({ answers: LEFT });
     compose(4, CHARGES);
     compose(5, exported());
@@ -609,7 +639,7 @@ describe('the per-phase agents and the join (21.10.5, E7)', () => {
       phases: [
         { name: 'The cart', goal: 'Phase 1 of the cart plan, built before the migration.', sections: ['1'], built: true, tracker: PLANS.cart.phases[0] },
         { name: 'Saving', goal: 'Phase 2 of the cart plan, built before the migration.', sections: ['1'], built: true, tracker: PLANS.cart.phases[1] },
-        { name: 'Taking cards', goal: 'Phase 1 of the pay plan, built before the migration.', sections: ['2'], built: true, tracker: PLANS.pay.phases[0] },
+        { name: 'Taking cards', goal: 'Cards taken.', sections: ['2'], built: true, tracker: PLANS.pay.phases[0] },
         { name: 'Charges', goal: 'Cards charged and refunded.', sections: ['2'], built: true, tracker: PLANS.pay.phases[1] },
         { name: 'Export', goal: 'Payments exported.', sections: ['2'], scenarios: ['2.S1'], relies_on: [4], tracker: PLANS.pay.phases[2] },
       ],
@@ -682,11 +712,12 @@ describe('the per-phase agents and the join (21.10.5, E7)', () => {
       before.phases.implementation.items.cart.completed_phases = [];
       before.phases.planning.items.pay.external_dependencies.cart.internal_id = 'cart-1-1';
     });
+    for (const title of ['Hold items', 'Save the cart']) SIDE.reopenTask(statePath(dir), title);
     const unrelied = (/** @type {string} */ by, /** @type {number} */ on) => [4, 5].map((phase) => `phase ${phase}, of pay's plan, relies on nothing for ${by}, which phase ${on}, of cart's plan, builds — it relies on phase ${on}`).join('; ');
     const cart = (/** @type {number} */ n) => ({ phase: { name: `Cart ${n}`, goal: 'The cart.', sections: ['1'], relies_on: [] }, scenarios: ['Given an item, when it is held, then the cart shows it.'], notes: [], corrections: [] });
     compose(1, cart(1));
     compose(2, cart(2));
-    compose(4, { ...CHARGES, phase: { name: 'Charges', goal: 'Cards charged.', sections: ['2'], relies_on: [] }, scenarios: ['Given a card, when it is charged, then the charge is kept.'] });
+    compose(4, { ...CHARGES, phase: { name: 'Charges', goal: 'Cards charged.', sections: ['2'], relies_on: [] }, scenarios: ['Given a card, when it is charged, then the charge is kept.'], corrections: [] });
     compose(5, exported({ phase: { name: 'Export', goal: 'Payments exported.', sections: ['2'], relies_on: [4] } }));
 
     assert.strictEqual(joinRefused(), `migrate join: ${unrelied('cart-1-1', 1)}`);
@@ -703,7 +734,7 @@ describe('the per-phase agents and the join (21.10.5, E7)', () => {
       before.phases.planning.items.pay.external_dependencies.cart.internal_id = 'cart-1-1';
     });
     const check = (/** @type {string} */ phase) => run(['migrate', 'join', 'shop', '--directive', DIRECTIVE, '--phase', phase, '--dry-run']).faults;
-    const charges = (/** @type {number[]} */ relies) => ({ ...CHARGES, phase: { name: 'Charges', goal: 'Cards charged.', sections: ['2'], relies_on: relies }, scenarios: ['Given a card, when it is charged, then the charge is kept.'] });
+    const charges = (/** @type {number[]} */ relies) => ({ ...CHARGES, phase: { name: 'Charges', goal: 'Cards charged.', sections: ['2'], relies_on: relies }, scenarios: ['Given a card, when it is charged, then the charge is kept.'], corrections: [] });
     compose(4, charges([]));
 
     const unread = check('4');
@@ -713,6 +744,28 @@ describe('the per-phase agents and the join (21.10.5, E7)', () => {
     compose(4, charges([1]));
 
     assert.deepStrictEqual([unread, built, check('4')], [['phase 4, of pay\'s plan, relies on nothing for cart-1-1, which phase 1, of cart\'s plan, builds — it relies on phase 1'], [], []]);
+  });
+
+  it('the phase dry run names what the cut would refuse of the tracker, as the join does: a phase marked built holding a task neither done nor closed, a correction titling its task otherwise or naming one no adopted phase holds, and a phase built naming a section outside its old plan\'s area (21.10.15)', () => {
+    const faults = (/** @type {Record<string, unknown>} */ piece) => {
+      compose(4, piece, null);
+      return run(['migrate', 'join', 'shop', '--directive', DIRECTIVE, '--phase', '4', '--dry-run']).faults;
+    };
+
+    assert.deepStrictEqual([
+      faults({ ...CHARGES, corrections: [] }),
+      faults({ ...CHARGES, corrections: [{ ...REFUND_CORRECTED, title: 'Refund the card' }, { ...REFUND_CORRECTED, task: '4.9' }] }),
+      faults({ ...CHARGES, phase: { ...CHARGES.phase, sections: ['1'] } }),
+      faults(CHARGES),
+    ], [
+      ['phase 4\'s piece: phase 4 is marked built, and the tracker holds task 4.2 neither done nor closed — the tracker wins: a phase built has every task ended'],
+      [
+        'phase 4\'s piece: a correction names task 4.2 "Refund the card", and the tracker titles it "Refund a charge" — a correction names the task its phase\'s adoption gives that number',
+        'phase 4\'s piece: a correction names task 4.9, which no phase the cut adopts holds',
+      ],
+      ['phase 4\'s piece: phase 4 is marked built with §1, outside §2, the area of its old plan\'s topic, pay — a phase built before the migration names only what its old plan built'],
+      [],
+    ]);
   });
 
   it('draws in a phase\'s brief only its own plan\'s dependencies', () => {
