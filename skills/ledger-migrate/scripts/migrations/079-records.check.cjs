@@ -119,10 +119,12 @@
 // passed and waiting to be carried.
 // And the contradictions a unit's records name between sections of the
 // sources they share — its approved specs, its discovery sessions and the
-// assets its records walk — each by an entry's `at_odds`, two of those
-// sections at least: once every record of the unit has one composed or
-// carried, each other record citing one of those sections names the same
-// contradiction, an entry's `at_odds` holding those sections and no other,
+// assets its records walk — each by an open question's `at_odds`, two of
+// those sections at least, which no decision answers (`oddsProblems`: no
+// decision settles a point at odds while the migration runs): once every
+// record of the unit has one composed or carried, each other record citing
+// one of those sections names the same contradiction, such a question's
+// `at_odds` holding those sections and no other,
 // or the session marks it as carrying no side of the point
 // (`.cache/migrate/records/{unit}.at-odds.json`, `{"{place}": [[{"path",
 // "section"}, …]]}`), else it is named on that record; and the unit's
@@ -165,8 +167,9 @@
 // record marking one of these to raise breaks a rule (`unraised`), so the
 // carry refuses the mark that would never be raised. Each question is
 // listed until it is answered or merged, and beside it each other record's
-// whose `at_odds` holds the same sections, a candidate for the session to
-// judge one point with it or not.
+// marked to raise whose `at_odds` holds the same sections, a candidate for
+// the session to judge one point with it or not by the texts the engine
+// gives it.
 //
 // `.workflows/` is read where the move read it: the working tree of the
 // project's folder in the repository's main checkout, whichever checkout
@@ -894,8 +897,81 @@ function citesProblems(project, unit, topic, record) {
 function ownProblems(project, unit, record) {
   return [
     ...undecidedProblems(record, IN_DISCOVERY), ...citesProblems(project, unit, null, record), ...threadProblems(project, unit, null, record),
-    ...unlinkedImports(project, unit, null, record), ...raiseProblems(project, unit, null, 'discovery', record),
+    ...unlinkedImports(project, unit, null, record), ...raiseProblems(project, unit, null, 'discovery', record), ...oddsProblems(project, unit, null, 'discovery', record),
   ];
+}
+
+/**
+ * The heading a cite names alone (`citedSection`), keyed by its file and
+ * its line, so one heading spelled two ways is one key; null where it
+ * names none.
+ * @param {Project} project @param {Unit} unit @param {Record<string, unknown>} cite @returns {string|null}
+ */
+function headingKey(project, unit, { path: at, section }) {
+  const text = typeof at === 'string' ? readText(path.join(project.stateDir, at)) : null;
+  const heading = text === null ? null : citedSection(outlineOf(text, at === `${unit.name}/${JOINED_SPEC}`), String(section));
+  return heading === null ? null : `${at}\n${heading.line}`;
+}
+
+/**
+ * The question of the record holding `at_odds` that a question is, or is
+ * part of, through its `part_of`; null where none is.
+ * @param {Record<string, any>[]} record @param {unknown} ref @returns {string|null}
+ */
+function oddsOver(record, ref) {
+  const questions = new Map(record.filter(({ event }) => event === 'asked').map((entry) => [entry.ref, entry]));
+  for (let at = questions.get(ref), seen = new Set(); at !== undefined && !seen.has(at); seen.add(at), at = questions.get(at.part_of)) {
+    if (Array.isArray(at.at_odds)) return String(at.ref);
+  }
+  return null;
+}
+
+/**
+ * How a decision settles a point at odds, or null where it settles none:
+ * every way the record's shape lets a decision stand as the answer to a
+ * question holding `at_odds` — holding `at_odds` itself, answering such a
+ * question, or answering a question part of one. A record carries no
+ * replacement and no merge, so these are all.
+ * @param {Record<string, any>[]} record @param {Record<string, any>} decision @returns {string|null}
+ */
+function settlesOdds(record, { at_odds: odds, answers }) {
+  if (Array.isArray(odds)) return 'it holds at_odds';
+  const over = oddsOver(record, answers);
+  if (over === null) return null;
+  return over === answers ? `it answers ${over}, which holds at_odds` : `it answers ${answers}, part of ${over}, which holds at_odds`;
+}
+
+/**
+ * What an open question's `at_odds` breaks of its shape: two headings at
+ * least, each one a cite of it names, read by the one resolver, so one
+ * heading spelled two ways is one side; null where it breaks none.
+ * @param {Project} project @param {Unit} unit @param {Record<string, any>} question @returns {string|null}
+ */
+function oddsShapeProblem(project, unit, { at_odds: odds, ...question }) {
+  const named = Array.isArray(odds) ? odds.map((side) => (isObject(side) ? headingKey(project, unit, side) : null)) : [null];
+  const cited = new Set(citesIn(question).map((cite) => headingKey(project, unit, cite)));
+  if (named.some((key) => key === null || !cited.has(key))) return 'its at_odds names a section none of its cites names';
+  return new Set(named).size > 1 ? null : 'its at_odds names one section';
+}
+
+/**
+ * What a record's points at odds break of the rules: no decision settles
+ * one while the migration runs (`settlesOdds`); only an open question
+ * names one, its `at_odds` shaped (`oddsShapeProblem`) and, where its
+ * topic raises (`unraised`), marked to raise, a point no source settles.
+ * @param {Project} project @param {Unit} unit @param {string|null} topic @param {string} phase @param {Record<string, any>[]} record @returns {string[]}
+ */
+function oddsProblems(project, unit, topic, phase, record) {
+  const raises = unraised(project, unit, topic, phase) === null;
+  return record.flatMap((entry) => {
+    const how = entry.event === 'decided' ? settlesOdds(record, entry) : null;
+    if (how !== null) return [`entry ${entry.ref}: a decision settles no point at odds while the migration runs — ${how}: the question stays open, and the findings carrying each side name each other`];
+    if (entry.at_odds === undefined) return [];
+    if (entry.event !== 'asked') return [`entry ${entry.ref}: at_odds is an open question's — the findings carrying each side of a point at odds name each other in words`];
+    const shape = oddsShapeProblem(project, unit, entry);
+    if (shape !== null) return [`entry ${entry.ref}: ${shape} — the sections at odds, [{path, section}, …], are two at least, each one a cite of it names`];
+    return raises && entry.raise !== true ? [`entry ${entry.ref} names a point at odds, which no source settles, and is not marked to raise: mark it raise true`] : [];
+  });
 }
 
 /**
@@ -919,7 +995,10 @@ function problemsOf(project, unit, topic, phase, record, description) {
   const items = new Set(record.flatMap((entry) => namesOf(entry.map_item)));
   const mapped = mapOf(unit, topic).filter(({ item }) => !items.has(item))
     .map(({ item, status }) => `${item} is on its old map, ${status}, and no entry names it as its map_item`);
-  return [...undescribed, ...empty, ...undecided, ...narrow, ...cites, ...mapped, ...threadProblems(project, unit, topic, record), ...imports, ...raiseProblems(project, unit, topic, phase, record)];
+  return [
+    ...undescribed, ...empty, ...undecided, ...narrow, ...cites, ...mapped, ...threadProblems(project, unit, topic, record), ...imports,
+    ...raiseProblems(project, unit, topic, phase, record), ...oddsProblems(project, unit, topic, phase, record),
+  ];
 }
 
 /** The ids the ledger's lines were given. @param {string} stateDir @returns {Set<string>} */
@@ -1240,7 +1319,8 @@ function unsharedOf(project, unit) {
   const marks = marksIn(project, atOddsMarked(unit.name));
   const read = records.map(({ topic, entries }) => {
     const place = recordPlace(unit, topic);
-    const named = /** @type {Record<string, any>[]} */ (entries).filter(({ at_odds: odds }) => Array.isArray(odds))
+    const answered = new Set(/** @type {Record<string, any>[]} */ (entries).filter(({ event }) => event === 'decided').map(({ answers }) => answers));
+    const named = /** @type {Record<string, any>[]} */ (entries).filter(({ event, ref, at_odds: odds }) => event === 'asked' && Array.isArray(odds) && !answered.has(ref))
       .map(({ at_odds: odds }) => sides(odds.filter(isObject))).filter((each) => each.size > 1);
     const settled = new Set([...named, ...(Array.isArray(marks[place]) ? marks[place] : []).map((/** @type {unknown} */ mark) => sides(Array.isArray(mark) ? mark.filter(isObject) : []))].map(keyOfSides));
     return { topic, place, named, settled, cited: sides(/** @type {Record<string, any>[]} */ (entries).flatMap(citesIn)) };
@@ -1389,7 +1469,7 @@ module.exports = {
    * the sources the unit's records share, with its place, for the session
    * to judge whether they are one point: sections alone never say so.
    * @param {{projectDir: string, stateDir: string}} dirs
-   * @returns {{place: string, answers: string, text: string, candidates?: {place: string, answers: string}[]}[]}
+   * @returns {{place: string, answers: string, text: string, candidates?: {place: string, answers: string, text: string}[]}[]}
    */
   raises({ projectDir, stateDir }) {
     const project = projectOf(projectDir, stateDir);
@@ -1406,7 +1486,7 @@ module.exports = {
         });
       });
       return points.map(({ topic, key, point }) => {
-        const candidates = points.filter((other) => key !== null && other.key === key && other.topic !== topic).map(({ point: { place, answers } }) => ({ place, answers }));
+        const candidates = points.filter((other) => key !== null && other.key === key && other.topic !== topic).map(({ point: { place, answers, text } }) => ({ place, answers, text }));
         return candidates.length === 0 ? point : { ...point, candidates };
       });
     });

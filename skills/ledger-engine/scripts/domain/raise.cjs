@@ -2203,29 +2203,34 @@ function raiseWaits([verb]) {
  * Of the points a migration directive raises at its end, each still to
  * raise: its question in the ledger and open, and no raise of it sealed in
  * the calling conversation — drawn, answered or left open. Each answers
- * with its question's short id, and each of its `candidates`, where it has
- * any, by its own, with the answers it holds already, `answered`, short.
- * @template {{place: string, answers: string, text: string, candidates?: {place: string, answers: string}[]}} P
+ * with its question's short id; and each of its `candidates`, where it has
+ * any, by its own, with its text, `raised` where this conversation drew it,
+ * and the answers it holds already, `answered`, each by its short id and
+ * text.
+ * @template {{place: string, answers: string, text: string, candidates?: {place: string, answers: string, text: string}[]}} P
  * @param {string} cwd @param {P[]} points
  * @returns {P[]}
  */
 function unraised(cwd, points) {
   const root = findStateRoot(cwd);
   if (root === null || points.length === 0) return [];
-  const read = { facts: foldLedger(root, ID_FACTS, []), live: liveness(root) };
-  const session = handedSession();
-  const sealed = new Set(Object.values(session === null ? {} : readSeals(session)).filter(isSeal).map((seal) => seal.answers));
-  const short = (/** @type {string} */ id) => shortId(id, read.facts.keys());
-  return points.filter(({ answers }) => read.facts.has(answers) && questionStands(read, answers) === 'open' && !sealed.has(answers)).map((point) => ({
-    ...point,
-    answers: short(point.answers),
-    ...(point.candidates === undefined ? {} : {
-      candidates: point.candidates.map(({ place, answers }) => {
-        const answered = answersOf(read, answers).map(short);
-        return { place, answers: short(answers), ...(answered.length === 0 ? {} : { answered }) };
+  return readFolded(root, ID_FACTS, [], (facts, entryAt) => {
+    const read = { facts, live: liveness(root) };
+    const session = handedSession();
+    const sealed = new Set(Object.values(session === null ? {} : readSeals(session)).filter(isSeal).map((seal) => seal.answers));
+    const short = (/** @type {string} */ id) => shortId(id, facts.keys());
+    const answer = (/** @type {string} */ id) => ({ id: short(id), text: String(entryAt(factsOf(read, id).place).text ?? '') });
+    return points.filter(({ answers }) => facts.has(answers) && questionStands(read, answers) === 'open' && !sealed.has(answers)).map((point) => ({
+      ...point,
+      answers: short(point.answers),
+      ...(point.candidates === undefined ? {} : {
+        candidates: point.candidates.map(({ place, answers, text }) => {
+          const answered = answersOf(read, answers).map(answer);
+          return { place, answers: short(answers), text, ...(sealed.has(answers) ? { raised: true } : {}), ...(answered.length === 0 ? {} : { answered }) };
+        }),
       }),
-    }),
-  }));
+    }));
+  });
 }
 
 /**

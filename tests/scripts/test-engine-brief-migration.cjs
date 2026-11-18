@@ -496,7 +496,7 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
 
     assert.deepStrictEqual(['dropped', 'scouting'].map(brief).map((said) => [
       said.includes(`${LATER}\n\n- shop/spec.md, its part "1. Weights"\n- shop/spec.md, its part "2. Wishlist"\n`),
-      said.includes('Check each decision, finding and open question — research\'s, and a topic\'s set aside, among them — against its later answers'),
+      said.includes('Research\'s findings and recommendations are held to their later answers as a discussion\'s decisions are, and so is a topic set aside, cancelled or postponed'),
     ]), [[true, true], [true, true]]);
   });
 
@@ -536,20 +536,20 @@ describe('a cite of a heading held more than once', () => {
 });
 
 describe('the walk of a record\'s sources', () => {
-  const LATER_ANSWERS = 'Check each decision, finding and open question — research\'s, and a topic\'s set aside, among them — against its later answers, as the directive names them: the unit\'s approved specs — those it draws on, walked, and those the brief below lists as the later answer, searched for each of its points rather than walked — each to what the log settled before its approval — by the date the brief below gives it against the dates the log\'s headings carry, the log first where none shows otherwise, but for a section appended after the approval, such as a review never folded in — but for what a corrigendum records of a cancelled unit\'s own decisions; and the log\'s own word, a scope note wherever it stands or a later section, that sets it aside, delegates it or puts it out of scope.';
+  const LATER_ANSWERS = 'Check each decision, finding and open question against its later answers, as the directive\'s **Current answers only** below says';
   const CONFINED = 'Its sources are those the brief below lists, and no other: never another topic\'s log, brief or record, nor another unit\'s, nor the project\'s code. The other topics the brief below lists, with what each is about, are for judging whose a point is, never sources.';
   const LISTED = 'its sources section by section, as the brief below lists them: its files, its log, its brief and its experiments among them; each section of the specs it draws on, every section of them the record cites among them; and each point of the discovery sessions, and of the unit\'s assets the brief below lists to walk, bearing on its subject, or for a unit\'s own record on no topic\'s subject.';
 
   it('the composer composing a record from the start walks its sources section by section, each current decision, finding and open question carried or not the record\'s, an amend answering the findings in its place and keeping everything else; the verifier walks every one, its findings every gap the walk turns up, a cited section carried whole; neither reads another topic\'s log, brief or record, nor another unit\'s, nor the project\'s code, which the per-topic agent\'s definition names among no sources, the other topics listed to judge whose a point is by', () => {
     assert.ok(!fs.readFileSync(path.join(AGENTS, 'ledger-migration-topic.md'), 'utf8').includes('the code'), 'the per-topic agent\'s definition names no source of its own');
     assert.deepStrictEqual([
-      unsaid('migration-topic', [CONFINED, 'keep everything no finding or fault asks you to change.', `Where you compose the record from the start, walk ${LISTED} For each section, confirm that each current decision, finding and open question it holds is carried by an entry, or is not this record's, and carry each it misses.`, `${LATER_ANSWERS} Where one decides it otherwise, states it otherwise or answers it, the record carries that answer in its place, as the directive says, and of an entry it replaces in part only what still stands; a point the log settled after a spec\'s approval is the log\'s, its entry naming the spec\'s section it departs from.`, 'Where you amend it, the findings stand in for the walk.']),
+      unsaid('migration-topic', [CONFINED, 'keep everything no finding or fault asks you to change.', `Where you compose the record from the start, walk ${LISTED} For each section, confirm that each current decision, finding and open question it holds is carried by an entry, or is not this record's, and carry each it misses.`, `${LATER_ANSWERS}.`, 'Where you amend it, the findings stand in for the walk.']),
       unsaid('migration-verifier', [
         CONFINED,
         'The record passes when it holds each current decision, finding and open question its sources hold,',
         'Walk the sheet below section by section: it lays the record against its sources, each section of each file with its lines and every entry citing it. Read each section in its source, then check that what each entry listed beneath it takes from the section is what the section says, and that each current decision, finding and open question the section holds is carried, by an entry listed there or elsewhere, or is not this record\'s; of the discovery sessions and the unit\'s assets, each point bearing on its subject, or for a unit\'s own record on no topic\'s subject. That a cited heading exists is no check.',
         '- each section it cites of a spec drawing on it is carried whole: each current decision, finding and open question of it that concerns this record is carried; one it cites of a spec it does not draw on, the later answer, gives that answer alone;',
-        `${LATER_ANSWERS} One they decide otherwise, state otherwise or answer, carried as the earlier word has it, in whole or in part, is a finding; a point the log settled after a spec\'s approval is the log\'s, its entry naming the spec\'s section it departs from.`,
+        `${LATER_ANSWERS}: one carried as the earlier word has it, in whole or in part, is a finding.`,
         '- nothing is carried that you rule is not this record\'s: such an entry is a finding, to remove, with the ruling beside it.',
       ]),
     ], [[], []]);
