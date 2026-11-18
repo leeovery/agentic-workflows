@@ -12,9 +12,11 @@ A question that reading the code, reading the record or running something can an
 
 Where there is more than one way and no obvious choice, find out before you lean. When each way has its pros, cons and risks and evidence can tell them apart, spike it, research it, read or reverse-engineer the source, or look at how open-source products do it, rather than guess or ask. That runs on a disposable machine or this one, without the person; where the phase records findings, what it shows lands through `ledger find` for the call to rely on.
 
-## Decisions Carried Over
+## Decisions From Before Ledger
 
-A decision carried over, given `carried` on its entry, is what the documents from before Ledger decided; the migration never read the code, and the code is the truth of what is built. Where the work finds the code built otherwise than one, record a finding on it, `how` naming the file and what in it shows this, and carry on: `ledger find {place} --relies-on {decision}`, `{"text", "how", "known": "read", "by": "claude", "who_moved_whom": "none"}`. Only where the work in hand turns on which stands, the decision or the code, is it a call: raise the decision's replacement, `raise {place} --replaces {decision} --reason new-fact --cause {finding}`, the person's keep holding the decision.
+A decision whose entry's `session` is `migration` came across from the documents from before Ledger: it says what they decided, and the migration never read the code. The code is the truth of what is built, and the person may have changed it since. Where the work finds the code built otherwise than such a decision, doing something else, record a finding on it, `how` naming the file and what in it shows this: `ledger find {place} --relies-on {decision}`, `{"text", "how", "known": "read", "by": "claude", "who_moved_whom": "none"}`. Code that does not yet do what was decided is not built otherwise: on a unit still mid-build it is work still to do.
+
+The work carries on past the finding unless it turns on which stands, the decision or the code; a build that would undo what the code does always turns on it. Then it is a call, raised before the code is changed: the decision's replacement, `raise {place} --replaces {decision} --reason new-fact --cause {finding}`, the person's keep holding the decision.
 
 ## Every Other Call Goes to `raise`
 

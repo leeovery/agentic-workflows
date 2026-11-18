@@ -191,7 +191,7 @@ An entry whose answer it relies on has been replaced. It is flagged until it is 
 _Avoid_: stale, input moved
 
 **carried over**:
-A decision brought into Ledger from a project's documents from before it, where they do not show who made it. It is drawn apart from the person's decisions and Claude's calls and counts as neither. It says what those documents decided, never what the code does: where the code is built otherwise, the session records a finding on the decision, and asks the person which stands only when the work in hand turns on it.
+A decision brought into Ledger from a project's documents from before it, where they do not show who made it. It is drawn apart from the person's decisions and Claude's calls and counts as neither. Like everything the migration brought across, it says what those documents decided, never what the code does: where the code does something else, the session records a finding on the decision, and asks the person which stands only when the work in hand turns on it, always before a build would undo what the code does. Code that does not yet do what was decided is work still to do.
 
 ## Gates and trust
 

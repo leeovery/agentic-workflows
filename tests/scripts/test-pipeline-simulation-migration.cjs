@@ -12,9 +12,10 @@
 // of the system config folder the migration ran under, which starts empty,
 // learning no call of the decisions the records carried (`given:
 // carried`). Then the build of the migrated feature finds its code built
-// otherwise than two of those decisions (21.6.5): each a finding relying on
-// its decision, saying where the code shows it; the one the work turns on
-// raised as the decision's replacement, the person keeping it.
+// otherwise than two of its decisions, each marked the migration's
+// (21.6.16): each a finding relying on its decision, saying where the code
+// shows it; the one the work turns on raised as the decision's
+// replacement, the person keeping it.
 //
 // Layer: simulation. World: the project migrated whole (migration-sequence-
 // world.cjs), made ready for a sim once per process and copied for each
@@ -69,9 +70,11 @@ describe('pipeline simulation: the whole migration', () => {
     assert.deepStrictEqual(startMenu(sim).map(({ head }) => head).filter((head) => head.startsWith('Continue')), ['Continue feature: Memo', 'Continue epic: Gateway']);
   });
 
-  it('21.6.5: the build finds the code built otherwise than two decisions carried over, recording each as a finding relying on it, citing the code — one the work goes on past, nothing asked; the other the work turns on, raised as its replacement, the person\'s keep leaving it standing', async () => {
+  it('21.6.16: the build finds the code built otherwise than two decisions from before Ledger, each marked the migration\'s, recording each as a finding relying on it, citing the code — one the work goes on past, nothing asked; the other the work turns on, raised as its replacement, the person\'s keep leaving it standing', async () => {
     sim.run(['boot']);
-    const carried = (/** @type {string} */ text) => JSON.parse(sim.read(['ledger', 'record', 'memo', 'memo'])).decisions.find((/** @type {{text: string}} */ d) => d.text === text).id;
+    const fromBefore = (/** @type {string} */ text) => JSON.parse(sim.read(['ledger', 'record', 'memo', 'memo'])).decisions.find((/** @type {{text: string}} */ d) => d.text === text);
+    const carried = (/** @type {string} */ text) => fromBefore(text).id;
+    assert.deepStrictEqual([fromBefore('One line.').session, fromBefore('By link.').session], ['migration', 'migration'], 'the record shows each decision the migration\'s');
     const [oneLine, byLink] = [carried('One line.'), carried('By link.')];
     const found = (/** @type {string} */ decision, /** @type {string} */ text, /** @type {string} */ how) => sim.run(['ledger', 'find', 'memo.implementation', '--relies-on', decision], null,
       JSON.stringify({ text, how, known: 'read', by: 'claude', who_moved_whom: 'none' })).id;
