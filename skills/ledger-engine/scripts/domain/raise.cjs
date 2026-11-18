@@ -2219,15 +2219,28 @@ function unraised(cwd, points) {
 }
 
 /**
- * The raise's screen, the topic of its place by the name it goes by
- * (8.8.17).
+ * The topic a raise's screen is titled with: its place's; at a place of no
+ * topic while the migration runs, the topic of the question it answers — a
+ * point the records directive raises at a building unit's specification is
+ * a topic's (21.6.11).
+ * @param {string|null} root @param {Seal} seal @returns {string|null}
+ */
+function titledTopic(root, seal) {
+  if (seal.place.topic !== null || root === null || seal.answers === null || !migrationRuns(root)) return seal.place.topic;
+  return foldLedger(root, ID_FACTS, []).get(seal.answers)?.topic ?? null;
+}
+
+/**
+ * The raise's screen, titled with its topic (`titledTopic`) by the name it
+ * goes by, but a unit's of one topic, its own (8.8.17).
  * @param {string} cwd @param {Seal} seal @param {{technical?: boolean}} [opts]
  * @returns {string}
  */
 function raiseScreenOf(cwd, seal, { technical = false } = {}) {
   const root = findStateRoot(cwd);
   const manifest = root === null ? null : manifestOf(root, seal.place.unit);
-  return raiseScreen(seal, { technical, topic: seal.place.topic === null ? null : topicTitle(manifest ?? {}, seal.place.topic) });
+  const topic = titledTopic(root, seal);
+  return raiseScreen(seal, { technical, topic: topic === null || topic === seal.place.unit ? null : topicTitle(manifest ?? {}, topic) });
 }
 
 module.exports = { RAISE_USAGE, drawRaise, drawParked, showRaise, answerRaise, raiseWaits, unraised, raiseScreenOf, steppedBackSealed, downChain, sealsAt, sealWaits, investigationPlaces, raisePlaces };

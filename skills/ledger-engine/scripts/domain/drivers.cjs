@@ -180,13 +180,15 @@ const METHODS = Object.freeze({
  * names — so a unit cut first, whose tasks were held after this one's
  * before they had names, is seen at this one's cut.
  * `closePlan` closes a plan the tracker held from before Ledger whose unit
- * built nothing (21.8.4): under the root the migration names, by the
- * tracker's own id, each task holding no task of its own, neither done nor
- * closed, is closed with the reason given, the parents ended by the
- * tracker, the plan given no name of the engine's, so the unit's parent and
- * the phases the build writes are made afresh; it answers how many it
- * closed, a run again closing none; and it refuses, closing nothing, a plan
- * holding a task done — the tracker wins, its unit built some of it.
+ * built nothing, or was cancelled (21.8.4): under the root the migration
+ * names, by the tracker's own id, each task holding no task of its own,
+ * neither done nor closed, is closed with the reason given, the parents
+ * ended by the tracker, the plan given no name of the engine's, so the
+ * unit's parent and the phases the build writes are made afresh; it answers
+ * how many it closed, a run again closing none; and it refuses, closing
+ * nothing, a plan holding a task done — the tracker wins, its unit built
+ * some of it — but where `keepDone`, a cancelled unit's, whose tasks done
+ * stand.
  * `unlink` takes off the link holding a task after another, for the
  * migration's cut, before its adoption (21.8.8): each task named as
  * adopting the unit's `phases` in turn would name it, as `adoption`
@@ -235,7 +237,7 @@ const METHODS = Object.freeze({
  *   adoption: (root: string, unit: string, phases: {phase: number, parent: string, order?: string[]}[]) => {phase: number, plan: string|null, title: string, tasks: TaskDetail[]}[],
  *   waitingOn: (root: string, unit: string, phases: {phase: number, parent: string, order?: string[]}[]) => TaskDetail[],
  *   adopt: (root: string, unit: string, phase: number, parent: string, order?: string[]) => TaskRef[],
- *   closePlan: (root: string, unit: string, parent: string, reason: string) => number,
+ *   closePlan: (root: string, unit: string, parent: string, reason: string, keepDone?: boolean) => number,
  *   add: (root: string, ref: TaskRef, addition: TaskAddition) => void,
  *   setType: (root: string, ref: TaskRef, type: string) => void,
  *   link: (root: string, task: TaskRef, after: TaskRef) => void,

@@ -22,7 +22,8 @@
 // tracker holds ended, where the two agree: the join writes that one
 // itself, named as its plan heads it, or, where its plan heads it with
 // none, as its parent in the tracker is titled, and failing both for its
-// plan's topic and number (21.8.6). A verifier reads each
+// plan's topic and number, its goal its plan's `**Goal**:` line, or, where
+// it gives none, its plan's topic and number (21.8.6). A verifier reads each
 // piece and writes its findings beside it, `phases/{N}.findings.txt`: an
 // empty file is the pass, one holding findings sends the piece back to be
 // amended, and no file means the piece was never verified.
@@ -37,7 +38,13 @@
 // shape — a phase still to build with no `relies_on` or no scenario, a
 // built one with either, a section `spec.md` lacks, a note or a correction
 // the cut would refuse (cut-migrating.cjs, `noteFaults`, `correctionFaults`),
-// each named by its phase; a piece its verifier has not passed, or whose
+// and what the cut's tracker steps would refuse of the phase's piece but a
+// link (task-verbs.cjs, `adoptionFaults`) — a correction naming a task no
+// phase the cut adopts holds, or titling it otherwise; the phase, its tasks
+// read as its corrections end them, marked built holding a task neither
+// done nor closed, or not marked built holding none; and a phase marked
+// built naming a section outside its old plan's area — each named by its
+// phase; a piece its verifier has not passed, or whose
 // findings stand; and a phase still to build of a plan that depends on
 // another plan's phase still to build, relying on nothing that names it —
 // the old dependency named, and both phases. It answers the plan's path
@@ -58,18 +65,20 @@ const { isObject, writeJsonAtomic } = require('../kernel/manifest-io.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { messageOf } = require('../kernel/call.cjs');
-const { ENDED, STATUS_WORDS, adoptionRead } = require('./task-verbs.cjs');
+const { loadWorkUnitManifest } = require('../kernel/manifest.cjs');
+const { ENDED, STATUS_WORDS, adoptionRead, adoptionFaults } = require('./task-verbs.cjs');
 const { loadCheck } = require('./directives.cjs');
-const { noteFaults, correctionFaults } = require('./cut-migrating.cjs');
+const { noteFaults, correctionFaults, trackerCorrections, cutTopics } = require('./cut-migrating.cjs');
 const { SPEC_FILE, readSpec, specSections } = require('./spec-sections.cjs');
 const { DRY_RUN } = require('./ledger-carry.cjs');
 
 /** @typedef {import('./drivers.cjs').TaskDetail} TaskDetail */
+/** @typedef {import('./task-verbs.cjs').AdoptedPhase} AdoptedPhase */
 
 /**
  * An old plan as the cut and the merges' check reads it.
  * @typedef {{topic: string, files: string[], root: string|null, phases: OldPhase[], dependencies: Record<string, any>[]}} MigratedPlan
- * @typedef {{number: number, title: string|null, parent: string|null, built: boolean, tasks: {id: string, tracker: string, credited: boolean}[]}} OldPhase
+ * @typedef {{number: number, title: string|null, goal: string|null, parent: string|null, built: boolean, tasks: {id: string, tracker: string, credited: boolean}[]}} OldPhase
  */
 
 /**
@@ -81,10 +90,18 @@ const { DRY_RUN } = require('./ledger-carry.cjs');
  * A phase of the unit's cut: its number, its topic and area, and where it
  * comes from — an old plan's phase, with its tracker parent, what the
  * manifest says of it, its name as its plan heads it or else as the tracker
- * titles its parent, and its tasks as the cut's adoption names them, or
- * an area no plan put in the tracker — where the manifest and the tracker
- * disagree over it, and whether an agent composes it.
- * @typedef {{number: number, topic: string, area: number|null, plan: MigratedPlan|null, old: OldPhase|null, tasks: TaskDetail[], disagreements: string[], composed: boolean}} CutPhase
+ * titles its parent, its tasks as the cut's adoption names them and the
+ * topic its old plan's root names in the tracker, or an area no plan put
+ * in the tracker — where the manifest and the tracker disagree over it,
+ * and whether an agent composes it.
+ * @typedef {{number: number, topic: string, area: number|null, plan: MigratedPlan|null, old: OldPhase|null, tasks: TaskDetail[], rooted: string|null, disagreements: string[], composed: boolean}} CutPhase
+ */
+
+/**
+ * What a piece is checked against: the unit, the sections its spec numbers,
+ * its cut's phases, and the topics joined, area by area, against which a
+ * phase built names its sections — null for a single-topic unit.
+ * @typedef {{unit: string, sections: Set<string>, phases: CutPhase[], topics: string[]|null}} CutReading
  */
 
 const PIECE_KEYS = Object.freeze(['phase', 'scenarios', 'notes', 'corrections']);
@@ -188,14 +205,14 @@ function unitPhases(cwd, unit, sources) {
     const at = sources.areas.findIndex((area) => area.topic === topic);
     return at === -1 ? null : at + 1;
   };
-  /** @type {Omit<CutPhase, 'tasks'|'disagreements'|'composed'>[]} */
+  /** @type {Omit<CutPhase, 'tasks'|'rooted'|'disagreements'|'composed'>[]} */
   const laid = [];
   for (const { topic, plan } of cutOrder(tracked, sources.areas)) {
     if (plan === null) laid.push({ number: laid.length + 1, topic, area: areaOf(topic), plan: null, old: null });
     else for (const old of plan.phases.filter(({ parent }) => parent !== null)) laid.push({ number: laid.length + 1, topic, area: areaOf(topic), plan, old });
   }
   const adopted = laid.filter(({ old }) => old !== null);
-  /** @type {Map<number, {title: string|null, tasks: TaskDetail[]}>} */
+  /** @type {Map<number, {title: string|null, tasks: TaskDetail[], rooted: string|null}>} */
   const held = new Map();
   let refused = null;
   try {
@@ -203,16 +220,16 @@ function unitPhases(cwd, unit, sources) {
       const phase = /** @type {OldPhase} */ (old);
       return { phase: number, parent: /** @type {string} */ (phase.parent), order: phase.tasks.map(({ tracker }) => tracker) };
     }));
-    read.forEach(({ phase, title, tasks }) => held.set(phase, { title: title.trim() || null, tasks }));
+    read.forEach(({ phase, plan, title, tasks }) => held.set(phase, { title: title.trim() || null, tasks, rooted: plan }));
   } catch (err) {
     refused = messageOf(err);
   }
   const phases = laid.map((phase) => {
-    const { title = null, tasks = [] } = held.get(phase.number) ?? {};
+    const { title = null, tasks = [], rooted = null } = held.get(phase.number) ?? {};
     const old = phase.old === null ? null : { ...phase.old, title: phase.old.title ?? title };
     const disagreements = phase.plan === null || old === null || refused !== null ? [] : disagreementsOf(phase.plan, old, phase.number, tasks);
     const settled = old !== null && old.built && refused === null && disagreements.length === 0;
-    return { ...phase, old, tasks, disagreements, composed: !settled };
+    return { ...phase, old, tasks, rooted, disagreements, composed: !settled };
   });
   return { phases, refused };
 }
@@ -256,18 +273,36 @@ const piecePaths = (sources, number) => ({
 });
 
 /**
- * The faults of a phase's piece, read from its file, against the spec's
- * sections and the cut's phases; each correction's as the cut would find
- * it, named by the phase.
- * @param {CutPhase} phase @param {unknown} piece @param {Set<string>} sections @param {CutPhase[]} phases
+ * What the cut's tracker steps would refuse of a phase's piece but a link
+ * (the header's): none for a phase no old plan put in the tracker. Only its
+ * corrections of the cut's shape are read, and its sections only where each
+ * is a line.
+ * @param {CutPhase} phase @param {Record<string, any>} entry @param {unknown[]} corrections @param {CutReading} reading @param {{tracker?: string}[]} tracked
  * @returns {string[]}
  */
-function pieceFaults(phase, piece, sections, phases) {
+function trackerFaults(phase, entry, corrections, reading, tracked) {
+  if (phase.old === null) return [];
+  const shaped = /** @type {import('./cut-migrating.cjs').Correction[]} */ (corrections.filter((correction) => correctionFaults([correction], tracked).length === 0));
+  /** @type {(each: CutPhase) => AdoptedPhase} */
+  const adopted = (each) => ({ phase: each.number, plan: each.rooted, built: false, sections: [], tasks: each.tasks });
+  const own = { ...adopted(phase), built: entry.built === true, sections: isLines(entry.sections) ? entry.sections : [] };
+  return adoptionFaults(reading.phases.filter(({ old }) => old !== null).map(adopted), trackerCorrections(reading.unit, shaped), reading.topics, [own]);
+}
+
+/**
+ * The faults of a phase's piece, read from its file, against the spec's
+ * sections and the cut's phases; each correction's as the cut would find
+ * it, and the tracker's as its tracker steps would, named by the phase.
+ * @param {CutPhase} phase @param {unknown} piece @param {CutReading} reading
+ * @returns {string[]}
+ */
+function pieceFaults(phase, piece, reading) {
   const which = `phase ${phase.number}'s piece`;
   if (!isObject(piece) || !isObject(piece.phase) || Object.keys(piece).some((key) => !PIECE_KEYS.includes(key)) || Object.keys(piece.phase).some((key) => !ENTRY_KEYS.includes(key))) {
     return [`${which} is not ${PIECE_SHAPE}`];
   }
   const { phase: entry, scenarios = [], notes = [], corrections = [] } = piece;
+  const { sections, phases } = reading;
   const built = entry.built === true;
   const tracked = phases.map(({ old }) => (old?.parent ? { tracker: old.parent } : {}));
   return [
@@ -280,6 +315,7 @@ function pieceFaults(phase, piece, sections, phases) {
     ...(!built && (!isLines(scenarios) || scenarios.length === 0) ? [`${which} gives no scenario of one line — a phase still to build places its scenarios`] : []),
     ...(Array.isArray(notes) ? noteFaults(notes).map((fault) => `${which}: ${fault}`) : [`${which}'s notes are not a list`]),
     ...(Array.isArray(corrections) ? correctionFaults(corrections, tracked).map((fault) => `${which}: ${fault}`) : [`${which}'s corrections are not a list`]),
+    ...trackerFaults(phase, entry, Array.isArray(corrections) ? corrections : [], reading, tracked).map((fault) => `${which}: ${fault}`),
   ];
 }
 
@@ -328,15 +364,16 @@ function unreliedFaults(phases, building, reliesOn, of = null) {
 /**
  * The plan the cut takes, joined from the pieces (the header's), or every
  * fault that refuses the join.
- * @param {string} root the state's folder @param {UnitSources} sources @param {CutPhase[]} phases @param {Set<string>} sections the spec's
+ * @param {string} root the state's folder @param {UnitSources} sources @param {CutReading} reading
  * @returns {{plan: Record<string, any>|null, faults: string[]}}
  */
-function joined(root, sources, phases, sections) {
+function joined(root, sources, reading) {
+  const { phases } = reading;
   const read = phases.map((phase) => {
     if (!phase.composed) return { phase, piece: null, faults: [] };
     const { piece, fault } = pieceIn(root, sources, phase);
     if (fault !== null) return { phase, piece: null, faults: [fault] };
-    return { phase, piece, faults: [...pieceFaults(phase, piece, sections, phases), ...verifiedFaults(root, sources, phase)] };
+    return { phase, piece, faults: [...pieceFaults(phase, piece, reading), ...verifiedFaults(root, sources, phase)] };
   });
   const faults = read.flatMap((each) => each.faults);
   const stillToBuild = new Set(read.filter(({ phase, piece }) => phase.composed && piece?.phase?.built !== true).map(({ phase }) => phase.number));
@@ -347,7 +384,7 @@ function joined(root, sources, phases, sections) {
   const scenarios = {};
   const cut = read.map(({ phase, piece }) => {
     const tracker = phase.old?.parent ?? undefined;
-    if (piece === null) return { name: phase.old?.title ?? `${titled(phase.topic)}, phase ${phase.old?.number}`, goal: `Phase ${phase.old?.number} of the ${phase.topic} plan, built before the migration.`, sections: phase.area === null ? [] : [String(phase.area)], built: true, ...(tracker === undefined ? {} : { tracker }) };
+    if (piece === null) return { name: phase.old?.title ?? `${titled(phase.topic)}, phase ${phase.old?.number}`, goal: phase.old?.goal ?? `Phase ${phase.old?.number} of the ${phase.topic} plan, built before the migration.`, sections: phase.area === null ? [] : [String(phase.area)], built: true, ...(tracker === undefined ? {} : { tracker }) };
     const { built, relies_on: relies, ...entry } = piece.phase;
     if (built === true) return { ...entry, built: true, ...(tracker === undefined ? {} : { tracker }) };
     const area = String(phase.area);
@@ -364,9 +401,10 @@ function joined(root, sources, phases, sections) {
  * written (the header's): its own, and where it relies on nothing for a
  * phase its plan depends on, which counts as still to build unless the join
  * writes it or its piece reads built.
- * @param {string} root @param {string} unit @param {UnitSources} sources @param {CutPhase[]} phases @param {Set<string>} sections @param {string} number
+ * @param {string} root @param {UnitSources} sources @param {CutReading} reading @param {string} number
  */
-function pieceCheck(root, unit, sources, phases, sections, number) {
+function pieceCheck(root, sources, reading, number) {
+  const { unit, phases } = reading;
   const phase = phases.find((each) => String(each.number) === number);
   if (phase === undefined) throw new Error(`migrate join: ${unit}'s cut has no phase ${number} — its phases are numbered 1 to ${phases.length}`);
   if (!phase.composed) throw new Error(`migrate join: phase ${phase.number} of ${unit}'s cut is built, and the manifest and the tracker agree — the join writes it`);
@@ -374,7 +412,7 @@ function pieceCheck(root, unit, sources, phases, sections, number) {
   if (fault !== null) throw new Error(`migrate join: ${fault}`);
   const building = (/** @type {CutPhase} */ other) => (other === phase ? piece?.phase?.built !== true : other.composed && pieceIn(root, sources, other).piece?.phase?.built !== true);
   const reliance = unreliedFaults(phases, building, () => (Array.isArray(piece?.phase?.relies_on) ? piece.phase.relies_on : []), phase);
-  return { unit, phase: phase.number, faults: [...pieceFaults(phase, piece, sections, phases), ...reliance] };
+  return { unit, phase: phase.number, faults: [...pieceFaults(phase, piece, reading), ...reliance] };
 }
 
 /**
@@ -398,8 +436,9 @@ function joinPlan(cwd, argv) {
   } catch (err) {
     throw new Error(`${said}: ${messageOf(err)}`);
   }
-  if (checked !== null) return pieceCheck(root, unit, sources, phases, sections, checked);
-  const { plan, faults } = joined(root, sources, phases, sections);
+  const reading = { unit, sections, phases, topics: cutTopics(loadWorkUnitManifest(cwd, unit)) };
+  if (checked !== null) return pieceCheck(root, sources, reading, checked);
+  const { plan, faults } = joined(root, sources, reading);
   if (plan === null) throw new Error(`${said}: ${faults.join('; ')}`);
   const file = path.join(root, staged(sources, 'plan.json'));
   let held = {};

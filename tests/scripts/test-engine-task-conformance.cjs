@@ -597,6 +597,14 @@ for (const driver of listDrivers('task')) {
           assert.throws(() => driver.closePlan(root, OLD, plan.root, REASON), (err) => err instanceof Error && ['"Hold the basket"', '"Price the basket"', 'the tracker wins'].every((words) => err.message.includes(words)));
           assert.deepStrictEqual(store(), before);
         });
+
+        it('keeping each task done, a cancelled unit\'s, closes the rest of a plan holding a task done, each with the reason', () => {
+          assert.strictEqual(driver.closePlan(root, OLD, plan.root, REASON, true), 3);
+          const closed = ['closed', REASON];
+          assert.deepStrictEqual(side.planStanding(root, OLD), {
+            'Hold the basket': ['done', null], 'Price the basket': ['done', null], 'Empty the basket': ['closed', null], 'Open the till': closed, 'Count the till': closed, 'Close the till': closed,
+          });
+        });
       });
     });
 

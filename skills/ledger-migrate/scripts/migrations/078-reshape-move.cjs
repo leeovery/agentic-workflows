@@ -122,8 +122,10 @@
 //     kept and its headings demoted, in that order (21.5.2, 21.5.3). A
 //     topic is a name the unit's map, discussions or investigations hold,
 //     or, for a feature, bugfix or cross-cutting unit, the unit's own name;
-//     research under any other name fed the topics it was split into or
-//     spawned, and goes to a discovery session of its own, numbered after
+//     research under any other name in a feature or a bugfix fed its one
+//     topic, and joins that topic's log under `Research: {name}`; in any
+//     other unit it fed the topics it was split into or spawned, and goes
+//     to a discovery session of its own, numbered after
 //     the unit's last and headed as the migration's, until the cut and the
 //     merges place it (21.5.4) — but for a legacy split's copy of the
 //     research it superseded, `{source}-superseded-{at}.md`, its research
@@ -175,14 +177,16 @@
 //     correct it — is joined into `spec.md`,
 //     read from the working tree (21.8.5, E5): each
 //     one area, `## N. {title}`, in build order, by the old order and then,
-//     for a spec with none, in the order its manifest lists them; its title
+//     for a spec with none, in the order its manifest lists them, each after
+//     the specs its plan depends on, as the cut orders the plans; its title
 //     its first line's after `Specification:`, or its topic's name where it
 //     opens with no title; its words kept but for each heading outside a
 //     fenced block, as the spec's reader reads one — opened by a line
 //     holding, at any indent, three backticks or tildes at least, and closed
 //     by one holding as many of that mark at least and nothing else
-//     (spec-sections.cjs, `fences`) — demoted below the parts' level, level
-//     4 at least, two deeper where it can go, a fenced block it leaves open
+//     (spec-sections.cjs, `fences`) — demoted below the parts' level, all
+//     by the one step its shallowest needs to reach level 4, so they keep
+//     their nesting, none deeper than 6, a fenced block it leaves open
 //     closed by its own mark, so the next area reads, and its
 //     links to the imports pointed from `spec.md`; the spec titled with the
 //     unit's name, and its manifest naming the topics joined, area by area,
@@ -225,10 +229,11 @@
 // (21.5.8): the research phase goes, a topic whose research joined its log
 // and that has no discussion yet taking a discussion item of the research's
 // standing, and its discussion taking the research's wait on its
-// experiments; scoping goes; and so do the map's routing and brief path (a
-// topic's brief has one place), a discussion's subtopics, staging, the
-// spec's build order (a cancelled spec's stashed one too), its review
-// cycles and baseline and its gate modes, the plan's review tracking and
+// experiments; scoping goes; and so do the map's routing, brief path (a
+// topic's brief has one place) and brief-incorporated mark, a discussion's
+// subtopics, staging, the spec's build order (a cancelled spec's stashed
+// one too), its review cycles and baseline and its gate modes, the plan's
+// review tracking and
 // dependencies, the caches of the discovery gap analysis and the
 // discussion analysis, whose files go with them (21.5.17), and the topic
 // names the discussion's gap analysis left (`gap_topics`, which 038 left
@@ -269,9 +274,10 @@
 // folder kept, and one of no unit's — a folder under `.workflows/` holding
 // no manifest, an entry the move does not read, a roadmap, baseline or inbox
 // file of no place — under `.product/assets/legacy/`, its path from
-// `.workflows/` kept. Each is named at its place in the verification
-// addendum, and a roadmap source naming one follows it; so is each
-// experiment instrument moved under its record's `data/`. The old cache's
+// `.workflows/` kept. The verification addendum names each place holding
+// any, with how many, never each file, and a roadmap source naming one
+// follows it; the addendum names each experiment instrument moved under its
+// record's `data/`, which a roadmap source follows too. The old cache's
 // documents, its agents' reports, which nothing rebuilds, are copied byte
 // for byte into the state's ignored cache, never committed and never
 // legacy: a unit's into `.cache/{unit}/earlier/` at its path below the
@@ -371,6 +377,9 @@ const OPERATION_MARKERS = [
 ];
 
 const SINGLE_TOPIC_TYPES = ['feature', 'bugfix', 'cross-cutting'];
+// The types whose one topic is the unit, so all their research fed it: a
+// cross-cutting unit also holds the topics promoted to it.
+const ONE_TOPIC_TYPES = ['feature', 'bugfix'];
 const LOG_PHASES = ['research', 'discussion', 'investigation'];
 const LOG_HEADINGS = { research: 'Research', discussion: 'Discussion', investigation: 'Investigation' };
 const STAGING = ['staging', 'analysis_staging'];
@@ -383,7 +392,7 @@ const RETIRED_PHASE_FIELDS = {
   specification: ['build_order_stale'],
 };
 const RETIRED_ITEM_FIELDS = {
-  discovery: ['routing', 'brief_path'],
+  discovery: ['routing', 'brief_path', 'brief_incorporated'],
   discussion: ['subtopics'],
   specification: ['order', 'previous_order', 'review_cycle', 'review_baseline_words', 'tracking', 'construction_gate_mode', 'finding_gate_mode'],
   planning: ['review_cycle', 'review_baseline_words', 'approvals', 'tracking', 'external_dependencies'],
@@ -420,6 +429,9 @@ const SPEC_TITLE = /^# (?:Specification: )?(.*\S)\s*$/;
 // at least and nothing else.
 const SPEC_HEADING = /^(#{1,6})(?= |$)/;
 const SPEC_FENCE = /^[ \t]*(`{3,}|~{3,})/;
+// The shallowest heading a joined spec's area holds as its text, below the
+// parts' level (spec-sections.cjs).
+const AREA_TEXT_LEVEL = 4;
 // Where a file the layout has no other place for is kept, byte for byte, its
 // path from its old folder kept: under its unit, or under the product.
 const LEGACY = 'assets/legacy';
@@ -869,6 +881,7 @@ const endLine = (text) => (text.endsWith('\n') ? text : `${text}\n`);
  *   accounted: Set<string>,
  *   relocations: Relocations,
  *   topics: Set<string>,
+ *   oneTopic: string|null,
  *   superseded: Set<string>,
  *   cancelled: Set<string>,
  *   quickFix: boolean,
@@ -937,8 +950,8 @@ function demoted(text) {
   }).join('\n');
 }
 
-/** @param {string} phase @param {string} text */
-const logPart = (phase, text) => `## ${LOG_HEADINGS[phase]}\n\n${endLine(demoted(text))}`;
+/** @param {string} heading @param {string} text */
+const logPart = (heading, text) => `## ${heading}\n\n${endLine(demoted(text))}`;
 
 /**
  * The reviews of a topic's old agent store, its own unit's and the one it
@@ -985,49 +998,50 @@ function spreadNumber(move) {
 /**
  * Where a document a log takes goes, state-relative, under which heading,
  * and by which rule: promoted research to its topic's log in the unit it
- * went to, research no topic holds to the migration's discovery session, any
- * other to its topic's log.
+ * went to; research no topic holds to its unit's one topic's log, under its
+ * own name, or, in a unit of several topics, to the migration's discovery
+ * session; any other to its topic's log.
  * @param {UnitMove} move @param {string} rel
- * @returns {{to: string, heading: string, kind: 'promoted'|'spread'|'topic'}}
+ * @returns {{to: string, heading: string, kind: 'promoted'|'spread'|'topic', topic: string}}
  */
 function logPlace(move, rel) {
   const phase = path.posix.dirname(rel);
-  const topic = path.posix.basename(rel, '.md');
-  const promotedTo = phase === 'research' ? move.outgoing.get(topic) : undefined;
-  if (promotedTo !== undefined) return { to: `${promotedTo}/topics/${topic}/log.md`, heading: LOG_HEADINGS.research, kind: 'promoted' };
-  if (!move.topics.has(topic)) return { to: `${move.unit}/discovery/session-${spreadNumber(move)}.md`, heading: `Research: ${topic}`, kind: 'spread' };
-  return { to: `${move.unit}/topics/${topic}/log.md`, heading: LOG_HEADINGS[phase], kind: 'topic' };
+  const name = path.posix.basename(rel, '.md');
+  const promotedTo = phase === 'research' ? move.outgoing.get(name) : undefined;
+  if (promotedTo !== undefined) return { to: `${promotedTo}/topics/${name}/log.md`, heading: LOG_HEADINGS.research, kind: 'promoted', topic: name };
+  const topic = move.topics.has(name) ? name : move.oneTopic;
+  const heading = topic === name ? LOG_HEADINGS[phase] : `Research: ${name}`;
+  if (topic === null) return { to: `${move.unit}/discovery/session-${spreadNumber(move)}.md`, heading, kind: 'spread', topic: name };
+  return { to: `${move.unit}/topics/${topic}/log.md`, heading, kind: 'topic', topic };
 }
 
 /**
  * Each topic's log, its research, discussion and investigation each under
  * its own heading, a promoted topic's research coming from the unit it was
  * promoted from, then each of its reviews never folded in; and research no
- * topic of its name holds, in a discovery session of the migration's,
- * numbered after the unit's last. A discussion or an investigation no topic
+ * topic of its name holds, in its unit's one topic's log, or, in a unit of
+ * several topics, in a discovery session of the migration's, numbered after
+ * the unit's last. A discussion or an investigation no topic
  * holds is kept as legacy.
  * @param {UnitMove} move
  */
 function moveLogs(move) {
-  /** @type {Map<string, {phase: string, text: string}[]>} */
-  const logs = new Map(move.incoming.map((entry) => [entry.topic, [{ phase: 'research', text: promotedText(path.dirname(move.from), entry, move.places) }]]));
+  /** @type {Map<string, {heading: string, text: string}[]>} */
+  const logs = new Map(move.incoming.map((entry) => [entry.topic, [{ heading: LOG_HEADINGS.research, text: promotedText(path.dirname(move.from), entry, move.places) }]]));
   /** @type {string[]} */
   const spread = [];
   for (const phase of LOG_PHASES) {
     for (const rel of move.files.filter((f) => path.posix.dirname(f) === phase && logDocument(move, f))) {
-      const { to, heading, kind } = logPlace(move, rel);
+      const { to, heading, kind, topic } = logPlace(move, rel);
       relocate(move, rel, to);
       if (kind === 'promoted') take(move, rel);
-      else if (kind === 'spread') spread.push(`## ${heading}\n\n${endLine(demoted(takeDocument(move, rel, to)))}`);
-      else {
-        const topic = path.posix.basename(rel, '.md');
-        logs.set(topic, [...(logs.get(topic) ?? []), { phase, text: takeDocument(move, rel, to) }]);
-      }
+      else if (kind === 'spread') spread.push(logPart(heading, takeDocument(move, rel, to)));
+      else logs.set(topic, [...(logs.get(topic) ?? []), { heading, text: takeDocument(move, rel, to) }]);
     }
   }
   for (const topic of move.topics) {
     const documents = logs.get(topic) ?? [];
-    const parts = documents.map(({ phase, text }) => logPart(phase, text));
+    const parts = documents.map(({ heading, text }) => logPart(heading, text));
     const folded = move.outgoing.has(topic) ? parts : [...parts, ...unfoldedReviews(move, topic, documents.map(({ text }) => text).join('\n'))];
     if (folded.length > 0) put(move, `topics/${topic}/log.md`, folded.join('\n'));
   }
@@ -1143,21 +1157,43 @@ function deliveryPlace(move, top, topic, below) {
 }
 
 /**
+ * Topics in build order: each, taken in `ranked` order, once every topic
+ * its plan depends on among them is placed — a cycle broken at the first
+ * left, as the cut orders its plans (cut-merges.cjs, `cutOrder`).
+ * @param {string[]} ranked @param {Record<string, any>} manifest
+ * @returns {string[]}
+ */
+function buildOrder(ranked, manifest) {
+  const plans = itemsOf(manifest, 'planning');
+  const after = (/** @type {string} */ topic) => Object.keys(isObject(plans[topic]) && isObject(plans[topic].external_dependencies) ? plans[topic].external_dependencies : {})
+    .filter((on) => on !== topic && ranked.includes(on));
+  /** @type {string[]} */
+  const ordered = [];
+  while (ordered.length < ranked.length) {
+    const left = ranked.filter((topic) => !ordered.includes(topic));
+    ordered.push(left.find((topic) => after(topic).every((on) => ordered.includes(on))) ?? left[0]);
+  }
+  return ordered;
+}
+
+/**
  * The topics whose specs a unit whose building started joins, in build
  * order: its spec items past their gate with a spec, by their order, then
- * those with none in the order the manifest lists them; none for any other
- * unit, a quick-fix among them.
+ * those with none in the order the manifest lists them, each after the
+ * specs its plan depends on; none for any other unit, a quick-fix among
+ * them.
  * @param {Record<string, any>} manifest @param {string[]} files unit-relative
  * @returns {string[]}
  */
 function joinedTopics(manifest, files) {
   if (isQuickFix(manifest) || !buildingStarted(manifest)) return [];
   const orderOf = (/** @type {Record<string, any>} */ item) => (Number.isInteger(item.order) ? item.order : Infinity);
-  return Object.entries(itemsOf(manifest, 'specification'))
+  const ranked = Object.entries(itemsOf(manifest, 'specification'))
     .filter(([topic, item]) => pastGate(manifest, topic, item) && files.includes(`specification/${topic}/specification.md`))
     .map(([topic, item], at) => ({ topic, order: orderOf(item), at }))
     .sort((a, b) => a.order - b.order || a.at - b.at)
     .map(({ topic }) => topic);
+  return buildOrder(ranked, manifest);
 }
 
 /**
@@ -1169,16 +1205,17 @@ function joinedTopics(manifest, files) {
 function belowParts(rows) {
   /** @type {string|null} */
   let fence = null;
-  const demotedRows = rows.map((row) => {
+  const read = rows.map((row) => {
     const mark = SPEC_FENCE.exec(row)?.[1];
     if (fence === null && mark !== undefined) fence = mark;
     else if (fence !== null && mark !== undefined && mark[0] === fence[0] && mark.length >= fence.length && row.trim() === mark) {
       fence = null;
-      return row;
+      return { row, level: 0 };
     }
-    const heading = fence === null ? SPEC_HEADING.exec(row) : null;
-    return heading === null ? row : `${'#'.repeat(Math.min(6, Math.max(4, heading[1].length + 2)))}${row.slice(heading[1].length)}`;
+    return { row, level: fence === null ? (SPEC_HEADING.exec(row)?.[1].length ?? 0) : 0 };
   });
+  const step = Math.max(0, AREA_TEXT_LEVEL - Math.min(AREA_TEXT_LEVEL, ...read.map(({ level }) => level).filter((level) => level > 0)));
+  const demotedRows = read.map(({ row, level }) => (level === 0 ? row : `${'#'.repeat(Math.min(6, level + step))}${row.slice(level)}`));
   return fence === null ? demotedRows : [...demotedRows, fence];
 }
 
@@ -1310,6 +1347,7 @@ function unitMove(workflows, state, unit, manifest, promoted, relocations) {
     accounted: new Set(['manifest.json']),
     relocations,
     topics,
+    oneTopic: ONE_TOPIC_TYPES.includes(manifest.work_type) ? unit : null,
     superseded: new Set(Object.entries(itemsOf(manifest, 'research')).filter(([, item]) => isObject(item) && item.status === SUPERSEDED).map(([name]) => name)),
     cancelled: cancelledTopics(reshaped),
     quickFix: isQuickFix(manifest),
@@ -1961,6 +1999,25 @@ function moveUserFolder() {
 }
 
 /**
+ * The addendum's line naming each place the move kept legacy files in, with
+ * how many, never the files: a project can keep thousands, and the folders
+ * hold them for the person to look at. Null where it kept none.
+ * @param {Legacy} legacy @param {(rel: string) => string} placed
+ * @returns {string|null}
+ */
+function legacyNote(legacy, placed) {
+  /** @type {Map<string, number>} */
+  const counts = new Map();
+  for (const to of legacy.values()) {
+    const place = `${STATE_DIR}/${placed(to.slice(0, to.indexOf(`/${LEGACY}/`)))}/${LEGACY}/`;
+    counts.set(place, (counts.get(place) ?? 0) + 1);
+  }
+  if (counts.size === 0) return null;
+  const listed = [...counts].map(([place, n], i) => `${n} ${i === 0 ? `file${n === 1 ? '' : 's'} ` : ''}in ${place}`);
+  return `These had no place of their own in ${STATE_DIR}/, so each is kept, as it was, as legacy, at its path from its old folder: ${listed.join(', ')}.`;
+}
+
+/**
  * The move of the project at `projectDir` — its own folder, nested in its
  * repository or at the top, as the main checkout holds it — into the state
  * worktree at the repository's main checkout.
@@ -2046,7 +2103,7 @@ function move(projectDir, reportUpdate, reportSkip) {
   const notes = [
     renames.size === 0 ? null : `${renames.size === 1 ? 'This unit\'s name' : 'These units\' names'} broke the rule a unit's name keeps — lowercase letters and digits, joined by single hyphens — by case alone, so ${renames.size === 1 ? 'it is' : 'each is'} carried under its lowercase name, its folder, its registry entry and every reference the move wrote to it following, its legacy files' words kept as they were: ${[...renames].map(([from, to]) => `${from} is ${to}`).join(', ')}.`,
     unfoldered.length === 0 ? null : `The registry named ${unfoldered.length === 1 ? 'this unit' : 'these units'}, and ${CODE_TREE_STATE}/ held no folder of ${unfoldered.length === 1 ? 'it' : 'theirs'} with a manifest, so the registry drops ${unfoldered.length === 1 ? 'its entry' : 'their entries'}: ${unfoldered.join(', ')}.`,
-    legacy.size === 0 ? null : `These had no place of their own in ${STATE_DIR}/, so each is kept, as it was, as legacy, under its unit's ${LEGACY}/ or the product's, ${PRODUCT}/${LEGACY}/: ${[...legacy.values()].map((to) => `${STATE_DIR}/${placed(to)}`).join(', ')}. Move any into a better place in its unit's assets/, or the product's, as wanted.`,
+    legacyNote(legacy, placed),
     instruments.length === 0 ? null : `These files of experiment records, neither a record's problem, design or report nor in its data/, were moved under its data/, at their paths from the record's folder: ${instruments.map(placed).join(', ')}. A path a record's text or script spells out is left as written.`,
     settingsNote,
     userNote,
