@@ -769,7 +769,7 @@ The build's tasks. **The tracker's verbs** are the only way Ledger touches a tra
 - **`show`** — the task whole: `{task, id, title, status, type, text, additions, after, reason}`.
 - **`worktree`** — the builder's, run in its isolation worktree: checks out the task's branch, child repositories with it, records the worktree on the position, and runs the setup's worktree steps (`prepared`; they can take minutes — wait for a backgrounded call, never call again meanwhile). Answers `{task, id, branch, worktree, repos, taken_over?, recorded, prepared?}`. Refused outside a task in flight in this conversation, in the project's own checkout, for a task with no type (`task type`), and where the branch is out in another worktree, naming it and the way on.
 - **`stopped`** — the orchestrator's, as a builder stops unable to build past a problem: holds the stop on the position until the next builder or fix brief, or a raise parking it. Writes nothing to the state. Answers `{task, id, stopped}`.
-- **`close-plan`**, **`unlink`** — the migration's alone: `close-plan` closes the plan of a unit that built nothing (`{parent, closed}`); `unlink` takes off a link the migration's cut refuses (`{task, after}`).
+- **`close-plan`**, **`unlink`** — the migration's alone: `close-plan` closes the plan of a unit that built nothing, or of a cancelled one, whose done tasks stand (`{parent, closed}`); `unlink` takes off a link the migration's cut refuses (`{task, after}`).
 
 **The build's records**, each committed with what it took:
 
