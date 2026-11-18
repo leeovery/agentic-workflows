@@ -36,7 +36,7 @@ Background work that arrives while a gate or a raise is on screen awaiting its a
 
 ## Answering a Gate
 
-A gate is answered by its command rows: a pressed row, a typed key or word, or plain words that name one row unambiguously ("yes, go with feature"). The answer goes to `gate`, under the name the MENU's marker declares, the row named by its key or its word, as the person gave it:
+A gate is answered by its command rows: a pressed row, a typed key or word, or plain words that name one row unambiguously ("yes, go with feature"). The answer goes to `gate`, under the name the MENU's marker declares, the row named by its key or its word: the one the person typed, or else the key of the row their answer picks:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs gate "{name}" --pick {row}
@@ -46,7 +46,7 @@ node .claude/skills/ledger-engine/scripts/engine.cjs gate "{name}" --pick {row}
 
 A bare go-ahead given at a gate on screen ("ok, let's move ahead") picks a row only where the gate has one way forward — a yes/no consent, a single continue.
 
-Any other reply — through the prompt row (Comment, Ask), or free text: a question, a thought, a request, a go-ahead that picks no row — still goes to `gate` as typed, under the prompt row's key, such as `comment`, or with no key for free text, the person's words on stdin as they wrote them, the call described as `Record your reply`. The gate is then set aside.
+Any other reply — through the prompt row (Comment, Ask), or free text: a question, a thought, a request, a go-ahead that picks no row — still goes to `gate` as typed, the call described as `Record your reply` either way: under the prompt row's key, such as `comment`, or with no key for free text, the person's words on stdin as they wrote them. The gate is then set aside.
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs gate "{name}" --typed <<'WORDS'

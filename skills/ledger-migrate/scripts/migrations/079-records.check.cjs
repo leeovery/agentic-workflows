@@ -223,7 +223,7 @@ const { spawnSync } = require('child_process');
 const CUT = require('./080-cut-and-merges.check.cjs');
 // The files a record is kept in, and what the carry still refuses a record
 // its verifier passed for, read as the carry reads them.
-const { COMPOSED, RECORD_ENDINGS, carriedPath, composedPath, findingsPath, verifyingPath, handedBack, unsettledRound } = require('../record-files.cjs');
+const { COMPOSED, RECORD_ENDINGS, carriedPath, composedPath, findingsPath, settledPath, verifyingPath, handedBack, unsettledRound } = require('../record-files.cjs');
 // The section a cite names, which every reader of a cite takes.
 const { PATH_JOIN, HEADING, FENCE, outlineOf, citedSection, couldMean, nameOf, citeNameOf, shownPath } = require('../cited-sections.cjs');
 
@@ -1279,8 +1279,16 @@ const keyOfSides = (sides) => [...sides.keys()].sort().join('\n\n');
 /** Names in a sentence: `a and b`, `a, b and c`. @param {string[]} names */
 const inWords = (names) => (names.length < 3 ? names.join(' and ') : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`);
 
-/** Sections as a sentence names them, each with when it was settled where that shows. @param {Side[]} sides @param {(string|null)[]} [dates] */
-const sidesSaid = (sides, dates = []) => inWords(sides.map(({ path: at, section }, index) => `"${section}" in ${at}${dates[index] ? ` (${dates[index]})` : ''}`));
+/** Sections as a sentence names them, each in its file by its whole path, with when it was settled where that shows. @param {Project} project @param {Side[]} sides @param {(string|null)[]} [dates] */
+const sidesSaid = (project, sides, dates = []) => inWords(sides.map(({ path: at, section }, index) => `"${section}" in ${path.join(project.stateDir, at)}${dates[index] ? ` (${dates[index]})` : ''}`));
+
+/**
+ * The files a record the session amends is settled in, by their whole
+ * paths: the settled file a line goes into, and the findings a `Settled:`
+ * finding goes into.
+ * @param {Project} project @param {Unit} unit @param {string|null} topic
+ */
+const settledIn = (project, unit, topic) => ({ settled: path.join(project.stateDir, settledPath(unit.name, topic)), findings: path.join(project.stateDir, findingsPath(unit.name, topic)) });
 
 /**
  * How the sections a contradiction sits in are read, in the sources a
@@ -1394,13 +1402,14 @@ function markedSides(marks, place) {
 }
 
 /** What a contradiction left unshared asks of the record it is named on, in the directive's order. @param {Project} project @param {Unit} unit @param {Unshared} unshared */
-function unsharedProblem(project, unit, { place, sides, dates, cited, by }) {
+function unsharedProblem(project, unit, { topic, place, sides, dates, cited, by }) {
   const marked = path.join(project.stateDir, atOddsMarked(unit.name));
+  const { settled, findings } = settledIn(project, unit, topic);
   return [
-    `${sidesSaid(sides, dates)} are at odds, as ${inWords(by)} ${by.length === 1 ? 'names' : 'name'} them, and this record cites ${sidesSaid(cited)} without naming that contradiction — judge first whether it stands.`,
-    'Where a later answer settles it — an approved spec, or a part of one, approved after the other side was written — it is settled on each record naming it, and on this one where it carries the side the later answer replaced, this record keeping its answer only where it is the later one.',
+    `${sidesSaid(project, sides, dates)} are at odds, as ${inWords(by)} ${by.length === 1 ? 'names' : 'name'} them, and this record cites ${sidesSaid(project, cited)} without naming that contradiction — judge first whether it stands.`,
+    `Where a later answer settles it — an approved spec, or a part of one, approved after the other side was written — it is settled on each record naming it, and on this one where it carries the side the later answer replaced, this record keeping its answer only where it is the later one: a line in ${settled} naming the section that settles it, and into ${findings} \`Settled: {sections} settled by {section}, amend to agree\`.`,
     `Where this record's own log settled the point after the approval, its answer is its log's: it is marked in ${marked} as ${JSON.stringify({ [place]: [{ log: sides }] })}, and each record naming the contradiction keeps naming what its own sources hold.`,
-    'Where it stands and this record carries a side of the point at odds, it names the contradiction, an open question holding those sections as its at_odds, and carries neither side as settled.',
+    `Where it stands and this record carries a side of the point at odds, it names the contradiction, an open question holding those sections as its at_odds, and carries neither side as settled: a line in ${settled} naming the sections at odds and the point, and into ${findings} \`Settled: {sections} at odds, amend to agree\`.`,
     `Where what it cites of them is not that point, it is marked in ${marked} as ${JSON.stringify({ [place]: [sides] })}`,
   ].join(' ');
 }
@@ -1453,10 +1462,11 @@ const UNCITED_SAYS = new Map([
   ['asset', { what: 'an asset', carried: 'a current point it makes, which no topic\'s own files hold word for word, is carried by the record its subject belongs to' }],
 ]);
 
-/** What a section no record cites lacks, as the records it is named on are told it. @param {Project} project @param {Unit} unit @param {Uncited} uncited */
-function uncitedProblem(project, unit, { path: at, part, section, mark, kind }) {
+/** What a section no record cites lacks, as the record it is named on, `topic`'s, is told it. @param {Project} project @param {Unit} unit @param {string|null} topic @param {Uncited} uncited */
+function uncitedProblem(project, unit, topic, { path: at, part, section, mark, kind }) {
   const { what, carried } = /** @type {{what: string, carried: string}} */ (UNCITED_SAYS.get(kind));
-  return `"${section}" in ${at}, ${what}, holds text no record of ${unit.name} cites — ${carried}; a section holding none, or only what a later answer replaced or a cancelled unit alone decided, is marked, once read, in ${path.join(project.stateDir, sectionsMarked(unit.name))} as ${markOf(at, part, mark)}`;
+  const { settled, findings } = settledIn(project, unit, topic);
+  return `"${section}" in ${path.join(project.stateDir, at)}, ${what}, holds text no record of ${unit.name} cites — ${carried}: where it is this record's, a line in ${settled} naming the section and what of it the record misses, and into ${findings} \`Settled: ${section}, amend to agree\`; a section holding none, or only what a later answer replaced or a cancelled unit alone decided, is marked, once read, in ${path.join(project.stateDir, sectionsMarked(unit.name))} as ${markOf(at, part, mark)}`;
 }
 
 /** A record its verifier has passed, waiting for the carry. */
@@ -1499,7 +1509,7 @@ function topicProblems(project, ids, unit, topic) {
 module.exports = {
   does: 'This step writes a record of what each piece of past work decided, and checks each one against its documents.',
   counts: { one: 'record', many: 'records' },
-  done: 'are carried',
+  done: 'carried',
   partWay: 'A record it was in the middle of is amended from where it stood.',
   /** @param {{projectDir: string, stateDir: string}} dirs */
   check({ projectDir, stateDir }) {
@@ -1513,7 +1523,7 @@ module.exports = {
         .map(({ at }) => `${path.join(stateDir, at)} is no file a record is kept in — an agent left it: remove it`);
       const unshared = unsharedOf(project, unit);
       const sentOn = (/** @type {string|null} */ topic) => [
-        ...uncited.filter(({ topics }) => topics.includes(topic)).map((each) => uncitedProblem(project, unit, each)),
+        ...uncited.filter(({ topics }) => topics.includes(topic)).map((each) => uncitedProblem(project, unit, topic, each)),
         ...unshared.filter((each) => each.topic === topic).map((each) => unsharedProblem(project, unit, each)),
       ];
       const own = hasOwn ? [{ name: recordPlace(unit, null), problems: [...topicProblems(project, ids, unit, null), ...sentOn(null), ...strayOn(null)] }] : [];

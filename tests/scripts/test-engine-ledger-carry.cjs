@@ -555,7 +555,7 @@ describe('the refusals, nothing written', () => {
     ]);
   });
 
-  it('an asset of another shape, or one the state holds no file at', () => {
+  it('an asset of another shape, one the state holds no file at, or one named by its whole path, refused naming the path from the state\'s folder it takes', () => {
     const refused = (/** @type {unknown} */ assets) => mend([{ ...QUESTION, assets }]);
     writeState(dir, 'fumi/assets/folder/inside.md', '# Inside\n');
     assert.deepStrictEqual([
@@ -565,6 +565,7 @@ describe('the refusals, nothing written', () => {
       refused([{ path: 'fumi/assets/missing.md', status: 'reference' }]),
       refused([{ path: 'fumi/assets/folder', status: 'reference' }]),
       refused([{ path: '../fumi/assets/pricing.md', status: 'reference' }]),
+      refused([{ path: statePath(dir, 'fumi/assets/pricing.md'), status: 'reference' }]),
     ], [
       broken('entry q1: assets is a list of {path, status}'),
       broken('entry q1: an asset is {path, status}, its status canonical or reference'),
@@ -572,6 +573,7 @@ describe('the refusals, nothing written', () => {
       broken('entry q1: the asset fumi/assets/missing.md is no file the state holds — an asset\'s path is from the state root'),
       broken('entry q1: the asset fumi/assets/folder is no file the state holds — an asset\'s path is from the state root'),
       broken('entry q1: the asset ../fumi/assets/pricing.md is no file the state holds — an asset\'s path is from the state root'),
+      broken(`entry q1: the asset ${statePath(dir, 'fumi/assets/pricing.md')} is a whole path — an asset's path is from the state's folder: fumi/assets/pricing.md`),
     ]);
   });
 });

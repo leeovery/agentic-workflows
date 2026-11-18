@@ -58,8 +58,9 @@
 //     step writes a record of what each piece of past work decided, and
 //     checks each one against its documents.'); `counts` names one piece of
 //     the directive's work and many, `{ one: 'topic', many: 'topics' }`, and
-//     `done` says what a piece done has ('have their records'), as the stop's
-//     screen counts them — "12 of Fumi's 19 topics have their records";
+//     `done` says what a piece done has ('with their records'), as the stop's
+//     screen counts them — "12 of Fumi's 19 topics with their records", no
+//     verb in it, so it reads for one piece as for many;
 //     `partWay` says what becomes of a piece a session left part-way, the
 //     sentence the stop draws ('A record it was in the middle of is amended
 //     from where it stood.');

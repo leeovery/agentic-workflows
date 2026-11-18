@@ -9,7 +9,7 @@ const path = require('path');
 module.exports = {
   does: 'This step gives each topic its log.',
   counts: { one: 'unit', many: 'units' },
-  done: 'have their logs',
+  done: 'with their logs',
   partWay: 'A log it was in the middle of is written again.',
   /** @param {{projectDir: string, stateDir: string}} dirs */
   check({ stateDir }) {

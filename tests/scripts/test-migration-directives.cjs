@@ -412,7 +412,7 @@ describe('the stop\'s screens (21.10.9, 21.10.11)', () => {
       '',
       'Ledger is part-way through bringing this project\'s past work into its new format.',
       '',
-      '> What it finished is kept: 2 of Fumi\'s 3 topics have their records, each checked. A record it was in the middle of is amended from where it stood.',
+      '> What it finished is kept: 2 of Fumi\'s 3 topics with their records, each checked. A record it was in the middle of is amended from where it stood.',
       '>',
       '> This session carries the migration on from its records step; the start menu follows once the migration is done and committed.',
       '',
@@ -441,7 +441,7 @@ describe('the stop\'s screens (21.10.9, 21.10.11)', () => {
     const taken = (/** @type {string} */ at) => engine.output(dir, ['render', 'migration-taken-stop', '--at', at, '--active', '180']).split('\n').filter((line) => line.startsWith('>'));
 
     assert.deepStrictEqual(taken(RECORDS), [
-      '> No session works in this project until the migration is done. What it finished is kept: 2 of Fumi\'s 3 topics have their records, each checked.',
+      '> No session works in this project until the migration is done. What it finished is kept: 2 of Fumi\'s 3 topics with their records, each checked.',
       '>',
       '> Another session is carrying the migration on from its records step, last active 3m ago, so this one stops here.',
       '>',
@@ -477,8 +477,8 @@ describe('the stop\'s screens (21.10.9, 21.10.11)', () => {
     };
 
     assert.deepStrictEqual(['076-legacy-split', '079-records'].map(accountOf), [
-      '> What it finished is kept: 1 of Fumi\'s 2 sources have their plans, each checked. A source it was in the middle of is planned again from the start, its plan cleared first.',
-      '> What it finished is kept: 1 of Fumi\'s 2 records are carried, each checked. A record it was in the middle of is amended from where it stood.',
+      '> What it finished is kept: 1 of Fumi\'s 2 sources with their plans, each checked. A source it was in the middle of is planned again from the start, its plan cleared first.',
+      '> What it finished is kept: 1 of Fumi\'s 2 records carried, each checked. A record it was in the middle of is amended from where it stood.',
     ]);
   });
 
@@ -486,7 +486,7 @@ describe('the stop\'s screens (21.10.9, 21.10.11)', () => {
     for (const topic of /** @type {const} */ (['licensing', 'search', 'onboarding'])) enterTopic(dir, topic);
 
     assert.strictEqual(keptLine(engine.output(dir, ['render', 'directive-carry-on', '--directive', RECORDS])),
-      '> What it finished is kept: 3 of Fumi\'s 3 topics have their records, each checked. The step is ready to close.');
+      '> What it finished is kept: 3 of Fumi\'s 3 topics with their records, each checked. The step is ready to close.');
   });
 });
 
