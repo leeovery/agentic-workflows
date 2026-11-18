@@ -205,14 +205,14 @@ const SEARCH_UNCARRIED = Object.freeze([
  * heading first, and marked under its part by its name there.
  * @param {string} unit @param {string} at @param {string} section @param {string|null} [part]
  */
-const uncited = (unit, at, section, part = null) => `"${part === null ? section : `${part} > ${section}`}" in ${at}, an approved spec, holds text no record of ${unit} cites — what the spec stage decided, found or left open, still current, is carried by the topic it belongs to; a section holding none, or only what a later answer replaced or a cancelled unit alone decided, is marked in ${sectionsMarked(unit)} as ${JSON.stringify({ [at]: part === null ? [section] : { [part]: [section] } })}`;
+const uncited = (unit, at, section, part = null) => `"${part === null ? section : `${part} > ${section}`}" in ${at}, an approved spec, holds text no record of ${unit} cites — what the spec stage decided, found or left open, still current, is carried by the topic it belongs to; a section holding none, or only what a later answer replaced or a cancelled unit alone decided, is marked, once read, in ${statePath(dir, sectionsMarked(unit))} as ${JSON.stringify({ [at]: part === null ? [section] : { [part]: [section] } })}`;
 
 /**
  * What a section no record cites breaks, of a source the unit's records walk
  * in common: a walked asset, or a discovery session.
  * @param {string} unit @param {string} at @param {string} section @param {string} [what]
  */
-const sharedUncited = (unit, at, section, what = 'an asset') => `"${section}" in ${at}, ${what}, holds text no record of ${unit} cites — a current point it makes, which no topic\'s own files hold word for word, is carried by the record its subject belongs to; a section holding none, or only what a later answer replaced or a cancelled unit alone decided, is marked in ${sectionsMarked(unit)} as ${JSON.stringify({ [at]: [section] })}`;
+const sharedUncited = (unit, at, section, what = 'an asset') => `"${section}" in ${at}, ${what}, holds text no record of ${unit} cites — a current point it makes, which no topic\'s own files hold word for word, is carried by the record its subject belongs to; a section holding none, or only what a later answer replaced or a cancelled unit alone decided, is marked, once read, in ${statePath(dir, sectionsMarked(unit))} as ${JSON.stringify({ [at]: [section] })}`;
 
 /**
  * The carry's refusal of a record whose unit's records wait, framed on the
@@ -245,9 +245,9 @@ const ratesAtOdds = (ref, raise = false) => ({ ref, event: 'asked', text: 'Per s
 const unshared = (place, by, cited, sides = SIDES, dated = sides.map(({ path: at, section }) => `"${section}" in ${at}`)) => [
   `${dated.join(' and ')} are at odds, as ${by} names them, and this record cites ${cited.map(({ path: at, section }) => `"${section}" in ${at}`).join(' and ')} without naming that contradiction — judge first whether it stands.`,
   'Where a later answer settles it — an approved spec, or a part of one, approved after the other side was written — it is settled on each record naming it, and on this one where it carries the side the later answer replaced, this record keeping its answer only where it is the later one.',
-  `Where this record's own log settled the point after the approval, its answer is its log's: it is marked in .cache/migrate/records/fumi.at-odds.json as ${JSON.stringify({ [place]: [{ log: sides }] })}, and each record naming the contradiction keeps naming what its own sources hold.`,
+  `Where this record's own log settled the point after the approval, its answer is its log's: it is marked in ${statePath(dir, '.cache/migrate/records/fumi.at-odds.json')} as ${JSON.stringify({ [place]: [{ log: sides }] })}, and each record naming the contradiction keeps naming what its own sources hold.`,
   'Where it stands and this record carries a side of the point at odds, it names the contradiction, an open question holding those sections as its at_odds, and carries neither side as settled.',
-  `Where what it cites of them is not that point, it is marked in .cache/migrate/records/fumi.at-odds.json as ${JSON.stringify({ [place]: [sides] })}`,
+  `Where what it cites of them is not that point, it is marked in ${statePath(dir, '.cache/migrate/records/fumi.at-odds.json')} as ${JSON.stringify({ [place]: [sides] })}`,
 ].join(' ');
 
 /** A decision long enough to be held as a copy, and licensing's log deciding it. */
@@ -350,6 +350,14 @@ describe('a record breaking a rule is refused at the carry, its refusal kept bes
     ]));
     const [q1, ...rest] = GOOD['fumi.discussion.search'];
     carry('fumi.discussion.search', [{ ...q1, cites: [logCite('fumi', 'search', 'Ranking > Context')] }, ...rest]);
+  });
+
+  it('a cite naming its file by its whole path, as a brief lists it, refused naming the path from the state\'s folder a cite takes', () => {
+    const [q1, ...rest] = GOOD['fumi.discussion.search'];
+    const log = layout.topic('fumi', 'search', 'log.md');
+
+    assert.ok(refused('fumi.discussion.search', [{ ...q1, cites: [{ path: statePath(dir, log), section: 'Ranking > Context' }] }, ...rest])
+      .includes(`entry q1 cites ${statePath(dir, log)}, a whole path — a cite names its file by its path from the state's folder: ${log}`));
   });
 
   it('a cite of a file that does not stay with the entry — the cache, another topic\'s log, another unit\'s asset, its own mail — refused; one of the unit\'s beside its topics carried', () => {
@@ -579,7 +587,7 @@ describe('a file an agent left beside the records', () => {
     const at = (/** @type {string} */ rel) => `.cache/migrate/records/${rel}`;
     for (const rel of ['fumi/licensing.json.tmp', 'fumi/notes/pn-refs.txt', 'fumi.brief-record.json', 'shop.aa-amend.py', 'fumi/search.findings.txt', 'fumi/search.rounds.md', 'fumi.sections.json', 'fumi.at-odds.json']) writeState(dir, at(rel), '');
     writeState(dir, layout.unit('shop', 'discovery', 'session-001.md'), '## Discovery Session 001\n\n### Selling\n\nTo the trade.\n');
-    const left = (/** @type {string[]} */ rels) => rels.map((rel) => `${at(rel)} is no file a record is kept in — an agent left it: remove it`);
+    const left = (/** @type {string[]} */ rels) => rels.map((rel) => `${statePath(dir, at(rel))} is no file a record is kept in — an agent left it: remove it`);
     const loose = left(['fumi/notes/pn-refs.txt', 'fumi.brief-record.json']);
 
     assert.deepStrictEqual(Object.fromEntries(Object.entries(unfinished()).map(([name, problems]) => [name, problems.filter((problem) => problem.includes('an agent left it'))])), {
@@ -937,9 +945,9 @@ describe('what the check reads once a record is carried', () => {
     const changed = unfinished()['shop.discussion.weights'][0];
 
     assert.deepStrictEqual([composed, marked, unchecked, passed, changed, ok(dir, ['ledger', 'carry', 'shop.discussion.weights', '--dry-run'], { env: SESSION }).faults], [
-      [`has not passed its verifier — ${findingsPath('shop', 'weights')} is no file`, ...shopUncited('1. Weights', ['Ranking', 'Ranking > Detail']), ...shopUncited('2. Wishlist', ['Saving', 'Ranking'])],
-      [`has not passed its verifier — ${findingsPath('shop', 'weights')} is no file`, ...shopUncited('1. Weights', ['Ranking', 'Ranking > Detail'])],
-      `has no verdict from its last verifier on every entry its brief asked one of — ${checkedPath('shop', 'weights')} is no file; it names no verdict on q1, d1: a verifier writes a line for each entry its walk sheet does not mark passed, \`{ref}: ok\` or \`{ref}: see finding\`, and one that does not has given no verdict — remove ${findingsPath('shop', 'weights')}, ${rulingsPath('shop', 'weights')} and ${checkedPath('shop', 'weights')}, and brief a fresh verifier`,
+      [`has not passed its verifier — ${statePath(dir, findingsPath('shop', 'weights'))} is no file`, ...shopUncited('1. Weights', ['Ranking', 'Ranking > Detail']), ...shopUncited('2. Wishlist', ['Saving', 'Ranking'])],
+      [`has not passed its verifier — ${statePath(dir, findingsPath('shop', 'weights'))} is no file`, ...shopUncited('1. Weights', ['Ranking', 'Ranking > Detail'])],
+      `has no verdict from its last verifier on every entry its brief asked one of — ${statePath(dir, checkedPath('shop', 'weights'))} is no file; it names no verdict on q1, d1: a verifier writes a line for each entry its walk sheet does not mark passed, \`{ref}: ok\` or \`{ref}: see finding\`, and one that does not has given no verdict — remove ${statePath(dir, findingsPath('shop', 'weights'))}, ${statePath(dir, rulingsPath('shop', 'weights'))} and ${statePath(dir, checkedPath('shop', 'weights'))}, and brief a fresh verifier`,
       ['has passed its verifier, and waits to be carried', ...shopUncited('1. Weights', ['Ranking', 'Ranking > Detail'])],
       'has changed since its verifier was briefed on it: a record is carried as its verifier read it — brief a fresh verifier',
       [],
@@ -1327,8 +1335,8 @@ describe('what the check reads once a record is carried', () => {
 
     assert.deepStrictEqual([alone, unverified, standing, uncitedRefunds, fs.existsSync(statePath(dir, refusedPath('fumi', 'licensing')))], [
       waits(others.map((topic) => `fumi's ${topic} has no record composed`)),
-      waits(others.map((topic) => `fumi's ${topic} has not passed its verifier — ${findingsPath('fumi', topic)} is no file`)),
-      waits([`fumi's search has not passed its verifier — its findings stand in ${findingsPath('fumi', 'search')}`]),
+      waits(others.map((topic) => `fumi's ${topic} has not passed its verifier — ${statePath(dir, findingsPath('fumi', topic))} is no file`)),
+      waits([`fumi's search has not passed its verifier — its findings stand in ${statePath(dir, findingsPath('fumi', 'search'))}`]),
       waits([counted('fumi', 1)]),
       false,
     ]);
@@ -1420,6 +1428,15 @@ describe('the directive\'s example record, frozen with 079', () => {
     ].filter((rule) => !text.includes(rule)), []);
   });
 
+  it('every engine call runs from the project\'s folder, each file to read or write named whole by the briefs and the check; each kind a finding is known by said', () => {
+    const text = fs.readFileSync(DIRECTIVE, 'utf8');
+
+    assert.deepStrictEqual([
+      'Run every engine call from the project\'s folder: a brief names each file its agent reads or writes by its whole path, and the check each file it asks the session to write.',
+      'Every other finding says `documented`, where its source has it from documentation; `spike`, from a spike; or `read`, from reading the code or a file.',
+    ].filter((rule) => !text.includes(rule)), []);
+  });
+
   it('a ref is the record\'s alone: no entry\'s words name another by it', () => {
     assert.ok(fs.readFileSync(DIRECTIVE, 'utf8').includes('- **`ref`**: the entry\'s name in the record, given once; every link names an entry by it, and no entry\'s words do: say in words what the other entry holds.'));
   });
@@ -1476,6 +1493,7 @@ describe('the directive\'s example record, frozen with 079', () => {
     assert.deepStrictEqual([
       'Where it holds a current decision, finding or open question, it goes to the record its subject belongs to — of a spec\'s section, one of the topics the check names it on: write into that record\'s settled file a line naming the section as the record\'s and what of it the record misses, and into its findings `Settled: {section}, amend to agree`. That record is amended to carry it, whatever its rulings said of whose the point is, and verified again.',
       'Where it holds none — a section that frames the others, says again what a cited one holds, holds only what a later answer replaced, or is a corrigendum recording only what a cancelled unit decided — mark it',
+      'mark it in `.cache/migrate/records/{unit}.sections.json`, only once you have read it and never by a script over the check\'s list, as the check names the mark:',
       'and of each of its discovery sessions and each asset its records walk, on the topic an asset came in from or a split\'s research bears the name of, else on the unit\'s own record, else on each of its topics — never a section any topic of the unit holds word for word in its own files, of a session a topic the unit promoted too, which that topic\'s verifier walks there with its log\'s later word, but for a section whose text is one line under 40 characters. A cite by any record of the unit settles a section of a session or an asset, whichever records walk it; of a session, a cite by a topic the unit promoted too.',
       'So a unit\'s records are carried in order: compose every record, have each verifier pass it, settle the sections and the contradictions the check names, then carry them. The carry of a record of a unit with an approved spec, or with a discovery session or an asset its records walk holding text, its own among them, waits until each record drawing on them has passed its verifier or the session\'s settlement — of a session, the unit\'s own and a topic it promoted among them — and the check names no such section nor contradiction, naming what it waits on, or how many of them the check names. Every record of a unit a topic was promoted to waits on the unit it came from in the same way.',
     ].filter((rule) => !text.includes(rule)), []);

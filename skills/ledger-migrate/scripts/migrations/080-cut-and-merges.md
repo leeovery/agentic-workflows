@@ -37,7 +37,7 @@ Every unit takes the shape Ledger builds from. A unit whose building started is 
 
 The check names each piece not done and what it lacks: `{unit}` for a unit, `{unit}/research` for an epic's research. Work through them in the check's order: a unit's topics leave it before its research is placed. A piece is done once the check names it no more; a session ending part-way leaves the next to carry on from what the check names, and what the person answered is kept, so nothing is asked twice.
 
-Paths below are from the state's folder, but one under `.workflows/`, which is from the project's folder in the main checkout; each phase's brief names both.
+Paths below are from the state's folder, but one under `.workflows/`, which is from the project's folder in the main checkout. Run every engine call from the project's folder: each phase's brief names each file its agent reads or writes by its whole path.
 
 ## A Unit Nothing of Which Was Built, or Cancelled
 

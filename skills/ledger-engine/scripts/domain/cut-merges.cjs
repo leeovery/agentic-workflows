@@ -326,10 +326,9 @@ function pieceFaults(phase, piece, reading) {
  * @returns {string[]}
  */
 function verifiedFaults(root, sources, phase) {
-  const { findings } = piecePaths(sources, phase.number);
-  const file = path.join(root, findings);
-  if (!fs.existsSync(file)) return [`phase ${phase.number}'s piece is not verified — ${findings} is no file`];
-  return fs.readFileSync(file, 'utf8').trim() === '' ? [] : [`phase ${phase.number}'s piece has its verifier's findings standing — ${findings}`];
+  const file = path.join(root, piecePaths(sources, phase.number).findings);
+  if (!fs.existsSync(file)) return [`phase ${phase.number}'s piece is not verified — ${file} is no file`];
+  return fs.readFileSync(file, 'utf8').trim() === '' ? [] : [`phase ${phase.number}'s piece has its verifier's findings standing — ${file}`];
 }
 
 /** The sections the unit's spec numbers. @param {string} cwd @param {string} unit @returns {Set<string>} */
@@ -341,11 +340,11 @@ const specAddresses = (cwd, unit) => new Set(specSections(readSpec(cwd, unit)).k
  * @returns {{piece: any, fault: string|null}}
  */
 function pieceIn(root, sources, phase) {
-  const rel = piecePaths(sources, phase.number).piece;
+  const file = path.join(root, piecePaths(sources, phase.number).piece);
   try {
-    return { piece: JSON.parse(fs.readFileSync(path.join(root, rel), 'utf8')), fault: null };
+    return { piece: JSON.parse(fs.readFileSync(file, 'utf8')), fault: null };
   } catch (err) {
-    return { piece: null, fault: `phase ${phase.number} has no piece that reads — ${rel}: ${messageOf(err)}` };
+    return { piece: null, fault: `phase ${phase.number} has no piece that reads — ${file}: ${messageOf(err)}` };
   }
 }
 

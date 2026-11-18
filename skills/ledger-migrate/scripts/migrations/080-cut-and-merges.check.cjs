@@ -284,7 +284,7 @@ function buildingProblems(project, unit, now, before) {
 function strayPhaseFiles(project, unit) {
   const phases = `${STAGING}/${unit}/phases`;
   return filesUnder(path.join(project.stateDir, phases)).filter((rel) => !PHASE_FILE.test(rel))
-    .map((rel) => `${phases}/${rel} is none of a phase's files — an agent left it: remove it`);
+    .map((rel) => `${path.join(project.stateDir, phases, rel)} is none of a phase's files — an agent left it: remove it`);
 }
 
 /**

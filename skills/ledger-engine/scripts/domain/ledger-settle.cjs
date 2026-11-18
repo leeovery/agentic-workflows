@@ -102,7 +102,7 @@ function standingRound(place) {
   const findings = path.join(root, findingsPath(unit, topic));
   const text = fs.existsSync(findings) ? fs.readFileSync(findings, 'utf8') : '';
   if (text.trim() === '') {
-    throw new Error(`${SAID}: ${recordName(place)} has no findings standing in ${findingsPath(unit, topic)} — the session settles what a verifier found, and a record with none has passed, or waits on its verifier`);
+    throw new Error(`${SAID}: ${recordName(place)} has no findings standing in ${findings} — the session settles what a verifier found, and a record with none has passed, or waits on its verifier`);
   }
   const round = roundsKept(path.join(root, roundsPath(unit, topic))) + 1;
   if (round < SETTLED_FROM) {

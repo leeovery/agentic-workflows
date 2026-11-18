@@ -486,7 +486,7 @@ describe('the per-phase agents and the join (21.10.5, E7)', () => {
     const brief = composer('4');
 
     for (const part of [
-      '## Its joined spec\n\nshop/spec.md, an area for each spec joined, in build order:\n\n- §1 cart, joined from .workflows/shop/specification/cart/specification.md\n- §2 pay, joined from .workflows/shop/specification/pay/specification.md',
+      `## Its joined spec\n\n${statePath(dir, 'shop/spec.md')}, an area for each spec joined, in build order:\n\n- §1 cart, joined from ${path.join(dir, '.workflows/shop/specification/cart/specification.md')}\n- §2 pay, joined from ${path.join(dir, '.workflows/shop/specification/pay/specification.md')}`,
       [
         '- Phase 1: phase 1 of cart\'s plan, built — the join writes it',
         '- Phase 2: phase 2 of cart\'s plan, built — the join writes it',
@@ -497,21 +497,21 @@ describe('the per-phase agents and the join (21.10.5, E7)', () => {
       '## What its plan depends on\n\n- cart-2-1, which phase 2, phase 2 of cart\'s plan, builds\n\n## Your phase',
       [
         `- Phase 4: phase 2 of pay's plan, its tracker parent ${PLANS.pay.phases[1]}`,
-        '- Its area: §2 pay of shop/spec.md',
-        '- The sections shop/spec.md numbers in its area, the only ones a piece names: 2',
-        '- Its tasks\' file: shop/assets/plans/pay/phase-2-tasks.md',
-        '- Its section of the plan: shop/assets/plans/pay/planning.md, under "### Phase 2: Charges"',
+        `- Its area: §2 pay of ${statePath(dir, 'shop/spec.md')}`,
+        `- The sections ${statePath(dir, 'shop/spec.md')} numbers in its area, the only ones a piece names: 2`,
+        `- Its tasks' file: ${statePath(dir, 'shop/assets/plans/pay/phase-2-tasks.md')}`,
+        `- Its section of the plan: ${statePath(dir, 'shop/assets/plans/pay/planning.md')}, under "### Phase 2: Charges"`,
       ].join('\n'),
       '### Its tasks\n\n- 4.1, pay-2-1 — "Charge the card", done; the manifest credits it done\n\n- 4.2, pay-2-2 — "Refund a charge", in progress; the manifest credits it done\n\n```markdown\n**Problem**: A charge is kept for good.',
       `### Where the manifest and the tracker disagree\n\n- ${REFUND_DISAGREES}`,
-      '## Where your piece goes\n\n- The piece composed: .cache/migrate/cut-and-merges/shop/phases/4.json\n- The verifier\'s findings on it: .cache/migrate/cut-and-merges/shop/phases/4.findings.txt',
+      `## Where your piece goes\n\n- The piece composed: ${statePath(dir, STAGING, 'phases/4.json')}\n- The verifier's findings on it: ${statePath(dir, STAGING, 'phases/4.findings.txt')}`,
     ]) assert.ok(brief.includes(part), `${part}\n\nin\n\n${brief}`);
     const directive = fs.readFileSync(path.join(__dirname, '../../skills/ledger-migrate/scripts/migrations/080-cut-and-merges.md'), 'utf8');
     const piece = directive.slice(directive.indexOf('### A Phase\'s Piece'), directive.indexOf('### Its Cut')).trimEnd().replace(/^#/, '');
     assert.ok(brief.endsWith(`# The directive\n\n${piece}\n`), brief);
     assert.ok(brief.includes(`check again until it names none:\n\n\`${ENGINE_RUN} migrate join shop --directive ${DIRECTIVE} --phase 4 --dry-run\`\n`), brief);
     assert.strictEqual(brief.split('engine.cjs').length - 1, 1, 'the directive drawn without the session\'s engine calls, the piece\'s check the brief\'s one');
-    assert.ok(composer('5').includes('- Its tasks\' file: none kept\n- Its section of the plan: shop/assets/plans/pay/planning.md, under "### Phase 3: Export"'));
+    assert.ok(composer('5').includes(`- Its tasks' file: none kept\n- Its section of the plan: ${statePath(dir, 'shop/assets/plans/pay/planning.md')}, under "### Phase 3: Export"`));
 
     assert.deepStrictEqual(['1', '9'].map((phase) => refusedUntouched(dir, ['brief', 'migration-phase', 'shop', '--directive', DIRECTIVE, '--phase', phase], { env: SESSION }, harness)), [
       'brief: phase 1 of shop\'s cut is built, and the manifest and the tracker agree — the join writes it',
@@ -525,21 +525,21 @@ describe('the per-phase agents and the join (21.10.5, E7)', () => {
   it('a piece\'s findings, written as text where the verifier\'s brief names, reach the next composer\'s brief and stay until the verifier reads the piece again, which keeps them as a round and clears them for its verdict afresh; each verifier reads every round before it, and both agents the points the session settled', () => {
     compose(5, exported(), null);
     const where = /^- The verifier's findings on it: (.+)$/m.exec(verifier('5'))?.[1];
-    assert.strictEqual(where, '.cache/migrate/cut-and-merges/shop/phases/5.findings.txt');
-    writeState(dir, String(where), '- The export names no file format.\n');
+    assert.strictEqual(where, statePath(dir, STAGING, 'phases/5.findings.txt'));
+    fs.writeFileSync(String(where), '- The export names no file format.\n');
 
     assert.ok(composer('5').includes('# The verifier\'s findings\n\n- The export names no file format.\n\n# Points the session settled\n\nNone recorded.\n\n# The directive'));
-    assert.strictEqual(readState(dir, String(where)), '- The export names no file format.\n', 'the findings kept until the composer has returned');
+    assert.strictEqual(fs.readFileSync(String(where), 'utf8'), '- The export names no file format.\n', 'the findings kept until the composer has returned');
     const second = verifier('5');
-    assert.ok(!fs.existsSync(statePath(dir, String(where))), 'cleared once the verifier reads the piece again');
+    assert.ok(!fs.existsSync(String(where)), 'cleared once the verifier reads the piece again');
     assert.ok(second.includes('# The earlier rounds\' findings\n\n## Round 1\n\n- The export names no file format.\n\n# Points the session settled'), second);
 
-    writeState(dir, String(where), '- Reverses round 1: the export\'s format is the till\'s.\n');
+    fs.writeFileSync(String(where), '- Reverses round 1: the export\'s format is the till\'s.\n');
     writeState(dir, staged(5, 'settled.md'), '- The export names CSV as its format: the person said so.\n');
     const third = verifier('5');
     assert.ok(third.includes('# The earlier rounds\' findings\n\n## Round 1\n\n- The export names no file format.\n\n## Round 2\n\n- Reverses round 1: the export\'s format is the till\'s.\n\n# Points the session settled\n\n- The export names CSV as its format: the person said so.\n\n# The directive'), third);
     assert.ok(composer('5').includes('# Points the session settled\n\n- The export names CSV as its format: the person said so.\n\n# The directive'));
-    writeState(dir, String(where), '');
+    fs.writeFileSync(String(where), '');
     assert.ok(verifier('5').includes('## Round 3\n\nNone: the verifier passed it.\n\n# Points the session settled'));
   });
 
@@ -583,8 +583,8 @@ describe('the per-phase agents and the join (21.10.5, E7)', () => {
     const shop = () => run(['migrate', 'check', DIRECTIVE]).unfinished.find((/** @type {{name: string}} */ piece) => piece.name === 'shop').problems.filter((/** @type {string} */ problem) => problem.includes('phases/'));
 
     assert.deepStrictEqual(shop(), [
-      `${STAGING}/phases/5.json.placeholder-never-written is none of a phase's files — an agent left it: remove it`,
-      `${STAGING}/phases/notes/4.txt is none of a phase's files — an agent left it: remove it`,
+      `${statePath(dir, STAGING, 'phases/5.json.placeholder-never-written')} is none of a phase's files — an agent left it: remove it`,
+      `${statePath(dir, STAGING, 'phases/notes/4.txt')} is none of a phase's files — an agent left it: remove it`,
     ]);
     fs.rmSync(statePath(dir, staged(5, 'json.placeholder-never-written')));
     fs.rmSync(statePath(dir, `${STAGING}/phases/notes`), { recursive: true });
@@ -610,7 +610,7 @@ describe('the per-phase agents and the join (21.10.5, E7)', () => {
     assert.deepStrictEqual(['1', '9', '4'].map((phase) => refusedUntouched(dir, check(phase), { env: SESSION }, harness)), [
       'migrate join: phase 1 of shop\'s cut is built, and the manifest and the tracker agree — the join writes it',
       'migrate join: shop\'s cut has no phase 9 — its phases are numbered 1 to 5',
-      `migrate join: phase 4 has no piece that reads — .cache/migrate/cut-and-merges/shop/phases/4.json: ENOENT: no such file or directory, open '${statePath(dir, STAGING, 'phases/4.json')}'`,
+      `migrate join: phase 4 has no piece that reads — ${statePath(dir, STAGING, 'phases/4.json')}: ENOENT: no such file or directory, open '${statePath(dir, STAGING, 'phases/4.json')}'`,
     ]);
     assert.strictEqual(refusedUntouched(dir, ['migrate', 'join', 'shop', '--directive', DIRECTIVE, '--phase', '5'], { env: SESSION }, harness), 'migrate join: migrate join <work-unit> --directive <id> [--phase <N> --dry-run]');
   });
@@ -677,7 +677,7 @@ describe('the per-phase agents and the join (21.10.5, E7)', () => {
     compose(4, { ...CHARGES, scenarios: ['A scenario.'] });
     assert.strictEqual(joinRefused(), [
       'migrate join: phase 4\'s piece marks it built and gives it scenarios — a phase found built places no scenario and relies on nothing',
-      `phase 5 has no piece that reads — .cache/migrate/cut-and-merges/shop/phases/5.json: ENOENT: no such file or directory, open '${statePath(dir, STAGING, 'phases/5.json')}'`,
+      `phase 5 has no piece that reads — ${statePath(dir, STAGING, 'phases/5.json')}: ENOENT: no such file or directory, open '${statePath(dir, STAGING, 'phases/5.json')}'`,
     ].join('; '));
 
     compose(4, { ...CHARGES, phase: { ...CHARGES.phase, built: false }, notes: [' ', 'Refunds wait.\n\n## The till\n\nIt refunds.'], corrections: [{ ...REFUND_CORRECTED, to: 'reopened' }] });
@@ -699,12 +699,12 @@ describe('the per-phase agents and the join (21.10.5, E7)', () => {
     compose(5, exported(), '- The export names no file format.\n');
     assert.strictEqual(joinRefused(), [
       'migrate join: phase 4\'s piece is not {"phase": {"name", "goal", "sections", "relies_on"}, "scenarios": ["<text>", …], "notes": [], "corrections": []}, or for a phase found built {"phase": {"name", "goal", "sections", "built": true}, "scenarios": [], …}',
-      'phase 5\'s piece has its verifier\'s findings standing — .cache/migrate/cut-and-merges/shop/phases/5.findings.txt',
+      `phase 5's piece has its verifier's findings standing — ${statePath(dir, STAGING, 'phases/5.findings.txt')}`,
     ].join('; '));
 
     compose(4, CHARGES, null);
     compose(5, exported());
-    assert.strictEqual(joinRefused(), 'migrate join: phase 4\'s piece is not verified — .cache/migrate/cut-and-merges/shop/phases/4.findings.txt is no file');
+    assert.strictEqual(joinRefused(), `migrate join: phase 4's piece is not verified — ${statePath(dir, STAGING, 'phases/4.findings.txt')} is no file`);
   });
 
   it('refuses a phase relying on nothing for a phase still to build its plan depends on, naming both — the phase of the task the dependency names, or the plan\'s last where it names none; and a tracker the adoption cannot read', () => {

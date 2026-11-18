@@ -189,8 +189,8 @@ describe('a topic\'s record carried (21.6, 21.10.9)', () => {
     const standing = untouched(args);
 
     assert.deepStrictEqual([unverified, standing], [
-      `ledger carry: fumi's licensing has not passed its verifier — ${findings} is no file: ${why}`,
-      `ledger carry: fumi's licensing has not passed its verifier — its findings stand in ${findings}: ${why}`,
+      `ledger carry: fumi's licensing has not passed its verifier — ${statePath(dir, findings)} is no file: ${why}`,
+      `ledger carry: fumi's licensing has not passed its verifier — its findings stand in ${statePath(dir, findings)}: ${why}`,
     ]);
   });
 
@@ -199,7 +199,7 @@ describe('a topic\'s record carried (21.6, 21.10.9)', () => {
     const handback = handbackPath('fumi', 'licensing');
     writeState(dir, handback, '- Carry the CLI framework: round 1 ruled it replaced.\n');
 
-    assert.strictEqual(untouched(args), `ledger carry: fumi's licensing has findings handed back to the session in ${handback}: settle each into .cache/migrate/records/fumi/licensing.settled.md, replace it in ${findingsPath('fumi', 'licensing')} with \`Settled: {point}, amend to agree\` where the record changes, or take it out where it stands, then remove ${handback}`);
+    assert.strictEqual(untouched(args), `ledger carry: fumi's licensing has findings handed back to the session in ${statePath(dir, handback)}: settle each into ${statePath(dir, '.cache/migrate/records/fumi/licensing.settled.md')}, replace it in ${statePath(dir, findingsPath('fumi', 'licensing'))} with \`Settled: {point}, amend to agree\` where the record changes, or take it out where it stands, then remove ${statePath(dir, handback)}`);
   });
 
   it('once carried, the verifier\'s passing round, its rulings and verdicts with it, kept after the rounds before it, and all beside the record cleared', () => {
@@ -236,7 +236,7 @@ describe('a topic\'s record carried (21.6, 21.10.9)', () => {
   it('a record whose verifier gave no verdict on every entry its brief asked one of refused, nothing written: one missing, one it never read, or none at all — asked as its brief recorded them, an entry it read but was not asked of given one or not, else as the record holds them', () => {
     const args = composed(LICENSING, { description: DESCRIBED, entries: [QUESTION, DECISION] });
     const checked = checkedPath('fumi', 'licensing');
-    const way = `: a verifier writes a line for each entry its walk sheet does not mark passed, \`{ref}: ok\` or \`{ref}: see finding\`, and one that does not has given no verdict — remove ${findingsPath('fumi', 'licensing')}, ${rulingsPath('fumi', 'licensing')} and ${checked}, and brief a fresh verifier`;
+    const way = `: a verifier writes a line for each entry its walk sheet does not mark passed, \`{ref}: ok\` or \`{ref}: see finding\`, and one that does not has given no verdict — remove ${statePath(dir, findingsPath('fumi', 'licensing'))}, ${statePath(dir, rulingsPath('fumi', 'licensing'))} and ${statePath(dir, checked)}, and brief a fresh verifier`;
     const told = (said) => `ledger carry: fumi's licensing has no verdict from its last verifier on every entry its brief asked one of — ${said}${way}`;
     writeState(dir, checked, 'q1: ok\n');
     const missing = untouched(args);
@@ -250,7 +250,7 @@ describe('a topic\'s record carried (21.6, 21.10.9)', () => {
 
     assert.deepStrictEqual([missing, unknown, none, briefed], [
       told('it names no verdict on d1'), told('it names f9, which the record it read does not hold'),
-      told(`${checked} is no file; it names no verdict on q1, d1`), told('it names no verdict on d1; it names f9, which the record it read does not hold'),
+      told(`${statePath(dir, checked)} is no file; it names no verdict on q1, d1`), told('it names no verdict on d1; it names f9, which the record it read does not hold'),
     ]);
   });
 
@@ -353,11 +353,11 @@ describe('the session\'s settlement of a late round (21.6.10)', () => {
     const unwritten = refusedUntouched(dir, SETTLE, given({ findings: [FIXED] }), harness);
     lateRound([QUESTION, DECISION]);
     const unamended = refusedUntouched(dir, SETTLE, given({ findings: [RULED_OUT, FIXED] }), harness);
-    const none = `ledger settle: fumi's licensing has no findings standing in ${findingsPath('fumi', 'licensing')} — the session settles what a verifier found, and a record with none has passed, or waits on its verifier`;
+    const none = `ledger settle: fumi's licensing has no findings standing in ${statePath(dir, findingsPath('fumi', 'licensing'))} — the session settles what a verifier found, and a record with none has passed, or waits on its verifier`;
 
     assert.deepStrictEqual([...shapes, handed, unchecked, second, passed, unwritten, unamended], [shape, shape, shape, shape, shape, shape,
-      `ledger settle: fumi's licensing has findings handed back to the session in ${handbackPath('fumi', 'licensing')}: settle each into .cache/migrate/records/fumi/licensing.settled.md, replace it in ${findingsPath('fumi', 'licensing')} with \`Settled: {point}, amend to agree\` where the record changes, or take it out where it stands, then remove ${handbackPath('fumi', 'licensing')}`,
-      `ledger settle: fumi's licensing has no verdict from its last verifier on every entry its brief asked one of — it names no verdict on d1: a verifier writes a line for each entry its walk sheet does not mark passed, \`{ref}: ok\` or \`{ref}: see finding\`, and one that does not has given no verdict — remove ${findingsPath('fumi', 'licensing')}, ${rulingsPath('fumi', 'licensing')} and ${checkedPath('fumi', 'licensing')}, and brief a fresh verifier`,
+      `ledger settle: fumi's licensing has findings handed back to the session in ${statePath(dir, handbackPath('fumi', 'licensing'))}: settle each into ${statePath(dir, '.cache/migrate/records/fumi/licensing.settled.md')}, replace it in ${statePath(dir, findingsPath('fumi', 'licensing'))} with \`Settled: {point}, amend to agree\` where the record changes, or take it out where it stands, then remove ${statePath(dir, handbackPath('fumi', 'licensing'))}`,
+      `ledger settle: fumi's licensing has no verdict from its last verifier on every entry its brief asked one of — it names no verdict on d1: a verifier writes a line for each entry its walk sheet does not mark passed, \`{ref}: ok\` or \`{ref}: see finding\`, and one that does not has given no verdict — remove ${statePath(dir, findingsPath('fumi', 'licensing'))}, ${statePath(dir, rulingsPath('fumi', 'licensing'))} and ${statePath(dir, checkedPath('fumi', 'licensing'))}, and brief a fresh verifier`,
       'ledger settle: fumi\'s licensing\'s findings are round 2\'s, and the session settles a verifier\'s from round 3 on — before it, a fresh per-topic agent amends the record and a fresh verifier reads what changed',
       none, none,
       'ledger settle: fumi\'s licensing is as its verifier read it, so no finding of it is fixed — have the record amended to answer it, or rule it out',
@@ -436,10 +436,8 @@ describe('the refusals, nothing written', () => {
       'ledger carry: there is no work unit "nope"',
       'ledger carry: gone has no topic "gone" in investigation',
       'ledger carry: fumi has no topic "billing" in discussion',
-      'ledger carry: the record could not be read from .cache/migrate/records/fumi/licensing.json',
-      'ledger carry: .cache/migrate/records/fumi/licensing.json holds no record — a record is {"entries": [...]}, each entry an object, and where it says what its topic is about, "description", a line',
-      'ledger carry: .cache/migrate/records/fumi/licensing.json holds no record — a record is {"entries": [...]}, each entry an object, and where it says what its topic is about, "description", a line',
-      'ledger carry: .cache/migrate/records/fumi/licensing.json holds no record — a record is {"entries": [...]}, each entry an object, and where it says what its topic is about, "description", a line',
+      `ledger carry: the record could not be read from ${statePath(dir, '.cache/migrate/records/fumi/licensing.json')}`,
+      ...Array(3).fill(`ledger carry: ${statePath(dir, '.cache/migrate/records/fumi/licensing.json')} holds no record — a record is {"entries": [...]}, each entry an object, and where it says what its topic is about, "description", a line`),
     ]);
   });
 
