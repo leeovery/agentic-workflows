@@ -30,7 +30,7 @@ Paths below are from the state's folder, but one under `.workflows/`, which is f
 ## A Topic's Sources
 
 - Its log, `{unit}/topics/{topic}/log.md`, its brief, `brief.md` beside it, and its experiments' records in `experiments/`.
-- Its specs: each spec that draws on the topic, kept in `{unit}/assets/specs/` while the unit's building has not started, and joined into `{unit}/spec.md` once it has, each spec a part of it under its own numbered heading. Its brief marks each approved or a draft; a spec joined is past its gate, approved, one reopened during the build among them.
+- Its specs: each spec that draws on the topic, kept in `{unit}/assets/specs/` while the unit's building has not started, and joined into `{unit}/spec.md` once it has, each spec a part of it under its own numbered heading. Its brief marks each approved or a draft.
 - Its unit's approved specs it does not draw on, kept or joined the same way: the later answer to each of its points.
 - Its old discussion map and its research's threads, in its unit's manifest under `.workflows/`, as the move read them; a promoted topic's research as the unit it came from holds it.
 - Its reviews never folded in, which the move appended to its log, each under `## Review {id}, never folded in`.

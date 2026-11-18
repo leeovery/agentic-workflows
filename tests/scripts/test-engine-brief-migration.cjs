@@ -103,6 +103,7 @@ const UNIT_ASSETS = Object.freeze({
   'plans/licensing/plan.md': '# Plan\n\nTask one.\n',
   'reviews/licensing/report.md': '# Review\n\nAll good.\n',
   'legacy/implementation/licensing/report.md': '# Analysis\n\nFast enough.\n',
+  'legacy/implementation/licensing/tracking.md': '# Tracking\n\nTask one done.\n',
 });
 
 /** A verifier's verdict on licensing's record: its findings, and its line on each entry. @param {string} findings @param {string} checked */
@@ -251,19 +252,25 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
     assert.ok(brief.includes(`## Its specs\n\n- shop/spec.md, its part "1. Weights", approved on 2026-06-06\n\n${LATER}\n\n- shop/spec.md, its part "2. Wishlist", approved on 2026-07-07\n`), brief);
   });
 
-  it('the topic line says a topic never started — carried in discovery, or its item unstarted where it is carried — and a topic leaving its building unit, which no spec joined into its spec.md draws on', () => {
+  it('the topic line says a topic never started — carried in discovery, or its item unstarted where it is carried — and a topic leaving its building unit as the cut and the merges reads it: a live one no spec joined into its spec.md draws on, never one cancelled, nor any of a completed unit', () => {
     const fumi = JSON.parse(readState(dir, layout.manifest('fumi')));
     fumi.phases.discussion.items.licensing.status = 'unstarted';
     writeState(dir, layout.manifest('fumi'), JSON.stringify(fumi));
     const shop = JSON.parse(readState(dir, layout.manifest('shop')));
-    shop.phases.discussion.items.reviews = { status: 'in-progress' };
+    shop.phases.discussion.items = { ...shop.phases.discussion.items, reviews: { status: 'in-progress' }, dropped: { status: 'cancelled' } };
     writeState(dir, layout.manifest('shop'), JSON.stringify(shop));
     const line = (/** @type {string} */ place) => /^- \*\*Topic:\*\* .*$/m.exec(issued(['migration-topic', '--topic', place, '--directive', '079-records']).brief)?.[0];
 
-    assert.deepStrictEqual(['fumi.discussion.licensing', 'shop.discussion.reviews', 'shop.discussion.weights'].map(line), [
+    const building = ['fumi.discussion.licensing', 'shop.discussion.reviews', 'shop.discussion.dropped', 'shop.discussion.weights'].map(line);
+    const { specification: _, implementation: __, ...history } = shop.phases;
+    writeState(dir, layout.manifest('shop'), JSON.stringify({ ...shop, status: 'completed', phases: history }));
+
+    assert.deepStrictEqual([...building, line('shop.discussion.reviews')], [
       '- **Topic:** licensing, in discussion, unstarted — its record carried in discussion, the topic never started',
       '- **Topic:** reviews, in discussion, in-progress — its record carried in discussion, the topic leaving its building unit, no spec joined into the unit\'s spec.md drawing on it',
+      '- **Topic:** dropped, in discussion, cancelled — its record carried in discussion',
       '- **Topic:** weights, in discussion, completed — its record carried in discussion',
+      '- **Topic:** reviews, in discussion, in-progress — its record carried in discussion',
     ]);
   });
 
@@ -439,7 +446,7 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
     assert.match(brief, /^- \*\*Topic:\*\* support, in discovery, pending — its record carried in discovery, the topic never started$/m);
   });
 
-  it('every file of the unit\'s assets but a dotfile, with where each came from: the markdown ones the topic walks — an import, listed or come in with them, and research a legacy split superseded bearing its name — apart from the rest but its own spec, listed as its spec alone; research bearing no topic\'s name walked by none in a unit with no record of its own', () => {
+  it('every file of the unit\'s assets but a dotfile, with where each came from — its legacy files by their place and how many, never each: the markdown ones the topic walks — an import, listed or come in with them, and research a legacy split superseded bearing its name — apart from the rest but its own spec, listed as its spec alone; research bearing no topic\'s name walked by none in a unit with no record of its own', () => {
     for (const [rel, text] of Object.entries(UNIT_ASSETS)) writeState(dir, layout.assets('fumi', ...rel.split('/')), text);
 
     const { brief } = issued(['migration-topic', ...LICENSING]);
@@ -453,7 +460,7 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
       '- fumi/assets/sso.md, which came in from discussion/auth', '',
       '## The unit\'s other assets, never walked', '',
       '- fumi/assets/flow.png, an import',
-      '- fumi/assets/legacy/implementation/licensing/report.md, kept as legacy, at its path from the unit\'s old folder',
+      '- fumi/assets/legacy/, 2 files kept as legacy, each at its path from the unit\'s old folder',
       '- fumi/assets/plans/licensing/plan.md, a plan',
       '- fumi/assets/research/exploration-superseded-20260101.md, research a legacy split superseded',
       '- fumi/assets/reviews/licensing/report.md, an old review of a build',
@@ -477,7 +484,7 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
       '- fumi/assets/sso.md, which came in from discussion/auth', '',
       '## The unit\'s other assets, never walked', '',
       '- fumi/assets/flow.png, an import',
-      '- fumi/assets/legacy/implementation/licensing/report.md, kept as legacy, at its path from the unit\'s old folder',
+      '- fumi/assets/legacy/, 2 files kept as legacy, each at its path from the unit\'s old folder',
       '- fumi/assets/plans/licensing/plan.md, a plan',
       '- fumi/assets/research/licensing-superseded-20260101.md, research a legacy split superseded',
       '- fumi/assets/reviews/licensing/report.md, an old review of a build',

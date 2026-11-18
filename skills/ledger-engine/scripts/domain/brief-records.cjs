@@ -464,7 +464,8 @@
 //                  unit's own record's those of research under no topic's
 //                  name; every
 //                  file of the unit's assets but a dotfile and its specs,
-//                  with where each came from, those the record walks apart
+//                  with where each came from, but its legacy files, named
+//                  by their place and how many, those the record walks apart
 //                  from the rest, one its own files hold word for word
 //                  among the rest, the import the record owes a link, or an
 //                  import's file gone and linked by none; and where
@@ -1223,7 +1224,6 @@ const ASSET_FROM = new Map([
   ['spec', 'a spec'],
   ['plan', 'a plan'],
   ['review', 'an old review of a build'],
-  ['legacy', 'kept as legacy, at its path from the unit\'s old folder'],
   ['research', 'research a legacy split superseded'],
 ]);
 
@@ -1234,14 +1234,23 @@ function assetLine({ path: at, kind, origin, owner, listed: imported, held }, to
   return `- ${at}, ${from}${owed}`;
 }
 
+// The folder of a unit's assets its legacy files are kept in, each at its
+// path from the unit's old folder (078).
+const LEGACY_PLACE = '/assets/legacy/';
+
 /**
  * The unit's assets as a record's brief lists them: those it walks, then
  * the rest but its specs, listed as its specs — one it would walk that its
- * own files hold word for word among the rest, so said.
+ * own files hold word for word among the rest, so said; its legacy files by
+ * their place and how many, never each, where the first of them stands: a
+ * project may keep thousands, and none is any record's source.
  * @param {MigratedAsset[]} assets @param {string|null} topic @param {string[]} held the paths of those its own files hold @param {string[]} [specs] the paths of the topic's specs
  */
 function assetSections(assets, topic, held, specs = []) {
   const walks = (/** @type {MigratedAsset} */ { path: at, walkers }) => walkers.includes(topic) && !held.includes(at);
+  const others = assets.filter((asset) => !walks(asset) && !specs.includes(asset.path));
+  const legacy = others.filter(({ kind }) => kind === 'legacy');
+  const place = (/** @type {string} */ at) => at.slice(0, at.indexOf(LEGACY_PLACE) + LEGACY_PLACE.length);
   return [
     '## The unit\'s assets it walks',
     '',
@@ -1249,8 +1258,10 @@ function assetSections(assets, topic, held, specs = []) {
     '',
     '## The unit\'s other assets, never walked',
     '',
-    listed(assets.filter((asset) => !walks(asset) && !specs.includes(asset.path))
-      .map((asset) => `${assetLine(asset, topic)}${held.includes(asset.path) ? ' — its own files hold it word for word' : ''}`)),
+    listed(others.flatMap((asset) => {
+      if (asset.kind !== 'legacy') return [`${assetLine(asset, topic)}${held.includes(asset.path) ? ' — its own files hold it word for word' : ''}`];
+      return asset === legacy[0] ? [`- ${place(asset.path)}, ${legacy.length} ${legacy.length === 1 ? 'file' : 'files'} kept as legacy, each at its path from the unit's old folder`] : [];
+    })),
   ];
 }
 

@@ -266,7 +266,6 @@ const RECORDS_MOVED = Object.freeze({
     phases: {
       discovery: { items: { billing: { status: 'pending' }, support: { status: 'pending' } } },
       discussion: { items: { licensing: { status: 'completed' }, search: { status: 'in-progress' }, auth: { status: 'promoted', promoted_to: 'platform' } } },
-      specification: { items: { commerce: { status: 'in-progress', sources: { licensing: { status: 'incorporated' } } } } },
     },
   }),
   [layout.topic('fumi', 'licensing', 'log.md')]: '## Discussion\n\n## Discussion: Licensing\n\n### Trial Length\n\n#### Decision\n\nFourteen days, the person said.\n',

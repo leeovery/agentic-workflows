@@ -141,11 +141,12 @@
 // product's once the cut and the merges retire the unit (21.7.5), which
 // the product's conversation opens on. A completed unit's points are
 // settled by the code it built; a cancelled unit's, and a topic's set
-// aside, wait with it (21.6.11). A topic of a building epic that no spec
-// joined into its spec.md draws on leaves the unit at the cut and the
-// merges, a dead end the old map marked aside (21.8.9, 21.8.15): raised at
-// the unit's specification, its answer would stay with the unit it left,
-// so its points stay open questions for its discussion where it goes. A
+// aside, wait with it (21.6.11). A topic leaving its building unit at the
+// cut and the merges, as that step's check reads it — live, of a building
+// epic, no spec joined into its spec.md drawing on it, nor a dead end the
+// old map marked (21.8.9, 21.8.15) — raised at the unit's specification,
+// would leave its answer with the unit it left, so its points stay open
+// questions for its discussion where it goes. A
 // record marking one of these to raise breaks a rule (`unraised`), so the
 // carry refuses the mark that would never be raised.
 //
@@ -191,6 +192,9 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
+// The cut and the merges' check, whose reading of what leaves a building unit
+// the raises keep to (21.8.9).
+const CUT = require('./080-cut-and-merges.check.cjs');
 
 const CODE_TREE_STATE = '.workflows';
 const TOPIC_PHASES = ['discovery', 'discussion', 'investigation'];
@@ -465,7 +469,9 @@ const foldersIn = (dir) => (fs.existsSync(dir) ? fs.readdirSync(dir, { withFileT
  * The project as the rules read it: its folder in the main checkout, the
  * state, and, read once, the units `.workflows/` holds there and each one's
  * manifest.
- * @typedef {{dir: string, stateDir: string, before: (name: string) => Record<string, any>|null, oldUnits: () => string[]}} Project
+ * And, read once, the topics leaving each building unit as the cut and the
+ * merges reads them.
+ * @typedef {{dir: string, stateDir: string, before: (name: string) => Record<string, any>|null, oldUnits: () => string[], leaving: (name: string) => Set<string>}} Project
  */
 
 /** @param {string} projectDir @param {string} stateDir @returns {Project} */
@@ -476,6 +482,8 @@ function projectOf(projectDir, stateDir) {
   const befores = new Map();
   /** @type {string[]|null} */
   let units = null;
+  /** @type {Map<string, Set<string>>} */
+  const leavings = new Map();
   return {
     dir,
     stateDir,
@@ -486,6 +494,10 @@ function projectOf(projectDir, stateDir) {
     oldUnits: () => {
       units ??= foldersIn(old);
       return units;
+    },
+    leaving: (name) => {
+      if (!leavings.has(name)) leavings.set(name, new Set((CUT.leavingOf({ projectDir: dir, stateDir, unit: name })?.leaving ?? []).map(({ topic }) => topic)));
+      return /** @type {Set<string>} */ (leavings.get(name));
     },
   };
 }
@@ -815,37 +827,31 @@ const hasSpec = (project, unit) => Array.isArray(unit.manifest?.spec?.joined) ||
  * its code the truth of what was built, or cancelled — and a topic set
  * aside raise nothing (21.6.11); and a topic leaving its building unit
  * (`leaves`) is discussed where it goes.
- * @param {Unit} unit @param {string|null} topic @param {string} phase the record's
+ * @param {Project} project @param {Unit} unit @param {string|null} topic @param {string} phase the record's
  * @returns {string|null}
  */
-function unraised(unit, topic, phase) {
+function unraised(project, unit, topic, phase) {
   if (topic === null) return 'a unit\'s own record is carried in discovery, where nothing is raised';
   if (unit.manifest?.work_type === 'cross-cutting') return 'a cross-cutting unit\'s record is the product\'s';
   if (unit.manifest?.status !== IN_PROGRESS) return `its unit is ${unit.manifest?.status}, and only a unit in progress raises its points`;
   if (TOPIC_PHASES.some((each) => SET_ASIDE.includes(itemsOf(unit.manifest.phases?.[each]?.items)[topic]?.status))) return 'its topic is set aside';
   if (neverStarted(unit.manifest, topic, phase)) return 'its topic never started, and its first opening reads its open questions';
-  return leaves(unit, topic) ? 'its topic leaves its building unit, no spec joined into the unit\'s spec.md drawing on it, and its discussion where it goes reads its open questions' : null;
+  return leaves(project, unit, topic) ? 'its topic leaves its building unit, no spec joined into the unit\'s spec.md drawing on it, and its discussion where it goes reads its open questions' : null;
 }
 
 /**
- * Whether a topic leaves its unit at the cut and the merges (21.8.9): the
- * unit an epic whose building started, its specs joined, and the topic its
- * own or a source of none of them — but a topic the old map marked a dead
- * end, which stays (21.8.15). Its points are raised nowhere here: the unit's
+ * Whether a topic leaves its unit at the cut and the merges (21.8.9), as
+ * that step's check reads it: a live topic of a building epic that no spec
+ * joined into its spec.md draws on, but a dead end the old map marked,
+ * which stays (21.8.15). Its points are raised nowhere here: the unit's
  * specification takes no topic's, and the topic is discussed where it goes.
- * @param {Unit} unit @param {string} topic
+ * @param {Project} project @param {Unit} unit @param {string} topic
  */
-function leaves(unit, topic) {
-  const joined = joinedOf(unit.manifest);
-  if (unit.manifest?.work_type !== EPIC || joined.length === 0) return false;
-  if (unit.before?.phases?.discovery?.items?.[topic]?.handled === true) return false;
-  const specs = itemsOf(unit.before?.phases?.specification?.items);
-  return !joined.some((name) => name === topic || sourceNames(specs[name]?.sources).includes(topic));
-}
+const leaves = (project, unit, topic) => project.leaving(unit.name).has(topic);
 
-/** Each entry a record marks to raise where its point is never raised. @param {Unit} unit @param {string|null} topic @param {string} phase @param {Record<string, any>[]} record @returns {string[]} */
-function raiseProblems(unit, topic, phase, record) {
-  const why = unraised(unit, topic, phase);
+/** Each entry a record marks to raise where its point is never raised. @param {Project} project @param {Unit} unit @param {string|null} topic @param {string} phase @param {Record<string, any>[]} record @returns {string[]} */
+function raiseProblems(project, unit, topic, phase, record) {
+  const why = unraised(project, unit, topic, phase);
   return why === null ? [] : record.filter(({ raise }) => raise === true).map(({ ref }) => `entry ${ref} is marked to raise, and ${why}: its point is an open question, carried unmarked`);
 }
 
@@ -1039,7 +1045,7 @@ function citesProblems(project, unit, topic, record) {
 function ownProblems(project, unit, record) {
   return [
     ...undecidedProblems(record, IN_DISCOVERY), ...citesProblems(project, unit, null, record), ...threadProblems(project, unit, null, record),
-    ...unlinkedImports(project, unit, null, record), ...raiseProblems(unit, null, 'discovery', record),
+    ...unlinkedImports(project, unit, null, record), ...raiseProblems(project, unit, null, 'discovery', record),
   ];
 }
 
@@ -1062,7 +1068,7 @@ function problemsOf(project, unit, topic, phase, record) {
   const items = new Set(record.flatMap((entry) => namesOf(entry.map_item)));
   const mapped = mapOf(unit, topic).filter(({ item }) => !items.has(item))
     .map(({ item, status }) => `${item} is on its old map, ${status}, and no entry names it as its map_item`);
-  return [...empty, ...undecided, ...narrow, ...cites, ...mapped, ...threadProblems(project, unit, topic, record), ...imports, ...raiseProblems(unit, topic, phase, record)];
+  return [...empty, ...undecided, ...narrow, ...cites, ...mapped, ...threadProblems(project, unit, topic, record), ...imports, ...raiseProblems(project, unit, topic, phase, record)];
 }
 
 /** The ids the ledger's lines were given. @param {string} stateDir @returns {Set<string>} */
@@ -1445,7 +1451,7 @@ module.exports = {
     const project = projectOf(projectDir, stateDir);
     return unitsOf(project).flatMap((unit) => topicsOf(unit.manifest).flatMap((topic) => {
       const carried = carriedOf(project, unit, topic);
-      if (carried === null || unraised(unit, topic, carried.phase) !== null) return [];
+      if (carried === null || unraised(project, unit, topic, carried.phase) !== null) return [];
       const ids = new Map(carried.entries.map(({ ref, id }) => [ref, id]));
       const place = hasSpec(project, unit) ? `${unit.name}.specification` : `${unit.name}.${carried.phase}.${topic}`;
       return carried.record.entries.filter((entry) => entry.raise === true).map((entry) => ({ place, answers: ids.get(entry.ref), text: entry.text }));
@@ -1514,7 +1520,7 @@ module.exports = {
       map: own ? [] : mapOf(unit, topic),
       threads: threadsOf(project, unit, topic),
       specs: own ? [] : specsOf(project, unit, topic),
-      leaves: !own && leaves(unit, /** @type {string} */ (topic)),
+      leaves: !own && leaves(project, unit, /** @type {string} */ (topic)),
       assets: assetsOf(project, unit),
       held: assetsOf(project, unit).filter(({ path: at, walkers }) => walkers.includes(topic) && heldWhole(project, unit, topic, at)).map(({ path: at }) => at),
       sessions: sessionsOf(project, unit, topic),
