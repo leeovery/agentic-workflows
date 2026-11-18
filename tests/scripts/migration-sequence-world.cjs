@@ -242,9 +242,9 @@ function workDirective(dir, env, directive) {
     };
     const cart = RECORDS_COMPOSED['shop.discussion.cart'];
     for (const [place, entries] of Object.entries(RECORDS_COMPOSED)) compose(place, place === 'shop.discussion.pay' ? entries.map(({ cites, ...entry }) => ({ ...entry, cites: cites.slice(0, 1) })) : entries);
-    /** Each section of shop's spec the check names on a topic of it, as a cite names it. @param {string} name */
+    /** Each section of shop's spec the check names on a topic of it, as a cite names it, the spec by its whole path. @param {string} name */
     const uncited = (name) => harness.ok(dir, ['migrate', 'check', RECORDS], opts).unfinished.find((piece) => piece.name === name)?.problems
-      .flatMap((problem) => /^"(.+?)" in shop\/spec\.md, an approved spec/.exec(problem)?.[1] ?? []);
+      .flatMap((problem) => (problem.includes(`" in ${harness.statePath(dir, 'shop/spec.md')}, an approved spec`) ? /^"(.+?)" in /.exec(problem)?.[1] ?? [] : []));
     const cited = [uncited('shop.discussion.cart'), uncited('shop.discussion.pay')];
     compose('shop.discussion.cart', cart.filter(({ ref }) => !['q2', 'd2'].includes(ref)));
     writeState(dir, '.cache/migrate/records/shop.sections.json', JSON.stringify({ 'shop/spec.md': { '2. Pay': ['Notes'] } }));
@@ -277,7 +277,7 @@ function reviewAndCommit(dir, env) {
   const { state, reshape } = harness.ok(dir, ['migrate', 'review'], opts);
   assert.ok(reshape, 'the review answers the migration into Ledger');
   const summary = path.join(state, '.cache', 'migrations-applied.json');
-  fs.writeFileSync(summary, JSON.stringify({ summary: 'Moved the project into Ledger.' }));
+  fs.writeFileSync(summary, JSON.stringify({ parts: { moved: 'Moved the project into Ledger.' } }));
   harness.output(dir, ['render', 'migrations-applied', '--file', summary], opts);
   harness.output(dir, ['render', 'migration-gate'], opts);
   harness.ok(dir, ['commit', '--migrations', '-m', "chore: apply Ledger's migrations"], opts);
@@ -294,7 +294,8 @@ function migrateWhole(dir, extra = {}) {
   const states = [];
   for (let boots = 0; boots < 6; boots += 1) {
     const res = harness.ok(dir, ['boot'], { env });
-    states.push(res.state === 'directive' ? `directive ${res.id}` : res.state);
+    if (res.stop?.surface !== undefined) harness.output(dir, ['render', res.stop.surface, ...(res.stop.args ?? [])], { env });
+    states.push(res.state === 'directive' ? `${res.stop.surface} ${res.id}` : res.state);
     if (res.state === 'directive') workDirective(dir, env, res.id);
     else if (res.state === 'finish') reviewAndCommit(dir, env);
     else return states;

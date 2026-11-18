@@ -373,7 +373,7 @@ describe('pipeline simulation: workunit', () => {
     assert.match(sim.render(['label-gate'], { expect: 'content', identity: { TMUX: '/fake/sock,123,7' } }), /Label your tmux session/);
     sim.refuses(['render', 'label-gate'], /inside neither tmux nor Portal/);
     assert.match(sim.render(['knowledge-gate'], { expect: 'content' }), /How should this project's knowledge base work\?/);
-    assert.match(sim.render(['knowledge-gate', '--variant', 'deviate'], { expect: 'content' }), /How should this project deviate\?/);
+    assert.match(sim.render(['knowledge-gate', '--variant', 'deviate'], { expect: 'content' }), /What should this project use instead\?/);
     assert.match(sim.render(['knowledge-gate', '--variant', 'retry', '--provider', 'openai', '--model', 'text-embedding-3-small'], { expect: 'content' }), /No OpenAI API key was found[\s\S]*Ready to retry\?/);
     assert.match(sim.render(['knowledge-gate', '--variant', 'retry', '--provider', 'openai-compatible', '--model', 'nomic', '--base-url', 'http://localhost:1234/v1'], { expect: 'content' }), /The endpoint requires an API key[\s\S]*Ready to retry\?/);
     sim.refuses(['render', 'knowledge-gate', '--variant', 'retry'], /the retry variant takes the setup it runs again/);

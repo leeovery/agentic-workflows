@@ -17,7 +17,7 @@
 // theme free — each rule broken named, or once the apply marked it applied;
 // and the directive's checklist
 // closing on it, recording it. Through the real runner: where nothing
-// qualifies the directive is recorded unrun, the run going on past it to
+// qualifies the directive is recorded by its ID, the run going on past it to
 // the move (21.S7); where something does, the run stops at it, and once its
 // plans are staged and it is closed, the next run applies them and moves
 // the project, the records directive's check naming each of the split's
@@ -255,7 +255,7 @@ describe('engine migrate check 076-legacy-split (21.10.7)', () => {
 });
 
 describe('the runner meets the legacy split (21.4.3)', () => {
-  it('21.S7: where no epic holds a source, records the directive unrun with the detection and the apply, the person seeing no interview, and runs on past it to the move', () => {
+  it('21.S7: where no epic holds a source, records the directive by its ID alone with the detection and the apply, the person seeing no interview, and runs on past it to the move', () => {
     const manifest = path.join(main, EPIC, 'manifest.json');
     const old = JSON.parse(fs.readFileSync(manifest, 'utf8'));
     for (const source of SPLIT_SOURCES) old.phases.research.items[source].status = 'completed';
@@ -263,7 +263,7 @@ describe('the runner meets the legacy split (21.4.3)', () => {
 
     const out = runner();
 
-    assert.deepStrictEqual([out.match(/^---DIRECTIVE: (.*)---$/m)?.[1], recorded(main)], ['079-records', [...GUARDED, '075', '076', '076 unrun', '077', '078']]);
+    assert.deepStrictEqual([out.match(/^---DIRECTIVE: (.*)---$/m)?.[1], recorded(main)], ['079-records', [...GUARDED, '075', '076', '077', '078']]);
     assert.ok(!fs.existsSync(statePath(main, '.cache/migrate/split')), 'nothing staged');
   });
 

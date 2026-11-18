@@ -10,16 +10,19 @@
 // directive (domain/checklist.cjs; 6.4.11, 21.S36); boot's stop at a
 // directive not yet done, and past it once it is, one start meeting several,
 // at one whose every piece is done, and at one whose check fails on what a
-// session left, the runner recording one whose check answers no piece
-// unrun, its unrun line beside it (domain/boot.cjs; 21.4.3, 21.10.9,
-// 21.10.10, 21.S37, and the machinery of 21.S33, which 29.17 proves on the
-// real sequence); a second session meeting a directive another live
-// session carries on, stopping there, and carrying it on once that one's
-// row at the migration's place is gone or stale, and `migrate checked`
-// re-stamping only that one's row (domain/presence.cjs; P7); the stop's
-// screen, this session carrying the step on, and the taken stop's, another
-// carrying the step on, a directive or the checks before the move
-// (21.10.11); and, while the migration
+// session left, the stop at one with none of its pieces done drawing the
+// migration at work and at one with some done the migration part-way, the
+// runner recording one whose check answers no piece by its ID alone
+// (domain/boot.cjs; 21.4.3, 21.10.9, 21.10.10, 21.S37, and the machinery
+// of 21.S33, which 29.17 proves on the real sequence); a second session
+// meeting a directive another live session carries on, stopping there, and
+// carrying it on once that one's row at the migration's place is gone or
+// stale, and `migrate checked` re-stamping only that one's row
+// (domain/presence.cjs; P7); the board while a session carries the
+// migration on; the screens of the migration at work and part-way, this
+// session carrying the step on, and the taken stop's, another carrying the
+// step on, a directive or the checks before the move (21.10.11); and,
+// while the migration
 // runs, a verb's commit held, held to the layout all the same (21.9.3), and
 // nothing told the trust log (21.1.5). The runner's side is
 // test-migration-orchestrator.cjs's.
@@ -48,7 +51,7 @@ const {
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const MIGRATIONS = path.join(__dirname, '../../skills/ledger-migrate/scripts/migrations');
 const { TRUST_LOG, PENDING } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
-const { directiveStop } = require(path.join(SCRIPTS, 'domain/projections/boot.cjs'));
+const { directiveArrival, directiveCarryOn } = require(path.join(SCRIPTS, 'domain/projections/boot.cjs'));
 const { listDrivers } = require(path.join(SCRIPTS, 'domain/drivers.cjs'));
 const { conversationDir } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
 
@@ -180,7 +183,7 @@ describe('engine migrate check (21.10.7)', () => {
       'migrate check: "../079" is no directive\'s id — a directive\'s id is its file\'s name, NNN-{slug}',
       'migrate check: there is no directive 078-move',
       'migrate check: 090-unchecked\'s check could not be loaded from {migrations}/090-unchecked.check.cjs: Cannot find module',
-      'migrate check: 091-shapeless\'s check exports no check() beside what it counts — it exports { counts: { one, many }, done, partWay, check({ projectDir, stateDir }) }',
+      'migrate check: 091-shapeless\'s check exports no check() beside what it counts — it exports { does, counts: { one, many }, done, partWay, check({ projectDir, stateDir }) }',
       'migrate check: 092-failing\'s check failed: the old manifests could not be read',
       'migrate check: 093-unanswered\'s check answered no list of { name, problems }',
       'Usage: engine migrate check <id> | engine migrate checked | engine migrate review | engine migrate join <work-unit> --directive <id> [--phase <N> --dry-run]',
@@ -246,17 +249,20 @@ describe('a directive\'s checklist (6.4.5, 6.4.11, 6.S23)', () => {
 
 /**
  * Boot's answer at the directive `id`'s stop, its pieces `done` of all of
- * them where its check counts them: the start skill's directive reference
- * loaded with the directive and its file, then boot again.
+ * them where its check counts them: the migration at work where none is
+ * done, the migration part-way where some are; then the start skill's
+ * directive reference loaded with the directive and its file, and boot
+ * again.
  * @param {string} id @param {{done?: number, of?: number}} [counts]
  */
 const atDirective = (id, counts = {}) => {
   const file = path.join(engine.migrations, `${id}.md`);
-  return { ok: true, state: 'directive', id, file, ...counts, stop: { next: { kind: 'load', reference: 'migration-directive', with: { directive: id, file } } }, warnings: [] };
+  const surface = counts.done ? 'directive-carry-on' : 'directive-arrival';
+  return { ok: true, state: 'directive', id, file, ...counts, stop: { surface, args: ['--directive', id], next: { kind: 'load', reference: 'migration-directive', with: { directive: id, file } } }, warnings: [] };
 };
 
 describe('boot at a directive (21.10.4, 21.10.9, 21.10.10)', () => {
-  it('21.S37: a session died with two topics done and one half done — boot goes no further than the directive, stamping the conversation for its steps, the two pass its check, the third is carried on and the ledger holds each of its entries once; recorded, the directive lets boot on to the next, and past both to the migration waiting on its commit, with nothing committed', () => {
+  it('21.S37: a session died with two topics done and one half done — boot goes no further than the directive, drawing the migration part-way, stamping the conversation for its steps, the two pass its check, the third is carried on and the ledger holds each of its entries once; recorded, the directive lets boot on to the next, none of whose pieces is done, the migration at work, and past both to the migration waiting on its commit, with nothing committed', () => {
     enterTopic(dir, 'licensing');
     enterTopic(dir, 'search');
     writeState(dir, layout.cache('migration', 'onboarding.md'), '# Onboarding\n\nPermissions: decided, a half-written entry.\n');
@@ -290,13 +296,13 @@ describe('boot at a directive (21.10.4, 21.10.9, 21.10.10)', () => {
     assert.deepStrictEqual([res.state, res.id, res.warnings], ['directive', RECORDS, [`this project is a copy of ${original}: its state worktree was linked to that project's, and is now this one's own — ${original} is untouched`]]);
   });
 
-  it('records a directive whose check answers no piece at all unrun, its unrun line beside it, never stopping at it: the session has nothing to do (21.4.3)', () => {
+  it('records a directive whose check answers no piece at all by its ID alone, as any migration, never stopping at it: the session has nothing to do (21.4.3)', () => {
     writeState(dir, layout.migrations, ['079', ...RECORDED].map((id) => `${id}\n`).join(''));
     fs.rmSync(statePath(dir, UNIT), { recursive: true });
 
     const finished = ok(['boot']);
 
-    assert.deepStrictEqual([finished.state, recorded(dir)], ['finish', ['079', ...RECORDED, '085', '085 unrun']]);
+    assert.deepStrictEqual([finished.state, readState(dir, layout.migrations)], ['finish', ['079', ...RECORDED, '085'].map((id) => `${id}\n`).join('')]);
   });
 
   it('stops at a directive whose every piece is done all the same, for the session to close', () => {
@@ -307,14 +313,14 @@ describe('boot at a directive (21.10.4, 21.10.9, 21.10.10)', () => {
     assert.deepStrictEqual(recorded(dir), ['079', ...RECORDED]);
   });
 
-  it('stops at a directive whose check fails on what a session left, saying nothing of what is done — the check names why', () => {
+  it('stops at a directive whose check fails on what a session left, drawing the migration at work, saying nothing of what is done — the check names why', () => {
     writeState(dir, layout.migrations, ['079', '085', '090', '091', '093'].map((id) => `${id}\n`).join(''));
 
     assert.deepStrictEqual(ok(['boot']), atDirective(FAILING));
-    assert.deepStrictEqual(engine.output(dir, ['render', 'directive-stop', '--directive', FAILING]).split('\n').filter((line) => line.startsWith('>')), [
-      '> No session works in this project until the migration is done.',
+    assert.deepStrictEqual(engine.output(dir, ['render', 'directive-arrival', '--directive', FAILING]).split('\n').filter((line) => line.startsWith('>')), [
+      '> This step writes a record of each topic. It takes a while: nothing is needed from you until it asks.',
       '>',
-      '> This session carries the migration on from its failing step; the start menu follows once the migration is done and committed.',
+      '> The start menu follows once the migration is done and committed.',
     ]);
     assert.strictEqual(refusedUntouched(dir, ['migrate', 'check', FAILING]), `migrate check: ${FAILING}'s check failed: the old manifests could not be read`);
   });
@@ -337,7 +343,7 @@ describe('a second session at a directive (21.10.10, P7)', () => {
 
     const taken = bootAs(SECOND);
 
-    const stop = { marker: 'Migration', surface: 'migration-taken-stop', args: ['--at', RECORDS, '--active', String(taken.active)], next: null };
+    const stop = { surface: 'migration-taken-stop', args: ['--at', RECORDS, '--active', String(taken.active)], next: null };
     assert.deepStrictEqual(taken, { ok: true, state: 'taken', at: RECORDS, active: taken.active, stop, warnings: [] });
     assert.ok(taken.active >= 300 && taken.active < 330, `last active ${taken.active}s ago`);
     assert.ok(!fs.existsSync(path.join(conversationDir('second'), 'booted.json')), 'nothing may touch the work at the stop (22.1.7)');
@@ -382,42 +388,98 @@ describe('a second session at a directive (21.10.10, P7)', () => {
   });
 });
 
-describe('the stop\'s screen (21.10.11)', () => {
-  it('names the step the migration stopped at, keeps what it finished, each piece checked, and says this session carries it on', () => {
+describe('the board while a session carries the migration on', () => {
+  it('reads the session, at no position, as migrating, never at the start menu, while the migration\'s row stands, and at the start menu once it is gone', () => {
+    const carrying = { CLAUDE_CODE_SESSION_ID: 'carrying', CLAUDE_PID: String(process.pid) };
+    engine.ok(dir, ['boot'], { env: carrying, unbooted: true });
+    const place = () => {
+      const board = engine.ok(dir, ['board', 'carrying', '--tab', 'all']);
+      return [board.banner.facts.map((/** @type {{text: string}} */ fact) => fact.text), board.view.at_start];
+    };
+
+    assert.deepStrictEqual(place(), [['migrating'], false]);
+    engine.ok(dir, ['presence', 'cleanup', 'carrying']);
+    assert.deepStrictEqual(place(), [['at the start menu'], true]);
+  });
+});
+
+describe('the stop\'s screens (21.10.9, 21.10.11)', () => {
+  it('part-way through a directive, draws the migration part-way, in the normal colour — its step, what it does and the person waiting it out, what it finished kept, each piece checked, and this session carrying it on — never a failure; refused without the directive it is for', () => {
     enterTopic(dir, 'licensing');
     enterTopic(dir, 'search');
 
-    assert.strictEqual(engine.output(dir, ['render', 'directive-stop', '--directive', RECORDS]), [
-      '=== DISPLAY: directive stop (emit verbatim as a properties code block (```properties fence)) ===',
-      '⚑ The migration stopped part-way: its records step isn\'t done',
+    assert.strictEqual(engine.output(dir, ['render', 'directive-carry-on', '--directive', RECORDS]), [
+      '=== DISPLAY: directive carry on (emit verbatim as markdown (not a code block)) ===',
+      '**`▪ Migration · records`**',
       '',
-      '=== DISPLAY: directive account (emit verbatim as markdown (not a code block)) ===',
-      '> No session works in this project until the migration is done. What it finished is kept: 2 of Fumi\'s 3 topics have their records, each checked. A record it was in the middle of is amended from where it stood.',
+      'Ledger is part-way through bringing this project\'s past work into its new format.',
+      '',
+      '> This step writes a record of each topic. It takes a while: nothing is needed from you until it asks.',
       '>',
-      '> This session carries the migration on from its records step; the start menu follows once the migration is done and committed.',
+      '> What it finished is kept: 2 of Fumi\'s 3 topics with their records, each checked. A record it was in the middle of is amended from where it stood.',
+      '>',
+      '> This session carries the migration on from its records step. The start menu follows once the migration is done and committed.',
       '',
     ].join('\n'));
+    assert.strictEqual(refusedUntouched(dir, ['render', 'directive-carry-on']), 'render directive-carry-on: --directive <id> names the directive the migration is part-way through');
   });
 
-  it('the taken stop, where another session carries the step on, draws that step\'s stop naming when it was last active and saying this session stops there — nothing of a piece carried on — refusing a step or an --active missing, and an --active that is no whole number', () => {
+  it('with none of a directive\'s pieces done, draws the migration at work, in the normal colour — its step, what it does in its check\'s words, the person waiting it out — never a failure; refused without the directive it is for', () => {
+    assert.strictEqual(engine.output(dir, ['render', 'directive-arrival', '--directive', RECORDS]), [
+      '=== DISPLAY: directive arrival (emit verbatim as markdown (not a code block)) ===',
+      '**`▪ Migration · records`**',
+      '',
+      'Ledger is bringing this project\'s past work into its new format.',
+      '',
+      '> This step writes a record of each topic. It takes a while: nothing is needed from you until it asks.',
+      '>',
+      '> The start menu follows once the migration is done and committed.',
+      '',
+    ].join('\n'));
+    assert.strictEqual(refusedUntouched(dir, ['render', 'directive-arrival']), 'render directive-arrival: --directive <id> names the directive the migration reached');
+  });
+
+  it('says of each directive the migration holds what is true of it while it runs — the split, which asks for each cut, never said to run by itself', () => {
+    const accountOf = (/** @type {string} */ id) => directiveArrival({ step: id, does: require(path.join(MIGRATIONS, `${id}.check.cjs`)).does }).split('\n').filter((line) => line.startsWith('> This step'))[0];
+
+    assert.deepStrictEqual(['076-legacy-split', '079-records', '080-cut-and-merges'].map(accountOf), [
+      '> This step plans how each piece of broad research splits into topics, asking you to choose each cut. It takes a while: nothing is needed from you until it asks.',
+      '> This step writes a record of what each piece of past work decided, and checks each one against its documents. It takes a while: nothing is needed from you until it asks.',
+      '> This step gives each piece of work the shape Ledger builds from, cutting work already under way into phases and carrying its tasks across. It takes a while: nothing is needed from you until it asks.',
+    ]);
+  });
+
+  it('the taken stop, where another session carries the step on, says so in the normal colour — the migration at work elsewhere, no failure — naming when it was last active and saying this session stops there, nothing of a piece carried on; refusing a step or an --active missing, and an --active that is no whole number', () => {
     enterTopic(dir, 'licensing');
     enterTopic(dir, 'search');
-    const taken = (/** @type {string} */ at) => engine.output(dir, ['render', 'migration-taken-stop', '--at', at, '--active', '180']).split('\n').filter((line) => line.startsWith('>'));
+    const taken = (/** @type {string} */ at) => engine.output(dir, ['render', 'migration-taken-stop', '--at', at, '--active', '180']);
 
-    assert.deepStrictEqual(taken(RECORDS), [
-      '> No session works in this project until the migration is done. What it finished is kept: 2 of Fumi\'s 3 topics have their records, each checked.',
+    assert.strictEqual(taken(RECORDS), [
+      '=== DISPLAY: directive taken (emit verbatim as markdown (not a code block)) ===',
+      '**`▪ Migration · records`**',
+      '',
+      'Another session is carrying the migration on: its records step.',
+      '',
+      '> No session works in this project until the migration is done. What it finished is kept: 2 of Fumi\'s 3 topics with their records, each checked.',
       '>',
-      '> Another session is carrying the migration on from its records step, last active 3m ago, so this one stops here.',
-      '>',
-      '> Run `/ledger` here again once that session has finished the migration, or has ended.',
-    ]);
-    assert.deepStrictEqual(taken('checks'), [
-      "> Earlier migrations of this project left checks their code couldn't make. Some fix files the move carries into Ledger, so they come first. No session works in this project until the migration is done.",
-      '>',
-      '> Another session is carrying the migration on from its checks, last active 3m ago, so this one stops here.',
+      '> That session was last active 3m ago, so this one stops here.',
       '>',
       '> Run `/ledger` here again once that session has finished the migration, or has ended.',
-    ]);
+      '',
+    ].join('\n'));
+    assert.strictEqual(taken('checks'), [
+      '=== DISPLAY: migration checks taken (emit verbatim as markdown (not a code block)) ===',
+      '**`▪ Migration · checks`**',
+      '',
+      'Another session is carrying the migration on: its checks before the move.',
+      '',
+      "> Earlier migrations of this project left checks their code couldn't make, and some fix files the move carries into Ledger, so they come first. No session works in this project until the migration is done.",
+      '>',
+      '> That session was last active 3m ago, so this one stops here.',
+      '>',
+      '> Run `/ledger` here again once that session has finished the migration, or has ended.',
+      '',
+    ].join('\n'));
     assert.deepStrictEqual([['--active', '180'], ['--at', RECORDS], ['--at', RECORDS, '--active', '3m']].map((args) => refusedUntouched(dir, ['render', 'migration-taken-stop', ...args])), [
       'render migration-taken-stop: --at <step> names the step another session carries the migration on from, a directive\'s id or checks',
       'render migration-taken-stop: --active takes the seconds since the session carrying the migration on was last active',
@@ -425,42 +487,32 @@ describe('the stop\'s screen (21.10.11)', () => {
     ]);
   });
 
-  it('says nothing of work kept where the directive has none done yet, and refuses without the directive it is for', () => {
-    const account = engine.output(dir, ['render', 'directive-stop', '--directive', LOGS]).split('\n').filter((line) => line.startsWith('>'));
-
-    assert.deepStrictEqual(account, [
-      '> No session works in this project until the migration is done.',
-      '>',
-      '> This session carries the migration on from its logs step; the start menu follows once the migration is done and committed.',
-    ]);
-    assert.strictEqual(refusedUntouched(dir, ['render', 'directive-stop']), 'render directive-stop: --directive <id> names the directive boot stopped at');
-  });
+  /** The line of the migration part-way saying what is kept. @param {string} screen */
+  const keptLine = (screen) => screen.split('\n').filter((line) => line.startsWith('> What it finished'))[0];
 
   it('counts the pieces as the check names them, one and many, and says what a piece done has and what becomes of one left part-way in its words', () => {
-    const screen = directiveStop({ project: 'Fumi', step: 'cut', progress: { done: 1, of: 4, counts: { one: 'branch', many: 'branches' }, says: 'are cut', partWay: 'A branch it was in the middle of is cut again.' } });
+    const screen = directiveCarryOn({ project: 'Fumi', step: 'cut', does: 'This step cuts each branch.', progress: { done: 1, of: 4, counts: { one: 'branch', many: 'branches' }, says: 'are cut', partWay: 'A branch it was in the middle of is cut again.' } });
 
-    assert.strictEqual(screen.split('\n').filter((line) => line.startsWith('> No session'))[0],
-      '> No session works in this project until the migration is done. What it finished is kept: 1 of Fumi\'s 4 branches are cut, each checked. A branch it was in the middle of is cut again.');
+    assert.strictEqual(keptLine(screen), '> What it finished is kept: 1 of Fumi\'s 4 branches are cut, each checked. A branch it was in the middle of is cut again.');
   });
 
   it('21.10.9: says of a piece left part-way what its own directive does with it — the split plans a source again from the start, the records amend a record from where it stood', () => {
-    const accountOf = (id) => {
-      const { counts, done: says, partWay } = require(path.join(MIGRATIONS, `${id}.check.cjs`));
-      const screen = directiveStop({ project: 'Fumi', step: id.replace(/^[0-9]+-/, ''), progress: { done: 1, of: 2, counts, says, partWay } });
-      return screen.split('\n').filter((line) => line.startsWith('> No session'))[0];
+    const accountOf = (/** @type {string} */ id) => {
+      const { does, counts, done: says, partWay } = require(path.join(MIGRATIONS, `${id}.check.cjs`));
+      return keptLine(directiveCarryOn({ project: 'Fumi', step: id.replace(/^[0-9]+-/, ''), does, progress: { done: 1, of: 2, counts, says, partWay } }));
     };
 
     assert.deepStrictEqual(['076-legacy-split', '079-records'].map(accountOf), [
-      '> No session works in this project until the migration is done. What it finished is kept: 1 of Fumi\'s 2 sources have their plans, each checked. A source it was in the middle of is planned again from the start, its plan cleared first.',
-      '> No session works in this project until the migration is done. What it finished is kept: 1 of Fumi\'s 2 records are carried, each checked. A record it was in the middle of is amended from where it stood.',
+      '> What it finished is kept: 1 of Fumi\'s 2 sources with their plans, each checked. A source it was in the middle of is planned again from the start, its plan cleared first.',
+      '> What it finished is kept: 1 of Fumi\'s 2 records carried, each checked. A record it was in the middle of is amended from where it stood.',
     ]);
   });
 
   it('says the step is ready to close where every piece is done and the close has not run', () => {
     for (const topic of /** @type {const} */ (['licensing', 'search', 'onboarding'])) enterTopic(dir, topic);
 
-    assert.deepStrictEqual(engine.output(dir, ['render', 'directive-stop', '--directive', RECORDS]).split('\n').filter((line) => line.startsWith('>'))[0],
-      '> No session works in this project until the migration is done. What it finished is kept: 3 of Fumi\'s 3 topics have their records, each checked. The step is ready to close.');
+    assert.strictEqual(keptLine(engine.output(dir, ['render', 'directive-carry-on', '--directive', RECORDS])),
+      '> What it finished is kept: 3 of Fumi\'s 3 topics with their records, each checked. The step is ready to close.');
   });
 });
 

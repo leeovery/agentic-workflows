@@ -284,7 +284,7 @@ function buildingProblems(project, unit, now, before) {
 function strayPhaseFiles(project, unit) {
   const phases = `${STAGING}/${unit}/phases`;
   return filesUnder(path.join(project.stateDir, phases)).filter((rel) => !PHASE_FILE.test(rel))
-    .map((rel) => `${phases}/${rel} is none of a phase's files — an agent left it: remove it`);
+    .map((rel) => `${path.join(project.stateDir, phases, rel)} is none of a phase's files — an agent left it: remove it`);
 }
 
 /**
@@ -534,6 +534,7 @@ function plansOf(project, unit, before) {
 }
 
 module.exports = {
+  does: 'This step gives each piece of work the shape Ledger builds from, cutting work already under way into phases and carrying its tasks across.',
   counts: { one: 'piece of work', many: 'pieces of work' },
   done: 'done',
   partWay: 'A piece of work it was in the middle of is carried on from where it stood.',

@@ -16,7 +16,15 @@ Files were updated, a migration handed over checks its code could not perform, a
 
    It answers `state`, the state's folder, and `code`, the folder the code side's commit lands in, both absolute.
 
-   **If it answers `reshape`**, the migration into Ledger waits on its commit: the summary is written from `reshape` — `units` moved, `topics` carried, the `directives` done, `files`, the code files the commit takes, named from `code`, and each of the `corrections` the migration made where a unit's records disagreed, by its unit: what disagreed, what was found and what was changed — and what the addenda in `migrations.verify` name: each unit renamed, each registry entry dropped, the linter settings left out, and each place holding files kept as legacy, with how many, never the files themselves. Read no diff of the state: while `commits` names `state`, the state branch's first commit takes it whole, and once it names `code` alone, that commit is made.
+   **If it answers `reshape`**, the migration into Ledger waits on its commit, and its summary is written in parts, from `reshape` and the addenda in `migrations.verify`:
+   - `moved` — the `units` moved into `.ledger/`, each unit renamed and each registry entry dropped;
+   - `records` — the `records` carried, by count;
+   - `corrections` — each of the `corrections`, by its unit: what disagreed, what was found and what was changed;
+   - `checks` — each check made before the move, the entries marked `made`, and each fix step 1 made;
+   - `legacy` — each place holding files kept as legacy, with how many, never the files themselves;
+   - `code` — what the code commit changes: `files`, named from `code`, and the linter settings left out.
+
+   A part with nothing in it is left out. Read no diff of the state: while `commits` names `state`, the state branch's first commit takes it whole, and once it names `code` alone, that commit is made.
 
    **Otherwise**, see what changed on both sides the commit below takes: run `git -C {state} status --short` and `git -C {state} diff HEAD` for the state, and `git -C {code} status --short -- .claude/settings.json .worktreeinclude .gitignore` and `git -C {code} diff HEAD -- .claude/settings.json .worktreeinclude .gitignore` for the files Ledger owns in the code tree. Status shows moved and newly-created files that diff cannot (untracked destinations render a move as bare deletions) — read both before summarising.
 
@@ -32,8 +40,8 @@ Files were updated, a migration handed over checks its code could not perform, a
 
    → Return to caller.
 
-3. Write a brief natural language summary of what the migrations did — verification fixes included (e.g., "Restructured workflow directories, created manifest files, recovered a message the converter missed"). Beyond what step 2 names, describe the nature of the changes, not individual file paths — these are Ledger's internal state files.
-4. Write the summary to `{state}/.cache/migrations-applied.json` with the Write tool — `{"summary": "{your natural language summary}", "notices": [{each entry's notice}], "migrations": {N}, "files": {M}}`, each `notice` from `migrations.notices` verbatim, `notices` left out when it is empty; `{N}`/`{M}` from `migrations.output`'s `{N} migration(s) applied, {M} file(s) updated.` line; when it reports no changes, leave both counts out. Fetch the summary:
+3. Write a brief natural language summary of what the migrations did, step 1's fixes among it, the reshape's in its parts (e.g., "Restructured workflow directories, created manifest files, recovered a message the converter missed"). Say only what was done, never what was not. Beyond what step 2 names, describe the nature of the changes, not individual file paths — these are Ledger's internal state files.
+4. Write the summary to `{state}/.cache/migrations-applied.json` with the Write tool — `{"summary": "{your natural language summary}", "notices": [{each entry's notice}], "migrations": {N}, "files": {M}}`, the reshape's in place of `summary` as `"parts": {"{part}": "{its account}", …}`, each `notice` from `migrations.notices` verbatim, `notices` left out when it is empty; `{N}`/`{M}` from `migrations.output`'s `{N} migration(s) applied, {M} file(s) updated.` line; when it reports no changes, or the summary is the reshape's, leave both counts out. Fetch the summary:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render migrations-applied --file {state}/.cache/migrations-applied.json

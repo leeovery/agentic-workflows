@@ -13,9 +13,8 @@
 // Tracking:
 //   - Progress lives in the migrations record the caller names (`--record
 //     <path>`; boot names the state's `.state/migrations`), one numeric-only
-//     ID per line (e.g. "001", "047") — beside a directive recorded unrun,
-//     its unrun line, and during the reshape, the line of the checks before
-//     its move (below). The ID is the filename's leading digits,
+//     ID per line (e.g. "001", "047") — and during the reshape, the line of
+//     the checks before its move (below). The ID is the filename's leading digits,
 //     extension-independent — .sh, .cjs and .md share the same ID space.
 //   - An ID recorded once is never re-run. Delete the log to force a full
 //     re-run. An ID is recorded only AFTER its migration completes; any
@@ -52,11 +51,16 @@
 //     the person — "Nothing." an item of its own where it asks nothing — each
 //     holding its list alone, an item wrapped onto lines indented beneath
 //     it; its instructions follow, under headings of their own. Beside it
-//     sits its check, `NNN-{slug}.check.cjs`: `module.exports = { counts,
-//     done, partWay, check({ projectDir, stateDir }) }`. `counts` names one piece of
+//     sits its check, `NNN-{slug}.check.cjs`: `module.exports = { does,
+//     counts, done, partWay, check({ projectDir, stateDir }) }`. `does` says
+//     what the step does, the sentence its stop draws while none of its
+//     pieces is done ('This
+//     step writes a record of what each piece of past work decided, and
+//     checks each one against its documents.'); `counts` names one piece of
 //     the directive's work and many, `{ one: 'topic', many: 'topics' }`, and
-//     `done` says what a piece done has ('have their records'), as the stop's
-//     screen counts them — "12 of Fumi's 19 topics have their records";
+//     `done` says what a piece done has ('with their records'), as the stop's
+//     screen counts them — "12 of Fumi's 19 topics with their records", no
+//     verb in it, so it reads for one piece as for many;
 //     `partWay` says what becomes of a piece a session left part-way, the
 //     sentence the stop draws ('A record it was in the middle of is amended
 //     from where it stood.');
@@ -80,12 +84,11 @@
 //     next run carries on past it. One start may meet several. A directive
 //     whose check answers no piece at all has nothing for the session to do
 //     (21.4.3), and nor has one of the reshape's sequence in a project with
-//     no `.workflows/`: the runner records it unrun — its ID, and beside it
-//     the engine's unrun line, `NNN unrun`, so the review lists only the
-//     directives a session carried out — and carries on. The check and the
-//     unrun line are the engine's side of the directives (`piecesOf`,
-//     `unrunLine`, ledger-engine/scripts/domain/directives.cjs); a check that
-//     cannot answer stops the run there, as one with pieces does.
+//     no `.workflows/`: the runner records its ID, as it records any
+//     migration, and carries on. The check is the engine's side of the
+//     directives (`piecesOf`, ledger-engine/scripts/domain/directives.cjs);
+//     a check that cannot answer stops the run there, as one with pieces
+//     does.
 //
 // The reshape (21.2), whose runtime knowledge of the layout before it is
 // old-layout.cjs's:
@@ -185,12 +188,12 @@ const USAGE = `usage: migrate.cjs ${RECORD_FLAG} <path> ${JOURNALS_FLAG} <dir> �
 // The fleet released while the state lived in the code tree upgrades the
 // `.workflows/` there, and three of it (049, 053, 060) would create one from
 // nothing. In a project with none there is nothing for it to upgrade, so
-// each is recorded unrun.
+// each is recorded without running.
 const LAST_CODE_TREE_MIGRATION = 72;
 
 // The reshape's sequence (074–081, 21.2) carries a project's state out of
 // the code tree's `.workflows/`. A directive of it, in a project with none,
-// has nothing to carry, so it is recorded unrun; the sequence's code steps
+// has nothing to carry, so it is recorded and run past; the sequence's code steps
 // see that for themselves. Renumbered with the sequence until it is released.
 const LAST_CODE_TREE_DIRECTIVE = 81;
 
@@ -499,11 +502,10 @@ function main() {
   const tallyFile = journalPath(journals, TALLY_JOURNAL);
   const tally = readTally(tallyFile);
   const recorded = recordedIds(record);
-  const noteRecorded = (/** @type {string} */ id, /** @type {string[]} */ ...beside) => {
-    fs.appendFileSync(record, [id, ...beside].map((line) => `${line}\n`).join(''));
+  const noteRecorded = (/** @type {string} */ id) => {
+    fs.appendFileSync(record, `${id}\n`);
     recorded.add(id);
   };
-  const noteUnrun = (/** @type {string} */ id) => noteRecorded(id, require(ENGINE_DIRECTIVES).unrunLine(id));
 
   /**
    * Record a migration that ran, count it, and journal what it handed back.
@@ -546,8 +548,7 @@ function main() {
     if (recorded.has(id)) continue;
     const directive = script.endsWith(DIRECTIVE);
     if (!codeTreeState && parseInt(id, 10) <= (directive ? LAST_CODE_TREE_DIRECTIVE : LAST_CODE_TREE_MIGRATION)) {
-      if (directive) noteUnrun(id);
-      else noteRecorded(id);
+      noteRecorded(id);
       continue;
     }
     if (codeTreeState && !pastTheGuard && againstTheGuard(id) > 0) {
@@ -557,7 +558,7 @@ function main() {
     if (directive) {
       const named = path.basename(script, DIRECTIVE);
       if (nothingToDo(cwd, named)) {
-        noteUnrun(id);
+        noteRecorded(id);
         continue;
       }
       process.stdout.write(`---DIRECTIVE: ${named}---\n`);

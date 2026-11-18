@@ -88,16 +88,16 @@ describe('engine boot (real scripts)', () => {
     assert.ok(!first.migrations.output.includes('VERIFY_ADDENDA'));
     assert.ok(!first.migrations.output.includes('MIGRATIONS_RUN'));
     // The code-tree fleet has no `.workflows/` to upgrade: every one is
-    // recorded unrun, none creates the folder, and the settings stay as found;
+    // recorded without running, none creates the folder, and the settings stay as found;
     // the migrations past it run and find nothing to do, its directives
-    // recorded unrun beside it, each with its unrun line.
+    // recorded by their IDs alone beside it.
     const names = fs.readdirSync(path.join(REAL_ENGINE_SKILL, '..', 'ledger-migrate/scripts/migrations'))
       .filter((f) => /^[0-9]+-/.test(f) && !f.endsWith('.check.cjs'));
     const idOf = (/** @type {string} */ f) => f.slice(0, f.indexOf('-'));
     const fleet = names.map(idOf).sort();
     const directives = new Set(names.filter((f) => f.endsWith('.md')).map(idOf));
     assert.strictEqual(first.migrations.ran, fleet.filter((id) => Number(id) > LAST_CODE_TREE_MIGRATION && !directives.has(id)).length);
-    assert.deepStrictEqual(recordOf(project).sort(), [...fleet, ...[...directives].map((id) => `${id} unrun`)].sort());
+    assert.deepStrictEqual(recordOf(project).sort(), fleet);
     assert.ok(!fs.existsSync(path.join(project, '.workflows')), 'no legacy state folder made from nothing');
     assert.strictEqual(fs.readFileSync(path.join(project, '.claude/settings.json'), 'utf8'), settingsBefore);
     // The migrations record, the only dirt, committed on the state branch — the code
@@ -272,7 +272,7 @@ describe('engine boot runs the reshape (real scripts)', () => {
     const stopped = runEngine(real, project, ['boot'], session);
 
     assert.deepStrictEqual([stopped.state, stopped.id], ['directive', '079-records']);
-    assert.deepStrictEqual(recordOf(project), [...MIGRATED_TO_070, '074', '071', '072', '073', '075', '076', '076 unrun', '077', '078']);
+    assert.deepStrictEqual(recordOf(project), [...MIGRATED_TO_070, '074', '071', '072', '073', '075', '076', '077', '078']);
     assert.strictEqual(JSON.parse(fs.readFileSync(statePath(project, layout.projectManifest), 'utf8')).roadmap.items['dark-mode'].kind, 'idea');
     assert.strictEqual(git(project, ['for-each-ref', 'refs/heads/ledger-state']), '', 'nothing committed before the migration\'s commit');
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(path.join(project, '.claude/settings.json'), 'utf8')), JSON.parse(LABELS_ON));

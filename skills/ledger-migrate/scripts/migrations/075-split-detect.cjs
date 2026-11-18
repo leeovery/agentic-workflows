@@ -19,7 +19,7 @@
 // It writes the sources to the split's staging in the state
 // (reshape/split.cjs), whole, and nothing else. Where none qualifies it
 // writes nothing: the directive's check then answers no piece, and the
-// runner records the directive unrun, the person seeing no interview
+// runner records the directive and runs past it, the person seeing no interview
 // (21.4.3). A project in no repository, with no `.workflows/`, or whose
 // `ledger-state` has a commit has nothing to detect.
 //

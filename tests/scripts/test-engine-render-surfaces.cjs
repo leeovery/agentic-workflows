@@ -547,6 +547,8 @@ describe('the boot and knowledge gate surfaces', () => {
     assert.throws(() => renderSurface(dir, 'migrations-applied', {}), /--file <payload\.json> is required/);
     const blank = writePayload(dir, '.ledger/.cache/migrations-applied.json', { summary: ' ' });
     assert.throws(() => renderSurface(dir, 'migrations-applied', { file: blank }), /"summary" must be a non-empty string/);
+    const parted = writePayload(dir, '.ledger/.cache/migrations-applied.json', { parts: { moved: 'x' } });
+    assert.throws(() => renderSurface(dir, 'migrations-applied', { file: parted }), /"parts" is the summary of the migration into Ledger, which is not finishing/);
     const half = writePayload(dir, '.ledger/.cache/migrations-applied.json', { summary: 'x', migrations: 1 });
     assert.throws(() => renderSurface(dir, 'migrations-applied', { file: half }), /come together/);
     const zero = writePayload(dir, '.ledger/.cache/migrations-applied.json', { summary: 'x', migrations: 1, files: 0 });
@@ -592,7 +594,7 @@ describe('the boot and knowledge gate surfaces', () => {
   it('the brownfield offer: a yes/no gate drawn only while nothing is recorded, each row recording its answer — any answer refuses it (8.12.11)', () => {
     const offer = renderSurface(dir, 'brownfield-offer-gate', {});
     assert.match(offer, /=== MENU: brownfield offer/);
-    assert.ok(unwrap(offer).includes('This project has code Ledger knows nothing about. The product researcher can read it first'), offer);
+    assert.ok(unwrap(offer).includes('This project has code Ledger knows nothing about. Yes has the product researcher read it first.'), offer);
     assert.match(offer, /\*\*`◆ Have the existing code read first\?`\*\*/);
     assert.match(offer, /\*\*`y\/yes`\*\* → Read it now, then talk the product through/);
     assert.match(unwrap(offer), /\*\*`n\/no`\*\*\s+→ Skip — it is not offered again/);
@@ -628,13 +630,13 @@ describe('the boot and knowledge gate surfaces', () => {
     assert.ok(lost.includes(`\n> ${name} keeps its Ledger state on a branch of its own, \`ledger-state\`.`), lost);
     assert.match(lost, /=== MENU: state lost gate[^\n]*\n[^\n]*\n\*\*`◆ Start again with a fresh state\?`\*\*\n\n\*\*`y\/yes`\*\* → Start again — /);
     const rule = renderSurface(dir, 'github-rule-gate', {});
-    assert.ok(rule.includes(`\n${name}'s remote is on GitHub.`), rule);
-    assert.match(rule, /\*\*`◆ Set that rule on GitHub\?`\*\*/);
+    assert.ok(unwrap(rule).includes(`Yes adds the rule to ${name}'s repository.`), rule);
+    assert.match(rule, /\*\*`◆ Add that rule on GitHub\?`\*\*/);
     assert.match(unwrap(rule), /\*\*`n\/no`\*\*\s+→ Leave it unset — \*setup carries on without it\*/);
     const squash = renderSurface(dir, 'github-squash-gate', {});
-    assert.ok(squash.includes(`\n${name} lands each task on GitHub as a pull request squashed into one commit.`), squash);
-    assert.match(squash, /\*\*`◆ Squash from the pull request's title and description\?`\*\*/);
-    assert.match(unwrap(squash), /\*\*`n\/no`\*\*\s+→ Leave it as it is — \*set it later by hand\*/);
+    assert.ok(unwrap(squash).includes(`Yes sets both on ${name}'s repository.`), squash);
+    assert.match(squash, /\*\*`◆ Set both on GitHub\?`\*\*/);
+    assert.match(unwrap(squash), /\*\*`n\/no`\*\*\s+→ Leave them as they are — \*Ledger won't merge a phase's\* \*pull requests until they're set\*/);
   });
 
   it('the stop the gate mod\'s band tests draw carrying ⚑ (18.S43) is the engine\'s answer under the gate surface, its project named Fumi', async () => {
@@ -648,7 +650,7 @@ describe('the boot and knowledge gate surfaces', () => {
     assert.strictEqual(renderSurface(dir, 'knowledge-gate', {}), [
       "=== MENU: knowledge reuse gate (emit verbatim as markdown (not a code block), then STOP for the user's response) ===",
       DOTS,
-      'The knowledge base powers recall across work units and within them — later phases draw on earlier work. It is required infrastructure: Ledger runs nothing until it is initialised. Your machine already has a system configuration this project can reuse.',
+      'The knowledge base lets later work recall earlier work. Ledger runs nothing until it is set up. This machine already has a configuration this project can reuse.',
       '',
       '**`◆ Use the existing configuration for this project?`**',
       '',
@@ -688,7 +690,7 @@ describe('the boot and knowledge gate surfaces', () => {
   it('the knowledge gate\'s deviation: keyword-only for this project, or the wizard', () => {
     const deviate = renderSurface(dir, 'knowledge-gate', { variant: 'deviate' });
     assert.match(deviate, /=== MENU: knowledge deviate gate/);
-    assert.match(deviate, /\*\*`◆ How should this project deviate\?`\*\*/);
+    assert.match(deviate, /\*\*`◆ What should this project use instead\?`\*\*/);
     assert.match(unwrap(deviate), /\*\*`k\/keyword`\*\*\s+→ Keyword-only for this project \(the system configuration stays untouched for every other project\)/);
     assert.match(unwrap(deviate), /\*\*`t\/terminal`\*\* → Run the interactive wizard to change the system-wide configuration/);
     assert.deepStrictEqual(rowsLeadTo(), [['k', ['knowledge', 'setup', '--keyword-only']], ['t', ['render', 'knowledge-gate', '--variant', 'wizard']]]);

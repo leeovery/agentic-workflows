@@ -36,7 +36,9 @@
 // stranded. A run the runner stops at a directive — a migration the start
 // session carries out (directives.cjs) — stops boot there, past nothing,
 // committing nothing (21.10.10): the stop names the directive, its file,
-// and its pieces done of all of them, where its check can say. So does a
+// and its pieces done of all of them, where its check can say — none done
+// drawing the migration at work, some done the migration part-way, this
+// session carrying it on (directives.cjs). So does a
 // run the runner stops before the reshape's move, for the checks the chain
 // before it handed back (21.10.13): the `checks` stop carries them, and the
 // folder in the main checkout whose old state they fix, uncommitted,
@@ -265,9 +267,10 @@ const loading = (reference) => Object.freeze({ kind: 'load', reference });
  * (`ChecksStop`); `merge`, the catch-up stopped by a field both clones
  * changed, each row's answer its `state-merge pick`; `taken`, the migration
  * stopped where another live session carries it on (`TakenStop`);
- * `directive`, the migration stopped at a directive the session carries out
- * (`DirectiveStop`); `finish`, the migration waiting on its commit, which
- * the review's gate makes (`FinishStop`).
+ * `arrival`, the migration at a directive the session carries out, none of
+ * its pieces done, and `carry-on`, some of them done (`DirectiveStop`);
+ * `finish`, the migration waiting on its
+ * commit, which the review's gate makes (`FinishStop`).
  * @type {Readonly<Record<string, Readonly<Stop>>>}
  */
 const STOPS = Object.freeze({
@@ -275,10 +278,11 @@ const STOPS = Object.freeze({
   repo: Object.freeze({ surface: 'repo-stop', next: null }),
   lost: Object.freeze({ surface: 'state-lost-gate', next: AT_THE_GATE }),
   guard: Object.freeze({ marker: MIGRATION, surface: 'migration-guard-stop', next: null }),
-  checks: Object.freeze({ marker: MIGRATION, surface: 'migration-checks-stop', next: loading('migration-checks') }),
+  checks: Object.freeze({ surface: 'migration-checks-stop', next: loading('migration-checks') }),
   merge: Object.freeze({ surface: 'state-merge-gate', next: AT_THE_GATE }),
-  taken: Object.freeze({ marker: MIGRATION, surface: 'migration-taken-stop', next: null }),
-  directive: Object.freeze({ next: loading('migration-directive') }),
+  taken: Object.freeze({ surface: 'migration-taken-stop', next: null }),
+  arrival: Object.freeze({ surface: 'directive-arrival', next: loading('migration-directive') }),
+  'carry-on': Object.freeze({ surface: 'directive-carry-on', next: loading('migration-directive') }),
   finish: Object.freeze({ marker: MIGRATION, next: loading('migration-review') }),
 });
 
@@ -323,8 +327,10 @@ function stopAt(state, { args, given } = {}) {
 /**
  * Boot stopped at a directive of the migration the record does not hold
  * (21.10.10): the directive's id and file, and its pieces done of all of
- * them where its check can say — `render directive-stop` draws the stop,
- * and the session carries the directive on.
+ * them where its check can say — `render directive-arrival` draws the
+ * migration at work where none is done, `render directive-carry-on` the
+ * migration part-way where some are, and the session carries the directive
+ * on.
  * @typedef {{state: 'directive', id: string, file: string, done?: number, of?: number, stop: Stop, warnings: string[]}} DirectiveStop
  */
 
@@ -499,7 +505,8 @@ function boot(cwd, { startAgain = false, words = '' } = {}) {
   }
   if ('directive' in migrated) {
     const stopped = directiveStopped(cwd, migrated.directive);
-    return stamped(cwd, { state: 'directive', ...stopped, stop: stopAt('directive', { given: { directive: stopped.id, file: stopped.file } }), warnings });
+    const stop = stopAt(stopped.done ? 'carry-on' : 'arrival', { args: ['--directive', stopped.id], given: { directive: stopped.id, file: stopped.file } });
+    return stamped(cwd, { state: 'directive', ...stopped, stop, warnings });
   }
   if ('checks' in migrated) {
     const folder = projectInMain(cwd);

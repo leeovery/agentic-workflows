@@ -7,13 +7,13 @@
 //   - Real fleet: run the actual migrate.cjs against a temp project, as far
 //     as its first directive — the bash-3.2 execution path, idempotency,
 //     PROJECT_DIR pinning, and a project with no state in its code tree left
-//     untouched, the reshape's directives recorded unrun with their unrun
-//     lines.
+//     untouched, the reshape's directives recorded by their IDs alone.
 //   - Synthetic fleet: a copy of migrate.cjs beside a controlled migrations/
 //     dir — mixed .sh/.cjs numeric ordering, the migrations record the caller names,
 //     failure-aborts-without-recording (both extensions), delete-log-reruns,
 //     a run killed as it writes a journal losing nothing journaled before,
-//     the code-tree fleet recorded unrun where there is no code-tree state;
+//     the code-tree fleet recorded without running where there is no
+//     code-tree state;
 //     a directive stopping the run, there too past the reshape's sequence;
 //     and a run with nothing pending reading the migrations folder once
 //     (21.10.4; the engine's side is test-migration-directives.cjs's); a
@@ -118,7 +118,7 @@ const shMig = (id) =>
   `#!/bin/bash\necho "${id}" >> "\${PROJECT_DIR:-.}/order.log"\nreport_update\nreturn 0\n`;
 
 // A directive's check, as its module exports it.
-const CHECK = `'use strict';\nmodule.exports = { counts: { one: 'topic', many: 'topics' }, done: 'have their records', partWay: 'A record it was in the middle of is amended from where it stood.', check: () => [] };\n`;
+const CHECK = `'use strict';\nmodule.exports = { does: 'This step writes a record of each topic.', counts: { one: 'topic', many: 'topics' }, done: 'with their records', partWay: 'A record it was in the middle of is amended from where it stood.', check: () => [] };\n`;
 
 // A directive: its title, its head, and its instructions.
 const directive = (title) =>
@@ -217,16 +217,16 @@ describe('migrate.cjs — real fleet', () => {
     assert.ok(JSON.parse(fs.readFileSync(path.join(project, JOURNALS, 'pending-tally.json'), 'utf8')).ran > 0, 'the fleet ran against the code tree\'s state');
   });
 
-  it('leaves a project with no state in its code tree untouched, recording the code-tree fleet unrun', () => {
+  it('leaves a project with no state in its code tree untouched, recording the code-tree fleet and the reshape\'s directives by their IDs alone', () => {
     const project = tmp('mig-orch-none-');
     const res = run(REAL_MIGRATE, project, { LEDGER_MIGRATE_BASH: SYSTEM_BASH });
 
     assert.strictEqual(res.status, 0, `stderr: ${res.stderr}`);
     assert.deepStrictEqual(fs.readdirSync(project), ['.ledger'], 'nothing written but the record');
     assert.deepStrictEqual(fs.readdirSync(path.join(project, '.ledger/.state')), ['migrations']);
-    // The code-tree fleet and the reshape's directives are recorded unrun, each directive with its unrun line; the code migrations past it run and find nothing to do.
+    // The code-tree fleet and the reshape's directives are recorded by their IDs alone, nothing recorded beside them; the code migrations past it run and find nothing to do.
     const directives = new Set(REAL_DIRECTIVES.map(idOf));
-    assert.deepStrictEqual(trackingLog(project).trim().split('\n').sort(), [...REAL_IDS, ...[...directives].map((id) => `${id} unrun`)].sort(), 'every migration recorded');
+    assert.deepStrictEqual(trackingLog(project).trim().split('\n').sort(), [...REAL_IDS].sort(), 'every migration recorded');
     assert.deepStrictEqual(runReport(res.stdout), { ran: REAL_IDS.filter((id) => Number(id) > LAST_CODE_TREE_MIGRATION && !directives.has(id)).length });
   });
 
@@ -342,7 +342,7 @@ describe('migrate.cjs — synthetic fleet', () => {
     assert.strictEqual(fs.existsSync(path.join(project, 'order.log')), false);
   });
 
-  it('records the code-tree fleet (to 072) unrun where the code tree holds no state, and runs what follows', () => {
+  it('records the code-tree fleet (to 072) without running it where the code tree holds no state, and runs what follows', () => {
     const { migrate } = synthFleet({
       '001-a.sh': shMig('001'),
       '072-b.cjs': cjsMig('072'),

@@ -26,7 +26,7 @@
 // after the apply and the move, and once finish takes `.workflows/` away;
 // an epic's manifest is read only for a plan with themes. Where the
 // detection found nothing, or its answer is gone, it answers no piece, and
-// before the apply the runner records the directive unrun (21.4.3).
+// before the apply the runner records the directive and runs past it (21.4.3).
 //
 // Each unfinished piece names its source's file and its plan's folder, both
 // absolute, for the session to read and stage. `.workflows/` is read where
@@ -167,8 +167,9 @@ function epicOf(project, name, pieces) {
 }
 
 module.exports = {
+  does: 'This step plans how each piece of broad research splits into topics, asking you to choose each cut.',
   counts: { one: 'source', many: 'sources' },
-  done: 'have their plans',
+  done: 'with their plans',
   partWay: 'A source it was in the middle of is planned again from the start, its plan cleared first.',
   /** @param {{projectDir: string, stateDir: string}} dirs */
   check({ projectDir, stateDir }) {

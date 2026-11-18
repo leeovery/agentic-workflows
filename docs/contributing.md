@@ -112,18 +112,20 @@ format and its check's contract.
   its instructions follow under headings of their own. It names the
   roster's agents, never a model or an effort.
 - Its check sits beside it, `NNN-slug.check.cjs`, exporting
-  `{ counts, done, partWay, check({ projectDir, stateDir }) }`: what one
-  of its pieces is called and many (`{ one: 'topic', many: 'topics' }`),
-  what a piece done has (`'have their records'`), what becomes of a piece
-  a session left part-way, in a sentence, and each piece with what it
-  still lacks. The stop's screen says them as "12 of Larkspur's 19
-  topics have their records. A record it was in the middle of is amended
-  from where it stood." `engine migrate check` runs it; the
-  directive is recorded only when
+  `{ does, counts, done, partWay, check({ projectDir, stateDir }) }`:
+  what the step does, in a sentence its stop shows while none of its pieces is done ("This
+  step writes a record of what each piece of past work decided, and
+  checks each one against its documents."), what one of its pieces is
+  called and many (`{ one: 'topic', many: 'topics' }`), what a piece done
+  has (`'have their records'`), what becomes of a piece a session left
+  part-way, in a sentence, and each piece with what it still lacks. Once
+  some are done, its stop says them as "12 of
+  Larkspur's 19 topics have their records. A record it was in the middle
+  of is amended from where it stood." `engine migrate check` runs it;
+  the directive is recorded when
   `engine checklist close directive NNN-slug` finds it passing, or by
-  the runner, unrun, where its check answers no piece at all: there is
-  nothing for the session to do, and the line `NNN unrun` beside its own
-  keeps it out of the review's directives done.
+  the runner, as any migration is, where its check answers no piece at
+  all: there is nothing for the session to do.
 - A directive whose pieces agents carry names, in its check, the
   sections their briefs draw, `briefed`: a list of its headings, each
   drawn with what nests beneath it. An agent's brief holds those alone,

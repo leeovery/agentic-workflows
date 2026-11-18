@@ -78,7 +78,7 @@
 //   subject with GitHub's " (#N)", and its id in the body (7.2.18); setup
 //   offers to set it on every repository the project lands in on GitHub,
 //   merge commits allowed beside it, and `github-squash yes` sets both
-//   wherever they are not, so a refusal names that verb (github-setup.cjs). A lone pull request is merged alone
+//   wherever they are not, so a refusal names that verb, and the settings to make by hand (github-setup.cjs). A lone pull request is merged alone
 //   under that same subject and body, its base made the default branch
 //   first where it stood on another phase's task. A stack built on a phase
 //   GitHub squashed is first brought up to date with the default branch,
@@ -156,7 +156,7 @@
 //   branch's tip on GitHub, as a lone pull request merges, the default
 //   branch here then brought to it. A repository that does not allow merge
 //   commits refuses it, naming `github-squash yes`, which allows them beside
-//   the squash default. A cancel closes the one open (`closeUnit`).
+//   the squash default, and the settings to make by hand. A cancel closes the one open (`closeUnit`).
 // - A quick-fix (landing.cjs): in each repository it touches, its one pull
 //   request is the latest whose head is its branch, onto the default branch,
 //   of those opened from the repository itself, never a fork, since the
@@ -808,6 +808,9 @@ function squashesIntoPull(read) {
   return repository.squash_merge_commit_title === 'PR_TITLE' && repository.squash_merge_commit_message === 'PR_BODY';
 }
 
+const SQUASH_SET = 'on each repository the project lands in on GitHub, make "Pull request title and description" squash merging\'s default commit message and tick "Allow merge commits" — '
+  + 'by hand under Settings → General → Pull Requests, or through Ledger, as `engine github-squash yes` does';
+
 /**
  * Refuse a stack merge where the repository's squash default would not make
  * each commit from its pull request's title and description.
@@ -817,7 +820,7 @@ function refuseSquashDefault(ctx, host, stack) {
   if (squashesIntoPull(ghAt(ctx, host, ['api', `repos/${host.repo}`], `read ${host.repo}'s squash default`))) return;
   throw new Error(
     `land: ${host.repo} does not squash a pull request into its title and description, so phase ${stack.phase}'s stack would land under other subjects than its tasks' — `
-    + 'set that squash default on every repository the project lands in on GitHub, as `engine github-squash yes` does, and land again',
+    + `${SQUASH_SET}, and land again`,
   );
 }
 
@@ -1518,7 +1521,7 @@ function unitPull(ctx, branch) {
   const host = hostOf(ctx);
   const opened = listedPulls(ctx, host, branch, null).find((pull) => pull.state === 'OPEN') ?? null;
   const takes = takesMerges(ghAt(ctx, host, ['api', `repos/${host.repo}`], `read whether ${host.repo} takes merge commits`));
-  const refused = takes ? null : `${host.repo} does not allow merge commits, and ${branch} lands on ${ctx.into} by one, so it did not land — allow them beside the squash default on every repository the project lands in on GitHub, as \`engine github-squash yes\` does, and land again`;
+  const refused = takes ? null : `${host.repo} does not allow merge commits, and ${branch} lands on ${ctx.into} by one, so it did not land — ${SQUASH_SET}, and land again`;
   return { open: opened?.number ?? null, refused, opened };
 }
 
