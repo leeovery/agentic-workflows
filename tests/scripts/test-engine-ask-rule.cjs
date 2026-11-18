@@ -191,10 +191,14 @@ describe('the order the rule decides in (16.5, 16.19.8, 16.3.1, 16.4.10)', () =>
     assert.deepStrictEqual(KINDS.map((kind) => ruling(quietKinds, { label: labelled(kind), replaced_by: 'person' })), KINDS.map(() => yours));
   });
 
-  it('a mark Claude gives a question asks, however quiet its kind: a design problem (19.4.22) or testing against a live server (19.4.20)', () => {
-    assert.deepStrictEqual([ruling(QUIET, { always: 'design-problem' }), ruling(QUIET, { always: 'live-server' }, 'one')], [
+  it('a mark Claude gives a question asks, however quiet its kind and sorted one or several: a design problem (19.4.22), testing against a live server (19.4.20), or code built otherwise than a decision from before Ledger (21.6.16)', () => {
+    assert.deepStrictEqual([
+      ruling(QUIET, { always: 'design-problem' }), ruling(QUIET, { always: 'live-server' }, 'one'),
+      ruling(QUIET, { always: 'built-otherwise', replaced_by: 'carried' }), ruling(QUIET, { always: 'built-otherwise', replaced_by: 'claude' }, 'one'),
+    ], [
       { decision: 'ask', reason: 'The root cause is a design problem, so it always comes to you.' },
       { decision: 'ask', reason: 'It means testing against a live server, so it always comes to you.' },
+      ...Array(2).fill({ decision: 'ask', reason: 'The code was built otherwise than a decision from before Ledger, so it always comes to you.' }),
     ]);
   });
 

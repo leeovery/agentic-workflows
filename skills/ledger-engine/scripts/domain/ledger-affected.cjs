@@ -7,28 +7,29 @@
 //
 // - An entry is affected, while it is current, by each entry it is held
 //   against — each it relies on, and for an answer the question it answers,
-//   which a rewording leaves it answering (5.3.13) — whose way to its
-//   current form passes a live replacement it never saw, past each merge
-//   that holds, a merge or a move itself changing nothing (5.5.5); until a
-//   live confirmation that it still holds names the latest replacement on
-//   that way, each entry it is held against cleared on its own; a later
+//   which a rewording leaves it answering (5.3.13) — whose way to its current
+//   form passes a live replacement it never saw, past each merge that holds,
+//   a merge or a move itself changing nothing (5.5.5); until a live
+//   confirmation that it still holds names the latest replacement on that
+//   way, each entry it is held against cleared on its own; a later
 //   replacement flags it again. A question, a finding and a decision alike
-//   (5.6.11). The person's live keep of a decision, where Claude proposed
-//   to replace it (raise.cjs), confirms it as a confirmation does against
-//   the replacement it names as its cause: keeping it for a new fact or
-//   another topic's decision is saying it still holds against that change.
-//   A keep naming no cause, or a cause on no way, confirms nothing. An
-//   entry relies only on what is current as it is written, so every live
-//   replacement on the way of one it relies on is one it never
+//   (5.6.11). The person's live keep of a decision, where Claude proposed to
+//   replace it (raise.cjs), confirms it as a confirmation does against the
+//   replacement it names as its cause: keeping it for a new fact or another
+//   topic's decision is saying it still holds against that change. A keep
+//   naming no cause, or a cause on no way, confirms nothing. A replacement's
+//   own cause is never affected by it: the cause is what the replacement was
+//   made for. An entry relies only on what is current as it is written, so
+//   every live replacement on the way of one it relies on is one it never
 //   saw: written after it, or set aside while it was written — wherever a
 //   merge has laid it in the ledger. A question's way is its line
-//   (ledger-fold.cjs): an answer, which records the question's wording as
-//   it is written (ledger-write.cjs), and an entry relying on a wording, are
+//   (ledger-fold.cjs): an answer, which records the question's wording as it
+//   is written (ledger-write.cjs), and an entry relying on a wording, are
 //   held against the live wordings later on the line than that one — or,
-//   where it is set aside since, than the nearest live wording it grew
-//   from: rewordings written after it, and rewordings set aside while it
-//   was written and back since. Its own replacement takes an entry off the
-//   list. The confirmation's write is held to the same ways (`heldAgainst`).
+//   where it is set aside since, than the nearest live wording it grew from:
+//   rewordings written after it, and rewordings set aside while it was
+//   written and back since. Its own replacement takes an entry off the list.
+//   The confirmation's write is held to the same ways (`heldAgainst`).
 // - What relies on an affected entry is not affected by it: only once that
 //   entry is replaced.
 // - Where an affected entry waits (5.6.12, 5.6.13): in a unit still under
@@ -91,14 +92,18 @@ function confirmedAgainst(folded, id) {
 
 /**
  * What changed under a current entry: each entry it is held against whose
- * way a live replacement changed, where no live confirmation that it still
- * holds, or keep, names the latest.
+ * way a live replacement changed, where the latest does not name it as its
+ * cause, and no live confirmation that it still holds, or keep, names the
+ * latest.
  * @param {Folded} folded @param {string} id
  * @returns {Change[]}
  */
 function changesUnder(folded, id) {
   const confirmed = confirmedAgainst(folded, id);
-  return heldAgainst(folded, id).filter(({ replacements }) => replacements.length > 0 && !confirmed.has(/** @type {string} */ (replacements.at(-1))));
+  return heldAgainst(folded, id).filter(({ replacements }) => {
+    const latest = replacements.at(-1);
+    return latest !== undefined && factsOf(folded, latest).cause !== id && !confirmed.has(latest);
+  });
 }
 
 /**

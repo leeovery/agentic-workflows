@@ -12,6 +12,12 @@ A question that reading the code, reading the record or running something can an
 
 Where there is more than one way and no obvious choice, find out before you lean. When each way has its pros, cons and risks and evidence can tell them apart, spike it, research it, read or reverse-engineer the source, or look at how open-source products do it, rather than guess or ask. That runs on a disposable machine or this one, without the person; where the phase records findings, what it shows lands through `ledger find` for the call to rely on.
 
+## Decisions From Before Ledger
+
+A decision whose entry's `session` is `migration` came across from the documents from before Ledger: it says what they decided, and the migration never read the code for its records. The code is the truth of what is built, and the person may have changed it since. Where the work finds the code built otherwise than such a decision, doing something else, record a finding on it, `how` naming the file and what in it shows this: `ledger find {place} --relies-on {decision}`, `{"text", "how", "known": "read", "by": "claude", "who_moved_whom": "none"}`. Code that does not yet do what was decided, in a part the build has not reached, is not built otherwise: it is work still to do. Code that no longer does it, in a part built and changed since, is built otherwise.
+
+The work carries on past the finding unless it turns on which stands, the decision or the code; a build that would undo what the code does always turns on it. Then the person decides, before the code is changed: raise the decision's replacement, `raise {place} --replaces {decision} --reason new-fact --cause {finding} --always built-otherwise [--parks {task}]`, which always asks, parking in the build the task that would change the code. Its lean is your own read of which should stand: one of the proposals, or `keep`. Their keep holds the decision, and the build changes the code to match; the work that changes it replaces the finding with what the code does then: `ledger replace {place} --replaces {finding} --reason was-wrong --relies-on {decision}`, `{"drops": ["{what the finding said}"], "text", "how", "known": "read", "by": "claude", "who_moved_whom": "none"}`.
+
 ## Every Other Call Goes to `raise`
 
 Every call you can't settle by checking goes to `raise`, the obvious ones included, however sure you are: what the person wants the product to be and do, and equally a data model, a contract, the code's insides or the process. Compose it product first where it can be; never settle it alone.

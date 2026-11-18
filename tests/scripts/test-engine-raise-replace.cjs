@@ -10,15 +10,21 @@
 // proposed answers drawn with a row of the screen's own keeping the
 // decision as it stands, `ledger replace`'s checks run before anything is
 // drawn or sealed, each decision's raise sealed on its own (16.5.7,
-// 29.19.2); each answer — a proposal picked, the person's own words, `keep`,
-// "I don't follow", "don't care" — with its ledger line, its raise event, who moved whom
-// (5.3.10) and the verdict queue, read through this machine's trust log
-// (domain/trust-evidence.cjs), and refused, recording nothing, on a raise
-// with no such row or a decision replaced since the draw; a keep changing
+// 29.19.2); under `--always built-otherwise` (21.6.16), on a decision the
+// migration brought across alone, the raise asking for the mark, its keep
+// row saying the build changes the code to match, and Claude's lean
+// may be keep — the person's keep then agreeing with it, a proposal picked
+// standing over it; each answer — a proposal picked, the person's own
+// words, `keep`, "I don't follow", "don't care" — with its ledger line,
+// its raise event, who moved whom (5.3.10) and the verdict queue, read
+// through this machine's trust log (domain/trust-evidence.cjs), and
+// refused, recording nothing, on a raise with no such row or a decision
+// replaced since the draw; a keep changing
 // nothing current, so nothing relying on the decision is affected (5.6.10),
 // and confirming it still holds against its cause (5.6.13), its raise event
 // a departure this machine alone judges, and every reader passing it by or
-// showing it beside the decision; each answer landed once across a kill;
+// showing it beside the decision; a replacement's own cause never affected
+// by it; each answer landed once across a kill;
 // a call the decision point lets proceed landed as Claude's replacement;
 // and Claude's own `ledger replace` of the person's decision refused.
 //
@@ -107,10 +113,25 @@ afterEach(() => {
 
 const { ledgerText, entries, full } = ledgerHelpers(() => dir);
 const { copy } = copiesHelpers(() => dir);
-const { conversation, inFolder, seals, logged, project, answer, lastEntry, raiseEvent: anyRaise } = raiseHelpers(() => dir, config, CALL);
+const { conversation, inFolder, seals, logged, project, answer, lastEntry, raiseEvent: anyRaise, quietOn, labelledAs, raised } = raiseHelpers(() => dir, config, CALL);
 
 /** A raise event on the replacement of Claude's decision, `own` over the pick of the lean. @param {string|null} entry @param {Record<string, unknown>} [own] */
 const raiseEvent = (entry, own = {}) => anyRaise(entry, { replaces: full(made.opens), replaced_by: 'claude', ...own });
+
+// A decision the migration brought across, which the code was built otherwise than.
+const CARRIED = 'On the screen it was last opened on';
+
+/** Claude's call leaning to keep the decision carried over, its proposals the code's ways. */
+const KEEP_LEAN = Object.freeze({ ...CALL, question: 'Should a new note open where the code opens it?', lean: 'keep' });
+
+/** Claude's call on a question of its own, sorted one. */
+const ONE_ANSWER = Object.freeze({ ...CALL, question: 'Does a new note take focus?' });
+
+/** The decision carried over, answering where a new note opens: its short id. */
+const carried = () => ledgerHelpers(() => dir).carriedOver(NOTE, ledgerHelpers(() => dir).write('ask', NOTE, [], { ...MADE, text: 'Where did a note open before Ledger?' }).id, CARRIED);
+
+/** The flags raising the replacement of `decision` for the code built otherwise, the finding the cause. @param {string} decision */
+const builtOtherwise = (decision) => ['--replaces', decision, '--reason', 'new-fact', '--cause', made.screens, '--always', 'built-otherwise'];
 
 /** The argv naming Claude's decision as the one replaced, for `reason`. @param {string} [reason] @param {string[]} [more] */
 const replacing = (reason = 'changed-mind', more = []) => [NOTE, '--replaces', made.opens, '--reason', reason, ...more];
@@ -202,6 +223,26 @@ describe('the draw (16.5.7, 29.19.2)', () => {
     assert.deepStrictEqual(/** @type {any} */ (gateShown()).options.find((/** @type {{key: string}} */ o) => o.key === 'keep').next.argv, ['raise', 'answer', res.raise, '--pick', 'keep']);
   });
 
+  it('under --always built-otherwise (21.6.16), asks for the mark whatever the counts, its keep row saying keeping the decision has the build change the code to match', async () => {
+    const { res, sections } = await drawn([NOTE, ...builtOtherwise(carried())], { env: { LEDGER_GATE_SURFACE: '1' } });
+
+    const sealed = /** @type {Record<string, any>} */ (seals())[res.raise];
+    assert.deepStrictEqual([res.decision, sealed.reason, sealed.always, sealed.replaces.keep], [
+      'ask', 'The code was built otherwise than a decision from before Ledger, so it always comes to you.', 'built-otherwise',
+      { key: 'keep', name: 'Keep it as decided', text: CARRIED, notice: 'the build changes the code to match' },
+    ]);
+    assert.ok(/** @type {Record<string, any>} */ (auditGate(sections, 'raise --always built-otherwise')).statement.includes('- Keep it as decided: the build changes the code to match'));
+  });
+
+  it('under --always built-otherwise, Claude may lean to keep: the keep row recommended and stated as the lean', async () => {
+    const { res, sections } = await drawn([NOTE, ...builtOtherwise(carried())], { call: KEEP_LEAN, env: { LEDGER_GATE_SURFACE: '1' } });
+
+    const gate = /** @type {Record<string, any>} */ (auditGate(sections, 'raise leaning keep'));
+    assert.deepStrictEqual(gate.options.map((/** @type {Record<string, any>} */ o) => [o.word ?? o.key, o.recommended]).slice(0, 3), [['1', false], ['2', false], ['keep', true]]);
+    assert.ok(gate.statement.includes(`I lean: ${CARRIED}`), 'the keep is stated as the lean');
+    assert.strictEqual(/** @type {Record<string, any>} */ (seals())[res.raise].call.lean, 'keep');
+  });
+
   it('labels the call from its question and Claude\'s proposals, never the keep row — the decision as it stands — and a keep lands no kind, the raise event carrying the label', async () => {
     const log = path.join(config(), 'calls.jsonl');
     const { res } = await drawn(replacing(), { call: { ...CALL, sort: 'several' }, env: { CLAUDE_STUB_ANSWERS: JSON.stringify({ 'The answer: ': 'no-login', '': labelAnswers('words') }), CLAUDE_STUB_LOG: log } });
@@ -245,6 +286,14 @@ describe('the draw\'s refusals, drawing and sealing nothing', () => {
     assert.match(await refusedDraw(replacing()), new RegExp(`^raise --replaces names ${made.opens}, which ${since} replaced — the current one is ${since}$`));
   });
 
+  it('--always built-otherwise anywhere but on the replacement of a decision the migration brought across: on a question\'s answer, and on a decision made in Ledger', async () => {
+    const answering = await refusedDraw([NOTE, '--answers', made.focus, '--always', 'built-otherwise']);
+    const ours = await refusedDraw(replacing('new-fact', ['--cause', made.screens, '--always', 'built-otherwise']));
+
+    assert.match(answering, /^raise: --always built-otherwise marks the replacement of a decision from before Ledger, and a raise answering a question replaces none — Usage: /);
+    assert.match(ours, /^raise: --always built-otherwise marks code built otherwise than a decision the migration brought across, and \S+ was decided in Ledger, its session not the migration's$/);
+  });
+
   it('an entry replaced that is no decision: a raise\'s rows answer a decision\'s question', async () => {
     assert.strictEqual(await refusedDraw([NOTE, '--replaces', made.focus, '--reason', 'changed-mind']),
       `raise --replaces names ${made.focus}, a question — a raise replaces a decision, the person picking its answer`);
@@ -254,7 +303,7 @@ describe('the draw\'s refusals, drawing and sealing nothing', () => {
     assert.strictEqual(await refusedDraw(replacing(), { ...CALL, rows: [] }),
       'raise: the call proposes no answer — a raise on a replacement proposes one at least, beside keeping the entry as it stands');
     assert.strictEqual(await refusedDraw(replacing(), { ...CALL, lean: 'keep' }),
-      'raise: the call leans to keep, the entry as it stands — a raise on a replacement leans to one of its proposals');
+      'raise: the call leans to keep, the entry as it stands — a raise on a replacement leans to one of its proposals, but under --always built-otherwise, where the code was built otherwise than the decision');
     assert.strictEqual(await refusedDraw(replacing(), { ...CALL, rows: [MAIN, { ...LAST, key: 'Keep' }] }),
       'raise: the call\'s rows[1] takes the key Keep, which the screen keeps for itself — t, e, technical, explain, comment, keep are its own, in any case');
     assert.strictEqual(await refusedDraw(replacing(), { ...CALL, rows: [MAIN, { ...LAST, text: KEPT }] }),
@@ -326,6 +375,39 @@ describe('each answer, its line, its raise event, who moved whom and the queue (
     assert.deepStrictEqual(logged(), [raiseEvent(id, { answer: '2' })]);
     assert.deepStrictEqual(queue(), [[id, LAST.text, MAIN.text]]);
     assert.deepStrictEqual(affected(), [full(made.focus)]);
+  });
+
+  it('a proposal picked for a new fact leaves its cause unaffected — the finding relying on the decision is what the replacement was made for — while what else relied on the decision is affected', async () => {
+    const built = ledgerHelpers(() => dir).write('find', NOTE, ['--relies-on', made.opens], { ...MADE, text: 'New notes open on the main screen.', how: 'read in src/note.js, open', known: 'read' }).id;
+    const id = await draw(replacing('new-fact', ['--cause', built]));
+
+    answer(id, ['--pick', '1']);
+
+    assert.deepStrictEqual([lastEntry().cause, affected()], [full(built), [full(made.focus)]]);
+  });
+
+  it('under --always built-otherwise, Claude leaning to keep: the person\'s keep agrees, moving no one, owed no verdict, and the next one-answer call of the quiet kind still goes ahead; their pick of the code\'s way stands over the keep, a departure waiting with the decision beside it', async () => {
+    quietOn('behaviour');
+    const decided = carried();
+    const keptRaise = /** @type {string} */ ((await raised(NOTE, builtOtherwise(decided), KEEP_LEAN, labelledAs(KEEP_LEAN, 'behaviour'))).res.raise);
+    answer(keptRaise, ['--pick', 'keep']);
+
+    assert.deepStrictEqual([lastEntry().who_moved_whom, lastEntry().sealed, logged().at(-1)?.sealed, logged().at(-1)?.answer, queue()], ['none', CARRIED, 'keep', 'keep', []]);
+    const next = await raised(NOTE, ['--answers', made.focus], ONE_ANSWER, labelledAs(ONE_ANSWER, 'behaviour'));
+    assert.strictEqual(next.res.decision, 'proceed', 'the keep is no overrule of Claude\'s');
+
+    const picked = /** @type {string} */ ((await raised(NOTE, builtOtherwise(decided), KEEP_LEAN, labelledAs(KEEP_LEAN, 'behaviour'))).res.raise);
+    answer(picked, ['--pick', '1']);
+
+    assert.deepStrictEqual([lastEntry().who_moved_whom, lastEntry().sealed, queue()], [OVER, CARRIED, [[picked, MAIN.text, CARRIED]]]);
+  });
+
+  it('under --always built-otherwise, Claude leaning to keep: the person\'s "don\'t care" keeps the decision as the builder\'s, moving no one', async () => {
+    const id = /** @type {string} */ ((await drawn([NOTE, ...builtOtherwise(carried())], { call: KEEP_LEAN })).res.raise);
+
+    answer(id, ['--dont-care']);
+
+    assert.deepStrictEqual([lastEntry().event, lastEntry().who_moved_whom, lastEntry().given, logged().at(-1)?.dont_care, queue()], ['kept', 'none', 'dont-care', true, []]);
   });
 
   it('the lean picked as the person came round to it, at Claude\'s word: claude-moved-person, nothing in the queue', async () => {

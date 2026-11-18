@@ -68,10 +68,13 @@
 //   (16.10.1). But the person's answer to a blind question drawn on
 //   Claude's own call, which went ahead while it waited (16.17.6), keeps
 //   that call where it is Claude's answer, sealed in it, for that question's
-//   reason, `asked-blind`: moving no one, an agreement owed none. How the
-//   keep was given: the person's own, `own`, which makes the decision
-//   theirs, or their "don't care", `dont-care`, which hands the call over,
-//   the builder's (9.2.16) — on that blind question's call alone
+//   reason, `asked-blind`: moving no one, an agreement owed none. So too
+//   a keep where Claude leaned to keep, code built otherwise than a
+//   decision from before Ledger (21.6.16): the decision is Claude's sealed
+//   answer, and keeping it moves no one. How the keep was given: the
+//   person's own, `own`, which makes the decision theirs, or their "don't
+//   care", `dont-care`, which hands the call over, the builder's (9.2.16) —
+//   only where the keep moves no one, being Claude's sealed answer
 //   (raise.cjs); the decision then stands so (ledger-fold.cjs,
 //   `decidedNow`).
 // - asset: a file linked from an entry (9.10.5–9.10.7, 9.10.16):
@@ -302,14 +305,15 @@ const PARKED_CALL_FIELDS = Object.freeze({ ...CALL_FIELDS, lean: nullable(KEY), 
  * it answers a question or proposes a replacement, one and not both; the
  * reason and the cause are a replacement's alone, its reason given; a fact
  * answers a question, and has no lean, why or sort, and is never blind,
- * while a call has all three and leans to a row it holds; and a blind
+ * while a call has all three and leans to a row it holds, or under the
+ * built-otherwise mark to keep the decision it would replace; and a blind
  * question on Claude's call gone ahead (`went_ahead`) proposes to replace
  * that call for its reason, asked blind, parking no task — the park holding
  * that task open, for that reason, asked blind too.
  * @param {Record<string, any>} parked
  * @returns {string|null}
  */
-function parkHolds({ question, replaces, reason, cause, task, went_ahead: wentAhead, call, blind }) {
+function parkHolds({ question, replaces, reason, cause, task, went_ahead: wentAhead, call, blind, always }) {
   if ((question === null) === (replaces === null)) return 'a parked question answers a question or proposes a replacement, one and not both';
   if ((replaces === null) !== (reason === null)) return 'a replacement proposed gives its reason, and only a replacement does';
   if (cause !== null && replaces === null) return 'only a replacement proposed has a cause';
@@ -322,12 +326,13 @@ function parkHolds({ question, replaces, reason, cause, task, went_ahead: wentAh
     return replaces === null ? null : 'a fact parked answers a question, never proposes a replacement';
   }
   if (leans < 3) return 'its call has a lean, a why and a sort, or, a fact, none of them';
+  if (call.lean === 'keep' && replaces !== null && always === 'built-otherwise') return null;
   return call.rows.some((/** @type {{key: string}} */ row) => row.key === call.lean) ? null : `its call leans to ${call.lean}, a row it does not hold`;
 }
 
-/** Why a keep's "don't care" is on no blind question's call gone ahead, or null. @param {Record<string, any>} kept */
-function keepHolds({ given, reason }) {
-  return given === 'dont-care' && reason !== ASKED_BLIND ? 'a keep is given dont-care only on Claude\'s call gone ahead while a blind question waited, asked-blind' : null;
+/** Why a keep's "don't care" keeps no sealed answer of Claude's, or null. @param {Record<string, any>} kept */
+function keepHolds({ given, who_moved_whom: moved }) {
+  return given === 'dont-care' && moved !== 'none' ? 'a keep is given dont-care only where it keeps Claude\'s sealed answer, moving no one: Claude\'s call gone ahead while a blind question waited, or a decision Claude leaned to keep' : null;
 }
 
 /** Why a task taken off its questions names none of them, or null. @param {Record<string, any>} unparked */

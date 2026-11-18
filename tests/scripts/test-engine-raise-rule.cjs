@@ -370,8 +370,8 @@ describe('the rule\'s decisions as a raise meets them', () => {
       (await refused(['--fact', '--always', 'live-server'], fact)).replace(/ — Usage: .*/, ''),
     ], [
       'raise takes --always once — Usage: engine raise <work-unit>.<phase>[.<topic>] --answers <id> [--relies-on <id> …] [--parks <phase>.<n>] [--always design-problem|live-server]   (the call as JSON on stdin)',
-      'raise: --always takes design-problem or live-server — not nothing',
-      'raise: --always takes design-problem or live-server — not "urgent"',
+      'raise: --always takes design-problem, live-server or built-otherwise — not nothing',
+      'raise: --always takes design-problem, live-server or built-otherwise — not "urgent"',
       'raise --fact takes no --always: a fact always asks',
     ]);
   });

@@ -10,7 +10,8 @@
 // was written, which a merge or a move of the question never flags; each
 // entry it is held against cleared on its own by a live "still holds"
 // naming the latest replacement on that way, and flagged again by a later
-// one; leaving the list on its own replacement; a chain
+// one; never flagging a replacement's own cause by it; leaving the list on
+// its own replacement; a chain
 // passing on through replacements alone, and past a merge that holds, which
 // a confirmation follows too; in a unit under way, waiting on the topic it
 // stands on, however closed; in a finished unit, flagged in the work that
@@ -81,6 +82,11 @@ function decide(address, text, flags = []) {
 /** `old` replaced at `address`, a changed mind. @param {string} address @param {string} old @param {string} text */
 function change(address, old, text) {
   return write('replace', address, ['--replaces', old, '--reason', 'changed-mind'], { ...MADE, drops: ['the old answer'], text, why: `Why: ${text}` });
+}
+
+/** `old` replaced at `address` for a new fact, `cause` the finding. @param {string} address @param {string} old @param {string} cause @param {string} text */
+function changeFor(address, old, cause, text) {
+  return write('replace', address, ['--replaces', old, '--reason', 'new-fact', '--cause', cause], { ...MADE, drops: ['the old answer'], text, why: `Why: ${text}` });
 }
 
 /** `entry` confirmed at `address` to hold after `replacement`. @param {string} address @param {string} entry @param {string} replacement */
@@ -196,6 +202,27 @@ describe('what a replacement affects (5.6.10, 5.6.11, 5.8.8)', () => {
     assert.deepStrictEqual(changes(), { [relying]: [[panel, [framed, clear]]] });
     assert.strictEqual(refused('hold', SPACE, ['--entry', relying, '--after', framed], MADE),
       `ledger hold --after names ${framed}, an earlier change on the way of ${panel} — a hold names the latest: ${clear}`);
+  });
+
+  it('never flags a replacement\'s own cause by it: a finding relying on two decisions, one replaced for it, is flagged by the other\'s replacement alone; a later replacement on the first\'s way made for no cause flags it again there, and one made for it clears it', () => {
+    const panel = decide(NOTE, 'A note is a panel.');
+    const sized = decide(NOTE, 'A note keeps its size.');
+    const cause = find(SPACE, 'Notes are built frameless, fitted to their text.', ['--relies-on', panel, '--relies-on', sized]);
+    const relying = ask(SPACE, 'Does a panel cast a shadow?', ['--relies-on', panel]);
+
+    const framed = changeFor(NOTE, panel, cause, 'A note is a frameless window.');
+    assert.deepStrictEqual(changes(), { [relying]: [[panel, [framed]]] });
+
+    const fitted = change(NOTE, sized, 'A note fits its text.');
+    assert.deepStrictEqual(changes(), { [cause]: [[sized, [fitted]]], [relying]: [[panel, [framed]]] });
+    hold(SPACE, cause, fitted);
+    hold(SPACE, relying, framed);
+
+    const clear = change(NOTE, framed, 'A note is a clear window.');
+    assert.deepStrictEqual(changes(), { [cause]: [[panel, [framed, clear]]], [relying]: [[panel, [framed, clear]]] });
+
+    const frameless = changeFor(NOTE, clear, cause, 'A note is a frameless window after all.');
+    assert.deepStrictEqual(changes(), { [relying]: [[panel, [framed, clear, frameless]]] });
   });
 
   it('holds an answer against the question it answers: a rewording leaves it answering and affected, a confirmation naming the rewording clears it, a further rewording flags it again, and the answer\'s replacement clears it (5.S41)', () => {

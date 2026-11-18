@@ -195,7 +195,7 @@ describe('the events and their schemas', () => {
     const keep = { v: 1, id: newId(), event: 'kept', ...TAGS, at: AT, by: 'person', who_moved_whom: 'person-moved-claude', entry: newId(), reason: 'changed-mind', cause: null, why: 'They float every note.', sealed: 'A floating panel.', given: 'own' };
     const leftAhead = { ...keep, who_moved_whom: 'none', reason: 'asked-blind', given: 'dont-care' };
     assert.deepStrictEqual(validEvent(leftAhead), leftAhead);
-    assert.throws(() => validEvent({ ...keep, given: 'dont-care' }), /a keep is given dont-care only on Claude's call gone ahead while a blind question waited, asked-blind/);
+    assert.throws(() => validEvent({ ...keep, given: 'dont-care' }), /a keep is given dont-care only where it keeps Claude's sealed answer, moving no one: Claude's call gone ahead while a blind question waited, or a decision Claude leaned to keep/);
     assert.throws(() => validEvent({ ...keep, given: 'your-call' }), /its given is not one of own, dont-care$/);
     assert.deepStrictEqual(validEvent(keep), keep);
     assert.throws(() => validEvent({ ...keep, by: 'claude' }), /its by is not one of person$/);
@@ -243,7 +243,7 @@ describe('the events and their schemas', () => {
       [{ ...labelled, label: { ...labelled.label, answers: Array(11).fill(false) } }, /its label is not a label/],
       [{ ...park, blocks_build: null }, /its blocks_build is not true or false$/],
       [{ ...park, replaced_by: 'builder' }, /its replaced_by is not one of person, claude, your-call, dont-care, carried, or null$/],
-      [{ ...park, always: 'urgent' }, /its always is not one of design-problem, live-server, or null$/],
+      [{ ...park, always: 'urgent' }, /its always is not one of design-problem, live-server, built-otherwise, or null$/],
       [{ ...park, measured: 'the timing experiment' }, /its measured is not an experiment's id, or null$/],
       [{ ...park, chain: 'Q1' }, /its chain is not an entry id, or null$/],
       [{ ...fact, call: { ...fact.call, why: 'A note follows the person.' } }, /its call has a lean, a why and a sort, or, a fact, none of them/],

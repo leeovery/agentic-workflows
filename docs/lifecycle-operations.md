@@ -62,7 +62,7 @@ A refusal always says what holds the move and the way on.
 
 ## When a decision changes
 
-A decision is never edited. A changed mind, a new fact, another topic's decision, or a decision found wrong replaces it with a new entry that says why. Everything on the ledger that relied on the old answer is then **affected**: flagged until it is confirmed as still holding, or replaced in turn. A decided topic holding an affected entry shows among what waits on you, as "a decision it relies on changed", and entering it is for those entries alone. In the build, whatever was built on the old answer is reworked by tasks. Nothing that rests on a replaced answer is trusted by mistake, and nothing is silently overwritten.
+A decision is never edited. A changed mind, a new fact, another topic's decision, or a decision found wrong replaces it with a new entry that says why. Everything on the ledger that relied on the old answer, but the replacement's own cause, is then **affected**: flagged until it is confirmed as still holding, or replaced in turn. A decided topic holding an affected entry shows among what waits on you, as "a decision it relies on changed", and entering it is for those entries alone. In the build, whatever was built on the old answer is reworked by tasks. Nothing that rests on a replaced answer is trusted by mistake, and nothing is silently overwritten.
 
 ## The legacy files
 

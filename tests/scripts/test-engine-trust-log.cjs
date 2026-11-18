@@ -120,7 +120,7 @@ describe('record (16.13.4)', () => {
       ['verdict', { ...SAMPLES.verdict, verdict: 'maybe' }, 'a verdict event cannot be recorded: its verdict is not one of nothing, fix, loss, skip'],
       ['raise', { ...SAMPLES.raise, blocks_build: null }, 'a raise event cannot be recorded: its blocks_build is not true or false'],
       ['raise', { ...SAMPLES.raise, replaced_by: 'builder' }, 'a raise event cannot be recorded: its replaced_by is not one of person, claude, your-call, dont-care, carried, or null'],
-      ['raise', { ...SAMPLES.raise, always: 'urgent' }, 'a raise event cannot be recorded: its always is not one of design-problem, live-server, or null'],
+      ['raise', { ...SAMPLES.raise, always: 'urgent' }, 'a raise event cannot be recorded: its always is not one of design-problem, live-server, built-otherwise, or null'],
       ['raise', { ...SAMPLES.raise, raised: 'last week' }, 'a raise event cannot be recorded: its raised is not a UTC time'],
       ['raise', { ...SAMPLES.raise, replaces: 'Q1' }, 'a raise event cannot be recorded: its replaces is not an entry id, or null'],
       ['raise', { ...SAMPLES.raise, measured: 'E0' }, 'a raise event cannot be recorded: its measured is not an experiment\'s id, or null'],

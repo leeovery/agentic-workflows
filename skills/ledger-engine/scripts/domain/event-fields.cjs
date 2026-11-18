@@ -110,11 +110,12 @@ const KINDS = Object.freeze(['process', 'danger', 'contract', 'scope', 'look', '
 const CARE_KINDS = Object.freeze(/** @type {Kind[]} */ (['contract', 'scope', 'behaviour', 'look', 'words', 'process', 'internals']));
 
 // The marks Claude gives a question that always asks, as `raise --always`
-// takes them: a design problem (19.4.22), or testing against a live server
-// (19.4.20).
-const ALWAYS_MARKS = Object.freeze(['design-problem', 'live-server']);
+// takes them: a design problem (19.4.22), testing against a live server
+// (19.4.20), or code built otherwise than a decision from before Ledger
+// (21.6.16).
+const ALWAYS_MARKS = Object.freeze(['design-problem', 'live-server', 'built-otherwise']);
 
-/** A mark that only makes a question ask. @typedef {'design-problem'|'live-server'} Always */
+/** A mark that only makes a question ask. @typedef {'design-problem'|'live-server'|'built-otherwise'} Always */
 
 const ALWAYS_MARK = oneOf(...ALWAYS_MARKS);
 
