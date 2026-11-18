@@ -70,12 +70,9 @@
 
 const fs = require('fs');
 const path = require('path');
-const { OLD_STATE, mainCheckout, projectInMain } = require('./reshape/shared.cjs');
+const { OLD_STATE, TASK_DRIVERS, mainCheckout, projectInMain } = require('./reshape/shared.cjs');
 
 const OLD_PLAN = ['specification', 'planning', 'implementation'];
-// The task drivers' folders, each named for the format an old plan kept in
-// its tracker took.
-const TASK_DRIVERS = path.join(__dirname, '../../../ledger-engine/scripts/drivers/task');
 const STAGING = '.cache/migrate/cut-and-merges';
 const CUT_MARKS = '.cache/migrate/cut';
 const CLOSED_MARKS = '.cache/migrate/closed';

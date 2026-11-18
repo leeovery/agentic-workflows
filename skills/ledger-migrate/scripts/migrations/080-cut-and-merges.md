@@ -47,7 +47,7 @@ Its old plans put tasks in the tracker: a unit nothing of which was built will h
 node .claude/skills/ledger-engine/scripts/engine.cjs task close-plan {unit} --parent {root}
 ```
 
-A cancelled unit's tasks done stay done. Where the close of any other unit's plan refuses because the plan holds a task done, the unit built some of it: say so to the person, as the refusal reads, and stop the directive there.
+Where the close of a plan of a unit not cancelled refuses because the plan holds a task done, the unit built some of it: say so to the person, as the refusal reads, and stop the directive there.
 
 ## A Cross-Cutting Unit
 

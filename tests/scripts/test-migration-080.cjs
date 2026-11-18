@@ -377,7 +377,7 @@ describe('the directive\'s ways on', () => {
 
   it('the phase verifier counts built a phase whose every task the tracker holds ended, whatever the manifest counted, and a task the tracker holds done that the code lacks a note, never a finding (21.8.14)', () => {
     const verifier = fs.readFileSync(path.join(__dirname, '../../skills/ledger-engine/content/briefs/migration-phase-verifier.md'), 'utf8');
-    assert.ok(verifier.includes('- a phase found built is one whose every task the tracker holds done or closed once the piece\'s corrections are made, whatever the manifest counted, and each task the piece ends the code holds; a task the tracker holds done that the code lacks stays done, a note saying what is missing, never a finding;'));
+    assert.ok(verifier.includes('- a phase found built is one whose every task the tracker holds done or closed once the piece\'s corrections are made, whatever the manifest counted, and each task the piece ends the code holds;\n- a task the tracker holds done that the code lacks stays done, with a note saying what is missing: the task is never a finding, and a piece without that note has one;'));
   });
 
   it('says only a `## Research:` heading naming a research file opens a source, any other under one part of the source above it, as the check reads them', () => {
