@@ -1096,7 +1096,7 @@ function hooked(hooks, rest = {}) {
 /** @type {(ReturnType<typeof harness> & {path: string})|null} */
 let stub = null;
 
-/** The migrate skill's scripts: the modules the engine asks — the migrations' naming and the old layout — and the reshape's shared steps. */
+/** The migrate skill's scripts: the modules the engine asks — the migrations' naming, the old layout and the records' files — and the reshape's shared steps. */
 const MIGRATE_SCRIPTS = path.join(path.dirname(path.dirname(path.dirname(ENGINE))), 'ledger-migrate/scripts');
 
 /**
@@ -1113,7 +1113,7 @@ function stubEngine() {
   const skills = templateFolder('engine-skills-');
   fs.cpSync(path.dirname(path.dirname(ENGINE)), path.join(skills, 'ledger-engine'), { recursive: true });
   createFile(skills, 'ledger-migrate/scripts/migrate.cjs', STUB_MIGRATE);
-  for (const script of ['migration-ids.cjs', 'old-layout.cjs']) fs.copyFileSync(path.join(MIGRATE_SCRIPTS, script), path.join(skills, 'ledger-migrate/scripts', script));
+  for (const script of ['migration-ids.cjs', 'old-layout.cjs', 'record-files.cjs']) fs.copyFileSync(path.join(MIGRATE_SCRIPTS, script), path.join(skills, 'ledger-migrate/scripts', script));
   fs.cpSync(path.join(MIGRATE_SCRIPTS, 'migrations/reshape'), path.join(skills, 'ledger-migrate/scripts/migrations/reshape'), { recursive: true });
   const at = path.join(skills, 'ledger-engine/scripts/engine.cjs');
   stub = { ...harness(at), path: at };

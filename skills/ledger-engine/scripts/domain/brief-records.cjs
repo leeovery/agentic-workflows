@@ -1234,9 +1234,10 @@ function assetLine({ path: at, kind, origin, owner, listed: imported, held }, to
   return `- ${at}, ${from}${owed}`;
 }
 
-// The folder of a unit's assets its legacy files are kept in, each at its
-// path from the unit's old folder (078).
-const LEGACY_PLACE = '/assets/legacy/';
+// The folder of a unit's assets its legacy files are kept in — those the
+// move had no other place for — each at its path from the unit's old
+// folder (078).
+const UNPLACED_ASSETS = '/assets/legacy/';
 
 /**
  * The unit's assets as a record's brief lists them: those it walks, then
@@ -1250,7 +1251,7 @@ function assetSections(assets, topic, held, specs = []) {
   const walks = (/** @type {MigratedAsset} */ { path: at, walkers }) => walkers.includes(topic) && !held.includes(at);
   const others = assets.filter((asset) => !walks(asset) && !specs.includes(asset.path));
   const legacy = others.filter(({ kind }) => kind === 'legacy');
-  const place = (/** @type {string} */ at) => at.slice(0, at.indexOf(LEGACY_PLACE) + LEGACY_PLACE.length);
+  const place = (/** @type {string} */ at) => at.slice(0, at.indexOf(UNPLACED_ASSETS) + UNPLACED_ASSETS.length);
   return [
     '## The unit\'s assets it walks',
     '',

@@ -116,7 +116,7 @@ function directiveEngine() {
   fs.cpSync(path.dirname(SCRIPTS), path.join(skills, 'ledger-engine'), { recursive: true });
   const migrations = path.join(skills, 'ledger-migrate/scripts/migrations');
   fs.cpSync(FIXTURES, migrations, { recursive: true });
-  for (const script of ['migrate.cjs', 'migration-ids.cjs', 'old-layout.cjs']) fs.copyFileSync(path.join(path.dirname(RUNNER), script), path.join(skills, 'ledger-migrate/scripts', script));
+  for (const script of ['migrate.cjs', 'migration-ids.cjs', 'old-layout.cjs', 'record-files.cjs']) fs.copyFileSync(path.join(path.dirname(RUNNER), script), path.join(skills, 'ledger-migrate/scripts', script));
   const at = path.join(skills, 'ledger-engine/scripts/engine.cjs');
   engine = { ...harness.harness(at), path: at, migrations };
   return engine;

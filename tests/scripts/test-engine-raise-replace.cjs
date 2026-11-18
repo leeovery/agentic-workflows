@@ -50,7 +50,7 @@ const {
 } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 const { UNIT, MADE, NOTE, PHASES, NOTE_COPY, writtenWorld, ledgerHelpers, copiesHelpers } = require('./ledger-world.cjs');
-const { SESSION, WHY, raiseHelpers } = require('./raise-world.cjs');
+const { SESSION, WHY, raiseHelpers, undrawn } = require('./raise-world.cjs');
 const { auditGate } = require('./gate-audit.cjs');
 const { labelAnswers } = require('./labels.cjs');
 
@@ -386,7 +386,8 @@ describe('each answer, its line, its raise event, who moved whom and the queue (
     assert.deepStrictEqual([lastEntry().cause, affected()], [full(built), [full(made.focus)]]);
   });
 
-  it('under --always built-otherwise, Claude leaning to keep: the person\'s keep agrees, moving no one, owed no verdict, and the next one-answer call of the quiet kind still goes ahead; their pick of the code\'s way stands over the keep, a departure waiting with the decision beside it', async () => {
+  it('under --always built-otherwise, Claude leaning to keep: the person\'s keep agrees, moving no one, owed no verdict, and the next one-answer call of the quiet kind still goes ahead; their pick of the code\'s way stands over the keep, a departure waiting with the decision beside it', async (t) => {
+    undrawn(t);
     quietOn('behaviour');
     const decided = carried();
     const keptRaise = /** @type {string} */ ((await raised(NOTE, builtOtherwise(decided), KEEP_LEAN, labelledAs(KEEP_LEAN, 'behaviour'))).res.raise);
