@@ -324,8 +324,8 @@ const CORE = {
       gap_analysis_cache: { checksum: 'def', generated: '2026-01-03', input_files: ['research/alpha.md'] },
       analysis_staging: { 'discovery-gap-analysis': { gate_mode: 'gated', candidates: { zeta: { status: 'pending' } } } },
       items: {
-        alpha: { routing: 'research', source: 'discovery', summary: 'Alpha', order: 1, brief_path: 'discovery/briefs/alpha.md' },
-        beta: { routing: 'discussion', source: 'message:alpha', summary: 'Beta', order: 2 },
+        alpha: { routing: 'research', source: 'discovery', summary: 'Alpha', order: 1, brief_path: 'discovery/briefs/alpha.md', brief_incorporated: true },
+        beta: { routing: 'discussion', source: 'message:alpha', summary: 'Beta', order: 2, brief_incorporated: false },
         gamma: { routing: 'discussion', source: 'discovery', summary: 'Gamma' },
         delta: { routing: 'discussion', source: 'discovery', summary: 'Delta', cancelled: true, previous_order: 4 },
         epsilon: { routing: 'research', source: 'discovery', summary: 'Epsilon' },
@@ -557,6 +557,7 @@ function todaysProject(dir) {
     discussion: { items: { tally: { status: 'in-progress' } } },
   })));
   w('tally/research/tally.md', '# Research: Tally\n\nCounting is hard.\n');
+  w('tally/research/verification.md', '# Host verification\n\nThe host survives.\n');
   w('tally/design/sessions-multi-select-active.png', PNG);
   w('tally/discussion/tally.md', TALLY_DISCUSSION);
   w('tally/research/counting/plan.md', '# Counting plan\n');
@@ -649,25 +650,12 @@ describe('migration 078: the move into the layout in .ledger/', () => {
       assert.deepStrictEqual(tree(state).filter((rel) => layoutPlace(rel) === null), []);
     });
 
-    it('reports an update for the project and one for each unit, and hands back each file it kept as legacy at its place, and each experiment instrument it moved under its record\'s data/', () => {
+    it('reports an update for the project and one for each unit, and hands back each place it kept legacy files in with how many, never the files, and each experiment instrument it moved under its record\'s data/', () => {
       assert.deepStrictEqual({ updates: result.updates, skips: result.skips }, { updates: 13, skips: 0 });
       assert.deepStrictEqual(result.returned, {
-        verify: 'These had no place of their own in .ledger/, so each is kept, as it was, as legacy, under its unit\'s assets/legacy/ or the product\'s, .product/assets/legacy/: '
-          + '.ledger/.product/assets/legacy/.inbox/ideas/rough-notes.md, .ledger/.product/assets/legacy/.roadmap/draft.txt, '
-          + '.ledger/.product/assets/legacy/.roadmap/notes/ideas/2026-01-03--points-expiry.md, .ledger/.product/assets/legacy/.baseline/.state/dossier-auth.md, '
-          + '.ledger/.product/assets/legacy/README.md, .ledger/.product/assets/legacy/scratch/notes.txt, .ledger/.product/assets/legacy/.state/environment-setup.md, '
-          + '.ledger/core/assets/legacy/discovery/briefs/zeta.md, .ledger/core/assets/legacy/discussion/stray.md, '
-          + '.ledger/core/assets/legacy/experiment/alpha/notes.md, .ledger/core/assets/legacy/experiment/alpha/scratch/try.txt, '
-          + '.ledger/core/assets/legacy/experiment/exploration-superseded-2026-01-01-1200/E3-cache-size/report.md, .ledger/core/assets/legacy/notes.txt, '
-          + '.ledger/core/assets/legacy/research/multi-tenancy/TenantTestCase.php, .ledger/core/assets/legacy/research/multi-tenancy/overview.md, '
-          + '.ledger/core/assets/legacy/specification/search/order-tracking-notes.md, .ledger/core/assets/legacy/specification/search/review-input-tracking-c1.md, '
-          + '.ledger/dropped/assets/legacy/planning/dropped/planning.md, '
-          + '.ledger/shop/assets/legacy/implementation/ranking/analysis-tasks-c1.md, .ledger/shop/assets/legacy/implementation/ranking/fix-tracking-ranking-1-1.md, '
-          + '.ledger/shop/assets/legacy/planning/ranking/review-integrity-tracking-c1.md, .ledger/shop/assets/legacy/specification/ranking/review-input-tracking-c1.md, .ledger/stale/assets/legacy/planning/stale/planning.md, '
-          + '.ledger/stall/assets/legacy/investigation/disk.png, .ledger/tally/assets/legacy/design/flow chart.png, '
-          + '.ledger/tally/assets/legacy/design/sessions-multi-select-active.png, .ledger/tally/assets/legacy/research/counting/plan.md, '
-          + '.ledger/typo/assets/legacy/planning/typo/planning.md. '
-          + 'Move any into a better place in its unit\'s assets/, or the product\'s, as wanted. '
+        verify: 'These had no place of their own in .ledger/, so each is kept, as it was, as legacy, at its path from its old folder: '
+          + '7 files in .ledger/.product/assets/legacy/, 10 in .ledger/core/assets/legacy/, 1 in .ledger/dropped/assets/legacy/, 4 in .ledger/shop/assets/legacy/, '
+          + '1 in .ledger/stale/assets/legacy/, 1 in .ledger/stall/assets/legacy/, 3 in .ledger/tally/assets/legacy/, 1 in .ledger/typo/assets/legacy/. '
           + 'These files of experiment records, neither a record\'s problem, design or report nor in its data/, were moved under its data/, at their paths from the record\'s folder: '
           + '.ledger/core/topics/alpha/experiments/E1-frame-budget/E1.1-one-monitor/data/sample.tsv, .ledger/core/topics/alpha/experiments/E1-frame-budget/data/harness/run.sh, '
           + '.ledger/core/topics/alpha/experiments/E1-frame-budget/data/rubric.md. A path a record\'s text or script spells out is left as written.',
@@ -676,9 +664,8 @@ describe('migration 078: the move into the layout in .ledger/', () => {
   });
 
   describe('nothing that may hold knowledge lost', () => {
-    it('keeps every file it names as legacy byte for byte at its place, a file the state\'s first commit takes — a research folder of its own, as evvi\'s sessions kept one, and a unit\'s design images, as portal\'s, among them — so finish, dropping .workflows/, leaves none of them in git\'s history alone', () => {
-      const named = /legacy\/: (.*?)\. Move any/.exec(String(result.returned && result.returned.verify));
-      const legacy = (named === null ? '' : named[1]).split(', ').map((rel) => rel.replace(/^\.ledger\//, ''));
+    it('keeps every legacy file byte for byte at its place, a file the state\'s first commit takes — a research folder of its own, as evvi\'s sessions kept one, and a unit\'s design images, as portal\'s, among them — so finish, dropping .workflows/, leaves none of them in git\'s history alone', () => {
+      const legacy = tree(state).filter((rel) => /^[^/]+\/assets\/legacy\//.test(rel));
       const oldOf = (/** @type {string} */ rel) => {
         const [, owner, kept] = /^(.+?)\/assets\/legacy\/(.*)$/.exec(rel) ?? [];
         return owner === '.product' ? kept : `${owner}/${kept}`;
@@ -855,7 +842,7 @@ describe('migration 078: the move into the layout in .ledger/', () => {
   describe('topics: logs, mail and experiments', () => {
     it('makes a topic\'s log its research then its discussion, each under its own heading, its words kept and its headings one level deeper (21.S10)', () => {
       assert.strictEqual(read('tally/topics/tally/log.md').split('Counting is hard, the research said.')[0],
-        '## Research\n\n## Research: Tally\n\nCounting is hard.\n\n## Discussion\n\n## Discussion: Tally\n\n');
+        '## Research\n\n## Research: Tally\n\nCounting is hard.\n\n## Research: verification\n\n## Host verification\n\nThe host survives.\n\n## Discussion\n\n## Discussion: Tally\n\n');
     });
 
     it('joins a promoted topic\'s research to its log in the cross-cutting unit, ahead of its discussion, its links to the imports it came with (21.5.2)', () => {
@@ -914,8 +901,9 @@ describe('migration 078: the move into the layout in .ledger/', () => {
       assert.deepStrictEqual(warnings, []);
     });
 
-    it('joins research feeding one topic to its log, sends research feeding several to a discovery session of its own after the last, and keeps a legacy split\'s superseded copy as a reference asset, its name kept and its links pointed from there (21.S12, F10)', () => {
+    it('joins research feeding one topic to its log — a feature\'s under any name, its one topic\'s, under its own — sends research feeding several to a discovery session of its own after the last, and keeps a legacy split\'s superseded copy as a reference asset, its name kept and its links pointed from there (21.S12, F10)', () => {
       assert.match(read('core/topics/alpha/log.md'), /^## Research\n\n## Research: Alpha\n[\s\S]*\n## Discussion\n\n## Discussion: Alpha\n/);
+      assert.deepStrictEqual([read('tally/topics/tally/log.md').includes('\n## Research: verification\n\n## Host verification\n\nThe host survives.\n'), tree(state, 'tally/discovery')], [true, ['session-001.md']]);
       assert.strictEqual(read('core/discovery/session-003.md'), [
         '# Discovery Session 003', '', `Date: ${TODAY}`, 'Work unit: core', '',
         'Written by the migration: the research below fed several topics, so it is kept here, on the unit\'s discovery log, until the cut and the merges place it where it bears.',
@@ -1359,7 +1347,7 @@ describe('migration 078: a small project', () => {
     write(at, '.workflows/store/specification/pay/specification.md', '# Specification: Pay\r\n\r\n## Cards\r\n\r\nSee [the sketch](../../imports/sketch.md).\r\n\r\n```text\r\n## not a heading\r\n```\r\n\r\n# A second title\r\n');
     write(at, '.workflows/store/specification/stock/specification.md', '# Specification: Stock\n\nCounts stock.\n');
     write(at, '.workflows/store/specification/later/specification.md', '# Specification: Later\n');
-    write(at, '.workflows/store/specification/ship/specification.md', 'Ships it.\n\n## Sending\n\n~~~sh\n```\n# a comment\n');
+    write(at, '.workflows/store/specification/ship/specification.md', 'Ships it.\n\n### Sending\n\n#### Parcels\n\n##### Fragile\n\n~~~sh\n```\n# a comment\n');
     write(at, '.workflows/store/specification/old-cart/specification.md', '# Specification: Old Cart\n');
     write(at, '.workflows/store/specification/dropped/specification.md', '# Specification: Dropped\n');
     write(at, '.workflows/store/imports/sketch.md', '# Sketch\n');
@@ -1371,11 +1359,11 @@ describe('migration 078: a small project', () => {
     '## 1. Cart', '', 'The cart holds items.', '', '#### Adding', '', 'One tap.', '', '##### Limits', '', 'Ten at most.', '', '###### Deep', '', 'As deep as it goes.', '', '###### Deeper', '', 'Still.', '',
     '~~~', '## Not a heading', '~~~', '', '- a step:', '', '    ```', '## nor this', '    ```', '',
     '```', '## Fenced', '`````', '', '#### After a longer close', '', '```', '## Fenced too', '```sh', '## Still fenced', '```', '',
-    '## 2. Pay', '', '#### Cards', '', 'See [the sketch](assets/sketch.md).', '', '```text', '## not a heading', '```', '', '#### A second title', '',
-    '## 3. Ship', '', 'Ships it.', '', '#### Sending', '', '~~~sh', '```', '# a comment', '~~~', '',
+    '## 2. Pay', '', '##### Cards', '', 'See [the sketch](assets/sketch.md).', '', '```text', '## not a heading', '```', '', '#### A second title', '',
+    '## 3. Ship', '', 'Ships it.', '', '#### Sending', '', '##### Parcels', '', '###### Fragile', '', '~~~sh', '```', '# a comment', '~~~', '',
   ].join('\n');
 
-  it('joins the specs past their gate of a unit whose building started into its spec.md — concluded, or reopened as it built, in progress with its topic at planning or implementation — one area each in build order — the old order, then those with none as the manifest lists them — its words kept but for its headings, demoted below the parts\' level outside a fenced block of backticks or tildes at any indent, a list item\'s among them, closed only by a bare run of its mark as long or longer, a fence left open closed by its own mark and its links to the imports pointed from spec.md; the spec titled with the unit\'s name, read with no fault as joined, the manifest marking it joined; its other specs reference assets — a spec still being written among them, its item gone, its topic decided in no spec — and a proposed one\'s item gone (21.8.5, 21.8.9, E5)', () => {
+  it('joins the specs past their gate of a unit whose building started into its spec.md — concluded, or reopened as it built, in progress with its topic at planning or implementation — one area each in build order — the old order, then those with none as the manifest lists them — its words kept but for its headings, demoted below the parts\' level, all by the one step its shallowest heading needs, so they keep their nesting to level 6, outside a fenced block of backticks or tildes at any indent, a list item\'s among them, closed only by a bare run of its mark as long or longer, a fence left open closed by its own mark and its links to the imports pointed from spec.md; the spec titled with the unit\'s name, read with no fault as joined, the manifest marking it joined; its other specs reference assets — a spec still being written among them, its item gone, its topic decided in no spec — and a proposed one\'s item gone (21.8.5, 21.8.9, E5)', () => {
     dir = tempProject('migration-078-join-');
     try {
       buildingSpecs(dir);
@@ -1423,6 +1411,31 @@ describe('migration 078: a small project', () => {
       assert.deepStrictEqual([Object.keys(phases).sort(), Object.keys(gone.phases), gone.spec, gone.status], [['discovery', 'discussion'], ['discussion'], { joined: ['gone'] }, 'cancelled']);
       assert.deepStrictEqual([phases.discussion.items.loyalty, phases.discussion.items.gifts, Object.keys(phases.discovery.items)], [{ status: 'completed' }, { status: 'completed' }, ['cart', 'pay', 'loyalty', 'gifts']]);
       assert.ok(['loyalty', 'gifts'].every((topic) => fs.existsSync(path.join(dir, '.ledger/done/topics', topic, 'log.md'))));
+    } finally {
+      cleanupFixture(dir);
+    }
+  });
+
+  it('21.S28: joins the specs of a unit whose building started that carry no old order, as no real project\'s do, in build order: each after the specs its plan depends on, as the cut orders the plans, else as the manifest lists them, a dependency on a spec it does not join no bar (21.8.5)', () => {
+    dir = tempProject('migration-078-build-order-');
+    try {
+      const plan = (/** @type {string[]} */ on) => ({ status: 'completed', format: 'sample-format', external_dependencies: Object.fromEntries(on.map((topic) => [topic, { state: 'resolved' }])) });
+      const topics = ['docs', 'shell', 'bluetooth', 'peer'];
+      write(dir, '.workflows/manifest.json', json({ work_units: { relay: { work_type: 'epic' } } }));
+      write(dir, '.workflows/relay/manifest.json', json(unit('relay', 'epic', 'in-progress', {
+        discussion: { items: Object.fromEntries(topics.map((topic) => [topic, { status: 'completed' }])) },
+        specification: { items: Object.fromEntries(topics.map((topic) => [topic, { status: 'completed' }])) },
+        planning: { items: { docs: plan(['ghost']), shell: plan(['bluetooth', 'peer']), bluetooth: plan(['peer']), peer: plan([]) } },
+        implementation: { items: { peer: { status: 'in-progress' } } },
+      })));
+      for (const topic of topics) write(dir, `.workflows/relay/specification/${topic}/specification.md`, `# Specification: ${topic}\n`);
+      commitAll(dir);
+      run(dir);
+      const at = (/** @type {string} */ rel) => fs.readFileSync(path.join(dir, '.ledger/relay', rel), 'utf8');
+      assert.deepStrictEqual([JSON.parse(at('manifest.json')).spec, at('spec.md')], [
+        { joined: ['docs', 'peer', 'bluetooth', 'shell'] },
+        '# Relay\n\n## 1. docs\n\n## 2. peer\n\n## 3. bluetooth\n\n## 4. shell\n',
+      ]);
     } finally {
       cleanupFixture(dir);
     }
@@ -1510,7 +1523,7 @@ describe('migration 078: a small project', () => {
       assert.deepStrictEqual([tree(state, '.cache'), fs.readdirSync(path.join(state, '.cache'))], [['drop-a-flag/earlier/implementation/drop-a-flag/review-001.md'], ['drop-a-flag']]);
       assert.ok(tree(state).every((rel) => !rel.includes(FIX) && (rel.includes('/assets/legacy/') || !fs.readFileSync(path.join(state, rel)).includes(FIX))), 'no path names the old name, and no word but a legacy file\'s');
       assert.match(String(returned?.verify), /^This unit's name broke the rule a unit's name keeps .* by case alone, so it is carried under its lowercase name.*: drop-A-flag is drop-a-flag\./);
-      assert.match(String(returned?.verify), /\.ledger\/drop-a-flag\/assets\/legacy\/planning\/drop-a-flag\/planning\.md/);
+      assert.match(String(returned?.verify), / 2 files in \.ledger\/drop-a-flag\/assets\/legacy\/\.$/, 'the place named by the unit\'s new name');
     } finally {
       cleanupFixture(dir);
     }
