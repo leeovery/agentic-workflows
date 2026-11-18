@@ -102,6 +102,12 @@ const passedBeside = (unit, topic, entries) => [
   [checkedPath(unit, topic), entries.map((entry) => `${/** @type {{ref?: unknown}} */ (entry)?.ref}: ok\n`).join('')],
 ];
 
+/** What a composer says its topic is about, where no map row says it. */
+const DESCRIBED = 'What the topic settles, as its composer says it.';
+
+/** A record as its composer writes it: its entries, and the line saying what its topic is about. @param {unknown[]} entries */
+const recordText = (entries) => JSON.stringify({ entries, description: DESCRIBED });
+
 /** @type {(ReturnType<typeof harness.harness> & {path: string, migrations: string})|null} */
 let engine = null;
 
@@ -679,7 +685,7 @@ function buildCut(dir) {
   MOVE.run({ projectDir: dir, reportUpdate: () => {}, reportSkip: () => {} });
   for (const [place, entries] of Object.entries(CUT_RECORDS)) {
     const [unit, , topic] = place.split('.');
-    createFile(statePath(dir), composedPath(unit, topic), JSON.stringify({ entries }));
+    createFile(statePath(dir), composedPath(unit, topic), recordText(entries));
     for (const [rel, text] of passedBeside(unit, topic, entries)) createFile(statePath(dir), rel, text);
   }
   for (const place of Object.keys(CUT_RECORDS)) harness.ok(dir, ['ledger', 'carry', place], { env: SESSION });
@@ -795,5 +801,5 @@ module.exports = {
   UNIT, SESSION, DECIDED, RECORDED, ALL_RECORDED, FIXTURES, OLD_STORE, OLD_LOCAL,
   directiveEngine, midMigration, recordsMigration, finishedMigration, nestedFinished, stateUnborn, codeHead, enter, enterTopic, refusedUntouched, refusedKeeping, recorded,
   SPLIT_EPIC, SPLIT_SOURCES, SPLIT_OLD, SPLIT_PLANS, GUARDED, themeOf, stagedPlan, splitProject, splitMigration, projectTree,
-  CUT_RECORDS, cutMigration, settledState, passedBeside,
+  CUT_RECORDS, cutMigration, settledState, passedBeside, DESCRIBED, recordText,
 };

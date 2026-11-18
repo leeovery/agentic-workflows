@@ -1342,6 +1342,7 @@ function drawMigratedTopic(filling) {
   return [
     `- **Unit:** ${unit}, ${manifest.work_type}, ${manifest.status}`,
     `- **Topic:** ${topic}, in ${phases.join('; ')} — its record carried in ${carried}${topicStanding(rules.neverStarted(manifest, topic, carried), sources.leaves)}`,
+    ...(sources.describes ? ['- **What it is about:** no map row says it, so its record does, in `description`'] : []),
     `- **The state:** ${root} — each path below is from there, as an entry cites it, but one under \`${OLD_STATE}/\``,
     `- **The project:** ${sources.project} — each path under \`${OLD_STATE}/\` is from there`,
     '',

@@ -155,7 +155,7 @@ function settleRecord(cwd, args, stdin) {
   if (note !== null && note.hash === recordHash(root, unit, topic) && settled.some((one) => one.settled === 'fixed')) {
     throw new Error(`${SAID}: ${recordName(place)} is as its verifier read it, so no finding of it is fixed — have the record amended to answer it, or rule it out`);
   }
-  const entries = readRecord(place, SAID);
+  const { entries } = readRecord(place, SAID);
   const before = pastOf(note, lastVerdicts(root, unit, topic));
   keepRecordRound(root, unit, topic);
   fs.appendFileSync(path.join(root, roundsPath(unit, topic)), `\n${sessionRound(round + 1, settled)}\n`);

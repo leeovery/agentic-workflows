@@ -38,7 +38,7 @@ const os = require('os');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
 const { ok, refuses, git, statePath, layout, writeState, readState, cleanupFixture, ledgerEntries, killedAt, treeSnapshot } = harness;
-const { SESSION, recordsMigration, stateUnborn, refusedUntouched, refusedKeeping, passedBeside } = require('./migration-world.cjs');
+const { SESSION, recordsMigration, stateUnborn, refusedUntouched, refusedKeeping, passedBeside, DESCRIBED } = require('./migration-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { carriedPath, composedPath, findingsPath, rulingsPath, handbackPath, checkedPath, verifyingPath, roundsPath, refusedPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
@@ -86,13 +86,13 @@ const KEEPS = Object.freeze({
 });
 
 /** Licensing's entries, ending on one that keeps its rules, refused: the refusal. @param {unknown[]} entries */
-const mend = (entries) => mendFile({ entries: [...entries, KEEPS] });
+const mend = (entries) => mendFile({ description: DESCRIBED, entries: [...entries, KEEPS] });
 
 /** The refusal of licensing's record, naming every fault. @param {string[]} faults */
 const broken = (...faults) => `ledger carry: fumi's licensing breaks the records directive's rules, so nothing is carried — ${faults.join('; ')}`;
 
 /** A record carried, as the migration's session runs it, with no session handed. @param {string} dotpath @param {unknown[]} entries */
-const carry = (dotpath, entries) => ok(dir, composed(dotpath, { entries }), { env: {} });
+const carry = (dotpath, entries) => ok(dir, composed(dotpath, { description: DESCRIBED, entries }), { env: {} });
 
 /**
  * The note a verifier's brief writes beside licensing's record of its
@@ -101,7 +101,7 @@ const carry = (dotpath, entries) => ok(dir, composed(dotpath, { entries }), { en
  * @param {string[]} asked @param {string[]} held
  */
 const noted = (asked, held) => JSON.stringify({
-  hash: crypto.createHash('sha256').update(JSON.stringify({ entries: [QUESTION, DECISION] })).digest('hex'),
+  hash: crypto.createHash('sha256').update(JSON.stringify({ description: DESCRIBED, entries: [QUESTION, DECISION] })).digest('hex'),
   refs: asked, entries: Object.fromEntries(held.map((ref) => [ref, `${ref}-hash`])), sections: {}, before: { entries: null, passed: {}, walked: {} },
 });
 
@@ -134,7 +134,7 @@ describe('a topic\'s record carried (21.6, 21.10.9)', () => {
       },
     ]);
     assert.deepStrictEqual(kept('fumi', 'licensing'), {
-      unit: 'fumi', phase: 'discussion', topic: 'licensing', entries: [{ ref: 'q1', id: q.id }, { ref: 'd1', id: d.id }, { ref: 'f1', id: f.id }], record: { entries: [QUESTION, DECISION, FINDING] },
+      unit: 'fumi', phase: 'discussion', topic: 'licensing', entries: [{ ref: 'q1', id: q.id }, { ref: 'd1', id: d.id }, { ref: 'f1', id: f.id }], record: { description: DESCRIBED, entries: [QUESTION, DECISION, FINDING] },
     });
     assert.ok(stateUnborn(dir));
     assert.deepStrictEqual(ok(dir, ['ledger', 'record', 'fumi', 'licensing'], { env: SESSION }).decisions.map(({ session }) => session), ['migration'], 'ledger record shows the mark');
@@ -165,13 +165,22 @@ describe('a topic\'s record carried (21.6, 21.10.9)', () => {
     assert.deepStrictEqual([d1.answers, d2.answers, q.id.startsWith(ids.q1)], [q.id, q.id, true]);
   });
 
+  it('a question naming sources at odds carried: the sections kept with the record, never written to the ledger', () => {
+    const odds = [...QUESTION.cites, FINDING.cites[0]];
+    const named = { ...QUESTION, cites: odds, at_odds: odds, raise: true };
+
+    carry(LICENSING, [named, { ...QUESTION, ref: 'q2' }, { ...DECISION, answers: 'q2' }]);
+
+    assert.deepStrictEqual([lines()[0].cites, Object.hasOwn(lines()[0], 'at_odds'), kept('fumi', 'licensing').record.entries[0].at_odds], [odds, false, odds]);
+  });
+
   it('a record of no entries, for a topic with no log and nothing come in from it, is kept, the ledger left as it was', () => {
     assert.deepStrictEqual(carry('fumi.discovery.support', []), { ok: true, carried: 0, ids: {}, committed: null });
     assert.deepStrictEqual([kept('fumi', 'support').entries, fs.existsSync(statePath(dir, layout.ledger))], [[], false]);
   });
 
   it('a record its verifier has not passed — no findings beside it, or findings standing — refused, nothing written, nor anything beside the record: the carry clears them, and a record is carried once', () => {
-    const args = composed(LICENSING, { entries: [QUESTION, DECISION] });
+    const args = composed(LICENSING, { description: DESCRIBED, entries: [QUESTION, DECISION] });
     const findings = findingsPath('fumi', 'licensing');
     const why = 'a record is carried once its verifier passes it, its findings file empty, for the carry clears the findings beside it and a record is carried once, so a finding left standing would never be answered';
     fs.rmSync(statePath(dir, findings));
@@ -186,7 +195,7 @@ describe('a topic\'s record carried (21.6, 21.10.9)', () => {
   });
 
   it('a record whose composer handed findings back to the session refused, nothing written, until the session settles them and removes the file', () => {
-    const args = composed(LICENSING, { entries: [QUESTION, DECISION] });
+    const args = composed(LICENSING, { description: DESCRIBED, entries: [QUESTION, DECISION] });
     const handback = handbackPath('fumi', 'licensing');
     writeState(dir, handback, '- Carry the CLI framework: round 1 ruled it replaced.\n');
 
@@ -210,22 +219,22 @@ describe('a topic\'s record carried (21.6, 21.10.9)', () => {
     const brief = (/** @type {string} */ place) => ok(dir, ['brief', 'migration-verifier', '--topic', place, '--directive', '079-records'], { env: SESSION });
     writeState(dir, layout.unit('fumi', 'discovery', 'session-001.md'), '## Discovery Session 001\n');
     writeState(dir, composedPath('fumi', null), '{"entries": []}\n');
-    writeState(dir, composedPath('fumi', 'licensing'), JSON.stringify({ entries: [QUESTION, DECISION] }));
+    writeState(dir, composedPath('fumi', 'licensing'), JSON.stringify({ description: DESCRIBED, entries: [QUESTION, DECISION] }));
     brief('fumi.discovery');
     brief(LICENSING);
     writeState(dir, findingsPath('fumi', null), '');
     writeState(dir, findingsPath('fumi', 'licensing'), '');
     writeState(dir, checkedPath('fumi', 'licensing'), '- `q1`: ok\n1. d1: ok\n');
-    writeState(dir, composedPath('fumi', 'licensing'), `${JSON.stringify({ entries: [QUESTION, DECISION] })}\n`);
+    writeState(dir, composedPath('fumi', 'licensing'), `${JSON.stringify({ description: DESCRIBED, entries: [QUESTION, DECISION] })}\n`);
     const changed = untouched(['ledger', 'carry', LICENSING]);
-    writeState(dir, composedPath('fumi', 'licensing'), JSON.stringify({ entries: [QUESTION, DECISION] }));
+    writeState(dir, composedPath('fumi', 'licensing'), JSON.stringify({ description: DESCRIBED, entries: [QUESTION, DECISION] }));
 
     assert.deepStrictEqual([ok(dir, ['ledger', 'carry', 'fumi.discovery'], { env: SESSION }).carried, ok(dir, ['ledger', 'carry', LICENSING], { env: SESSION }).carried], [0, 2]);
     assert.strictEqual(changed, 'ledger carry: fumi\'s licensing has changed since its verifier was briefed on it: a record is carried as its verifier read it — brief a fresh verifier');
   });
 
   it('a record whose verifier gave no verdict on every entry its brief asked one of refused, nothing written: one missing, one it never read, or none at all — asked as its brief recorded them, an entry it read but was not asked of given one or not, else as the record holds them', () => {
-    const args = composed(LICENSING, { entries: [QUESTION, DECISION] });
+    const args = composed(LICENSING, { description: DESCRIBED, entries: [QUESTION, DECISION] });
     const checked = checkedPath('fumi', 'licensing');
     const way = `: a verifier writes a line for each entry its walk sheet does not mark passed, \`{ref}: ok\` or \`{ref}: see finding\`, and one that does not has given no verdict — remove ${findingsPath('fumi', 'licensing')}, ${rulingsPath('fumi', 'licensing')} and ${checked}, and brief a fresh verifier`;
     const told = (said) => `ledger carry: fumi's licensing has no verdict from its last verifier on every entry its brief asked one of — ${said}${way}`;
@@ -250,7 +259,7 @@ describe('a topic\'s record carried (21.6, 21.10.9)', () => {
     git(statePath(dir), ['commit', '-q', '-m', 'the migration\'s commit']);
     const head = git(statePath(dir), ['rev-parse', 'HEAD']);
 
-    const { error } = refuses(dir, composed(LICENSING, { entries: [QUESTION, DECISION] }), { env: SESSION });
+    const { error } = refuses(dir, composed(LICENSING, { description: DESCRIBED, entries: [QUESTION, DECISION] }), { env: SESSION });
 
     assert.strictEqual(error, 'ledger carry: a topic\'s record is carried into the ledger only while the migration runs — the state branch has its first commit, so the migration is done');
     assert.deepStrictEqual([fs.existsSync(statePath(dir, layout.ledger)), fs.existsSync(statePath(dir, carriedPath('fumi', 'licensing'))), git(statePath(dir), ['rev-parse', 'HEAD'])], [false, false, head]);
@@ -278,12 +287,12 @@ describe('the session\'s settlement of a late round (21.6.10)', () => {
    * @param {unknown[]} amended @param {string} [kept]
    */
   function lateRound(amended, kept = ROUNDS) {
-    composed(LICENSING, { entries: [QUESTION, DECISION] });
+    composed(LICENSING, { description: DESCRIBED, entries: [QUESTION, DECISION] });
     writeState(dir, roundsPath('fumi', 'licensing'), kept);
     writeState(dir, verifyingPath('fumi', 'licensing'), noted(['q1', 'd1'], ['q1', 'd1']));
     writeState(dir, findingsPath('fumi', 'licensing'), STANDING);
     writeState(dir, checkedPath('fumi', 'licensing'), 'q1: ok\nd1: see finding\n');
-    writeState(dir, composedPath('fumi', 'licensing'), JSON.stringify({ entries: amended }));
+    writeState(dir, composedPath('fumi', 'licensing'), JSON.stringify({ description: DESCRIBED, entries: amended }));
   }
 
   it('from the third round, keeps the verifier\'s round and the session\'s after it, each finding as settled and why, and passes the record as it stands: the carry takes it, and refuses it changed since', () => {
@@ -291,9 +300,9 @@ describe('the session\'s settlement of a late round (21.6.10)', () => {
 
     const res = ok(dir, SETTLE, given({ findings: [RULED_OUT, FIXED] }));
     const waiting = ok(dir, ['migrate', 'check', '079-records'], { env: SESSION }).unfinished.find(({ name }) => name === 'fumi.discussion.licensing')?.problems;
-    writeState(dir, composedPath('fumi', 'licensing'), JSON.stringify({ entries: [QUESTION, DECISION] }));
+    writeState(dir, composedPath('fumi', 'licensing'), JSON.stringify({ description: DESCRIBED, entries: [QUESTION, DECISION] }));
     const changed = untouched(['ledger', 'carry', LICENSING]);
-    writeState(dir, composedPath('fumi', 'licensing'), JSON.stringify({ entries: [QUESTION, AMENDED] }));
+    writeState(dir, composedPath('fumi', 'licensing'), JSON.stringify({ description: DESCRIBED, entries: [QUESTION, AMENDED] }));
     const rounds = `${ROUNDS}\n## Round 3\n\n${STANDING}\n### Checked\n\nq1: ok\nd1: see finding\n\n## Round 4\n\nSettled by the session:\n\n- Findings 2, 3: ruled out — ${RULED_OUT.why}\n- Finding 1: fixed — ${FIXED.why}\n`;
 
     assert.deepStrictEqual([res.round, res.settled, readState(dir, roundsPath('fumi', 'licensing')), waiting], [4, 2, rounds, ['was settled by the session, and waits to be carried']]);
@@ -371,7 +380,7 @@ describe('a redo never duplicates (21.10.9)', () => {
   });
 
   it('killed as the ledger is renamed in, the topic has none of its entries and its record is kept; carried again, the ledger holds each once', () => {
-    const args = composed(LICENSING, { entries: [QUESTION, DECISION] });
+    const args = composed(LICENSING, { description: DESCRIBED, entries: [QUESTION, DECISION] });
     killedAt({ method: 'renameSync', file: layout.ledger, when: 'before' }, dir, args, { env: SESSION });
 
     assert.deepStrictEqual([fs.existsSync(statePath(dir, layout.ledger)), kept('fumi', 'licensing').entries.length], [false, 2]);
@@ -380,7 +389,7 @@ describe('a redo never duplicates (21.10.9)', () => {
   });
 
   it('killed once the ledger is renamed in, the topic has all of its entries, and is never carried again', () => {
-    const args = composed(LICENSING, { entries: [QUESTION, DECISION] });
+    const args = composed(LICENSING, { description: DESCRIBED, entries: [QUESTION, DECISION] });
     killedAt({ method: 'renameSync', file: layout.ledger, when: 'after' }, dir, args, { env: SESSION });
 
     const landed = readState(dir, layout.ledger);
@@ -396,7 +405,7 @@ describe('the refusals, nothing written', () => {
   after(() => cleanupFixture(path.dirname(dir)));
 
   it('argv of another shape, and a place naming no topic, writing nothing; no record composed, or a file holding none, writing its refusal beside the record', () => {
-    const usage = 'Usage: engine ledger carry <work-unit>.<phase>.<topic>|<work-unit>.discovery [--dry-run]   (the record as JSON, {"entries": [...]}, composed at .cache/migrate/records/{unit}/{topic}.json in the state, a unit\'s own at .cache/migrate/records/{unit}.json)';
+    const usage = 'Usage: engine ledger carry <work-unit>.<phase>.<topic>|<work-unit>.discovery [--dry-run]   (the record as JSON, {"entries": [...], "description"?}, composed at .cache/migrate/records/{unit}/{topic}.json in the state, a unit\'s own at .cache/migrate/records/{unit}.json)';
     assert.deepStrictEqual([
       untouched(['ledger', 'carry']),
       untouched(['ledger', 'carry', '--dry-run']),
@@ -413,6 +422,7 @@ describe('the refusals, nothing written', () => {
       refusedKeeping(dir, ['ledger', 'carry', LICENSING], refusedPath('fumi', 'licensing')).replace(/: ENOENT[^]*$/, ''),
       mendFile({ entries: [QUESTION], more: true }),
       mendFile({ entries: ['q1'] }),
+      mendFile({ entries: [QUESTION], description: ['How long the trial is.'] }),
     ], [
       usage,
       usage,
@@ -427,8 +437,9 @@ describe('the refusals, nothing written', () => {
       'ledger carry: gone has no topic "gone" in investigation',
       'ledger carry: fumi has no topic "billing" in discussion',
       'ledger carry: the record could not be read from .cache/migrate/records/fumi/licensing.json',
-      'ledger carry: .cache/migrate/records/fumi/licensing.json holds no record — a record is {"entries": [...]}, each entry an object',
-      'ledger carry: .cache/migrate/records/fumi/licensing.json holds no record — a record is {"entries": [...]}, each entry an object',
+      'ledger carry: .cache/migrate/records/fumi/licensing.json holds no record — a record is {"entries": [...]}, each entry an object, and where it says what its topic is about, "description", a line',
+      'ledger carry: .cache/migrate/records/fumi/licensing.json holds no record — a record is {"entries": [...]}, each entry an object, and where it says what its topic is about, "description", a line',
+      'ledger carry: .cache/migrate/records/fumi/licensing.json holds no record — a record is {"entries": [...]}, each entry an object, and where it says what its topic is about, "description", a line',
     ]);
   });
 
@@ -507,7 +518,7 @@ describe('the refusals, nothing written', () => {
     const worded = { ...decision, answers: 'q-window', text: 'The q-windows close after fourteen days; d1 stands.' };
     const told = (/** @type {string} */ field, /** @type {string} */ ref) => `entry d1: its ${field} names ${ref}, the ref of another entry of the record, which the ledger cannot read — say in words what that entry holds, or link it by relies_on; where the words use it as a plain word, rename that entry's ref`;
 
-    assert.deepStrictEqual([mend([window, labelled]), ok(dir, [...composed(LICENSING, { entries: [window, worded, KEEPS] }), '--dry-run'], { env: {} }).faults], [
+    assert.deepStrictEqual([mend([window, labelled]), ok(dir, [...composed(LICENSING, { description: DESCRIBED, entries: [window, worded, KEEPS] }), '--dry-run'], { env: {} }).faults], [
       broken(told('text', 'q-window'), told('alternatives', 'f0')),
       [],
     ]);
@@ -518,7 +529,7 @@ describe('the refusals, nothing written', () => {
     const { map_item: ____, ...question } = QUESTION;
     const { how: _____, ...finding } = FINDING;
 
-    assert.strictEqual(mendFile({ entries: [
+    assert.strictEqual(mendFile({ description: DESCRIBED, entries: [
       { ...question, ref: undefined }, { ...question, text: '', raise: 'yes' }, { ...decision, answers: 'q9', relies_on: ['q1'], given: 'nope', rules_out: 'one' },
       { ...finding, relies_on: [], given: 'carried', known: 'measured' },
     ] }), broken(
@@ -573,7 +584,7 @@ describe('the dry run, nothing written', () => {
 
   /** A dry run of licensing's record, with no session, the state as it was: its answer. @param {unknown[]} entries */
   function dryRun(entries) {
-    const args = composed(LICENSING, { entries });
+    const args = composed(LICENSING, { description: DESCRIBED, entries });
     const before = treeSnapshot(dir);
     const res = ok(dir, [...args, '--dry-run'], { env: {} });
     assert.deepStrictEqual(treeSnapshot(dir), before);

@@ -19,7 +19,9 @@
 //   decides by. A topic an epic promoted to a cross-cutting unit is that
 //   unit's to carry. A unit's own record is carried at `<unit>.discovery`,
 //   for an epic whose discovery folder holds a session (079's check).
-// - What: the record as one JSON object, `{"entries": […]}`, composed where
+// - What: the record as one JSON object, `{"entries": […]}` — beside them,
+//   where no map row says what its topic is about, `description`, the line
+//   its composer says it in (079's check) — composed where
 //   the state keeps it (`.cache/migrate/records/{unit}/{topic}.json`, a
 //   unit's own `.cache/migrate/records/{unit}.json`), read
 //   from the state root whichever checkout the session runs in. Each entry
@@ -34,7 +36,11 @@
 //   research it carries, each a name or, where one entry carries several, a
 //   list of them; an open question's `raise`, `true`, marking a point no
 //   source settles, to raise at the end (21.6.10), never one a decision of
-//   the record answers, which `raise` refuses; and its `assets`, each
+//   the record answers, which `raise` refuses; a question's `at_odds`, the
+//   sections at odds of a contradiction it names, kept with the record and
+//   never written to the ledger — what they must be, and that no decision
+//   settles such a point, are the directive's rules (079's check);
+//   and its `assets`, each
 //   `{path, status}`, a file the state holds, linked as it is canonical or
 //   reference. An entry's words — its text, why and how, what it rules
 //   out, its alternatives and evidence — never name another entry by its
@@ -74,7 +80,9 @@
 //   whose records share a source — an approved spec, a discovery session
 //   or an asset they walk — only once each record drawing on it, the
 //   unit's own and a topic it promoted among them, is so passed and no
-//   section of it goes uncited, and likewise of each unit a topic of its
+//   section of it goes uncited, nor a contradiction one record names
+//   between its sections unnamed on another citing it, and likewise of
+//   each unit a topic of its
 //   unit was promoted from (`unitWaits`), the refusal framed on each unit
 //   waited on, a record carried taking no section found later; refused,
 //   writing nothing beside the record, for the session alone keeps the
@@ -129,7 +137,7 @@ const {
 const briefedOn = /** @type {any} */ (briefedNote);
 
 const CARRY_VERB = 'carry';
-const CARRY_USAGE = 'ledger carry <work-unit>.<phase>.<topic>|<work-unit>.discovery [--dry-run]   (the record as JSON, {"entries": [...]}, composed at .cache/migrate/records/{unit}/{topic}.json in the state, a unit\'s own at .cache/migrate/records/{unit}.json)';
+const CARRY_USAGE = 'ledger carry <work-unit>.<phase>.<topic>|<work-unit>.discovery [--dry-run]   (the record as JSON, {"entries": [...], "description"?}, composed at .cache/migrate/records/{unit}/{topic}.json in the state, a unit\'s own at .cache/migrate/records/{unit}.json)';
 const SAID = 'ledger carry';
 const DRY_RUN = '--dry-run';
 
@@ -139,8 +147,13 @@ const EVENT_WRITES = Object.freeze({ asked: 'ask', found: 'find', decided: 'deci
 /** The kind of entry each event writes, as the write's own checks name it. @type {Readonly<Record<string, import('./ledger-events.cjs').EntryKind>>} */
 const EVENT_KINDS = Object.freeze({ asked: 'question', found: 'finding', decided: 'decision' });
 
+/** What a record holds: its entries, and the line saying what its topic is about. */
+const RECORD_FIELDS = Object.freeze(['entries', 'description']);
+
+/** A record as composed. @typedef {{entries: Record<string, any>[], description?: string}} Composed */
+
 /** What an entry of a record carries beside its content: its name, its event, its links by name, and what the migration reads. */
-const RECORD_KEYS = Object.freeze(['ref', 'event', 'part_of', 'answers', 'relies_on', 'map_item', 'thread', 'raise', 'assets']);
+const RECORD_KEYS = Object.freeze(['ref', 'event', 'part_of', 'answers', 'relies_on', 'map_item', 'thread', 'raise', 'at_odds', 'assets']);
 
 const ASSET_STATUSES = Object.freeze(['canonical', 'reference']);
 
@@ -311,10 +324,11 @@ function argsOf(args) {
 }
 
 /**
- * The topic's record's entries, read where it is composed. Refuses, in the
- * words of `said`, the command asking, a file that cannot be read, and one
+ * The topic's record, read where it is composed: its entries, and the line
+ * saying what the topic is about where it gives one. Refuses, in the words
+ * of `said`, the command asking, a file that cannot be read, and one
  * holding no record.
- * @param {Place} place @param {string} [said] @returns {Record<string, any>[]}
+ * @param {Place} place @param {string} [said] @returns {Composed}
  */
 function readRecord({ root, unit, topic }, said = SAID) {
   const file = composedPath(unit, topic);
@@ -324,10 +338,11 @@ function readRecord({ root, unit, topic }, said = SAID) {
   } catch (err) {
     throw new Error(`${said}: the record could not be read from ${file}: ${messageOf(err)}`);
   }
-  if (!isObject(record) || Object.keys(record).length !== 1 || !Array.isArray(record.entries) || !record.entries.every(isObject)) {
-    throw new Error(`${said}: ${file} holds no record — a record is {"entries": [...]}, each entry an object`);
+  if (!isObject(record) || Object.keys(record).some((key) => !RECORD_FIELDS.includes(key)) || !Array.isArray(record.entries) || !record.entries.every(isObject)
+    || !['string', 'undefined'].includes(typeof record.description)) {
+    throw new Error(`${said}: ${file} holds no record — a record is {"entries": [...]}, each entry an object, and where it says what its topic is about, "description", a line`);
   }
-  return record.entries;
+  return /** @type {Composed} */ (record);
 }
 
 /** Whether a map item or a thread names what it carries: a name, or a list of them. @param {unknown} named */
@@ -478,19 +493,20 @@ function labelFaults(entries) {
  * entry whose words name another by its ref, each question marked to raise
  * that a decision of the record answers, which `raise` would refuse, and
  * what it breaks of the records directive's rules.
- * @param {string} cwd @param {Place} place @param {Record<string, any>[]} entries
+ * @param {string} cwd @param {Place} place @param {Composed} record
  * @returns {Drawn}
  */
-function drawnRecord(cwd, place, entries) {
+function drawnRecord(cwd, place, { entries, description }) {
   const { root, unit, phase, topic } = place;
   /** @type {Map<string, Earlier>} */
   const before = new Map();
   const tags = { unit, topic, phase, session: CARRIED_SESSION };
   const drawn = entries.map((entry, at) => entryLines(place, entry, at, before, tags));
   const answered = new Set(entries.filter(({ event }) => event === 'decided').map(({ answers }) => answers));
+  const odds = new Set(entries.filter((entry) => entry.at_odds !== undefined).map(({ ref }) => ref));
   const settled = [...before].filter(([ref, { raised }]) => raised && answered.has(ref))
-    .map(([ref]) => `entry ${ref}: is marked to raise, and a decision of the record answers it — raise refuses a question answered already, so a point to raise is an open question`);
-  const problems = recordsRules().recordProblems({ projectDir: codeRoot(cwd), stateDir: root, unit, topic, phase, entries });
+    .map(([ref]) => `entry ${ref}: is marked to raise, and a decision of the record answers it — raise refuses a question answered already, so a point to raise is an open question${odds.has(ref) ? '; where a later answer settles the point, it is no point at odds: no entry holds at_odds for it, its question is not marked to raise, and the decision answers it' : ''}`);
+  const problems = recordsRules().recordProblems({ projectDir: codeRoot(cwd), stateDir: root, unit, topic, phase, entries, description });
   return {
     lines: drawn.flatMap(({ lines }) => lines),
     kept: [...before].map(([ref, { id }]) => ({ ref, id })),
@@ -525,10 +541,10 @@ function writeWhole(file, text) {
 /**
  * What was carried of a topic kept whole in the state's cache: the record
  * as given, and each entry's id by its ref.
- * @param {Place} place @param {Record<string, any>[]} entries @param {Kept[]} kept
+ * @param {Place} place @param {Composed} record @param {Kept[]} kept
  */
-function keepCarried({ root, unit, phase, topic }, entries, kept) {
-  writeWhole(path.join(root, carriedPath(unit, topic)), `${JSON.stringify({ unit, phase, topic, entries: kept, record: { entries } }, null, 2)}\n`);
+function keepCarried({ root, unit, phase, topic }, record, kept) {
+  writeWhole(path.join(root, carriedPath(unit, topic)), `${JSON.stringify({ unit, phase, topic, entries: kept, record }, null, 2)}\n`);
 }
 
 /**
@@ -538,10 +554,10 @@ function keepCarried({ root, unit, phase, topic }, entries, kept) {
  */
 function composedRecord(cwd, place) {
   try {
-    const entries = readRecord(place);
-    const { lines, kept, faults } = drawnRecord(cwd, place, entries);
+    const record = readRecord(place);
+    const { lines, kept, faults } = drawnRecord(cwd, place, record);
     if (faults.length > 0) throw new Error(`${SAID}: ${recordName(place)} breaks the records directive's rules, so nothing is carried — ${faults.join('; ')}`);
-    return { entries, lines, kept };
+    return { record, lines, kept };
   } catch (err) {
     writeWhole(path.join(place.root, refusedPath(place.unit, place.topic)), `${messageOf(err)}\n`);
     throw err;
@@ -563,11 +579,11 @@ function refuseUnsettled(cwd, place) {
   if (unverified !== null) {
     throw new Error(`${SAID}: ${recordName(place)} has not passed its verifier — ${unverified}: a record is carried once its verifier passes it, its findings file empty, for the carry clears the findings beside it and a record is carried once, so a finding left standing would never be answered`);
   }
-  const unsettled = unsettledRound(root, unit, topic, readRecord(place).map(({ ref }) => String(ref)));
+  const unsettled = unsettledRound(root, unit, topic, readRecord(place).entries.map(({ ref }) => String(ref)));
   if (unsettled !== null) throw new Error(`${SAID}: ${recordName(place)} ${unsettled}`);
   const waits = rules.unitWaits({ projectDir: codeRoot(cwd), stateDir: root, unit });
   if (waits.length > 0) {
-    const once = waits.map(({ unit: of, waits: on }) => `each record of ${of} drawing on the sources its records share — its approved specs, its discovery sessions and the assets its records walk, its own record and a topic it promoted among them — has passed its verifier or the session's settlement, and no section of those sources goes uncited — ${on.join('; ')}`);
+    const once = waits.map(({ unit: of, waits: on }) => `each record of ${of} drawing on the sources its records share — its approved specs, its discovery sessions and the assets its records walk, its own record and a topic it promoted among them — has passed its verifier or the session's settlement, and no section of those sources goes uncited, nor a contradiction a record names between them unnamed on another citing it — ${on.join('; ')}`);
     throw new Error(`${SAID}: ${recordName(place)} is carried, for a record carried takes no section found later, once ${once.join('; and once ')}`);
   }
 }
@@ -610,11 +626,11 @@ function carryRecord(cwd, args) {
     const { dotpath, dry } = argsOf(args);
     if (dry) return dryRun(cwd, dotpath);
     const place = topicPlace(cwd, dotpath, SAID);
-    const { entries, lines, kept } = composedRecord(cwd, place);
+    const { record, lines, kept } = composedRecord(cwd, place);
     const { outcome, short } = withStateLock(place.root, () => {
       const beside = idsBeside(place, warnings);
       refuseUnsettled(cwd, place);
-      keepCarried(place, entries, kept);
+      keepCarried(place, record, kept);
       if (lines.length > 0) appendEntries(place.root, lines, warnings);
       return {
         outcome: lines.length === 0 ? null : commitLedger(cwd, `ledger(${place.unit}): carry ${place.topic === null ? 'its discovery' : place.topic}'s record`, warnings),
