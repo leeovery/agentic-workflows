@@ -12,9 +12,9 @@
 // then, at a later start,
 // boot launches the late check, detached and one at a time, no
 // conversation's, which records what it finds beside each unchecked
-// decision, committing a batch at a time, never touching the entry's line,
-// a decision found holding several rules showing flagged wherever its
-// record is read.
+// decision but those the migration carried, committing a batch at a time,
+// never touching the entry's line, a decision found holding several rules
+// showing flagged wherever its record is read.
 //
 // Real repositories in temp folders, each with its state worktree, the work
 // unit's manifest written there; the separate call is the suite's stub
@@ -82,7 +82,7 @@ function rules(...rules) {
 }
 
 const ledger = ledgerHelpers(() => dir);
-const { ledgerText, entries, full, carriedOver } = ledger;
+const { ledgerText, entries, full, carriedOver, landedUnchecked } = ledger;
 
 /**
  * One ledger write that must succeed: its response.
@@ -460,9 +460,28 @@ describe('the late check (16.19.8, 5.S34)', () => {
     assert.deepStrictEqual(entries().filter((e) => e.event === 'checked').map((e) => e.entry), [full(second), full(first)]);
   });
 
+  it('never sends a decision the migration carried, which the records step held to one thing: boot launches no check for it alone, and a check beside a live decision landed unchecked judges the live one only', (t) => {
+    /** @type {string[]} */
+    const launched = [];
+    t.mock.method(launcher, 'launch', (/** @type {string} */ root, /** @type {string[]} */ argv) => {
+      if (argv.join(' ') === 'ledger late-check') launched.push(root);
+    });
+    const question = ask();
+    carriedOver(NOTE, question, PANEL);
+    ok(dir, ['boot']);
+    assert.deepStrictEqual(launched, [], 'launched for a decision the migration carried');
+    const live = landedUnchecked(NOTE, question, SYNC);
+    ok(dir, ['boot']);
+    assert.strictEqual(launched.length, 1, 'launched no check for a live decision landed unchecked');
+
+    assert.deepStrictEqual(lateCheck({ '': rules(PANEL) }), { ok: true, ran: true, checked: 1, several: 0, owed: 0 });
+    assert.deepStrictEqual(calls().map(({ input }) => input.split('\n')[0]), [`The answer: ${SYNC}`], 'the carried decision was sent to the check');
+    assert.deepStrictEqual(entries().filter((e) => e.event === 'checked').map((e) => e.entry), [full(live)]);
+  });
+
   it('commits a long pass a batch at a time, each batch before the next decision is judged; a pass cut short leaves the decisions after its last batch owed, and the next judges those alone', (t) => {
     const question = ask();
-    const carried = Array.from({ length: BATCH + 2 }, (_, i) => carriedOver(NOTE, question, `Rule ${i}.`));
+    const owed = Array.from({ length: BATCH + 2 }, (_, i) => landedUnchecked(NOTE, question, `Rule ${i}.`));
     const tip = head(dir);
     /** The `checked` events the state branch's tip holds. */
     const committedChecks = () => stateGit(dir, ['show', `HEAD:${layout.ledger}`]).split('\n').filter((line) => line.includes('"event":"checked"')).length;
@@ -483,7 +502,7 @@ describe('the late check (16.19.8, 5.S34)', () => {
 
     assert.deepStrictEqual(lateCheck(), { ok: true, ran: true, checked: 1, several: 0, owed: 0 });
     assert.strictEqual(made, BATCH + 3, 'the next pass judged a decision already checked');
-    assert.deepStrictEqual(entries().filter((e) => e.event === 'checked').map((e) => e.entry), carried.map(full));
+    assert.deepStrictEqual(entries().filter((e) => e.event === 'checked').map((e) => e.entry), owed.map(full));
   });
 
   it('runs detached: the launch hands the check a process of its own, no conversation\'s — launched from one boot has not stamped, it meets no refusal — which records its result and lets its claim go after the launch has answered', async () => {

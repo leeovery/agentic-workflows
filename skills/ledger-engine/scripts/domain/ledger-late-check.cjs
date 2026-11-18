@@ -6,23 +6,23 @@
 // written, judged at a later start.
 //
 // - Boot folds the ledger for the decisions owed a check — landed unchecked,
-//   no `checked` event naming them — and, where any is, launches the check
-//   as a detached `engine ledger late-check`, so a start never waits on it.
-//   One check works at a time: a second finds the first's claim, in the
-//   state's cache, and ends at once.
+//   no `checked` event naming them, none the migration carried, which the
+//   records step held to one thing (21.6.3) — and, where any is, launches
+//   the check as a detached `engine ledger late-check`, so a start never
+//   waits on it. One check works at a time: a second finds the first's
+//   claim, in the state's cache, and ends at once.
 // - Each owed decision is judged outside the writer lock, and what it found
 //   is recorded with the batch it falls in: under the lock, the ledger is
 //   read again as every read takes it — a line written outside the engine
 //   since the check's own read stops it, never committed with its results
 //   (5.4.4) — and a `checked` event for each decision, naming it and the
 //   rules it holds, `one` or `several`, is appended, the batch as one, and
-//   committed as one. A pass over a migration's thousands of carried
-//   decisions so makes a commit a batch, not one a decision; a check cut
-//   short loses the judgements of its last batch alone, and the next pass,
-//   folding the ledger afresh, judges only the decisions no `checked` event
-//   names. The event is recorded beside the entry, tagged as the entry is —
-//   its unit, topic, phase and session — and the entry's own line is never
-//   touched (5.4.1).
+//   committed as one, so a long pass makes a commit a batch, not one a
+//   decision; a check cut short loses the judgements of its last batch
+//   alone, and the next pass, folding the ledger afresh, judges only the
+//   decisions no `checked` event names. The event is recorded beside the
+//   entry, tagged as the entry is — its unit, topic, phase and session —
+//   and the entry's own line is never touched (5.4.1).
 // - A decision the call still cannot judge stays owed, for the next start.
 //   An answer that does not fit is the decision's own, and the check goes
 //   on to the next; any other failure — no login, a rate limit, a timeout,
@@ -37,7 +37,7 @@ const { messageOf, launcher } = require('../kernel/call.cjs');
 const { tryClaimFile } = require('../kernel/manifest-io.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { appendEntries, carrying, checkLines, commitLedger } = require('./ledger.cjs');
-const { entryKind } = require('./ledger-events.cjs');
+const { CARRIED_SESSION, entryKind } = require('./ledger-events.cjs');
 const { readFolded } = require('./ledger-fold.cjs');
 const { newId } = require('./ledger-ids.cjs');
 const { judgeDecision } = require('./ledger-one-decision.cjs');
@@ -57,13 +57,14 @@ const BATCH = 25;
 
 /**
  * The decisions owed a check, by id, each where its line sits: landed
- * unchecked, no `checked` event naming them.
+ * unchecked, no `checked` event naming them, the migration's session
+ * tagging none.
  * @type {import('./ledger-fold.cjs').Fold<Map<string, EntryPlace>>}
  */
 const OWED = {
   start: () => new Map(),
   step: (owed, event, place) => {
-    if (entryKind(event) === 'decision' && event.unchecked === true) owed.set(/** @type {string} */ (event.id), place);
+    if (entryKind(event) === 'decision' && event.unchecked === true && event.session !== CARRIED_SESSION) owed.set(/** @type {string} */ (event.id), place);
     if (event.event === 'checked') owed.delete(/** @type {string} */ (event.entry));
   },
 };

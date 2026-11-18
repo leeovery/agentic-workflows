@@ -30,7 +30,7 @@ const { createManifest } = require('./discovery-test-utils.cjs');
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { shortIds, newId } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
-const { LEDGER_VERSION } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
+const { LEDGER_VERSION, CARRIED_SESSION } = require(path.join(SCRIPTS, 'domain/ledger-events.cjs'));
 const store = require(path.join(SCRIPTS, 'kernel/knowledge/store.cjs'));
 const { knowledgeFiles } = require(path.join(SCRIPTS, 'kernel/knowledge/files.cjs'));
 const { systemConfigDir } = require(path.join(SCRIPTS, 'kernel/system-config.cjs'));
@@ -197,22 +197,38 @@ function ledgerHelpers(dir) {
   }
 
   /**
-   * Claude's decision carried over, answering `question` at `address`, as
-   * the migration alone writes one (ledger-carry.cjs), appended in process:
-   * its short id. An address naming no topic places it at its unit's phase.
-   * @param {string} address @param {string} question @param {string} text
+   * Claude's decision answering `question` at `address`, landed unchecked
+   * and unlabelled, tagged with `session` and given as `given`, appended in
+   * process: its short id. An address naming no topic places it at its
+   * unit's phase.
+   * @param {string} address @param {string} question @param {string} text @param {string} session @param {string} given
    */
-  function carriedOver(address, question, text) {
+  function uncheckedDecision(address, question, text, session, given) {
     const [unit, phase, topic = null] = address.split('.');
     const id = newId();
     appendEntry(statePath(dir()), {
-      event: 'decided', unit, topic, phase, session: SESSION_ID, ...MADE, answers: full(question), text, why: 'Carried over.', rules_out: [], relies_on: [],
-      product_wide: false, sealed: null, alternatives: [], evidence: [], kind: null, hard_to_undo: null, unchecked: true, given: 'carried', cites: [], task: null,
+      event: 'decided', unit, topic, phase, session, ...MADE, answers: full(question), text, why: 'Carried over.', rules_out: [], relies_on: [],
+      product_wide: false, sealed: null, alternatives: [], evidence: [], kind: null, hard_to_undo: null, unchecked: true, given, cites: [], task: null,
     }, [], id);
     return /** @type {string} */ (shortIds(entries().map((e) => e.id)).get(id));
   }
 
-  return { write, ledgerText, rawLines, entries, full, checkRuns, checkRun, carriedOver };
+  /**
+   * Claude's decision carried over, as the migration alone writes one
+   * (ledger-carry.cjs), tagged with the migration's session: its short id.
+   * @param {string} address @param {string} question @param {string} text
+   */
+  const carriedOver = (address, question, text) => uncheckedDecision(address, question, text, CARRIED_SESSION, 'carried');
+
+  /**
+   * Claude's own decision in this session that landed unchecked, the
+   * one-decision check unable to run, as `ledger decide` lands one: its
+   * short id.
+   * @param {string} address @param {string} question @param {string} text
+   */
+  const landedUnchecked = (address, question, text) => uncheckedDecision(address, question, text, SESSION_ID, 'own');
+
+  return { write, ledgerText, rawLines, entries, full, checkRuns, checkRun, carriedOver, landedUnchecked };
 }
 
 // ---------------------------------------------------------------------------
