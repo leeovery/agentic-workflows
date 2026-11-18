@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 // Domain ring: All work on the board (20.16) — the project's units in
 // progress, its roadmap, its inbox and its units complete — and the banner
-// at the start menu or a project-level place.
+// at the start menu, a project-level place or the migration.
 //
 // - Each unit's phase is its standing's (board-standing.cjs), as its tab
 //   and its banner have it. What waits on the person in it is counted from
@@ -156,15 +156,16 @@ function allView(cwd, at, here, atStart) {
 }
 
 /**
- * The banner at no unit: the project's, at the start menu or the
- * project-level place the session is at; and, once a unit's finish hands the
- * session to the start menu, that unit's close (D38).
- * @param {string} cwd @param {import('../conversation.cjs').Position|null} position @param {BoardAt|null} finished
+ * The banner at no unit: the project's, at the place the session is at —
+ * the start menu, a project-level place, or the migration; and, once a
+ * unit's finish hands the session to the start menu, that unit's close
+ * (D38).
+ * @param {string} cwd @param {string} place where the session is, in words @param {BoardAt|null} finished
  * @returns {import('../board-model.cjs').Banner}
  */
-function allBanner(cwd, position, finished) {
+function allBanner(cwd, place, finished) {
   if (finished !== null) return { name: finished.title, state: 'done', facts: [fact(finished.manifest.work_type), fact('complete'), placeFact('at the start menu')] };
-  return { name: projectName(cwd), state: 'idle', facts: [placeFact(position === null ? 'at the start menu' : position.name)] };
+  return { name: projectName(cwd), state: 'idle', facts: [placeFact(place)] };
 }
 
 module.exports = { allView, allBanner };

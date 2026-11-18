@@ -534,6 +534,7 @@ function plansOf(project, unit, before) {
 }
 
 module.exports = {
+  does: 'This step gives each piece of work the shape Ledger builds from, cutting work already under way into phases and carrying its tasks across.',
   counts: { one: 'piece of work', many: 'pieces of work' },
   done: 'done',
   partWay: 'A piece of work it was in the middle of is carried on from where it stood.',

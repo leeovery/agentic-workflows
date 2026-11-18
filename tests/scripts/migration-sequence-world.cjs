@@ -277,7 +277,7 @@ function reviewAndCommit(dir, env) {
   const { state, reshape } = harness.ok(dir, ['migrate', 'review'], opts);
   assert.ok(reshape, 'the review answers the migration into Ledger');
   const summary = path.join(state, '.cache', 'migrations-applied.json');
-  fs.writeFileSync(summary, JSON.stringify({ summary: 'Moved the project into Ledger.' }));
+  fs.writeFileSync(summary, JSON.stringify({ parts: { moved: 'Moved the project into Ledger.' } }));
   harness.output(dir, ['render', 'migrations-applied', '--file', summary], opts);
   harness.output(dir, ['render', 'migration-gate'], opts);
   harness.ok(dir, ['commit', '--migrations', '-m', "chore: apply Ledger's migrations"], opts);
@@ -294,7 +294,8 @@ function migrateWhole(dir, extra = {}) {
   const states = [];
   for (let boots = 0; boots < 6; boots += 1) {
     const res = harness.ok(dir, ['boot'], { env });
-    states.push(res.state === 'directive' ? `directive ${res.id}` : res.state);
+    if (res.stop?.surface !== undefined) harness.output(dir, ['render', res.stop.surface, ...(res.stop.args ?? [])], { env });
+    states.push(res.state === 'directive' ? `${res.stop.surface} ${res.id}` : res.state);
     if (res.state === 'directive') workDirective(dir, env, res.id);
     else if (res.state === 'finish') reviewAndCommit(dir, env);
     else return states;

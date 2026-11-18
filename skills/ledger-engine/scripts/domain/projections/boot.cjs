@@ -6,10 +6,11 @@
 // offer, the migration confirm, the label opt-in, the brownfield offer, and
 // the pick between the pieces of work the person's words name — the
 // stops on a git below the engine's floor, in a folder in no git repository,
-// at the reshape's guard, and at the checks before its move and a directive
-// of the migration not yet done, this session carrying the migration on or
-// another, the question where a building unit's leaving topics go, the
-// knowledge gate's screens and its questions for a provider's setup, and the
+// at the reshape's guard, at the checks before its move, this session
+// carrying the migration on or another, and at a directive another session
+// carries on; the migration at work at a directive, or part-way through one,
+// this session carrying it on; the question where a building unit's leaving
+// topics go, the knowledge gate's screens and its questions for a provider's setup, and the
 // banner the bare command opens on. Each setup screen's row leads to the
 // call that answers it. Pure renderers; none reads state (the calling prose follows the
 // boot response and fetches the gate at its display point, and the render
@@ -27,21 +28,37 @@ const ABOVE_MENU_INSTRUCTION = emitAs('text', ', directly above the menu');
 
 const WIZARD_COMMAND = `${ENGINE_COMMAND} knowledge setup`;
 
+/** The parts of the reshape's summary, by key, in their order, each with its label. */
+const RESHAPE_PARTS = Object.freeze([
+  ['moved', 'Moved into Ledger'],
+  ['records', 'Records'],
+  ['corrections', 'Corrections'],
+  ['legacy', 'Kept as legacy'],
+  ['code', 'The code commit'],
+]);
+
 /**
  * What the migrations did, above the confirm gate: the summary the session
- * wrote, each notice a migration handed back for the person, then the run's
- * counts — left out where the run updated no file and only the verification
- * fixed anything.
- * @param {{summary: string, notices: string[], counts: {migrations: number, files: number}|null}} applied
+ * wrote — the reshape's in its parts, each labelled, in their order — each
+ * notice a migration handed back for the person, then the run's counts —
+ * left out where the run updated no file and only the verification fixed
+ * anything; and where the reshape's code commit is still to make, that it
+ * goes on the code branch and is not pushed.
+ * @param {{summary: string|Partial<Record<string, string>>, notices: string[], counts: {migrations: number, files: number}|null, unpushed?: {branch: string|null}|null}} applied
  * @returns {string}
  */
-function migrationsApplied({ summary, notices, counts }) {
+function migrationsApplied({ summary, notices, counts, unpushed = null }) {
+  const account = typeof summary === 'string'
+    ? summary
+    : RESHAPE_PARTS.filter(([key]) => summary[key] !== undefined).map(([key, label]) => `**${label}:** ${summary[key]}`).join('\n\n');
+  const branch = unpushed?.branch == null ? '' : ` goes on \`${unpushed.branch}\` and`;
   return section('DISPLAY: migrations applied', CONTINUE_MARKDOWN_INSTRUCTION, [
     '**Migrations Applied**',
     '',
-    summary,
+    account,
     ...notices.flatMap((notice) => ['', notice]),
     ...(counts ? ['', `${counts.migrations} migration(s), ${counts.files} file(s) updated.`] : []),
+    ...(unpushed ? ['', `The code commit${branch} is not pushed: pushing it is yours.`] : []),
   ].join('\n'));
 }
 
@@ -135,35 +152,80 @@ function repoStop(folder) {
 }
 
 /**
- * Boot's stop at a directive of the migration not yet done (21.10.11): no
- * session works in the project until the migration is done; what the
- * directive finished is kept, each piece checked, and a piece it was in the
- * middle of is taken up as its check says (21.10.9), or, every piece done,
- * the step is ready to close; this session carries it on. Where another live session carries it on
- * (P7), the stop names when that one was last active, says nothing of what
- * a carrying session takes up or closes, and this session stops there. Where
- * the check cannot say, nothing is said of what is done.
- * @param {{project: string, step: string, progress: import('../directives.cjs').Progress|null, carrier?: number|null}} stopped the project's name, the directive's step in words, where it stands, and the whole seconds since another session carrying it on was last active
+ * What a directive finished, kept: its pieces done of all of them, each
+ * checked; null where none is done, or its check cannot say.
+ * @param {string} project @param {import('../directives.cjs').Progress|null} progress
+ * @returns {string|null}
+ */
+function keptOf(project, progress) {
+  if (progress === null || progress.done === 0) return null;
+  const { done, of, counts, says } = progress;
+  return `What it finished is kept: ${done} of ${escapeMarkdown(project)}'s ${of} ${of === 1 ? counts.one : counts.many} ${says}, each checked.`;
+}
+
+/**
+ * Boot's stop where another live session carries a directive of the
+ * migration on (21.10.11, P7): no session works in the project until the
+ * migration is done; what the directive finished is kept, each piece
+ * checked, where its check can say; and when that session was last active,
+ * this one stopping there.
+ * @param {{project: string, step: string, progress: import('../directives.cjs').Progress|null, carrier: number}} stopped the project's name, the directive's step in words, where it stands, and the whole seconds since the session carrying it on was last active
  * @returns {string}
  */
-function directiveStop({ project, step, progress, carrier = null }) {
-  const held = ['No session works in this project until the migration is done.'];
-  if (progress !== null && progress.done > 0) {
-    const { done, of, counts, says, partWay } = progress;
-    held.push(`What it finished is kept: ${done} of ${escapeMarkdown(project)}'s ${of} ${of === 1 ? counts.one : counts.many} ${says}, each checked.`);
-    if (carrier === null) held.push(done === of ? 'The step is ready to close.' : partWay);
-  }
-  const account = [
-    `> ${held.join(' ')}`,
-    '>',
-    ...(carrier === null
-      ? [`> This session carries the migration on from its ${step} step; the start menu follows once the migration is done and committed.`]
-      : takenBy(`its ${step} step`, carrier)),
-  ];
+function directiveStop({ project, step, progress, carrier }) {
+  const kept = keptOf(project, progress);
   return [
     section('DISPLAY: directive stop', emitAs('properties'), `⚑ The migration stopped part-way: its ${step} step isn't done`),
-    section('DISPLAY: directive account', emitAs('markdown'), account.join('\n')),
+    section('DISPLAY: directive account', emitAs('markdown'), [
+      `> ${['No session works in this project until the migration is done.', ...(kept === null ? [] : [kept])].join(' ')}`,
+      '>',
+      ...takenBy(`its ${step} step`, carrier),
+    ].join('\n')),
   ].join('\n');
+}
+
+/**
+ * The migration part-way through a directive, which this session carries
+ * on (21.10.9): in the normal colour, its marker naming the step; what the
+ * directive finished, kept, each piece checked, and a piece it was in the
+ * middle of taken up as its check says, or, every piece done, the step
+ * ready to close; and the start menu once the migration is done and
+ * committed. Where none is done, or the check cannot say, nothing is said
+ * of what is done.
+ * @param {{project: string, step: string, progress: import('../directives.cjs').Progress|null}} carried the project's name, the directive's step in words, and where it stands
+ * @returns {string}
+ */
+function directiveCarryOn({ project, step, progress }) {
+  const kept = keptOf(project, progress);
+  const held = kept === null || progress === null ? [] : [`> ${kept} ${progress.done === progress.of ? 'The step is ready to close.' : progress.partWay}`, '>'];
+  return section('DISPLAY: directive carry on', emitAs('markdown'), [
+    `**\`▪ Migration · ${step}\`**`,
+    '',
+    "Ledger is part-way through bringing this project's past work into its new format.",
+    '',
+    ...held,
+    `> This session carries the migration on from its ${step} step; the start menu follows once the migration is done and committed.`,
+  ].join('\n'));
+}
+
+/**
+ * The migration at work, at a directive none of whose pieces is done yet:
+ * in the normal colour, its marker naming the step; what the step does;
+ * that it runs by itself, the person waiting it out until it asks; and the
+ * start menu once the migration is done and committed.
+ * @param {{step: string, does: string}} arrival the directive's step in words, and what it does, in its check's words
+ * @returns {string}
+ */
+function directiveArrival({ step, does }) {
+  return section('DISPLAY: directive arrival', emitAs('markdown'), [
+    `**\`▪ Migration · ${step}\`**`,
+    '',
+    "Ledger is bringing this project's past work into its new format.",
+    '',
+    `> ${does} It runs by itself and takes a while: nothing is needed from you until it asks.`,
+    '>',
+    '> The start menu follows once the migration is done and committed.',
+  ].join('\n'));
 }
 
 /** How the mixed unit's question groups the topics leaving it, in its order. */
@@ -565,4 +627,4 @@ function knowledgeNotDone() {
   return section('DISPLAY: knowledge not done', ABOVE_MENU_INSTRUCTION, 'The wizard did not complete — the knowledge base is not set up in this checkout yet.');
 }
 
-module.exports = { migrationsApplied, migrationGate, stateLostGate, gitFloorStop, repoStop, migrationGuardStop, migrationChecksStop, directiveStop, leavingQuestion, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, banner, workPick, knowledgeGate, knowledgeAsk, knowledgeReady, knowledgeNotDone, KEY_PROVIDERS };
+module.exports = { RESHAPE_PARTS, migrationsApplied, migrationGate, stateLostGate, gitFloorStop, repoStop, migrationGuardStop, migrationChecksStop, directiveStop, directiveArrival, directiveCarryOn, leavingQuestion, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, banner, workPick, knowledgeGate, knowledgeAsk, knowledgeReady, knowledgeNotDone, KEY_PROVIDERS };

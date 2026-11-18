@@ -339,6 +339,11 @@ function refreshMigrationQuietly(cwd) {
   } catch { /* liveness is advisory — never fail a verb over it */ }
 }
 
+/** Whether a session carries the migration on: its row there, whoever wrote it. @param {string} cwd @returns {boolean} */
+function migrationCarried(cwd) {
+  return fs.existsSync(migrationPresencePath(cwd));
+}
+
 /** The migration's row gone, whoever wrote it: the migration is done. @param {string} cwd */
 function dropMigrationRow(cwd) {
   fs.rmSync(migrationPresencePath(cwd), { force: true });
@@ -462,6 +467,6 @@ function cleanupPresence(cwd, sessionId) {
 module.exports = {
   beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, clearOwnQuietly,
   scanPresence, scanProject, heldCodeSessions, peerHold, cleanupPresence,
-  migrationCarrier, beatMigrationQuietly, refreshMigrationQuietly, dropMigrationRow,
+  migrationCarrier, migrationCarried, beatMigrationQuietly, refreshMigrationQuietly, dropMigrationRow,
   fmtAge,
 };

@@ -1497,6 +1497,7 @@ function topicProblems(project, ids, unit, topic) {
 }
 
 module.exports = {
+  does: 'This step writes a record of what each piece of past work decided, and checks each one against its documents.',
   counts: { one: 'record', many: 'records' },
   done: 'are carried',
   partWay: 'A record it was in the middle of is amended from where it stood.',

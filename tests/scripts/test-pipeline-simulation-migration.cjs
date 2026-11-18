@@ -4,7 +4,8 @@
 // The pipeline simulation of the whole migration (21.S1, 21.S3, 27.S1,
 // 2.S10): a project on today's shape from 072 boots into the migration —
 // the guard passing, the chain and the move run, boot stopping at the
-// records directive and then at the cut and the merges', each worked by its
+// records directive and then at the cut and the merges', each met as the
+// migration at work, its screen drawn, and each worked by its
 // scripted session, then at the finish, whose review and gate the yes
 // commits, the project's code untouched — and the next boot reaches the
 // start menu. The migrated state passes the migration audit, its one dead
@@ -59,7 +60,7 @@ describe('pipeline simulation: the whole migration', () => {
   afterEach(() => { sim.destroy(); });
 
   it('21.S1, 21.S3, 27.S1: the project boots into the migration — the guard passing, boot stopping at each directive its session works, then at the finish its yes commits, the project\'s code untouched — and the next boot reaches the start menu, the state passing the migration audit and the oracle\'s, the trust log the migration ran under starting empty, learning no call of a carried decision', () => {
-    assert.deepStrictEqual(made.boots, ['directive 079-records', 'directive 080-cut-and-merges', 'finish', 'ready']);
+    assert.deepStrictEqual(made.boots, ['directive-arrival 079-records', 'directive-arrival 080-cut-and-merges', 'finish', 'ready']);
     assert.strictEqual(git(sim.dir, ['diff', 'HEAD~1', 'HEAD', '--', 'README.md']), '', 'the migration\'s commit changes none of the project\'s code');
 
     const report = audit(sim.dir, made.old);
