@@ -169,7 +169,7 @@ describe('what goes through before boot has run (BOOT_EXEMPT)', () => {
       boot: '*',
       'state-merge': ['pick'],
       render: [
-        'git-floor-stop', 'repo-stop', 'state-lost-gate', 'migration-guard-stop', 'migration-checks-stop', 'state-merge-gate', 'migration-taken-stop', 'directive-arrival', 'directive-stop', 'migrations-applied', 'migration-gate',
+        'git-floor-stop', 'repo-stop', 'state-lost-gate', 'migration-guard-stop', 'migration-checks-stop', 'state-merge-gate', 'migration-taken-stop', 'directive-arrival', 'directive-carry-on', 'migrations-applied', 'migration-gate',
         'walkthrough-offer', 'walkthrough-screen', 'walkthrough-topic', 'help', 'help-topics',
       ],
       gate: ['state lost gate', 'state merge gate', 'migration gate'],

@@ -53,7 +53,8 @@
 //     it; its instructions follow, under headings of their own. Beside it
 //     sits its check, `NNN-{slug}.check.cjs`: `module.exports = { does,
 //     counts, done, partWay, check({ projectDir, stateDir }) }`. `does` says
-//     what the step does, the sentence the first stop at it draws ('This
+//     what the step does, the sentence its stop draws while none of its
+//     pieces is done ('This
 //     step writes a record of what each piece of past work decided, and
 //     checks each one against its documents.'); `counts` names one piece of
 //     the directive's work and many, `{ one: 'topic', many: 'topics' }`, and

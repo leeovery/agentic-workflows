@@ -26,17 +26,15 @@
 //   the engine's: done while the check passes, never marked or skipped. Its
 //   close records the directive in the migrations record — the one way a
 //   directive is recorded — and the next run carries on past it.
-// - Boot's stop answers the directive, its file, its pieces done of all of
-//   them, and whether this boot is the first to stop at it, which the
-//   journals folder keeps (`REACHED`, the directive a boot last stopped
-//   at). The first — the boot that ran the steps before it, or the boot
-//   after the directive before it closed — draws the migration at work,
-//   `render directive-arrival`: what the step does, in its check's words
-//   (`does`), and the person waiting it out. A later boot finds the
-//   directive left unfinished and draws boot's refusal, `render
-//   directive-stop` (21.10.11). A session that died part-way may leave what
-//   the check trips on (21.10.9): the stop then answers without the counts,
-//   and `migrate check` names what failed.
+// - Boot's stop answers the directive, its file, and its pieces done of all
+//   of them, where its check can say. Which screen it draws follows from
+//   them: with none done, the migration at work, `render
+//   directive-arrival` — what the step does, in its check's words (`does`),
+//   and the person waiting it out; with some done, the migration part-way,
+//   `render directive-carry-on` — what it finished, kept, and this session
+//   carrying it on. A session that died part-way may leave what the check
+//   trips on (21.10.9): the stop then answers without the counts, drawing
+//   the migration at work, and `migrate check` names what failed.
 // - `render migration-leaving <unit> --directive <id>` draws the mixed
 //   unit's question (21.8.10) from what the directive's check answers
 //   leaves a building unit (`leavingOf`, 080's): how many of its topics its
@@ -88,7 +86,7 @@ const { codeRoot } = require('../kernel/code-root.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { isObject, readWorkUnitManifest } = require('../kernel/manifest-io.cjs');
 const { messageOf } = require('../kernel/call.cjs');
-const { directiveStop, directiveArrival, migrationChecksStop, leavingQuestion } = require('./projections/boot.cjs');
+const { directiveStop, directiveArrival, directiveCarryOn, migrationChecksStop, leavingQuestion } = require('./projections/boot.cjs');
 const { topicTitle } = require('./derivations.cjs');
 const { projectName } = require('./state-checks.cjs');
 const { unraised } = require('./raise.cjs');
@@ -111,9 +109,6 @@ const MIGRATIONS_RECORD = '.state/migrations';
 
 // The move's journal of the corrections it made (078), among the migration's journals.
 const MOVE_JOURNAL = 'move.json';
-
-// The directive a boot last stopped at, in the journals folder.
-const REACHED = 'reached';
 
 const DIRECTIVE_ID = /^([0-9]+)-[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -323,65 +318,50 @@ function recordDirective(cwd, { number }) {
 }
 
 /**
- * Whether this boot is the first to stop at the directive `id`: the one a
- * boot last stopped at is another, or none. Keeps `id` as the one last
- * stopped at.
- * @param {string} cwd @param {string} id @returns {boolean}
- */
-function firstToReach(cwd, id) {
-  const mark = statePath(cwd, MIGRATION_JOURNALS, REACHED);
-  if (fs.existsSync(mark) && fs.readFileSync(mark, 'utf8') === id) return false;
-  fs.mkdirSync(path.dirname(mark), { recursive: true });
-  fs.writeFileSync(mark, id);
-  return true;
-}
-
-/**
- * Boot's stop at the directive `id`: the directive, its file, whether this
- * boot is the first to stop at it, and its pieces done of all of them,
- * where its check can say.
+ * Boot's stop at the directive `id`: the directive, its file, and its
+ * pieces done of all of them, where its check can say.
  * @param {string} cwd @param {string} id
- * @returns {{id: string, file: string, arrived: boolean, done?: number, of?: number}}
+ * @returns {{id: string, file: string, done?: number, of?: number}}
  */
 function directiveStopped(cwd, id) {
   const progress = progressOf(cwd, id);
-  return { id, file: directiveOf(id).file, arrived: firstToReach(cwd, id), ...(progress === null ? {} : { done: progress.done, of: progress.of }) };
+  return { id, file: directiveOf(id).file, ...(progress === null ? {} : { done: progress.done, of: progress.of }) };
 }
 
 /** The directive `id`'s step in words, from its slug. @param {string} id */
 const stepOf = (id) => id.replace(/^[0-9]+-/, '').replace(/-/g, ' ');
 
 /**
- * The screen of boot's stop at the directive `id`, `carrier` the whole
- * seconds since another session carrying it on was last active, or null
- * where this session carries it on.
- * @param {string} cwd @param {string} id @param {number|null} carrier
- * @returns {string}
+ * Where the directive `id` stands, as its screens say it: the project's
+ * name, its step in words, and its progress. Refuses a directive the
+ * migrations lack.
+ * @param {string} cwd @param {string} id
  */
-function stopAt(cwd, id, carrier) {
+function standingOf(cwd, id) {
   directiveOf(id);
-  return directiveStop({ project: projectName(cwd), step: stepOf(id), progress: progressOf(cwd, id), carrier });
+  return { project: projectName(cwd), step: stepOf(id), progress: progressOf(cwd, id) };
 }
 
 /**
- * `render directive-stop --directive <id>`: the screen of boot's stop at it.
- * @param {string} cwd @param {Record<string, string|undefined>} args
- * @returns {string}
- */
-function directiveStopSurface(cwd, args) {
-  if (args.directive === undefined) throw new Error('render directive-stop: --directive <id> names the directive boot stopped at');
-  return stopAt(cwd, args.directive, null);
-}
-
-/**
- * `render directive-arrival --directive <id>`: the screen of the first
- * boot to stop at it, the migration at work.
+ * `render directive-arrival --directive <id>`: the migration at work at it,
+ * none of its pieces done yet (the header's).
  * @param {string} _cwd @param {Record<string, string|undefined>} args
  * @returns {string}
  */
 function directiveArrivalSurface(_cwd, args) {
   if (args.directive === undefined) throw new Error('render directive-arrival: --directive <id> names the directive the migration reached');
   return directiveArrival({ step: stepOf(args.directive), does: loadCheck(args.directive).does });
+}
+
+/**
+ * `render directive-carry-on --directive <id>`: the migration part-way
+ * through it, this session carrying it on (the header's).
+ * @param {string} cwd @param {Record<string, string|undefined>} args
+ * @returns {string}
+ */
+function directiveCarryOnSurface(cwd, args) {
+  if (args.directive === undefined) throw new Error('render directive-carry-on: --directive <id> names the directive the migration is part-way through');
+  return directiveCarryOn(standingOf(cwd, args.directive));
 }
 
 /**
@@ -398,7 +378,7 @@ function takenStopSurface(cwd, args) {
   if (active === undefined || !/^(0|[1-9][0-9]*)$/.test(active)) {
     throw new Error(`render migration-taken-stop: --active takes the seconds since the session carrying the migration on was last active${active === undefined ? '' : `, got "${active}"`}`);
   }
-  return at === 'checks' ? migrationChecksStop(Number(active)) : stopAt(cwd, at, Number(active));
+  return at === 'checks' ? migrationChecksStop(Number(active)) : directiveStop({ ...standingOf(cwd, at), carrier: Number(active) });
 }
 
 /**
@@ -506,4 +486,4 @@ function runMigrateVerb(cwd, argv) {
   return checked;
 }
 
-module.exports = { MIGRATE_CJS, MIGRATIONS_RECORD, MIGRATION_JOURNALS, MIGRATE_USAGE, directiveOf, isCheck, loadCheck, briefedSections, piecesOf, checkDirective, recordDirective, directiveStopped, directiveStopSurface, directiveArrivalSurface, takenStopSurface, leavingSurface, runMigrateVerb };
+module.exports = { MIGRATE_CJS, MIGRATIONS_RECORD, MIGRATION_JOURNALS, MIGRATE_USAGE, directiveOf, isCheck, loadCheck, briefedSections, piecesOf, checkDirective, recordDirective, directiveStopped, directiveArrivalSurface, directiveCarryOnSurface, takenStopSurface, leavingSurface, runMigrateVerb };

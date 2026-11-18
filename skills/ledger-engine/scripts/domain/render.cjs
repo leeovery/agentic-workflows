@@ -72,7 +72,7 @@ const { discoveryMapScreen } = require('./projections/discovery-map.cjs');
 const { stateRoot, statePath, outsideRepository } = require('../kernel/state-root.cjs');
 const { stateMergeGateSurface } = require('./state-merge.cjs');
 const { ledgerStopSurface } = require('./ledger.cjs');
-const { directiveStopSurface, directiveArrivalSurface, takenStopSurface, leavingSurface } = require('./directives.cjs');
+const { directiveArrivalSurface, directiveCarryOnSurface, takenStopSurface, leavingSurface } = require('./directives.cjs');
 const { finishing } = require('./migration-commit.cjs');
 const { OLD_STATE } = require('../../../ledger-migrate/scripts/old-layout.cjs');
 const { gitFloorStopSurface } = require('./git-floor.cjs');
@@ -920,7 +920,7 @@ const SURFACES = {
   'knowledge-done': knowledgeDoneSurface,
   'state-merge-gate': stateMergeGateSurface,
   'ledger-stop': ledgerStopSurface,
-  'directive-stop': directiveStopSurface,
+  'directive-carry-on': directiveCarryOnSurface,
   'directive-arrival': directiveArrivalSurface,
   'migration-guard-stop': migrationGuardStopSurface,
   'migration-checks-stop': () => migrationChecksStop(),

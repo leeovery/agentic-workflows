@@ -113,13 +113,13 @@ format and its check's contract.
   roster's agents, never a model or an effort.
 - Its check sits beside it, `NNN-slug.check.cjs`, exporting
   `{ does, counts, done, partWay, check({ projectDir, stateDir }) }`:
-  what the step does, in a sentence the first stop at it shows ("This
+  what the step does, in a sentence its stop shows while none of its pieces is done ("This
   step writes a record of what each piece of past work decided, and
   checks each one against its documents."), what one of its pieces is
   called and many (`{ one: 'topic', many: 'topics' }`), what a piece done
   has (`'have their records'`), what becomes of a piece a session left
-  part-way, in a sentence, and each piece with what it still lacks. A
-  later stop, finding the step unfinished, says them as "12 of
+  part-way, in a sentence, and each piece with what it still lacks. Once
+  some are done, its stop says them as "12 of
   Larkspur's 19 topics have their records. A record it was in the middle
   of is amended from where it stood." `engine migrate check` runs it;
   the directive is recorded when
