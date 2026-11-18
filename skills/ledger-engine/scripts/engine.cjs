@@ -465,6 +465,7 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render state-merge-gate
   render ledger-stop
   render directive-stop --directive <id>
+  render directive-arrival --directive <id>
   render migration-guard-stop --cause live|dirty [--unit <unit> --phase <phase> --topic <topic> --active <seconds>] [--path <path> …]
   render migration-checks-stop
   render migration-taken-stop --at <directive id|checks> --active <seconds>

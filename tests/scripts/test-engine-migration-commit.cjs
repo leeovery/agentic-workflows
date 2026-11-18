@@ -29,7 +29,8 @@
 // the yes making what is left, and after the code commit, the next boot
 // taking the drops out of the index and off disk itself and answering
 // `ready` (21.9.5); the refusals, nothing committed (21.9.3); the review's
-// read, once the code commit has landed among it (21.9.4); a project nested
+// read, once the code commit has landed among it (21.9.4), and its summary
+// in its parts, closing on the code commit not pushed; a project nested
 // in its repository, its commit called from a code worktree; the board
 // reading the project meanwhile; a code migration after the reshape handing
 // back its check and notice as today (21.10.13, 21.S48), and a directive
@@ -40,7 +41,7 @@
 // synced from that stop on, labels off, each naming the installed engine, a
 // second live session meeting it going no further, the fix made in
 // `.workflows/` carried by the move and the check marked made (21.10.13),
-// and a directive recorded unrun left out of the review's directives, the move's
+// the move's
 // linters check made through the calls it names, the code commit taking the
 // settings boot synced, and a linked worktree's first boot after it
 // committing its hooks there, each naming the installed engine. The
@@ -177,7 +178,7 @@ describe('the migration waiting on its commit (21.9.1, 21.9.3)', () => {
 });
 
 describe('the review\'s read (21.9.4)', () => {
-  it('answers the state\'s folder and the code side\'s, absolute, and what the summary is written from: the commits the yes makes, the units moved, their topics, the directives done and the code files the commit takes; once committed, the folders alone', () => {
+  it('answers the state\'s folder and the code side\'s, absolute, and what the summary is written from: the commits the yes makes, the units moved, their topics and the code files the commit takes; once committed, the folders alone', () => {
     assert.deepStrictEqual(ok(['migrate', 'review']), {
       ok: true,
       state: statePath(dir),
@@ -186,7 +187,6 @@ describe('the review\'s read (21.9.4)', () => {
         commits: ['state', 'code'],
         units: 1,
         topics: 3,
-        directives: ['079-records', '085-logs', '090-unchecked', '091-shapeless', '092-failing', '093-unanswered'],
         files: ['.gitignore', '.workflows', OLD_STORE],
         corrections: [],
       },
@@ -195,6 +195,48 @@ describe('the review\'s read (21.9.4)', () => {
     ok(COMMIT);
 
     assert.deepStrictEqual(ok(['migrate', 'review']), { ok: true, state: statePath(dir), code: dir });
+  });
+});
+
+describe('the review\'s summary while the reshape finishes', () => {
+  /** The summary's call, `payload` its payload. @param {Record<string, unknown>} payload */
+  const render = (payload) => {
+    const file = statePath(dir, '.cache', 'migrations-applied.json');
+    fs.writeFileSync(file, JSON.stringify(payload));
+    return ['render', 'migrations-applied', '--file', file];
+  };
+  /** @param {Record<string, unknown>} payload */
+  const drawn = (payload) => engine.output(dir, render(payload), { env: SESSION });
+  /** @param {Record<string, unknown>} payload */
+  const refused = (payload) => refusedUntouched(dir, render(payload));
+
+  it('draws each part the session wrote under its label, in the parts\' order, a part with nothing in it left out, and closes on the code commit going on the code branch, not pushed', () => {
+    const branch = git(dir, ['symbolic-ref', '--short', 'HEAD']).trim();
+
+    assert.strictEqual(drawn({ parts: { code: 'It takes `.workflows/` out.', moved: 'Fumi moved into `.ledger/`.', records: '3 records carried.' } }), [
+      '=== DISPLAY: migrations applied (emit verbatim as markdown (not a code block) — do not stop; continue as the skill instructs) ===',
+      '**Migrations Applied**',
+      '',
+      '**Moved into Ledger:** Fumi moved into `.ledger/`.',
+      '',
+      '**Records:** 3 records carried.',
+      '',
+      '**The code commit:** It takes `.workflows/` out.',
+      '',
+      `The code commit goes on \`${branch}\` and is not pushed: pushing it is yours.`,
+      '',
+    ].join('\n'));
+  });
+
+  it('refuses a summary of one paragraph, no part at all, a part that is none of the summary\'s and a part with no words', () => {
+    const PARTS = 'render migrations-applied: the summary of the migration into Ledger is "parts", each of moved, records, corrections, legacy, code a non-empty string, a part with nothing in it left out';
+
+    assert.deepStrictEqual([refused({ summary: 'Moved the project.' }), refused({ parts: {} }), refused({ parts: { skipped: 'Nothing was split.' } }), refused({ parts: { moved: ' ' } })], [
+      'render migrations-applied: the summary of the migration into Ledger is "parts", never "summary"',
+      PARTS,
+      PARTS,
+      PARTS,
+    ]);
   });
 });
 
@@ -279,7 +321,7 @@ describe('the migration\'s commit (21.9.2, 21.9.5)', () => {
     killedAt({ method: 'rmSync', file: '.workflows', when: 'before' }, dir, COMMIT, { env: SESSION });
     const tip = stateGit(dir, ['rev-parse', STATE_BRANCH]).trim();
 
-    assert.deepStrictEqual(ok(['migrate', 'review']).reshape, { commits: [], units: 1, topics: 3, directives: ['079-records', '085-logs', '090-unchecked', '091-shapeless', '092-failing', '093-unanswered'], files: [], corrections: [] });
+    assert.deepStrictEqual(ok(['migrate', 'review']).reshape, { commits: [], units: 1, topics: 3, files: [], corrections: [] });
 
     assert.strictEqual(ok(['boot']).state, 'ready');
 
@@ -538,7 +580,6 @@ describe('the reshape\'s real sequence through its commit (21.S18)', () => {
     const booted = real.ok(project, ['boot'], unstamped);
 
     assert.deepStrictEqual([booted.state, booted.migrations.changed, stateUnborn(project), codeHead(project)], ['finish', true, true, code]);
-    assert.deepStrictEqual(real.ok(project, ['migrate', 'review'], unstamped).reshape.directives, [], 'the records directive found no unit, so no session carried it out');
     const check = /`node \.claude\/skills\/ledger-engine\/scripts\/engine\.cjs (environment show)`.*`node \.claude\/skills\/ledger-engine\/scripts\/engine\.cjs (environment set linters)`, its JSON on stdin/.exec(booted.migrations.verify.map((entry) => entry.verify).join(' '));
     assert.ok(check !== null, 'the check names the calls that make it');
     const { linters } = real.ok(project, check[1].split(' '), unstamped);

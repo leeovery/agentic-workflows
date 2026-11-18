@@ -4,13 +4,7 @@
 
 ---
 
-The migration stopped at a directive: a step whose work is judgment, which this session carries out before anything else runs in the project.
-
-Say the marker **`▪ Migration`** on a line of its own, then fetch the stop's screen:
-
-```bash
-node .claude/skills/ledger-engine/scripts/engine.cjs render directive-stop --directive {directive}
-```
+The migration has reached a directive: a step of its work that this session carries out before anything else runs in the project. It is the migration at work, never a failure.
 
 Read the directive, `{file}`, and carry it out as written. Its head names the files it may touch and what it asks the person: touch no other file, and ask the person nothing else.
 

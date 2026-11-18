@@ -8,7 +8,7 @@
 // stops on a git below the engine's floor, in a folder in no git repository,
 // at the reshape's guard, and at the checks before its move and a directive
 // of the migration not yet done, this session carrying the migration on or
-// another, the question where a building unit's leaving topics go, the
+// another, the first stop at a directive, the migration at work, the question where a building unit's leaving topics go, the
 // knowledge gate's screens and its questions for a provider's setup, and the
 // banner the bare command opens on. Each setup screen's row leads to the
 // call that answers it. Pure renderers; none reads state (the calling prose follows the
@@ -27,21 +27,37 @@ const ABOVE_MENU_INSTRUCTION = emitAs('text', ', directly above the menu');
 
 const WIZARD_COMMAND = `${ENGINE_COMMAND} knowledge setup`;
 
+/** The parts of the reshape's summary, by key, in their order, each with its label. */
+const RESHAPE_PARTS = Object.freeze([
+  ['moved', 'Moved into Ledger'],
+  ['records', 'Records'],
+  ['corrections', 'Corrections'],
+  ['legacy', 'Kept as legacy'],
+  ['code', 'The code commit'],
+]);
+
 /**
  * What the migrations did, above the confirm gate: the summary the session
- * wrote, each notice a migration handed back for the person, then the run's
- * counts — left out where the run updated no file and only the verification
- * fixed anything.
- * @param {{summary: string, notices: string[], counts: {migrations: number, files: number}|null}} applied
+ * wrote — the reshape's in its parts, each labelled, in their order — each
+ * notice a migration handed back for the person, then the run's counts —
+ * left out where the run updated no file and only the verification fixed
+ * anything; and where the reshape's code commit is still to make, that it
+ * goes on the code branch and is not pushed.
+ * @param {{summary: string|Partial<Record<string, string>>, notices: string[], counts: {migrations: number, files: number}|null, unpushed?: {branch: string|null}|null}} applied
  * @returns {string}
  */
-function migrationsApplied({ summary, notices, counts }) {
+function migrationsApplied({ summary, notices, counts, unpushed = null }) {
+  const account = typeof summary === 'string'
+    ? summary
+    : RESHAPE_PARTS.filter(([key]) => summary[key] !== undefined).map(([key, label]) => `**${label}:** ${summary[key]}`).join('\n\n');
+  const branch = unpushed?.branch == null ? '' : ` goes on \`${unpushed.branch}\` and`;
   return section('DISPLAY: migrations applied', CONTINUE_MARKDOWN_INSTRUCTION, [
     '**Migrations Applied**',
     '',
-    summary,
+    account,
     ...notices.flatMap((notice) => ['', notice]),
     ...(counts ? ['', `${counts.migrations} migration(s), ${counts.files} file(s) updated.`] : []),
+    ...(unpushed ? ['', `The code commit${branch} is not pushed: pushing it is yours.`] : []),
   ].join('\n'));
 }
 
@@ -164,6 +180,26 @@ function directiveStop({ project, step, progress, carrier = null }) {
     section('DISPLAY: directive stop', emitAs('properties'), `⚑ The migration stopped part-way: its ${step} step isn't done`),
     section('DISPLAY: directive account', emitAs('markdown'), account.join('\n')),
   ].join('\n');
+}
+
+/**
+ * The first boot to stop at a directive of the migration: the migration at
+ * work, in the normal colour, its marker naming the step; what the step
+ * does; that it runs by itself, the person waiting it out until it asks;
+ * and the start menu once the migration is done and committed.
+ * @param {{step: string, does: string}} arrival the directive's step in words, and what it does, in its check's words
+ * @returns {string}
+ */
+function directiveArrival({ step, does }) {
+  return section('DISPLAY: directive arrival', emitAs('markdown'), [
+    `**\`▪ Migration · ${step}\`**`,
+    '',
+    "Ledger is bringing this project's past work into its new format.",
+    '',
+    `> ${does} It runs by itself and takes a while: nothing is needed from you until it asks.`,
+    '>',
+    '> The start menu follows once the migration is done and committed.',
+  ].join('\n'));
 }
 
 /** How the mixed unit's question groups the topics leaving it, in its order. */
@@ -565,4 +601,4 @@ function knowledgeNotDone() {
   return section('DISPLAY: knowledge not done', ABOVE_MENU_INSTRUCTION, 'The wizard did not complete — the knowledge base is not set up in this checkout yet.');
 }
 
-module.exports = { migrationsApplied, migrationGate, stateLostGate, gitFloorStop, repoStop, migrationGuardStop, migrationChecksStop, directiveStop, leavingQuestion, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, banner, workPick, knowledgeGate, knowledgeAsk, knowledgeReady, knowledgeNotDone, KEY_PROVIDERS };
+module.exports = { RESHAPE_PARTS, migrationsApplied, migrationGate, stateLostGate, gitFloorStop, repoStop, migrationGuardStop, migrationChecksStop, directiveStop, directiveArrival, leavingQuestion, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, banner, workPick, knowledgeGate, knowledgeAsk, knowledgeReady, knowledgeNotDone, KEY_PROVIDERS };

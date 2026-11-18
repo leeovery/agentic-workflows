@@ -22,6 +22,8 @@
 const fs = require('fs');
 const path = require('path');
 const { loadManifest, loadProjectManifest } = require('./reads.cjs');
+const { isObject } = require('../kernel/manifest-io.cjs');
+const { repoFacts } = require('../kernel/isolated-git.cjs');
 const { titlecase } = require('./conventions.cjs');
 const { section, dataSection, menu, cmdOption, promptOption, MENU_INSTRUCTION } = require('./projections/surfaces.cjs');
 const { quickFixBranch } = require('./landing-names.cjs');
@@ -32,7 +34,7 @@ const {
   ORIGINS: WALKTHROUGH_ORIGINS, loadScreen, loadCard, walkthroughOffer, walkthroughScreen, walkthroughTopic,
 } = require('./projections/walkthrough.cjs');
 const { helpTopicsSurface } = require('./projections/help-topics.cjs');
-const { migrationsApplied, migrationGate, stateLostGate, repoStop, migrationGuardStop, migrationChecksStop, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, banner, workPick, knowledgeGate, knowledgeAsk, knowledgeReady, knowledgeNotDone, KEY_PROVIDERS } = require('./projections/boot.cjs');
+const { RESHAPE_PARTS, migrationsApplied, migrationGate, stateLostGate, repoStop, migrationGuardStop, migrationChecksStop, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, banner, workPick, knowledgeGate, knowledgeAsk, knowledgeReady, knowledgeNotDone, KEY_PROVIDERS } = require('./projections/boot.cjs');
 const { readiness } = require('./knowledge/status.cjs');
 const { knowledgeFiles } = require('../kernel/knowledge/files.cjs');
 const { readMetadata } = require('../kernel/knowledge/store.cjs');
@@ -70,7 +72,7 @@ const { discoveryMapScreen } = require('./projections/discovery-map.cjs');
 const { stateRoot, statePath, outsideRepository } = require('../kernel/state-root.cjs');
 const { stateMergeGateSurface } = require('./state-merge.cjs');
 const { ledgerStopSurface } = require('./ledger.cjs');
-const { directiveStopSurface, takenStopSurface, leavingSurface } = require('./directives.cjs');
+const { directiveStopSurface, directiveArrivalSurface, takenStopSurface, leavingSurface } = require('./directives.cjs');
 const { finishing } = require('./migration-commit.cjs');
 const { OLD_STATE } = require('../../../ledger-migrate/scripts/old-layout.cjs');
 const { gitFloorStopSurface } = require('./git-floor.cjs');
@@ -642,15 +644,32 @@ function horizonBack(cwd, name, from, then) {
 // the gates' own; each is fetched at the exact point it displays.
 
 /**
- * ledger's migration summary — the payload is the session's summary,
- * the notices the run handed back for the person, and, where the run updated
- * files, its two counts.
+ * The reshape's summary in its parts, each by its key, trimmed. Refuses a
+ * key that is no part's, a part with no words, and no part at all.
+ * @param {unknown} parts @returns {Record<string, string>}
+ */
+function reshapeParts(parts) {
+  const keys = RESHAPE_PARTS.map(([key]) => key);
+  if (!isObject(parts) || Object.keys(parts).length === 0 || !Object.entries(parts).every(([key, text]) => keys.includes(key) && isFilled(text))) {
+    throw new Error(`render migrations-applied: the summary of the migration into Ledger is "parts", each of ${keys.join(', ')} a non-empty string, a part with nothing in it left out`);
+  }
+  return Object.fromEntries(Object.entries(parts).map(([key, text]) => [key, String(text).trim()]));
+}
+
+/**
+ * ledger's migration summary — the payload is the session's summary, the
+ * reshape's in its parts while it finishes, the notices the run handed back
+ * for the person, and, where the run updated files, its two counts; while
+ * the reshape's code commit is still to make, the branch it goes on.
  * @param {string} cwd @param {Record<string, string|undefined>} args @returns {string}
  */
 function migrationsAppliedSurface(cwd, { file }) {
   if (!file) throw new Error('render migrations-applied: --file <payload.json> is required');
   const p = readJsonPayload(cwd, file, 'migrations-applied');
-  if (!isFilled(p.summary)) throw new Error('render migrations-applied: "summary" must be a non-empty string');
+  const finish = finishing(cwd);
+  if (finish === null && p.parts !== undefined) throw new Error('render migrations-applied: "parts" is the summary of the migration into Ledger, which is not finishing — "summary" is the summary');
+  if (finish === null && !isFilled(p.summary)) throw new Error('render migrations-applied: "summary" must be a non-empty string');
+  if (finish !== null && p.summary !== undefined) throw new Error('render migrations-applied: the summary of the migration into Ledger is "parts", never "summary"');
   const notices = p.notices ?? [];
   if (!Array.isArray(notices) || !notices.every(isFilled)) {
     throw new Error('render migrations-applied: "notices" must be a list of non-empty strings');
@@ -663,9 +682,10 @@ function migrationsAppliedSurface(cwd, { file }) {
     if (!Number.isInteger(p[key]) || p[key] < 1) throw new Error(`render migrations-applied: "${key}" must be a positive integer`);
   }
   return migrationsApplied({
-    summary: p.summary.trim(),
+    summary: finish === null ? p.summary.trim() : reshapeParts(p.parts),
     notices: notices.map((notice) => notice.trim()),
     counts: given.length ? { migrations: p.migrations, files: p.files } : null,
+    unpushed: finish?.commits.includes('code') ? { branch: repoFacts(finish.project)?.branch ?? null } : null,
   });
 }
 
@@ -901,6 +921,7 @@ const SURFACES = {
   'state-merge-gate': stateMergeGateSurface,
   'ledger-stop': ledgerStopSurface,
   'directive-stop': directiveStopSurface,
+  'directive-arrival': directiveArrivalSurface,
   'migration-guard-stop': migrationGuardStopSurface,
   'migration-checks-stop': () => migrationChecksStop(),
   'migration-taken-stop': takenStopSurface,

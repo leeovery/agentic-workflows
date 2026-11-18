@@ -20,16 +20,23 @@
 //   (raise.cjs) — so a session compacted part-way reads them back (21.6.10).
 // - The runner asks a directive's pieces (`piecesOf`) as it meets it: a
 //   directive whose check answers none leaves the session nothing to do,
-//   and the runner records it unrun (21.4.3), its line and beside it the
-//   unrun line (`unrunLine`), which tells it from one a session carried out.
+//   and the runner records it by its ID, as it records any migration
+//   (21.4.3).
 // - The directive's checklist (checklist.cjs) holds one item, its check,
 //   the engine's: done while the check passes, never marked or skipped. Its
 //   close records the directive in the migrations record — the one way a
 //   directive is recorded — and the next run carries on past it.
-// - Boot's stop answers the directive, its file, and its pieces done of all
-//   of them, which `render directive-stop` draws (21.10.11). A session that
-//   died part-way may leave what the check trips on (21.10.9): the stop then
-//   answers without the counts, and `migrate check` names what failed.
+// - Boot's stop answers the directive, its file, its pieces done of all of
+//   them, and whether this boot is the first to stop at it, which the
+//   journals folder keeps (`REACHED`, the directive a boot last stopped
+//   at). The first — the boot that ran the steps before it, or the boot
+//   after the directive before it closed — draws the migration at work,
+//   `render directive-arrival`: what the step does, in its check's words
+//   (`does`), and the person waiting it out. A later boot finds the
+//   directive left unfinished and draws boot's refusal, `render
+//   directive-stop` (21.10.11). A session that died part-way may leave what
+//   the check trips on (21.10.9): the stop then answers without the counts,
+//   and `migrate check` names what failed.
 // - `render migration-leaving <unit> --directive <id>` draws the mixed
 //   unit's question (21.8.10) from what the directive's check answers
 //   leaves a building unit (`leavingOf`, 080's): how many of its topics its
@@ -55,8 +62,8 @@
 //   from any checkout; and, while the reshape finishes, what its summary is
 //   written from, since the state branch's first commit takes the whole
 //   state (21.9.4) — the commits the yes still makes, the units moved, the
-//   topics carried, the directives a session carried out, the code files
-//   the commit takes, and each correction the migration made, by its unit:
+//   topics carried, the code files the commit takes, and each correction
+//   the migration made, by its unit:
 //   the move's, where the registry typed a unit otherwise than its
 //   manifest, as the move journaled them (078, `move.json` among the
 //   journals), then the cut and the merges', where a unit's manifest and
@@ -81,7 +88,7 @@ const { codeRoot } = require('../kernel/code-root.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { isObject, readWorkUnitManifest } = require('../kernel/manifest-io.cjs');
 const { messageOf } = require('../kernel/call.cjs');
-const { directiveStop, migrationChecksStop, leavingQuestion } = require('./projections/boot.cjs');
+const { directiveStop, directiveArrival, migrationChecksStop, leavingQuestion } = require('./projections/boot.cjs');
 const { topicTitle } = require('./derivations.cjs');
 const { projectName } = require('./state-checks.cjs');
 const { unraised } = require('./raise.cjs');
@@ -105,10 +112,10 @@ const MIGRATIONS_RECORD = '.state/migrations';
 // The move's journal of the corrections it made (078), among the migration's journals.
 const MOVE_JOURNAL = 'move.json';
 
-const DIRECTIVE_ID = /^([0-9]+)-[a-z0-9]+(?:-[a-z0-9]+)*$/;
+// The directive a boot last stopped at, in the journals folder.
+const REACHED = 'reached';
 
-/** The line the runner records beside a directive it recorded unrun. @param {string} number */
-const unrunLine = (number) => `${number} unrun`;
+const DIRECTIVE_ID = /^([0-9]+)-[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 const MIGRATE_USAGE = ['migrate check <id>', 'migrate checked', 'migrate review', 'migrate join <work-unit> --directive <id> [--phase <N> --dry-run]'].join('\n');
 
@@ -121,11 +128,11 @@ const MIGRATE_USAGE = ['migrate check <id>', 'migrate checked', 'migrate review'
 /** A point a directive's own steps raise: the place it is raised at, the question it answers, the question's text, and any other questions that may be the same point, each with its place. @typedef {{place: string, answers: string, text: string, candidates?: {place: string, answers: string, text: string}[], settled_on?: {place: string, decisions: {id: string, text: string}[]}[]}} Point */
 
 /**
- * A directive's check as its module exports it: what its pieces are called,
- * what a piece done has, what becomes of one a session left part-way, the
- * check, and any points its own steps raise.
+ * A directive's check as its module exports it: what the step does, what
+ * its pieces are called, what a piece done has, what becomes of one a
+ * session left part-way, the check, and any points its own steps raise.
  * @typedef {{
- *   counts: Counts, done: string, partWay: string, check: (dirs: {projectDir: string, stateDir: string}) => unknown, raises?: (dirs: {projectDir: string, stateDir: string}) => unknown,
+ *   does: string, counts: Counts, done: string, partWay: string, check: (dirs: {projectDir: string, stateDir: string}) => unknown, raises?: (dirs: {projectDir: string, stateDir: string}) => unknown,
  * }} Check
  */
 
@@ -170,13 +177,13 @@ const isPoint = (point) => isObject(point) && isWords(point.place) && isWords(po
   && (point.settled_on === undefined || (Array.isArray(point.settled_on) && point.settled_on.every((each) => isObject(each) && isWords(each.place) && Array.isArray(each.decisions) && each.decisions.every((decision) => isObject(decision) && isWords(decision.id) && typeof decision.text === 'string'))));
 
 /**
- * Whether a check module exports the check's shape: `counts`, `{ one, many }`,
- * `done`, `partWay`, and `check()`.
+ * Whether a check module exports the check's shape: `does`, `counts`,
+ * `{ one, many }`, `done`, `partWay`, and `check()`.
  * @param {Record<string, unknown>} checker @returns {checker is Check}
  */
 function isCheck(checker) {
-  const { counts, done, partWay, check } = checker;
-  return typeof check === 'function' && isObject(counts) && isWords(counts.one) && isWords(counts.many) && isWords(done) && isWords(partWay);
+  const { does, counts, done, partWay, check } = checker;
+  return typeof check === 'function' && isWords(does) && isObject(counts) && isWords(counts.one) && isWords(counts.many) && isWords(done) && isWords(partWay);
 }
 
 /**
@@ -216,7 +223,7 @@ function loadCheck(id) {
     throw new Error(`${id}'s check could not be loaded from ${check}: ${messageOf(err)}`);
   }
   if (!isCheck(checker)) {
-    throw new Error(`${id}'s check exports no check() beside what it counts — it exports { counts: { one, many }, done, partWay, check({ projectDir, stateDir }) }`);
+    throw new Error(`${id}'s check exports no check() beside what it counts — it exports { does, counts: { one, many }, done, partWay, check({ projectDir, stateDir }) }`);
   }
   return checker;
 }
@@ -229,7 +236,7 @@ function checkDirs(cwd) {
 /**
  * The pieces of the directive `id`'s work, as its check answers them over
  * the project at `cwd` — none where it leaves the session nothing to do,
- * which the runner records unrun. Refuses a check that will not load,
+ * which the runner records and runs past. Refuses a check that will not load,
  * exports another shape, fails, or answers anything but its pieces.
  * @param {string} cwd @param {string} id
  * @returns {Piece[]}
@@ -316,15 +323,33 @@ function recordDirective(cwd, { number }) {
 }
 
 /**
- * Boot's stop at the directive `id`: the directive, its file, and its
- * pieces done of all of them, where its check can say.
+ * Whether this boot is the first to stop at the directive `id`: the one a
+ * boot last stopped at is another, or none. Keeps `id` as the one last
+ * stopped at.
+ * @param {string} cwd @param {string} id @returns {boolean}
+ */
+function firstToReach(cwd, id) {
+  const mark = statePath(cwd, MIGRATION_JOURNALS, REACHED);
+  if (fs.existsSync(mark) && fs.readFileSync(mark, 'utf8') === id) return false;
+  fs.mkdirSync(path.dirname(mark), { recursive: true });
+  fs.writeFileSync(mark, id);
+  return true;
+}
+
+/**
+ * Boot's stop at the directive `id`: the directive, its file, whether this
+ * boot is the first to stop at it, and its pieces done of all of them,
+ * where its check can say.
  * @param {string} cwd @param {string} id
- * @returns {{id: string, file: string, done?: number, of?: number}}
+ * @returns {{id: string, file: string, arrived: boolean, done?: number, of?: number}}
  */
 function directiveStopped(cwd, id) {
   const progress = progressOf(cwd, id);
-  return { id, file: directiveOf(id).file, ...(progress === null ? {} : { done: progress.done, of: progress.of }) };
+  return { id, file: directiveOf(id).file, arrived: firstToReach(cwd, id), ...(progress === null ? {} : { done: progress.done, of: progress.of }) };
 }
+
+/** The directive `id`'s step in words, from its slug. @param {string} id */
+const stepOf = (id) => id.replace(/^[0-9]+-/, '').replace(/-/g, ' ');
 
 /**
  * The screen of boot's stop at the directive `id`, `carrier` the whole
@@ -335,7 +360,7 @@ function directiveStopped(cwd, id) {
  */
 function stopAt(cwd, id, carrier) {
   directiveOf(id);
-  return directiveStop({ project: projectName(cwd), step: id.replace(/^[0-9]+-/, '').replace(/-/g, ' '), progress: progressOf(cwd, id), carrier });
+  return directiveStop({ project: projectName(cwd), step: stepOf(id), progress: progressOf(cwd, id), carrier });
 }
 
 /**
@@ -346,6 +371,17 @@ function stopAt(cwd, id, carrier) {
 function directiveStopSurface(cwd, args) {
   if (args.directive === undefined) throw new Error('render directive-stop: --directive <id> names the directive boot stopped at');
   return stopAt(cwd, args.directive, null);
+}
+
+/**
+ * `render directive-arrival --directive <id>`: the screen of the first
+ * boot to stop at it, the migration at work.
+ * @param {string} _cwd @param {Record<string, string|undefined>} args
+ * @returns {string}
+ */
+function directiveArrivalSurface(_cwd, args) {
+  if (args.directive === undefined) throw new Error('render directive-arrival: --directive <id> names the directive the migration reached');
+  return directiveArrival({ step: stepOf(args.directive), does: loadCheck(args.directive).does });
 }
 
 /**
@@ -382,26 +418,12 @@ function leavingSurface(cwd, { dotpath: unit, directive }) {
 }
 
 /**
- * The directives a session carried out, by id, in their order: each the
- * migrations record holds, but those the runner recorded unrun.
- * @param {string} cwd @returns {string[]}
- */
-function directivesDone(cwd) {
-  const record = statePath(cwd, MIGRATIONS_RECORD);
-  const held = new Set(fs.existsSync(record) ? fs.readFileSync(record, 'utf8').split('\n') : []);
-  return fs.readdirSync(MIGRATIONS).filter((name) => name.endsWith('.md')).map((name) => name.slice(0, -'.md'.length)).filter((id) => {
-    const named = DIRECTIVE_ID.exec(id);
-    return named !== null && held.has(named[1]) && !held.has(unrunLine(named[1]));
-  }).sort();
-}
-
-/**
  * What the reshape's summary is written from while its commit is owed:
  * the commits the yes still makes, the units moved, the topics they
- * carry, the directives done, the code files the commit takes, named
- * from the project's folder, and the corrections the migration made, each
- * by its unit, in the units' order.
- * @typedef {{commits: import('./migration-commit.cjs').CommitsOwed, units: number, topics: number, directives: string[], files: string[], corrections: ({unit: string} & Record<string, unknown>)[]}} ReshapeReview
+ * carry, the code files the commit takes, named from the project's
+ * folder, and the corrections the migration made, each by its unit, in
+ * the units' order.
+ * @typedef {{commits: import('./migration-commit.cjs').CommitsOwed, units: number, topics: number, files: string[], corrections: ({unit: string} & Record<string, unknown>)[]}} ReshapeReview
  */
 
 /** @typedef {{unit: string} & Record<string, unknown>} Correction */
@@ -449,7 +471,6 @@ function reviewMigration(cwd) {
       commits: finish.commits,
       units: units.length,
       topics: units.reduce((sum, manifest) => sum + topicsOf(manifest).length, 0),
-      directives: directivesDone(cwd),
       files: codeFiles(finish),
       corrections: migrationCorrections(cwd),
     },
@@ -485,4 +506,4 @@ function runMigrateVerb(cwd, argv) {
   return checked;
 }
 
-module.exports = { MIGRATE_CJS, MIGRATIONS_RECORD, MIGRATION_JOURNALS, MIGRATE_USAGE, unrunLine, directiveOf, isCheck, loadCheck, briefedSections, piecesOf, checkDirective, recordDirective, directiveStopped, directiveStopSurface, takenStopSurface, leavingSurface, runMigrateVerb };
+module.exports = { MIGRATE_CJS, MIGRATIONS_RECORD, MIGRATION_JOURNALS, MIGRATE_USAGE, directiveOf, isCheck, loadCheck, briefedSections, piecesOf, checkDirective, recordDirective, directiveStopped, directiveStopSurface, directiveArrivalSurface, takenStopSurface, leavingSurface, runMigrateVerb };

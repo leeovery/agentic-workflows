@@ -20,6 +20,7 @@ function entriesOf(stateDir) {
 }
 
 module.exports = {
+  does: 'This step writes a record of each topic.',
   counts: { one: 'topic', many: 'topics' },
   done: 'have their records',
   partWay: 'A record it was in the middle of is amended from where it stood.',
