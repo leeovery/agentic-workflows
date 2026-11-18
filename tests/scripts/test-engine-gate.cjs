@@ -541,8 +541,8 @@ describe('gate — refusals, logging nothing', () => {
     render(['migration-gate']);
     const record = shown();
 
-    assert.strictEqual(refused(['migration gate', '--pick', 'n']), 'gate: "migration gate" has no row n to pick — its rows: y');
-    assert.strictEqual(refused(['migration gate', '--pick', 'ask']), 'gate: "migration gate" has no row ask to pick — its rows: y — ask is typed: --typed ask');
+    assert.strictEqual(refused(['migration gate', '--pick', 'n']), 'gate: "migration gate" has no row n to pick — its rows: y/yes');
+    assert.strictEqual(refused(['migration gate', '--pick', 'ask']), 'gate: "migration gate" has no row ask to pick — its rows: y/yes — ask is typed: --typed ask');
     assert.strictEqual(refused(['migration gate', '--typed', 'y']), 'gate: "migration gate" has no typed row y — its typed rows: ask');
     assert.deepStrictEqual([events(), shown()], [[], record]);
   });
@@ -609,17 +609,36 @@ describe('the mod\'s record of a press, as `gate` reads it', () => {
       'the mod records the row it sends by the answer it sends, and the time by its clock');
   });
 
-  it('a press the mod records is the press `gate` reads, for a row with a word and a row without one', () => {
-    assert.match(source(LAYOUT), /export const answerOf = \(option: Option\) => option\.word \?\? option\.key\n/, 'the mod sends a row\'s word, else its key');
-    /** @param {{word: string|null, key: string}} option */
-    const answerOf = (option) => option.word ?? option.key;
+  /** What the mod draws on a row and sends when it is pressed, as its source spells it. @param {{word: string|null, key: string}} option */
+  const answerOf = (option) => option.word ?? option.key;
 
+  it('the mod draws and sends a row\'s word, else its key', () => {
+    assert.match(source(LAYOUT), /export const answerOf = \(option: Option\) => option\.word \?\? option\.key\n/);
+  });
+
+  it('a press the mod records is the press `gate` reads, the row picked by what the mod sent, for a row with a word and a row without one', () => {
     for (const key of ['b', '1']) {
       const [payload] = showMenu('pressed gate', () => [cmdOption('b', 'back', 'Return to menu'), cmdOption('1', null, 'Continue "Auth"')], ANNOUNCED);
       const option = payload.options.find((/** @type {{key: string}} */ o) => o.key === key);
       press(JSON.stringify({ gate: payload.gate, answer: answerOf(option), at: new Date(Date.parse(shown().at) + 1000).toISOString() }));
 
-      assert.strictEqual(answer(['pressed gate', '--pick', key], ANNOUNCED).via, 'pressed', key);
+      assert.deepStrictEqual(answer(['pressed gate', '--pick', answerOf(option)], ANNOUNCED), {
+        ok: true, gate: 'pressed gate', picked: key, recommended: null, via: 'pressed', next: null,
+      }, key);
+    }
+  });
+
+  it('every row of setup\'s gates is picked by the name the mod draws on it, or by its key, and recorded by its key, leading where it leads', () => {
+    for (const surface of ['migration-gate', 'github-rule-gate', 'github-squash-gate', 'brownfield-offer-gate']) {
+      const [payload] = gatePayloads(render([surface], ANNOUNCED));
+      const leadsTo = new Map(shown().options.map((/** @type {{key: string, next: unknown}} */ o) => [o.key, o.next]));
+      for (const option of payload.options) {
+        for (const name of new Set([answerOf(option), option.key])) {
+          render([surface], ANNOUNCED);
+          const { picked, next } = answer([payload.gate, '--pick', name], ANNOUNCED);
+          assert.deepStrictEqual({ picked, next }, { picked: option.key, next: leadsTo.get(option.key) }, `${surface}: ${name}`);
+        }
+      }
     }
   });
 

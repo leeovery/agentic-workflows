@@ -323,7 +323,7 @@ gate <name> (--pick <key> | --typed [<key>])   (free text's words on stdin)
 
 The person's answer at a gate, logged to the trust log by the gate's name. Every MENU a command draws records its gate for the conversation as the gate shown (`gate-shown.json`); `gate` answers against that record and performs nothing.
 
-`--pick <key>` answers a row; `--typed <key>` a typed row such as a Comment; `--typed` alone free text, the person's words on stdin, read by a separate call for the row it takes, and never leading anywhere (`next` null). The name is the MENU's, up to its first ` — `, quoted or bare.
+`--pick <key>` answers a row, named by its key or its word — `y` or `yes` — and recorded by its key; `--typed <key>` a typed row such as a Comment; `--typed` alone free text, the person's words on stdin, read by a separate call for the row it takes, and never leading anywhere (`next` null). The name is the MENU's, up to its first ` — `, quoted or bare.
 
 Response `{gate, picked, recommended, via, next}`: `via` is `pressed` where the gate mod's press named this row, else `typed`; `next` is the row's declared next step — `{"kind": "engine", "argv"}`, `{"kind": "handoff", "skill", "args"}`, `{"kind": "continue"}` — or null; do what it says. `warnings` where the trust log could not be appended to. Refuses, logging nothing, with no session id, no gate shown, another gate's name, a key the gate lacks, free text with no words, and a gate already answered (only the gate drawn again takes another).
 

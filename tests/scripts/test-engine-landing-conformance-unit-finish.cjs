@@ -138,7 +138,7 @@ for (const { name } of listDrivers('landing')) {
 
     if (side.noMergeCommits !== null) {
       const noMerges = side.noMergeCommits;
-      it('a host allowing no merge commits refuses finish before anything lands, naming the verb that allows them (7.S38)', () => {
+      it('a host allowing no merge commits refuses finish before anything lands, naming the settings and both ways to make them, by hand or through the verb that allows them (7.S38)', () => {
         const at = project();
         twoMore(at, true);
         noMerges(at);
@@ -146,7 +146,7 @@ for (const { name } of listDrivers('landing')) {
         const { error } = refuses(at, ['finish', 'yes', UNIT]);
 
         assert.deepStrictEqual([error, [tip(side.on(at), BRANCH), tip(side.on(at), 'main')]], [
-          `finish yes: land: acme/portal does not allow merge commits, and ${BRANCH} lands on main by one, so it did not land — allow them beside the squash default on every repository the project lands in on GitHub, as \`engine github-squash yes\` does, and say yes at finish again`,
+          `finish yes: land: acme/portal does not allow merge commits, and ${BRANCH} lands on main by one, so it did not land — on each repository the project lands in on GitHub, make "Pull request title and description" squash merging's default commit message and tick "Allow merge commits" — by hand under Settings → General → Pull Requests, or through Ledger, as \`engine github-squash yes\` does, and say yes at finish again`,
           before,
         ]);
       });

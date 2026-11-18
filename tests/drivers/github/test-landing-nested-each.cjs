@@ -56,7 +56,7 @@ describe('GitHub\'s landing driver across nested repositories, each asked in tur
     assert.strictEqual(
       refused(at.dir, ['land', 'phase', 'pay', '1']),
       'land: in lib, acme/lib does not squash a pull request into its title and description, so phase 1\'s stack would land under other subjects than its tasks\' — '
-      + 'set that squash default on every repository the project lands in on GitHub, as `engine github-squash yes` does, and land again (phase 1 merged in ext before it)',
+      + 'on each repository the project lands in on GitHub, make "Pull request title and description" squash merging\'s default commit message and tick "Allow merge commits" — by hand under Settings → General → Pull Requests, or through Ledger, as `engine github-squash yes` does, and land again (phase 1 merged in ext before it)',
     );
     const before = [at.dir, at.ext].map((dir) => calls(dir).length);
     assert.strictEqual(ok(at.dir, ['github-squash', 'yes']).github_squash, 'set');

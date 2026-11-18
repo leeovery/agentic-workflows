@@ -276,9 +276,9 @@ describe('pipeline simulation: sessions', () => {
     const offered = sim.run(['boot']);
     assert.deepStrictEqual([offered.state, offered.github_rule_offer, offered.github_squash_offer], ['ready', true, true]);
     assert.deepStrictEqual(offered.gates.slice(-2), ['github-rule', 'github-squash'], 'the bare command\'s last setup gates, each drawn by its own render');
-    assert.match(sim.render(['github-rule-gate'], { expect: 'content' }), /Set that rule on GitHub\?/);
+    assert.match(sim.render(['github-rule-gate'], { expect: 'content' }), /Add that rule on GitHub\?/);
     assert.strictEqual(sim.run(['github-rule', 'no']).github_rule, 'declined');
-    assert.match(sim.render(['github-squash-gate'], { expect: 'content' }), /Squash from the pull request's title and description\?/);
+    assert.match(sim.render(['github-squash-gate'], { expect: 'content' }), /Set both on GitHub\?/);
     assert.strictEqual(sim.run(['github-squash', 'no']).github_squash, 'declined');
     const answered = sim.run(['boot']);
     assert.deepStrictEqual([answered.github_rule_offer, answered.github_squash_offer, answered.gates.filter((gate) => gate.startsWith('github-'))], [false, false, []]);
