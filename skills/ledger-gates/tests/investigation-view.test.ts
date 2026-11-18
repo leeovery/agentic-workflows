@@ -22,7 +22,7 @@ const fixture = KILL_ALL as View & Record<string, any>
 const VALIDATING = {
   ...fixture,
   standing: 'validating-root-cause',
-  waiting: [{ kind: 'raise', id: 'q9Zp1c', text: ASKED, page: null, raised_by: 'root-cause', why: 'deleted scrollback cannot be got back', options: null, lean: null }],
+  waiting: [{ kind: 'raise', id: 'q9Zp1c', text: ASKED, page: null, raised_by: 'root-cause', why: 'An answer here could lose data or weaken security, so it always comes to you.', options: null, lean: null }],
   decided: [],
   hypotheses: fixture.hypotheses.map((each: { name: string }) => (each.name === 'H1' ? { ...each, state: 'confirmed' } : each)),
   root_cause: { ...fixture.root_cause, validated: false },
@@ -114,7 +114,7 @@ snapshot every 15 minutes and never promise a kill is final.
   test('20.S18: a question the root-cause validation raised is §20.12\'s first drawing: WAITING ON YOU asked in the conversation with what raised it and why it reached the person, the validation read with its clock, the fix direction after it', () => {
     const { text, holds } = drawn(INVESTIGATION, VALIDATING)
 
-    expect([text.slice(2, 11), sectionOf(text, 'ROOT CAUSE ')[0], sectionOf(text, 'VALIDATION '), sectionOf(text, 'FIX DIRECTION ')]).toEqual([
+    expect([text.slice(2, 12), sectionOf(text, 'ROOT CAUSE ')[0], sectionOf(text, 'VALIDATION '), sectionOf(text, 'FIX DIRECTION ')]).toEqual([
       block(`
 6 hypotheses · 4 confirmed · 10 experiments · ◐ validating the
 root cause
@@ -123,8 +123,9 @@ WAITING ON YOU ───────────────── 1 · asked in
 ⚑ A session you kill yourself: should it ever come back?
   Killing every one today empties the saved state and deletes
   its scrollback.
-     raised by the root-cause validation · deleted scrollback
-     cannot be got back
+     raised by the root-cause validation · An answer here
+     could lose data or weaken security, so it always comes to
+     you.
 `),
       'ROOT CAUSE ─────────────────────────────────── being validated',
       block(`
@@ -149,7 +150,7 @@ FIX DIRECTION ──────────────────────
       '  its scrollback.',
     ]
 
-    expect([lines({}), lines({ why: null })]).toEqual([[...asked, '     deleted scrollback cannot be got back'], asked])
+    expect([lines({}), lines({ why: null })]).toEqual([[...asked, '     An answer here could lose data or weaken security, so it', '     always comes to you.'], asked])
   })
 
   test('the fix direction\'s wait says Claude\'s lean is first only where it is the first row, else marked, and why it reached the person; one the fix validation raised replacing the fix says so', () => {
