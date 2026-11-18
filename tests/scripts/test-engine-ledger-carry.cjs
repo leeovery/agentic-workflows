@@ -165,6 +165,15 @@ describe('a topic\'s record carried (21.6, 21.10.9)', () => {
     assert.deepStrictEqual([d1.answers, d2.answers, q.id.startsWith(ids.q1)], [q.id, q.id, true]);
   });
 
+  it('an entry naming sources at odds, its at_odds two of its cites, carried: the sections kept with the record, never written to the ledger', () => {
+    const odds = [...QUESTION.cites, FINDING.cites[0]];
+    const named = { ...QUESTION, cites: odds, at_odds: odds };
+
+    carry(LICENSING, [named, DECISION]);
+
+    assert.deepStrictEqual([lines()[0].cites, Object.hasOwn(lines()[0], 'at_odds'), kept('fumi', 'licensing').record.entries[0].at_odds], [odds, false, odds]);
+  });
+
   it('a record of no entries, for a topic with no log and nothing come in from it, is kept, the ledger left as it was', () => {
     assert.deepStrictEqual(carry('fumi.discovery.support', []), { ok: true, carried: 0, ids: {}, committed: null });
     assert.deepStrictEqual([kept('fumi', 'support').entries, fs.existsSync(statePath(dir, layout.ledger))], [[], false]);
@@ -444,7 +453,7 @@ describe('the refusals, nothing written', () => {
     }
   });
 
-  it('an entry of no ref, a ref twice, another event, who moved whom given, a link naming no earlier entry of its kind or given in another shape, a map item or a thread of another shape, a point to raise that is no open question or marked otherwise, and content its write refuses — the person\'s decision given other than own, a question product-wide among it', () => {
+  it('an entry of no ref, a ref twice, another event, who moved whom given, a link naming no earlier entry of its kind or given in another shape, a map item or a thread of another shape, a point to raise that is no open question or marked otherwise, sections at odds fewer than two or not among its cites, and content its write refuses — the person\'s decision given other than own, a question product-wide among it', () => {
     const refused = (/** @type {unknown[]} */ entries) => mend(entries);
     const { assets: _, ...decision } = DECISION;
     assert.deepStrictEqual([
@@ -466,6 +475,8 @@ describe('the refusals, nothing written', () => {
       refused([{ ...FINDING, relies_on: [], raise: true }]),
       refused([{ ...QUESTION, raise: 'yes' }]),
       refused([{ ...QUESTION, raise: true }, decision]),
+      refused([{ ...QUESTION, at_odds: QUESTION.cites }]),
+      refused([{ ...QUESTION, at_odds: [...QUESTION.cites, FINDING.cites[0]] }]),
       refused([{ ...QUESTION, text: '' }]),
       refused([{ ...QUESTION, why: 'Because.' }]),
       refused([QUESTION, { ...decision, by: 'person' }]),
@@ -491,6 +502,8 @@ describe('the refusals, nothing written', () => {
       broken('entry f1: raise marks a question to raise, true'),
       broken('entry q1: raise marks a question to raise, true'),
       broken('entry q1: is marked to raise, and a decision of the record answers it — raise refuses a question answered already, so a point to raise is an open question'),
+      broken('entry q1: at_odds is the sections at odds, two at least, each {path, section} and one of its cites'),
+      broken('entry q1: at_odds is the sections at odds, two at least, each {path, section} and one of its cites'),
       broken('entry q1: the content\'s text is not non-empty text'),
       broken('entry q1: the content has no field why — it holds by, text, cites'),
       broken('entry d1: the person\'s decision is given carried — the person\'s own is given own, and what they hand over, or what is carried over, is Claude\'s line, by claude'),

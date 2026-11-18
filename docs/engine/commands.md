@@ -119,7 +119,7 @@ migrate join <work-unit> --directive <id> [--phase <N> --dry-run]
 
 The migration's own verbs, for the session carrying out what boot stopped at.
 
-- **`check`** — runs a directive's check against the project and its state. Answers `{directive, passed, done, of, counts: {one, many}, unfinished: [{name, problems}]}`, and once it passes `raise`, the points still to raise (`[{place, answers, text}]`). Writes nothing.
+- **`check`** — runs a directive's check against the project and its state. Answers `{directive, passed, done, of, counts: {one, many}, unfinished: [{name, problems}]}`, and once it passes `raise`, the points still to raise (`[{place, answers, text, also?}]`, `also` the questions of other records naming the same contradiction, raised with it). Writes nothing.
 - **`checked`** — records the checks before the reshape's move made, so the next boot carries on past that stop.
 - **`review`** — what the migration review reads before the gate whose yes is `commit --migrations`: `{state, code}`, both absolute folders, and while the reshape finishes `reshape: {commits, units, topics, directives, files, corrections}`. Writes nothing.
 - **`join`** — joins the verified per-phase pieces of a building unit (`.cache/migrate/cut-and-merges/{wu}/phases/{N}.json`) into the plan its cut takes, written to `plan.json` beside them. Answers `{unit, plan, phases, built, scenarios, corrections}`. With `--phase <N> --dry-run` it checks one piece, answering `faults`, writing nothing. Refuses a piece missing, unread or not passed by its verifier, each fault named.
