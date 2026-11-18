@@ -97,7 +97,7 @@ describe('topics leave a building unit for a new epic (21.8.9, 21.8.10)', () => 
       epic: 'storefront',
       topics: ['reviews', 'gifts'],
       session_log: statePath(dir, layout.session('storefront', '001')),
-      carried: 5,
+      carried: 6,
       committed: null,
       warnings: [],
       roadmap_reaimed: ['star-ratings'],

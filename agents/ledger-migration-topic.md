@@ -16,7 +16,7 @@ Do what the directive says of one topic or one phase, for the one your brief nam
 
 ## Rules
 
-- Work from the sources alone: the files, the tracker's tasks as your brief draws them, and the code. Nothing you compose says more than they do.
+- Work from the sources your brief names alone. Nothing you compose says more than they do.
 - Touch only the files the directive names for a topic or a phase, and only this one's: what you compose, and the hand-back file where your brief names one.
 - Never write the ledger or the tracker: the session reviews what you compose and carries it.
 - **The shell is for reading and searching, and for the check your brief names:** `rg`, `find`, `ls`, `cat`, `head`, `tail`, `wc` and their like. Never run the engine for anything else, never run git, and never write, move or delete a file through it.

@@ -186,6 +186,7 @@ function midMigration(dir) {
 // too; an epic of one topic whose building started, its two specs joined
 // into its spec.md by the move, one heading in both, an import come in from
 // its discovery as a whole; and a cancelled feature, an import come in from its discovery.
+// Its assets hold headings alone, so no unit's carry waits on their sections.
 const SHOP_SPECS = {
   weights: { status: 'completed', sources: { weights: { status: 'incorporated' } } },
   wishlist: { status: 'completed', sources: { weights: { status: 'incorporated' } } },
@@ -280,7 +281,7 @@ const RECORDS_MOVED = Object.freeze({
   [layout.topic('fumi', 'search', 'experiments', 'E1-latency', 'report.md')]: '# Report\n\n## Result\n\n12ms at p95, from `npm run bench`.\n',
   [layout.assets('fumi', 'pricing.md')]: '# Pricing\n',
   [layout.assets('fumi', 'sso.md')]: '# SSO\n',
-  [layout.assets('fumi', 'rates.md')]: '# Rates\n\nPer seat.\n',
+  [layout.assets('fumi', 'rates.md')]: '# Rates\n',
   [layout.assets('fumi', 'specs', 'commerce.md')]: '# Specification: Commerce\n\n## Corrigenda\n\nThe trial is fourteen days, not thirty.\n',
   [layout.manifest('platform')]: jsonText({
     name: 'platform', work_type: 'cross-cutting', status: 'in-progress',
@@ -312,7 +313,7 @@ const RECORDS_MOVED = Object.freeze({
     phases: { discussion: { items: { gone: { status: 'in-progress' } } } },
   }),
   [layout.topic('gone', 'gone', 'log.md')]: '## Discussion\n\n## Discussion: Gone\n\n### Cause\n\nA race.\n',
-  [layout.assets('gone', 'notes.md')]: '# Notes\n\nIt fails under load.\n',
+  [layout.assets('gone', 'notes.md')]: '# Notes\n',
 });
 
 /** @param {string} dir */
@@ -660,6 +661,7 @@ const CUT_RECORDS = Object.freeze({
       cites: [cutLogCite('shop', 'reviews', 'Who'), { path: layout.topic('shop', 'reviews', 'brief.md'), section: 'Reviews' }], assets: [{ path: layout.assets('shop', 'stars.md'), status: 'reference' }],
     },
     { ref: 'q2', event: 'asked', text: 'Who moderates reviews?', by: 'claude', cites: [cutLogCite('shop', 'reviews', 'Moderation')] },
+    { ref: 'f1', event: 'found', text: 'A review is rated in stars, five at most.', how: 'read in the stars import', known: 'documented', by: 'claude', cites: [{ path: layout.assets('shop', 'stars.md'), section: 'Stars' }] },
   ],
   'shop.discussion.wishlist': [
     { ref: 'q1', event: 'asked', text: 'May a wishlist be shared?', by: 'claude', cites: [cutLogCite('shop', 'wishlist', 'Sharing')] },
