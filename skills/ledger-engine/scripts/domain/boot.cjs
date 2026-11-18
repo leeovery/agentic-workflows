@@ -139,10 +139,11 @@
 // flight kept there whatever boot answers, the menu, a route or a pick, so
 // the builders still at work go on (position.cjs).
 //
-// Where a decision landed unchecked and no late check has judged it, boot
-// launches the late one-decision check, detached, as it hands vectors to the
-// fill: a start never waits on a Claude call (ledger-late-check.cjs). What
-// keeps it from launching is a warning.
+// Where a decision landed unchecked, never one the migration carried, and
+// no late check has judged it, boot launches the late one-decision check,
+// detached, as it hands vectors to the fill: a start never waits on a
+// Claude call (ledger-late-check.cjs). What keeps it from launching is a
+// warning.
 // ---------------------------------------------------------------------------
 
 const { spawnSync } = require('../kernel/spawn.cjs');
