@@ -14,7 +14,7 @@ Load **[framework.md](../ledger-shared/references/framework.md)** and follow its
 
 ## Boot
 
-Boot runs first, given the words, and its answer says where the start goes. A migration may change `.claude/settings.json`, so run it with the sandbox disabled, the words on stdin as they stand:
+Boot runs first, given the words, and its answer says where the start goes. A migration may change `.claude/settings.json`, so run it with the sandbox disabled, the words on stdin as they stand, the call described as `Start Ledger`:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs boot <<'WORDS'

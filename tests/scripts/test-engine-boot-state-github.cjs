@@ -126,20 +126,20 @@ describe('what boot offers on GitHub (4.4.6, 4.S10, 4.S30, 7.2.18)', () => {
     assert.strictEqual(out, [
       '=== MENU: github rule gate (emit verbatim as markdown (not a code block), then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',
-      'Portal\'s remote is on GitHub. A rule there can refuse deleting or force-pushing `ledger-state` for anything run outside Claude Code; inside it, Ledger already refuses both.',
+      'Ledger keeps its records on the `ledger-state` branch. In Claude Code, Ledger stops anyone deleting or force-pushing it. A rule on GitHub stops that from anywhere else too. Yes adds the rule to Portal\'s repository.',
       '',
-      '**`◆ Set that rule on GitHub?`**',
+      '**`◆ Add that rule on GitHub?`**',
       '',
-      '**`y/yes`** → Set it on Portal\'s repository',
+      '**`y/yes`** → Add the rule to Portal\'s repository',
       '**`n/no`**  → Leave it unset — *setup carries on without it*',
       '',
     ].join('\n'));
     const gate = announced(() => auditGate(engine.output(main, ['render', 'github-rule-gate']), 'github rule gate'));
-    assert.strictEqual(gate.question, 'Set that rule on GitHub?');
+    assert.strictEqual(gate.question, 'Add that rule on GitHub?');
     assert.deepStrictEqual(gate.options.map((o) => o.key), ['y', 'n']);
   });
 
-  it('draws the squash default\'s offer: what it makes each task land under, merge commits allowed beside it, set on yes, left on no — and each repository nested in the project on GitHub, by its folder', () => {
+  it('draws the squash default\'s offer: what it makes each task land under, merge commits allowed beside it, what yes sets and where, and what no costs — and each repository nested in the project on GitHub, by its folder', () => {
     const main = projectInWorld({ remote: github.url });
     boot(main);
 
@@ -148,16 +148,17 @@ describe('what boot offers on GitHub (4.4.6, 4.S10, 4.S30, 7.2.18)', () => {
     assert.strictEqual(out, [
       '=== MENU: github squash gate (emit verbatim as markdown (not a code block), then STOP for the user\'s response) ===',
       '· · · · · · · · · · · ·',
-      'Portal lands each task on GitHub as a pull request squashed into one commit. Made from the pull request\'s title and description, that commit carries the task\'s subject and id; until the repository squashes so, Ledger won\'t merge a phase\'s stack. The yes also allows merge commits, which a unit of several phases lands on the default branch by.',
+      'Ledger lands each task on GitHub as a pull request squashed into one commit. For that commit to carry the task\'s title and id, GitHub must build it from the pull request\'s title and description. Work of several phases lands on your default branch in one merge commit, so GitHub must allow those too. Yes sets both on Portal\'s repository.',
       '',
-      '**`◆ Squash from the pull request\'s title and description?`**',
+      '**`◆ Set both on GitHub?`**',
       '',
-      '**`y/yes`** → Set it on Portal\'s repository',
-      '**`n/no`**  → Leave it as it is — *set it later by hand*',
+      '**`y/yes`** → Set both on Portal\'s repository',
+      '**`n/no`**  → Leave them as they are — *Ledger won\'t merge a phase\'s*',
+      `${'\u00a0'.repeat(8)}*pull requests until they're set*`,
       '',
     ].join('\n'));
     const gate = announced(() => auditGate(engine.output(main, ['render', 'github-squash-gate']), 'github squash gate'));
-    assert.strictEqual(gate.question, 'Squash from the pull request\'s title and description?');
+    assert.strictEqual(gate.question, 'Set both on GitHub?');
     assert.deepStrictEqual(gate.options.map((o) => o.key), ['y', 'n']);
 
     for (const [folder, url] of [['ext', 'git@github.com:acme/ext.git'], ['lib', 'https://github.com/acme/lib.git'], ['plain', 'https://git.example.org/acme/plain.git']]) {
@@ -165,8 +166,8 @@ describe('what boot offers on GitHub (4.4.6, 4.S10, 4.S30, 7.2.18)', () => {
     }
     const nested = engine.output(main, ['render', 'github-squash-gate']).split('\n');
     assert.deepStrictEqual([nested[2], nested[6]], [
-      'Portal lands each task on GitHub as a pull request squashed into one commit, in its own repository and in each one nested in it: ext, lib. Made from the pull request\'s title and description, that commit carries the task\'s subject and id; until a repository squashes so, Ledger won\'t merge a phase\'s stack in it. The yes also allows merge commits, which a unit of several phases lands on the default branch by.',
-      '**`y/yes`** → Set it on each of Portal\'s 3 repositories',
+      'Ledger lands each task on GitHub as a pull request squashed into one commit. For that commit to carry the task\'s title and id, GitHub must build it from the pull request\'s title and description. Work of several phases lands on your default branch in one merge commit, so GitHub must allow those too. Yes sets both on Portal\'s repository and each one nested in it: ext, lib.',
+      '**`y/yes`** → Set both on each of Portal\'s 3 repositories',
     ]);
   });
 

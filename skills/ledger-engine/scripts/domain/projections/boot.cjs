@@ -279,12 +279,12 @@ function migrationGuardStop(refused) {
 function githubRuleGate(project) {
   const name = escapeMarkdown(project);
   return section('MENU: github rule gate', MENU_INSTRUCTION, menu(
-    `${name}'s remote is on GitHub. A rule there can refuse deleting or force-pushing \`ledger-state\` for anything run outside Claude Code; inside it, Ledger already refuses both.`,
+    `Ledger keeps its records on the \`ledger-state\` branch. In Claude Code, Ledger stops anyone deleting or force-pushing it. A rule on GitHub stops that from anywhere else too. Yes adds the rule to ${name}'s repository.`,
     [
-      cmdOption('y', 'yes', `Set it on ${name}'s repository`, { next: { kind: 'engine', argv: ['github-rule', 'yes'] } }),
+      cmdOption('y', 'yes', `Add the rule to ${name}'s repository`, { next: { kind: 'engine', argv: ['github-rule', 'yes'] } }),
       cmdOption('n', 'no', { head: 'Leave it unset', tail: 'setup carries on without it' }, { next: { kind: 'engine', argv: ['github-rule', 'no'] } }),
     ],
-    { question: 'Set that rule on GitHub?' },
+    { question: 'Add that rule on GitHub?' },
   ));
 }
 
@@ -299,15 +299,15 @@ function githubRuleGate(project) {
 function githubSquashGate(project, nested) {
   const name = escapeMarkdown(project);
   const where = nested.length === 0
-    ? { lands: '', stack: 'the repository squashes so, Ledger won\'t merge a phase\'s stack', yes: `${name}'s repository` }
-    : { lands: `, in its own repository and in each one nested in it: ${nested.map(escapeMarkdown).join(', ')}`, stack: 'a repository squashes so, Ledger won\'t merge a phase\'s stack in it', yes: `each of ${name}'s ${nested.length + 1} repositories` };
+    ? { on: `${name}'s repository`, yes: `${name}'s repository` }
+    : { on: `${name}'s repository and each one nested in it: ${nested.map(escapeMarkdown).join(', ')}`, yes: `each of ${name}'s ${nested.length + 1} repositories` };
   return section('MENU: github squash gate', MENU_INSTRUCTION, menu(
-    `${name} lands each task on GitHub as a pull request squashed into one commit${where.lands}. Made from the pull request's title and description, that commit carries the task's subject and id; until ${where.stack}. The yes also allows merge commits, which a unit of several phases lands on the default branch by.`,
+    `Ledger lands each task on GitHub as a pull request squashed into one commit. For that commit to carry the task's title and id, GitHub must build it from the pull request's title and description. Work of several phases lands on your default branch in one merge commit, so GitHub must allow those too. Yes sets both on ${where.on}.`,
     [
-      cmdOption('y', 'yes', `Set it on ${where.yes}`, { next: { kind: 'engine', argv: ['github-squash', 'yes'] } }),
-      cmdOption('n', 'no', { head: 'Leave it as it is', tail: 'set it later by hand' }, { next: { kind: 'engine', argv: ['github-squash', 'no'] } }),
+      cmdOption('y', 'yes', `Set both on ${where.yes}`, { next: { kind: 'engine', argv: ['github-squash', 'yes'] } }),
+      cmdOption('n', 'no', { head: 'Leave them as they are', tail: 'Ledger won\'t merge a phase\'s pull requests until they\'re set' }, { next: { kind: 'engine', argv: ['github-squash', 'no'] } }),
     ],
-    { question: 'Squash from the pull request\'s title and description?' },
+    { question: 'Set both on GitHub?' },
   ));
 }
 
@@ -320,7 +320,7 @@ function githubSquashGate(project, nested) {
  */
 function labelGate(multiplexer) {
   const body = menu(
-    `You're running inside ${multiplexer}. Ledger can label your session to show where you're working — \`myproject · payments · discussion · auth-flow\` inside a phase, \`myproject · payments\` at its menu — putting the original back at the start menu and when the session ends, and bringing the label back when you resume the session. You're asked once per project.`,
+    `You're running inside ${multiplexer}. Ledger can label your session to show where you're working: \`myproject · payments · discussion · auth-flow\` inside a phase, \`myproject · payments\` at its menu. Yes turns the labels on for this project. Your session's own name comes back at the start menu and when the session ends.`,
     [
       cmdOption('y', 'yes', 'Turn session labels on', { next: { kind: 'engine', argv: ['session', 'label-config', 'true'] } }),
       cmdOption('n', 'no', 'Leave your session alone', { next: { kind: 'engine', argv: ['session', 'label-config', 'false'] } }),
@@ -339,7 +339,7 @@ function labelGate(multiplexer) {
  */
 function brownfieldOfferGate() {
   const body = menu(
-    "This project has code Ledger knows nothing about. The product researcher can read it first, then the product's conversation opens on what the code shows and the intent it can't.",
+    "This project has code Ledger knows nothing about. Yes has the product researcher read it first. The product's conversation then starts from what the code shows, and asks you what it can't.",
     [
       cmdOption('y', 'yes', 'Read it now, then talk the product through', { next: { kind: 'engine', argv: ['brownfield', 'record', 'accepted'] } }),
       cmdOption('n', 'no', 'Skip — it is not offered again', { next: { kind: 'engine', argv: ['brownfield', 'record', 'skipped'] } }),
@@ -458,7 +458,7 @@ const TO_WIZARD = knowledgeScreen('knowledge-gate', '--variant', 'wizard');
 /** @type {Record<string, (config: KnowledgeConfig) => KnowledgeMenu>} */
 const KNOWLEDGE_GATES = {
   reuse: ({ provider, model }) => ({
-    lead: 'The knowledge base powers recall across work units and within them — later phases draw on earlier work. It is required infrastructure: Ledger runs nothing until it is initialised. Your machine already has a system configuration this project can reuse.',
+    lead: 'The knowledge base lets later work recall earlier work. Ledger runs nothing until it is set up. This machine already has a configuration this project can reuse.',
     question: 'Use the existing configuration for this project?',
     options: [
       cmdOption('y', 'yes', `Use the existing configuration (${configurationName({ provider, model })})`, { next: setupRun(['--from-system']) }),
@@ -467,7 +467,7 @@ const KNOWLEDGE_GATES = {
     ],
   }),
   deviate: () => ({
-    question: 'How should this project deviate?',
+    question: 'What should this project use instead?',
     options: [
       cmdOption('k', 'keyword', 'Keyword-only for this project (the system configuration stays untouched for every other project)', { next: KEYWORD_ONLY }),
       cmdOption('t', 'terminal', 'Run the interactive wizard to change the system-wide configuration', { next: TO_WIZARD }),
