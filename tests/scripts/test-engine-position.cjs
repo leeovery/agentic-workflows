@@ -495,6 +495,26 @@ describe('conversation position', () => {
     });
   });
 
+  it('a conversation carrying the migration on, at no position, carries on in the start skill, whose boot, run again, stops where the migration stands; another conversation\'s carrying it leaves this one nothing', () => {
+    write('.ledger/.cache/migrate/presence', JSON.stringify({ session_id: 'sess-1', pid: 1 }));
+    const skill = abs('.claude/skills/ledger/SKILL.md');
+
+    assert.deepStrictEqual(reads(), {
+      session_id: 'sess-1',
+      position: null,
+      place: null,
+      skill,
+      files: [],
+      text: [
+        'The conversation was just compacted. This conversation is working in the migration. Before anything else, re-read these in full, running each engine call:',
+        `- ${skill} and its framework`,
+        '- its boot, run again as it says: boot stops where the migration stands, and names what to carry on with',
+        'Then carry on from where the conversation was, as if the break never happened — no recap and no announcement.',
+      ].join('\n'),
+    });
+    assert.deepStrictEqual(reads([], 'sess-2').skill, null);
+  });
+
   it('an epic\'s menu carries on in its skill, which draws the menu again', () => {
     install('ledger-continue-epic');
     ok(['session', 'label', 'pay']);

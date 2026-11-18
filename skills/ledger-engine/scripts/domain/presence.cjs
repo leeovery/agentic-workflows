@@ -344,6 +344,11 @@ function migrationCarried(cwd) {
   return fs.existsSync(migrationPresencePath(cwd));
 }
 
+/** Whether the conversation `sessionId` carries the migration on: the migration's row is its. @param {string} cwd @param {string} sessionId @returns {boolean} */
+function carriesMigration(cwd, sessionId) {
+  return readRecord(migrationPresencePath(cwd))?.session_id === sessionId;
+}
+
 /** The migration's row gone, whoever wrote it: the migration is done. @param {string} cwd */
 function dropMigrationRow(cwd) {
   fs.rmSync(migrationPresencePath(cwd), { force: true });
@@ -467,6 +472,6 @@ function cleanupPresence(cwd, sessionId) {
 module.exports = {
   beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, clearOwnQuietly,
   scanPresence, scanProject, heldCodeSessions, peerHold, cleanupPresence,
-  migrationCarrier, migrationCarried, beatMigrationQuietly, refreshMigrationQuietly, dropMigrationRow,
+  migrationCarrier, migrationCarried, carriesMigration, beatMigrationQuietly, refreshMigrationQuietly, dropMigrationRow,
   fmtAge,
 };

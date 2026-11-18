@@ -6,7 +6,10 @@
 // (conversation.cjs) for whatever carries the conversation on: the session
 // label's resume (session-label.cjs), the gate mod's spinner, and
 // `conversation position`, the note the gate mod appends to a compaction,
-// naming what to re-read to carry on there.
+// naming what to re-read to carry on there. A conversation carrying the
+// migration on holds no position, the migration's row at its place its own
+// (presence.cjs): its note names the start skill, whose boot, run again,
+// stops where the migration stands.
 //
 // Every place records itself on arrival, through the calls that label it,
 // labels on or off: a phase's entry (`enter`, or `session label {wu}
@@ -81,8 +84,14 @@ const { statePath } = require('../kernel/state-root.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { topicLog, ledgerView, recordCall, mapCall, owedHeader, namedConversations } = require('./topic-log.cjs');
 const { staysDecided } = require('./topic-standing.cjs');
+const { carriesMigration } = require('./presence.cjs');
 
 const COMPACTED = 'The conversation was just compacted.';
+
+// The skill a conversation carrying the migration on re-reads, and what it
+// runs again there.
+const START_SKILL = 'ledger';
+const MIGRATION_BOOT = '- its boot, run again as it says: boot stops where the migration stands, and names what to carry on with';
 
 const PLACE_SEPARATOR = ' › ';
 
@@ -797,6 +806,10 @@ function positionReads(cwd, sessionId) {
   const place = position === null ? null : placeLine(position, PLACE_SEPARATOR);
   /** @param {string} text @returns {PositionReads} */
   const nothing = (text) => ({ session_id: sessionId, position, place, skill: null, files: [], text });
+  if (position === null && carriesMigration(cwd, sessionId)) {
+    const skill = path.resolve(codeRoot(cwd), skillFile(START_SKILL));
+    return { session_id: sessionId, position, place, skill, files: [], text: wholeNote('the migration', skill, [], [], null, sessionId, [MIGRATION_BOOT]) };
+  }
   if (position === null) return nothing('This conversation holds no position in Ledger, so there is nothing to carry on from.');
   const isUnit = !isProjectPlace(position.name, position.phase) && illegalNameReason('work unit', position.name) === null;
   /** @type {Manifest} */

@@ -18,8 +18,9 @@ Files were updated, a migration handed over checks its code could not perform, a
 
    **If it answers `reshape`**, the migration into Ledger waits on its commit, and its summary is written in parts, from `reshape` and the addenda in `migrations.verify`:
    - `moved` — the `units` moved into `.ledger/`, each unit renamed and each registry entry dropped;
-   - `records` — the records carried, by count, from `topics`;
+   - `records` — the `records` carried, by count;
    - `corrections` — each of the `corrections`, by its unit: what disagreed, what was found and what was changed;
+   - `checks` — each check made before the move, the entries marked `made`, and each fix step 1 made;
    - `legacy` — each place holding files kept as legacy, with how many, never the files themselves;
    - `code` — what the code commit changes: `files`, named from `code`, and the linter settings left out.
 
@@ -39,8 +40,8 @@ Files were updated, a migration handed over checks its code could not perform, a
 
    → Return to caller.
 
-3. Write a brief natural language summary of what the migrations did, the reshape's in its parts, and never of what they did not do — verification fixes included (e.g., "Restructured workflow directories, created manifest files, recovered a message the converter missed"). Beyond what step 2 names, describe the nature of the changes, not individual file paths — these are Ledger's internal state files.
-4. Write the summary to `{state}/.cache/migrations-applied.json` with the Write tool — `{"summary": "{your natural language summary}", "notices": [{each entry's notice}], "migrations": {N}, "files": {M}}`, the reshape's in place of `summary` as `"parts": {"{part}": "{its account}", …}`, each `notice` from `migrations.notices` verbatim, `notices` left out when it is empty; `{N}`/`{M}` from `migrations.output`'s `{N} migration(s) applied, {M} file(s) updated.` line; when it reports no changes, leave both counts out. Fetch the summary:
+3. Write a brief natural language summary of what the migrations did, step 1's fixes among it, the reshape's in its parts (e.g., "Restructured workflow directories, created manifest files, recovered a message the converter missed"). Say only what was done, never what was not. Beyond what step 2 names, describe the nature of the changes, not individual file paths — these are Ledger's internal state files.
+4. Write the summary to `{state}/.cache/migrations-applied.json` with the Write tool — `{"summary": "{your natural language summary}", "notices": [{each entry's notice}], "migrations": {N}, "files": {M}}`, the reshape's in place of `summary` as `"parts": {"{part}": "{its account}", …}`, each `notice` from `migrations.notices` verbatim, `notices` left out when it is empty; `{N}`/`{M}` from `migrations.output`'s `{N} migration(s) applied, {M} file(s) updated.` line; when it reports no changes, or the summary is the reshape's, leave both counts out. Fetch the summary:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render migrations-applied --file {state}/.cache/migrations-applied.json

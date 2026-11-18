@@ -51,7 +51,7 @@ const {
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const MIGRATIONS = path.join(__dirname, '../../skills/ledger-migrate/scripts/migrations');
 const { TRUST_LOG, PENDING } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
-const { directiveCarryOn } = require(path.join(SCRIPTS, 'domain/projections/boot.cjs'));
+const { directiveArrival, directiveCarryOn } = require(path.join(SCRIPTS, 'domain/projections/boot.cjs'));
 const { listDrivers } = require(path.join(SCRIPTS, 'domain/drivers.cjs'));
 const { conversationDir } = require(path.join(SCRIPTS, 'domain/conversation.cjs'));
 
@@ -317,8 +317,10 @@ describe('boot at a directive (21.10.4, 21.10.9, 21.10.10)', () => {
     writeState(dir, layout.migrations, ['079', '085', '090', '091', '093'].map((id) => `${id}\n`).join(''));
 
     assert.deepStrictEqual(ok(['boot']), atDirective(FAILING));
-    assert.deepStrictEqual(engine.output(dir, ['render', 'directive-carry-on', '--directive', FAILING]).split('\n').filter((line) => line.startsWith('>')), [
-      '> This session carries the migration on from its failing step; the start menu follows once the migration is done and committed.',
+    assert.deepStrictEqual(engine.output(dir, ['render', 'directive-arrival', '--directive', FAILING]).split('\n').filter((line) => line.startsWith('>')), [
+      '> This step writes a record of each topic. It takes a while: nothing is needed from you until it asks.',
+      '>',
+      '> The start menu follows once the migration is done and committed.',
     ]);
     assert.strictEqual(refusedUntouched(dir, ['migrate', 'check', FAILING]), `migrate check: ${FAILING}'s check failed: the old manifests could not be read`);
   });
@@ -341,7 +343,7 @@ describe('a second session at a directive (21.10.10, P7)', () => {
 
     const taken = bootAs(SECOND);
 
-    const stop = { marker: 'Migration', surface: 'migration-taken-stop', args: ['--at', RECORDS, '--active', String(taken.active)], next: null };
+    const stop = { surface: 'migration-taken-stop', args: ['--at', RECORDS, '--active', String(taken.active)], next: null };
     assert.deepStrictEqual(taken, { ok: true, state: 'taken', at: RECORDS, active: taken.active, stop, warnings: [] });
     assert.ok(taken.active >= 300 && taken.active < 330, `last active ${taken.active}s ago`);
     assert.ok(!fs.existsSync(path.join(conversationDir('second'), 'booted.json')), 'nothing may touch the work at the stop (22.1.7)');
@@ -402,7 +404,7 @@ describe('the board while a session carries the migration on', () => {
 });
 
 describe('the stop\'s screens (21.10.9, 21.10.11)', () => {
-  it('part-way through a directive, draws the migration part-way, in the normal colour — its step, what it finished kept, each piece checked, and this session carrying it on — never a failure; refused without the directive it is for', () => {
+  it('part-way through a directive, draws the migration part-way, in the normal colour — its step, what it does and the person waiting it out, what it finished kept, each piece checked, and this session carrying it on — never a failure; refused without the directive it is for', () => {
     enterTopic(dir, 'licensing');
     enterTopic(dir, 'search');
 
@@ -412,9 +414,11 @@ describe('the stop\'s screens (21.10.9, 21.10.11)', () => {
       '',
       'Ledger is part-way through bringing this project\'s past work into its new format.',
       '',
+      '> This step writes a record of each topic. It takes a while: nothing is needed from you until it asks.',
+      '>',
       '> What it finished is kept: 2 of Fumi\'s 3 topics have their records, each checked. A record it was in the middle of is amended from where it stood.',
       '>',
-      '> This session carries the migration on from its records step; the start menu follows once the migration is done and committed.',
+      '> This session carries the migration on from its records step. The start menu follows once the migration is done and committed.',
       '',
     ].join('\n'));
     assert.strictEqual(refusedUntouched(dir, ['render', 'directive-carry-on']), 'render directive-carry-on: --directive <id> names the directive the migration is part-way through');
@@ -427,7 +431,7 @@ describe('the stop\'s screens (21.10.9, 21.10.11)', () => {
       '',
       'Ledger is bringing this project\'s past work into its new format.',
       '',
-      '> This step writes a record of each topic. It runs by itself and takes a while: nothing is needed from you until it asks.',
+      '> This step writes a record of each topic. It takes a while: nothing is needed from you until it asks.',
       '>',
       '> The start menu follows once the migration is done and committed.',
       '',
@@ -435,25 +439,47 @@ describe('the stop\'s screens (21.10.9, 21.10.11)', () => {
     assert.strictEqual(refusedUntouched(dir, ['render', 'directive-arrival']), 'render directive-arrival: --directive <id> names the directive the migration reached');
   });
 
-  it('the taken stop, where another session carries the step on, draws that step\'s stop naming when it was last active and saying this session stops there — nothing of a piece carried on — refusing a step or an --active missing, and an --active that is no whole number', () => {
+  it('says of each directive the migration holds what is true of it while it runs — the split, which asks for each cut, never said to run by itself', () => {
+    const accountOf = (/** @type {string} */ id) => directiveArrival({ step: id, does: require(path.join(MIGRATIONS, `${id}.check.cjs`)).does }).split('\n').filter((line) => line.startsWith('> This step'))[0];
+
+    assert.deepStrictEqual(['076-legacy-split', '079-records', '080-cut-and-merges'].map(accountOf), [
+      '> This step plans how each piece of broad research splits into topics, asking you to choose each cut. It takes a while: nothing is needed from you until it asks.',
+      '> This step writes a record of what each piece of past work decided, and checks each one against its documents. It takes a while: nothing is needed from you until it asks.',
+      '> This step gives each piece of work the shape Ledger builds from, cutting work already under way into phases and carrying its tasks across. It takes a while: nothing is needed from you until it asks.',
+    ]);
+  });
+
+  it('the taken stop, where another session carries the step on, says so in the normal colour — the migration at work elsewhere, no failure — naming when it was last active and saying this session stops there, nothing of a piece carried on; refusing a step or an --active missing, and an --active that is no whole number', () => {
     enterTopic(dir, 'licensing');
     enterTopic(dir, 'search');
-    const taken = (/** @type {string} */ at) => engine.output(dir, ['render', 'migration-taken-stop', '--at', at, '--active', '180']).split('\n').filter((line) => line.startsWith('>'));
+    const taken = (/** @type {string} */ at) => engine.output(dir, ['render', 'migration-taken-stop', '--at', at, '--active', '180']);
 
-    assert.deepStrictEqual(taken(RECORDS), [
+    assert.strictEqual(taken(RECORDS), [
+      '=== DISPLAY: directive taken (emit verbatim as markdown (not a code block)) ===',
+      '**`▪ Migration · records`**',
+      '',
+      'Another session is carrying the migration on: its records step.',
+      '',
       '> No session works in this project until the migration is done. What it finished is kept: 2 of Fumi\'s 3 topics have their records, each checked.',
       '>',
-      '> Another session is carrying the migration on from its records step, last active 3m ago, so this one stops here.',
+      '> That session was last active 3m ago, so this one stops here.',
       '>',
       '> Run `/ledger` here again once that session has finished the migration, or has ended.',
-    ]);
-    assert.deepStrictEqual(taken('checks'), [
-      "> Earlier migrations of this project left checks their code couldn't make. Some fix files the move carries into Ledger, so they come first. No session works in this project until the migration is done.",
+      '',
+    ].join('\n'));
+    assert.strictEqual(taken('checks'), [
+      '=== DISPLAY: migration checks taken (emit verbatim as markdown (not a code block)) ===',
+      '**`▪ Migration · checks`**',
+      '',
+      'Another session is carrying the migration on: its checks before the move.',
+      '',
+      "> Earlier migrations of this project left checks their code couldn't make, and some fix files the move carries into Ledger, so they come first. No session works in this project until the migration is done.",
       '>',
-      '> Another session is carrying the migration on from its checks, last active 3m ago, so this one stops here.',
+      '> That session was last active 3m ago, so this one stops here.',
       '>',
       '> Run `/ledger` here again once that session has finished the migration, or has ended.',
-    ]);
+      '',
+    ].join('\n'));
     assert.deepStrictEqual([['--active', '180'], ['--at', RECORDS], ['--at', RECORDS, '--active', '3m']].map((args) => refusedUntouched(dir, ['render', 'migration-taken-stop', ...args])), [
       'render migration-taken-stop: --at <step> names the step another session carries the migration on from, a directive\'s id or checks',
       'render migration-taken-stop: --active takes the seconds since the session carrying the migration on was last active',
@@ -465,15 +491,15 @@ describe('the stop\'s screens (21.10.9, 21.10.11)', () => {
   const keptLine = (screen) => screen.split('\n').filter((line) => line.startsWith('> What it finished'))[0];
 
   it('counts the pieces as the check names them, one and many, and says what a piece done has and what becomes of one left part-way in its words', () => {
-    const screen = directiveCarryOn({ project: 'Fumi', step: 'cut', progress: { done: 1, of: 4, counts: { one: 'branch', many: 'branches' }, says: 'are cut', partWay: 'A branch it was in the middle of is cut again.' } });
+    const screen = directiveCarryOn({ project: 'Fumi', step: 'cut', does: 'This step cuts each branch.', progress: { done: 1, of: 4, counts: { one: 'branch', many: 'branches' }, says: 'are cut', partWay: 'A branch it was in the middle of is cut again.' } });
 
     assert.strictEqual(keptLine(screen), '> What it finished is kept: 1 of Fumi\'s 4 branches are cut, each checked. A branch it was in the middle of is cut again.');
   });
 
   it('21.10.9: says of a piece left part-way what its own directive does with it — the split plans a source again from the start, the records amend a record from where it stood', () => {
     const accountOf = (/** @type {string} */ id) => {
-      const { counts, done: says, partWay } = require(path.join(MIGRATIONS, `${id}.check.cjs`));
-      return keptLine(directiveCarryOn({ project: 'Fumi', step: id.replace(/^[0-9]+-/, ''), progress: { done: 1, of: 2, counts, says, partWay } }));
+      const { does, counts, done: says, partWay } = require(path.join(MIGRATIONS, `${id}.check.cjs`));
+      return keptLine(directiveCarryOn({ project: 'Fumi', step: id.replace(/^[0-9]+-/, ''), does, progress: { done: 1, of: 2, counts, says, partWay } }));
     };
 
     assert.deepStrictEqual(['076-legacy-split', '079-records'].map(accountOf), [

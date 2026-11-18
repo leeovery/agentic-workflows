@@ -2742,7 +2742,8 @@ const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */
 // --start-again`, `state-merge pick`, the migration review's verbs, `migrate
 // review` among them, the checks stop's record, `migrate checked`, a stop's
 // screen and the answer to its gate, each gate by its name (a directive's
-// screen and verbs run on the stamp its stop writes); the targets of Claude
+// screens among them, though its verbs run on the stamp its stop writes);
+// the targets of Claude
 // Code's hooks and of the gate mod (`conversation`, `board`), run for any
 // conversation; the capture line and the retry its note names, run from a
 // project the conversation may never boot (22.1.8, 18.6.8), each commit by

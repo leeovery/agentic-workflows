@@ -659,8 +659,9 @@ function reshapeParts(parts) {
 /**
  * ledger's migration summary — the payload is the session's summary, the
  * reshape's in its parts while it finishes, the notices the run handed back
- * for the person, and, where the run updated files, its two counts; while
- * the reshape's code commit is still to make, the branch it goes on.
+ * for the person, and, where the run updated files, its two counts — never
+ * the reshape's, whose parts say what was done; while the reshape's code
+ * commit is still to make, the branch it goes on.
  * @param {string} cwd @param {Record<string, string|undefined>} args @returns {string}
  */
 function migrationsAppliedSurface(cwd, { file }) {
@@ -675,6 +676,7 @@ function migrationsAppliedSurface(cwd, { file }) {
     throw new Error('render migrations-applied: "notices" must be a list of non-empty strings');
   }
   const given = ['migrations', 'files'].filter((key) => p[key] !== undefined);
+  if (finish !== null && given.length > 0) throw new Error('render migrations-applied: the summary of the migration into Ledger carries no counts — its parts say what was done');
   if (given.length === 1) {
     throw new Error('render migrations-applied: "migrations" and "files" come together — both counts, or neither where the run updated no file');
   }

@@ -33,6 +33,7 @@ const RESHAPE_PARTS = Object.freeze([
   ['moved', 'Moved into Ledger'],
   ['records', 'Records'],
   ['corrections', 'Corrections'],
+  ['checks', 'Checks and fixes'],
   ['legacy', 'Kept as legacy'],
   ['code', 'The code commit'],
 ]);
@@ -163,69 +164,79 @@ function keptOf(project, progress) {
   return `What it finished is kept: ${done} of ${escapeMarkdown(project)}'s ${of} ${of === 1 ? counts.one : counts.many} ${says}, each checked.`;
 }
 
+/** The migration's screens' opening, at work and part-way through a step. */
+const AT_WORK = "Ledger is bringing this project's past work into its new format.";
+const PART_WAY = "Ledger is part-way through bringing this project's past work into its new format.";
+
+/** What the person does while a step the session carries out runs. */
+const WAIT = 'It takes a while: nothing is needed from you until it asks.';
+
+/** Where the start goes once the migration is over. */
+const AFTER = 'The start menu follows once the migration is done and committed.';
+
+/**
+ * A screen of the migration, in the normal colour — its work is never a
+ * failure: its marker naming the step, its opening line, and its account,
+ * each paragraph a line of the signpost.
+ * @param {string} name the section's @param {string} step @param {string} opening @param {string[]} paragraphs
+ * @returns {string}
+ */
+function migrationScreen(name, step, opening, paragraphs) {
+  return section(`DISPLAY: ${name}`, emitAs('markdown'), [
+    `**\`▪ Migration · ${step}\`**`,
+    '',
+    opening,
+    '',
+    paragraphs.map((paragraph) => `> ${paragraph}`).join('\n>\n'),
+  ].join('\n'));
+}
+
 /**
  * Boot's stop where another live session carries a directive of the
- * migration on (21.10.11, P7): no session works in the project until the
- * migration is done; what the directive finished is kept, each piece
- * checked, where its check can say; and when that session was last active,
- * this one stopping there.
+ * migration on (21.10.11, P7): that session carrying it on, its step; no
+ * session works in the project until the migration is done; what the
+ * directive finished is kept, each piece checked, where its check can say;
+ * and when that session was last active, this one stopping there.
  * @param {{project: string, step: string, progress: import('../directives.cjs').Progress|null, carrier: number}} stopped the project's name, the directive's step in words, where it stands, and the whole seconds since the session carrying it on was last active
  * @returns {string}
  */
 function directiveStop({ project, step, progress, carrier }) {
   const kept = keptOf(project, progress);
-  return [
-    section('DISPLAY: directive stop', emitAs('properties'), `⚑ The migration stopped part-way: its ${step} step isn't done`),
-    section('DISPLAY: directive account', emitAs('markdown'), [
-      `> ${['No session works in this project until the migration is done.', ...(kept === null ? [] : [kept])].join(' ')}`,
-      '>',
-      ...takenBy(`its ${step} step`, carrier),
-    ].join('\n')),
-  ].join('\n');
+  return migrationScreen('directive taken', step, `Another session is carrying the migration on: its ${step} step.`, [
+    ['No session works in this project until the migration is done.', ...(kept === null ? [] : [kept])].join(' '),
+    ...takenBy(carrier),
+  ]);
 }
 
 /**
  * The migration part-way through a directive, which this session carries
- * on (21.10.9): in the normal colour, its marker naming the step; what the
- * directive finished, kept, each piece checked, and a piece it was in the
- * middle of taken up as its check says, or, every piece done, the step
- * ready to close; and the start menu once the migration is done and
- * committed. Where none is done, or the check cannot say, nothing is said
- * of what is done.
- * @param {{project: string, step: string, progress: import('../directives.cjs').Progress|null}} carried the project's name, the directive's step in words, and where it stands
+ * on (21.10.9): its step; what the step does and the person waiting it
+ * out; what the directive finished, kept, each piece checked, and a piece
+ * it was in the middle of taken up as its check says, or, every piece done,
+ * the step ready to close; and the start menu once the migration is done
+ * and committed. Where none is done, or the check cannot say, nothing is
+ * said of what is done.
+ * @param {{project: string, step: string, progress: import('../directives.cjs').Progress|null, does: string}} carried the project's name, the directive's step in words, where it stands, and what it does, in its check's words
  * @returns {string}
  */
-function directiveCarryOn({ project, step, progress }) {
+function directiveCarryOn({ project, step, progress, does }) {
   const kept = keptOf(project, progress);
-  const held = kept === null || progress === null ? [] : [`> ${kept} ${progress.done === progress.of ? 'The step is ready to close.' : progress.partWay}`, '>'];
-  return section('DISPLAY: directive carry on', emitAs('markdown'), [
-    `**\`▪ Migration · ${step}\`**`,
-    '',
-    "Ledger is part-way through bringing this project's past work into its new format.",
-    '',
-    ...held,
-    `> This session carries the migration on from its ${step} step; the start menu follows once the migration is done and committed.`,
-  ].join('\n'));
+  return migrationScreen('directive carry on', step, PART_WAY, [
+    `${does} ${WAIT}`,
+    ...(kept === null || progress === null ? [] : [`${kept} ${progress.done === progress.of ? 'The step is ready to close.' : progress.partWay}`]),
+    `This session carries the migration on from its ${step} step. ${AFTER}`,
+  ]);
 }
 
 /**
  * The migration at work, at a directive none of whose pieces is done yet:
- * in the normal colour, its marker naming the step; what the step does;
- * that it runs by itself, the person waiting it out until it asks; and the
+ * its step; what the step does and the person waiting it out; and the
  * start menu once the migration is done and committed.
  * @param {{step: string, does: string}} arrival the directive's step in words, and what it does, in its check's words
  * @returns {string}
  */
 function directiveArrival({ step, does }) {
-  return section('DISPLAY: directive arrival', emitAs('markdown'), [
-    `**\`▪ Migration · ${step}\`**`,
-    '',
-    "Ledger is bringing this project's past work into its new format.",
-    '',
-    `> ${does} It runs by itself and takes a while: nothing is needed from you until it asks.`,
-    '>',
-    '> The start menu follows once the migration is done and committed.',
-  ].join('\n'));
+  return migrationScreen('directive arrival', step, AT_WORK, [`${does} ${WAIT}`, AFTER]);
 }
 
 /** How the mixed unit's question groups the topics leaving it, in its order. */
@@ -259,38 +270,40 @@ function leavingQuestion({ unit, covered, leaving }) {
   ].join('\n');
 }
 
+/** Why the checks before the reshape's move come first. */
+const CHECKS_FIRST = "Earlier migrations of this project left checks their code couldn't make, and some fix files the move carries into Ledger, so they come first.";
+
 /**
- * Boot's stop before the reshape's move (21.10.13): earlier migrations left
- * checks their code could not make, some fixing files the move carries, so
- * they come first, and no session works in the project until the migration
- * is done. This session makes them, or, where another live session carries
- * the migration on (P7), the stop names when that one was last active, and
- * this session stops there.
+ * Boot's stop before the reshape's move (21.10.13), the migration at work:
+ * earlier migrations left checks their code could not make, some fixing
+ * files the move carries, so they come first. This session makes them, the
+ * person waiting it out, the start menu once the migration is done and
+ * committed; or, where another live session carries the migration on (P7),
+ * that session carrying it on, no session working in the project until the
+ * migration is done, and when that one was last active, this one stopping
+ * there.
  * @param {number|null} [carrier] the whole seconds since another session carrying the migration on was last active
  * @returns {string}
  */
 function migrationChecksStop(carrier = null) {
-  return [
-    section('DISPLAY: migration checks stop', emitAs('properties'), '⚑ The migration stopped before its move, for checks earlier migrations handed back'),
-    section('DISPLAY: migration checks account', emitAs('markdown'), [
-      "> Earlier migrations of this project left checks their code couldn't make. Some fix files the move carries into Ledger, so they come first. No session works in this project until the migration is done.",
-      '>',
-      ...(carrier === null ? ['> This session takes them up now; the start menu follows once the migration is done and committed.'] : takenBy('its checks', carrier)),
-    ].join('\n')),
-  ].join('\n');
+  return carrier === null
+    ? migrationScreen('migration checks', 'checks', AT_WORK, [`${CHECKS_FIRST} This session makes them now. ${WAIT}`, AFTER])
+    : migrationScreen('migration checks taken', 'checks', 'Another session is carrying the migration on: its checks before the move.', [
+      `${CHECKS_FIRST} No session works in this project until the migration is done.`,
+      ...takenBy(carrier),
+    ]);
 }
 
 /**
- * The lines a stop closes on where another session carries the migration
- * on from `step`, last active `carrier` whole seconds ago.
- * @param {string} step @param {number} carrier
+ * The paragraphs a stop closes on where another session carries the
+ * migration on, last active `carrier` whole seconds ago.
+ * @param {number} carrier
  * @returns {string[]}
  */
-function takenBy(step, carrier) {
+function takenBy(carrier) {
   return [
-    `> Another session is carrying the migration on from ${step}, last active ${fmtAge(carrier)} ago, so this one stops here.`,
-    '>',
-    '> Run `/ledger` here again once that session has finished the migration, or has ended.',
+    `That session was last active ${fmtAge(carrier)} ago, so this one stops here.`,
+    'Run `/ledger` here again once that session has finished the migration, or has ended.',
   ];
 }
 

@@ -178,7 +178,11 @@ describe('the migration waiting on its commit (21.9.1, 21.9.3)', () => {
 });
 
 describe('the review\'s read (21.9.4)', () => {
-  it('answers the state\'s folder and the code side\'s, absolute, and what the summary is written from: the commits the yes makes, the units moved, their topics and the code files the commit takes; once committed, the folders alone', () => {
+  it('answers the state\'s folder and the code side\'s, absolute, and what the summary is written from: the commits the yes makes, the units moved, the records carried — a unit\'s own among them, which is no topic — and the code files the commit takes; once committed, the folders alone', () => {
+    const carried = statePath(dir, JOURNALS, 'carried');
+    fs.rmSync(carried, { recursive: true, force: true });
+    for (const record of [`${UNIT}/licensing.json`, `${UNIT}/search.json`, `${UNIT}.json`]) createFile(carried, record, '{}\n');
+
     assert.deepStrictEqual(ok(['migrate', 'review']), {
       ok: true,
       state: statePath(dir),
@@ -186,7 +190,7 @@ describe('the review\'s read (21.9.4)', () => {
       reshape: {
         commits: ['state', 'code'],
         units: 1,
-        topics: 3,
+        records: 3,
         files: ['.gitignore', '.workflows', OLD_STORE],
         corrections: [],
       },
@@ -213,13 +217,15 @@ describe('the review\'s summary while the reshape finishes', () => {
   it('draws each part the session wrote under its label, in the parts\' order, a part with nothing in it left out, and closes on the code commit going on the code branch, not pushed', () => {
     const branch = git(dir, ['symbolic-ref', '--short', 'HEAD']).trim();
 
-    assert.strictEqual(drawn({ parts: { code: 'It takes `.workflows/` out.', moved: 'Fumi moved into `.ledger/`.', records: '3 records carried.' } }), [
+    assert.strictEqual(drawn({ parts: { code: 'It takes `.workflows/` out.', checks: 'A message the converter missed was recovered.', moved: 'Fumi moved into `.ledger/`.', records: '3 records carried.' } }), [
       '=== DISPLAY: migrations applied (emit verbatim as markdown (not a code block) — do not stop; continue as the skill instructs) ===',
       '**Migrations Applied**',
       '',
       '**Moved into Ledger:** Fumi moved into `.ledger/`.',
       '',
       '**Records:** 3 records carried.',
+      '',
+      '**Checks and fixes:** A message the converter missed was recovered.',
       '',
       '**The code commit:** It takes `.workflows/` out.',
       '',
@@ -228,14 +234,15 @@ describe('the review\'s summary while the reshape finishes', () => {
     ].join('\n'));
   });
 
-  it('refuses a summary of one paragraph, no part at all, a part that is none of the summary\'s and a part with no words', () => {
-    const PARTS = 'render migrations-applied: the summary of the migration into Ledger is "parts", each of moved, records, corrections, legacy, code a non-empty string, a part with nothing in it left out';
+  it('refuses a summary of one paragraph, no part at all, a part that is none of the summary\'s, a part with no words, and the run\'s counts beneath the parts', () => {
+    const PARTS = 'render migrations-applied: the summary of the migration into Ledger is "parts", each of moved, records, corrections, checks, legacy, code a non-empty string, a part with nothing in it left out';
 
-    assert.deepStrictEqual([refused({ summary: 'Moved the project.' }), refused({ parts: {} }), refused({ parts: { skipped: 'Nothing was split.' } }), refused({ parts: { moved: ' ' } })], [
+    assert.deepStrictEqual([refused({ summary: 'Moved the project.' }), refused({ parts: {} }), refused({ parts: { skipped: 'Nothing was split.' } }), refused({ parts: { moved: ' ' } }), refused({ parts: { moved: 'Fumi moved.' }, migrations: 6, files: 10 })], [
       'render migrations-applied: the summary of the migration into Ledger is "parts", never "summary"',
       PARTS,
       PARTS,
       PARTS,
+      'render migrations-applied: the summary of the migration into Ledger carries no counts — its parts say what was done',
     ]);
   });
 });
@@ -321,7 +328,8 @@ describe('the migration\'s commit (21.9.2, 21.9.5)', () => {
     killedAt({ method: 'rmSync', file: '.workflows', when: 'before' }, dir, COMMIT, { env: SESSION });
     const tip = stateGit(dir, ['rev-parse', STATE_BRANCH]).trim();
 
-    assert.deepStrictEqual(ok(['migrate', 'review']).reshape, { commits: [], units: 1, topics: 3, files: [], corrections: [] });
+    const { records: _records, ...read } = ok(['migrate', 'review']).reshape;
+    assert.deepStrictEqual(read, { commits: [], units: 1, files: [], corrections: [] });
 
     assert.strictEqual(ok(['boot']).state, 'ready');
 
@@ -536,9 +544,11 @@ describe('the reshape\'s real sequence through its commit (21.S18)', () => {
 
     const stopped = [real.ok(project, ['boot'], unstamped), real.ok(project, ['boot'], unstamped)];
 
-    const atChecks = { marker: 'Migration', surface: 'migration-checks-stop', next: { kind: 'load', reference: 'migration-checks', with: { folder: project } } };
+    const atChecks = { surface: 'migration-checks-stop', next: { kind: 'load', reference: 'migration-checks', with: { folder: project } } };
     assert.deepStrictEqual(stopped.map(({ state, folder: at, verify, stop }) => ({ state, at, checks: verify.map((entry) => entry.id), stop })), [1, 2].map(() => ({ state: 'checks', at: project, checks: ['071'], stop: atChecks })));
-    assert.match(real.output(project, ['render', atChecks.surface], unstamped), /^⚑ The migration stopped before its move, for checks earlier migrations handed back$/m);
+    const atWork = real.output(project, ['render', atChecks.surface], unstamped);
+    assert.match(atWork, /^\*\*`▪ Migration · checks`\*\*\n\nLedger is bringing this project's past work into its new format\.$/m);
+    assert.doesNotMatch(atWork, /⚑|stopped/, 'the migration at work is no failure');
     assert.match(real.refuses(project, ['manifest', 'get', 'payments', 'status'], unstamped).error, /has not booted Ledger/);
     assert.match(real.refuses(project, ['environment', 'set', 'linters'], { ...unstamped, stdin: '[{"name": "eslint", "command": "npm run lint"}]' }).error, /has not booted Ledger/);
     assert.ok(!fs.existsSync(path.join(project, '.ledger/payments')), 'nothing moved yet');
@@ -548,9 +558,12 @@ describe('the reshape\'s real sequence through its commit (21.S18)', () => {
     const written = () => [readState(project, layout.migrations), git(project, ['status', '--porcelain', '--', '.workflows'])];
     const before = written();
     const taken = real.ok(project, ['boot'], another);
-    const stop = { marker: 'Migration', surface: 'migration-taken-stop', args: ['--at', 'checks', '--active', String(taken.active)], next: null };
+    const stop = { surface: 'migration-taken-stop', args: ['--at', 'checks', '--active', String(taken.active)], next: null };
     assert.deepStrictEqual(taken, { ok: true, state: 'taken', at: 'checks', active: taken.active, stop, warnings: [] });
-    assert.match(real.output(project, ['render', stop.surface, ...stop.args], another), /^> Another session is carrying the migration on from its checks, last active /m);
+    const elsewhere = real.output(project, ['render', stop.surface, ...stop.args], another);
+    assert.match(elsewhere, /^Another session is carrying the migration on: its checks before the move\.$/m);
+    assert.match(elsewhere, /^> That session was last active .* ago, so this one stops here\.$/m);
+    assert.doesNotMatch(elsewhere, /⚑|stopped part-way/, 'the migration at work in another session is no failure');
     assert.deepStrictEqual(written(), before);
 
     createFile(project, discussion, '# Payments\n\nHow refunds settle.\n\n## Triage\n\n(none)\n');

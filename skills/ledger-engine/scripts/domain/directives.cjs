@@ -60,7 +60,8 @@
 //   from any checkout; and, while the reshape finishes, what its summary is
 //   written from, since the state branch's first commit takes the whole
 //   state (21.9.4) — the commits the yes still makes, the units moved, the
-//   topics carried, the code files the commit takes, and each correction
+//   records carried — a topic's, and a unit's own — the code files the
+//   commit takes, and each correction
 //   the migration made, by its unit:
 //   the move's, where the registry typed a unit otherwise than its
 //   manifest, as the move journaled them (078, `move.json` among the
@@ -91,7 +92,7 @@ const { topicTitle } = require('./derivations.cjs');
 const { projectName } = require('./state-checks.cjs');
 const { unraised } = require('./raise.cjs');
 const { listWorkUnitManifests } = require('../kernel/manifest.cjs');
-const { topicsOf } = require('./ledger-units.cjs');
+const { CARRIED } = require('../../../ledger-migrate/scripts/record-files.cjs');
 const { MIGRATION_JOURNALS, finishing, codeFiles } = require('./migration-commit.cjs');
 const { refreshMigrationQuietly } = require('./presence.cjs');
 const { CHECKS_DONE } = require('../../../ledger-migrate/scripts/old-layout.cjs');
@@ -361,7 +362,7 @@ function directiveArrivalSurface(_cwd, args) {
  */
 function directiveCarryOnSurface(cwd, args) {
   if (args.directive === undefined) throw new Error('render directive-carry-on: --directive <id> names the directive the migration is part-way through');
-  return directiveCarryOn(standingOf(cwd, args.directive));
+  return directiveCarryOn({ ...standingOf(cwd, args.directive), does: loadCheck(args.directive).does });
 }
 
 /**
@@ -399,12 +400,24 @@ function leavingSurface(cwd, { dotpath: unit, directive }) {
 
 /**
  * What the reshape's summary is written from while its commit is owed:
- * the commits the yes still makes, the units moved, the topics they
- * carry, the code files the commit takes, named from the project's
+ * the commits the yes still makes, the units moved, the records carried,
+ * the code files the commit takes, named from the project's
  * folder, and the corrections the migration made, each by its unit, in
  * the units' order.
- * @typedef {{commits: import('./migration-commit.cjs').CommitsOwed, units: number, topics: number, files: string[], corrections: ({unit: string} & Record<string, unknown>)[]}} ReshapeReview
+ * @typedef {{commits: import('./migration-commit.cjs').CommitsOwed, units: number, records: number, files: string[], corrections: ({unit: string} & Record<string, unknown>)[]}} ReshapeReview
  */
+
+/**
+ * How many records the migration carried, each kept as carried
+ * (ledger-carry.cjs): a topic's in its unit's folder, a unit's own beside it.
+ * @param {string} cwd @returns {number}
+ */
+function recordsCarried(cwd) {
+  const root = statePath(cwd, CARRIED);
+  if (!fs.existsSync(root)) return 0;
+  const kept = (/** @type {string[]} */ names) => names.filter((name) => name.endsWith('.json')).length;
+  return fs.readdirSync(root, { withFileTypes: true }).reduce((sum, entry) => sum + (entry.isDirectory() ? kept(fs.readdirSync(path.join(root, entry.name))) : kept([entry.name])), 0);
+}
 
 /** @typedef {{unit: string} & Record<string, unknown>} Correction */
 
@@ -450,7 +463,7 @@ function reviewMigration(cwd) {
     reshape: {
       commits: finish.commits,
       units: units.length,
-      topics: units.reduce((sum, manifest) => sum + topicsOf(manifest).length, 0),
+      records: recordsCarried(cwd),
       files: codeFiles(finish),
       corrections: migrationCorrections(cwd),
     },
