@@ -104,6 +104,7 @@ const UNIT_ASSETS = Object.freeze({
   'deck/pitch.md': '# Pitch\n\nFor teams.\n',
   'flow.png': 'PNG the flow\n',
   'plans/licensing/plan.md': '# Plan\n\nTask one.\n',
+  'plans/search/plan.md': '# Plan\n\nRank by weight.\n',
   'reviews/licensing/report.md': '# Review\n\nAll good.\n',
   'legacy/implementation/licensing/report.md': '# Analysis\n\nFast enough.\n',
   'legacy/implementation/licensing/tracking.md': '# Tracking\n\nTask one done.\n',
@@ -141,7 +142,7 @@ const licensingDrawn = (composed = false) => [
   '- **Unit:** fumi, epic, in-progress',
   '- **Topic:** licensing, in discussion, completed — its record carried in discussion',
   '- **What it is about:** no map row says it, so its record does, in `description`',
-  `- **The state:** ${statePath(dir)} — each file below named by its whole path, which an entry cites by its path from here`,
+  `- **The state:** ${statePath(dir)} — each file below named by its whole path, which an entry cites or links by its path from here`,
   '',
   '## Its files',
   '',
@@ -201,6 +202,7 @@ const licensingDrawn = (composed = false) => [
   '- The verifier\'s rulings on it: {state}/.cache/migrate/records/fumi/licensing.rulings.txt',
   '- The verifier\'s verdict on each entry: {state}/.cache/migrate/records/fumi/licensing.checked.txt',
   '- The findings its composer hands back to the session: {state}/.cache/migrate/records/fumi/licensing.handback.txt',
+  '- The points of it the session settled: {state}/.cache/migrate/records/fumi/licensing.settled.md',
   '- A carry\'s refusal of it: {state}/.cache/migrate/records/fumi/licensing.refused.md',
 ].join('\n');
 
@@ -452,7 +454,7 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
     assert.match(brief, /^- \*\*Topic:\*\* support, in discovery, pending — its record carried in discovery, the topic never started$/m);
   });
 
-  it('every file of the unit\'s assets but a dotfile, with where each came from — its legacy files by their place and how many, never each: the markdown ones the topic walks — an import, listed or come in with them, and research a legacy split superseded bearing its name — apart from the rest but its own spec, listed as its spec alone; research bearing no topic\'s name walked by none in a unit with no record of its own', () => {
+  it('every file of the unit\'s assets but a dotfile, with where each came from — its legacy files, plans and old reviews by their folder and how many, never each: the markdown ones the topic walks — an import, listed or come in with them, and research a legacy split superseded bearing its name — apart from the rest but its own spec, listed as its spec alone; research bearing no topic\'s name walked by none in a unit with no record of its own', () => {
     for (const [rel, text] of Object.entries(UNIT_ASSETS)) writeState(dir, layout.assets('fumi', ...rel.split('/')), text);
 
     const { brief } = issued(['migration-topic', ...LICENSING]);
@@ -467,9 +469,9 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
       '## The unit\'s other assets, never walked', '',
       '- {state}/fumi/assets/flow.png, an import',
       '- {state}/fumi/assets/legacy/, 2 files kept as legacy, each at its path from the unit\'s old folder',
-      '- {state}/fumi/assets/plans/licensing/plan.md, a plan',
+      '- {state}/fumi/assets/plans/, 2 plans',
       '- {state}/fumi/assets/research/exploration-superseded-20260101.md, research a legacy split superseded',
-      '- {state}/fumi/assets/reviews/licensing/report.md, an old review of a build',
+      '- {state}/fumi/assets/reviews/, 1 old review of a build',
       '- {state}/fumi/assets/old.md, which came in from discussion/licensing — its file is gone, so no entry links it', '',
     ].join('\n')), brief);
     assert.deepStrictEqual([brief.includes('.DS_Store'), brief.split('fumi/assets/specs/commerce.md').length - 1], [false, 1]);
@@ -491,9 +493,9 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
       '## The unit\'s other assets, never walked', '',
       '- {state}/fumi/assets/flow.png, an import',
       '- {state}/fumi/assets/legacy/, 2 files kept as legacy, each at its path from the unit\'s old folder',
-      '- {state}/fumi/assets/plans/licensing/plan.md, a plan',
+      '- {state}/fumi/assets/plans/, 2 plans',
       '- {state}/fumi/assets/research/licensing-superseded-20260101.md, research a legacy split superseded',
-      '- {state}/fumi/assets/reviews/licensing/report.md, an old review of a build',
+      '- {state}/fumi/assets/reviews/, 1 old review of a build',
       '- {state}/fumi/assets/specs/commerce.md, a spec',
       '- {state}/fumi/assets/old.md, which came in from discussion/licensing — its file is gone, so no entry links it', '',
     ].join('\n')), brief);
@@ -736,7 +738,7 @@ describe('the walk sheet (the verifier\'s brief)', () => {
     };
     const faults = () => ok(dir, ['ledger', 'carry', 'shop.discussion.weights', '--dry-run'], { env: SESSION }).faults.filter((fault) => fault.includes('Dependencies'));
     const uncited = () => ok(dir, ['migrate', 'check', '079-records'], { env: SESSION }).unfinished.find(({ name }) => name === 'shop.discussion.weights').problems
-      .flatMap((problem) => /^"(.*Dependencies)" in shop\/spec\.md/.exec(problem)?.[1] ?? []);
+      .flatMap((problem) => (problem.includes(`" in ${statePath(dir, 'shop/spec.md')},`) ? /^"(.*Dependencies)" in /.exec(problem)?.[1] ?? [] : []));
     const read = () => [sheet(), faults(), uncited()];
 
     record('Dependencies');

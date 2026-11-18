@@ -1234,24 +1234,33 @@ function assetLine(root, { path: at, kind, origin, owner, listed: imported, held
   return `- ${path.join(root, at)}, ${from}${owed}`;
 }
 
-// The folder of a unit's assets its legacy files are kept in — those the
-// move had no other place for — each at its path from the unit's old
-// folder (078).
-const UNPLACED_ASSETS = '/assets/legacy/';
+// The unit's assets no agent reads, listed by their folder and how many: its
+// legacy files, kept each at its path from the unit's old folder (078), and
+// its plans and old reviews, the building's reference.
+const FOLDED = new Map([
+  ['legacy', { folder: '/assets/legacy/', counted: (/** @type {number} */ count) => `${count} ${count === 1 ? 'file' : 'files'} kept as legacy, each at its path from the unit's old folder` }],
+  ['plan', { folder: '/assets/plans/', counted: (/** @type {number} */ count) => `${count} ${count === 1 ? 'plan' : 'plans'}` }],
+  ['review', { folder: '/assets/reviews/', counted: (/** @type {number} */ count) => `${count} old ${count === 1 ? 'review of a build' : 'reviews of builds'}` }],
+]);
 
 /**
  * The unit's assets as a record's brief lists them: those it walks, then
  * the rest but its specs, listed as its specs — one it would walk that its
- * own files hold word for word among the rest, so said; its legacy files by
- * their place and how many, never each, where the first of them stands: a
- * project may keep thousands, and none is any record's source.
+ * own files hold word for word among the rest, so said; its legacy files,
+ * plans and old reviews by their folder and how many, never each, where the
+ * first of each kind stands: a project may keep thousands, and no agent
+ * reads one.
  * @param {string} root @param {MigratedAsset[]} assets @param {string|null} topic @param {string[]} held the paths of those its own files hold @param {string[]} [specs] the paths of the topic's specs
  */
 function assetSections(root, assets, topic, held, specs = []) {
   const walks = (/** @type {MigratedAsset} */ { path: at, walkers }) => walkers.includes(topic) && !held.includes(at);
   const others = assets.filter((asset) => !walks(asset) && !specs.includes(asset.path));
-  const legacy = others.filter(({ kind }) => kind === 'legacy');
-  const place = (/** @type {string} */ at) => at.slice(0, at.indexOf(UNPLACED_ASSETS) + UNPLACED_ASSETS.length);
+  const folded = (/** @type {MigratedAsset} */ asset) => {
+    const { folder, counted } = /** @type {{folder: string, counted: (count: number) => string}} */ (FOLDED.get(asset.kind));
+    const kind = others.filter(({ kind: each }) => each === asset.kind);
+    if (asset !== kind[0]) return [];
+    return [`- ${path.join(root, asset.path.slice(0, asset.path.indexOf(folder) + folder.length))}, ${counted(kind.length)}`];
+  };
   return [
     '## The unit\'s assets it walks',
     '',
@@ -1259,10 +1268,8 @@ function assetSections(root, assets, topic, held, specs = []) {
     '',
     '## The unit\'s other assets, never walked',
     '',
-    listed(others.flatMap((asset) => {
-      if (asset.kind !== 'legacy') return [`${assetLine(root, asset, topic)}${held.includes(asset.path) ? ' — its own files hold it word for word' : ''}`];
-      return asset === legacy[0] ? [`- ${path.join(root, place(asset.path))}, ${legacy.length} ${legacy.length === 1 ? 'file' : 'files'} kept as legacy, each at its path from the unit's old folder`] : [];
-    })),
+    listed(others.flatMap((asset) => (FOLDED.has(asset.kind) ? folded(asset)
+      : [`${assetLine(root, asset, topic)}${held.includes(asset.path) ? ' — its own files hold it word for word' : ''}`]))),
   ];
 }
 
@@ -1278,12 +1285,13 @@ function recordGoes(root, unit, topic) {
     `- The verifier's rulings on it: ${whole(rulingsPath)}`,
     `- The verifier's verdict on each entry: ${whole(checkedPath)}`,
     `- The findings its composer hands back to the session: ${whole(handbackPath)}`,
+    `- The points of it the session settled: ${whole(settledPath)}`,
     `- A carry's refusal of it: ${whole(refusedPath)}`,
   ].join('\n');
 }
 
-/** The state line of a record's brief: where the state is, and how an entry cites a file the brief names. @param {string} root */
-const stateLine = (root) => `- **The state:** ${root} — each file below named by its whole path, which an entry cites by its path from here`;
+/** The state line of a record's brief: where the state is, and how an entry cites or links a file the brief names. @param {string} root */
+const stateLine = (root) => `- **The state:** ${root} — each file below named by its whole path, which an entry cites or links by its path from here`;
 
 /**
  * Each of a record's sources holding a heading with text its own words name

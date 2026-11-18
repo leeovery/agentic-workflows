@@ -169,7 +169,7 @@ function epicOf(project, name, pieces) {
 module.exports = {
   does: 'This step plans how each piece of broad research splits into topics, asking you to choose each cut.',
   counts: { one: 'source', many: 'sources' },
-  done: 'have their plans',
+  done: 'with their plans',
   partWay: 'A source it was in the middle of is planned again from the start, its plan cleared first.',
   /** @param {{projectDir: string, stateDir: string}} dirs */
   check({ projectDir, stateDir }) {

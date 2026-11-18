@@ -74,7 +74,7 @@ const { SESSION, recordsMigration, refusedKeeping, refusedUntouched, passedBesid
 const { templateFolder, copyWorld } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
-const { composedPath, carriedPath, findingsPath, rulingsPath, checkedPath, verifyingPath, refusedPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
+const { composedPath, carriedPath, findingsPath, rulingsPath, checkedPath, verifyingPath, refusedPath, settledPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
 
 /** Where the session marks the sections of a unit's specs holding no topic's decision. @param {string} unit */
 const sectionsMarked = (unit) => `.cache/migrate/records/${unit}.sections.json`;
@@ -200,19 +200,33 @@ const SEARCH_UNCARRIED = Object.freeze([
 ]);
 
 /**
- * What a section of an approved spec no record cites breaks, in its part of
- * a joined spec where it is in one: named as a cite names it, its part's
- * heading first, and marked under its part by its name there.
- * @param {string} unit @param {string} at @param {string} section @param {string|null} [part]
+ * Where a record the session amends is settled, as a message names it, by
+ * whole paths: a line in its settled file, and the finding into its findings.
+ * @param {string} unit @param {string|null} topic @param {string} finding
  */
-const uncited = (unit, at, section, part = null) => `"${part === null ? section : `${part} > ${section}`}" in ${at}, an approved spec, holds text no record of ${unit} cites — what the spec stage decided, found or left open, still current, is carried by the topic it belongs to; a section holding none, or only what a later answer replaced or a cancelled unit alone decided, is marked, once read, in ${statePath(dir, sectionsMarked(unit))} as ${JSON.stringify({ [at]: part === null ? [section] : { [part]: [section] } })}`;
+const settledInto = (unit, topic, finding) => `a line in ${statePath(dir, settledPath(unit, topic))} naming`
+  + ` %s, and into ${statePath(dir, findingsPath(unit, topic))} \`Settled: ${finding}\``;
+
+/** What an uncited section named on `topic`'s record says goes to it, where it is its own. @param {string} unit @param {string|null} topic @param {string} name */
+const ownsIt = (unit, topic, name) => `: where it is this record's, ${settledInto(unit, topic, `${name}, amend to agree`).replace('%s', 'the section and what of it the record misses')}`;
 
 /**
- * What a section no record cites breaks, of a source the unit's records walk
- * in common: a walked asset, or a discovery session.
- * @param {string} unit @param {string} at @param {string} section @param {string} [what]
+ * What a section of an approved spec no record cites breaks, named on
+ * `topic`'s record, in its part of a joined spec where it is in one: named
+ * as a cite names it, its part's heading first, its file by its whole path,
+ * and marked under its part by its name there and its file's path from the
+ * state's folder.
+ * @param {string} unit @param {string|null} topic @param {string} at @param {string} section @param {string|null} [part]
  */
-const sharedUncited = (unit, at, section, what = 'an asset') => `"${section}" in ${at}, ${what}, holds text no record of ${unit} cites — a current point it makes, which no topic\'s own files hold word for word, is carried by the record its subject belongs to; a section holding none, or only what a later answer replaced or a cancelled unit alone decided, is marked, once read, in ${statePath(dir, sectionsMarked(unit))} as ${JSON.stringify({ [at]: [section] })}`;
+const uncited = (unit, topic, at, section, part = null) => `"${part === null ? section : `${part} > ${section}`}" in ${statePath(dir, at)}, an approved spec, holds text no record of ${unit} cites — what the spec stage decided, found or left open, still current, is carried by the topic it belongs to${ownsIt(unit, topic, part === null ? section : `${part} > ${section}`)}; a section holding none, or only what a later answer replaced or a cancelled unit alone decided, is marked, once read, in ${statePath(dir, sectionsMarked(unit))} as ${JSON.stringify({ [at]: part === null ? [section] : { [part]: [section] } })}`;
+
+/**
+ * What a section no record cites breaks, named on `topic`'s record, of a
+ * source the unit's records walk in common: a walked asset, or a discovery
+ * session.
+ * @param {string} unit @param {string|null} topic @param {string} at @param {string} section @param {string} [what]
+ */
+const sharedUncited = (unit, topic, at, section, what = 'an asset') => `"${section}" in ${statePath(dir, at)}, ${what}, holds text no record of ${unit} cites — a current point it makes, which no topic\'s own files hold word for word, is carried by the record its subject belongs to${ownsIt(unit, topic, section)}; a section holding none, or only what a later answer replaced or a cancelled unit alone decided, is marked, once read, in ${statePath(dir, sectionsMarked(unit))} as ${JSON.stringify({ [at]: [section] })}`;
 
 /**
  * The carry's refusal of a record whose unit's records wait, framed on the
@@ -242,11 +256,11 @@ const ratesAtOdds = (ref, raise = false) => ({ ref, event: 'asked', text: 'Per s
  * @param {string} place the record's @param {string} by the record naming it @param {{path: string, section: string}[]} cited the sections it cites
  * @param {{path: string, section: string}[]} [sides] the sections at odds @param {string[]} [dated] each as the message names it, its date beside it
  */
-const unshared = (place, by, cited, sides = SIDES, dated = sides.map(({ path: at, section }) => `"${section}" in ${at}`)) => [
-  `${dated.join(' and ')} are at odds, as ${by} names them, and this record cites ${cited.map(({ path: at, section }) => `"${section}" in ${at}`).join(' and ')} without naming that contradiction — judge first whether it stands.`,
-  'Where a later answer settles it — an approved spec, or a part of one, approved after the other side was written — it is settled on each record naming it, and on this one where it carries the side the later answer replaced, this record keeping its answer only where it is the later one.',
+const unshared = (place, by, cited, sides = SIDES, dated = sides.map(({ path: at, section }) => `"${section}" in ${statePath(dir, at)}`)) => [
+  `${dated.join(' and ')} are at odds, as ${by} names them, and this record cites ${cited.map(({ path: at, section }) => `"${section}" in ${statePath(dir, at)}`).join(' and ')} without naming that contradiction — judge first whether it stands.`,
+  `Where a later answer settles it — an approved spec, or a part of one, approved after the other side was written — it is settled on each record naming it, and on this one where it carries the side the later answer replaced, this record keeping its answer only where it is the later one: ${settledInto('fumi', place.split('.')[2] ?? null, '{sections} settled by {section}, amend to agree').replace('%s', 'the section that settles it')}.`,
   `Where this record's own log settled the point after the approval, its answer is its log's: it is marked in ${statePath(dir, '.cache/migrate/records/fumi.at-odds.json')} as ${JSON.stringify({ [place]: [{ log: sides }] })}, and each record naming the contradiction keeps naming what its own sources hold.`,
-  'Where it stands and this record carries a side of the point at odds, it names the contradiction, an open question holding those sections as its at_odds, and carries neither side as settled.',
+  `Where it stands and this record carries a side of the point at odds, it names the contradiction, an open question holding those sections as its at_odds, and carries neither side as settled: ${settledInto('fumi', place.split('.')[2] ?? null, '{sections} at odds, amend to agree').replace('%s', 'the sections at odds and the point')}.`,
   `Where what it cites of them is not that point, it is marked in ${statePath(dir, '.cache/migrate/records/fumi.at-odds.json')} as ${JSON.stringify({ [place]: [sides] })}`,
 ].join(' ');
 
@@ -270,7 +284,7 @@ function approvedCommerce(made) {
 }
 
 /** What each section of shop's joined spec no record cites breaks, by its part. @param {'1. Weights'|'2. Wishlist'} part @param {string[]} sections */
-const shopUncited = (part, sections) => sections.map((section) => uncited('shop', 'shop/spec.md', section, part));
+const shopUncited = (part, sections) => sections.map((section) => uncited('shop', 'weights', 'shop/spec.md', section, part));
 
 /** What a cite naming several headings breaks, naming each it reaches as one cite would name it alone. @param {string} name @param {string} at @param {string[]} names */
 const tellApart = (name, at, names) => `cites "${name}" in ${at}, which holds ${names.length} headings so named — a cite names one, by its part in a joined spec, by the path that tells it apart, or, of headings sharing their path, by its place among them: ${names.map((each) => `"${each}"`).join(', ')}`;
@@ -352,12 +366,12 @@ describe('a record breaking a rule is refused at the carry, its refusal kept bes
     carry('fumi.discussion.search', [{ ...q1, cites: [logCite('fumi', 'search', 'Ranking > Context')] }, ...rest]);
   });
 
-  it('a cite naming its file by its whole path, as a brief lists it, refused naming the path from the state\'s folder a cite takes', () => {
+  it('a cite naming its file by its whole path, as a brief lists it, refused once, naming the path from the state\'s folder a cite takes', () => {
     const [q1, ...rest] = GOOD['fumi.discussion.search'];
     const log = layout.topic('fumi', 'search', 'log.md');
 
-    assert.ok(refused('fumi.discussion.search', [{ ...q1, cites: [{ path: statePath(dir, log), section: 'Ranking > Context' }] }, ...rest])
-      .includes(`entry q1 cites ${statePath(dir, log)}, a whole path — a cite names its file by its path from the state's folder: ${log}`));
+    assert.strictEqual(refused('fumi.discussion.search', [{ ...q1, cites: [{ path: statePath(dir, log), section: 'Ranking > Context' }] }, ...rest]),
+      breaks('fumi', 'search', [`entry q1 cites ${statePath(dir, log)}, a whole path — a cite names its file by its path from the state's folder: ${log}`]));
   });
 
   it('a cite of a file that does not stay with the entry — the cache, another topic\'s log, another unit\'s asset, its own mail — refused; one of the unit\'s beside its topics carried', () => {
@@ -1000,7 +1014,7 @@ describe('what the check reads once a record is carried', () => {
     const before = named();
     writeState(dir, sectionsMarked('fumi'), JSON.stringify({ [commerce]: ['Decision'] }));
 
-    assert.deepStrictEqual([before, named()], [['Decision', 'Option A > Decision'].map((section) => uncited('fumi', commerce, section)), [uncited('fumi', commerce, 'Option A > Decision')]]);
+    assert.deepStrictEqual([before, named()], [['Decision', 'Option A > Decision'].map((section) => uncited('fumi', 'licensing', commerce, section)), [uncited('fumi', 'licensing', commerce, 'Option A > Decision')]]);
   });
 
   it('21.6.3: a cite of an approved spec its topic draws no part of, the later answer to its point, gives that answer alone: it settles none of the spec\'s sections, which the topics drawing on it carry', () => {
@@ -1013,7 +1027,7 @@ describe('what the check reads once a record is carried', () => {
       writeState(dir, composedPath('fumi', topic), recordText(record));
     }
 
-    assert.deepStrictEqual(unfinished()['fumi.discussion.licensing'].filter((problem) => problem.includes(commerce)), [uncited('fumi', commerce, 'Corrigenda')]);
+    assert.deepStrictEqual(unfinished()['fumi.discussion.licensing'].filter((problem) => problem.includes(commerce)), [uncited('fumi', 'licensing', commerce, 'Corrigenda')]);
   });
 
   it('21.6.14: once every record walking them has one composed, each section of a walked asset holding text that no record cites, nor the session marks, is named on the topic it came in from, else on each topic where the unit has no record of its own; no spec, plan, old review, legacy file or other file is', () => {
@@ -1030,7 +1044,7 @@ describe('what the check reads once a record is carried', () => {
       const left = unfinished();
       return Object.fromEntries(fumi.map(([at]) => [at, left[at].filter((problem) => problem.includes('an asset'))]));
     };
-    const sso = sharedUncited('fumi', layout.assets('fumi', 'sso.md'), 'SSO');
+    const sso = (/** @type {string} */ topic) => sharedUncited('fumi', topic, layout.assets('fumi', 'sso.md'), 'SSO');
 
     const before = named();
     writeState(dir, composedPath('fumi', 'support'), recordText([]));
@@ -1040,10 +1054,10 @@ describe('what the check reads once a record is carried', () => {
     assert.deepStrictEqual([before, composed, named()], [
       { 'fumi.discovery.billing': [], 'fumi.discussion.licensing': [], 'fumi.discussion.search': [], 'fumi.discovery.support': [] },
       {
-        'fumi.discovery.billing': [sharedUncited('fumi', layout.assets('fumi', 'rates.md'), 'Discounts'), sso],
-        'fumi.discussion.licensing': [sso], 'fumi.discussion.search': [sso], 'fumi.discovery.support': [sso],
+        'fumi.discovery.billing': [sharedUncited('fumi', 'billing', layout.assets('fumi', 'rates.md'), 'Discounts'), sso('billing')],
+        'fumi.discussion.licensing': [sso('licensing')], 'fumi.discussion.search': [sso('search')], 'fumi.discovery.support': [sso('support')],
       },
-      { 'fumi.discovery.billing': [sso], 'fumi.discussion.licensing': [sso], 'fumi.discussion.search': [sso], 'fumi.discovery.support': [sso] },
+      { 'fumi.discovery.billing': [sso('billing')], 'fumi.discussion.licensing': [sso('licensing')], 'fumi.discussion.search': [sso('search')], 'fumi.discovery.support': [sso('support')] },
     ]);
   });
 
@@ -1062,8 +1076,8 @@ describe('what the check reads once a record is carried', () => {
     };
 
     assert.deepStrictEqual([named(['Notes']), named(['Seats > Notes'])], [
-      ['Seats > Notes', 'Teams > Notes'].map((section) => sharedUncited('fumi', sso, section)),
-      [sharedUncited('fumi', sso, 'Teams > Notes')],
+      ['Seats > Notes', 'Teams > Notes'].map((section) => sharedUncited('fumi', 'licensing', sso, section)),
+      [sharedUncited('fumi', 'licensing', sso, 'Teams > Notes')],
     ]);
   });
 
@@ -1085,9 +1099,9 @@ describe('what the check reads once a record is carried', () => {
     own(found('Hosting is on our servers.', exploration, 'Hosting'));
 
     assert.deepStrictEqual([promotedUncomposed, composed, named()], [
-      { 'fumi.discovery': ['Seats', 'Hosting'].map((section) => sharedUncited('fumi', exploration, section)) },
-      { 'fumi.discovery': ['Seats', 'Hosting'].map((section) => sharedUncited('fumi', exploration, section)) },
-      { 'fumi.discovery': [sharedUncited('fumi', session, 'Teams', 'a discovery session'), sharedUncited('fumi', exploration, 'Seats')] },
+      { 'fumi.discovery': ['Seats', 'Hosting'].map((section) => sharedUncited('fumi', null, exploration, section)) },
+      { 'fumi.discovery': ['Seats', 'Hosting'].map((section) => sharedUncited('fumi', null, exploration, section)) },
+      { 'fumi.discovery': [sharedUncited('fumi', null, session, 'Teams', 'a discovery session'), sharedUncited('fumi', null, exploration, 'Seats')] },
     ]);
   });
 
@@ -1105,7 +1119,7 @@ describe('what the check reads once a record is carried', () => {
     const alone = named();
     for (const dotpath of Object.keys(GOOD).filter((at) => at.startsWith('fumi.') && at !== 'fumi.discussion.licensing')) compose(dotpath);
 
-    const refunds = { 'fumi.discussion.licensing': ['Trial', 'Refunds'].map((section) => sharedUncited('fumi', copied, section)) };
+    const refunds = { 'fumi.discussion.licensing': ['Trial', 'Refunds'].map((section) => sharedUncited('fumi', 'licensing', copied, section)) };
     assert.deepStrictEqual([before, alone, named()], [{}, refunds, refunds]);
   });
 
@@ -1119,7 +1133,7 @@ describe('what the check reads once a record is carried', () => {
 
     const named = unfinished()['fumi.discussion.licensing'].filter((problem) => problem.includes('holds text no record'));
 
-    assert.deepStrictEqual(named, ['Decision', 'Hosting'].map((section) => sharedUncited('fumi', copied, section)));
+    assert.deepStrictEqual(named, ['Decision', 'Hosting'].map((section) => sharedUncited('fumi', 'licensing', copied, section)));
   });
 
   it('21.6.14: a cite by any record of the unit settles a shared source\'s section, whichever records walk it; and a section any topic of the unit holds word for word in its own files is settled, of research the unit\'s own record walks too', () => {
@@ -1140,7 +1154,7 @@ describe('what the check reads once a record is carried', () => {
 
     const named = Object.fromEntries(Object.entries(unfinished()).map(([at, problems]) => [at, problems.filter((problem) => problem.includes('holds text no record'))]).filter(([, problems]) => problems.length > 0));
 
-    assert.deepStrictEqual(named, { 'fumi.discovery': [sharedUncited('fumi', exploration, 'Seats')] });
+    assert.deepStrictEqual(named, { 'fumi.discovery': [sharedUncited('fumi', null, exploration, 'Seats')] });
   });
 
   it('21.6.20: once every record of a unit is composed, a contradiction one record names between sections of a source its records share, by its at_odds, is named on each other record citing a side of it and naming it nowhere, and the unit\'s records wait on it — until that record names it, its at_odds holding the same sections, or the session marks it as carrying no side; a record citing neither asked nothing', () => {
@@ -1193,7 +1207,7 @@ describe('what the check reads once a record is carried', () => {
       { 'fumi.discussion.licensing': [unshared('fumi.discussion.licensing', 'fumi.discovery.billing', [rate('Seats'), rate('Flat')])] },
       {},
       {},
-      { 'fumi.discussion.licensing': [unshared('fumi.discussion.licensing', 'fumi.discovery.billing', [corrigenda], [corrigenda, ranking], [`"Corrigenda" in ${corrigenda.path} (approved on 2026-03-30)`, `"Ranking" in ${session} (written on 2026-03-01)`])] },
+      { 'fumi.discussion.licensing': [unshared('fumi.discussion.licensing', 'fumi.discovery.billing', [corrigenda], [corrigenda, ranking], [`"Corrigenda" in ${statePath(dir, corrigenda.path)} (approved on 2026-03-30)`, `"Ranking" in ${statePath(dir, session)} (written on 2026-03-01)`])] },
     ]);
   });
 
@@ -1409,7 +1423,7 @@ describe('the directive\'s example record, frozen with 079', () => {
     const text = fs.readFileSync(DIRECTIVE, 'utf8');
 
     assert.deepStrictEqual([
-      'Write what settles it, a line naming the point and the source or answer it rests on, into the settled file beside the record',
+      'Write what settles it, a line naming the point and the source or answer it rests on, into the settled file beside the record, as its brief names it,',
       'Of a round before the third, where it has the record change, replace the finding with `Settled: {point}, amend to agree`, and where it keeps the record as it stands, take the finding out of the findings file.',
       'A finding of the third round or a later one stays in the findings file as the verifier wrote it.',
       'Then pass the record in the verifier\'s place, every finding of the round on stdin by its number, its list item\'s place in the findings file, one entry naming several settled alike: `{"findings": [{"numbers": [1, 3], "settled", "why"}]}`, `settled` `fixed` or `ruled-out`.',
@@ -1491,7 +1505,7 @@ describe('the directive\'s example record, frozen with 079', () => {
 
     assert.ok(!text.includes('Where that record\'s rulings set the section aside') && !text.includes('Where that topic\'s rulings set the section aside'), 'one path, whatever the rulings');
     assert.deepStrictEqual([
-      'Where it holds a current decision, finding or open question, it goes to the record its subject belongs to — of a spec\'s section, one of the topics the check names it on: write into that record\'s settled file a line naming the section as the record\'s and what of it the record misses, and into its findings `Settled: {section}, amend to agree`. That record is amended to carry it, whatever its rulings said of whose the point is, and verified again.',
+      'Where it holds a current decision, finding or open question, it goes to the record its subject belongs to — of a spec\'s section, one of the topics the check names it on: write into that record\'s settled file, as the check names it, a line naming the section as the record\'s and what of it the record misses, and into its findings `Settled: {section}, amend to agree`. That record is amended to carry it, whatever its rulings said of whose the point is, and verified again.',
       'Where it holds none — a section that frames the others, says again what a cited one holds, holds only what a later answer replaced, or is a corrigendum recording only what a cancelled unit decided — mark it',
       'mark it in `.cache/migrate/records/{unit}.sections.json`, only once you have read it and never by a script over the check\'s list, as the check names the mark:',
       'and of each of its discovery sessions and each asset its records walk, on the topic an asset came in from or a split\'s research bears the name of, else on the unit\'s own record, else on each of its topics — never a section any topic of the unit holds word for word in its own files, of a session a topic the unit promoted too, which that topic\'s verifier walks there with its log\'s later word, but for a section whose text is one line under 40 characters. A cite by any record of the unit settles a section of a session or an asset, whichever records walk it; of a session, a cite by a topic the unit promoted too.',
@@ -1553,10 +1567,10 @@ describe('the directive\'s example record, frozen with 079', () => {
       ].filter((rule) => !briefed.includes(rule)),
       [
         'on each other record citing one of those sections where no entry of it names the same, its `at_odds` holding those sections: the sections, each dated where its source shows when it was approved or written, those it cites and the records naming them.',
-        'and judge first whether the contradiction stands. Where a later answer settles it — an approved spec, or a part of one, approved after the other side was written — it goes to each record naming it, and to the citing record where it carries the side the later answer replaced: a line in each one\'s settled file naming the section that settles it, and into its findings `Settled: {sections} settled by {section}, amend to agree` — the point is then no point at odds: no entry holds `at_odds` for it, its question is not marked `raise`, and the decision agreeing with the later answer answers it; the citing record keeps its answer only where it is the later one.',
+        'and judge first whether the contradiction stands. Where a later answer settles it — an approved spec, or a part of one, approved after the other side was written — it goes to each record naming it, and to the citing record where it carries the side the later answer replaced: a line in each one\'s settled file, as its brief names it, naming the section that settles it, and into its findings `Settled: {sections} settled by {section}, amend to agree` — the point is then no point at odds: no entry holds `at_odds` for it, its question is not marked `raise`, and the decision agreeing with the later answer answers it; the citing record keeps its answer only where it is the later one.',
         'Write every line a later answer owes, on each record naming the contradiction and on each record the check names it on that carries the replaced side, before any of them is amended: once no record names it, the check names it on none.',
         'Where the citing record\'s own log settled the point after the approval, its answer is its log\'s: mark it in `.cache/migrate/records/{unit}.at-odds.json` as its log\'s, as the check names the mark, and the record naming the contradiction keeps naming what its own sources hold.',
-        'Where it stands and the citing record carries a side of the point at odds, write into its settled file a line naming the sections at odds and the point, and that the record carries neither side as settled, and into its findings `Settled: {sections} at odds, amend to agree`. It is amended to carry neither side as settled, naming the contradiction as the record naming it does, its `at_odds` holding the same sections, and verified again. Where what it cites of them is not the point at odds, mark it there as the check names that mark.',
+        'Where it stands and the citing record carries a side of the point at odds, write into its settled file, as the check names it, a line naming the sections at odds and the point, and that the record carries neither side as settled, and into its findings `Settled: {sections} at odds, amend to agree`. It is amended to carry neither side as settled, naming the contradiction as the record naming it does, its `at_odds` holding the same sections, and verified again. Where what it cites of them is not the point at odds, mark it there as the check names that mark.',
       ].filter((rule) => !text.includes(rule)),
     ], [[], []]);
   });
