@@ -177,7 +177,7 @@ ledger since <work-unit> [<topic>]
 ledger shown <work-unit> [<topic>]
 ledger earlier <work-unit> <topic>
 ledger late-check   (the late one-decision check, which boot launches)
-ledger carry <work-unit>.<phase>.<topic>|<work-unit>.discovery [--dry-run]   (the record as JSON, {"entries": [...]}, composed at .cache/migrate/records/{unit}/{topic}.json in the state, a unit's own at .cache/migrate/records/{unit}.json)
+ledger carry <work-unit>.<phase>.<topic>|<work-unit>.discovery [--dry-run]   (the record as JSON, {"entries": [...], "description"?}, composed at .cache/migrate/records/{unit}/{topic}.json in the state, a unit's own at .cache/migrate/records/{unit}.json)
 ledger settle <work-unit>.<phase>.<topic>|<work-unit>.discovery   (every finding of the round by its number as JSON on stdin, {"findings": [{"numbers", "settled", "why"}]}, settled fixed or ruled-out)
 ```
 

@@ -43,7 +43,7 @@ const { listOld } = require('./migration-audit.cjs');
 const SCRIPTS = path.dirname(harness.ENGINE);
 const { jsonText } = require(path.join(SCRIPTS, 'kernel/manifest-io.cjs'));
 const { composedPath, findingsPath, checkedPath, roundsPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
-const { passedBeside } = require('./migration-world.cjs');
+const { passedBeside, recordText } = require('./migration-world.cjs');
 
 const PROJECT = 'fumi';
 const LISTING = 'old-state.json';
@@ -186,8 +186,8 @@ const RECORDS_COMPOSED = Object.freeze({
   'shop.discussion.cart': [
     { ref: 'q1', event: 'asked', text: 'How is an item added?', by: 'claude', cites: [logCite('shop', 'cart', 'Adding')] },
     { ref: 'd1', event: 'decided', answers: 'q1', text: 'One tap.', why: 'The log settles it.', by: 'claude', given: 'carried', cites: [logCite('shop', 'cart', 'Adding'), specCite('shop', 'Adding')] },
-    { ref: 'q2', event: 'asked', text: 'How long does the cart keep items?', by: 'claude', cites: [specCite('shop', 'Notes')] },
-    { ref: 'd2', event: 'decided', answers: 'q2', text: 'A week.', why: 'Decided at the spec stage.', by: 'claude', given: 'carried', cites: [specCite('shop', 'Notes')] },
+    { ref: 'q2', event: 'asked', text: 'How long does the cart keep items?', by: 'claude', cites: [specCite('shop', '1. Cart > Notes')] },
+    { ref: 'd2', event: 'decided', answers: 'q2', text: 'A week.', why: 'Decided at the spec stage.', by: 'claude', given: 'carried', cites: [specCite('shop', '1. Cart > Notes')] },
   ],
   'shop.discussion.pay': [
     { ref: 'q1', event: 'asked', text: 'Which cards are taken?', by: 'claude', cites: [logCite('shop', 'pay', 'Cards')] },
@@ -236,21 +236,21 @@ function workDirective(dir, env, directive) {
     assert.deepStrictEqual(unfinished.map(({ name }) => name).sort(), Object.keys(RECORDS_COMPOSED).sort(), 'the records\' check names each topic as the brief and the carry take it');
     const compose = (/** @type {string} */ place, /** @type {unknown[]} */ entries) => {
       const [unit, , topic = null] = place.split('.');
-      writeState(dir, composedPath(unit, topic), JSON.stringify({ entries }));
+      writeState(dir, composedPath(unit, topic), recordText(entries));
       assert.deepStrictEqual(harness.ok(dir, ['ledger', 'carry', place, '--dry-run'], opts).faults, [], `${place}'s record keeps the rules`);
       for (const [rel, text] of passedBeside(unit, topic, entries)) writeState(dir, rel, text);
     };
     const cart = RECORDS_COMPOSED['shop.discussion.cart'];
     for (const [place, entries] of Object.entries(RECORDS_COMPOSED)) compose(place, place === 'shop.discussion.pay' ? entries.map(({ cites, ...entry }) => ({ ...entry, cites: cites.slice(0, 1) })) : entries);
-    /** Each section of shop's spec the check names on a topic of it, as `{section} in {part}`. @param {string} name */
+    /** Each section of shop's spec the check names on a topic of it, as a cite names it. @param {string} name */
     const uncited = (name) => harness.ok(dir, ['migrate', 'check', RECORDS], opts).unfinished.find((piece) => piece.name === name)?.problems
-      .flatMap((problem) => /^"(.+?)" in part "(.+?)" of shop\/spec\.md, an approved spec/.exec(problem)?.slice(1).join(' in ') ?? []);
+      .flatMap((problem) => /^"(.+?)" in shop\/spec\.md, an approved spec/.exec(problem)?.[1] ?? []);
     const cited = [uncited('shop.discussion.cart'), uncited('shop.discussion.pay')];
     compose('shop.discussion.cart', cart.filter(({ ref }) => !['q2', 'd2'].includes(ref)));
     writeState(dir, '.cache/migrate/records/shop.sections.json', JSON.stringify({ 'shop/spec.md': { '2. Pay': ['Notes'] } }));
     const marked = [uncited('shop.discussion.cart'), uncited('shop.discussion.pay')];
-    assert.deepStrictEqual([cited, marked], [[[], ['Cards in 2. Pay', 'Notes in 2. Pay']], [['Notes in 1. Cart'], ['Cards in 2. Pay']]],
-      'a joined spec\'s section is named on the topic whose part holds it, a part\'s front matter holding none of its text: a cite counts in its topic\'s part alone, and a mark in its own');
+    assert.deepStrictEqual([cited, marked], [[[], ['2. Pay > Cards', '2. Pay > Notes']], [['1. Cart > Notes'], ['2. Pay > Cards']]],
+      'a joined spec\'s section is named on the topic whose part holds it, a part\'s front matter holding none of its text: a cite by its part counts for that part\'s copy alone, and a mark in its own');
     compose('shop.discussion.cart', cart);
     compose('shop.discussion.pay', RECORDS_COMPOSED['shop.discussion.pay']);
     settleLate(dir, opts, 'exports.discussion.exports');

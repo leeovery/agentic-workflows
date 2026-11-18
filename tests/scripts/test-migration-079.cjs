@@ -70,7 +70,7 @@ const os = require('os');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
 const { ok, okSections, okSectionsAsync, git, statePath, layout, writeState, readState, createFile, initRepo, commitAll, cleanupFixture } = harness;
-const { SESSION, recordsMigration, refusedKeeping, refusedUntouched, passedBeside } = require('./migration-world.cjs');
+const { SESSION, recordsMigration, refusedKeeping, refusedUntouched, passedBeside, recordText, DESCRIBED } = require('./migration-world.cjs');
 const { templateFolder, copyWorld } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
@@ -163,7 +163,7 @@ function recordOf(dotpath) {
 /** The ledger carry of a record, composed where the directive keeps it and passed by its verifier. @param {string} at @param {string} dotpath @param {unknown[]} entries */
 function carryArgs(at, dotpath, entries) {
   const [unit, topic] = recordOf(dotpath);
-  writeState(at, composedPath(unit, topic), JSON.stringify({ entries }));
+  writeState(at, composedPath(unit, topic), recordText(entries));
   for (const [rel, text] of passedBeside(unit, topic, entries)) writeState(at, rel, text);
   return ['ledger', 'carry', dotpath];
 }
@@ -187,6 +187,9 @@ const EMPTY = 'its record is empty, and it has sources — a spec it draws on, o
 /** The refusal of a record breaking the rules, its problems listed. @param {string} unit @param {string} topic @param {string[]} problems */
 const breaks = (unit, topic, problems) => `ledger carry: ${unit}'s ${topic} breaks the records directive's rules, so nothing is carried — ${problems.join('; ')}`;
 
+/** The fault of a record that does not say what its topic is about, where no map row says it. */
+const DESCRIBE = 'no map row says what its topic is about, and its record says it in no line: give it "description", beside its entries, one line saying what the topic is about';
+
 /** search's record with neither its map items nor its thread named. */
 const bareSearch = () => GOOD['fumi.discussion.search'].map(({ map_item: _, thread: __, ...entry }) => entry);
 
@@ -198,10 +201,11 @@ const SEARCH_UNCARRIED = Object.freeze([
 
 /**
  * What a section of an approved spec no record cites breaks, in its part of
- * a joined spec where it is in one.
+ * a joined spec where it is in one: named as a cite names it, its part's
+ * heading first, and marked under its part by its name there.
  * @param {string} unit @param {string} at @param {string} section @param {string|null} [part]
  */
-const uncited = (unit, at, section, part = null) => `"${section}" in ${part === null ? '' : `part "${part}" of `}${at}, an approved spec, holds text no record of ${unit} cites — what the spec stage decided, found or left open, still current, is carried by the topic it belongs to; a section holding none, or only what a later answer replaced or a cancelled unit alone decided, is marked in ${sectionsMarked(unit)} as ${JSON.stringify({ [at]: part === null ? [section] : { [part]: [section] } })}`;
+const uncited = (unit, at, section, part = null) => `"${part === null ? section : `${part} > ${section}`}" in ${at}, an approved spec, holds text no record of ${unit} cites — what the spec stage decided, found or left open, still current, is carried by the topic it belongs to; a section holding none, or only what a later answer replaced or a cancelled unit alone decided, is marked in ${sectionsMarked(unit)} as ${JSON.stringify({ [at]: part === null ? [section] : { [part]: [section] } })}`;
 
 /**
  * What a section no record cites breaks, of a source the unit's records walk
@@ -247,7 +251,7 @@ function approvedCommerce(made) {
 const shopUncited = (part, sections) => sections.map((section) => uncited('shop', 'shop/spec.md', section, part));
 
 /** What a cite naming several headings breaks, naming each it reaches as one cite would name it alone. @param {string} name @param {string} at @param {string[]} names */
-const tellApart = (name, at, names) => `cites "${name}" in ${at}, which holds ${names.length} headings so named — a cite names one, by the path that tells it apart, or, of headings sharing their path, by its place among them: ${names.map((each) => `"${each}"`).join(', ')}`;
+const tellApart = (name, at, names) => `cites "${name}" in ${at}, which holds ${names.length} headings so named — a cite names one, by its part in a joined spec, by the path that tells it apart, or, of headings sharing their path, by its place among them: ${names.map((each) => `"${each}"`).join(', ')}`;
 
 /** What an old map's subtopic no entry names breaks. @param {string} item @param {string} status */
 const unnamed = (item, status) => `${item} is on its old map, ${status}, and no entry names it as its map_item`;
@@ -296,6 +300,21 @@ describe('a record breaking a rule is refused at the carry, its refusal kept bes
     carry('fumi.discussion.search', GOOD['fumi.discussion.search']);
 
     assert.strictEqual(unfinished()['fumi.discussion.search'], undefined);
+  });
+
+  it('a topic no map row of its unit, nor of one that promoted it, says what it is about: its record says it in a line beside its entries, refused at the carry without one; a topic its map row says it of owes none', () => {
+    const faults = (/** @type {string} */ dotpath) => {
+      const [unit, , topic] = dotpath.split('.');
+      writeState(dir, composedPath(unit, topic), JSON.stringify({ entries: GOOD[dotpath], description: ' ' }));
+      return ok(dir, ['ledger', 'carry', dotpath, '--dry-run'], { env: SESSION }).faults;
+    };
+    const unsaid = [faults('fumi.discovery.billing'), faults('platform.discussion.auth')];
+    const manifest = JSON.parse(readState(dir, layout.manifest('fumi')));
+    manifest.phases.discovery.items.billing.summary = 'Invoices, refunds and seat billing.';
+    manifest.phases.discovery.items.auth = { status: 'pending', summary: 'Who signs in, and for how long.' };
+    writeState(dir, layout.manifest('fumi'), JSON.stringify(manifest));
+
+    assert.deepStrictEqual([unsaid, [faults('fumi.discovery.billing'), faults('platform.discussion.auth')]], [[[DESCRIBE], [DESCRIBE]], [[], []]]);
   });
 
   it('an entry citing nothing, a file the state lacks, or a heading its file lacks; one its file holds more than once named by the path that tells it apart', () => {
@@ -498,7 +517,7 @@ describe('a record breaking a rule is refused at the carry, its refusal kept bes
 
     assert.deepStrictEqual([logBare, specBare, told, atop], [
       breaks('fumi', 'licensing', [`entry d1 ${tellApart('Decision', log, ['Trial Length > Decision', 'Seats > Decision'])}`]),
-      breaks('shop', 'weights', [`entry q1 ${tellApart('Detail', 'shop/spec.md', ['Ranking > Detail', 'Corrigenda > Detail'])}`, `entry q1 ${tellApart('Ranking', 'shop/spec.md', ['1. Weights > Ranking', '2. Wishlist > Ranking'])}`]),
+      breaks('shop', 'weights', [`entry q1 ${tellApart('Detail', 'shop/spec.md', ['1. Weights > Ranking > Detail', '1. Weights > Corrigenda > Detail'])}`, `entry q1 ${tellApart('Ranking', 'shop/spec.md', ['1. Weights > Ranking', '2. Wishlist > Ranking'])}`]),
       [[], []],
       [],
     ]);
@@ -514,26 +533,19 @@ describe('a record breaking a rule is refused at the carry, its refusal kept bes
     carry('fumi.discussion.licensing', licensing('Seats > Decision [2]'));
   });
 
-  it('a spec\'s heading its topic\'s parts lack, cited, is named alone among every part\'s — two copies another part holds refused, one each of two parts too, where the topic draws on none of them — and taken by the path, or the place, that tells it apart', () => {
+  it('a heading several parts of a joined spec hold, cited bare, refused naming each by its part — never read in the part its topic draws on — and each copy taken by its part, whatever headings stand between, or by a path naming it alone', () => {
     const old = path.join(dir, '.workflows/shop/manifest.json');
     const manifest = JSON.parse(fs.readFileSync(old, 'utf8'));
     manifest.phases.specification.items.wishlist.sources = {};
     fs.writeFileSync(old, JSON.stringify(manifest));
-    fs.appendFileSync(statePath(dir, 'shop/spec.md'), '\n### Notes\n\nOne.\n\n### Notes\n\nTwo.\n');
+    const spec = readState(dir, 'shop/spec.md');
+    writeState(dir, 'shop/spec.md', `${spec.replace('## 2. Wishlist', '#### Dependencies\n\nThe ranking store.\n\n## 2. Wishlist')}\n#### Specification\n\n##### Dependencies\n\nThe saved list.\n`);
     const [question, decision] = GOOD['shop.discussion.weights'];
-    const weights = (/** @type {string} */ section) => [{ ...question, cites: [{ path: 'shop/spec.md', section }] }, decision];
     /** @param {string} section */
-    const faults = (section) => ok(dir, [...carryArgs(dir, 'shop.discussion.weights', weights(section)), '--dry-run'], { env: SESSION }).faults;
+    const faults = (section) => ok(dir, [...carryArgs(dir, 'shop.discussion.weights', [{ ...question, cites: [{ path: 'shop/spec.md', section }] }, decision]), '--dry-run'], { env: SESSION }).faults;
 
-    const otherPart = [faults('Notes'), faults('Notes [2]')];
-    const { weights: drawn, ...others } = manifest.phases.specification.items;
-    manifest.phases.specification.items = { ...others, pricing: drawn };
-    fs.writeFileSync(old, JSON.stringify(manifest));
-    const noPart = [faults('Ranking'), faults('2. Wishlist > Ranking')];
-
-    assert.deepStrictEqual([otherPart, noPart], [
-      [[`entry q1 ${tellApart('Notes', 'shop/spec.md', ['Notes [1]', 'Notes [2]'])}`], []],
-      [[`entry q1 ${tellApart('Ranking', 'shop/spec.md', ['1. Weights > Ranking', '2. Wishlist > Ranking'])}`], []],
+    assert.deepStrictEqual(['Dependencies', '1. Weights > Dependencies', '2. Wishlist > Dependencies', 'Specification > Dependencies'].map(faults), [
+      [`entry q1 ${tellApart('Dependencies', 'shop/spec.md', ['1. Weights > Dependencies', '2. Wishlist > Dependencies'])}`], [], [], [],
     ]);
   });
 });
@@ -798,7 +810,7 @@ describe('what the check reads once a record is carried', () => {
     dir = carriedWorld();
     writeState(dir, layout.topic('gone', 'gone', 'log.md'), '## Discussion\n\nA race.\n');
     writeState(dir, carriedPath('platform', 'auth'), JSON.stringify({ unit: 'platform', phase: 'discussion', topic: 'auth', entries: [{ ref: 'q1', id: 'aaaaaaaaaaaaaaaaaaaaa' }], record: { entries: GOOD['platform.discussion.auth'] } }));
-    writeState(dir, carriedPath('shop', 'weights'), JSON.stringify({ unit: 'shop', phase: 'discussion', topic: 'weights', entries: [], record: { entries: [] } }));
+    writeState(dir, carriedPath('shop', 'weights'), JSON.stringify({ unit: 'shop', phase: 'discussion', topic: 'weights', entries: [], record: { entries: [], description: DESCRIBED } }));
 
     assert.deepStrictEqual(unfinished(), {
       'gone.discussion.gone': ['entry q1 cites "Cause" in gone/topics/gone/log.md, which has no such heading'],
@@ -822,7 +834,7 @@ describe('what the check reads once a record is carried', () => {
   it('once every topic of a unit has a record, composed or carried, each section of its approved specs holding text that no record cites is named on the topics drawing on it — a joined spec\'s by its part, a heading two parts share once in each — asking no composer for an entry, until a record cites it or the session marks it, a mark in its part alone, as holding no topic\'s (21.6.4); the record named passed and waiting to be carried only once the carry\'s own guards hold, else what they name', () => {
     dir = world();
     const [q1, d1] = GOOD['shop.discussion.weights'];
-    writeState(dir, composedPath('shop', 'weights'), JSON.stringify({ entries: [q1, d1] }));
+    writeState(dir, composedPath('shop', 'weights'), recordText([q1, d1]));
 
     const composed = unfinished()['shop.discussion.weights'];
     writeState(dir, sectionsMarked('shop'), JSON.stringify({ 'shop/spec.md': { '2. Wishlist': ['Saving', 'Ranking'] } }));
@@ -865,7 +877,7 @@ describe('what the check reads once a record is carried', () => {
     const spec = (/** @type {string[]} */ sections) => sections.map((section) => ({ path: 'shop/spec.md', section }));
     /** The copies of Detail the check names, d2 citing `sections`. @param {string[]} sections */
     const details = (sections) => {
-      writeState(dir, composedPath('shop', 'weights'), JSON.stringify({ entries: [q1, { ...d1, cites: spec(['Corrigenda']) }, q2, { ...d2, cites: spec(sections) }, ...rest] }));
+      writeState(dir, composedPath('shop', 'weights'), recordText([q1, { ...d1, cites: spec(['Corrigenda']) }, q2, { ...d2, cites: spec(sections) }, ...rest]));
       return unfinished()['shop.discussion.weights'].filter((problem) => problem.includes('Detail'));
     };
 
@@ -884,7 +896,7 @@ describe('what the check reads once a record is carried', () => {
   it('a spec kept whole with no one root: a heading atop it named by its own heading, its copy under another by its path, each settled by its own mark', () => {
     dir = world();
     const commerce = approvedCommerce(() => '## Decision\n\nThirty days.\n\n## Option A\n\n### Decision\n\nFourteen days.\n');
-    for (const [dotpath, entries] of Object.entries(GOOD).filter(([at]) => at.startsWith('fumi.'))) writeState(dir, composedPath('fumi', dotpath.split('.')[2]), JSON.stringify({ entries }));
+    for (const [dotpath, entries] of Object.entries(GOOD).filter(([at]) => at.startsWith('fumi.'))) writeState(dir, composedPath('fumi', dotpath.split('.')[2]), recordText(entries));
     const named = () => unfinished()['fumi.discussion.licensing'].filter((problem) => problem.includes(commerce));
 
     const before = named();
@@ -900,7 +912,7 @@ describe('what the check reads once a record is carried', () => {
     for (const [dotpath, entries] of Object.entries(GOOD).filter(([at]) => at.startsWith('fumi.'))) {
       const topic = dotpath.split('.')[2];
       const record = topic === 'licensing' ? entries.filter(({ ref }) => !['q2', 'd2'].includes(ref)) : topic === 'search' ? [...entries, answered] : entries;
-      writeState(dir, composedPath('fumi', topic), JSON.stringify({ entries: record }));
+      writeState(dir, composedPath('fumi', topic), recordText(record));
     }
 
     assert.deepStrictEqual(unfinished()['fumi.discussion.licensing'].filter((problem) => problem.includes(commerce)), [uncited('fumi', commerce, 'Corrigenda')]);
@@ -914,7 +926,7 @@ describe('what the check reads once a record is carried', () => {
     const fumi = Object.entries(GOOD).filter(([at]) => at.startsWith('fumi.'));
     for (const [dotpath, entries] of [...fumi, ['platform.discussion.auth', GOOD['platform.discussion.auth']]].filter(([at]) => at !== 'fumi.discovery.support')) {
       const [unit, , topic] = dotpath.split('.');
-      writeState(dir, composedPath(unit, topic), JSON.stringify({ entries }));
+      writeState(dir, composedPath(unit, topic), recordText(entries));
     }
     const named = () => {
       const left = unfinished();
@@ -923,7 +935,7 @@ describe('what the check reads once a record is carried', () => {
     const sso = sharedUncited('fumi', layout.assets('fumi', 'sso.md'), 'SSO');
 
     const before = named();
-    writeState(dir, composedPath('fumi', 'support'), JSON.stringify({ entries: [] }));
+    writeState(dir, composedPath('fumi', 'support'), recordText([]));
     const composed = named();
     writeState(dir, sectionsMarked('fumi'), JSON.stringify({ [layout.assets('fumi', 'rates.md')]: ['Discounts'] }));
 
@@ -937,20 +949,40 @@ describe('what the check reads once a record is carried', () => {
     ]);
   });
 
+  it('a walked asset\'s heading held twice, by paths that tell it apart: a bare cite or mark settles neither copy, never the first, and one by its path its own alone', () => {
+    dir = world();
+    const sso = layout.assets('fumi', 'sso.md');
+    writeState(dir, sso, '# SSO\n\n## Seats\n\n### Notes\n\nBilled per seat.\n\n## Teams\n\n### Notes\n\nBilled per team.\n');
+    for (const [dotpath, entries] of Object.entries(GOOD).filter(([at]) => at.startsWith('fumi.') || at === 'platform.discussion.auth')) {
+      const [unit, , topic] = dotpath.split('.');
+      writeState(dir, composedPath(unit, topic), recordText(entries));
+    }
+    /** The sections of the asset named on licensing, `marks` marked. @param {string[]} marks */
+    const named = (marks) => {
+      writeState(dir, sectionsMarked('fumi'), JSON.stringify({ [sso]: marks }));
+      return unfinished()['fumi.discussion.licensing'].filter((problem) => problem.includes(sso));
+    };
+
+    assert.deepStrictEqual([named(['Notes']), named(['Seats > Notes'])], [
+      ['Seats > Notes', 'Teams > Notes'].map((section) => sharedUncited('fumi', sso, section)),
+      [sharedUncited('fumi', sso, 'Teams > Notes')],
+    ]);
+  });
+
   it('21.6.14: in a unit with a record of its own, a discovery session\'s section, or an asset\'s no topic came in with, is named on it, each source\'s once every record walking it has one composed — of a session, a topic the unit promoted among them; of a split\'s research bearing no topic\'s name, the unit\'s own alone; a cite of the unit\'s own record, or of the topic it promoted, settles a section as any record\'s does', () => {
     dir = world();
     const session = layout.unit('fumi', 'discovery', 'session-001.md');
     writeState(dir, session, '## Discovery Session 001\n\n### Teams\n\nFor teams.\n\n### Sign-in\n\nOne sign-in across the product.\n');
     const exploration = layout.assets('fumi', 'research', 'exploration-superseded-20260101.md');
     writeState(dir, exploration, '# Exploration\n\n## Seats\n\nPer seat.\n\n## Hosting\n\nOn our servers.\n');
-    for (const [dotpath, entries] of Object.entries(GOOD).filter(([at]) => at.startsWith('fumi.'))) writeState(dir, composedPath('fumi', dotpath.split('.')[2]), JSON.stringify({ entries }));
+    for (const [dotpath, entries] of Object.entries(GOOD).filter(([at]) => at.startsWith('fumi.'))) writeState(dir, composedPath('fumi', dotpath.split('.')[2]), recordText(entries));
     const found = (/** @type {string} */ text, /** @type {string} */ at, /** @type {string} */ section) => ({ ref: 'f9', event: 'found', text, how: 'read', known: 'read', by: 'claude', product_wide: true, cites: [{ path: at, section }] });
-    const own = (/** @type {Record<string, unknown>} */ entry) => writeState(dir, composedPath('fumi', null), JSON.stringify({ entries: [entry] }));
+    const own = (/** @type {Record<string, unknown>} */ entry) => writeState(dir, composedPath('fumi', null), recordText([entry]));
     const named = () => Object.fromEntries(Object.entries(unfinished()).filter(([at]) => at.startsWith('fumi.')).map(([at, problems]) => [at, problems.filter((problem) => problem.includes('holds text no record'))]).filter(([, problems]) => problems.length > 0));
 
     own(found('The product is for teams.', session, 'Teams'));
     const promotedUncomposed = named();
-    writeState(dir, composedPath('platform', 'auth'), JSON.stringify({ entries: [...GOOD['platform.discussion.auth'], found('One sign-in across the product.', session, 'Sign-in')] }));
+    writeState(dir, composedPath('platform', 'auth'), recordText([...GOOD['platform.discussion.auth'], found('One sign-in across the product.', session, 'Sign-in')]));
     const composed = named();
     own(found('Hosting is on our servers.', exploration, 'Hosting'));
 
@@ -968,7 +1000,7 @@ describe('what the check reads once a record is carried', () => {
     writeState(dir, copied, `# Licensing\n\n### Trial Length\n\n#### Decision\n\n${DECIDED}\n\n### Trial\n\n${DECIDED}\n\n### Refunds\n\nWithin a week.\n`);
     writeState(dir, layout.assets('fumi', 'research', 'exploration-superseded-20260101.md'), '# Exploration\n\n## Seats\n\nPer seat.\n');
     const named = () => Object.fromEntries(Object.entries(unfinished()).map(([at, problems]) => [at, problems.filter((problem) => problem.includes('holds text no record'))]).filter(([, problems]) => problems.length > 0));
-    const compose = (/** @type {string} */ dotpath) => writeState(dir, composedPath('fumi', dotpath.split('.')[2]), JSON.stringify({ entries: GOOD[dotpath] }));
+    const compose = (/** @type {string} */ dotpath) => writeState(dir, composedPath('fumi', dotpath.split('.')[2]), recordText(GOOD[dotpath]));
 
     const before = named();
     compose('fumi.discussion.licensing');
@@ -985,7 +1017,7 @@ describe('what the check reads once a record is carried', () => {
     writeState(dir, layout.topic('fumi', 'licensing', 'log.md'), `${decidedLog(' Twice.')}\n${sections}`);
     const copied = layout.assets('fumi', 'research', 'licensing-superseded-20260101.md');
     writeState(dir, copied, `# Licensing\n\n### Trial Length\n\n#### Decision\n\n${DECIDED}\n\n${sections}\n`);
-    writeState(dir, composedPath('fumi', 'licensing'), JSON.stringify({ entries: GOOD['fumi.discussion.licensing'] }));
+    writeState(dir, composedPath('fumi', 'licensing'), recordText(GOOD['fumi.discussion.licensing']));
 
     const named = unfinished()['fumi.discussion.licensing'].filter((problem) => problem.includes('holds text no record'));
 
@@ -1004,9 +1036,9 @@ describe('what the check reads once a record is carried', () => {
     for (const [dotpath, entries] of Object.entries(GOOD).filter(([at]) => at.startsWith('fumi.'))) {
       const topic = dotpath.split('.')[2];
       const extra = topic === 'search' ? [found('f8', 'Refunds come within a week.', copied, 'Refunds'), found('f9', 'Hosting is on our servers.', exploration, 'Hosting')] : [];
-      writeState(dir, composedPath('fumi', topic), JSON.stringify({ entries: [...entries, ...extra] }));
+      writeState(dir, composedPath('fumi', topic), recordText([...entries, ...extra]));
     }
-    writeState(dir, composedPath('fumi', null), JSON.stringify({ entries: [] }));
+    writeState(dir, composedPath('fumi', null), recordText([]));
 
     const named = Object.fromEntries(Object.entries(unfinished()).map(([at, problems]) => [at, problems.filter((problem) => problem.includes('holds text no record'))]).filter(([, problems]) => problems.length > 0));
 
@@ -1019,7 +1051,7 @@ describe('what the check reads once a record is carried', () => {
     writeState(dir, sectionsMarked('fumi'), JSON.stringify({ [layout.assets('fumi', 'rates.md')]: ['Rates'] }));
     for (const [dotpath, entries] of Object.entries(GOOD).filter(([at]) => at.startsWith('fumi.') && at !== 'fumi.discussion.licensing')) {
       const topic = dotpath.split('.')[2];
-      writeState(dir, composedPath('fumi', topic), JSON.stringify({ entries }));
+      writeState(dir, composedPath('fumi', topic), recordText(entries));
       if (topic === 'search') {
         writeState(dir, verifyingPath('fumi', topic), JSON.stringify({ hash: crypto.createHash('sha256').update(readState(dir, composedPath('fumi', topic))).digest('hex'), refs: [], entries: {}, settled: true }));
       } else {
@@ -1041,7 +1073,7 @@ describe('what the check reads once a record is carried', () => {
     const waits = (/** @type {string[]} */ reasons) => waitsOn('platform', 'auth', reasons, 'fumi');
     const signIn = { ref: 'f9', event: 'found', text: 'One sign-in across the product.', how: 'read', known: 'read', by: 'claude', product_wide: true, cites: [{ path: session, section: 'Sign-in' }] };
     const passed = (/** @type {string} */ unit, /** @type {string|null} */ topic, /** @type {Record<string, unknown>[]} */ entries) => {
-      writeState(dir, composedPath(unit, topic), JSON.stringify({ entries }));
+      writeState(dir, composedPath(unit, topic), recordText(entries));
       writeState(dir, findingsPath(unit, topic), '');
       writeState(dir, checkedPath(unit, topic), entries.map(({ ref }) => `${ref}: ok\n`).join(''));
     };
@@ -1070,7 +1102,7 @@ describe('what the check reads once a record is carried', () => {
     const waits = (/** @type {string[]} */ reasons) => waitsOn('fumi', 'licensing', reasons);
     const licensing = () => refusedUntouched(dir, carryArgs(dir, 'fumi.discussion.licensing', GOOD['fumi.discussion.licensing']), { env: SESSION }, harness);
     const passed = (/** @type {string} */ unit, /** @type {string|null} */ topic, /** @type {unknown[]} */ entries) => {
-      writeState(dir, composedPath(unit, topic), JSON.stringify({ entries }));
+      writeState(dir, composedPath(unit, topic), recordText(entries));
       writeState(dir, findingsPath(unit, topic), '');
       writeState(dir, checkedPath(unit, topic), entries.map((entry) => `${/** @type {{ref: string}} */ (entry).ref}: ok\n`).join(''));
     };
@@ -1101,7 +1133,7 @@ describe('what the check reads once a record is carried', () => {
 
     const alone = licensing();
     for (const [dotpath, entries] of Object.entries(GOOD).filter(([at]) => at.startsWith('fumi.') && at !== 'fumi.discussion.licensing')) {
-      writeState(dir, composedPath('fumi', dotpath.split('.')[2]), JSON.stringify({ entries }));
+      writeState(dir, composedPath('fumi', dotpath.split('.')[2]), recordText(entries));
       writeState(dir, checkedPath('fumi', dotpath.split('.')[2]), entries.map(({ ref }) => `${ref}: ok\n`).join(''));
     }
     const unverified = licensing();
