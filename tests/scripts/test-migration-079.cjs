@@ -592,18 +592,23 @@ describe('a unit\'s own record, `{unit}.discovery` (21.6.2)', () => {
       [false, none('shop'), none('gone')]);
   });
 
-  it('21.6.7: each thread still open of research under no topic\'s name, which fed several topics, is named by the unit\'s own record, and by each of its topics where it has none', () => {
+  it('21.6.7: each thread still open of research under no topic\'s name, which fed several topics, is named by an epic\'s own record, and by each of its topics where it has none; a feature\'s, by its one topic', () => {
     dir = world();
-    const old = path.join(dir, '.workflows/fumi/manifest.json');
-    const fumi = JSON.parse(fs.readFileSync(old, 'utf8'));
-    fumi.phases.research.items.exploration = { status: 'in-progress', threads: { 'pricing-model': { question: 'Seats or usage?', status: 'open', origin: 'seed', parent: null } } };
-    fs.writeFileSync(old, JSON.stringify(fumi));
-    const thread = 'the thread pricing-model is still open in the research exploration, and no entry names it as its thread';
+    /** A research item with an open thread put in a unit's old manifest. @param {string} unit @param {string} research @param {string} thread */
+    const stray = (unit, research, thread) => {
+      const old = path.join(dir, '.workflows', unit, 'manifest.json');
+      const manifest = JSON.parse(fs.readFileSync(old, 'utf8'));
+      manifest.phases.research = { items: { ...manifest.phases.research?.items, [research]: { status: 'in-progress', threads: { [thread]: { question: 'Seats or usage?', status: 'open', origin: 'seed', parent: null } } } } };
+      fs.writeFileSync(old, JSON.stringify(manifest));
+      return `the thread ${thread} is still open in the research ${research}, and no entry names it as its thread`;
+    };
+    const thread = stray('fumi', 'exploration', 'pricing-model');
+    const postmortem = stray('gone', 'postmortem', 'root-cause');
     const session = 'fumi/discovery/session-001.md';
-    /** The records whose carry names the thread unnamed, each dry run with `entries`, its good record by default. @param {string[]} dotpaths @param {unknown[]} [entries] */
-    const naming = (dotpaths, entries) => dotpaths.filter((dotpath) => {
+    /** The records whose carry names `unnamed`, each dry run with `entries`, its good record by default. @param {string[]} dotpaths @param {unknown[]} [entries] @param {string} [unnamed] */
+    const naming = (dotpaths, entries, unnamed = thread) => dotpaths.filter((dotpath) => {
       carryArgs(dir, dotpath, entries ?? GOOD[dotpath]);
-      return ok(dir, ['ledger', 'carry', dotpath, '--dry-run'], { env: SESSION }).faults.includes(thread);
+      return ok(dir, ['ledger', 'carry', dotpath, '--dry-run'], { env: SESSION }).faults.includes(unnamed);
     });
     const topics = PIECES.filter((dotpath) => dotpath.startsWith('fumi.'));
 
@@ -612,7 +617,7 @@ describe('a unit\'s own record, `{unit}.discovery` (21.6.2)', () => {
     const withOwn = [...naming(topics), ...naming(['fumi.discovery'], [])];
     const asked = { ref: 'q1', event: 'asked', text: 'Seats or usage?', by: 'claude', thread: 'pricing-model', cites: [{ path: session, section: 'Research: exploration' }] };
 
-    assert.deepStrictEqual([without, withOwn, naming(['fumi.discovery'], [asked])], [topics, ['fumi.discovery'], []]);
+    assert.deepStrictEqual([without, withOwn, naming(['fumi.discovery'], [asked]), naming(['gone.discussion.gone'], undefined, postmortem)], [topics, ['fumi.discovery'], [], ['gone.discussion.gone']]);
   });
 
   it('a topic promoted to a cross-cutting unit draws on the discovery sessions of the unit it came from, which its entries may cite; another unit\'s they may not', () => {
