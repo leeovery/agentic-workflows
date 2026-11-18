@@ -8,7 +8,8 @@ In a later round, check each finding answered, each scenario, note or correction
 
 The piece passes when nothing material is missing or misstated:
 
-- a phase found built is built in the code, and the tracker holds none of its tasks neither done nor closed once the piece's corrections are made;
+- a phase found built is one whose every task the tracker holds done or closed once the piece's corrections are made, whatever the manifest counted, and each task the piece ends the code holds;
+- a task the tracker holds done that the code lacks stays done, with a note saying what is missing: the task is never a finding, and a piece without that note has one;
 - a phase still to build has at least one scenario, each acceptance criterion of its tasks still to build is carried by a scenario, or, for an area no plan put in the tracker, each rule of each section of the area, and it relies on each phase its plan's dependencies name;
 - each disagreement the phase names is settled by a correction, and no task its sources show done, superseded or no longer wanted is carried on as work to build;
 - each correction says what was wrong, what was found and what was changed, and the code bears out what it found: read the code for it;

@@ -30,7 +30,8 @@
 // old plan's topic; a link holding a task not ended after an unfinished one
 // of a later phase or another unit's, naming each by its titles and the
 // remedy, the tracker's, the tracker left as it was so a plan cut in the
-// link's order is then taken; and, writing nothing at all, a built phase
+// link's order is then taken, or, the link taken off, the waiting phase
+// relying on the other unit (21.S62); and, writing nothing at all, a built phase
 // naming no tracker parent or no section, a phase still to build placing no
 // scenario, an area of the joined spec no phase places, and every refusal
 // of the verb's own —
@@ -430,7 +431,7 @@ describe('the migration\'s cut of a unit whose building started (21.7.1, 21.8.6�
     assert.ok(!/staging|bank/.test(readState(dir, 'shop/manifest.json')), 'no staging, banked finding or old item stands on the manifest');
   });
 
-  it('refuses, nothing written to the tracker or the unit, a link holding a task neither done nor closed after one neither, of a later phase or another unit\'s — `task link`\'s rule (12.6.4, 7.1.14) — naming each by its title, and the remedy the tracker\'s, never a piece\'s; a link after an ended task, another unit\'s among them, or holding an ended one, holding nothing up', () => {
+  it('refuses, nothing written to the tracker or the unit, a link holding a task neither done nor closed after one neither, of a later phase or another unit\'s — `task link`\'s rule (12.6.4, 7.1.14) — naming each by its title, and the remedy the tracker\'s, never a piece\'s; a link after an ended task, another unit\'s among them, or holding an ended one, holding nothing up; 21.S62: each taken off, and the phase whose task waited on another unit\'s relying on that unit, the cut runs again', () => {
     const root = statePath(dir);
     DRIVER.adopt(root, 'memo', 1, PLANS.memo.phases[0]);
     cut('tally', tallyPlan());
@@ -444,9 +445,11 @@ describe('the migration\'s cut of a unit whose building started (21.7.1, 21.8.6�
     const plan = cutArgs('shop', shopPlan()).at(-1);
     const unlinked = [['4.2', '5.1'], ['4.3', 'memo-1-1']].map(([task, after]) => ok(dir, ['task', 'unlink', 'shop', task, '--after', after, '--file', String(plan)], { env: SESSION }));
     assert.deepStrictEqual(unlinked.map(({ task, after }) => [task, after]), [['4.2', '5.1'], ['4.3', 'memo-1-1']]);
-    cut('shop', shopPlan());
+    const waiting = shopPlan();
+    cut('shop', { ...waiting, phases: waiting.phases.map((phase, at) => (at === 3 ? { ...phase, relies_on: [3, 'memo'] } : phase)) });
     const after = (/** @type {number} */ n) => DRIVER.show(root, { unit: 'shop', phase: 4, n })?.after.map(({ unit, phase, n: m }) => `${unit}-${phase}-${m}`);
     assert.deepStrictEqual([after(2)?.includes('shop-5-1'), after(3)?.includes('memo-1-1'), after(3)?.includes('shop-3-1')], [false, false, true]);
+    assert.deepStrictEqual(manifestOf('shop').cut.phases[3].relies_on, [3, 'memo']);
   });
 
   it('refuses, nothing written to the tracker or the unit, another unit\'s task neither done nor closed held after one of the unit\'s neither — that unit cut first, before the unit\'s tasks had names — the remedy named through the unit\'s plan, which task unlink takes; a link after one of the unit\'s ended, or holding another unit\'s ended, holding nothing up', () => {

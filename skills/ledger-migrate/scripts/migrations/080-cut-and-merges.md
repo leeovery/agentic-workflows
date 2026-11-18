@@ -3,7 +3,8 @@
 ## Touches
 
 - The tracker, through `task close-plan` for a unit nothing of which was
-  built, and through `cut --migrating` for a unit whose building started,
+  built or a cancelled one, and through `cut --migrating` for a unit whose
+  building started,
   `task unlink` taking off a link the cut refuses that no longer holds.
 - The units, through `workunit retire`, `workunit split` and
   `topic postpone`.
@@ -32,21 +33,21 @@
 
 ## What It Does
 
-Every unit takes the shape Ledger builds from. A unit whose building started is cut into phases from its old plans, the tracker's tasks carried on under them; one nothing of which was built has its old plans' tasks closed in the tracker, its one spec written fresh once its topics are decided; a cross-cutting unit's record becomes the product's, and the unit leaves the registry; and research that fed several topics is placed in the logs of the topics it bears on.
+Every unit takes the shape Ledger builds from. A unit whose building started is cut into phases from its old plans, the tracker's tasks carried on under them; one nothing of which was built has its old plans' tasks closed in the tracker, its one spec written fresh once its topics are decided, and a cancelled one has its old plans' tasks still open closed; a cross-cutting unit's record becomes the product's, and the unit leaves the registry; and research that fed several topics is placed in the logs of the topics it bears on.
 
 The check names each piece not done and what it lacks: `{unit}` for a unit, `{unit}/research` for an epic's research. Work through them in the check's order: a unit's topics leave it before its research is placed. A piece is done once the check names it no more; a session ending part-way leaves the next to carry on from what the check names, and what the person answered is kept, so nothing is asked twice.
 
 Paths below are from the state's folder, but one under `.workflows/`, which is from the project's folder in the main checkout; each phase's brief names both.
 
-## A Unit Nothing of Which Was Built
+## A Unit Nothing of Which Was Built, or Cancelled
 
-Its old plans put tasks in the tracker, and its build will be planned afresh from its spec. Close each plan the check names, by the root it names:
+Its old plans put tasks in the tracker: a unit nothing of which was built will have its build planned afresh from its spec, and a cancelled one builds nothing more, whether its building started or not. Close each plan the check names, by the root it names:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs task close-plan {unit} --parent {root}
 ```
 
-Where the close refuses because the plan holds a task done, the unit built some of it: say so to the person, as the refusal reads, and stop the directive there.
+Where the close of a plan of a unit not cancelled refuses because the plan holds a task done, the unit built some of it: say so to the person, as the refusal reads, and stop the directive there.
 
 ## A Cross-Cutting Unit
 
