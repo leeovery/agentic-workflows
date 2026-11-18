@@ -583,6 +583,14 @@ for (const driver of listDrivers('task')) {
           assert.deepStrictEqual(store(), once);
         });
 
+        it('takes a plan whose every task the tracker already holds closed as closed: none refused, none closed again, nothing changed', () => {
+          const ended = side.oldPlan(root, 'notice', [{ title: 'Notices', tasks: ['Post a notice', 'Pull a notice'] }]);
+          for (const title of ['Post a notice', 'Pull a notice']) side.taskByHand(root, 'cancel', title);
+          const before = store();
+          assert.strictEqual(driver.closePlan(root, 'notice', ended.root, REASON), 0);
+          assert.deepStrictEqual(store(), before);
+        });
+
         it('refuses, closing nothing, a root the tracker lacks, and a plan holding a task done — the tracker winning, its unit built some of it — naming each done', () => {
           const before = store();
           assert.throws(() => driver.closePlan(root, OLD, 'no-such-task', REASON), (err) => err instanceof Error && err.message.includes('no-such-task') && err.message.includes(unitName(OLD)));

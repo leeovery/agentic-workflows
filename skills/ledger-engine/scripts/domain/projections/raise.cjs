@@ -39,7 +39,6 @@
 const { section, menu, cmdOption, promptOption, MENU_INSTRUCTION, CONTINUE_INSTRUCTION, escapeProse, wordsAsWritten } = require('./surfaces.cjs');
 const { titlecase, TREE_WIDTH } = require('../conventions.cjs');
 const { wrapWithPrefix } = require('../../kernel/render.cjs');
-const { titled } = require('../derivations.cjs');
 const { numbered, parkedTasks } = require('../questions.cjs');
 
 /** @typedef {import('../raise.cjs').Seal} Seal */
@@ -103,13 +102,13 @@ function asking({ fact }) {
  * own, by the name it goes by; a question waiting in the build, by its
  * number before them and the tasks it parks after, where it parks any: the
  * first, and how many more (12.12.5).
- * @param {Seal} seal @param {Record<string, string>} titles
+ * @param {Seal} seal @param {string|null} shown the topic's title as screens show it
  */
-function header({ place: { unit, topic }, parks }, titles) {
+function header({ place: { unit, topic }, parks }, shown) {
   return [
     ...(parks === null ? [] : [numbered(parks.number)]),
     titlecase(unit),
-    ...(topic === null || topic === unit ? [] : [titled(titles, topic)]),
+    ...(topic === null || topic === unit ? [] : [shown]),
     ...(parks === null || parks.tasks.length === 0 ? [] : [`parks ${parkedTasks(parks.tasks)}`]),
   ].join(' · ');
 }
@@ -125,15 +124,15 @@ function steppedBack(call) {
  * what the step back found, the lean as shown, what the person would
  * notice, why it asks — none on a blind question — and the mechanism where
  * it is shown.
- * @param {Seal} seal @param {boolean} technical @param {Record<string, string>} titles
+ * @param {Seal} seal @param {boolean} technical @param {string|null} shown the topic's title as screens show it
  * @returns {string[]}
  */
-function statement(seal, technical, titles) {
+function statement(seal, technical, shown) {
   const { call, reason } = seal;
   const lean = call.rows.find((row) => row.key === leanShown(seal));
   const rows = drawnRows(seal);
   const blocks = [
-    [header(seal, titles)],
+    [header(seal, shown)],
     [escapeProse(call.question)],
     steppedBack(call),
     lean === undefined ? [] : [`I lean: ${escapeProse(lean.text)}`],
@@ -145,12 +144,12 @@ function statement(seal, technical, titles) {
 }
 
 /**
- * The raise's MENU, declared as its seal names it; `titles` the place's
- * unit's topic titles.
- * @param {Seal} seal @param {{technical?: boolean, titles: Record<string, string>}} opts
+ * The raise's MENU, declared as its seal names it; `topic` its place's
+ * topic's title as screens show it.
+ * @param {Seal} seal @param {{technical?: boolean, topic: string|null}} opts
  * @returns {string}
  */
-function raiseScreen(seal, { technical = false, titles }) {
+function raiseScreen(seal, { technical = false, topic }) {
   const { id } = seal;
   wordsAsWritten();
   const { question, prompt } = asking(seal);
@@ -160,7 +159,7 @@ function raiseScreen(seal, { technical = false, titles }) {
     cmdOption('e', 'explain', 'I don\'t follow — explain it again', { next: engine(['raise', 'answer', id, '--didnt-follow']) }),
     promptOption('Comment', prompt),
   ];
-  return section(`MENU: ${seal.menu}`, MENU_INSTRUCTION, menu(statement(seal, technical, titles).join('\n'), rows, { question }));
+  return section(`MENU: ${seal.menu}`, MENU_INSTRUCTION, menu(statement(seal, technical, topic).join('\n'), rows, { question }));
 }
 
 /**

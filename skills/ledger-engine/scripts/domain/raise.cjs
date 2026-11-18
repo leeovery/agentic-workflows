@@ -357,7 +357,7 @@ const { carrying } = require('./ledger.cjs');
 const { ROW_FIELDS, CALL_FIELDS: CALL_SHAPE, ASKED_BLIND, entryKind } = require('./ledger-events.cjs');
 const { ID_FACTS, readFolded, foldLedger, questionStands, laterOf, answersOf, notCurrent, factsOf, replacementsOf, whoseDecision } = require('./ledger-fold.cjs');
 const { liveness, manifestOf, measuredBy } = require('./ledger-units.cjs');
-const { topicTitles, quickFixBuild, investigationUnderWay, fixesUnderWay } = require('./derivations.cjs');
+const { topicTitle, quickFixBuild, investigationUnderWay, fixesUnderWay } = require('./derivations.cjs');
 const { verbUsage, writePlaced, landRaised, callLogged, staleness } = require('./ledger-write.cjs');
 const { OVER_THE_LEAN, BACK_TO_THE_LEAN, derivedMove } = require('./ledger-verdicts.cjs');
 const { judgeDecisionAsync } = require('./ledger-one-decision.cjs');
@@ -2201,7 +2201,7 @@ function unraised(cwd, points) {
 function raiseScreenOf(cwd, seal, { technical = false } = {}) {
   const root = findStateRoot(cwd);
   const manifest = root === null ? null : manifestOf(root, seal.place.unit);
-  return raiseScreen(seal, { technical, titles: topicTitles(manifest ?? {}) });
+  return raiseScreen(seal, { technical, topic: seal.place.topic === null ? null : topicTitle(manifest ?? {}, seal.place.topic) });
 }
 
 module.exports = { RAISE_USAGE, drawRaise, drawParked, showRaise, answerRaise, raiseWaits, unraised, raiseScreenOf, steppedBackSealed, downChain, sealsAt, sealWaits, investigationPlaces, raisePlaces };

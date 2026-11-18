@@ -2674,7 +2674,7 @@ const COMMANDS = Object.freeze({
 // longer, so its knowledge pass never holds a peer up; a `ledger` write
 // holds it around its read of the ledger, the append and the commit alone,
 // so what it does before and after holds no peer up — its Claude call among
-// it — the late check holds it around each result it records, and a
+// it — the late check holds it around each batch of results it records, and a
 // `ledger` read takes none; a `raise` draw or `show` writes the
 // conversation's folder alone — its seal, and the gate shown it clears —
 // and its answer, or a draw that proceeds, holds it around its ledger write

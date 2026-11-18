@@ -43,10 +43,10 @@
 //   it, naming it. Every line it writes is tagged with the session
 //   `migration` (ledger-events.cjs, `CARRIED_SESSION`), whoever made the entry, no
 //   conversation's: the mark of an entry from before Ledger, which needs no
-//   session handed. Every entry moves no one; a decision lands unchecked, for
-//   the late one-decision check after the migration, and unlabelled, its
-//   kind and hard-to-undo mark null: no call is made while the migration
-//   runs.
+//   session handed. Every entry moves no one; a decision lands unchecked
+//   and unlabelled, its kind and hard-to-undo mark null: no call is made
+//   while the migration runs, and the late one-decision check never sends
+//   it, the records step having held it to one thing (21.6.3).
 // - Kept: the rules the records directive's check holds a topic's record to
 //   (079-records.check.cjs) — what keeps the ledger whole, never a judgment
 //   of the record's content — run on the record before a line is written,

@@ -1165,12 +1165,26 @@ function goesBy(titles, topic) {
 
 /**
  * How every screen titles a topic of the unit — the one way a topic's name
- * reaches the person: the name it goes by, title-cased.
+ * reaches the person: the name it goes by, title-cased, each word `said`
+ * writes in capitals kept so — a name is a slug, lower case throughout, so
+ * `ai-content-engine`, its description naming AI, is `AI Content Engine`.
  * @param {Record<string, string>} titles the unit's `topicTitles` @param {string} topic
+ * @param {string} [said] what the topic's own words say of it
  * @returns {string}
  */
-function titled(titles, topic) {
-  return titlecase(goesBy(titles, topic));
+function titled(titles, topic, said = '') {
+  const words = goesBy(titles, topic).split('-').map((word) => acronymIn(said, word) ?? word);
+  return titlecase(words.join(' '));
+}
+
+/**
+ * `word` in capitals where `said` writes it so, as a whole word; else
+ * null.
+ * @param {string} said @param {string} word @returns {string|null}
+ */
+function acronymIn(said, word) {
+  const capitals = word.toUpperCase();
+  return /^[A-Z0-9]+$/.test(capitals) && new RegExp(`\\b${capitals}\\b`).test(said) ? capitals : null;
 }
 
 /**
@@ -1185,17 +1199,24 @@ function itemName(titles, phase, name) {
 }
 
 /**
- * How screens title an item of `phase`: `itemName`, title-cased.
- * @param {Record<string, string>} titles the unit's `topicTitles` @param {string} phase @param {string} name
+ * How screens title an item of `phase`, read from the unit's manifest: a
+ * topic as `topicTitle` titles it, a specification and what is built from
+ * it by its own name, title-cased.
+ * @param {object} manifest @param {string} phase @param {string} name
  * @returns {string}
  */
-function itemTitle(titles, phase, name) {
-  return titlecase(itemName(titles, phase, name));
+function itemTitle(manifest, phase, name) {
+  return TOPIC_PHASES.includes(phase) ? topicTitle(manifest, name) : titlecase(name);
 }
 
-/** `titled` read from the unit's manifest. @param {object} manifest @param {string} topic @returns {string} */
+/**
+ * `titled` read from the unit's manifest, the topic's summary and
+ * description saying how its words are written.
+ * @param {object} manifest @param {string} topic @returns {string}
+ */
 function topicTitle(manifest, topic) {
-  return titled(topicTitles(manifest), topic);
+  const item = /** @type {Record<string, any>} */ (manifest).phases?.discovery?.items?.[topic];
+  return titled(topicTitles(manifest), topic, [item?.summary, item?.description].filter((said) => typeof said === 'string').join('\n'));
 }
 
 /**

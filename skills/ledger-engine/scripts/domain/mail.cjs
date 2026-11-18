@@ -56,7 +56,7 @@ const { EXPERIMENT_ID_PATTERN, KEBAB_SLUG_PATTERN, WORK_TYPE_PIPELINES, illegalN
 const { stateRoot, statePath, stateRelative, cacheScratch } = require('../kernel/state-root.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
-const { computeTopicLifecycle, mailboxDir, mailboxFiles, mailPhase, dismissedNames, topicTitle, topicTitles, itemTitle, topicKey, voidDecidedClose } = require('./derivations.cjs');
+const { computeTopicLifecycle, mailboxDir, mailboxFiles, mailPhase, dismissedNames, topicTitle, itemTitle, topicKey, voidDecidedClose } = require('./derivations.cjs');
 const { parkMessageItem, assertLegalTopicName } = require('./transitions.cjs');
 const { liveness, manifestOf } = require('./ledger-units.cjs');
 const { ID_FACTS, foldLedger, movedToBy } = require('./ledger-fold.cjs');
@@ -133,7 +133,7 @@ function topicSender(cwd, manifest, from) {
   const [unit, held, ...rest] = from.includes('.') ? from.split('.') : [manifest.name, from];
   const sender = unit === manifest.name ? manifest : workUnitNameRefusal(unit) === null && manifestOf(stateRoot(cwd), unit);
   if (!sender || rest.length > 0 || illegalNameReason('topic', held) !== null || !holdsSender(sender, held)) return null;
-  const title = itemTitle(topicTitles(sender), senderPhase(sender, held), held);
+  const title = itemTitle(sender, senderPhase(sender, held), held);
   return unit === manifest.name || held === unit ? title : `${title}, on ${titlecase(unit)}`;
 }
 

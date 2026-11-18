@@ -51,7 +51,7 @@ const { resolveHandoff, topicHandoff } = require('./handoff.cjs');
 const { unitHandoff } = require('./unit-handoff.cjs');
 const { progressOf, progressWords } = require('./progress.cjs');
 const { titlecase } = require('./conventions.cjs');
-const { topicTitles, goesBy, titled } = require('./derivations.cjs');
+const { topicTitles, goesBy, topicTitle } = require('./derivations.cjs');
 const { startMenuRead } = require('./start-menu.cjs');
 const { listed } = require('./projections/start-menu.cjs');
 
@@ -233,7 +233,7 @@ function pickRow(cwd, manifests, match, matches) {
   const [unit, topic] = match.split('/');
   if (topic !== undefined) {
     const next = invoked(topicHandoff(cwd, [unit, topic]));
-    return { label: { head: `Continue epic: ${titlecase(unit)}`, tail: `the ${titled(topicTitles(/** @type {Record<string, any>} */ (manifests.get(unit))), topic)} topic` }, next };
+    return { label: { head: `Continue epic: ${titlecase(unit)}`, tail: `the ${topicTitle(/** @type {Record<string, any>} */ (manifests.get(unit)), topic)} topic` }, next };
   }
   const closed = manifests.get(unit);
   if (closed !== undefined && CLOSED.includes(closed.status)) {

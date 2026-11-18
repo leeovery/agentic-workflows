@@ -6,10 +6,11 @@
 // before the migration listed apart, an import its words name outside a
 // link placed as the move rewrote it, the old cache's reports in the
 // cache's earlier/ folders but the retired unit's, purged with its cache;
-// and it writes nothing — its boot's
-// late one-decision check making no call and no commit, its boot marking no
-// conversation though its caller runs in one, the command refusing
-// to run with a user-level folder unpinned. Each check refuses a world made
+// and it writes nothing — its boot's late one-decision check, run on a
+// decision landed since the migration, the carried ones owing none, making
+// no call and no commit, its boot marking no conversation though its
+// caller runs in one, the command refusing to run with a user-level folder
+// unpinned. Each check refuses a world made
 // to fail it, naming what it found. One world fails every check of what the
 // state holds at once, each fault its own check's and none another's — the
 // old state left, a manifest of another shape, a decided topic with no
@@ -50,6 +51,9 @@ const harness = require('./engine-harness.cjs');
 const { statePath, stateGit, layout, commitAll, treeSnapshot } = harness;
 const { SIDE, AUTH_MAP, oldProject, migratedProject } = require('./migration-sequence-world.cjs');
 const { listOld, audit } = require('./migration-audit.cjs');
+const { newId } = require('../../skills/ledger-engine/scripts/domain/ledger-ids.cjs');
+const { CARRIED_SESSION } = require('../../skills/ledger-engine/scripts/domain/ledger-events.cjs');
+const { DECISION_CHECKS } = require('../../skills/ledger-engine/scripts/domain/user-files.cjs');
 
 const AUDIT = path.join(__dirname, 'migration-audit.cjs');
 // The link dead before the migration, in auth's discussion.
@@ -131,20 +135,24 @@ describe('a project the whole sequence migrated', () => {
     const config = path.join(root, 'config');
     const env = { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}`, LEDGER_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'the-callers' };
     delete env.LEDGER_CLAUDE;
+    const carried = JSON.parse(/** @type {string} */ (fs.readFileSync(statePath(world.dir, layout.ledger), 'utf8').split('\n').find((line) => line.includes('"event":"decided"'))));
+    appendState(layout.ledger, JSON.stringify({ ...carried, id: newId(), at: new Date().toISOString(), session: 'a-conversation', given: 'own', unchecked: true }));
+    commitAll(world.dir, 'a decision that landed unchecked since the migration');
     const head = stateGit(world.dir, ['rev-parse', 'HEAD']);
-    const owed = fs.readFileSync(statePath(world.dir, layout.ledger), 'utf8').split('\n').filter((line) => line.includes('"unchecked":true')).length;
+    const owed = fs.readFileSync(statePath(world.dir, layout.ledger), 'utf8').split('\n').filter((line) => line.includes('"unchecked":true') && !line.includes(`"session":"${CARRIED_SESSION}"`)).length;
 
     const run = spawnSync(process.execPath, [AUDIT, 'audit', world.dir, listing], { env, encoding: 'utf8' });
     const claim = statePath(world.dir, layout.cache('.late-check'));
+    const checks = path.join(config, DECISION_CHECKS);
     const deadline = Date.now() + DETACHED_MS;
-    let claimed = false;
-    while (Date.now() < deadline && !fs.existsSync(calls) && !(claimed && !fs.existsSync(claim))) {
-      claimed ||= fs.existsSync(claim);
+    while (Date.now() < deadline && !fs.existsSync(calls) && !(fs.existsSync(checks) && !fs.existsSync(claim))) {
       await new Promise((resolve) => setTimeout(resolve, 10));
     }
 
     assert.deepStrictEqual([run.status, JSON.parse(run.stdout).ok], [0, true]);
-    assert.ok(owed > 0, 'the world holds decisions owed a check, so boot launches it');
+    assert.deepStrictEqual(fs.readFileSync(checks, 'utf8').split('\n').slice(0, -1).map((line) => JSON.parse(line)).map(({ verb, outcome }) => [verb, outcome]), [['late-check', 'unchecked']],
+      'the check its boot launched judged other than the one live decision, on the stub');
+    assert.strictEqual(owed, 1, 'the world holds one decision owed a check, the migration\'s carried owing none');
     assert.deepStrictEqual([fs.existsSync(calls), stateGit(world.dir, ['rev-parse', 'HEAD']), fs.existsSync(path.join(config, 'conversations'))], [false, head, false]);
 
     const refused = (/** @type {Record<string, string|undefined>} */ pins) => spawnSync(process.execPath, [AUDIT, 'list', world.dir], { env: { ...process.env, ...pins }, encoding: 'utf8' });

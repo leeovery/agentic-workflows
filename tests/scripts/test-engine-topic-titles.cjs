@@ -6,7 +6,8 @@
 // the key, and a send aimed at the title lands in the topic's own mailbox.
 // Every screen names a topic through one helper (derivations.cjs: `titled`,
 // `itemTitle`, `goesBy`), held by a guard over every titlecase in the
-// engine's domain.
+// engine's domain; a title read from the manifest keeps each word the
+// topic's own summary or description writes in capitals.
 //
 // Layer: verb. World: a project with its state worktree, built once and
 // copied, holding the epic `fumi`: its note window under discussion and
@@ -34,6 +35,7 @@ const { renderSurface } = require('./render-surfaces-world.cjs');
 const SKILLS = path.join(__dirname, '../../skills');
 const DOMAIN = path.join(SKILLS, 'ledger-engine/scripts/domain');
 const { raiseScreenOf } = require(path.join(DOMAIN, 'raise.cjs'));
+const { topicTitle } = require(path.join(DOMAIN, 'derivations.cjs'));
 
 const UNIT = 'fumi';
 const KEY = 'note-window';
@@ -136,6 +138,45 @@ describe('a started topic renamed goes by its title on every screen that names i
     it(`${surface} names it "${phrase}", never by its key titlecased`, () => assertTitled(render(), phrase));
   }
 
+});
+
+describe('a topic\'s title keeps each word its own summary or description writes in capitals', () => {
+  /** A unit holding `topic` on its map, its summary and description as given. @param {string} topic @param {Record<string, string>} said @param {string} [title] */
+  const holding = (topic, said, title) => ({ phases: { discovery: { items: { [topic]: { ...said, ...(title === undefined ? {} : { title }) } } } } });
+
+  it('every screen titles mcp-design, its summary naming MCP, as MCP Design: the raise, the map, the epic menu, the pick\'s continue row and a receipt', () => {
+    const dir = world();
+    try {
+      const manifest = readManifest(dir, UNIT);
+      manifest.phases.discovery.items['mcp-design'] = row(4, 'Owner and customer MCP surfaces');
+      createManifest(dir, UNIT, manifest);
+      const seal = { id: 'r1', menu: 'raise', fact: false, reason: 'It decides who calls.', replaces: null, parks: null,
+        place: { unit: UNIT, phase: 'discussion', topic: 'mcp-design' },
+        call: { question: 'Which surface first?', rows: [], lean: 'a', why: 'Habit.', sort: 'one', mechanism: 'The endpoints.', product_wide: false } };
+      /** @type {[string, () => string, string][]} */
+      const SCREENS = [
+        ['the raise', () => raiseScreenOf(dir, /** @type {any} */ (seal)), 'Fumi · MCP Design'],
+        ['the map', () => renderSurface(dir, 'map', { dotpath: `${UNIT}.mcp-design` }), 'Map — MCP Design'],
+        ['the epic menu', () => renderSurface(dir, 'epic-menu', { dotpath: UNIT }), 'MCP Design'],
+        ['the pick\'s continue row', () => output(dir, ['render', 'work-pick', '--matches', `${UNIT}/mcp-design`], { env: SESSION }), 'the MCP Design topic'],
+        ['the cancel\'s receipt', () => okSections(dir, ['topic', 'cancel', UNIT, 'discovery', 'mcp-design']).sections, 'Cancelled "MCP Design".'],
+      ];
+      for (const [screen, render, phrase] of SCREENS) {
+        const out = render();
+        assert.ok(out.includes(phrase) && !out.includes('Mcp Design'), `${screen}: no "${phrase}" in:\n${out}`);
+      }
+    } finally {
+      cleanupFixture(dir);
+    }
+  });
+
+  it('from the description as from the summary, and under a rename\'s title; never a word written in lower case, or inside another word', () => {
+    assert.deepStrictEqual([
+      topicTitle(holding('ai-content-engine', { summary: 'Dishes described', description: 'AI-generated dish descriptions.' }), 'ai-content-engine'),
+      topicTitle(holding(KEY, { summary: 'Notes over MCP' }, 'mcp-notes'), KEY),
+      topicTitle(holding('ai-plans', { summary: 'what the ai plans for AIR' }), 'ai-plans'),
+    ], ['AI Content Engine', 'MCP Notes', 'Ai Plans']);
+  });
 });
 
 describe('a screen that writes as it shows, or over the unit changed, goes by the title too, on a copy of its own (8.8.17)', () => {
@@ -294,8 +335,8 @@ describe('every screen names a topic through one helper', () => {
   // which give a started topic its title.
   const NOT_A_TOPIC = {
     'the helpers a topic\'s name goes through': [
-      'derivations.cjs › itemTitle › itemName(titles, phase, name)',
-      'derivations.cjs › titled › goesBy(titles, topic)',
+      'derivations.cjs › itemTitle › name',
+      'derivations.cjs › titled › words.join(\' \')',
     ],
     'a work unit, or the project': [
       'board.cjs › unitAt › unit',

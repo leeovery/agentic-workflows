@@ -29,7 +29,7 @@ const { readShown, answerMap } = require('./ledger-read.cjs');
 const { answerShown } = require('./ledger-since.cjs');
 const { hasTopic, manifestOf } = require('./ledger-units.cjs');
 const { titlecase } = require('./conventions.cjs');
-const { topicTitles, titled, topicKey } = require('./derivations.cjs');
+const { topicTitle, topicKey } = require('./derivations.cjs');
 const { mapScreen } = require('./projections/map.cjs');
 
 /** @typedef {import('./projections/map.cjs').DrawnRow} DrawnRow */
@@ -97,15 +97,15 @@ function rowStanding(row) {
  */
 
 /**
- * A `Namer` reading each unit's titles once, from its manifest.
+ * A `Namer` reading each unit's manifest once.
  * @param {string} root @returns {Namer}
  */
 function topicNamer(root) {
-  /** @type {Map<string, Record<string, string>>} */
-  const titles = new Map();
+  /** @type {Map<string, object>} */
+  const manifests = new Map();
   return (unit, topic) => {
-    if (!titles.has(unit)) titles.set(unit, topicTitles(manifestOf(root, unit) ?? {}));
-    return titled(/** @type {Record<string, string>} */ (titles.get(unit)), topic);
+    if (!manifests.has(unit)) manifests.set(unit, manifestOf(root, unit) ?? {});
+    return topicTitle(/** @type {object} */ (manifests.get(unit)), topic);
   };
 }
 
