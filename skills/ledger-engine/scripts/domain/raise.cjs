@@ -32,7 +32,8 @@
 //   proposed answers in place
 //   of the decision's, the lean one of them. The screen adds a row of its
 //   own, `keep`, keeping the decision as it stands, its answer as the draw
-//   found it, which the seal holds.
+//   found it, which the seal holds; under `--always built-otherwise` it
+//   says keeping it has the build change the code to match (21.6.16).
 // - It refuses, drawing nothing: no session; no state; a place or a link
 //   `ledger decide` refuses — `ledger replace`, on a replacement — read and
 //   checked by that code before any lock (ledger-write.cjs), since the answer
@@ -115,9 +116,9 @@
 //   build for a task, which a question asked parks; whose the entry a
 //   replacement would replace is — who decided it, read from the entry, or
 //   the person where a keep of theirs stands on it since (16.5.7); the mark
-//   Claude gives a question that always asks, `--always design-problem` or
-//   `--always live-server` (19.4.22, 19.4.20), which a fact, always asked,
-//   never takes; the experiment of the unit still running that measures the
+//   Claude gives a question that always asks, `--always design-problem`,
+//   `--always live-server` or `--always built-otherwise` (19.4.22, 19.4.20,
+//   21.6.16), which a fact, always asked, never takes; the experiment of the unit still running that measures the
 //   question it answers (9.1.11); the question's id the blind draw hashes,
 //   the first entry of its chain, none for a replacement (16.17.4); whether
 //   the conversation sent the raise to check already; the project, by its
@@ -682,7 +683,7 @@ function alwaysFlag(args, fact) {
   if (fact) throw new Error(`raise ${FACT} takes no ${ALWAYS}: a fact always asks — Usage: engine ${FACT_USAGE}`);
   if (args.indexOf(ALWAYS, at + 1) !== -1) throw new Error(`raise takes ${ALWAYS} once — Usage: engine ${QUESTION_USAGE}`);
   const mark = /** @type {Always} */ (args[at + 1]);
-  if (!ALWAYS_MARKS.includes(mark)) throw new Error(`raise: ${ALWAYS} takes ${ALWAYS_MARKS.join(' or ')} — not ${mark === undefined ? 'nothing' : `"${mark}"`}`);
+  if (!ALWAYS_MARKS.includes(mark)) throw new Error(`raise: ${ALWAYS} takes ${ALWAYS_MARKS.slice(0, -1).join(', ')} or ${ALWAYS_MARKS.at(-1)} — not ${mark === undefined ? 'nothing' : `"${mark}"`}`);
   return { always: mark, rest: [...args.slice(0, at), ...args.slice(at + 2)] };
 }
 
@@ -725,8 +726,13 @@ function checkProposals({ rows }, { keep }, short) {
   if (same !== undefined) throw new Error(`raise: the call's row ${same.key} proposes ${short}'s answer as it stands — a replacement changes it, and keeping it is the screen's own row`);
 }
 
-/** The row keeping a decision as it stands, its answer `text`. @param {string} text @returns {Row} */
-function keepRow(text) {
+/**
+ * The row keeping a decision as it stands, its answer `text`: where the
+ * code was built otherwise than the decision, keeping it changes the code.
+ * @param {string} text @param {Always|null} always @returns {Row}
+ */
+function keepRow(text, always) {
+  if (always === 'built-otherwise') return { key: KEEP, name: 'Keep it as decided', text, notice: 'the build changes the code to match' };
   return { key: KEEP, name: 'Keep it as it stands', text, notice: 'nothing changes' };
 }
 
@@ -1209,14 +1215,14 @@ function decided(cwd, raising, call, label) {
  * the write its answer lands as checks it before the lock — `ledger
  * replace`'s where it names `--replaces`, else `ledger decide`'s — in the
  * raise's words: a question it answers still open; a decision it replaces
- * a decision, its answer as it stands kept for the screen's own row, and
- * whose it is — who decided it, or as the person's keep of it since was
- * given, theirs or their "don't care" (`whoseDecision`). Its usage is a
- * fact's where `fact`.
- * @param {string} cwd @param {string[]} args @param {string[]} warnings @param {boolean} fact
+ * a decision, its answer as it stands kept for the screen's own row, worded
+ * for the mark the raise `always` asks by, and whose it is — who decided it,
+ * or as the person's keep of it since was given, theirs or their "don't
+ * care" (`whoseDecision`). Its usage is a fact's where `fact`.
+ * @param {string} cwd @param {string[]} args @param {string[]} warnings @param {boolean} fact @param {Always|null} always
  * @returns {{place: Place, target: Target, replacedBy: DecidedBy|null, short: (id: string) => string, read: import('./ledger-fold.cjs').Folded}}
  */
-function placedRaise(cwd, args, warnings, fact) {
+function placedRaise(cwd, args, warnings, fact, always) {
   const verb = args.includes('--replaces') ? 'replace' : 'decide';
   const usage = `Usage: engine ${fact ? FACT_USAGE : { decide: QUESTION_USAGE, replace: REPLACE_USAGE }[verb]}`;
   const { at, linked, read, replacing } = writePlaced(cwd, verb, args, SAID, usage, warnings, NO_TASK);
@@ -1231,7 +1237,7 @@ function placedRaise(cwd, args, warnings, fact) {
   const entry = /** @type {string} */ (linked.replaces);
   const kind = entryKind(replacing);
   if (kind !== 'decision') throw new Error(`raise --replaces names ${short(entry)}, a ${kind} — a raise replaces a decision, the person picking its answer`);
-  const replaces = { entry, reason: /** @type {string} */ (linked.reason), cause: /** @type {string|null} */ (linked.cause), keep: keepRow(/** @type {string} */ (replacing.text)) };
+  const replaces = { entry, reason: /** @type {string} */ (linked.reason), cause: /** @type {string|null} */ (linked.cause), keep: keepRow(/** @type {string} */ (replacing.text), always) };
   return { place, target: { answers: null, relies_on: reliesOn, replaces }, replacedBy: whoseDecision(read, entry), short, read };
 }
 
@@ -1473,7 +1479,7 @@ function wentAhead(cwd, raising, sealed, warnings) {
   const entry = newId();
   const landed = proceeded(cwd, raising, sealed.call, sealed.label, warnings, entry);
   /** @type {Target} */
-  const asked = { answers: null, relies_on: target.relies_on, replaces: { entry, reason: ASKED_BLIND, cause: null, keep: keepRow(leanRow(sealed.call).text) } };
+  const asked = { answers: null, relies_on: target.relies_on, replaces: { entry, reason: ASKED_BLIND, cause: null, keep: keepRow(leanRow(sealed.call).text, null) } };
   const logs = () => drawEvent(entry, sealed.label, sealed.model);
   const parked = parkLanded(cwd, parking(place, asked, sealed, { task: null, wentAhead: task, logs }), askedAs({ blind: true, reason: sealed.why_asking }), warnings);
   return { ...parked, landed };
@@ -1499,7 +1505,7 @@ async function drawRaise(cwd, args, stdin) {
   const { fact, rest: unfact } = factFlag(args);
   const { parks, rest: unparked } = parksFlag(unfact);
   const { always, rest } = alwaysFlag(unparked, fact);
-  const { place, target, replacedBy, short, read } = placedRaise(cwd, rest, warnings, fact);
+  const { place, target, replacedBy, short, read } = placedRaise(cwd, rest, warnings, fact, always);
   const raising = { session, place, target, replacedBy, always, task: parks, model: modelOf(cwd), chain: questionId(read, target), measured: measuredOn(cwd, place, read, target) };
   const inBuild = checkBuildPlace(cwd, place, parks);
   if (!inBuild) questions.checkUnparked(read, subjectOf(target), SAID);
@@ -1547,7 +1553,7 @@ function drawParked(cwd, args) {
   const target = {
     answers,
     relies_on: line.relies_on,
-    replaces: line.replaces === null ? null : { entry: line.replaces, reason: line.reason, cause: line.cause, keep: keepRow(/** @type {string} */ (keeps)) },
+    replaces: line.replaces === null ? null : { entry: line.replaces, reason: line.reason, cause: line.cause, keep: keepRow(/** @type {string} */ (keeps), line.always) },
   };
   const id = newId();
   const { lean, why, sort, ...fact } = line.call;

@@ -17,7 +17,9 @@
 //   to replace it (raise.cjs), confirms it as a confirmation does against
 //   the replacement it names as its cause: keeping it for a new fact or
 //   another topic's decision is saying it still holds against that change.
-//   A keep naming no cause, or a cause on no way, confirms nothing. An
+//   A keep naming no cause, or a cause on no way, confirms nothing. A
+//   replacement's own cause is never affected by it: the cause is what the
+//   replacement was made for. An
 //   entry relies only on what is current as it is written, so every live
 //   replacement on the way of one it relies on is one it never
 //   saw: written after it, or set aside while it was written — wherever a
@@ -91,14 +93,18 @@ function confirmedAgainst(folded, id) {
 
 /**
  * What changed under a current entry: each entry it is held against whose
- * way a live replacement changed, where no live confirmation that it still
- * holds, or keep, names the latest.
+ * way a live replacement changed, where the latest does not name it as its
+ * cause, and no live confirmation that it still holds, or keep, names the
+ * latest.
  * @param {Folded} folded @param {string} id
  * @returns {Change[]}
  */
 function changesUnder(folded, id) {
   const confirmed = confirmedAgainst(folded, id);
-  return heldAgainst(folded, id).filter(({ replacements }) => replacements.length > 0 && !confirmed.has(/** @type {string} */ (replacements.at(-1))));
+  return heldAgainst(folded, id).filter(({ replacements }) => {
+    const latest = replacements.at(-1);
+    return latest !== undefined && factsOf(folded, latest).cause !== id && !confirmed.has(latest);
+  });
 }
 
 /**

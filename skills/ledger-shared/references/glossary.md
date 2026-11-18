@@ -170,7 +170,7 @@ The project's history of every question, finding and decision, by either side: w
 One question, finding or decision on the ledger, holding one thing, shown by a short id. A decision names the question it answers, why, what it rules out and what it relies on; it is replaced by a new entry giving one of four reasons — a new fact, another topic's decision, a changed mind, or it was wrong.
 
 **record**:
-A topic's current decisions, each with its why and what it rules out, the answers it replaced folded beneath it. It is drawn from the ledger, never written by hand, and is what later phases and the knowledge base read first.
+A topic's current decisions, each with its why and what it rules out, the answers it replaced folded beneath it. It is drawn from the ledger, never written by hand, and is what later phases and the knowledge base read first. A record the migration wrote from a project's documents from before Ledger says what they decided, the person's decisions among them, never what the code does: where the code does something else, the session records a finding on the decision, and asks the person which stands only when the work in hand turns on it, always before a build would undo what the code does. Code a unit still mid-build does not yet carry out is work still to do; on a finished unit, code that no longer does what was decided was changed since, and is built otherwise.
 _Avoid_: the discussion document, the record of the person (another thing)
 
 **log**:
@@ -191,7 +191,7 @@ An entry whose answer it relies on has been replaced. It is flagged until it is 
 _Avoid_: stale, input moved
 
 **carried over**:
-A decision brought into Ledger from a project's documents from before it, where they do not show who made it. It is drawn apart from the person's decisions and Claude's calls and counts as neither. Like everything the migration brought across, it says what those documents decided, never what the code does: where the code does something else, the session records a finding on the decision, and asks the person which stands only when the work in hand turns on it, always before a build would undo what the code does. Code that does not yet do what was decided is work still to do.
+A decision brought into Ledger from a project's documents from before it, where they do not show who made it. It is drawn apart from the person's decisions and Claude's calls and counts as neither.
 
 ## Gates and trust
 

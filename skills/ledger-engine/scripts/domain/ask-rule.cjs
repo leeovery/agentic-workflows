@@ -14,7 +14,8 @@
 //   tell: replacing an entry the person decided, or kept since (16.5.7); a
 //   question an experiment still running measures, which only the person
 //   may close meanwhile (9.1.11); and a question Claude marks as a design
-//   problem (19.4.22) or testing against a live server (19.4.20), a mark
+//   problem (19.4.22), testing against a live server (19.4.20), or code
+//   built otherwise than a decision from before Ledger (21.6.16), a mark
 //   that can only make it ask.
 // - With no label — the labeller's call failed, or no login serves it —
 //   ask (16.19.8).
@@ -78,6 +79,7 @@ const { HARD_TO_UNDO, ASK_AGAIN, buildRaised, midBuild } = require('./trust-sett
 const ALWAYS = Object.freeze({
   'design-problem': 'The root cause is a design problem, so it always comes to you.',
   'live-server': 'It means testing against a live server, so it always comes to you.',
+  'built-otherwise': 'The code was built otherwise than a decision from before Ledger, so it always comes to you.',
 });
 
 const UNLABELLED = 'I couldn\'t tell what kind of question this is, so it comes to you.';

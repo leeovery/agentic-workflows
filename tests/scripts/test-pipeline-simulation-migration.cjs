@@ -14,8 +14,10 @@
 // carried`). Then the build of the migrated feature finds its code built
 // otherwise than two of its decisions, each marked the migration's
 // (21.6.16): each a finding relying on its decision, saying where the code
-// shows it; the one the work turns on raised as the decision's
-// replacement, the person keeping it.
+// shows it, then raised as the decision's replacement under the mark that
+// always asks — the person taking the code's way on one, its finding left
+// unaffected, and keeping the other, its row saying the build changes the
+// code to match.
 //
 // Layer: simulation. World: the project migrated whole (migration-sequence-
 // world.cjs), made ready for a sim once per process and copied for each
@@ -37,7 +39,6 @@ const { auditState, auditTrust } = require('./pipeline-oracle.cjs');
 const { audit } = require('./migration-audit.cjs');
 const { git } = require('./engine-harness.cjs');
 const { leaningCall } = require('./ledger-world.cjs');
-const { labelAnswers } = require('./labels.cjs');
 const { TRUST_LOG } = require('../../skills/ledger-engine/scripts/domain/trust-log.cjs');
 
 /** @type {ReturnType<typeof migratedProject>} */
@@ -70,35 +71,34 @@ describe('pipeline simulation: the whole migration', () => {
     assert.deepStrictEqual(startMenu(sim).map(({ head }) => head).filter((head) => head.startsWith('Continue')), ['Continue feature: Memo', 'Continue epic: Gateway']);
   });
 
-  it('21.6.16: the build finds the code built otherwise than two decisions from before Ledger, each marked the migration\'s, recording each as a finding relying on it, citing the code — one the work goes on past, nothing asked; the other the work turns on, raised as its replacement, the person\'s keep leaving it standing', async () => {
+  it('21.6.16: the build finds the code built otherwise than two decisions from before Ledger, each marked the migration\'s, and records each as a finding relying on it, citing the code; the build turning on which stands, each is raised as the decision\'s replacement, always asking for the mark — the person takes the code\'s way on one, the finding that caused it not affected, and keeps the other, its row saying the build changes the code to match', async () => {
     sim.run(['boot']);
-    const fromBefore = (/** @type {string} */ text) => JSON.parse(sim.read(['ledger', 'record', 'memo', 'memo'])).decisions.find((/** @type {{text: string}} */ d) => d.text === text);
-    const carried = (/** @type {string} */ text) => fromBefore(text).id;
-    assert.deepStrictEqual([fromBefore('One line.').session, fromBefore('By link.').session], ['migration', 'migration'], 'the record shows each decision the migration\'s');
-    const [oneLine, byLink] = [carried('One line.'), carried('By link.')];
-    const found = (/** @type {string} */ decision, /** @type {string} */ text, /** @type {string} */ how) => sim.run(['ledger', 'find', 'memo.implementation', '--relies-on', decision], null,
-      JSON.stringify({ text, how, known: 'read', by: 'claude', who_moved_whom: 'none' })).id;
+    const record = () => JSON.parse(sim.read(['ledger', 'record', 'memo', 'memo'])).decisions;
+    const decision = (/** @type {string} */ text) => record().find((/** @type {{text: string}} */ d) => d.text === text);
+    assert.deepStrictEqual([decision('One line.').session, decision('By link.').session], ['migration', 'migration'], 'the record shows each decision the migration\'s');
+    const [oneLine, byLink] = [decision('One line.').id, decision('By link.').id];
     const lines = () => fs.readFileSync(path.join(sim.dir, '.ledger/.ledger.jsonl'), 'utf8').trim().split('\n').map((line) => JSON.parse(line));
+    const builtOtherwise = async (/** @type {string} */ id, /** @type {string} */ text, /** @type {string} */ how, /** @type {Record<string, unknown>} */ call) => {
+      const cause = sim.run(['ledger', 'find', 'memo.implementation', '--relies-on', id], null, JSON.stringify({ text, how, known: 'read', by: 'claude', who_moved_whom: 'none' })).id;
+      const raised = await sim.runAsync(['raise', 'memo.implementation', '--replaces', id, '--reason', 'new-fact', '--cause', cause, '--always', 'built-otherwise'], null, JSON.stringify(call));
+      assert.deepStrictEqual([raised.decision, raised.reason], ['ask', 'The code was built otherwise than a decision from before Ledger, so it always comes to you.']);
+      return { cause, parked: raised.parked };
+    };
 
-    found(oneLine, 'A memo takes up to three lines.', 'read in src/memo.js, MAX_LINES');
-    assert.deepStrictEqual(JSON.parse(sim.read(['raise', 'waiting', 'memo'])).waiting, [], 'a finding the work goes on past asks nothing');
+    const longer = await builtOtherwise(oneLine, 'A memo takes up to three lines.', 'read in src/memo.js, MAX_LINES', { ...leaningCall('Up to three lines.', 'Two lines.'), question: 'How long is a memo?' });
+    const byCode = await builtOtherwise(byLink, 'A memo is shared by a code, not a link.', 'read in src/share.js, shareMemo', { ...leaningCall('By code.', 'By email.'), question: 'How is a memo shared?' });
 
-    const byCode = found(byLink, 'A memo is shared by a code, not a link.', 'read in src/share.js, shareMemo');
-    const question = 'Is a memo shared by link or by code?';
-    sim.env = { ...sim.env, CLAUDE_STUB_ANSWERS: JSON.stringify({ [question]: labelAnswers('behaviour'), '': 'no-login' }) };
-    const raised = await sim.runAsync(['raise', 'memo.implementation', '--replaces', byLink, '--reason', 'new-fact', '--cause', byCode], null,
-      JSON.stringify({ ...leaningCall('By code, as built.', 'By link, as decided.'), question }));
-    assert.deepStrictEqual([raised.decision, raised.parked], ['ask', 'Q1']);
-    const drawn = sim.run(['raise', 'draw', 'memo', 'Q1']);
-    sim.run(['raise', 'answer', drawn.raise, '--pick', 'keep'], null, JSON.stringify({ why: 'Links are what the spec promised.' }));
+    const drawn = sim.run(['raise', 'draw', 'memo', longer.parked]);
+    assert.ok(sim.sections.includes('Keep it as decided: the build changes the code to match'), 'keeping the decision says the build changes the code');
+    sim.run(['raise', 'answer', drawn.raise, '--pick', '1'], null, JSON.stringify({ why: 'Three lines is what people use.' }));
+    sim.run(['raise', 'answer', sim.run(['raise', 'draw', 'memo', byCode.parked]).raise, '--pick', 'keep'], null, JSON.stringify({ why: 'Links are what the spec promised.' }));
 
-    const findings = lines().filter((e) => e.event === 'found' && e.unit === 'memo');
     const decided = (/** @type {string} */ text) => lines().find((e) => e.event === 'decided' && e.text === text).id;
-    assert.deepStrictEqual(findings.map((e) => [e.phase, e.relies_on, e.how]), [
-      ['implementation', [decided('One line.')], 'read in src/memo.js, MAX_LINES'],
-      ['implementation', [decided('By link.')], 'read in src/share.js, shareMemo'],
+    assert.deepStrictEqual(lines().filter((e) => e.event === 'found' && e.unit === 'memo').map((e) => [e.relies_on, e.how]), [
+      [[decided('One line.')], 'read in src/memo.js, MAX_LINES'],
+      [[decided('By link.')], 'read in src/share.js, shareMemo'],
     ], 'each finding relies on the decision it is about, saying where the code shows it');
-    assert.strictEqual(lines().at(-1).event, 'kept');
-    assert.deepStrictEqual([carried('One line.'), carried('By link.')], [oneLine, byLink], 'both decisions still stand');
+    assert.deepStrictEqual(record().map((/** @type {{text: string}} */ d) => d.text).sort(), ['By link.', 'Up to three lines.'], 'the person took the code\'s way on one and kept the other');
+    assert.deepStrictEqual(JSON.parse(sim.read(['ledger', 'affected', 'memo'])).affected, [], 'the finding the replacement was made for is not affected by it');
   });
 });

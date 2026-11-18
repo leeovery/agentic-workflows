@@ -8,9 +8,10 @@
 // state merge's line rule, domain/state-merge-rules.cjs): `engine raise
 // <place> --replaces <entry> --reason <reason> [--cause <id>]`, Claude's
 // proposed answers drawn with a row of the screen's own keeping the
-// decision as it stands, `ledger replace`'s checks run before anything is
-// drawn or sealed, each decision's raise sealed on its own (16.5.7,
-// 29.19.2); each answer — a proposal picked, the person's own words, `keep`,
+// decision as it stands — under `--always built-otherwise` saying the
+// build changes the code to match, the raise asking for the mark (21.6.16)
+// — `ledger replace`'s checks run before anything is drawn or sealed, each
+// decision's raise sealed on its own (16.5.7, 29.19.2); each answer — a proposal picked, the person's own words, `keep`,
 // "I don't follow", "don't care" — with its ledger line, its raise event, who moved whom
 // (5.3.10) and the verdict queue, read through this machine's trust log
 // (domain/trust-evidence.cjs), and refused, recording nothing, on a raise
@@ -18,7 +19,8 @@
 // nothing current, so nothing relying on the decision is affected (5.6.10),
 // and confirming it still holds against its cause (5.6.13), its raise event
 // a departure this machine alone judges, and every reader passing it by or
-// showing it beside the decision; each answer landed once across a kill;
+// showing it beside the decision; a replacement's own cause never affected
+// by it; each answer landed once across a kill;
 // a call the decision point lets proceed landed as Claude's replacement;
 // and Claude's own `ledger replace` of the person's decision refused.
 //
@@ -202,6 +204,17 @@ describe('the draw (16.5.7, 29.19.2)', () => {
     assert.deepStrictEqual(/** @type {any} */ (gateShown()).options.find((/** @type {{key: string}} */ o) => o.key === 'keep').next.argv, ['raise', 'answer', res.raise, '--pick', 'keep']);
   });
 
+  it('under --always built-otherwise (21.6.16), asks for the mark whatever the counts, its keep row saying keeping the decision has the build change the code to match', async () => {
+    const { res, sections } = await drawn(replacing('new-fact', ['--cause', made.screens, '--always', 'built-otherwise']), { env: { LEDGER_GATE_SURFACE: '1' } });
+
+    const sealed = /** @type {Record<string, any>} */ (seals())[res.raise];
+    assert.deepStrictEqual([res.decision, sealed.reason, sealed.always, sealed.replaces.keep], [
+      'ask', 'The code was built otherwise than a decision from before Ledger, so it always comes to you.', 'built-otherwise',
+      { key: 'keep', name: 'Keep it as decided', text: KEPT, notice: 'the build changes the code to match' },
+    ]);
+    assert.ok(/** @type {Record<string, any>} */ (auditGate(sections, 'raise --always built-otherwise')).statement.includes('- Keep it as decided: the build changes the code to match'));
+  });
+
   it('labels the call from its question and Claude\'s proposals, never the keep row — the decision as it stands — and a keep lands no kind, the raise event carrying the label', async () => {
     const log = path.join(config(), 'calls.jsonl');
     const { res } = await drawn(replacing(), { call: { ...CALL, sort: 'several' }, env: { CLAUDE_STUB_ANSWERS: JSON.stringify({ 'The answer: ': 'no-login', '': labelAnswers('words') }), CLAUDE_STUB_LOG: log } });
@@ -326,6 +339,15 @@ describe('each answer, its line, its raise event, who moved whom and the queue (
     assert.deepStrictEqual(logged(), [raiseEvent(id, { answer: '2' })]);
     assert.deepStrictEqual(queue(), [[id, LAST.text, MAIN.text]]);
     assert.deepStrictEqual(affected(), [full(made.focus)]);
+  });
+
+  it('a proposal picked for a new fact leaves its cause unaffected — the finding relying on the decision is what the replacement was made for — while what else relied on the decision is affected', async () => {
+    const built = ledgerHelpers(() => dir).write('find', NOTE, ['--relies-on', made.opens], { ...MADE, text: 'New notes open on the main screen.', how: 'read in src/note.js, open', known: 'read' }).id;
+    const id = await draw(replacing('new-fact', ['--cause', built]));
+
+    answer(id, ['--pick', '1']);
+
+    assert.deepStrictEqual([lastEntry().cause, affected()], [full(built), [full(made.focus)]]);
   });
 
   it('the lean picked as the person came round to it, at Claude\'s word: claude-moved-person, nothing in the queue', async () => {
