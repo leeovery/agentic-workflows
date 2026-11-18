@@ -21,16 +21,17 @@
 // carrying several, and every thread still open, each by an open question
 // or by the entry a later source settles it with. Each section of a
 // discovery session or a walked asset holding text that no record cites,
-// nor a topic walking it holds word for word in its own files, is named —
-// on the topic an import came in from or a split's research bears the name
-// of, else the unit's own record, else each topic — once every record
-// walking it has one composed, and no topic of the unit is carried until
-// every such record, its own and a topic it promoted among them, has
-// passed, nor that promoted topic, the carry naming how many sections the
-// check names. A record breaking a rule
-// is refused at the carry, the refusal written beside the record and
-// nothing else, and leaves nothing in the way of the record mended. Once it
-// passes, the check lists each point marked to raise on a live topic until
+// nor a topic walking it holds word for word in its own files, a copy
+// ending where a line does and its text no one line under 40 characters,
+// is named — on the topic an import came in from or a split's research
+// bears the name of, else the unit's own record, else each topic — once
+// every record walking it has one composed, and no topic of the unit is
+// carried until every such record, its own and a topic it promoted among
+// them, has passed, nor that promoted topic, the carry naming how many
+// sections the check names. A record breaking a rule is refused at the
+// carry, the refusal written beside the record and nothing else, and
+// leaves nothing in the way of the record mended. Once it passes, the
+// check lists each point marked to raise on a live topic until
 // the conversation raises it — a completed unit's among them, and none on
 // a topic never started, carried in discovery, whose first opening reads it
 // with the rest of its record, nor of a cross-cutting unit, whose record is
@@ -214,7 +215,11 @@ const waitsOn = (unit, topic, reasons, waited = unit) => `ledger carry: ${unit}'
  * names: how many, and where the check names each.
  * @param {string} unit @param {number} count
  */
-const counted = (unit, count) => `${count === 1 ? 'a section' : `${count} sections`} of ${unit}'s approved specs, discovery sessions and walked assets ${count === 1 ? 'holds' : 'hold'} text no record cites — \`migrate check 079-records\` names each on the record it is named on`;
+const counted = (unit, count) => `${count === 1 ? 'a section' : `${count} sections`} of ${unit}'s approved specs, discovery sessions and walked assets ${count === 1 ? 'holds' : 'hold'} text no record cites — \`migrate check 079-records\` names each where it is named`;
+
+/** A decision long enough to be held as a copy, and licensing's log deciding it. */
+const DECIDED = 'Fourteen days from sign-up, the person said, then billed.';
+const decidedLog = (/** @type {string} */ after = '') => `## Discussion\n\n## Discussion: Licensing\n\n### Trial Length\n\n#### Decision\n\n${DECIDED}${after}\n`;
 
 /**
  * fumi's commerce spec approved in its old manifest, its text in the state
@@ -851,8 +856,9 @@ describe('what the check reads once a record is carried', () => {
 
   it('21.6.14: a split\'s research bearing a topic\'s name is walked by that topic alone, and its sections named on it once its record is composed, but one its own files hold word for word, heading and text, which its verifier walks there — its text alone under another heading no such copy; research bearing no topic\'s name is walked by no record in a unit with none of its own', () => {
     dir = world();
+    writeState(dir, layout.topic('fumi', 'licensing', 'log.md'), decidedLog());
     const copied = layout.assets('fumi', 'research', 'licensing-superseded-20260101.md');
-    writeState(dir, copied, '# Licensing\n\n### Trial Length\n\n#### Decision\n\nFourteen days, the person said.\n\n### Trial\n\nFourteen days, the person said.\n\n### Refunds\n\nWithin a week.\n');
+    writeState(dir, copied, `# Licensing\n\n### Trial Length\n\n#### Decision\n\n${DECIDED}\n\n### Trial\n\n${DECIDED}\n\n### Refunds\n\nWithin a week.\n`);
     writeState(dir, layout.assets('fumi', 'research', 'exploration-superseded-20260101.md'), '# Exploration\n\n## Seats\n\nPer seat.\n');
     const named = () => Object.fromEntries(Object.entries(unfinished()).map(([at, problems]) => [at, problems.filter((problem) => problem.includes('holds text no record'))]).filter(([, problems]) => problems.length > 0));
     const compose = (/** @type {string} */ dotpath) => writeState(dir, composedPath('fumi', dotpath.split('.')[2]), JSON.stringify({ entries: GOOD[dotpath] }));
@@ -866,13 +872,27 @@ describe('what the check reads once a record is carried', () => {
     assert.deepStrictEqual([before, alone, named()], [{}, refunds, refunds]);
   });
 
+  it('21.6.14: a copy is held only where it ends where a line does or its file ends, and a section whose text is one line under 40 characters by none, whatever holds it', () => {
+    dir = world();
+    const sections = `### Seats\n\nPer seat.\nBilled monthly.\n\n### Hosting\n\nOn our servers, in the region it signs.\n\n### Refunds\n\nWithin a week, by card, to the payer too`;
+    writeState(dir, layout.topic('fumi', 'licensing', 'log.md'), `${decidedLog(' Twice.')}\n${sections}`);
+    const copied = layout.assets('fumi', 'research', 'licensing-superseded-20260101.md');
+    writeState(dir, copied, `# Licensing\n\n### Trial Length\n\n#### Decision\n\n${DECIDED}\n\n${sections}\n`);
+    writeState(dir, composedPath('fumi', 'licensing'), JSON.stringify({ entries: GOOD['fumi.discussion.licensing'] }));
+
+    const named = unfinished()['fumi.discussion.licensing'].filter((problem) => problem.includes('holds text no record'));
+
+    assert.deepStrictEqual(named, ['Decision', 'Hosting'].map((section) => sharedUncited('fumi', copied, section)));
+  });
+
   it('21.6.14: a cite by any record of the unit settles a shared source\'s section, whichever records walk it; and a section any topic of the unit holds word for word in its own files is settled, of research the unit\'s own record walks too', () => {
     dir = world();
     writeState(dir, layout.unit('fumi', 'discovery', 'session-001.md'), '## Discovery Session 001\n');
+    writeState(dir, layout.topic('fumi', 'licensing', 'log.md'), decidedLog());
     const copied = layout.assets('fumi', 'research', 'licensing-superseded-20260101.md');
     writeState(dir, copied, '# Licensing\n\n### Refunds\n\nWithin a week.\n');
     const exploration = layout.assets('fumi', 'research', 'exploration-superseded-20260101.md');
-    writeState(dir, exploration, '# Exploration\n\n## Seats\n\nPer seat.\n\n## Hosting\n\nOn our servers.\n\n## Trial Length\n\n#### Decision\n\nFourteen days, the person said.\n');
+    writeState(dir, exploration, `# Exploration\n\n## Seats\n\nPer seat.\n\n## Hosting\n\nOn our servers.\n\n## Trial Length\n\n#### Decision\n\n${DECIDED}\n`);
     const found = (/** @type {string} */ ref, /** @type {string} */ text, /** @type {string} */ at, /** @type {string} */ section) => ({ ref, event: 'found', text, how: 'read', known: 'read', by: 'claude', product_wide: false, cites: [{ path: at, section }] });
     for (const [dotpath, entries] of Object.entries(GOOD).filter(([at]) => at.startsWith('fumi.'))) {
       const topic = dotpath.split('.')[2];
@@ -1136,7 +1156,7 @@ describe('the directive\'s example record, frozen with 079', () => {
     assert.deepStrictEqual([
       'Where it holds a current decision, finding or open question, it goes to the record its subject belongs to — of a spec\'s section, one of the topics the check names it on: write into that record\'s settled file a line naming the section as the record\'s and what of it the record misses, and into its findings `Settled: {section}, amend to agree`. That record is amended to carry it, whatever its rulings said of whose the point is, and verified again.',
       'Where it holds none — a section that frames the others, says again what a cited one holds, holds only what a later answer replaced, or is a corrigendum recording only what a cancelled unit decided — mark it',
-      'and of each of its discovery sessions and each asset its records walk, on the topic an asset came in from or a split\'s research bears the name of, else on the unit\'s own record, else on each of its topics — never a section any topic of the unit holds word for word in its own files, which that topic\'s verifier walks there with its log\'s later word. A cite by any record of the unit settles a section, whichever records walk it; of a session, a cite by a topic the unit promoted too.',
+      'and of each of its discovery sessions and each asset its records walk, on the topic an asset came in from or a split\'s research bears the name of, else on the unit\'s own record, else on each of its topics — never a section any topic of the unit holds word for word in its own files, of a session a topic the unit promoted too, which that topic\'s verifier walks there with its log\'s later word, but for a section whose text is one line under 40 characters. A cite by any record of the unit settles a section of a session or an asset, whichever records walk it; of a session, a cite by a topic the unit promoted too.',
       'So a unit\'s records are carried in order: compose every record, have each verifier pass it, settle the sections the check names, then carry them. The carry of a record of a unit with an approved spec, or with a discovery session or an asset its records walk holding text, its own among them, waits until each record drawing on them has passed its verifier or the session\'s settlement — of a session, the unit\'s own and a topic it promoted among them — and the check names no such section, naming what it waits on, or how many such sections the check names. Every record of a unit a topic was promoted to waits on the unit it came from in the same way.',
     ].filter((rule) => !text.includes(rule)), []);
   });

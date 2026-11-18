@@ -567,15 +567,34 @@ describe('the walk sheet (the verifier\'s brief)', () => {
     ], [true, true], `${topic}\n\n${own}`);
   });
 
+  it('of a file it does not walk, an asset another record walks or none, only the sections an entry cites', () => {
+    writeState(dir, layout.assets('fumi', 'plans', 'licensing', 'plan.md'), '# Plan\n\nTask one.\n\n## Later\n\nTask two.\n');
+    writeState(dir, layout.assets('fumi', 'research', 'exploration-superseded-20260101.md'), '# Exploration\n\nSeats or usage.\n\n## Hosting\n\nOur servers.\n');
+    writeState(dir, composedPath('fumi', null), `${RECORD}\n`);
+    writeState(dir, composedPath('fumi', 'licensing'), JSON.stringify({ entries: [
+      { ref: 'f1', event: 'found', text: 'Task two waits.', cites: [{ path: 'fumi/assets/plans/licensing/plan.md', section: 'Later' }] },
+      { ref: 'f2', event: 'found', text: 'Hosting is ours.', cites: [{ path: 'fumi/assets/research/exploration-superseded-20260101.md', section: 'Hosting' }] },
+    ] }));
+
+    const { brief } = issued(['migration-verifier', ...LICENSING]);
+
+    assert.ok(brief.includes(`\n\n${[
+      '## fumi/assets/plans/licensing/plan.md', '', '- Plan > Later, lines 5–7', '  - f1, found: Task two waits.', '',
+      '## fumi/assets/research/exploration-superseded-20260101.md', '', '- Exploration > Hosting, lines 5–7', '  - f2, found: Hosting is ours.',
+    ].join('\n')}\n\n# The earlier rounds`), brief);
+  });
+
   it('a section of an asset it walks that its own files hold word for word, heading and text, left off its sheet; an asset they hold whole off its sheet and its walk list, so said among the others', () => {
     for (const [rel, text] of Object.entries(UNIT_ASSETS)) writeState(dir, layout.assets('fumi', ...rel.split('/')), text);
+    const decided = '#### Decision\n\nFourteen days from sign-up, the person said, then billed.';
+    writeState(dir, layout.topic('fumi', 'licensing', 'log.md'), `## Discussion\n\n## Discussion: Licensing\n\n### Trial Length\n\n${decided}\n`);
     const copy = layout.assets('fumi', 'research', 'licensing-superseded-20260101.md');
-    writeState(dir, copy, '# Licensing\n\nA trial of a month.\n\n#### Decision\n\nFourteen days, the person said.\n');
+    writeState(dir, copy, `# Licensing\n\nA trial of a month.\n\n${decided}\n`);
     writeState(dir, composedPath('fumi', 'licensing'), `${RECORD}\n`);
     const sheet = () => issued(['migration-verifier', ...LICENSING]).brief;
 
     const part = sheet();
-    writeState(dir, copy, '#### Decision\n\nFourteen days, the person said.\n');
+    writeState(dir, copy, `${decided}\n`);
     const whole = sheet();
     const { brief } = issued(['migration-topic', ...LICENSING]);
 

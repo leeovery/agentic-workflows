@@ -66,48 +66,49 @@
 // discovery as a whole that no topic owes; a record of none is its own.
 // And a unit's: once every topic of it has a record composed or carried,
 // every section of its approved specs holding text — a spec kept in its
-// assets, or its `spec.md` where its specs were joined — cited by one of
-// its records, or marked by the session as holding no topic's
+// assets, or its `spec.md` where its specs were joined — cited by one of its
+// records, or marked by the session as holding no topic's
 // (`.cache/migrate/records/{unit}.sections.json`): what the spec stage
 // decided, found or left open on a subject no log discusses exists nowhere
 // else (21.6.4), and the session sends each such section to the topic it
 // belongs to, one of those it is named on. A section is its heading's path
 // within its part — a kept spec's, within the file — named by the shortest
 // path naming it alone there, its heading or with as many of those over it
-// as tell it apart, and its place among those sharing its path; a cite or
-// a mark counts for the section it names alone, as the carry reads it, so
-// a bare heading held more than once counts for none of its copies; and a
-// cite counts only where its topic draws on the spec,
-// never of a spec it draws no part of, its later answer, which it cites
-// for that answer alone (21.6.3). In a joined spec a section is its part's:
-// a cite counts in the parts of its topic's specs, a mark is its part's,
+// as tell it apart, and its place among those sharing its path; a cite or a
+// mark counts for the section it names alone, as the carry reads it, so a
+// bare heading held more than once counts for none of its copies; and a cite
+// counts only where its topic draws on the spec, never of a spec it draws no
+// part of, its later answer, which it cites for that answer alone (21.6.3).
+// In a joined spec a section is its part's: a cite counts in the parts of
+// its topic's specs, a mark is its part's,
 // `{"{path}": {"{part}": ["{section}", …]}}`, and the front matter a part
 // opens on, the old spec's, holds none of its text; any other section is
-// marked `{"{path}": ["{section}", …]}`. It is named on each topic drawing on it — in a
-// joined spec, each whose part holds it, any section outside the parts
-// every topic's of the spec — and asks no composer for an entry. The
-// sources a unit's records walk in common, its discovery sessions and its
-// walked assets, are held the same way, each once every record walking it
-// has one composed or carried — of a session the unit's own, and a topic
+// marked `{"{path}": ["{section}", …]}`. It is named on each topic drawing
+// on it — in a joined spec, each whose part holds it, any section outside
+// the parts every topic's of the spec — and asks no composer for an entry.
+// The sources a unit's records walk in common, its discovery sessions and
+// its walked assets, are held the same way, each once every record walking
+// it has one composed or carried — of a session the unit's own, and a topic
 // it promoted, among them: each section of one holding text cited by any
-// record of the unit, of a session a topic it promoted too, or held word
-// for word in the own markdown files of any of those topics, which its
-// verifier walks there, or marked as a kept spec's is, else named — the
-// walkers deciding only when and where — on the topic an import came in
-// from, or a
+// record of the unit, of a session a topic it promoted too, or held word for
+// word in the own markdown files of any of those topics, which its verifier
+// walks there, or marked as a kept spec's is, else named — the walkers
+// deciding only when and where — on the topic an import came in from, or a
 // split's research was copied from, else on the unit's own record, else on
 // each of its topics. A topic's walk sheet and brief leave off what its own
-// files hold so. A record is carried once its verifier has passed it,
-// the findings beside it as composed an empty file, or the session has
-// settled a late round's findings, the note beside it marked so
-// (`unverified`, which `ledger carry` asks); and until each topic of a
-// unit drawing on an approved spec has its record so passed — and each record walking a
-// shared source of text, where the unit holds one — and no such section is
-// named, no record of the unit is carried, nor of a unit a topic of it was
-// promoted to (`unitWaits`): a record carried could take no section found
-// later. A record not yet carried is named where it stands: none composed,
-// what the carry would refuse it for on its own, through the carry's own
-// guards, or passed and waiting to be carried.
+// files hold so, a copy ending where a line does — but a section whose text
+// is one line under 40 characters, which an unrelated topic's could match,
+// is held by none. A record is carried once its verifier has passed it, the
+// findings beside it as composed an empty file, or the session has settled a
+// late round's findings, the note beside it marked so (`unverified`, which
+// `ledger carry` asks); and until each topic of a unit drawing on an
+// approved spec has its record so passed — and each record walking a shared
+// source of text, where the unit holds one — and no such section is named,
+// no record of the unit is carried, nor of a unit a topic of it was promoted
+// to (`unitWaits`): a record carried could take no section found later. A
+// record not yet carried is named where it stands: none composed, what the
+// carry would refuse it for on its own, through the carry's own guards, or
+// passed and waiting to be carried.
 // A record of no entries keeps every rule but the cites: its old map, its
 // threads and its imports are asked of it as of any. A topic promoted to a
 // cross-cutting unit took only its discussion there: its research's threads
@@ -148,8 +149,8 @@
 // verifier's walk (`sheetOf`): the topic's own markdown files, but its
 // mail, its specs, the discovery sessions it draws on, the unit's walked
 // assets and any other file an entry cites, each section by its lines with
-// the entries citing it — of a spec of the unit's it draws no part of, only
-// the sections cited. The unit's assets are every file under its
+// the entries citing it — of a file it does not walk, a spec of the unit's
+// it draws no part of among them, only the sections cited. The unit's assets are every file under its
 // `assets/` but a dotfile, each with where it came from, and an import
 // whose file is gone; those walked are its markdown files but its specs,
 // read as specs, its plans and old reviews, the building's reference,
@@ -668,13 +669,24 @@ function ownFilesOf(project, unit, topic) {
 /** The text of a topic's own markdown files but its mail, none of a unit's own record, which has none. @param {Project} project @param {Unit} unit @param {string|null} topic */
 const ownTextOf = (project, unit, topic) => (topic === null ? '' : ownFilesOf(project, unit, topic).map((at) => readText(path.join(project.stateDir, at)) ?? '').join('\n'));
 
+const SHORT = 40;
+
 /**
  * Whether `text` holds a section of a source word for word, its heading and
- * its text: a split's research the move put into a topic's log, which the
- * topic's verifier walks there.
+ * its text, the copy ending where a line does: a split's research the move
+ * put into a topic's log, which the topic's verifier walks there. A section
+ * whose text is one line under `SHORT` characters is never held.
  * @param {string[]} lines the source's @param {Heading} heading @param {string} text
  */
-const heldIn = (lines, { line, end }, text) => text.includes(lines.slice(line - 1, end).join('\n').trim());
+function heldIn(lines, { line, end }, text) {
+  const body = lines.slice(line, end).join('\n').trim();
+  if (!body.includes('\n') && body.length < SHORT) return false;
+  const copy = lines.slice(line - 1, end).join('\n').trim();
+  for (let at = text.indexOf(copy); at !== -1; at = text.indexOf(copy, at + 1)) {
+    if ((text[at + copy.length] ?? '\n') === '\n') return true;
+  }
+  return false;
+}
 
 /**
  * Whether a record's own files hold a source word for word, each of its
@@ -697,19 +709,19 @@ function heldWhole(project, unit, topic, at) {
 
 /**
  * The sections of one file of the walk, in order: those holding text, in
- * a joined spec in the parts the topic draws on alone, but none of a spec
- * of the unit's it draws no part of, its later answer; and those an entry
- * cites — a cite naming its section, as the carry reads it, within the
+ * a joined spec in the parts the topic draws on alone, but none of a file
+ * it does not walk, a spec of the unit's it draws no part of, its later
+ * answer, among them; and those an entry cites — a cite naming its section, as the carry reads it, within the
  * parts the topic draws on, so a heading several parts hold is the one in
  * the topic's part, and in any other only where none of those holds it —
  * each with every entry citing it, once; but no section of a shared source,
  * a discovery session or a walked asset, the record's own files hold word
  * for word (`heldIn`) and no entry cites, which its walk of them reads.
- * @param {Project} project @param {Unit} unit @param {{specs: Spec[], later: Set<string>, shared: Set<string>, own: string}} drawing the topic's specs, the paths of the unit's it draws no part of, those of its shared sources, and its own files' text
+ * @param {Project} project @param {Unit} unit @param {{specs: Spec[], walks: Set<string>, shared: Set<string>, own: string}} drawing the topic's specs, the paths of the files it walks, those of its shared sources, and its own files' text
  * @param {Record<string, any>[]} entries @param {string} at
  * @returns {SheetSection[]}
  */
-function sheetSections(project, unit, { specs, later, shared, own }, entries, at) {
+function sheetSections(project, unit, { specs, walks, shared, own }, entries, at) {
   const parts = partsDrawn(specs, at);
   const text = readText(path.join(project.stateDir, at)) ?? '';
   const lines = text.split('\n');
@@ -721,7 +733,7 @@ function sheetSections(project, unit, { specs, later, shared, own }, entries, at
     const named = new Set(names.flatMap((name) => citedBy(headings, name, parts)));
     for (const heading of named) citing.set(heading, [...(citing.get(heading) ?? []), entry]);
   }
-  const drawn = (/** @type {Heading} */ heading) => !later.has(at) && (parts === null || parts.includes(heading.part))
+  const drawn = (/** @type {Heading} */ heading) => walks.has(at) && (parts === null || parts.includes(heading.part))
     && !(shared.has(at) && heldIn(lines, heading, own));
   return headings.filter((heading) => (heading.text && drawn(heading)) || citing.has(heading)).map((heading) => ({
     section: shownPath(headings, heading), line: heading.line, end: heading.end,
@@ -740,13 +752,12 @@ function sheetSections(project, unit, { specs, later, shared, own }, entries, at
  */
 function sheetOf(project, unit, topic, entries) {
   const specs = topic === null ? [] : specsOf(project, unit, topic);
-  const later = new Set(unitSpecs(project, unit).map(({ path: at }) => at).filter((at) => !specs.some((spec) => spec.path === at)));
   const cited = entries.flatMap(({ cites }) => (Array.isArray(cites) ? cites.filter(isObject) : [])).map(({ path: at }) => String(at));
   const walked = assetsOf(project, unit).filter(({ walkers }) => walkers.includes(topic)).map(({ path: at }) => at);
   const sessions = sessionsOf(project, unit, topic);
-  const drawing = { specs, later, shared: new Set([...sessions, ...walked]), own: ownTextOf(project, unit, topic) };
-  const files = [...(topic === null ? [] : ownFilesOf(project, unit, topic)), ...specs.map(({ path: at }) => at), ...sessions, ...walked, ...cited];
-  return [...new Set(files)].filter((at) => isFile(path.join(project.stateDir, at)))
+  const walks = [...(topic === null ? [] : ownFilesOf(project, unit, topic)), ...specs.map(({ path: at }) => at), ...sessions, ...walked];
+  const drawing = { specs, walks: new Set(walks), shared: new Set([...sessions, ...walked]), own: ownTextOf(project, unit, topic) };
+  return [...new Set([...walks, ...cited])].filter((at) => isFile(path.join(project.stateDir, at)))
     .map((at) => ({ path: at, sections: sheetSections(project, unit, drawing, entries, at) })).filter(({ sections }) => sections.length > 0);
 }
 
@@ -1248,7 +1259,7 @@ function waitsOf(project, unit) {
   if (unpassed.length > 0) return unpassed;
   const uncited = uncitedOf(project, unit).length + uncitedSharedOf(project, unit).length;
   if (uncited === 0) return [];
-  return [`${uncited === 1 ? 'a section' : `${uncited} sections`} of ${unit.name}'s approved specs, discovery sessions and walked assets ${uncited === 1 ? 'holds' : 'hold'} text no record cites — \`migrate check ${DIRECTIVE}\` names each on the record it is named on`];
+  return [`${uncited === 1 ? 'a section' : `${uncited} sections`} of ${unit.name}'s approved specs, discovery sessions and walked assets ${uncited === 1 ? 'holds' : 'hold'} text no record cites — \`migrate check ${DIRECTIVE}\` names each where it is named`];
 }
 
 /**
