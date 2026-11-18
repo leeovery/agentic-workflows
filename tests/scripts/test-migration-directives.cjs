@@ -452,7 +452,7 @@ describe('the stop\'s screen (21.10.11)', () => {
 
     assert.deepStrictEqual(['076-legacy-split', '079-records'].map(accountOf), [
       '> No session works in this project until the migration is done. What it finished is kept: 1 of Fumi\'s 2 sources have their plans, each checked. A source it was in the middle of is planned again from the start, its plan cleared first.',
-      '> No session works in this project until the migration is done. What it finished is kept: 1 of Fumi\'s 2 topics have their records, each checked. A record it was in the middle of is amended from where it stood.',
+      '> No session works in this project until the migration is done. What it finished is kept: 1 of Fumi\'s 2 records are carried, each checked. A record it was in the middle of is amended from where it stood.',
     ]);
   });
 
