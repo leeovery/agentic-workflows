@@ -195,7 +195,7 @@ describe('the events and their schemas', () => {
     const keep = { v: 1, id: newId(), event: 'kept', ...TAGS, at: AT, by: 'person', who_moved_whom: 'person-moved-claude', entry: newId(), reason: 'changed-mind', cause: null, why: 'They float every note.', sealed: 'A floating panel.', given: 'own' };
     const leftAhead = { ...keep, who_moved_whom: 'none', reason: 'asked-blind', given: 'dont-care' };
     assert.deepStrictEqual(validEvent(leftAhead), leftAhead);
-    assert.throws(() => validEvent({ ...keep, given: 'dont-care' }), /a keep is given dont-care only on Claude's call gone ahead while a blind question waited, asked-blind/);
+    assert.throws(() => validEvent({ ...keep, given: 'dont-care' }), /a keep is given dont-care only where it keeps Claude's sealed answer, moving no one: Claude's call gone ahead while a blind question waited, or a decision Claude leaned to keep/);
     assert.throws(() => validEvent({ ...keep, given: 'your-call' }), /its given is not one of own, dont-care$/);
     assert.deepStrictEqual(validEvent(keep), keep);
     assert.throws(() => validEvent({ ...keep, by: 'claude' }), /its by is not one of person$/);

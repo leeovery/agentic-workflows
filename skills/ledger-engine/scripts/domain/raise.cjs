@@ -29,11 +29,15 @@
 // - A raise on a replacement (16.5.7, 29.19.2): `raise <unit>.<phase>[.<topic>]
 //   --replaces <entry> --reason <reason> [--cause <id>] [--relies-on <id>
 //   …] [--always <mark>]`, the same call on stdin, its rows Claude's
-//   proposed answers in place
-//   of the decision's, the lean one of them. The screen adds a row of its
-//   own, `keep`, keeping the decision as it stands, its answer as the draw
-//   found it, which the seal holds; under `--always built-otherwise` it
-//   says keeping it has the build change the code to match (21.6.16).
+//   proposed answers in place of the decision's, the lean one of them. The
+//   screen adds a row of its own, `keep`, keeping the decision as it
+//   stands, its answer as the draw found it, which the seal holds.
+//   `--always built-otherwise` (21.6.16) is a replacement's alone, of a
+//   decision the migration brought across, its session the migration's:
+//   the keep row says keeping it has the build change the code to match,
+//   and the lean may be keep, Claude's own read that the decision should
+//   stand — so the person's keep agrees with it, and their pick of a
+//   proposal stands over it.
 // - It refuses, drawing nothing: no session; no state; a place or a link
 //   `ledger decide` refuses — `ledger replace`, on a replacement — read and
 //   checked by that code before any lock (ledger-write.cjs), since the answer
@@ -41,27 +45,28 @@
 //   answer, or moved to the roadmap as later — after a `/clear` or a
 //   compaction Claude can raise one again — whether or not the conversation
 //   holds its seal; an entry replaced that is no decision, whose answer the
-//   rows give; `--always` given twice, naming no mark, or with `--fact`; a
-//   call of another shape;
-//   fewer than two rows — on a replacement, no proposal; a key the trust log
-//   cannot key, one two rows share, or one that is the screen's own word in
-//   any case (`t`, `e`, `technical`, `explain`, `comment`, and `keep` on
-//   every raise, so a raise event's `keep` always means a keep); a lean
-//   naming no row of Claude's; a proposal whose answer is the decision's as
-//   it stands; and a row holding several rules. The one-decision check
-//   (ledger-one-decision.cjs) judges each of Claude's rows as the entry it
-//   would land as — its answer, and the other rows of Claude's as what it
-//   rules out — every row's call put at once; the seal names the rows it
-//   judged to hold one rule, and a row the call cannot judge is drawn all the
-//   same. The why is not judged with them, so every decision a raise lands
-//   lands unchecked, for the late check to judge whole at the next start
-//   (ledger-late-check.cjs): the seal's rows judged are the record of what
-//   the draw judged, and no call is made at the answer. Beside the checks
-//   the labeller labels the call (labeller.cjs) from its question and its
-//   rows, each its answer and what the person would notice, null where its
-//   call fails: the label is sealed with the call, in the conversation or on
-//   its park, so a raise is labelled once — never at `raise show`, a
-//   `raise draw` or the answer, and never a fact (16.3.8).
+//   rows give; `--always` given twice, naming no mark, or with `--fact`;
+//   `--always built-otherwise` on a question's answer, or on a replacement of
+//   a decision made in Ledger; a call of another shape; fewer than two rows —
+//   on a replacement, no proposal; a key the trust log cannot key, one two
+//   rows share, or one that is the screen's own word in any case (`t`, `e`,
+//   `technical`, `explain`, `comment`, and `keep` on every raise, so a raise
+//   event's `keep` always means a keep); a lean naming no row of Claude's,
+//   but keep under `--always built-otherwise`; a proposal whose answer is the
+//   decision's as it stands; and a row holding several rules. The
+//   one-decision check (ledger-one-decision.cjs) judges each of Claude's rows
+//   as the entry it would land as — its answer, and the other rows of
+//   Claude's as what it rules out — every row's call put at once; the seal
+//   names the rows it judged to hold one rule, and a row the call cannot
+//   judge is drawn all the same. The why is not judged with them, so every
+//   decision a raise lands lands unchecked, for the late check to judge whole
+//   at the next start (ledger-late-check.cjs): the seal's rows judged are the
+//   record of what the draw judged, and no call is made at the answer. Beside
+//   the checks the labeller labels the call (labeller.cjs) from its question
+//   and its rows, each its answer and what the person would notice, null
+//   where its call fails: the label is sealed with the call, in the
+//   conversation or on its park, so a raise is labelled once — never at
+//   `raise show`, a `raise draw` or the answer, and never a fact (16.3.8).
 // - A fact (16.3.8): `raise <unit>.<phase>[.<topic>] --answers <question>
 //   [--relies-on <id> …] --fact`, a fact Claude cannot check and only the
 //   person holds. The call on stdin is the question, its rows, the
@@ -111,19 +116,19 @@
 //   way, at its build and its review, are where a raise of no parked
 //   question waits (`raisePlaces`; board-investigation.cjs,
 //   board-quick-fix.cjs, waits.cjs).
-// - The decision point decides from the call and, beside it (E1): its
-//   label; where it is made, and whether it blocks build work — made in the
-//   build for a task, which a question asked parks; whose the entry a
-//   replacement would replace is — who decided it, read from the entry, or
-//   the person where a keep of theirs stands on it since (16.5.7); the mark
-//   Claude gives a question that always asks, `--always design-problem`,
-//   `--always live-server` or `--always built-otherwise` (19.4.22, 19.4.20,
-//   21.6.16), which a fact, always asked, never takes; the experiment of the unit still running that measures the
-//   question it answers (9.1.11); the question's id the blind draw hashes,
-//   the first entry of its chain, none for a replacement (16.17.4); whether
-//   the conversation sent the raise to check already; the project, by its
-//   state root and its name; the model of the session making the call, read
-//   once; and the time.
+// - The decision point decides from the call and, beside it (E1): its label;
+//   where it is made, and whether it blocks build work — made in the build
+//   for a task, which a question asked parks; whose the entry a replacement
+//   would replace is — who decided it, read from the entry, or the person
+//   where a keep of theirs stands on it since (16.5.7); the mark Claude gives
+//   a question that always asks, `--always design-problem`, `--always
+//   live-server` or `--always built-otherwise` (19.4.22, 19.4.20, 21.6.16),
+//   which a fact, always asked, never takes; the experiment of the unit still
+//   running that measures the question it answers (9.1.11); the question's id
+//   the blind draw hashes, the first entry of its chain, none for a
+//   replacement (16.17.4); whether the conversation sent the raise to check
+//   already; the project, by its state root and its name; the model of the
+//   session making the call, read once; and the time.
 // - The model is the call's (16.4.4): the one it was decided under, sealed
 //   with it — in the conversation's seal, or on the park, copied to a task
 //   joining it — so every event about the call is logged under it, never
@@ -256,32 +261,33 @@
 //   person's reason, the why, comes on stdin with either. The sealed answer
 //   is the lean row's text; whether it is product-wide is the call's; its
 //   kind and whether it is hard to undo are the sealed label's.
-// - `keep`, picked on a replacement, takes the why on stdin as a pick
-//   does: the person's keep of the decision as it stands lands at the id
-//   the draw minted, where the raise was drawn — the decision, the reason
-//   and the cause sealed, the why, and the lean row's text, Claude's
-//   proposal, sealed in it (ledger-events.cjs)
-//   — standing over the proposal as the departure rule holds
-//   (ledger-verdicts.cjs). Nothing it relies on changes: no replacement
-//   lands, so nothing is affected; and where the decision is affected by
-//   the replacement the keep names as its cause, keeping it confirms it
-//   still holds against it (ledger-affected.cjs).
-// - `--dont-care`, nothing on stdin: the person's "don't care" settles
-//   this question alone (16.5.4), Claude's lean landing at the id the draw
-//   minted as the builder's (9.2.14) — Claude's line, given `dont-care`,
-//   holding the lean row's answer, the other rows' as what it rules out and
-//   Claude's why, as a call that proceeds lands, moving no one. A fact
-//   refuses it: it holds no lean of Claude's to land. On a blind question
-//   Claude's sealed answer lands so too, the person never having seen it:
-//   no reveal, but Claude's answer named as the builder's — by the receipt
-//   in the build, by a line of the reveal's display outside it — and its
-//   raise event carries no weight (trust-evidence.cjs); on Claude's call
-//   gone ahead, the call stands as built, kept as a keep keeps it, given
-//   `dont-care`, its task never marked changed. Where the call's kind stands
-//   under a care entry in this project, and the person's "don't care"
-//   answers to it now run a multiple of three in a row, blind or not
-//   (person.cjs), the response cues Claude to propose dropping the entry
-//   (16.5.6).
+// - `keep`, picked on a replacement, takes the why on stdin as a pick does:
+//   the person's keep of the decision as it stands lands at the id the draw
+//   minted, where the raise was drawn — the decision, the reason and the
+//   cause sealed, the why, and the lean row's text, Claude's proposal, sealed
+//   in it (ledger-events.cjs) — standing over the proposal as the departure
+//   rule holds (ledger-verdicts.cjs); where Claude leaned to keep, under the
+//   built-otherwise mark, the keep is the lean, sealed so, moving no one.
+//   Nothing it relies on changes: no replacement lands, so nothing is
+//   affected; and where the decision is affected by the replacement the keep
+//   names as its cause, keeping it confirms it still holds against it
+//   (ledger-affected.cjs).
+// - `--dont-care`, nothing on stdin: the person's "don't care" settles this
+//   question alone (16.5.4), Claude's lean landing at the id the draw minted
+//   as the builder's (9.2.14) — Claude's line, given `dont-care`, holding the
+//   lean row's answer, the other rows' as what it rules out and Claude's why,
+//   as a call that proceeds lands, moving no one. A fact refuses it: it holds
+//   no lean of Claude's to land. On a blind question Claude's sealed answer
+//   lands so too, the person never having seen it: no reveal, but Claude's
+//   answer named as the builder's — by the receipt in the build, by a line of
+//   the reveal's display outside it — and its raise event carries no weight
+//   (trust-evidence.cjs); on Claude's call gone ahead, the call stands as
+//   built, kept as a keep keeps it, given `dont-care`, its task never marked
+//   changed; and where Claude leaned to keep the decision, it is kept so,
+//   given `dont-care`, moving no one. Where the call's kind stands under a
+//   care entry in this project, and the person's "don't care" answers to it
+//   now run a multiple of three in a row, blind or not (person.cjs), the
+//   response cues Claude to propose dropping the entry (16.5.6).
 // - The person's own words on Claude's call are read before anything lands
 //   (answer-reader.cjs): the separate call reads their text against
 //   Claude's rows for the one it picks, so the entry and the event agree on
@@ -292,13 +298,13 @@
 //   replaced, its park gone — is refused as the landing refuses it. A
 //   keep, a pick and a fact's words are never read.
 // - Who moved whom is the engine's alone (5.3.10): a pick other than the
-//   lean, the person's own words read as another row or as none, and a
-//   keep stood over it; own words read as the lean's row move no one, and a
-//   pick of the lean none, or the person come round to it where Claude says
-//   so on stdin — never on a blind question, whose lean they never saw. Any
-//   other value given refuses the answer. Claude proposed the replacement,
-//   so no answer to it is the person's reversal of an agreement of theirs:
-//   none logs a reversal.
+//   lean, the person's own words read as another row or as none, and a keep,
+//   where Claude leaned to a proposal, stood over it; own words read as the
+//   lean's row move no one, and a pick of the lean none, or the person come
+//   round to it where Claude says so on stdin — never on a blind question,
+//   whose lean they never saw. Any other value given refuses the answer.
+//   Claude proposed the replacement, so no answer to it is the person's
+//   reversal of an agreement of theirs: none logs a reversal.
 // - The same command lands the trust log's raise event (16.13.3,
 //   ledger-write.cjs): the line it landed — an entry, or a keep — the sort,
 //   the lean's key and the answer's — null for the person's own words, free
@@ -355,7 +361,7 @@ const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
 const { conversationDir } = require('./conversation.cjs');
 const { newId, shortId } = require('./ledger-ids.cjs');
 const { carrying } = require('./ledger.cjs');
-const { ROW_FIELDS, CALL_FIELDS: CALL_SHAPE, ASKED_BLIND, entryKind } = require('./ledger-events.cjs');
+const { ROW_FIELDS, CALL_FIELDS: CALL_SHAPE, ASKED_BLIND, CARRIED_SESSION, entryKind } = require('./ledger-events.cjs');
 const { ID_FACTS, readFolded, foldLedger, questionStands, laterOf, answersOf, notCurrent, factsOf, replacementsOf, whoseDecision } = require('./ledger-fold.cjs');
 const { liveness, manifestOf, measuredBy } = require('./ledger-units.cjs');
 const { topicTitle, quickFixBuild, investigationUnderWay, fixesUnderWay } = require('./derivations.cjs');
@@ -506,8 +512,10 @@ const NO_TASK = ['task'];
 const PARKS = '--parks';
 const PARKS_USAGE = `[${PARKS} <phase>.<n>]`;
 const ALWAYS = '--always';
+const BUILT_OTHERWISE = 'built-otherwise';
 const ALWAYS_USAGE = `[${ALWAYS} ${ALWAYS_MARKS.join('|')}]`;
-const QUESTION_USAGE = `${verbUsage('decide', SAID, NO_TASK)} ${PARKS_USAGE} ${ALWAYS_USAGE}   (the call as JSON on stdin)`;
+const QUESTION_ALWAYS_USAGE = `[${ALWAYS} ${ALWAYS_MARKS.filter((mark) => mark !== BUILT_OTHERWISE).join('|')}]`;
+const QUESTION_USAGE = `${verbUsage('decide', SAID, NO_TASK)} ${PARKS_USAGE} ${QUESTION_ALWAYS_USAGE}   (the call as JSON on stdin)`;
 const REPLACE_USAGE = `${verbUsage('replace', SAID, NO_TASK)} ${PARKS_USAGE} ${ALWAYS_USAGE}   (the call as JSON on stdin)`;
 const FACT = '--fact';
 const FACT_USAGE = `${verbUsage('decide', SAID, NO_TASK)} ${FACT}   (the fact's question as JSON on stdin)`;
@@ -601,27 +609,30 @@ function checkEachRow(rows) {
 /**
  * Refuse rows that offer no choice — fewer than two, or on a replacement no
  * proposal, keeping the decision being the screen's own row — a row
- * `checkEachRow` refuses, and a lean naming no row of Claude's.
- * @param {Call} call @param {boolean} replacing
+ * `checkEachRow` refuses, and a lean naming no row of Claude's, but keep on
+ * a replacement under the mark `always` names built-otherwise, where
+ * Claude's own read may be that the decision should stand.
+ * @param {Call} call @param {boolean} replacing @param {Always|null} always
  */
-function checkRows({ rows, lean }, replacing) {
+function checkRows({ rows, lean }, replacing, always) {
   if (replacing && rows.length === 0) throw new Error('raise: the call proposes no answer — a raise on a replacement proposes one at least, beside keeping the entry as it stands');
   if (rows.length < 2 && !replacing) throw new Error(`raise: the call has ${rows.length} row${rows.length === 1 ? '' : 's'} — a raise offers the person a choice of two at least`);
   checkEachRow(rows);
-  if (replacing && lean === KEEP) throw new Error(`raise: the call leans to ${KEEP}, the entry as it stands — a raise on a replacement leans to one of its proposals`);
+  if (lean === KEEP && replacing && always === BUILT_OTHERWISE) return;
+  if (replacing && lean === KEEP) throw new Error(`raise: the call leans to ${KEEP}, the entry as it stands — a raise on a replacement leans to one of its proposals, but under ${ALWAYS} ${BUILT_OTHERWISE}, where the code was built otherwise than the decision`);
   if (!rows.some((row) => row.key === lean)) throw new Error(`raise: the call leans to ${lean}, and no row has that key — its rows: ${rows.map((row) => row.key).join(', ')}`);
 }
 
 /**
  * The call on stdin, checked whole — as a raise on a replacement's where
- * `replacing`.
- * @param {string} stdin @param {boolean} replacing
+ * `replacing`, under the mark `always`.
+ * @param {string} stdin @param {boolean} replacing @param {Always|null} always
  * @returns {Call}
  */
-function callOf(stdin, replacing) {
+function callOf(stdin, replacing, always) {
   const call = stdinObject(stdin, SAID, 'the call');
   checkFields(call, CALL_FIELDS, 'raise: the call', CALL_MAY);
-  checkRows(/** @type {Call} */ (call), replacing);
+  checkRows(/** @type {Call} */ (call), replacing, always);
   return /** @type {Call} */ (call);
 }
 
@@ -732,12 +743,17 @@ function checkProposals({ rows }, { keep }, short) {
  * @param {string} text @param {Always|null} always @returns {Row}
  */
 function keepRow(text, always) {
-  if (always === 'built-otherwise') return { key: KEEP, name: 'Keep it as decided', text, notice: 'the build changes the code to match' };
+  if (always === BUILT_OTHERWISE) return { key: KEEP, name: 'Keep it as decided', text, notice: 'the build changes the code to match' };
   return { key: KEEP, name: 'Keep it as it stands', text, notice: 'nothing changes' };
 }
 
-/** The row the call leans to. @param {Call} call @returns {Row} */
-function leanRow({ rows, lean }) {
+/**
+ * The row the call leans to: one of its own, or under the built-otherwise
+ * mark the row keeping the decision, which `replaces` holds.
+ * @param {Call} call @param {Replacing|null} [replaces] @returns {Row}
+ */
+function leanRow({ rows, lean }, replaces = null) {
+  if (lean === KEEP) return /** @type {Replacing} */ (replaces).keep;
   return /** @type {Row} */ (rows.find((row) => row.key === lean));
 }
 
@@ -1224,6 +1240,7 @@ function decided(cwd, raising, call, label) {
  */
 function placedRaise(cwd, args, warnings, fact, always) {
   const verb = args.includes('--replaces') ? 'replace' : 'decide';
+  if (verb === 'decide' && always === BUILT_OTHERWISE) throw new Error(`raise: ${ALWAYS} ${BUILT_OTHERWISE} marks the replacement of a decision from before Ledger, and a raise answering a question replaces none — Usage: engine ${REPLACE_USAGE}`);
   const usage = `Usage: engine ${fact ? FACT_USAGE : { decide: QUESTION_USAGE, replace: REPLACE_USAGE }[verb]}`;
   const { at, linked, read, replacing } = writePlaced(cwd, verb, args, SAID, usage, warnings, NO_TASK);
   const place = { unit: at.unit, phase: at.phase, topic: at.topic };
@@ -1237,6 +1254,7 @@ function placedRaise(cwd, args, warnings, fact, always) {
   const entry = /** @type {string} */ (linked.replaces);
   const kind = entryKind(replacing);
   if (kind !== 'decision') throw new Error(`raise --replaces names ${short(entry)}, a ${kind} — a raise replaces a decision, the person picking its answer`);
+  if (always === BUILT_OTHERWISE && replacing.session !== CARRIED_SESSION) throw new Error(`raise: ${ALWAYS} ${BUILT_OTHERWISE} marks code built otherwise than a decision the migration brought across, and ${short(entry)} was decided in Ledger, its session not the migration's`);
   const replaces = { entry, reason: /** @type {string} */ (linked.reason), cause: /** @type {string|null} */ (linked.cause), keep: keepRow(/** @type {string} */ (replacing.text), always) };
   return { place, target: { answers: null, relies_on: reliesOn, replaces }, replacedBy: whoseDecision(read, entry), short, read };
 }
@@ -1509,7 +1527,7 @@ async function drawRaise(cwd, args, stdin) {
   const raising = { session, place, target, replacedBy, always, task: parks, model: modelOf(cwd), chain: questionId(read, target), measured: measuredOn(cwd, place, read, target) };
   const inBuild = checkBuildPlace(cwd, place, parks);
   if (!inBuild) questions.checkUnparked(read, subjectOf(target), SAID);
-  const given = fact ? factOf(stdin()) : callOf(stdin(), target.replaces !== null);
+  const given = fact ? factOf(stdin()) : callOf(stdin(), target.replaces !== null, always);
   if (inBuild && 'stepped_back' in given) throw new Error('raise: a raise in the build takes no stepped_back — its call parks in the ledger, which keeps the call\'s own fields alone');
   if (place.phase === 'investigation' && 'stepped_back' in given) assertRootCauseAt(cwd, place.unit, SAID, warnings);
   if (target.replaces !== null) checkProposals(/** @type {Call} */ (given), target.replaces, short(target.replaces.entry));
@@ -1843,7 +1861,7 @@ function answerLanding(seal, { text, why, rules_out: rulesOut }, moved, sealed) 
 function answeredWith(seal, given) {
   const { answer, via, with_text: withText, reading } = given;
   return {
-    ...answerLanding(seal, given, given.who_moved_whom, leanRow(seal.call).text),
+    ...answerLanding(seal, given, given.who_moved_whom, leanRow(seal.call, seal.replaces).text),
     answer, logged: { answer, via, with_text: withText, reading, dont_care: false }, yours: { text: given.text, own: withText },
   };
 }
@@ -1862,8 +1880,9 @@ function leftToTheBuilder(seal) {
   const { call, replaces } = seal;
   /** @type {Logged} */
   const logged = { answer: call.lean, via: 'typed', with_text: false, reading: null, dont_care: true };
-  const yours = { text: leanRow(call).text, own: false };
+  const yours = { text: leanRow(call, replaces).text, own: false };
   if (replaces?.reason === ASKED_BLIND) return kept(seal, replaces, keptMove(ASKED_BLIND), LEFT_TO_THE_BUILDER, logged, yours);
+  if (call.lean === KEEP) return kept(seal, /** @type {Replacing} */ (replaces), 'none', LEFT_TO_THE_BUILDER, logged, yours);
   const { lands, linked, content, checkRead } = landsAs(seal, AT_THE_ANSWER, null);
   return { lands, linked, checkRead, content: { ...claudesAnswer(call, content), given: 'dont-care' }, answer: call.lean, logged, yours };
 }
@@ -1899,7 +1918,7 @@ function kept(seal, { entry, reason, cause }, moved, why, logged, yours) {
   return {
     lands: 'keep',
     linked: { entry, reason, cause },
-    content: { by: 'person', who_moved_whom: moved, why, sealed: leanRow(seal.call).text, given: logged.dont_care ? 'dont-care' : 'own' },
+    content: { by: 'person', who_moved_whom: moved, why, sealed: leanRow(seal.call, seal.replaces).text, given: logged.dont_care ? 'dont-care' : 'own' },
     checkRead: (read) => checkStillCurrent(entry, read),
     answer: logged.answer, logged, yours,
     ...(reason === ASKED_BLIND ? { names: entry } : {}),
@@ -1918,7 +1937,8 @@ function kept(seal, { entry, reason, cause }, moved, why, logged, yours) {
  */
 function keeping(session, seal, replacing, row, stdin) {
   const { why } = answerOn(seal.blind ? 'blind' : 'keep', stdin);
-  return kept(seal, replacing, keptMove(replacing.reason), why, { answer: row.key, via: cameBy(session, seal, row.key), with_text: false, reading: null, dont_care: false }, { text: row.text, own: false });
+  const moved = seal.call.lean === KEEP ? 'none' : keptMove(replacing.reason);
+  return kept(seal, replacing, moved, why, { answer: row.key, via: cameBy(session, seal, row.key), with_text: false, reading: null, dont_care: false }, { text: row.text, own: false });
 }
 
 /** Who moved whom on the person's keep, as the departure rule holds it for the replacement's reason `reason`. @param {string} reason */

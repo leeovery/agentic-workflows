@@ -10,7 +10,8 @@
 // on, the mechanism; then the rows, the lean recommended, the toggle, "I
 // don't follow" and a comment.
 // A raise on a replacement draws Claude's proposals, then the row its seal
-// holds for keeping the entry as it stands, never recommended — but where a
+// holds for keeping the entry as it stands, recommended only where Claude
+// leaned to keep it, under the built-otherwise mark — and where a
 // row of Claude's holds the entry's answer, which only a blind question
 // drawn on Claude's own call mid-build does (raise.cjs), that row stands for
 // keeping it. A fact draws no lean and recommends no row, asks for the
@@ -129,7 +130,7 @@ function steppedBack(call) {
  */
 function statement(seal, technical, shown) {
   const { call, reason } = seal;
-  const lean = call.rows.find((row) => row.key === leanShown(seal));
+  const lean = drawnRows(seal).find((row) => row.key === leanShown(seal));
   const rows = drawnRows(seal);
   const blocks = [
     [header(seal, shown)],

@@ -78,7 +78,7 @@ An epic's topic then stops at its **decided** gate: what it decided, with the le
 
 ## When a decided topic comes back
 
-A decided topic stays decided until something it relies on moves. When a decision it relied on is replaced, in another topic, at the specification or in the build, the entries resting on it are flagged as **affected**, and the topic shows among what waits on you, as "a decision it relies on changed". Entering it then is for those entries alone: each is confirmed as still holding, or replaced, and the topic stays decided. A message sent to a decided topic reopens it instead, and it closes again through a fresh pass.
+A decided topic stays decided until something it relies on moves. When a decision it relied on is replaced, in another topic, at the specification or in the build, the entries resting on it, but the replacement's own cause, are flagged as **affected**, and the topic shows among what waits on you, as "a decision it relies on changed". Entering it then is for those entries alone: each is confirmed as still holding, or replaced, and the topic stays decided. A message sent to a decided topic reopens it instead, and it closes again through a fresh pass.
 
 ## The log
 
