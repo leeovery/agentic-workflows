@@ -138,7 +138,7 @@ describe('the migration waiting on its commit (21.9.1, 21.9.3)', () => {
     engine.ok(dir, ['ledger', 'find', `${UNIT}.discussion.search`], {
       env: SESSION, stdin: JSON.stringify({ text: 'Search runs offline.', how: 'read from the discussion\'s map', known: 'read', by: 'claude', who_moved_whom: 'none', product_wide: true }),
     });
-    fs.rmSync(statePath(dir, layout.knowledge()), { recursive: true });
+    assert.strictEqual(fs.existsSync(statePath(dir, layout.knowledge())), false, 'nothing renders the copies while the migration runs');
 
     ok(['boot']);
 
