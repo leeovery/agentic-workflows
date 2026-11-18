@@ -3,7 +3,8 @@
 ## Touches
 
 - The ledger, through `ledger carry`, one record at a time, and through
-  `raise` for the points raised at the end.
+  `raise`, `raise answer` and `ledger merge` for the points raised at the
+  end.
 - Each record as composed, the verifier's findings, rulings and verdicts
   on it and every round of them before, the findings its composer handed back, the
   points the session settled, and a carry's refusal of it, in the state's cache, where its brief names them;
@@ -17,25 +18,26 @@
   settle that a verifier reverses, or that a finding of the third round or
   a later one raises.
 - At the end, each point no source settles on a started topic of a unit
-  in progress, raised one at a time: answered, or left open.
+  in progress that stays in its unit, raised one at a time: answered, or
+  left open.
 
 ## What It Does
 
 Every topic of every unit gets its record in the ledger, completed and cancelled units among them: what its sources settle, carried forward one entry at a time. A quick-fix holds no topic, and nothing of it is carried. Nor is anything of a cancelled unit holding an approved spec and no topic: its spec stays in its assets, the reference it is, and a cancelled unit's decisions govern nothing. A topic an epic promoted to a cross-cutting unit is carried on that unit, never on the epic. Each epic whose discovery holds a session gets a record of its own too, `{unit}.discovery`: each point of its discovery sessions bearing on no topic's subject, carried at the epic's discovery. A unit of one topic has none: its discovery is its topic's.
 
-Paths below are from the state's folder, but one under `.workflows/`, which is from the project's folder in the main checkout; a topic's brief names both. `{phase}` is the phase the topic's item is in: discussion; investigation for a bugfix's topic; discovery for an epic's topic never started, whose record holds questions and findings alone.
+Paths below are from the state's folder, but one under `.workflows/`, which is from the project's folder in the main checkout; a topic's brief names both. `{phase}` is the phase the topic's item is in: discussion; investigation for a bugfix's topic; discovery for an epic's topic never started.
 
 ## A Topic's Sources
 
 - Its log, `{unit}/topics/{topic}/log.md`, its brief, `brief.md` beside it, and its experiments' records in `experiments/`.
-- Its specs: each spec that draws on the topic, kept in `{unit}/assets/specs/` while the unit's building has not started, and joined into `{unit}/spec.md` once it has, each spec a part of it under its own numbered heading. Its brief marks each approved or a draft.
+- Its specs: each spec that draws on the topic, kept in `{unit}/assets/specs/` while the unit's building has not started, and joined into `{unit}/spec.md` once it has, each spec a part of it under its own numbered heading. Its brief marks each approved or a draft; a spec joined is past its gate, approved, one reopened during the build among them.
 - Its unit's approved specs it does not draw on, kept or joined the same way: the later answer to each of its points.
 - Its old discussion map and its research's threads, in its unit's manifest under `.workflows/`, as the move read them; a promoted topic's research as the unit it came from holds it.
 - Its reviews never folded in, which the move appended to its log, each under `## Review {id}, never folded in`.
 - Its unit's discovery sessions, `{unit}/discovery/session-{NNN}.md`, the migration's own among them where research fed several topics, and for a promoted topic those of the unit it came from.
 - Its unit's assets its brief lists to walk: each markdown file in `{unit}/assets/` but its specs, its plans, its old reviews and its legacy files — the documents the person shared; and the research a legacy split superseded, in `assets/research/`, a topic's where it bears the topic's name, else the unit's own record's alone. Its later answers decide what of an asset is current, as of any source.
 
-A unit's own record has the unit's discovery sessions and the assets its brief lists to walk as its sources.
+A unit's own record has the unit's discovery sessions, the assets its brief lists to walk, and the threads still open of research under no topic's name that its brief lists, as its sources.
 
 A point in a shared source — a discovery session, an asset of the unit, a spec several topics draw on, research that fed several topics — belongs to the record of the topic whose subject it bears on, whether or not it names the topic. A point of the discovery sessions, their research or the unit's assets bearing on no topic's subject is the unit's own record's, `{unit}.discovery`, where the unit has one, an epic's; in a unit of one topic, it is that topic's. A spec section bearing on no one topic's subject is one of the topics' drawing on the spec, the session choosing which once every record is composed.
 
@@ -55,14 +57,14 @@ Each current decision, finding and open question the topic's sources hold, and n
 - **Who decided.** `by` `person`, `given` `own`, where a line of the source shows the person deciding; `by` `claude`, `given` `own`, where it shows Claude's own call; `by` `claude`, `given` `your-call` or `dont-care`, where the person handed the call over in those words; and where it shows no one, `by` `claude`, `given` `carried`. A question's `by` is whoever the source shows raising it, else `claude`.
 - **How a finding is known.** A measured result is `known` `measured`, with its `command` and `result` as the log or the experiment's record gives them; one whose command neither gives is `read`, its `how` saying it was measured. Every other finding says `documented`, `spike` or `read`.
 - **The old map.** Each subtopic of the old map is carried by an entry naming it, `map_item`: its decision where a source settles it, else an open question, whatever the map's state says; an entry carrying several names them all. The map is as it stood when last written: a later section of the log, or an approved spec, may have settled a subtopic it shows open.
-- **Threads.** Each thread the register shows `open` or `digging` is carried by an entry naming it, `thread`: an open question where no source answers it, else the decision or finding that answers it, citing where.
-- **A topic never started.** An epic's topic no item past discovery holds is carried in discovery, as its brief's topic line shows. Nothing is decided in discovery: its record holds questions and findings alone, none product-wide, and what its research concluded is a finding.
+- **Threads.** Each thread its brief lists, `open` or `digging` in the register, is carried by an entry naming it, `thread`: an open question where no source answers it, else the decision or finding that answers it, citing where.
+- **A topic never started**, as its brief's topic line shows: an epic's topic no item past discovery holds, carried in discovery, or one whose item is `unstarted`, a message waiting on it never opened. Nothing is decided before its discussion opens: its record holds questions and findings alone, none product-wide, and what its research concluded is a finding.
 - **A unit's own record** is carried in discovery too, so it holds questions and findings alone, none product-wide. A record of no entries is one, where every point of the sessions bears on a topic's subject.
 - **Assets.** Each of the unit's assets its brief marks the record's to link, and any other its log or brief links to, is linked as `reference` from the entry that draws on it. One its brief shows gone is linked from none.
 - **A record at least.** A topic that draws on a spec, or whose log, brief or experiments' records — its markdown files — hold text past their headings, has an entry at least.
 - **What no one measured.** A point a source names unmeasured, untested, unverified or left to check is carried: an open question, or a finding stating that it is unmeasured. A ruling sets it aside only where a later source measured it or made it moot, or a scope note of the log, wherever it stands, puts it out of scope.
 - **Sources at odds.** Where the sources, or the sections of one, contradict each other on a point, and no later source settles it, the record says so: the entries carrying each side name the other, or an open question names the contradiction and cites both.
-- **Points no source settles** are open questions marked `raise` `true`, for the raises at the end, and they alone: a log unclear on what was decided, with no approved spec to settle it; a draft spec at odds with its log; a spec at odds with itself. Where an approved spec settles it, it is settled, unless the log settled it after the spec's approval, as above. Any other open question, one its sources leave for later work to answer, is carried unmarked. So is such a point where nothing raises it, and the carry refuses the mark there: on a topic never started, carried in discovery or its item `unstarted`, for its first opening to read; on a unit's own record, carried in discovery, where nothing is decided; of a cross-cutting unit, whose record is the product's, for the product's conversation; of a completed unit, whose code settled what it built; and of a cancelled unit, or a topic set aside, waiting with it.
+- **Points no source settles** are open questions marked `raise` `true`, for the raises at the end, and they alone: a log unclear on what was decided, with no approved spec to settle it; a draft spec at odds with its log; a spec at odds with itself. Where an approved spec settles it, it is settled, unless the log settled it after the spec's approval, as above. Any other open question, one its sources leave for later work to answer, is carried unmarked. So is such a point where nothing raises it, and the carry refuses the mark there: on a topic never started, carried in discovery or its item `unstarted`, for its first opening to read; on a topic leaving its building unit, as its brief's topic line shows, for its discussion where it goes; on a unit's own record, carried in discovery, where nothing is decided; of a cross-cutting unit, whose record is the product's, for the product's conversation; of a completed unit, whose code settled what it built; and of a cancelled unit, or a topic set aside, waiting with it.
 - **Nothing invented.** An entry says what a source says, and nothing more.
 
 ### Its Shape

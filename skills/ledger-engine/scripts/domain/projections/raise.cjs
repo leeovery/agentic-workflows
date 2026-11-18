@@ -103,13 +103,13 @@ function asking({ fact }) {
  * own, by the name it goes by; a question waiting in the build, by its
  * number before them and the tasks it parks after, where it parks any: the
  * first, and how many more (12.12.5).
- * @param {Seal} seal @param {string|null} shown the topic's title as screens show it
+ * @param {Seal} seal @param {string|null} shown the topic's title as screens show it, null where it has none of its own
  */
-function header({ place: { unit, topic }, parks }, shown) {
+function header({ place: { unit }, parks }, shown) {
   return [
     ...(parks === null ? [] : [numbered(parks.number)]),
     titlecase(unit),
-    ...(topic === null || topic === unit ? [] : [shown]),
+    ...(shown === null ? [] : [shown]),
     ...(parks === null || parks.tasks.length === 0 ? [] : [`parks ${parkedTasks(parks.tasks)}`]),
   ].join(' · ');
 }
@@ -145,8 +145,8 @@ function statement(seal, technical, shown) {
 }
 
 /**
- * The raise's MENU, declared as its seal names it; `topic` its place's
- * topic's title as screens show it.
+ * The raise's MENU, declared as its seal names it; `topic` the title of the
+ * topic it is about as screens show it, null where it has none of its own.
  * @param {Seal} seal @param {{technical?: boolean, topic: string|null}} opts
  * @returns {string}
  */

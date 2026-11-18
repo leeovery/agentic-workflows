@@ -49,21 +49,27 @@
 //     open question or a finding is what the sources say of it;
 //   - every thread of its research the register shows still open or digging
 //     named by an entry's thread, a name or a list: an open question where
-//     no source answers it, the entry answering it where a later one does;
+//     no source answers it, the entry answering it where a later one does —
+//     in a unit with no record of its own, each thread of its research under
+//     no topic's name too;
 //   - every import that came in from the topic, as the unit's manifest
 //     lists it, whose file the state holds, linked from one of its entries
 //     (21.5.7), a record of none included — in a unit of one topic that is
 //     no epic, an import from its discovery, `discovery`, being the topic's;
-//   - a record carried in discovery, an epic's topic never started, holds no
-//     decision and nothing product-wide: nothing is decided in discovery
-//     (8.3.4, 8.9.6), so what its research concluded is a finding;
+//   - a record of a topic never started — an epic's, carried in discovery,
+//     or its item `unstarted` where it is carried, a message parked on it
+//     never opened — holds no decision and nothing product-wide: nothing is
+//     decided in discovery (8.3.4, 8.9.6, 21.6.12), so what its research
+//     concluded is a finding;
 //   - a cross-cutting unit's findings and decisions are every one
 //     product-wide: the cut and the merges keep the unit as the product's
 //     reference (21.7.3).
 // A unit's own record keeps the rules a topic's does that are not its
 // topic's — its cites the unit's beside its topics, nothing decided or
-// product-wide in discovery — and links each import from the unit's
-// discovery as a whole that no topic owes; a record of none is its own.
+// product-wide in discovery — names each thread still open or digging of
+// the unit's research under no topic's name, which fed several topics
+// (21.5.4, 21.6.7), and links each import from the unit's discovery as a
+// whole that no topic owes; a record of none is its own.
 // And a unit's: once every topic of it has a record composed or carried,
 // every section of its approved specs holding text — a spec kept in its
 // assets, or its `spec.md` where its specs were joined — cited by one of its
@@ -135,9 +141,13 @@
 // product's once the cut and the merges retire the unit (21.7.5), which
 // the product's conversation opens on. A completed unit's points are
 // settled by the code it built; a cancelled unit's, and a topic's set
-// aside, wait with it (21.6.11). A record marking one of
-// these to raise breaks a rule (`unraised`), so the carry refuses the mark
-// that would never be raised.
+// aside, wait with it (21.6.11). A topic of a building epic that no spec
+// joined into its spec.md draws on leaves the unit at the cut and the
+// merges, a dead end the old map marked aside (21.8.9, 21.8.15): raised at
+// the unit's specification, its answer would stay with the unit it left,
+// so its points stay open questions for its discussion where it goes. A
+// record marking one of these to raise breaks a rule (`unraised`), so the
+// carry refuses the mark that would never be raised.
 //
 // `.workflows/` is read where the move read it: the working tree of the
 // project's folder in the repository's main checkout, whichever checkout
@@ -193,7 +203,8 @@ const OPEN_THREADS = ['open', 'digging'];
 const SET_ASIDE = ['cancelled', 'postponed'];
 const IN_PROGRESS = 'in-progress';
 const UNSTARTED = 'unstarted';
-// A spec item the person approved, in the old manifest.
+// A spec item the person approved, in the old manifest; a spec the move
+// joined is past its gate, approved, whatever its item says (21.8.5).
 const APPROVED_SPEC = 'completed';
 // The spec a building unit's specs are joined into (078).
 const JOINED_SPEC = 'spec.md';
@@ -532,7 +543,7 @@ function sourceNames(sources) {
  * @returns {string|null}
  */
 function joinedPart(project, unit, name) {
-  const number = unit.manifest.spec.joined.indexOf(name) + 1;
+  const number = joinedOf(unit.manifest).indexOf(name) + 1;
   const text = readText(path.join(project.stateDir, unit.name, JOINED_SPEC)) ?? '';
   return text.split('\n').map((line) => /^## (.*\S)\s*$/.exec(line)?.[1]).find((heading) => heading?.startsWith(`${number}. `)) ?? null;
 }
@@ -541,23 +552,36 @@ function joinedPart(project, unit, name) {
  * A spec of the unit's, as its manifest under `.workflows/` names it: where
  * the state keeps it, in `assets/specs/`, or joined into the unit's
  * `spec.md` (078, the topics `spec.joined` names), the part of it it makes;
- * whether it was approved, its item completed, or is a draft, and an
- * approved one's item's date, when it was approved, where the item has
- * one; and the topics it draws on, its sources and the one it bears the
- * name of.
+ * whether it was approved — kept, its item completed; joined, past its gate
+ * as the move joins none other, one reopened during the build among them
+ * (21.8.5) — or is a draft, and an approved one's item's date, when it was
+ * approved, where the item has one; and the topics it draws on, its
+ * sources and the one it bears the name of.
  * @typedef {{name: string, path: string, part: string|null, approved: boolean, approvedOn: string|null, topics: string[]}} Spec
  */
+
+/** The specs the move joined into a unit's `spec.md`, by name, in its order: none where it joined none. @param {Record<string, any>} manifest @returns {string[]} */
+const joinedOf = (manifest) => (Array.isArray(manifest?.spec?.joined) ? manifest.spec.joined.map(String) : []);
+
+/**
+ * Where the state holds a spec of the unit's, and whether it was approved
+ * (`Spec`); null where it holds none.
+ * @param {Project} project @param {Unit} unit @param {string} name @param {unknown} item its old item
+ * @returns {{path: string, part: string|null, approved: boolean}|null}
+ */
+function specHeld(project, unit, name, item) {
+  const kept = `${unit.name}/assets/specs/${name}.md`;
+  if (fs.existsSync(path.join(project.stateDir, kept))) return { path: kept, part: null, approved: isObject(item) && item.status === APPROVED_SPEC };
+  return joinedOf(unit.manifest).includes(name) ? { path: `${unit.name}/${JOINED_SPEC}`, part: joinedPart(project, unit, name), approved: true } : null;
+}
 
 /** The unit's specs the state holds (`Spec`). @param {Project} project @param {Unit} unit @returns {Spec[]} */
 function unitSpecs(project, unit) {
   return Object.entries(itemsOf(unit.before?.phases?.specification?.items)).flatMap(([name, item]) => {
-    const approved = isObject(item) && item.status === APPROVED_SPEC;
-    const approvedOn = approved && typeof item.date === 'string' ? item.date : null;
-    const topics = [name, ...(isObject(item) ? sourceNames(item.sources) : [])];
-    const kept = `${unit.name}/assets/specs/${name}.md`;
-    if (fs.existsSync(path.join(project.stateDir, kept))) return [{ name, path: kept, part: null, approved, approvedOn, topics }];
-    if (!Array.isArray(unit.manifest.spec?.joined) || !unit.manifest.spec.joined.includes(name)) return [];
-    return [{ name, path: `${unit.name}/${JOINED_SPEC}`, part: joinedPart(project, unit, name), approved, approvedOn, topics }];
+    const held = specHeld(project, unit, name, item);
+    if (held === null) return [];
+    const approvedOn = held.approved && isObject(item) && typeof item.date === 'string' ? item.date : null;
+    return [{ name, ...held, approvedOn, topics: [name, ...(isObject(item) ? sourceNames(item.sources) : [])] }];
   });
 }
 
@@ -587,14 +611,32 @@ function mapOf(unit, topic) {
 }
 
 /**
- * The threads of the topic's research still open or digging, wherever it
- * stayed.
- * @param {Project} project @param {Unit} unit @param {string} topic @returns {{thread: string, status: string, question: string}[]}
+ * The unit's research under a name none of its topics holds, nor one it
+ * promoted: research that fed several topics (21.5.4), by name.
+ * @param {Unit} unit @returns {string[]}
+ */
+function strayResearch(unit) {
+  const named = new Set([...topicsOf(unit.manifest), ...movedOf(unit.manifest).map(({ topic }) => topic)]);
+  return Object.keys(itemsOf(unit.before?.phases?.research?.items)).filter((name) => !named.has(name));
+}
+
+/**
+ * The threads still open or digging a record carries, each with the
+ * research it is of: a topic's, of its research wherever it stayed; and
+ * those of the unit's research under no topic's name (`strayResearch`), the
+ * unit's own record's where it has one, else each topic's — a unit of one
+ * topic's, its topic's.
+ * @param {Project} project @param {Unit} unit @param {string|null} topic
+ * @returns {{thread: string, status: string, question: string, research: string}[]}
  */
 function threadsOf(project, unit, topic) {
-  return homesOf(project, unit, topic).flatMap((home) => Object.entries(itemsOf(project.before(home)?.phases?.research?.items?.[topic]?.threads))
+  const own = hasOwnRecord(project.stateDir, unit.name, unit.manifest);
+  const carriesStray = topic === null ? own : !own;
+  const stray = carriesStray ? strayResearch(unit).map((name) => ({ home: unit.name, name })) : [];
+  const named = topic === null ? [] : homesOf(project, unit, topic).map((home) => ({ home, name: topic }));
+  return [...named, ...stray].flatMap(({ home, name }) => Object.entries(itemsOf(project.before(home)?.phases?.research?.items?.[name]?.threads))
     .filter(([, row]) => isObject(row) && OPEN_THREADS.includes(row.status))
-    .map(([thread, row]) => ({ thread, status: row.status, question: String(row.question ?? '') })));
+    .map(([thread, row]) => ({ thread, status: row.status, question: String(row.question ?? ''), research: name })));
 }
 
 
@@ -767,12 +809,12 @@ const hasSpec = (project, unit) => Array.isArray(unit.manifest?.spec?.joined) ||
 /**
  * Why a point a record marks to raise is never raised at the directive's
  * end, or null where it is: a unit's own record is carried in discovery,
- * where nothing is decided (8.3.4); a topic never started — carried in
- * discovery, or its item in the phase it is carried in `unstarted`, a
- * message parked on it never opened — has its open questions read at its
- * first opening; a cross-cutting unit's record is the product's (21.7.5);
- * a unit not in progress — completed, its code the truth of what was
- * built, or cancelled — and a topic set aside raise nothing (21.6.11).
+ * where nothing is decided (8.3.4); a topic never started (`neverStarted`)
+ * has its open questions read at its first opening; a cross-cutting unit's
+ * record is the product's (21.7.5); a unit not in progress — completed,
+ * its code the truth of what was built, or cancelled — and a topic set
+ * aside raise nothing (21.6.11); and a topic leaving its building unit
+ * (`leaves`) is discussed where it goes.
  * @param {Unit} unit @param {string|null} topic @param {string} phase the record's
  * @returns {string|null}
  */
@@ -781,8 +823,24 @@ function unraised(unit, topic, phase) {
   if (unit.manifest?.work_type === 'cross-cutting') return 'a cross-cutting unit\'s record is the product\'s';
   if (unit.manifest?.status !== IN_PROGRESS) return `its unit is ${unit.manifest?.status}, and only a unit in progress raises its points`;
   if (TOPIC_PHASES.some((each) => SET_ASIDE.includes(itemsOf(unit.manifest.phases?.[each]?.items)[topic]?.status))) return 'its topic is set aside';
-  const started = phase !== 'discovery' && itemsOf(unit.manifest.phases?.[phase]?.items)[topic]?.status !== UNSTARTED;
-  return started ? null : 'its topic never started, and its first opening reads its open questions';
+  if (neverStarted(unit.manifest, topic, phase)) return 'its topic never started, and its first opening reads its open questions';
+  return leaves(unit, topic) ? 'its topic leaves its building unit, no spec joined into the unit\'s spec.md drawing on it, and its discussion where it goes reads its open questions' : null;
+}
+
+/**
+ * Whether a topic leaves its unit at the cut and the merges (21.8.9): the
+ * unit an epic whose building started, its specs joined, and the topic its
+ * own or a source of none of them — but a topic the old map marked a dead
+ * end, which stays (21.8.15). Its points are raised nowhere here: the unit's
+ * specification takes no topic's, and the topic is discussed where it goes.
+ * @param {Unit} unit @param {string} topic
+ */
+function leaves(unit, topic) {
+  const joined = joinedOf(unit.manifest);
+  if (unit.manifest?.work_type !== EPIC || joined.length === 0) return false;
+  if (unit.before?.phases?.discovery?.items?.[topic]?.handled === true) return false;
+  const specs = itemsOf(unit.before?.phases?.specification?.items);
+  return !joined.some((name) => name === topic || sourceNames(specs[name]?.sources).includes(topic));
 }
 
 /** Each entry a record marks to raise where its point is never raised. @param {Unit} unit @param {string|null} topic @param {string} phase @param {Record<string, any>[]} record @returns {string[]} */
@@ -906,15 +964,31 @@ function citeProblems(project, unit, topic, specs, { path: cited, section }) {
   return [`cites "${name}" in ${cited}, which holds ${told.length} headings so named — a cite names one, by the path that tells it apart, or, of headings sharing their path, by its place among them: ${told.join(', ')}`];
 }
 
+// Where a record holds nothing decided, as its faults name it: carried in
+// discovery, or of a topic never started carried past it, its item
+// `unstarted` (`neverStarted`).
+const IN_DISCOVERY = 'in discovery';
+const NOT_STARTED = 'on a topic never started';
+
 /**
- * What a record carried in discovery holds that nothing there may: a
- * decision, or an entry marked product-wide.
- * @param {Record<string, any>[]} record @returns {string[]}
+ * Whether a topic never started, its record carried in `phase`: carried in
+ * discovery, or its item there `unstarted`, a message parked on it never
+ * opened.
+ * @param {Record<string, any>|null} manifest @param {string} topic @param {string} phase
  */
-function undecidedProblems(record) {
+const neverStarted = (manifest, topic, phase) => phase === 'discovery' || itemsOf(manifest?.phases?.[phase]?.items)[topic]?.status === UNSTARTED;
+
+/**
+ * What a record holding nothing decided holds that it may not — carried in
+ * discovery, or of a topic never started: a decision, or an entry marked
+ * product-wide.
+ * @param {Record<string, any>[]} record @param {string} where
+ * @returns {string[]}
+ */
+function undecidedProblems(record, where) {
   return record.flatMap(({ ref, event, product_wide: wide }) => {
-    if (event === 'decided') return [`entry ${ref} decides, and nothing is decided in discovery — what its sources settle is a finding, what they leave open a question`];
-    return wide === true ? [`entry ${ref} is product-wide, and nothing found in discovery is product-wide — a line for the product record is decided in the first topic it bears on`] : [];
+    if (event === 'decided') return [`entry ${ref} decides, and nothing is decided ${where} — what its sources settle is a finding, what they leave open a question`];
+    return wide === true ? [`entry ${ref} is product-wide, and nothing found ${where} is product-wide — a line for the product record is decided in the first topic it bears on`] : [];
   });
 }
 
@@ -939,6 +1013,13 @@ function unlinkedImports(project, unit, topic, record) {
     .map((entry) => `${entry.path} came in from ${entry.origin}, and no entry links it`);
 }
 
+/** Each thread the record carries (`threadsOf`) that no entry names. @param {Project} project @param {Unit} unit @param {string|null} topic @param {Record<string, any>[]} record @returns {string[]} */
+function threadProblems(project, unit, topic, record) {
+  const named = new Set(record.flatMap((entry) => namesOf(entry.thread)));
+  return threadsOf(project, unit, topic).filter(({ thread }) => !named.has(thread))
+    .map(({ thread, status, research }) => `the thread ${thread} is still ${status} in ${research === topic ? 'its research' : `the research ${research}`}, and no entry names it as its thread`);
+}
+
 /** Each entry's cite problems, or that it cites nothing. @param {Project} project @param {Unit} unit @param {string|null} topic @param {Record<string, any>[]} record @returns {string[]} */
 function citesProblems(project, unit, topic, record) {
   const specs = topic === null ? [] : specsOf(project, unit, topic);
@@ -950,12 +1031,16 @@ function citesProblems(project, unit, topic, record) {
 
 /**
  * What a unit's own record breaks of the rules (the header's): it is
- * carried in discovery, decides nothing, cites what stays, and links the
- * imports from the unit's discovery as a whole that no topic owes.
+ * carried in discovery, decides nothing, cites what stays, names each
+ * thread of research no topic's name holds, and links the imports from the
+ * unit's discovery as a whole that no topic owes.
  * @param {Project} project @param {Unit} unit @param {Record<string, any>[]} record @returns {string[]}
  */
 function ownProblems(project, unit, record) {
-  return [...undecidedProblems(record), ...citesProblems(project, unit, null, record), ...unlinkedImports(project, unit, null, record), ...raiseProblems(unit, null, 'discovery', record)];
+  return [
+    ...undecidedProblems(record, IN_DISCOVERY), ...citesProblems(project, unit, null, record), ...threadProblems(project, unit, null, record),
+    ...unlinkedImports(project, unit, null, record), ...raiseProblems(unit, null, 'discovery', record),
+  ];
 }
 
 /**
@@ -971,16 +1056,13 @@ function problemsOf(project, unit, topic, phase, record) {
   const imports = unlinkedImports(project, unit, topic, record);
   const sourced = specsOf(project, unit, topic).length > 0 || ownFilesOf(project, unit, topic).some((at) => holdsText(readText(path.join(project.stateDir, at)) ?? ''));
   const empty = record.length === 0 && sourced ? ['its record is empty, and it has sources — a spec it draws on, or its own markdown files holding text past their headings: compose it from them'] : [];
-  const undecided = phase === 'discovery' ? undecidedProblems(record) : [];
+  const undecided = neverStarted(unit.manifest, topic, phase) ? undecidedProblems(record, phase === 'discovery' ? IN_DISCOVERY : NOT_STARTED) : [];
   const narrow = unit.manifest?.work_type === 'cross-cutting' ? narrowProblems(record) : [];
   const cites = citesProblems(project, unit, topic, record);
   const items = new Set(record.flatMap((entry) => namesOf(entry.map_item)));
   const mapped = mapOf(unit, topic).filter(({ item }) => !items.has(item))
     .map(({ item, status }) => `${item} is on its old map, ${status}, and no entry names it as its map_item`);
-  const threads = new Set(record.flatMap((entry) => namesOf(entry.thread)));
-  const open = threadsOf(project, unit, topic).filter(({ thread }) => !threads.has(thread))
-    .map(({ thread, status }) => `the thread ${thread} is still ${status} in its research, and no entry names it as its thread`);
-  return [...empty, ...undecided, ...narrow, ...cites, ...mapped, ...open, ...imports, ...raiseProblems(unit, topic, phase, record)];
+  return [...empty, ...undecided, ...narrow, ...cites, ...mapped, ...threadProblems(project, unit, topic, record), ...imports, ...raiseProblems(unit, topic, phase, record)];
 }
 
 /** The ids the ledger's lines were given. @param {string} stateDir @returns {Set<string>} */
@@ -1329,8 +1411,8 @@ function topicProblems(project, ids, unit, topic) {
 }
 
 module.exports = {
-  counts: { one: 'topic', many: 'topics' },
-  done: 'have their records',
+  counts: { one: 'record', many: 'records' },
+  done: 'are carried',
   partWay: 'A record it was in the middle of is amended from where it stood.',
   /** @param {{projectDir: string, stateDir: string}} dirs */
   check({ projectDir, stateDir }) {
@@ -1352,7 +1434,8 @@ module.exports = {
   },
   /**
    * The points to raise: each question a carried record marks `raise`, on a
-   * started topic not set aside of a unit in progress (`unraised`) — its place,
+   * started topic not set aside of a unit in progress, staying in its unit
+   * (`unraised`) — its place,
    * the topic's or, where the unit has its spec, its specification's, the
    * question's id and its text.
    * @param {{projectDir: string, stateDir: string}} dirs
@@ -1372,6 +1455,7 @@ module.exports = {
   phases: TOPIC_PHASES,
   holds,
   topicsOf,
+  neverStarted,
   /**
    * What a topic's record breaks of the rules, before it is carried in
    * `phase`.
@@ -1408,16 +1492,17 @@ module.exports = {
   },
   /**
    * A record's sources as the rules read them: the project's folder they
-   * are read in, a topic's old map, its research's threads still open and
-   * its specs, the unit's assets (`assetsOf`), each import with the topic
+   * are read in, a topic's old map, the threads still open it carries
+   * (`threadsOf`), its specs and whether it leaves its building unit
+   * (`leaves`), the unit's assets (`assetsOf`), each import with the topic
    * owing its link — none for one the unit's own record owes — those it
    * walks that its own files hold word for word (`heldWhole`), the
    * discovery sessions it draws on, the other topics those
    * sessions may speak of (`othersOf`), and the unit's approved specs it
    * does not draw on, the later answer (`laterOf`), and the project's other
    * units cancelled, a corrigendum one wrote no later answer
-   * (`cancelledOf`). A unit's own, `topic` null, has no map, thread or
-   * spec, and no later answer: nothing is decided in discovery.
+   * (`cancelledOf`). A unit's own, `topic` null, has no map or spec, and no
+   * later answer: nothing is decided in discovery.
    * @param {{projectDir: string, stateDir: string, unit: string, topic: string|null}} at
    */
   sourcesOf({ projectDir, stateDir, unit: name, topic }) {
@@ -1427,8 +1512,9 @@ module.exports = {
     return {
       project: project.dir,
       map: own ? [] : mapOf(unit, topic),
-      threads: own ? [] : threadsOf(project, unit, topic),
+      threads: threadsOf(project, unit, topic),
       specs: own ? [] : specsOf(project, unit, topic),
+      leaves: !own && leaves(unit, /** @type {string} */ (topic)),
       assets: assetsOf(project, unit),
       held: assetsOf(project, unit).filter(({ path: at, walkers }) => walkers.includes(topic) && heldWhole(project, unit, topic, at)).map(({ path: at }) => at),
       sessions: sessionsOf(project, unit, topic),

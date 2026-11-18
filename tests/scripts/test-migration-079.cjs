@@ -19,7 +19,11 @@
 // discovery session — never the cache, another topic's, another unit's or
 // its mail; every subtopic its old map holds named by an entry, one entry
 // carrying several, and every thread still open, each by an open question
-// or by the entry a later source settles it with. Each section of a
+// or by the entry a later source settles it with — of research under no
+// topic's name, by the unit's own record, else by each topic; nothing
+// decided on a topic never started, carried in discovery or its item
+// unstarted. A spec the move joined is approved, one reopened during the
+// build among them, its sections named where no record cites them. Each section of a
 // discovery session or a walked asset holding text that no record cites,
 // nor a topic walking it holds word for word in its own files, a copy
 // ending where a line does and its text no one line under 40 characters,
@@ -31,11 +35,13 @@
 // sections the check names. A record breaking a rule is refused at the
 // carry, the refusal written beside the record and nothing else, and
 // leaves nothing in the way of the record mended. Once it passes, the
-// check lists each point marked to raise on a live topic until
-// the conversation raises it — a completed unit's among them, and none on
-// a topic never started, carried in discovery, whose first opening reads it
-// with the rest of its record, nor of a cross-cutting unit, whose record is
-// the product's, so the directive closes over it.
+// check lists each point marked to raise on a live topic of a unit in
+// progress until the conversation raises it, at a building unit's
+// specification titled with its topic — none on a topic never started,
+// carried in discovery, whose first opening reads it with the rest of its
+// record, nor on a topic leaving its building epic at the cut, nor of a
+// completed unit or a cross-cutting one, whose record is the product's — so
+// the directive closes over it.
 // `.workflows/` is read where the move read it, the working tree in the main
 // checkout, the old chain's and the split's changes uncommitted there among
 // it, and the record where the state keeps it, from a linked worktree too.
@@ -76,7 +82,8 @@ const DIRECTIVE = path.join(__dirname, '../../skills/ledger-migrate/scripts/migr
 const MOVE = require('../../skills/ledger-migrate/scripts/migrations/078-reshape-move.cjs');
 
 const RECORDS = '079-records';
-const TOPICS = { one: 'topic', many: 'topics' };
+// A piece of the directive's work is a record: each topic's, and a unit's own.
+const COUNTS = { one: 'record', many: 'records' };
 const PIECES = ['fumi.discovery.billing', 'fumi.discussion.licensing', 'fumi.discussion.search', 'fumi.discovery.support', 'gone.discussion.gone', 'platform.discussion.auth', 'shop.discussion.weights'];
 
 /** @param {string} unit @param {string} topic @param {string} section */
@@ -257,19 +264,26 @@ function carriedWorld() {
   return copyWorld(carriedTemplate, path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'migration-079-')), 'fumi'));
 }
 
+/** shop completed, as the state holds it. */
+function completeShop() {
+  writeState(dir, layout.manifest('shop'), JSON.stringify({ ...JSON.parse(readState(dir, layout.manifest('shop'))), status: 'completed' }));
+}
+
 describe('the pieces (21.6.2)', () => {
   it('every topic of every unit is a piece — completed, cancelled, building and never started among them, a topic promoted to a cross-cutting unit only there — none done before its record is carried', () => {
     dir = world();
+    completeShop();
 
     assert.deepStrictEqual(checked(), {
-      ok: true, directive: RECORDS, passed: false, done: 0, of: 7, counts: TOPICS, unfinished: PIECES.map((name) => ({ name, problems: ['has no record composed'] })),
+      ok: true, directive: RECORDS, passed: false, done: 0, of: 7, counts: COUNTS, unfinished: PIECES.map((name) => ({ name, problems: ['has no record composed'] })),
     });
   });
 
-  it('21.S20, 21.S21, 21.S22, 21.S23, 21.S44: passes once each topic\'s record is carried — citing its log and the review folded into it, its brief, an experiment, a grouped spec kept as an asset and the spec its building drew on, carried over where no one is shown deciding, a measurement with its command, the open map items and threads as open questions — with nothing to raise', () => {
+  it('21.S20, 21.S21, 21.S22, 21.S23, 21.S44: passes once each topic\'s record is carried, a completed unit\'s and a cancelled one\'s among them — citing its log and the review folded into it, its brief, an experiment, a grouped spec kept as an asset and the spec its building drew on, carried over where no one is shown deciding, a measurement with its command, the open map items and threads as open questions — with nothing to raise', () => {
     dir = carriedWorld();
+    completeShop();
 
-    assert.deepStrictEqual(checked(), { ok: true, directive: RECORDS, passed: true, done: 7, of: 7, counts: TOPICS, unfinished: [], raise: [] });
+    assert.deepStrictEqual(checked(), { ok: true, directive: RECORDS, passed: true, done: 7, of: 7, counts: COUNTS, unfinished: [], raise: [] });
   });
 });
 
@@ -327,6 +341,19 @@ describe('a record breaking a rule is refused at the carry, its refusal kept bes
     assert.strictEqual(refused('fumi.discovery.billing', [{ ...found, product_wide: true }, asked, decided]), breaks('fumi', 'billing', [
       'entry f1 is product-wide, and nothing found in discovery is product-wide — a line for the product record is decided in the first topic it bears on',
       'entry d1 decides, and nothing is decided in discovery — what its sources settle is a finding, what they leave open a question',
+    ]));
+  });
+
+  it('21.6.12: a topic never started carried past discovery, its item unstarted, a message parked on it never opened, holds nothing decided either — a decision, or a finding marked product-wide, refused', () => {
+    const fumi = JSON.parse(readState(dir, layout.manifest('fumi')));
+    fumi.phases.discussion.items.licensing.status = 'unstarted';
+    writeState(dir, layout.manifest('fumi'), JSON.stringify(fumi));
+    const found = { ref: 'f9', event: 'found', text: 'A trial runs from sign-up.', how: 'read in the log', known: 'read', by: 'claude', product_wide: true, cites: [logCite('fumi', 'licensing', 'Trial Length')] };
+    const never = 'on a topic never started';
+
+    assert.strictEqual(refused('fumi.discussion.licensing', [...GOOD['fumi.discussion.licensing'], found]), breaks('fumi', 'licensing', [
+      ...['d1', 'd2'].map((ref) => `entry ${ref} decides, and nothing is decided ${never} — what its sources settle is a finding, what they leave open a question`),
+      `entry f9 is product-wide, and nothing found ${never} is product-wide — a line for the product record is decided in the first topic it bears on`,
     ]));
   });
 
@@ -565,6 +592,29 @@ describe('a unit\'s own record, `{unit}.discovery` (21.6.2)', () => {
       [false, none('shop'), none('gone')]);
   });
 
+  it('21.6.7: each thread still open of research under no topic\'s name, which fed several topics, is named by the unit\'s own record, and by each of its topics where it has none', () => {
+    dir = world();
+    const old = path.join(dir, '.workflows/fumi/manifest.json');
+    const fumi = JSON.parse(fs.readFileSync(old, 'utf8'));
+    fumi.phases.research.items.exploration = { status: 'in-progress', threads: { 'pricing-model': { question: 'Seats or usage?', status: 'open', origin: 'seed', parent: null } } };
+    fs.writeFileSync(old, JSON.stringify(fumi));
+    const thread = 'the thread pricing-model is still open in the research exploration, and no entry names it as its thread';
+    const session = 'fumi/discovery/session-001.md';
+    /** The records whose carry names the thread unnamed, each dry run with `entries`, its good record by default. @param {string[]} dotpaths @param {unknown[]} [entries] */
+    const naming = (dotpaths, entries) => dotpaths.filter((dotpath) => {
+      carryArgs(dir, dotpath, entries ?? GOOD[dotpath]);
+      return ok(dir, ['ledger', 'carry', dotpath, '--dry-run'], { env: SESSION }).faults.includes(thread);
+    });
+    const topics = PIECES.filter((dotpath) => dotpath.startsWith('fumi.'));
+
+    const without = naming(topics);
+    writeState(dir, session, '## Discovery Session 001\n\n## Research: exploration\n\nSeats or usage?\n');
+    const withOwn = [...naming(topics), ...naming(['fumi.discovery'], [])];
+    const asked = { ref: 'q1', event: 'asked', text: 'Seats or usage?', by: 'claude', thread: 'pricing-model', cites: [{ path: session, section: 'Research: exploration' }] };
+
+    assert.deepStrictEqual([without, withOwn, naming(['fumi.discovery'], [asked])], [topics, ['fumi.discovery'], []]);
+  });
+
   it('a topic promoted to a cross-cutting unit draws on the discovery sessions of the unit it came from, which its entries may cite; another unit\'s they may not', () => {
     dir = world();
     writeState(dir, layout.unit('fumi', 'discovery', 'session-001.md'), '## Discovery Session 001\n\n### Sign-in\n\nOne sign-in across the product.\n');
@@ -618,7 +668,10 @@ describe('the points to raise (21.6.10, 21.S25)', () => {
 
     assert.deepStrictEqual([...refusals, own, completed], [
       breaks('fumi', 'billing', why('its topic never started, and its first opening reads its open questions')),
-      breaks('fumi', 'licensing', why('its topic never started, and its first opening reads its open questions')),
+      breaks('fumi', 'licensing', [
+        ...['d1', 'd2'].map((ref) => `entry ${ref} decides, and nothing is decided on a topic never started — what its sources settle is a finding, what they leave open a question`),
+        ...why('its topic never started, and its first opening reads its open questions'),
+      ]),
       breaks('platform', 'auth', why('a cross-cutting unit\'s record is the product\'s')),
       breaks('gone', 'gone', why('its unit is cancelled, and only a unit in progress raises its points')),
       breaks('fumi', 'search', why('its topic is set aside')),
@@ -627,12 +680,42 @@ describe('the points to raise (21.6.10, 21.S25)', () => {
     ]);
   });
 
+  it('21.8.9: a topic of a building epic that no spec joined into its spec.md draws on, by its name or among its sources, leaves the unit at the cut, so its point is raised nowhere, the mark refused at the carry — but a dead end the old map marked stays, its point raised at the unit\'s specification (21.8.15), as is a topic of a building unit no epic, which never leaves', () => {
+    dir = world();
+    const raises = require('../../skills/ledger-migrate/scripts/migrations/079-records.check.cjs').raises;
+    const old = path.join(dir, '.workflows/shop/manifest.json');
+    const before = JSON.parse(fs.readFileSync(old, 'utf8'));
+    before.phases.discovery = { items: { gifts: { handled: true } } };
+    before.phases.specification.items.wishlist.sources.ratings = { status: 'incorporated' };
+    fs.writeFileSync(old, JSON.stringify(before));
+    const shop = JSON.parse(readState(dir, layout.manifest('shop')));
+    shop.phases.discussion.items = { ...shop.phases.discussion.items, reviews: { status: 'in-progress' }, gifts: { status: 'completed' }, ratings: { status: 'completed' } };
+    writeState(dir, layout.manifest('shop'), JSON.stringify(shop));
+    writeState(dir, layout.manifest('gone'), JSON.stringify({ ...JSON.parse(readState(dir, layout.manifest('gone'))), status: 'in-progress', spec: { joined: ['cause'] } }));
+    const open = (/** @type {string} */ unit, /** @type {string} */ topic) => [{ ref: 'q1', event: 'asked', text: `Who moderates ${topic}?`, by: 'claude', raise: true, cites: [logCite(unit, topic, 'Moderation')] }];
+    const topics = ['reviews', 'gifts', 'ratings'];
+    const faults = topics.map((topic) => {
+      writeState(dir, layout.topic('shop', topic, 'log.md'), '## Discussion\n\n### Moderation\n\nWho moderates?\n');
+      carryArgs(dir, `shop.discussion.${topic}`, open('shop', topic));
+      return ok(dir, ['ledger', 'carry', `shop.discussion.${topic}`, '--dry-run'], { env: SESSION }).faults;
+    });
+    for (const [unit, topic] of [...topics.map((each) => ['shop', each]), ['gone', 'gone']]) {
+      writeState(dir, carriedPath(unit, topic), JSON.stringify({ unit, phase: 'discussion', topic, entries: [{ ref: 'q1', id: `${topic}-id` }], record: { entries: open(unit, topic) } }));
+    }
+
+    assert.deepStrictEqual([faults, raises({ projectDir: dir, stateDir: statePath(dir) })], [
+      [['entry q1 is marked to raise, and its topic leaves its building unit, no spec joined into the unit\'s spec.md drawing on it, and its discussion where it goes reads its open questions: its point is an open question, carried unmarked'], [], []],
+      [{ place: 'gone.specification', answers: 'gone-id', text: 'Who moderates gone?' }, ...['gifts', 'ratings'].map((topic) => ({ place: 'shop.specification', answers: `${topic}-id`, text: `Who moderates ${topic}?` }))],
+    ]);
+  });
+
   it('says the raises at the end are of a started topic of a unit in progress alone, each a decision only the person can make, what a row\'s notice is, and a point two records carry raised once, its answer merged into the other', () => {
     const text = fs.readFileSync(DIRECTIVE, 'utf8');
 
     assert.deepStrictEqual([
-      '- At the end, each point no source settles on a started topic of a unit\n  in progress, raised one at a time: answered, or left open.',
-      'So is such a point where nothing raises it, and the carry refuses the mark there: on a topic never started, carried in discovery or its item `unstarted`, for its first opening to read; on a unit\'s own record, carried in discovery, where nothing is decided; of a cross-cutting unit, whose record is the product\'s, for the product\'s conversation; of a completed unit, whose code settled what it built; and of a cancelled unit, or a topic set aside, waiting with it.',
+      '- The ledger, through `ledger carry`, one record at a time, and through\n  `raise`, `raise answer` and `ledger merge` for the points raised at the\n  end.',
+      '- At the end, each point no source settles on a started topic of a unit\n  in progress that stays in its unit, raised one at a time: answered, or\n  left open.',
+      'So is such a point where nothing raises it, and the carry refuses the mark there: on a topic never started, carried in discovery or its item `unstarted`, for its first opening to read; on a topic leaving its building unit, as its brief\'s topic line shows, for its discussion where it goes; on a unit\'s own record, carried in discovery, where nothing is decided; of a cross-cutting unit, whose record is the product\'s, for the product\'s conversation; of a completed unit, whose code settled what it built; and of a cancelled unit, or a topic set aside, waiting with it.',
       'raise each, one at a time, as a decision only the person can make, at its `place`, answering its question. A point two records carry, listed twice, is raised once.',
       'each `{"key", "name", "text", "notice"}` — its key, a short name for the answer, the answer, and what the person would notice were it the one, each one line;',
       'node .claude/skills/ledger-engine/scripts/engine.cjs ledger merge {place} --question {answers} --into {answered}',
@@ -660,15 +743,19 @@ describe('the points to raise (21.6.10, 21.S25)', () => {
 
     /** @type {string[]} */
     const asking = [];
+    /** @type {string[]} */
+    const titled = [];
     for (const [{ place, answers }, mechanism] of [[listed, 'The log says nothing of a card.'], [built, 'The log weighs both.']]) {
       const { res, sections } = await okSectionsAsync(dir, ['raise', place, '--answers', answers, '--fact'], {
         env: SESSION, stdin: JSON.stringify({ question: place === built.place ? unclear.text : point.text, rows: [], mechanism, product_wide: false }),
       });
       asking.push(/WHY I'M ASKING\n\n(.*)\n/.exec(sections)?.[1] ?? sections);
+      titled.push(/^(?:Fumi|Shop)\b.*$/m.exec(sections)?.[0] ?? sections);
       if (place === built.place) ok(dir, ['raise', 'answer', res.raise, '--own'], { env: SESSION, stdin: JSON.stringify({ text: 'By price.', why: 'The person said so.' }) });
     }
 
     assert.deepStrictEqual(asking, Array(2).fill('Only you can decide this: nothing from before Ledger settles it.'), 'a decision only the person can make, never a fact');
+    assert.deepStrictEqual(titled, ['Fumi · Licensing', 'Shop · Weights'], 'a point raised at a unit\'s specification titled with its topic');
 
     assert.deepStrictEqual([checked().raise, checked().passed], [[], true]);
     ok(dir, ['checklist', 'close', 'directive', RECORDS], { env: SESSION });
@@ -749,6 +836,21 @@ describe('what the check reads once a record is carried', () => {
       ['has passed its verifier, and waits to be carried', ...shopUncited('1. Weights', ['Ranking', 'Ranking > Detail'])],
       'has changed since its verifier was briefed on it: a record is carried as its verifier read it — brief a fresh verifier',
       [],
+    ]);
+  });
+
+  it('21.8.5: a spec the move joined is approved, one reopened during the build among them — where every joined spec of a unit was reopened, each section no record cites is named, and the unit\'s records wait on it', () => {
+    dir = world();
+    const old = path.join(dir, '.workflows/shop/manifest.json');
+    const shop = JSON.parse(fs.readFileSync(old, 'utf8'));
+    for (const spec of ['weights', 'wishlist']) shop.phases.specification.items[spec].status = 'in-progress';
+    shop.phases.planning = { items: { weights: { status: 'completed' }, wishlist: { status: 'completed' } } };
+    fs.writeFileSync(old, JSON.stringify(shop));
+    const args = carryArgs(dir, 'shop.discussion.weights', GOOD['shop.discussion.weights'].slice(0, 2));
+
+    assert.deepStrictEqual([unfinished()['shop.discussion.weights'], refusedUntouched(dir, args, { env: SESSION }, harness)], [
+      ['has passed its verifier, and waits to be carried', ...shopUncited('1. Weights', ['Ranking', 'Ranking > Detail']), ...shopUncited('2. Wishlist', ['Saving', 'Ranking'])],
+      waitsOn('shop', 'weights', [counted('shop', 4)]),
     ]);
   });
 
@@ -1138,7 +1240,7 @@ describe('the directive\'s example record, frozen with 079', () => {
       'and the unit\'s other topics, each with what it is about, to judge whose a point is by, and the unit\'s other assets, each with where it came from: they are not sources. Each record is carried from its own sources alone, never another topic\'s log, brief or record',
       '— and never the project\'s code: a record is what its sources decided.',
       '- Its unit\'s assets its brief lists to walk: each markdown file in `{unit}/assets/` but its specs, its plans, its old reviews and its legacy files — the documents the person shared; and the research a legacy split superseded, in `assets/research/`, a topic\'s where it bears the topic\'s name, else the unit\'s own record\'s alone. Its later answers decide what of an asset is current, as of any source.',
-      'A unit\'s own record has the unit\'s discovery sessions and the assets its brief lists to walk as its sources.',
+      'A unit\'s own record has the unit\'s discovery sessions, the assets its brief lists to walk, and the threads still open of research under no topic\'s name that its brief lists, as its sources.',
     ].filter((rule) => !sources.includes(rule)), []);
   });
 

@@ -9,8 +9,10 @@
 // directive's check reads them its specs, grouped under another name and
 // kept as an asset or joined into the unit's spec.md where its building
 // started, each part of it named, each approved, dated where its old item
-// is, or a draft, its old map
-// there, its research's threads still open, either "None — no entry needs"
+// is, every spec joined among them, or a draft, whether it never started or
+// leaves its building unit, its old map
+// there, its research's threads still open, of research under no topic's
+// name too where the unit has no record of its own, either "None — no entry needs"
 // its mark where it has none, and its reviews never folded in, a promoted
 // topic's where it was promoted from, all read in the main checkout from a
 // linked worktree too; every file of the unit's assets but a dotfile and
@@ -234,6 +236,53 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
       '## Its old map, as `.workflows/` holds it', '', 'None — no entry needs a map_item.', '',
       '## Its research\'s threads still open', '', 'None — no entry needs a thread.', '',
     ].join('\n')));
+  });
+
+  it('21.8.5: a spec reopened during the build, which the move joined, approved, dated where its old item is — and the later answer of a topic it draws no part of', () => {
+    const old = path.join(dir, '.workflows', 'shop', 'manifest.json');
+    const shop = JSON.parse(fs.readFileSync(old, 'utf8'));
+    shop.phases.specification.items.weights = { ...shop.phases.specification.items.weights, status: 'in-progress', date: '2026-06-06' };
+    shop.phases.specification.items.wishlist = { status: 'in-progress', date: '2026-07-07', sources: {} };
+    shop.phases.planning = { items: { weights: { status: 'completed' }, wishlist: { status: 'completed' } } };
+    fs.writeFileSync(old, JSON.stringify(shop));
+
+    const { brief } = issued(['migration-topic', '--topic', 'shop.discussion.weights', '--directive', '079-records']);
+
+    assert.ok(brief.includes(`## Its specs\n\n- shop/spec.md, its part "1. Weights", approved on 2026-06-06\n\n${LATER}\n\n- shop/spec.md, its part "2. Wishlist", approved on 2026-07-07\n`), brief);
+  });
+
+  it('the topic line says a topic never started — carried in discovery, or its item unstarted where it is carried — and a topic leaving its building unit, which no spec joined into its spec.md draws on', () => {
+    const fumi = JSON.parse(readState(dir, layout.manifest('fumi')));
+    fumi.phases.discussion.items.licensing.status = 'unstarted';
+    writeState(dir, layout.manifest('fumi'), JSON.stringify(fumi));
+    const shop = JSON.parse(readState(dir, layout.manifest('shop')));
+    shop.phases.discussion.items.reviews = { status: 'in-progress' };
+    writeState(dir, layout.manifest('shop'), JSON.stringify(shop));
+    const line = (/** @type {string} */ place) => /^- \*\*Topic:\*\* .*$/m.exec(issued(['migration-topic', '--topic', place, '--directive', '079-records']).brief)?.[0];
+
+    assert.deepStrictEqual(['fumi.discussion.licensing', 'shop.discussion.reviews', 'shop.discussion.weights'].map(line), [
+      '- **Topic:** licensing, in discussion, unstarted — its record carried in discussion, the topic never started',
+      '- **Topic:** reviews, in discussion, in-progress — its record carried in discussion, the topic leaving its building unit, no spec joined into the unit\'s spec.md drawing on it',
+      '- **Topic:** weights, in discussion, completed — its record carried in discussion',
+    ]);
+  });
+
+  it('21.6.7: the threads still open of research under no topic\'s name, each with its research, the unit\'s own record\'s where it has one, else each topic\'s', () => {
+    const old = path.join(dir, '.workflows', 'fumi', 'manifest.json');
+    const fumi = JSON.parse(fs.readFileSync(old, 'utf8'));
+    fumi.phases.research.items.exploration = { status: 'in-progress', threads: { 'pricing-model': { question: 'Seats or usage?', status: 'open', origin: 'seed', parent: null } } };
+    fs.writeFileSync(old, JSON.stringify(fumi));
+    const threads = (/** @type {string} */ place) => {
+      const { brief } = issued(['migration-topic', '--topic', place, '--directive', '079-records']);
+      return /\n## (?:Its research's threads still open|The threads still open of its research under no topic's name)\n\n(.*)\n/.exec(brief)?.[1];
+    };
+
+    const topic = threads('fumi.discussion.licensing');
+    writeState(dir, layout.unit('fumi', 'discovery', 'session-001.md'), '## Discovery Session 001\n\n## Research: exploration\n\nSeats or usage?\n');
+
+    assert.deepStrictEqual([topic, threads('fumi.discovery'), threads('fumi.discussion.licensing')], [
+      '- pricing-model, open, of the research exploration: Seats or usage?', '- pricing-model, open, of the research exploration: Seats or usage?', 'None — no entry needs a thread.',
+    ]);
   });
 
   it('a promoted topic\'s research threads, read where it was promoted from', () => {
