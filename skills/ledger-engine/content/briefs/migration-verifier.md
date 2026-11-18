@@ -9,7 +9,7 @@ The record passes when it holds each current decision, finding and open question
 - each entry is true to the section it cites;
 - each section it cites of a spec drawing on it is carried whole: each current decision, finding and open question of it that concerns this record is carried; one it cites of a spec it does not draw on, the later answer, gives that answer alone;
 - an entry crediting the person holds a line of its source where they decided, in those words where they handed the call over;
-- no decision carries a side of a contradiction the record names: a point at odds is settled on neither side;
+- no decision carries a side of a contradiction the record names, whatever question it answers: a point at odds is settled on neither side;
 - nothing is carried twice — in a later round, judged on what changed since alone;
 - nothing is carried that you rule is not this record's: such an entry is a finding, to remove, with the ruling beside it.
 

@@ -125,7 +125,8 @@
 // record of the unit has one composed or carried, each other record citing
 // one of those sections names the same contradiction, such a question's
 // `at_odds` holding those sections and no other,
-// or the session marks it as carrying no side of the point
+// or the session marks it as carrying no side of the point, or as its
+// own log's, settled after the approval
 // (`.cache/migrate/records/{unit}.at-odds.json`, `{"{place}": [[{"path",
 // "section"}, …]]}`), else it is named on that record; and the unit's
 // records wait on it as on a section no record cites. A section is read as
@@ -1339,7 +1340,7 @@ function unsharedOf(project, unit) {
 
 /** What a contradiction left unshared asks of the record it is named on. @param {Unit} unit @param {Unshared} unshared */
 function unsharedProblem(unit, { place, sides, cited, by }) {
-  return `${sidesSaid(sides)} are at odds, as ${inWords(by)} ${by.length === 1 ? 'names' : 'name'} them, and this record cites ${sidesSaid(cited)} without naming that contradiction — where it carries a side of the point at odds, it names the contradiction, an open question or findings holding those sections as their at_odds, and carries neither side as settled; where what it cites of them is not that point, it is marked in ${atOddsMarked(unit.name)} as ${JSON.stringify({ [place]: [sides] })}`;
+  return `${sidesSaid(sides)} are at odds, as ${inWords(by)} ${by.length === 1 ? 'names' : 'name'} them, and this record cites ${sidesSaid(cited)} without naming that contradiction — judge first whether it stands: where a later answer settles it, it is settled on each record naming it, and on this one where it carries the side the later answer replaced, this record keeping its answer only where it is the later one; where it stands and this record carries a side of the point at odds, it names the contradiction, an open question holding those sections as its at_odds, and carries neither side as settled; where what it cites of them is not that point, or its own log settled the point after the approval, it is marked in ${atOddsMarked(unit.name)} as ${JSON.stringify({ [place]: [sides] })}`;
 }
 
 /**

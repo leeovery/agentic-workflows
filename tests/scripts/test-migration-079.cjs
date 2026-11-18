@@ -241,7 +241,7 @@ const ratesAtOdds = (ref, raise = false) => ({ ref, event: 'asked', text: 'Per s
  * it nowhere, is told.
  * @param {string} place the record's @param {string} by the record naming it @param {string[]} cited the sections it cites
  */
-const unshared = (place, by, cited) => `"Seats" in ${RATES} and "Flat" in ${RATES} are at odds, as ${by} names them, and this record cites ${cited.map((section) => `"${section}" in ${RATES}`).join(' and ')} without naming that contradiction — where it carries a side of the point at odds, it names the contradiction, an open question or findings holding those sections as their at_odds, and carries neither side as settled; where what it cites of them is not that point, it is marked in .cache/migrate/records/fumi.at-odds.json as ${JSON.stringify({ [place]: [SIDES] })}`;
+const unshared = (place, by, cited) => `"Seats" in ${RATES} and "Flat" in ${RATES} are at odds, as ${by} names them, and this record cites ${cited.map((section) => `"${section}" in ${RATES}`).join(' and ')} without naming that contradiction — judge first whether it stands: where a later answer settles it, it is settled on each record naming it, and on this one where it carries the side the later answer replaced, this record keeping its answer only where it is the later one; where it stands and this record carries a side of the point at odds, it names the contradiction, an open question holding those sections as its at_odds, and carries neither side as settled; where what it cites of them is not that point, or its own log settled the point after the approval, it is marked in .cache/migrate/records/fumi.at-odds.json as ${JSON.stringify({ [place]: [SIDES] })}`;
 
 /** A decision long enough to be held as a copy, and licensing's log deciding it. */
 const DECIDED = 'Fourteen days from sign-up, the person said, then billed.';
@@ -1096,9 +1096,9 @@ describe('what the check reads once a record is carried', () => {
   it('21.6.20: once every record of a unit is composed, a contradiction one record names between sections of a source its records share, by its at_odds, is named on each other record citing a side of it and naming it nowhere, and the unit\'s records wait on it — until that record names it, its at_odds holding the same sections, or the session marks it as carrying no side; a record citing neither asked nothing', () => {
     dir = world();
     writeState(dir, RATES, '# Rates\n\n## Seats\n\nPer seat.\n\n## Flat\n\nA flat rate.\n');
-    const perSeat = [
-      { ref: 'q9', event: 'asked', text: 'How are seats billed?', by: 'claude', cites: [rate('Seats')] },
-      { ref: 'd9', event: 'decided', answers: 'q9', text: 'Per seat.', why: 'The rates say so.', by: 'claude', given: 'carried', cites: [rate('Seats')] },
+    const teamSeats = [
+      { ref: 'q9', event: 'asked', text: 'How many seats does a team start with?', by: 'claude', cites: [rate('Seats')] },
+      { ref: 'd9', event: 'decided', answers: 'q9', text: 'Five.', why: 'The rates say so.', by: 'claude', given: 'carried', cites: [rate('Seats')] },
     ];
     const passed = (/** @type {string} */ topic, /** @type {unknown[]} */ entries) => {
       writeState(dir, composedPath('fumi', topic), JSON.stringify({ entries }));
@@ -1106,21 +1106,21 @@ describe('what the check reads once a record is carried', () => {
     };
     passed('billing', [...GOOD['fumi.discovery.billing'], ratesAtOdds('q9')]);
     passed('search', GOOD['fumi.discussion.search']);
-    passed('licensing', [...GOOD['fumi.discussion.licensing'], ...perSeat]);
+    passed('licensing', [...GOOD['fumi.discussion.licensing'], ...teamSeats]);
     const named = () => Object.fromEntries(Object.entries(unfinished()).filter(([at]) => at.startsWith('fumi.')).map(([at, problems]) => [at, problems.filter((problem) => problem.includes('are at odds'))]).filter(([, problems]) => problems.length > 0));
-    const licensing = () => refusedUntouched(dir, carryArgs(dir, 'fumi.discussion.licensing', [...GOOD['fumi.discussion.licensing'], ...perSeat]), { env: SESSION }, harness);
+    const licensing = () => refusedUntouched(dir, carryArgs(dir, 'fumi.discussion.licensing', [...GOOD['fumi.discussion.licensing'], ...teamSeats]), { env: SESSION }, harness);
 
     const uncomposed = named();
     passed('support', []);
     const oneSided = [named(), licensing()];
-    passed('licensing', [...GOOD['fumi.discussion.licensing'], ...perSeat, { ...ratesAtOdds('q8'), cites: [rate('Rates > Seats'), rate('Flat')], at_odds: [rate('Rates > Seats'), rate('Flat')] }]);
+    passed('licensing', [...GOOD['fumi.discussion.licensing'], { ...ratesAtOdds('q8', true), cites: [rate('Rates > Seats'), rate('Flat')], at_odds: [rate('Rates > Seats'), rate('Flat')] }]);
     const sharing = named();
-    passed('licensing', [...GOOD['fumi.discussion.licensing'], ...perSeat, ratesAtOdds('q8', true), { ...perSeat[1], ref: 'd8', answers: 'q8' }]);
+    passed('licensing', [...GOOD['fumi.discussion.licensing'], ratesAtOdds('q8', true), { ...teamSeats[1], ref: 'd8', answers: 'q8', text: 'Per seat.' }]);
     const answered = named();
-    passed('licensing', [...GOOD['fumi.discussion.licensing'], ...perSeat]);
+    passed('licensing', [...GOOD['fumi.discussion.licensing'], ...teamSeats]);
     writeState(dir, `.cache/migrate/records/fumi.at-odds.json`, JSON.stringify({ 'fumi.discussion.licensing': [[rate('Flat'), rate('Seats')]] }));
     const marked = named();
-    carry('fumi.discussion.licensing', [...GOOD['fumi.discussion.licensing'], ...perSeat]);
+    carry('fumi.discussion.licensing', [...GOOD['fumi.discussion.licensing'], ...teamSeats]);
 
     assert.deepStrictEqual([uncomposed, ...oneSided, sharing, answered, marked], [
       {},
@@ -1132,7 +1132,7 @@ describe('what the check reads once a record is carried', () => {
     ]);
   });
 
-  it('21.6.20: no decision settles a point at odds while the migration runs, by any shape a record takes — holding at_odds, answering the question holding it, or answering a part of that question — one rule refusing each; only an open question holds at_odds, two headings at least as the one resolver reads them, each one its cites name, and marked to raise where its topic raises', () => {
+  it('21.6.20: no decision settles a point at odds while the migration runs, by any shape a record takes — holding at_odds, answering the question holding it, or answering a part of that question — one rule refusing each, and a decision answering the whole of an at-odds part left alone; only an open question holds at_odds, two headings at least as the one resolver reads them, each one its cites name, and marked to raise where its topic raises — unmarked where it may not', () => {
     dir = world();
     writeState(dir, RATES, '# Rates\n\n## Seats\n\nPer seat.\n\n## Flat\n\nA flat rate.\n');
     const odds = (/** @type {string} */ ref, /** @type {Record<string, unknown>} */ also = {}) => ({ ...ratesAtOdds(ref, true), text: `Per seat, or a flat rate (${ref})?`, ...also });
@@ -1147,6 +1147,7 @@ describe('what the check reads once a record is carried', () => {
       odds('q27', { cites: [rate('Seats')] }),
       odds('q28', { raise: undefined }),
       odds('q29', { cites: [rate('Rates > Seats'), rate('Flat')] }),
+      asked('q30'), perSeat('d30', 'q30'), odds('q31', { part_of: 'q30' }),
     ];
     const settles = (/** @type {string} */ ref, /** @type {string} */ how) => `entry ${ref}: a decision settles no point at odds while the migration runs — ${how}: the question stays open, and the findings carrying each side name each other`;
     const shaped = (/** @type {string} */ ref, /** @type {string} */ how) => `entry ${ref}: ${how} — the sections at odds, [{path, section}, …], are two at least, each one a cite of it names`;
@@ -1161,6 +1162,7 @@ describe('what the check reads once a record is carried', () => {
       shaped('q27', 'its at_odds names a section none of its cites names'),
       unmarked('q28'),
     ]);
+    assert.deepStrictEqual(ok(dir, [...carryArgs(dir, 'fumi.discovery.billing', [...GOOD['fumi.discovery.billing'], ratesAtOdds('q9')]), '--dry-run'], { env: SESSION }).faults, [], 'a topic that may not raise names a contradiction unmarked');
   });
 
   it('carries a record of a unit whose records wait on one the session settled in its verifier\'s place as on one its verifier passed (21.10.17)', () => {
@@ -1467,13 +1469,14 @@ describe('the directive\'s example record, frozen with 079', () => {
 
     assert.deepStrictEqual([
       [
-        'the record says so, and settles the point on neither side: an open question names the contradiction, cites both and holds the sections at odds as its `at_odds`, answered by no decision, nor any question part of it — and where each side is a finding, the findings name each other. It is a point no source settles, marked `raise` as the rules below say. A record naming a contradiction carries neither side of it as settled.',
+        'the record says so, and settles the point on neither side: an open question names the contradiction, cites both and holds the sections at odds as its `at_odds`, no decision answering it, nor any question part of it — and where each side is a finding, the findings name each other. It is a point no source settles, marked `raise` as the rules below say. A record naming a contradiction carries neither side of it as settled.',
         '- **`at_odds`**: on an open question naming sources at odds, never a finding or a decision, the sections at odds, `[{"path", "section"}, …]`, two at least, each one its cites name.',
       ].filter((rule) => !briefed.includes(rule)),
       [
         'on each other record citing one of those sections where no entry of it names the same, its `at_odds` holding those sections: the sections, those it cites and the records naming them.',
-        'and judge first whether the contradiction stands: where a later answer settles it — a part approved later, or the citing record\'s log after the approval — it goes to the record naming it, a line in its settled file naming the section that settles it, and into its findings `Settled: {sections} settled by {section}, amend to agree`, and the citing record keeps its answer.',
-        'Where it stands and the citing record carries a side of the point at odds, write into its settled file a line naming the sections at odds and the point, and that the record carries neither side as settled, and into its findings `Settled: {sections} at odds, amend to agree`. It is amended to carry neither side as settled, naming the contradiction as the record naming it does, its `at_odds` holding the same sections, and verified again. Where what it cites of them is not the point at odds, mark it in `.cache/migrate/records/{unit}.at-odds.json` as the check names the mark.',
+        'and judge first whether the contradiction stands. Where a later answer settles it — a part of the unit\'s specs approved after the other — it goes to each record naming it, and to the citing record where it carries the side the later answer replaced: a line in each one\'s settled file naming the section that settles it, and into its findings `Settled: {sections} settled by {section}, amend to agree`; the citing record keeps its answer only where it is the later one.',
+        'Where the citing record\'s own log settled the point after the approval, its answer is its log\'s: mark it as below, and the record naming the contradiction keeps naming what its own sources hold.',
+        'Where it stands and the citing record carries a side of the point at odds, write into its settled file a line naming the sections at odds and the point, and that the record carries neither side as settled, and into its findings `Settled: {sections} at odds, amend to agree`. It is amended to carry neither side as settled, naming the contradiction as the record naming it does, its `at_odds` holding the same sections, and verified again. Where what it cites of them is not the point at odds, or its own log settled it, mark it in `.cache/migrate/records/{unit}.at-odds.json` as the check names the mark.',
       ].filter((rule) => !text.includes(rule)),
     ], [[], []]);
   });
