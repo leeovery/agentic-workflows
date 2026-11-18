@@ -473,7 +473,7 @@ describe('a cite of a heading held more than once', () => {
 });
 
 describe('the walk of a record\'s sources', () => {
-  const LATER_ANSWERS = 'Check each decision and open question against its later answers, as the directive names them: the unit\'s approved specs the brief below lists, searched for its subject rather than walked, each to what the log settled before its approval — by the date the brief below gives it against the dates the log\'s headings carry, the log first where none shows otherwise, but for a section appended after the approval, such as a review never folded in — but for what a corrigendum records of a cancelled unit\'s own decisions; and the log\'s own word, a scope note wherever it stands or a later section, that sets it aside, delegates it or puts it out of scope.';
+  const LATER_ANSWERS = 'Check each decision and open question against its later answers, as the directive names them: the unit\'s approved specs — those it draws on, walked, and those the brief below lists as the later answer, searched for its subject rather than walked — each to what the log settled before its approval — by the date the brief below gives it against the dates the log\'s headings carry, the log first where none shows otherwise, but for a section appended after the approval, such as a review never folded in — but for what a corrigendum records of a cancelled unit\'s own decisions; and the log\'s own word, a scope note wherever it stands or a later section, that sets it aside, delegates it or puts it out of scope.';
   const CONFINED = 'Its sources are those the brief below lists, and no other: never another topic\'s log, brief or record, nor another unit\'s, nor the project\'s code. The other topics the brief below lists, with what each is about, are for judging whose a point is, never sources.';
   const LISTED = 'its sources section by section, as the brief below lists them: its files, its log, its brief and its experiments among them; each section of the specs it draws on, every section of them the record cites among them; and each point of the discovery sessions, and of the unit\'s assets the brief below lists to walk, bearing on its subject, or for a unit\'s own record on no topic\'s subject.';
 
@@ -565,6 +565,25 @@ describe('the walk sheet (the verifier\'s brief)', () => {
       topic.includes(`- Specification: Commerce > Corrigenda, lines 3–5: no entry cites it\n\n${walked('licensing', 'Licensing')}`),
       own.includes(`# The walk sheet\n\n${walked('exploration', 'Exploration')}`),
     ], [true, true], `${topic}\n\n${own}`);
+  });
+
+  it('a section of an asset it walks that its own files hold word for word, heading and text, left off its sheet; an asset they hold whole off its sheet and its walk list, so said among the others', () => {
+    for (const [rel, text] of Object.entries(UNIT_ASSETS)) writeState(dir, layout.assets('fumi', ...rel.split('/')), text);
+    const copy = layout.assets('fumi', 'research', 'licensing-superseded-20260101.md');
+    writeState(dir, copy, '# Licensing\n\nA trial of a month.\n\n#### Decision\n\nFourteen days, the person said.\n');
+    writeState(dir, composedPath('fumi', 'licensing'), `${RECORD}\n`);
+    const sheet = () => issued(['migration-verifier', ...LICENSING]).brief;
+
+    const part = sheet();
+    writeState(dir, copy, '#### Decision\n\nFourteen days, the person said.\n');
+    const whole = sheet();
+    const { brief } = issued(['migration-topic', ...LICENSING]);
+
+    assert.deepStrictEqual([
+      part.includes(`## ${copy}\n\n- Licensing, lines 1–4: no entry cites it\n\n`), part.includes('Licensing > Decision'),
+      whole.includes(`## ${copy}`),
+      brief.includes(`- ${copy}, research a legacy split superseded — its own files hold it word for word\n`), brief.slice(0, brief.indexOf('## The unit\'s other assets')).includes(copy),
+    ], [true, false, false, true, false], `${part}\n\n${whole}\n\n${brief}`);
   });
 
   it('a joined spec\'s sections in the parts the topic draws on alone, and a section an entry cites in another part; a cite of a heading several parts hold, bare, is its part\'s, as the carry reads it; and of headings sharing their whole path, the one its place names, shown by it', () => {

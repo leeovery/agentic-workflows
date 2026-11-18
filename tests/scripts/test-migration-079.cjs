@@ -57,6 +57,7 @@ require('./hermetic-env.cjs');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
+const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -199,20 +200,21 @@ const uncited = (unit, at, section, part = null) => `"${section}" in ${part === 
  * in common: a walked asset, or a discovery session.
  * @param {string} unit @param {string} at @param {string} section @param {string} [what]
  */
-const sharedUncited = (unit, at, section, what = 'an asset') => `"${section}" in ${at}, ${what}, holds text no record of ${unit} cites — a current point it makes is carried by the record its subject belongs to; a section holding none, or only what a later answer replaced or a cancelled unit alone decided, is marked in ${sectionsMarked(unit)} as ${JSON.stringify({ [at]: [section] })}`;
+const sharedUncited = (unit, at, section, what = 'an asset') => `"${section}" in ${at}, ${what}, holds text no record of ${unit} cites — a current point it makes, which no topic\'s own files hold word for word, is carried by the record its subject belongs to; a section holding none, or only what a later answer replaced or a cancelled unit alone decided, is marked in ${sectionsMarked(unit)} as ${JSON.stringify({ [at]: [section] })}`;
 
 /**
- * The carry's refusal of a record whose unit's records wait, naming what on.
- * @param {string} unit @param {string} topic @param {string[]} reasons
+ * The carry's refusal of a record whose unit's records wait, framed on the
+ * unit waited on, naming what on.
+ * @param {string} unit @param {string} topic @param {string[]} reasons @param {string} [waited]
  */
-const waitsOn = (unit, topic, reasons) => `ledger carry: ${unit}'s ${topic} is carried once each record of ${unit} drawing on the sources its records share — its approved specs, its discovery sessions and the assets its records walk, its own record and a topic it promoted among them — has passed its verifier, and no section of those sources goes uncited: a record carried takes no section found later — ${reasons.join('; ')}`;
+const waitsOn = (unit, topic, reasons, waited = unit) => `ledger carry: ${unit}'s ${topic} is carried, for a record carried takes no section found later, once each record of ${waited} drawing on the sources its records share — its approved specs, its discovery sessions and the assets its records walk, its own record and a topic it promoted among them — has passed its verifier or the session's settlement, and no section of those sources goes uncited — ${reasons.join('; ')}`;
 
 /**
  * What a carry waiting on the sections of a unit's sources no record cites
  * names: how many, and where the check names each.
  * @param {string} unit @param {number} count
  */
-const counted = (unit, count) => `${count === 1 ? 'a section' : `${count} sections`} of ${unit}'s approved specs, discovery sessions and walked assets ${count === 1 ? 'holds' : 'hold'} text no record cites — \`migrate check 079-records\` names each on the record it goes to`;
+const counted = (unit, count) => `${count === 1 ? 'a section' : `${count} sections`} of ${unit}'s approved specs, discovery sessions and walked assets ${count === 1 ? 'holds' : 'hold'} text no record cites — \`migrate check 079-records\` names each on the record it is named on`;
 
 /**
  * fumi's commerce spec approved in its old manifest, its text in the state
@@ -864,11 +866,52 @@ describe('what the check reads once a record is carried', () => {
     assert.deepStrictEqual([before, alone, named()], [{}, refunds, refunds]);
   });
 
+  it('21.6.14: a cite by any record of the unit settles a shared source\'s section, whichever records walk it; and a section any topic of the unit holds word for word in its own files is settled, of research the unit\'s own record walks too', () => {
+    dir = world();
+    writeState(dir, layout.unit('fumi', 'discovery', 'session-001.md'), '## Discovery Session 001\n');
+    const copied = layout.assets('fumi', 'research', 'licensing-superseded-20260101.md');
+    writeState(dir, copied, '# Licensing\n\n### Refunds\n\nWithin a week.\n');
+    const exploration = layout.assets('fumi', 'research', 'exploration-superseded-20260101.md');
+    writeState(dir, exploration, '# Exploration\n\n## Seats\n\nPer seat.\n\n## Hosting\n\nOn our servers.\n\n## Trial Length\n\n#### Decision\n\nFourteen days, the person said.\n');
+    const found = (/** @type {string} */ ref, /** @type {string} */ text, /** @type {string} */ at, /** @type {string} */ section) => ({ ref, event: 'found', text, how: 'read', known: 'read', by: 'claude', product_wide: false, cites: [{ path: at, section }] });
+    for (const [dotpath, entries] of Object.entries(GOOD).filter(([at]) => at.startsWith('fumi.'))) {
+      const topic = dotpath.split('.')[2];
+      const extra = topic === 'search' ? [found('f8', 'Refunds come within a week.', copied, 'Refunds'), found('f9', 'Hosting is on our servers.', exploration, 'Hosting')] : [];
+      writeState(dir, composedPath('fumi', topic), JSON.stringify({ entries: [...entries, ...extra] }));
+    }
+    writeState(dir, composedPath('fumi', null), JSON.stringify({ entries: [] }));
+
+    const named = Object.fromEntries(Object.entries(unfinished()).map(([at, problems]) => [at, problems.filter((problem) => problem.includes('holds text no record'))]).filter(([, problems]) => problems.length > 0));
+
+    assert.deepStrictEqual(named, { 'fumi.discovery': [sharedUncited('fumi', exploration, 'Seats')] });
+  });
+
+  it('carries a record of a unit whose records wait on one the session settled in its verifier\'s place as on one its verifier passed (21.10.17)', () => {
+    dir = world();
+    writeState(dir, layout.assets('fumi', 'rates.md'), '# Rates\n\nPer seat.\n');
+    writeState(dir, sectionsMarked('fumi'), JSON.stringify({ [layout.assets('fumi', 'rates.md')]: ['Rates'] }));
+    for (const [dotpath, entries] of Object.entries(GOOD).filter(([at]) => at.startsWith('fumi.') && at !== 'fumi.discussion.licensing')) {
+      const topic = dotpath.split('.')[2];
+      writeState(dir, composedPath('fumi', topic), JSON.stringify({ entries }));
+      if (topic === 'search') {
+        writeState(dir, verifyingPath('fumi', topic), JSON.stringify({ hash: crypto.createHash('sha256').update(readState(dir, composedPath('fumi', topic))).digest('hex'), refs: [], entries: {}, settled: true }));
+      } else {
+        writeState(dir, findingsPath('fumi', topic), '');
+        writeState(dir, checkedPath('fumi', topic), entries.map(({ ref }) => `${ref}: ok\n`).join(''));
+      }
+    }
+
+    const search = unfinished()['fumi.discussion.search'];
+    carry('fumi.discussion.licensing', GOOD['fumi.discussion.licensing']);
+
+    assert.deepStrictEqual([search, fs.existsSync(statePath(dir, carriedPath('fumi', 'licensing')))], [['was settled by the session, and waits to be carried'], true]);
+  });
+
   it('carries no topic of a unit a topic was promoted to while a record of the unit it came from, whose discovery sessions it walks, has none its verifier passed, or a section of them goes uncited (21.10.17)', () => {
     dir = world();
     const session = layout.unit('fumi', 'discovery', 'session-001.md');
     writeState(dir, session, '## Discovery Session 001\n\n### Sign-in\n\nOne sign-in across the product.\n');
-    const waits = (/** @type {string[]} */ reasons) => waitsOn('platform', 'auth', reasons);
+    const waits = (/** @type {string[]} */ reasons) => waitsOn('platform', 'auth', reasons, 'fumi');
     const signIn = { ref: 'f9', event: 'found', text: 'One sign-in across the product.', how: 'read', known: 'read', by: 'claude', product_wide: true, cites: [{ path: session, section: 'Sign-in' }] };
     const passed = (/** @type {string} */ unit, /** @type {string|null} */ topic, /** @type {Record<string, unknown>[]} */ entries) => {
       writeState(dir, composedPath(unit, topic), JSON.stringify({ entries }));
@@ -1093,8 +1136,8 @@ describe('the directive\'s example record, frozen with 079', () => {
     assert.deepStrictEqual([
       'Where it holds a current decision, finding or open question, it goes to the record its subject belongs to — of a spec\'s section, one of the topics the check names it on: write into that record\'s settled file a line naming the section as the record\'s and what of it the record misses, and into its findings `Settled: {section}, amend to agree`. That record is amended to carry it, whatever its rulings said of whose the point is, and verified again.',
       'Where it holds none — a section that frames the others, says again what a cited one holds, holds only what a later answer replaced, or is a corrigendum recording only what a cancelled unit decided — mark it',
-      'and of each of its discovery sessions and each asset its records walk, on the topic an asset came in from or a split\'s research bears the name of, else on the unit\'s own record, else on each of its topics — never a section a topic walking it holds word for word in its own files, which that topic\'s verifier walks there.',
-      'So a unit\'s records are carried in order: compose every record, have each verifier pass it, settle the sections the check names, then carry them. The carry of a record of a unit with an approved spec, or with a discovery session or an asset its records walk holding text, its own among them, waits until each record drawing on them has passed its verifier — of a session, the unit\'s own and a topic it promoted among them, whose own carry waits on them too — and the check names no such section, naming what it waits on, or how many such sections the check names.',
+      'and of each of its discovery sessions and each asset its records walk, on the topic an asset came in from or a split\'s research bears the name of, else on the unit\'s own record, else on each of its topics — never a section any topic of the unit holds word for word in its own files, which that topic\'s verifier walks there with its log\'s later word. A cite by any record of the unit settles a section, whichever records walk it; of a session, a cite by a topic the unit promoted too.',
+      'So a unit\'s records are carried in order: compose every record, have each verifier pass it, settle the sections the check names, then carry them. The carry of a record of a unit with an approved spec, or with a discovery session or an asset its records walk holding text, its own among them, waits until each record drawing on them has passed its verifier or the session\'s settlement — of a session, the unit\'s own and a topic it promoted among them — and the check names no such section, naming what it waits on, or how many such sections the check names. Every record of a unit a topic was promoted to waits on the unit it came from in the same way.',
     ].filter((rule) => !text.includes(rule)), []);
   });
 

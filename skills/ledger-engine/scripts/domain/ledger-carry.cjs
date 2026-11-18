@@ -74,8 +74,9 @@
 //   whose records share a source — an approved spec, a discovery session
 //   or an asset they walk — only once each record drawing on it, the
 //   unit's own and a topic it promoted among them, is so passed and no
-//   section of it goes uncited (`unitWaits`), a record carried taking no
-//   section found later; refused,
+//   section of it goes uncited, and likewise of each unit a topic of its
+//   unit was promoted from (`unitWaits`), the refusal framed on each unit
+//   waited on, a record carried taking no section found later; refused,
 //   writing nothing beside the record, for the session alone keeps the
 //   order. A dry run names none of it: it is the record's composer's.
 // - Once: the whole record is appended in one write, after what it carried
@@ -168,7 +169,7 @@ const RECORDS_DIRECTIVE = '079-records';
  *   holds: (manifest: Record<string, any>, phase: string, topic: string) => boolean,
  *   topicsOf: (manifest: Record<string, any>) => string[],
  *   recordProblems: (at: Record<string, unknown>) => string[],
- *   unitWaits: (at: Record<string, unknown>) => string[],
+ *   unitWaits: (at: Record<string, unknown>) => {unit: string, waits: string[]}[],
  *   unverified: (at: Record<string, unknown>) => string|null,
  *   ownRecord: (at: Record<string, unknown>) => boolean,
  *   sourcesOf: (at: Record<string, unknown>) => Record<string, any>,
@@ -673,7 +674,8 @@ function refuseUnsettled(cwd, place) {
   if (unsettled !== null) throw new Error(`${SAID}: ${recordName(place)} ${unsettled}`);
   const waits = rules.unitWaits({ projectDir: codeRoot(cwd), stateDir: root, unit });
   if (waits.length > 0) {
-    throw new Error(`${SAID}: ${recordName(place)} is carried once each record of ${unit} drawing on the sources its records share — its approved specs, its discovery sessions and the assets its records walk, its own record and a topic it promoted among them — has passed its verifier, and no section of those sources goes uncited: a record carried takes no section found later — ${waits.join('; ')}`);
+    const once = waits.map(({ unit: of, waits: on }) => `each record of ${of} drawing on the sources its records share — its approved specs, its discovery sessions and the assets its records walk, its own record and a topic it promoted among them — has passed its verifier or the session's settlement, and no section of those sources goes uncited — ${on.join('; ')}`);
+    throw new Error(`${SAID}: ${recordName(place)} is carried, for a record carried takes no section found later, once ${once.join('; and once ')}`);
   }
 }
 

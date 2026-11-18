@@ -90,15 +90,18 @@
 // walked assets, are held the same way, each once every record walking it
 // has one composed or carried — of a session the unit's own, and a topic
 // it promoted, among them: each section of one holding text cited by any
-// of those records, or held word for word in the own markdown files of a
-// topic walking it, which its verifier walks there, or marked as a kept
-// spec's is, else named — on the topic an import came in from, or a
+// record of the unit, of a session a topic it promoted too, or held word
+// for word in the own markdown files of any of those topics, which its
+// verifier walks there, or marked as a kept spec's is, else named — the
+// walkers deciding only when and where — on the topic an import came in
+// from, or a
 // split's research was copied from, else on the unit's own record, else on
-// each of its topics. A record is carried once its verifier has passed it,
+// each of its topics. A topic's walk sheet and brief leave off what its own
+// files hold so. A record is carried once its verifier has passed it,
 // the findings beside it as composed an empty file, or the session has
 // settled a late round's findings, the note beside it marked so
-// (`unverified`, which `ledger carry` asks); and until each topic of a unit drawing on an
-// approved spec has its record so passed — and each record walking a
+// (`unverified`, which `ledger carry` asks); and until each topic of a
+// unit drawing on an approved spec has its record so passed — and each record walking a
 // shared source of text, where the unit holds one — and no such section is
 // named, no record of the unit is carried, nor of a unit a topic of it was
 // promoted to (`unitWaits`): a record carried could take no section found
@@ -662,6 +665,30 @@ function ownFilesOf(project, unit, topic) {
   return filesUnder(project.stateDir, folder).filter((at) => at.endsWith('.md') && !at.startsWith(`${folder}/mail/`));
 }
 
+/** The text of a topic's own markdown files but its mail, none of a unit's own record, which has none. @param {Project} project @param {Unit} unit @param {string|null} topic */
+const ownTextOf = (project, unit, topic) => (topic === null ? '' : ownFilesOf(project, unit, topic).map((at) => readText(path.join(project.stateDir, at)) ?? '').join('\n'));
+
+/**
+ * Whether `text` holds a section of a source word for word, its heading and
+ * its text: a split's research the move put into a topic's log, which the
+ * topic's verifier walks there.
+ * @param {string[]} lines the source's @param {Heading} heading @param {string} text
+ */
+const heldIn = (lines, { line, end }, text) => text.includes(lines.slice(line - 1, end).join('\n').trim());
+
+/**
+ * Whether a record's own files hold a source word for word, each of its
+ * sections holding text (`heldIn`), it holding one at least.
+ * @param {Project} project @param {Unit} unit @param {string|null} topic @param {string} at
+ */
+function heldWhole(project, unit, topic, at) {
+  const text = readText(path.join(project.stateDir, at)) ?? '';
+  const lines = text.split('\n');
+  const own = ownTextOf(project, unit, topic);
+  const sections = outlineOf(text, false).filter((heading) => heading.text);
+  return sections.length > 0 && sections.every((heading) => heldIn(lines, heading, own));
+}
+
 /**
  * A section of a source as the verifier's walk sheet lays it out: its
  * heading's path, the lines it spans, and the entries citing it.
@@ -675,14 +702,18 @@ function ownFilesOf(project, unit, topic) {
  * cites — a cite naming its section, as the carry reads it, within the
  * parts the topic draws on, so a heading several parts hold is the one in
  * the topic's part, and in any other only where none of those holds it —
- * each with every entry citing it, once.
- * @param {Project} project @param {Unit} unit @param {{specs: Spec[], later: Set<string>}} drawing the topic's specs, and the paths of the unit's it draws no part of
+ * each with every entry citing it, once; but no section of a shared source,
+ * a discovery session or a walked asset, the record's own files hold word
+ * for word (`heldIn`) and no entry cites, which its walk of them reads.
+ * @param {Project} project @param {Unit} unit @param {{specs: Spec[], later: Set<string>, shared: Set<string>, own: string}} drawing the topic's specs, the paths of the unit's it draws no part of, those of its shared sources, and its own files' text
  * @param {Record<string, any>[]} entries @param {string} at
  * @returns {SheetSection[]}
  */
-function sheetSections(project, unit, { specs, later }, entries, at) {
+function sheetSections(project, unit, { specs, later, shared, own }, entries, at) {
   const parts = partsDrawn(specs, at);
-  const headings = outlineOf(readText(path.join(project.stateDir, at)) ?? '', at === `${unit.name}/${JOINED_SPEC}`);
+  const text = readText(path.join(project.stateDir, at)) ?? '';
+  const lines = text.split('\n');
+  const headings = outlineOf(text, at === `${unit.name}/${JOINED_SPEC}`);
   /** @type {Map<Heading, Record<string, any>[]>} */
   const citing = new Map();
   for (const entry of entries) {
@@ -690,7 +721,8 @@ function sheetSections(project, unit, { specs, later }, entries, at) {
     const named = new Set(names.flatMap((name) => citedBy(headings, name, parts)));
     for (const heading of named) citing.set(heading, [...(citing.get(heading) ?? []), entry]);
   }
-  const drawn = (/** @type {Heading} */ heading) => !later.has(at) && (parts === null || parts.includes(heading.part));
+  const drawn = (/** @type {Heading} */ heading) => !later.has(at) && (parts === null || parts.includes(heading.part))
+    && !(shared.has(at) && heldIn(lines, heading, own));
   return headings.filter((heading) => (heading.text && drawn(heading)) || citing.has(heading)).map((heading) => ({
     section: shownPath(headings, heading), line: heading.line, end: heading.end,
     entries: (citing.get(heading) ?? []).map(({ ref, event, text }) => ({ ref: String(ref), event: String(event), text: String(text ?? '') })),
@@ -700,9 +732,9 @@ function sheetSections(project, unit, { specs, later }, entries, at) {
 /**
  * A record laid against its sources for its verifier to walk: each file in
  * the order its brief lists them — the topic's own but its mail, its
- * specs, the discovery sessions it draws on, the unit's walked assets —
- * then each other file an entry cites, each with its sections
- * (`sheetSections`), a file of none left out.
+ * specs, the discovery sessions it draws on, the assets it walks — then
+ * each other file an entry cites, each with its sections (`sheetSections`),
+ * a file of none left out.
  * @param {Project} project @param {Unit} unit @param {string|null} topic @param {Record<string, any>[]} entries
  * @returns {{path: string, sections: SheetSection[]}[]}
  */
@@ -711,9 +743,11 @@ function sheetOf(project, unit, topic, entries) {
   const later = new Set(unitSpecs(project, unit).map(({ path: at }) => at).filter((at) => !specs.some((spec) => spec.path === at)));
   const cited = entries.flatMap(({ cites }) => (Array.isArray(cites) ? cites.filter(isObject) : [])).map(({ path: at }) => String(at));
   const walked = assetsOf(project, unit).filter(({ walkers }) => walkers.includes(topic)).map(({ path: at }) => at);
-  const files = [...(topic === null ? [] : ownFilesOf(project, unit, topic)), ...specs.map(({ path: at }) => at), ...sessionsOf(project, unit, topic), ...walked, ...cited];
+  const sessions = sessionsOf(project, unit, topic);
+  const drawing = { specs, later, shared: new Set([...sessions, ...walked]), own: ownTextOf(project, unit, topic) };
+  const files = [...(topic === null ? [] : ownFilesOf(project, unit, topic)), ...specs.map(({ path: at }) => at), ...sessions, ...walked, ...cited];
   return [...new Set(files)].filter((at) => isFile(path.join(project.stateDir, at)))
-    .map((at) => ({ path: at, sections: sheetSections(project, unit, { specs, later }, entries, at) })).filter(({ sections }) => sections.length > 0);
+    .map((at) => ({ path: at, sections: sheetSections(project, unit, drawing, entries, at) })).filter(({ sections }) => sections.length > 0);
 }
 
 /** Whether the unit has its spec, past which a point is raised at its specification: its `spec.md`, or its specs joined. @param {Project} project @param {Unit} unit */
@@ -1135,56 +1169,55 @@ const recordsOfUnit = (project, unit) => [...topicsOf(unit.manifest), ...(hasOwn
 /**
  * The sources a unit's records walk in common, holding text past their
  * headings, each by its path with what it is, the topic owing it, an
- * import's, and the records walking it: the unit's discovery sessions,
- * walked by each of its records and each topic it promoted, carried where
- * it went; and its walked assets.
+ * import's; the records walking it; and the records whose cites, and own
+ * files word for word, settle its sections, any record of the unit, of a
+ * session a topic it promoted too: the unit's discovery sessions, walked
+ * by each of its records and each topic it promoted, carried where it
+ * went; and its walked assets.
  * @param {Project} project @param {Unit} unit
- * @returns {{path: string, kind: 'session'|'asset', owner: string|null, walkers: RecordOf[]}[]}
+ * @returns {{path: string, kind: 'session'|'asset', owner: string|null, walkers: RecordOf[], readers: RecordOf[]}[]}
  */
 function sharedOf(project, unit) {
   const promoted = movedOf(unit.manifest).map(({ topic, to }) => ({ unit: unitOf(project, to), topic }));
   const ours = (/** @type {(string|null)[]} */ topics) => topics.map((topic) => ({ unit, topic }));
+  const records = ours(recordsOfUnit(project, unit));
   const sessions = discoverySessions(project.stateDir, unit.name)
-    .map((at) => ({ path: at, kind: /** @type {const} */ ('session'), owner: null, walkers: [...ours(recordsOfUnit(project, unit)), ...promoted] }));
+    .map((at) => ({ path: at, kind: /** @type {const} */ ('session'), owner: null, walkers: [...records, ...promoted], readers: [...records, ...promoted] }));
   const assets = assetsOf(project, unit).filter(({ walkers }) => walkers.length > 0).map(({ path: at, owner, walkers }) => ({
-    path: at, kind: /** @type {const} */ ('asset'), owner, walkers: ours(walkers),
+    path: at, kind: /** @type {const} */ ('asset'), owner, walkers: ours(walkers), readers: records,
   }));
   return [...sessions, ...assets].filter(({ path: at }) => holdsText(readText(path.join(project.stateDir, at)) ?? ''));
 }
 
 /**
- * The sections of a unit's shared sources no record walking them cites
+ * The sections of a unit's shared sources no record of it cites
  * (`Uncited`), each named on the topic an import came in from, or a
  * split's research was copied from, else on the unit's own record, else
  * on each of its topics — a source's once every record walking it has one
- * composed or carried; none before. A section a topic walking it holds word
- * for word, its heading and its text, in its own markdown files is that
- * topic's verifier's to walk there, and settled.
+ * composed or carried; none before. A section a topic holds word for word
+ * in its own markdown files (`heldIn`) is that topic's verifier's to walk
+ * there, with its log's later word, and settled.
  * @param {Project} project @param {Unit} unit @returns {Uncited[]}
  */
 function uncitedSharedOf(project, unit) {
   const marked = marksOf(project, unit);
   const topics = topicsOf(unit.manifest);
-  /** @type {Map<string, string>} */
-  const ownText = new Map();
-  const textOf = (/** @type {RecordOf} */ { unit: of, topic }) => {
+  /** @type {Map<string, {entries: Record<string, any>[]|null, own: string}>} */
+  const read = new Map();
+  const readOf = (/** @type {RecordOf} */ { unit: of, topic }) => {
     const key = `${of.name}/${topic}`;
-    if (!ownText.has(key)) ownText.set(key, topic === null ? '' : ownFilesOf(project, of, topic).map((at) => readText(path.join(project.stateDir, at)) ?? '').join('\n'));
-    return /** @type {string} */ (ownText.get(key));
+    if (!read.has(key)) read.set(key, { entries: recordOf(project, of, topic), own: ownTextOf(project, of, topic) });
+    return /** @type {{entries: Record<string, any>[]|null, own: string}} */ (read.get(key));
   };
-  return sharedOf(project, unit).flatMap(({ path: at, kind, owner, walkers }) => {
-    const records = walkers.map(({ unit: of, topic }) => recordOf(project, of, topic));
-    if (records.some((record) => record === null)) return [];
-    const cites = /** @type {Record<string, any>[][]} */ (records).flat().flatMap(({ cites: given }) => (Array.isArray(given) ? given.filter(isObject) : []));
+  return sharedOf(project, unit).flatMap(({ path: at, kind, owner, walkers, readers }) => {
+    if (walkers.some((walker) => readOf(walker).entries === null)) return [];
+    const cites = readers.flatMap((reader) => readOf(reader).entries ?? []).flatMap(({ cites: given }) => (Array.isArray(given) ? given.filter(isObject) : []));
     const text = readText(path.join(project.stateDir, at)) ?? '';
     const lines = text.split('\n');
     const held = outlineOf(text, false);
     const named = [...cites.filter((cite) => cite.path === at).map(({ section }) => String(section)), ...markedIn(marked, at, null)];
     const settled = new Set(named.flatMap((name) => namedAlone(held, name)));
-    const copied = (/** @type {Heading} */ { line, end }) => {
-      const whole = lines.slice(line - 1, end).join('\n').trim();
-      return walkers.some((walker) => textOf(walker).includes(whole));
-    };
+    const copied = (/** @type {Heading} */ heading) => readers.some((reader) => heldIn(lines, heading, readOf(reader).own));
     const inUnit = walkers.filter((walker) => walker.unit.name === unit.name).map(({ topic }) => topic);
     const on = owner !== null && topics.includes(owner) ? [owner] : inUnit.includes(null) ? [null] : inUnit;
     return held.filter((heading) => heading.text && !settled.has(heading) && !copied(heading))
@@ -1215,25 +1248,26 @@ function waitsOf(project, unit) {
   if (unpassed.length > 0) return unpassed;
   const uncited = uncitedOf(project, unit).length + uncitedSharedOf(project, unit).length;
   if (uncited === 0) return [];
-  return [`${uncited === 1 ? 'a section' : `${uncited} sections`} of ${unit.name}'s approved specs, discovery sessions and walked assets ${uncited === 1 ? 'holds' : 'hold'} text no record cites — \`migrate check ${DIRECTIVE}\` names each on the record it goes to`];
+  return [`${uncited === 1 ? 'a section' : `${uncited} sections`} of ${unit.name}'s approved specs, discovery sessions and walked assets ${uncited === 1 ? 'holds' : 'hold'} text no record cites — \`migrate check ${DIRECTIVE}\` names each on the record it is named on`];
 }
 
 /**
- * What a unit's records wait on before any of them is carried (`waitsOf`):
- * its own, and those of each unit a topic of it was promoted from, whose
- * discovery sessions the topic walks.
- * @param {Project} project @param {Unit} unit @returns {string[]}
+ * What a unit's records wait on before any of them is carried (`waitsOf`),
+ * by the unit waited on: its own, and those of each unit a topic of it was
+ * promoted from, whose discovery sessions the topic walks; a unit waiting
+ * on nothing left out.
+ * @param {Project} project @param {Unit} unit @returns {{unit: string, waits: string[]}[]}
  */
 function unitWaits(project, unit) {
   const homes = new Set(topicsOf(unit.manifest).flatMap((topic) => homesOf(project, unit, topic).filter((home) => home !== unit.name)));
-  return [unit, ...[...homes].map((home) => unitOf(project, home))].flatMap((each) => waitsOf(project, each));
+  return [unit, ...[...homes].map((home) => unitOf(project, home))].map((each) => ({ unit: each.name, waits: waitsOf(project, each) })).filter(({ waits }) => waits.length > 0);
 }
 
 /** What an uncited section is, by the kind of source it is in, and who carries what it holds. */
 const UNCITED_SAYS = new Map([
   ['spec', { what: 'an approved spec', carried: 'what the spec stage decided, found or left open, still current, is carried by the topic it belongs to' }],
-  ['session', { what: 'a discovery session', carried: 'a current point it makes is carried by the record its subject belongs to' }],
-  ['asset', { what: 'an asset', carried: 'a current point it makes is carried by the record its subject belongs to' }],
+  ['session', { what: 'a discovery session', carried: 'a current point it makes, which no topic\'s own files hold word for word, is carried by the record its subject belongs to' }],
+  ['asset', { what: 'an asset', carried: 'a current point it makes, which no topic\'s own files hold word for word, is carried by the record its subject belongs to' }],
 ]);
 
 /** What a section no record cites lacks, as the records it is named on are told it. @param {Unit} unit @param {Uncited} uncited */
@@ -1337,8 +1371,8 @@ module.exports = {
     return problemsOf(project, unitOf(project, unit), topic, phase, entries);
   },
   /**
-   * What a unit's topics wait on before any is carried (the header's), none
-   * where nothing does.
+   * What a unit's records wait on before any is carried (the header's), by
+   * the unit waited on, none where nothing does.
    * @param {{projectDir: string, stateDir: string, unit: string}} at
    */
   unitWaits({ projectDir, stateDir, unit }) {
@@ -1365,7 +1399,8 @@ module.exports = {
    * A record's sources as the rules read them: the project's folder they
    * are read in, a topic's old map, its research's threads still open and
    * its specs, the unit's assets (`assetsOf`), each import with the topic
-   * owing its link — none for one the unit's own record owes — the
+   * owing its link — none for one the unit's own record owes — those it
+   * walks that its own files hold word for word (`heldWhole`), the
    * discovery sessions it draws on, the other topics those
    * sessions may speak of (`othersOf`), and the unit's approved specs it
    * does not draw on, the later answer (`laterOf`), and the project's other
@@ -1384,6 +1419,7 @@ module.exports = {
       threads: own ? [] : threadsOf(project, unit, topic),
       specs: own ? [] : specsOf(project, unit, topic),
       assets: assetsOf(project, unit),
+      held: assetsOf(project, unit).filter(({ path: at, walkers }) => walkers.includes(topic) && heldWhole(project, unit, topic, at)).map(({ path: at }) => at),
       sessions: sessionsOf(project, unit, topic),
       others: othersOf(project, unit, topic),
       later: own ? [] : laterOf(project, unit, topic),

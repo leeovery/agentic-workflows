@@ -460,7 +460,8 @@
 //                  old map and its research's threads still open; every
 //                  file of the unit's assets but a dotfile and its specs,
 //                  with where each came from, those the record walks apart
-//                  from the rest, the import the record owes a link, or an
+//                  from the rest, one its own files hold word for word
+//                  among the rest, the import the record owes a link, or an
 //                  import's file gone and linked by none; and where
 //                  the topic's record is composed, and whether it is yet,
 //                  the verifier's findings, rulings and verdicts on it
@@ -1230,18 +1231,23 @@ function assetLine({ path: at, kind, origin, owner, listed: imported, held }, to
 
 /**
  * The unit's assets as a record's brief lists them: those it walks, then
- * the rest but its specs, listed as its specs.
- * @param {MigratedAsset[]} assets @param {string|null} topic @param {string[]} [specs] the paths of the topic's specs
+ * the rest but its specs, listed as its specs — one it would walk that its
+ * own files hold word for word among the rest, so said.
+ * @param {MigratedAsset[]} assets @param {string|null} topic @param {string[]} held the paths of those its own files hold @param {string[]} [specs] the paths of the topic's specs
  */
-const assetSections = (assets, topic, specs = []) => [
-  '## The unit\'s assets it walks',
-  '',
-  listed(assets.filter(({ walkers }) => walkers.includes(topic)).map((asset) => assetLine(asset, topic))),
-  '',
-  '## The unit\'s other assets, never walked',
-  '',
-  listed(assets.filter(({ path: at, walkers }) => !walkers.includes(topic) && !specs.includes(at)).map((asset) => assetLine(asset, topic))),
-];
+function assetSections(assets, topic, held, specs = []) {
+  const walks = (/** @type {MigratedAsset} */ { path: at, walkers }) => walkers.includes(topic) && !held.includes(at);
+  return [
+    '## The unit\'s assets it walks',
+    '',
+    listed(assets.filter(walks).map((asset) => assetLine(asset, topic))),
+    '',
+    '## The unit\'s other assets, never walked',
+    '',
+    listed(assets.filter((asset) => !walks(asset) && !specs.includes(asset.path))
+      .map((asset) => `${assetLine(asset, topic)}${held.includes(asset.path) ? ' — its own files hold it word for word' : ''}`)),
+  ];
+}
 
 /** Where a record goes, and what is said of it beside it, as its brief lists them. @param {string} root @param {string} unit @param {string|null} topic */
 function recordGoes(root, unit, topic) {
@@ -1288,7 +1294,7 @@ function drawOwnRecord(filling, root, unit) {
     '',
     listed(otherLines(sources.others, unit)),
     '',
-    ...assetSections(sources.assets, null),
+    ...assetSections(sources.assets, null, sources.held),
     '',
     '## Where the record goes',
     '',
@@ -1350,7 +1356,7 @@ function drawMigratedTopic(filling) {
     '',
     sources.threads.length === 0 ? 'None — no entry needs a thread.' : sources.threads.map(({ thread, status, question }) => `- ${thread}, ${status}: ${question}`).join('\n'),
     '',
-    ...assetSections(sources.assets, topic, sources.specs.map((/** @type {{path: string}} */ { path: at }) => at)),
+    ...assetSections(sources.assets, topic, sources.held, sources.specs.map((/** @type {{path: string}} */ { path: at }) => at)),
     '',
     '## Where the record goes',
     '',
