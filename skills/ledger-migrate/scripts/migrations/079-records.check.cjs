@@ -195,11 +195,12 @@ const { spawnSync } = require('child_process');
 // The cut and the merges' check, whose reading of what leaves a building unit
 // the raises keep to (21.8.9).
 const CUT = require('./080-cut-and-merges.check.cjs');
+// The files a record is kept in, and what the carry still refuses a record
+// its verifier passed for, read as the carry reads them.
+const { COMPOSED, carriedPath, composedPath, findingsPath, verifyingPath, handedBack, unsettledRound } = require('../record-files.cjs');
 
 const CODE_TREE_STATE = '.workflows';
 const TOPIC_PHASES = ['discovery', 'discussion', 'investigation'];
-const CARRIED = '.cache/migrate/carried';
-const COMPOSED = '.cache/migrate/records';
 const SESSION_FILE = /^session-[0-9]{3,}\.md$/;
 const EPIC = 'epic';
 const LEDGER = '.ledger.jsonl';
@@ -1085,15 +1086,8 @@ function unitsOf(project) {
     .map((entry) => entry.name).sort().map((name) => unitOf(project, name));
 }
 
-/**
- * A record's file beneath `folder`, by its ending: a topic's in its unit's
- * folder, a unit's own beside it.
- * @param {string} folder @param {string} unit @param {string|null} topic @param {string} [ending]
- */
-const recordFile = (folder, unit, topic, ending = '.json') => (topic === null ? path.posix.join(folder, `${unit}${ending}`) : path.posix.join(folder, unit, `${topic}${ending}`));
-
 /** What `ledger carry` kept of a record, or null. @param {Project} project @param {Unit} unit @param {string|null} topic */
-const carriedOf = (project, unit, topic) => readJson(path.join(project.stateDir, recordFile(CARRIED, unit.name, topic)));
+const carriedOf = (project, unit, topic) => readJson(path.join(project.stateDir, carriedPath(unit.name, topic)));
 
 /**
  * Why a record has not passed its verifier, null where it has: the
@@ -1104,7 +1098,7 @@ const carriedOf = (project, unit, topic) => readJson(path.join(project.stateDir,
  * @param {string} stateDir @param {string} unit @param {string|null} topic @returns {string|null}
  */
 function unverified(stateDir, unit, topic) {
-  const findings = recordFile(COMPOSED, unit, topic, '.findings.txt');
+  const findings = findingsPath(unit, topic);
   const text = readText(path.join(stateDir, findings));
   if (text === null) return settledBySession(stateDir, unit, topic) ? null : `${findings} is no file`;
   return text.trim() === '' ? null : `its findings stand in ${findings}`;
@@ -1113,7 +1107,7 @@ function unverified(stateDir, unit, topic) {
 /** Whether the note beside a record marks it as the session settled it. @param {string} stateDir @param {string} unit @param {string|null} topic */
 function settledBySession(stateDir, unit, topic) {
   try {
-    return readJson(path.join(stateDir, recordFile(COMPOSED, unit, topic, '.verifying.json')))?.settled === true;
+    return readJson(path.join(stateDir, verifyingPath(unit, topic)))?.settled === true;
   } catch {
     return false;
   }
@@ -1123,7 +1117,7 @@ function settledBySession(stateDir, unit, topic) {
 const sectionsMarked = (unit) => `${COMPOSED}/${unit}.sections.json`;
 
 // The files a record is kept in as it is composed, by their endings, as
-// ledger-carry.cjs names them: the record, its verifier's findings, rulings,
+// record-files.cjs names them: the record, its verifier's findings, rulings,
 // verdicts and note, the carry's refusal, its composer's hand-back, its
 // rounds, and the points the session settled.
 const RECORD_FILES = ['.json', '.findings.txt', '.rulings.txt', '.checked.txt', '.verifying.json', '.refused.md', '.handback.txt', '.rounds.md', '.settled.md'];
@@ -1154,7 +1148,7 @@ function recordOf(project, unit, topic) {
   const carried = carriedOf(project, unit, topic);
   if (carried !== null) return carried.record.entries;
   try {
-    const composed = readJson(path.join(project.stateDir, recordFile(COMPOSED, unit.name, topic)));
+    const composed = readJson(path.join(project.stateDir, composedPath(unit.name, topic)));
     return isObject(composed) && Array.isArray(composed.entries) ? composed.entries.filter(isObject) : null;
   } catch {
     return null;
@@ -1382,9 +1376,6 @@ const SETTLED = 'was settled by the session, and waits to be carried';
 /** Where a record waits for the carry alone. */
 const WAITING = [PASSED, SETTLED];
 
-/** The carry, whose guards say what a record its verifier passed still waits on. */
-const CARRY = path.join(__dirname, '..', '..', '..', 'ledger-engine', 'scripts', 'domain', 'ledger-carry.cjs');
-
 /**
  * Where a record not yet carried stands: none composed; what the carry
  * would refuse it for on its own — findings handed back, not passed by its
@@ -1395,7 +1386,6 @@ const CARRY = path.join(__dirname, '..', '..', '..', 'ledger-engine', 'scripts',
 function uncarried(project, unit, topic) {
   const record = recordOf(project, unit, topic);
   if (record === null) return 'has no record composed';
-  const { handedBack, unsettledRound } = require(CARRY);
   const why = unverified(project.stateDir, unit.name, topic);
   return handedBack(project.stateDir, unit.name, topic)
     ?? (why === null ? null : `has not passed its verifier — ${why}`)

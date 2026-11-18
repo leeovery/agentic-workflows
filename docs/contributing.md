@@ -161,6 +161,10 @@ in the same header:
 - `migrations/reshape/` is what the reshape's released steps share: it is
   frozen with them, and holds its own reading of the layout. The
   runtime's is `old-layout.cjs`, free to change. Neither loads the other.
+- The files a topic's record is kept in as the records directive
+  composes, verifies and carries it are `record-files.cjs`, read by the
+  directive's check and the engine's carry alike: frozen with the
+  directive, so no migration loads the engine.
 - Where the chain before the guard hands back checks, the runner stops
   before the move reads `.workflows/`, and boot answers `checks`: the
   session makes each check where it says — the old state's on the main
