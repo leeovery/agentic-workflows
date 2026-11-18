@@ -2203,8 +2203,9 @@ function raiseWaits([verb]) {
  * Of the points a migration directive raises at its end, each still to
  * raise: its question in the ledger and open, and no raise of it sealed in
  * the calling conversation — drawn, answered or left open. Each answers
- * with its question's short id.
- * @template {{place: string, answers: string, text: string}} P
+ * with its question's short id, and the questions it is raised for besides,
+ * `also`, where it has any, by theirs.
+ * @template {{place: string, answers: string, text: string, also?: string[]}} P
  * @param {string} cwd @param {P[]} points
  * @returns {P[]}
  */
@@ -2214,8 +2215,10 @@ function unraised(cwd, points) {
   const read = { facts: foldLedger(root, ID_FACTS, []), live: liveness(root) };
   const session = handedSession();
   const sealed = new Set(Object.values(session === null ? {} : readSeals(session)).filter(isSeal).map((seal) => seal.answers));
-  return points.filter(({ answers }) => read.facts.has(answers) && questionStands(read, answers) === 'open' && !sealed.has(answers))
-    .map((point) => ({ ...point, answers: shortId(point.answers, read.facts.keys()) }));
+  const short = (/** @type {string} */ id) => shortId(id, read.facts.keys());
+  return points.filter(({ answers }) => read.facts.has(answers) && questionStands(read, answers) === 'open' && !sealed.has(answers)).map((point) => ({
+    ...point, answers: short(point.answers), ...(point.also === undefined ? {} : { also: point.also.map(short) }),
+  }));
 }
 
 /**

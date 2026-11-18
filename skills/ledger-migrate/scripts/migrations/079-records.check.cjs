@@ -117,6 +117,19 @@
 // record not yet carried is named where it stands: none composed, what the
 // carry would refuse it for on its own, through the carry's own guards, or
 // passed and waiting to be carried.
+// And the contradictions a unit's records name between sections of the
+// sources they share — its approved specs, its discovery sessions and the
+// assets its records walk — each by an entry's `at_odds`, two of those
+// sections at least: once every record of the unit has one composed or
+// carried, each other record citing one of those sections names the same
+// contradiction, an entry's `at_odds` holding those sections and no other,
+// or the session marks it as carrying no side of the point
+// (`.cache/migrate/records/{unit}.at-odds.json`, `{"{place}": [[{"path",
+// "section"}, …]]}`), else it is named on that record; and the unit's
+// records wait on it as on a section no record cites. A section is read as
+// the carry reads a cite (cited-sections.cjs), a mark's alike; whether two
+// sections disagree, and whether a record carries a side of the point, is
+// the session's to judge.
 // A record of no entries keeps every rule but the cites: its old map, its
 // threads and its imports are asked of it as of any. A topic promoted to a
 // cross-cutting unit took only its discussion there: its research's threads
@@ -150,7 +163,9 @@
 // would leave its answer with the unit it left, so its points stay open
 // questions for its discussion where it goes. A
 // record marking one of these to raise breaks a rule (`unraised`), so the
-// carry refuses the mark that would never be raised.
+// carry refuses the mark that would never be raised. Questions of several
+// records naming one contradiction, their `at_odds` holding the same
+// sections, are one point, listed once with the others' ids beside it.
 //
 // `.workflows/` is read where the move read it: the working tree of the
 // project's folder in the repository's main checkout, whichever checkout
@@ -955,7 +970,7 @@ function strayRecordFiles(project, unit) {
   const folder = `${COMPOSED}/${unit.name}`;
   const inFolder = filesUnder(project.stateDir, folder).filter((at) => !topics.some((topic) => kept(at.slice(folder.length + 1), topic)));
   const beside = fs.existsSync(path.join(project.stateDir, COMPOSED)) ? fs.readdirSync(path.join(project.stateDir, COMPOSED), { withFileTypes: true })
-    .filter((entry) => entry.isFile() && entry.name.startsWith(`${unit.name}.`) && !kept(entry.name, unit.name) && entry.name !== `${unit.name}.sections.json`)
+    .filter((entry) => entry.isFile() && entry.name.startsWith(`${unit.name}.`) && !kept(entry.name, unit.name) && ![sectionsMarked, atOddsMarked].some((marks) => `${COMPOSED}/${entry.name}` === marks(unit.name)))
     .map((entry) => `${COMPOSED}/${entry.name}`) : [];
   return [...inFolder, ...beside].map((at) => ({ at, topic: topics.find((topic) => at.startsWith(`${folder}/${topic}.`)) ?? null }));
 }
@@ -986,14 +1001,17 @@ function descriptionOf(project, unit, topic) {
   return typeof said === 'string' && said.trim() !== '' ? said.trim() : null;
 }
 
-/** What the session marked of the unit's specs, by each spec's path: nothing where its file will not read. @param {Project} project @param {Unit} unit @returns {Record<string, any>} */
-function marksOf(project, unit) {
+/** What the session marked in a file of marks, from the state's folder: nothing where it will not read. @param {Project} project @param {string} rel @returns {Record<string, any>} */
+function marksIn(project, rel) {
   try {
-    return itemsOf(readJson(path.join(project.stateDir, sectionsMarked(unit.name))));
+    return itemsOf(readJson(path.join(project.stateDir, rel)));
   } catch {
     return {};
   }
 }
+
+/** What the session marked of the unit's specs, by each spec's path. @param {Project} project @param {Unit} unit */
+const marksOf = (project, unit) => marksIn(project, sectionsMarked(unit.name));
 
 /** A key of a spec's path and a name in it. @param {string} at @param {string|null} name */
 const specKey = (at, name) => `${at}\n${name ?? ''}`;
@@ -1142,6 +1160,100 @@ function uncitedSharedOf(project, unit) {
   });
 }
 
+/** The contradictions the session marked as no side of a record's cites, from the state's folder. @param {string} unit */
+const atOddsMarked = (unit) => `${COMPOSED}/${unit}.at-odds.json`;
+
+/** A record's place, as the check names it: a topic's, or a unit's own. @param {Unit} unit @param {string|null} topic */
+const recordPlace = (unit, topic) => (topic === null ? `${unit.name}.discovery` : topicPlace(unit, topic));
+
+/** A section of a source the unit's records share, by its file and its name alone there. @typedef {{path: string, section: string}} Side */
+
+/** Sections by their file and their line, which tells copies of one heading apart. @typedef {Map<string, Side>} Sides */
+
+/** The cites an entry gives, none where it gives none. @param {Record<string, any>} entry @returns {Record<string, unknown>[]} */
+const citesIn = ({ cites }) => (Array.isArray(cites) ? cites.filter(isObject) : []);
+
+/** One key of a set of sections, whichever order they come in. @param {Sides} sides */
+const keyOfSides = (sides) => [...sides.keys()].sort().join('\n\n');
+
+/** Names in a sentence: `a and b`, `a, b and c`. @param {string[]} names */
+const inWords = (names) => (names.length < 3 ? names.join(' and ') : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`);
+
+/** Sections as a sentence names them. @param {Side[]} sides */
+const sidesSaid = (sides) => inWords(sides.map(({ path: at, section }) => `"${section}" in ${at}`));
+
+/**
+ * How the sections a contradiction sits in are read, in the sources a
+ * unit's records share — its approved specs, its discovery sessions and the
+ * assets its records walk: each a cite names alone (`citedSection`), by
+ * the name a cite gives it (`citeNameOf`), a record's cites and a mark's
+ * alike. A cite of any other file, or naming none alone, names none.
+ * @param {Project} project @param {Unit} unit @returns {(cites: Record<string, unknown>[]) => Sides}
+ */
+function sidesReader(project, unit) {
+  const shared = new Set([...unitSpecs(project, unit).filter(({ approved }) => approved).map(({ path: at }) => at), ...sharedOf(project, unit).map(({ path: at }) => at)]);
+  /** @type {Map<string, Heading[]>} */
+  const outlines = new Map();
+  const outline = (/** @type {string} */ at) => {
+    if (!outlines.has(at)) outlines.set(at, outlineOf(readText(path.join(project.stateDir, at)) ?? '', at === `${unit.name}/${JOINED_SPEC}`));
+    return /** @type {Heading[]} */ (outlines.get(at));
+  };
+  return (cites) => new Map(cites.flatMap(({ path: at, section }) => {
+    if (typeof at !== 'string' || !shared.has(at)) return [];
+    const headings = outline(at);
+    const heading = citedSection(headings, String(section));
+    return heading === null ? [] : [[`${at}\n${heading.line}`, { path: at, section: citeNameOf(headings, heading) }]];
+  }));
+}
+
+/**
+ * A contradiction one record of a unit names that another, citing a side
+ * of it, does not: the record that does not, by its topic and its place;
+ * the sections at odds; those of them it cites; and the records naming it.
+ * @typedef {{topic: string|null, place: string, sides: Side[], cited: Side[], by: string[]}} Unshared
+ */
+
+/**
+ * The contradictions a unit's records leave unshared (`Unshared`), once
+ * every record of the unit has one composed or carried; none before. A
+ * record names a contradiction by an entry's `at_odds`, two sections at
+ * least of the sources its records share; another record citing any of
+ * them names the same, an entry's `at_odds` holding those sections and no
+ * other, or the session marks it as carrying no side of that point
+ * (`atOddsMarked`), each by its place. Whether two sections truly disagree,
+ * and whether a record carries a side of the point, is the session's to
+ * judge, never the check's.
+ * @param {Project} project @param {Unit} unit @returns {Unshared[]}
+ */
+function unsharedOf(project, unit) {
+  const records = recordsOfUnit(project, unit).map((topic) => ({ topic, entries: recordOf(project, unit, topic) }));
+  if (records.some(({ entries }) => entries === null)) return [];
+  const sides = sidesReader(project, unit);
+  const marks = marksIn(project, atOddsMarked(unit.name));
+  const read = records.map(({ topic, entries }) => {
+    const place = recordPlace(unit, topic);
+    const named = /** @type {Record<string, any>[]} */ (entries).filter(({ at_odds: odds }) => Array.isArray(odds))
+      .map(({ at_odds: odds }) => sides(odds.filter(isObject))).filter((each) => each.size > 1);
+    const settled = new Set([...named, ...(Array.isArray(marks[place]) ? marks[place] : []).map((/** @type {unknown} */ mark) => sides(Array.isArray(mark) ? mark.filter(isObject) : []))].map(keyOfSides));
+    return { topic, place, named, settled, cited: sides(/** @type {Record<string, any>[]} */ (entries).flatMap(citesIn)) };
+  });
+  /** @type {Map<string, {sides: Sides, by: string[]}>} */
+  const naming = new Map();
+  for (const { place, named } of read) {
+    for (const odds of named) naming.set(keyOfSides(odds), { sides: odds, by: [...new Set([...(naming.get(keyOfSides(odds))?.by ?? []), place])] });
+  }
+  return read.flatMap(({ topic, place, settled, cited }) => [...naming].flatMap(([key, { sides: odds, by }]) => {
+    const citing = [...odds.keys()].filter((side) => cited.has(side));
+    if (settled.has(key) || citing.length === 0) return [];
+    return [{ topic, place, sides: [...odds.values()], cited: citing.map((side) => /** @type {Side} */ (cited.get(side))), by }];
+  }));
+}
+
+/** What a contradiction left unshared asks of the record it is named on. @param {Unit} unit @param {Unshared} unshared */
+function unsharedProblem(unit, { place, sides, cited, by }) {
+  return `${sidesSaid(sides)} are at odds, as ${inWords(by)} ${by.length === 1 ? 'names' : 'name'} them, and this record cites ${sidesSaid(cited)} without naming that contradiction — where it carries a side of the point at odds, it names the contradiction, an entry holding those sections as its at_odds, and carries neither side as settled; where what it cites of them is not that point, it is marked in ${atOddsMarked(unit.name)} as ${JSON.stringify({ [place]: [sides] })}`;
+}
+
 /**
  * What a unit's records wait on before any of them is carried, where any
  * topic draws on an approved spec or the unit holds a shared source of
@@ -1164,8 +1276,11 @@ function waitsOf(project, unit) {
   });
   if (unpassed.length > 0) return unpassed;
   const uncited = uncitedOf(project, unit).length + uncitedSharedOf(project, unit).length;
-  if (uncited === 0) return [];
-  return [`${uncited === 1 ? 'a section' : `${uncited} sections`} of ${unit.name}'s approved specs, discovery sessions and walked assets ${uncited === 1 ? 'holds' : 'hold'} text no record cites — \`migrate check ${DIRECTIVE}\` names each where it is named`];
+  const unshared = unsharedOf(project, unit).length;
+  return [
+    ...(uncited === 0 ? [] : [`${uncited === 1 ? 'a section' : `${uncited} sections`} of ${unit.name}'s approved specs, discovery sessions and walked assets ${uncited === 1 ? 'holds' : 'hold'} text no record cites — \`migrate check ${DIRECTIVE}\` names each where it is named`]),
+    ...(unshared === 0 ? [] : [`${unshared === 1 ? 'a contradiction' : `${unshared} contradictions`} a record of ${unit.name} names ${unshared === 1 ? 'goes' : 'go'} unnamed on another record citing a side of ${unshared === 1 ? 'it' : 'them'} — \`migrate check ${DIRECTIVE}\` names each where it is named`]),
+  ];
 }
 
 /**
@@ -1244,11 +1359,15 @@ module.exports = {
       const strays = strayRecordFiles(project, unit);
       const strayOn = (/** @type {string|null} */ topic) => strays.filter((stray) => stray.topic === topic || (stray.topic === null && !hasOwn))
         .map(({ at }) => `${at} is no file a record is kept in — an agent left it: remove it`);
-      const uncitedOn = (/** @type {string|null} */ topic) => uncited.filter(({ topics }) => topics.includes(topic)).map((each) => uncitedProblem(unit, each));
-      const own = hasOwn ? [{ name: `${unit.name}.discovery`, problems: [...topicProblems(project, ids, unit, null), ...uncitedOn(null), ...strayOn(null)] }] : [];
+      const unshared = unsharedOf(project, unit);
+      const sentOn = (/** @type {string|null} */ topic) => [
+        ...uncited.filter(({ topics }) => topics.includes(topic)).map((each) => uncitedProblem(unit, each)),
+        ...unshared.filter((each) => each.topic === topic).map((each) => unsharedProblem(unit, each)),
+      ];
+      const own = hasOwn ? [{ name: recordPlace(unit, null), problems: [...topicProblems(project, ids, unit, null), ...sentOn(null), ...strayOn(null)] }] : [];
       return [...topicsOf(unit.manifest).map((topic) => ({
-        name: topicPlace(unit, topic),
-        problems: [...topicProblems(project, ids, unit, topic), ...uncitedOn(topic), ...strayOn(topic)],
+        name: recordPlace(unit, topic),
+        problems: [...topicProblems(project, ids, unit, topic), ...sentOn(topic), ...strayOn(topic)],
       })), ...own];
     });
   },
@@ -1257,19 +1376,37 @@ module.exports = {
    * started topic not set aside of a unit in progress, staying in its unit
    * (`unraised`) — its place,
    * the topic's or, where the unit has its spec, its specification's, the
-   * question's id and its text.
+   * question's id and its text; and where questions of several records name
+   * one contradiction, their `at_odds` holding the same sections of the
+   * sources the unit's records share, one point, the first, with each of the
+   * others' ids as `also`, so the point is raised once.
    * @param {{projectDir: string, stateDir: string}} dirs
-   * @returns {{place: string, answers: string, text: string}[]}
+   * @returns {{place: string, answers: string, text: string, also?: string[]}[]}
    */
   raises({ projectDir, stateDir }) {
     const project = projectOf(projectDir, stateDir);
-    return unitsOf(project).flatMap((unit) => topicsOf(unit.manifest).flatMap((topic) => {
-      const carried = carriedOf(project, unit, topic);
-      if (carried === null || unraised(project, unit, topic, carried.phase) !== null) return [];
-      const ids = new Map(carried.entries.map(({ ref, id }) => [ref, id]));
-      const place = hasSpec(project, unit) ? `${unit.name}.specification` : `${unit.name}.${carried.phase}.${topic}`;
-      return carried.record.entries.filter((entry) => entry.raise === true).map((entry) => ({ place, answers: ids.get(entry.ref), text: entry.text }));
-    }));
+    return unitsOf(project).flatMap((unit) => {
+      const sides = sidesReader(project, unit);
+      /** @type {Map<string, {place: string, answers: string, text: string, also?: string[]}>} */
+      const once = new Map();
+      return topicsOf(unit.manifest).flatMap((topic) => {
+        const carried = carriedOf(project, unit, topic);
+        if (carried === null || unraised(project, unit, topic, carried.phase) !== null) return [];
+        const ids = new Map(carried.entries.map(({ ref, id }) => [ref, id]));
+        const place = hasSpec(project, unit) ? `${unit.name}.specification` : `${unit.name}.${carried.phase}.${topic}`;
+        return carried.record.entries.filter((entry) => entry.raise === true).flatMap((entry) => {
+          const point = { place, answers: ids.get(entry.ref), text: entry.text };
+          const odds = sides(Array.isArray(entry.at_odds) ? entry.at_odds.filter(isObject) : []);
+          const first = odds.size > 1 ? once.get(keyOfSides(odds)) : undefined;
+          if (first === undefined) {
+            if (odds.size > 1) once.set(keyOfSides(odds), point);
+            return [point];
+          }
+          first.also = [...(first.also ?? []), point.answers];
+          return [];
+        });
+      });
+    });
   },
   briefed: BRIEFED,
   phases: TOPIC_PHASES,

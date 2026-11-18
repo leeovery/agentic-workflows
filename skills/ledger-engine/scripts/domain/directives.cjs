@@ -118,7 +118,7 @@ const MIGRATE_USAGE = ['migrate check <id>', 'migrate checked', 'migrate review'
 
 /** What one of a directive's pieces is called, and many of them. @typedef {{one: string, many: string}} Counts */
 
-/** A point a directive's own steps raise: the place it is raised at, the question it answers, and the question's text. @typedef {{place: string, answers: string, text: string}} Point */
+/** A point a directive's own steps raise: the place it is raised at, the question it answers, the question's text, and any other questions it is raised for besides. @typedef {{place: string, answers: string, text: string, also?: string[]}} Point */
 
 /**
  * A directive's check as its module exports it: what its pieces are called,
@@ -166,7 +166,7 @@ function isPiece(piece) {
 const isWords = (words) => typeof words === 'string' && words.trim() !== '';
 
 /** @param {unknown} point @returns {point is Point} */
-const isPoint = (point) => isObject(point) && isWords(point.place) && isWords(point.answers) && typeof point.text === 'string';
+const isPoint = (point) => isObject(point) && isWords(point.place) && isWords(point.answers) && typeof point.text === 'string' && (point.also === undefined || (Array.isArray(point.also) && point.also.every(isWords)));
 
 /**
  * Whether a check module exports the check's shape: `counts`, `{ one, many }`,

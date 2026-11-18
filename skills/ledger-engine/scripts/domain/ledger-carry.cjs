@@ -36,7 +36,10 @@
 //   research it carries, each a name or, where one entry carries several, a
 //   list of them; an open question's `raise`, `true`, marking a point no
 //   source settles, to raise at the end (21.6.10), never one a decision of
-//   the record answers, which `raise` refuses; and its `assets`, each
+//   the record answers, which `raise` refuses; an entry's `at_odds`, the
+//   sections at odds of a contradiction it names, two at least, each one
+//   of its cites, kept with the record and never written to the ledger;
+//   and its `assets`, each
 //   `{path, status}`, a file the state holds, linked as it is canonical or
 //   reference. An entry's words — its text, why and how, what it rules
 //   out, its alternatives and evidence — never name another entry by its
@@ -76,7 +79,9 @@
 //   whose records share a source — an approved spec, a discovery session
 //   or an asset they walk — only once each record drawing on it, the
 //   unit's own and a topic it promoted among them, is so passed and no
-//   section of it goes uncited, and likewise of each unit a topic of its
+//   section of it goes uncited, nor a contradiction one record names
+//   between its sections unnamed on another citing it, and likewise of
+//   each unit a topic of its
 //   unit was promoted from (`unitWaits`), the refusal framed on each unit
 //   waited on, a record carried taking no section found later; refused,
 //   writing nothing beside the record, for the session alone keeps the
@@ -147,7 +152,7 @@ const RECORD_FIELDS = Object.freeze(['entries', 'description']);
 /** A record as composed. @typedef {{entries: Record<string, any>[], description?: string}} Composed */
 
 /** What an entry of a record carries beside its content: its name, its event, its links by name, and what the migration reads. */
-const RECORD_KEYS = Object.freeze(['ref', 'event', 'part_of', 'answers', 'relies_on', 'map_item', 'thread', 'raise', 'assets']);
+const RECORD_KEYS = Object.freeze(['ref', 'event', 'part_of', 'answers', 'relies_on', 'map_item', 'thread', 'raise', 'at_odds', 'assets']);
 
 const ASSET_STATUSES = Object.freeze(['canonical', 'reference']);
 
@@ -409,6 +414,19 @@ function markFaults(entry, event, fault) {
   if (entry.map_item !== undefined && !isNamed(entry.map_item)) fault('a map item is a name, or a list of names');
   if (entry.thread !== undefined && !isNamed(entry.thread)) fault('a thread is a name, or a list of names');
   if (entry.raise !== undefined && (event !== 'asked' || entry.raise !== true)) fault('raise marks a question to raise, true');
+  if (entry.at_odds !== undefined && !atOddsCited(entry)) fault('at_odds is the sections at odds, two at least, each {path, section} and one of its cites');
+}
+
+/**
+ * Whether an entry's `at_odds` names the sections at odds as it cites them:
+ * two at least, each `{path, section}` among its cites.
+ * @param {Record<string, unknown>} entry
+ */
+function atOddsCited({ at_odds: odds, cites }) {
+  const cite = (/** @type {unknown} */ side) => isObject(side) && Object.keys(side).length === 2 && typeof side.path === 'string' && typeof side.section === 'string';
+  if (!Array.isArray(odds) || !odds.every(cite) || !Array.isArray(cites)) return false;
+  const named = new Set(odds.map(({ path: at, section }) => `${at}\n${section}`));
+  return named.size > 1 && [...named].every((side) => cites.some((each) => cite(each) && `${each.path}\n${each.section}` === side));
 }
 
 /**
@@ -576,7 +594,7 @@ function refuseUnsettled(cwd, place) {
   if (unsettled !== null) throw new Error(`${SAID}: ${recordName(place)} ${unsettled}`);
   const waits = rules.unitWaits({ projectDir: codeRoot(cwd), stateDir: root, unit });
   if (waits.length > 0) {
-    const once = waits.map(({ unit: of, waits: on }) => `each record of ${of} drawing on the sources its records share — its approved specs, its discovery sessions and the assets its records walk, its own record and a topic it promoted among them — has passed its verifier or the session's settlement, and no section of those sources goes uncited — ${on.join('; ')}`);
+    const once = waits.map(({ unit: of, waits: on }) => `each record of ${of} drawing on the sources its records share — its approved specs, its discovery sessions and the assets its records walk, its own record and a topic it promoted among them — has passed its verifier or the session's settlement, and no section of those sources goes uncited, nor a contradiction a record names between them unnamed on another citing it — ${on.join('; ')}`);
     throw new Error(`${SAID}: ${recordName(place)} is carried, for a record carried takes no section found later, once ${once.join('; and once ')}`);
   }
 }

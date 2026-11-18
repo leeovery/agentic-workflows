@@ -8,6 +8,10 @@
 
 Engine output arrives in sections, each opened by a marker, `=== NAME (instruction) ===`. The instruction says how its section is emitted — as markdown (not a code block), a text code block (```text fence), a properties code block (```properties fence) or a diff code block (```diff fence) — or that it is not emitted at all. "Per its marker" means follow that instruction exactly; the marker line itself is never emitted. A section is emitted in the turn its call produced it, never carried to a later one, redrawn or trimmed.
 
+## Before Boot
+
+Where a verb refuses because this conversation has not booted Ledger on this version, invoke `/ledger {words}`, the person's words as its arguments, and carry on where it routes.
+
 ## Showing and Saying
 
 What you show or say reaches the person one of two ways. When SendUserMessage is not among the active tools, load it before its first use (ToolSearch, query `select:SendUserMessage`); it is unavailable only once that load has failed, and then everything is written as text.
