@@ -30,6 +30,27 @@ const CARRIED = '.cache/migrate/carried';
 const COMPOSED = '.cache/migrate/records';
 
 /**
+ * The files a record is kept in as it is composed, beneath the composed
+ * records' folder, by their endings: the record, its verifier's findings,
+ * rulings, verdicts and note, the carry's refusal, its composer's
+ * hand-back, its rounds, and the points the session settled.
+ */
+const ENDINGS = Object.freeze({
+  composed: '.json',
+  findings: '.findings.txt',
+  rulings: '.rulings.txt',
+  checked: '.checked.txt',
+  verifying: '.verifying.json',
+  refused: '.refused.md',
+  handback: '.handback.txt',
+  rounds: '.rounds.md',
+  settled: '.settled.md',
+});
+
+/** Each ending a file a record is kept in as it is composed takes. */
+const RECORD_ENDINGS = Object.freeze(Object.values(ENDINGS));
+
+/**
  * The record its verifier was briefed on, as its brief's note keeps it:
  * its hash, the refs of the entries asked a verdict of, and the entries it
  * held, by ref; the engine reads more of it (later-rounds.cjs, `Note`).
@@ -47,31 +68,31 @@ const recordFile = (folder, unit, topic, ending) => (topic === null ? path.posix
 const carriedPath = (unit, topic) => recordFile(CARRIED, unit, topic, '.json');
 
 /** @param {string} unit @param {string|null} topic */
-const composedPath = (unit, topic) => recordFile(COMPOSED, unit, topic, '.json');
+const composedPath = (unit, topic) => recordFile(COMPOSED, unit, topic, ENDINGS.composed);
 
 /** @param {string} unit @param {string|null} topic */
-const findingsPath = (unit, topic) => recordFile(COMPOSED, unit, topic, '.findings.txt');
+const findingsPath = (unit, topic) => recordFile(COMPOSED, unit, topic, ENDINGS.findings);
 
 /** @param {string} unit @param {string|null} topic */
-const refusedPath = (unit, topic) => recordFile(COMPOSED, unit, topic, '.refused.md');
+const refusedPath = (unit, topic) => recordFile(COMPOSED, unit, topic, ENDINGS.refused);
 
 /** The points the last verifier ruled are not the record's, or a later answer replaced. @param {string} unit @param {string|null} topic */
-const rulingsPath = (unit, topic) => recordFile(COMPOSED, unit, topic, '.rulings.txt');
+const rulingsPath = (unit, topic) => recordFile(COMPOSED, unit, topic, ENDINGS.rulings);
 
 /** The findings the composer handed back to the session, asking for a point the rulings set aside. @param {string} unit @param {string|null} topic */
-const handbackPath = (unit, topic) => recordFile(COMPOSED, unit, topic, '.handback.txt');
+const handbackPath = (unit, topic) => recordFile(COMPOSED, unit, topic, ENDINGS.handback);
 
 /** The last verifier's verdict on each entry it read, a line each, `{ref}: ok` or `{ref}: see finding`. @param {string} unit @param {string|null} topic */
-const checkedPath = (unit, topic) => recordFile(COMPOSED, unit, topic, '.checked.txt');
+const checkedPath = (unit, topic) => recordFile(COMPOSED, unit, topic, ENDINGS.checked);
 
 /** The record its last verifier was briefed on, `{hash, refs}`, written as its brief is issued. @param {string} unit @param {string|null} topic */
-const verifyingPath = (unit, topic) => recordFile(COMPOSED, unit, topic, '.verifying.json');
+const verifyingPath = (unit, topic) => recordFile(COMPOSED, unit, topic, ENDINGS.verifying);
 
 /** Every verifier's findings before the last, each under its round, its rulings and its verdicts with it. @param {string} unit @param {string|null} topic */
-const roundsPath = (unit, topic) => recordFile(COMPOSED, unit, topic, '.rounds.md');
+const roundsPath = (unit, topic) => recordFile(COMPOSED, unit, topic, ENDINGS.rounds);
 
 /** The points of the record the session settled where a verifier reversed an earlier round. @param {string} unit @param {string|null} topic */
-const settledPath = (unit, topic) => recordFile(COMPOSED, unit, topic, '.settled.md');
+const settledPath = (unit, topic) => recordFile(COMPOSED, unit, topic, ENDINGS.settled);
 
 /** A file's lines holding anything, trimmed; none where it is no file. @param {string} file */
 const linesOf = (file) => (fs.existsSync(file) ? fs.readFileSync(file, 'utf8').split('\n').map((line) => line.trim()).filter(Boolean) : []);
@@ -140,6 +161,6 @@ function unsettledRound(root, unit, topic, refs) {
 }
 
 module.exports = {
-  CARRIED, COMPOSED, recordFile, carriedPath, composedPath, findingsPath, refusedPath, rulingsPath, handbackPath, checkedPath, verifyingPath, roundsPath, settledPath,
+  CARRIED, COMPOSED, RECORD_ENDINGS, recordFile, carriedPath, composedPath, findingsPath, refusedPath, rulingsPath, handbackPath, checkedPath, verifyingPath, roundsPath, settledPath,
   linesOf, recordHash, briefedOn, verdictRef, handedBack, unchecked, unsettledRound,
 };

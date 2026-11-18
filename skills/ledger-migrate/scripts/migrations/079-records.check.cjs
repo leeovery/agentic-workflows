@@ -197,7 +197,7 @@ const { spawnSync } = require('child_process');
 const CUT = require('./080-cut-and-merges.check.cjs');
 // The files a record is kept in, and what the carry still refuses a record
 // its verifier passed for, read as the carry reads them.
-const { COMPOSED, carriedPath, composedPath, findingsPath, verifyingPath, handedBack, unsettledRound } = require('../record-files.cjs');
+const { COMPOSED, RECORD_ENDINGS, carriedPath, composedPath, findingsPath, verifyingPath, handedBack, unsettledRound } = require('../record-files.cjs');
 
 const CODE_TREE_STATE = '.workflows';
 const TOPIC_PHASES = ['discovery', 'discussion', 'investigation'];
@@ -1116,12 +1116,6 @@ function settledBySession(stateDir, unit, topic) {
 /** The sections of the unit's specs the session marked as holding no topic's decision, from the state's folder. @param {string} unit */
 const sectionsMarked = (unit) => `${COMPOSED}/${unit}.sections.json`;
 
-// The files a record is kept in as it is composed, by their endings, as
-// record-files.cjs names them: the record, its verifier's findings, rulings,
-// verdicts and note, the carry's refusal, its composer's hand-back, its
-// rounds, and the points the session settled.
-const RECORD_FILES = ['.json', '.findings.txt', '.rulings.txt', '.checked.txt', '.verifying.json', '.refused.md', '.handback.txt', '.rounds.md', '.settled.md'];
-
 /**
  * Each file beside a unit's records that no record is kept in — in its
  * folder of them, or beside its own record — each with the topic it is
@@ -1130,7 +1124,7 @@ const RECORD_FILES = ['.json', '.findings.txt', '.rulings.txt', '.checked.txt', 
  */
 function strayRecordFiles(project, unit) {
   const topics = topicsOf(unit.manifest);
-  const kept = (/** @type {string} */ name, /** @type {string} */ stem) => RECORD_FILES.some((ending) => name === `${stem}${ending}`);
+  const kept = (/** @type {string} */ name, /** @type {string} */ stem) => RECORD_ENDINGS.some((ending) => name === `${stem}${ending}`);
   const folder = `${COMPOSED}/${unit.name}`;
   const inFolder = filesUnder(project.stateDir, folder).filter((at) => !topics.some((topic) => kept(at.slice(folder.length + 1), topic)));
   const beside = fs.existsSync(path.join(project.stateDir, COMPOSED)) ? fs.readdirSync(path.join(project.stateDir, COMPOSED), { withFileTypes: true })
