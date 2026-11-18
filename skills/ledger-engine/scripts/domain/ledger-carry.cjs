@@ -331,10 +331,10 @@ function argsOf(args) {
  * @param {Place} place @param {string} [said] @returns {Composed}
  */
 function readRecord({ root, unit, topic }, said = SAID) {
-  const file = composedPath(unit, topic);
+  const file = path.join(root, composedPath(unit, topic));
   let record;
   try {
-    record = JSON.parse(fs.readFileSync(path.join(root, file), 'utf8'));
+    record = JSON.parse(fs.readFileSync(file, 'utf8'));
   } catch (err) {
     throw new Error(`${said}: the record could not be read from ${file}: ${messageOf(err)}`);
   }

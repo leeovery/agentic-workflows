@@ -8,7 +8,9 @@
 // later version keeps reading them while 079 can run.
 //
 // Each file is state-relative, beneath the composed records' folder or the
-// carried ones', a topic's in its unit's folder and a unit's own beside it.
+// carried ones', a topic's in its unit's folder and a unit's own beside it;
+// what the session is told to write or remove is named by its whole path,
+// for it runs from the project's folder, never the state's.
 // What the carry would still refuse a record its verifier passed for is
 // read from them alone: findings handed back to the session (`handedBack`),
 // and the record changed since its verifier was briefed on it, or its
@@ -115,9 +117,9 @@ const verdictRef = (line) => line.replace(/^(?:[-*+]|\d+[.)])\s+/, '').split(':'
  * @param {string} root @param {string} unit @param {string|null} topic @returns {string|null}
  */
 function handedBack(root, unit, topic) {
-  const rel = handbackPath(unit, topic);
-  if (linesOf(path.join(root, rel)).length === 0) return null;
-  return `has findings handed back to the session in ${rel}: settle each into ${settledPath(unit, topic)}, replace it in ${findingsPath(unit, topic)} with \`Settled: {point}, amend to agree\` where the record changes, or take it out where it stands, then remove ${rel}`;
+  const file = path.join(root, handbackPath(unit, topic));
+  if (linesOf(file).length === 0) return null;
+  return `has findings handed back to the session in ${file}: settle each into ${path.join(root, settledPath(unit, topic))}, replace it in ${path.join(root, findingsPath(unit, topic))} with \`Settled: {point}, amend to agree\` where the record changes, or take it out where it stands, then remove ${file}`;
 }
 
 /**
@@ -133,17 +135,17 @@ function unchecked(root, unit, topic, refs) {
   const note = briefedOn(root, unit, topic);
   const asked = note?.refs ?? refs;
   const held = note === null ? refs : Object.keys(note.entries);
-  const checked = checkedPath(unit, topic);
-  const named = linesOf(path.join(root, checked)).map(verdictRef);
+  const checked = path.join(root, checkedPath(unit, topic));
+  const named = linesOf(checked).map(verdictRef);
   const missing = asked.filter((ref) => !named.includes(ref));
   const unknown = [...new Set(named.filter((ref) => !held.includes(ref)))];
   const told = [
-    ...(fs.existsSync(path.join(root, checked)) || asked.length === 0 ? [] : [`${checked} is no file`]),
+    ...(fs.existsSync(checked) || asked.length === 0 ? [] : [`${checked} is no file`]),
     ...(missing.length > 0 ? [`it names no verdict on ${missing.join(', ')}`] : []),
     ...(unknown.length > 0 ? [`it names ${unknown.join(', ')}, which the record it read does not hold`] : []),
   ];
   if (told.length === 0) return null;
-  return `has no verdict from its last verifier on every entry its brief asked one of — ${told.join('; ')}: a verifier writes a line for each entry its walk sheet does not mark passed, \`{ref}: ok\` or \`{ref}: see finding\`, and one that does not has given no verdict — remove ${findingsPath(unit, topic)}, ${rulingsPath(unit, topic)} and ${checked}, and brief a fresh verifier`;
+  return `has no verdict from its last verifier on every entry its brief asked one of — ${told.join('; ')}: a verifier writes a line for each entry its walk sheet does not mark passed, \`{ref}: ok\` or \`{ref}: see finding\`, and one that does not has given no verdict — remove ${path.join(root, findingsPath(unit, topic))}, ${path.join(root, rulingsPath(unit, topic))} and ${checked}, and brief a fresh verifier`;
 }
 
 /**

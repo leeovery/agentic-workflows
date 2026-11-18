@@ -181,8 +181,9 @@
 // changed there in the same run, none of it committed (21.5.8). It reads
 // and changes nothing, and calls no model. Beside the check it answers a
 // topic's sources as the rules read them, which the per-topic agent's
-// brief draws (brief-records.cjs), and a record laid against them for its
-// verifier's walk (`sheetOf`): the topic's own markdown files, but its
+// brief draws (brief-records.cjs), with each heading of them a cite names
+// by more than its own words (`heldTwice`), and a record laid against them
+// for its verifier's walk (`sheetOf`): the topic's own markdown files, but its
 // mail, its specs, the discovery sessions it draws on, the unit's walked
 // assets and any other file an entry cites, each section by its lines with
 // the entries citing it — of a file it does not walk, a spec of the unit's
@@ -806,13 +807,17 @@ function partsDrawn(specs, at) {
 }
 
 /**
- * What a cited section lacks: a file that stays with its entry, which the
- * state holds, holding a heading the cite names; and one heading alone so
- * named (`citedSection`), else the name of each it could mean.
+ * What a cited section lacks: a file named by its path from the state's
+ * folder — a whole path in it so refused, naming that path — that stays
+ * with its entry, which the state holds, holding a heading the cite names;
+ * and one heading alone so named (`citedSection`), else the name of each it
+ * could mean.
  * @param {Project} project @param {Unit} unit @param {string|null} topic
  * @param {Record<string, unknown>} cite @returns {string[]}
  */
 function citeProblems(project, unit, topic, { path: cited, section }) {
+  const within = typeof cited === 'string' && cited.startsWith(`${project.stateDir}${path.sep}`) ? cited.slice(project.stateDir.length + 1) : null;
+  if (within !== null) return [`cites ${cited}, a whole path — a cite names its file by its path from the state's folder: ${within}`];
   if (typeof cited !== 'string' || !lasting(project, unit, topic, cited)) {
     return [`cites ${cited}, which is neither its topic's own, but its mail, nor the unit's beside its topics, nor a discovery session it draws on — a cite names a file that stays with its entry`];
   }
@@ -1035,8 +1040,8 @@ const carriedOf = (project, unit, topic) => readJson(path.join(project.stateDir,
  * @param {string} stateDir @param {string} unit @param {string|null} topic @returns {string|null}
  */
 function unverified(stateDir, unit, topic) {
-  const findings = findingsPath(unit, topic);
-  const text = readText(path.join(stateDir, findings));
+  const findings = path.join(stateDir, findingsPath(unit, topic));
+  const text = readText(findings);
   if (text === null) return settledBySession(stateDir, unit, topic) ? null : `${findings} is no file`;
   return text.trim() === '' ? null : `its findings stand in ${findings}`;
 }
@@ -1388,9 +1393,9 @@ function markedSides(marks, place) {
   });
 }
 
-/** What a contradiction left unshared asks of the record it is named on, in the directive's order. @param {Unit} unit @param {Unshared} unshared */
-function unsharedProblem(unit, { place, sides, dates, cited, by }) {
-  const marked = atOddsMarked(unit.name);
+/** What a contradiction left unshared asks of the record it is named on, in the directive's order. @param {Project} project @param {Unit} unit @param {Unshared} unshared */
+function unsharedProblem(project, unit, { place, sides, dates, cited, by }) {
+  const marked = path.join(project.stateDir, atOddsMarked(unit.name));
   return [
     `${sidesSaid(sides, dates)} are at odds, as ${inWords(by)} ${by.length === 1 ? 'names' : 'name'} them, and this record cites ${sidesSaid(cited)} without naming that contradiction — judge first whether it stands.`,
     'Where a later answer settles it — an approved spec, or a part of one, approved after the other side was written — it is settled on each record naming it, and on this one where it carries the side the later answer replaced, this record keeping its answer only where it is the later one.',
@@ -1448,10 +1453,10 @@ const UNCITED_SAYS = new Map([
   ['asset', { what: 'an asset', carried: 'a current point it makes, which no topic\'s own files hold word for word, is carried by the record its subject belongs to' }],
 ]);
 
-/** What a section no record cites lacks, as the records it is named on are told it. @param {Unit} unit @param {Uncited} uncited */
-function uncitedProblem(unit, { path: at, part, section, mark, kind }) {
+/** What a section no record cites lacks, as the records it is named on are told it. @param {Project} project @param {Unit} unit @param {Uncited} uncited */
+function uncitedProblem(project, unit, { path: at, part, section, mark, kind }) {
   const { what, carried } = /** @type {{what: string, carried: string}} */ (UNCITED_SAYS.get(kind));
-  return `"${section}" in ${at}, ${what}, holds text no record of ${unit.name} cites — ${carried}; a section holding none, or only what a later answer replaced or a cancelled unit alone decided, is marked in ${sectionsMarked(unit.name)} as ${markOf(at, part, mark)}`;
+  return `"${section}" in ${at}, ${what}, holds text no record of ${unit.name} cites — ${carried}; a section holding none, or only what a later answer replaced or a cancelled unit alone decided, is marked, once read, in ${path.join(project.stateDir, sectionsMarked(unit.name))} as ${markOf(at, part, mark)}`;
 }
 
 /** A record its verifier has passed, waiting for the carry. */
@@ -1504,11 +1509,11 @@ module.exports = {
       const hasOwn = hasOwnRecord(stateDir, unit.name, unit.manifest);
       const strays = strayRecordFiles(project, unit);
       const strayOn = (/** @type {string|null} */ topic) => strays.filter((stray) => stray.topic === topic || (stray.topic === null && !hasOwn))
-        .map(({ at }) => `${at} is no file a record is kept in — an agent left it: remove it`);
+        .map(({ at }) => `${path.join(stateDir, at)} is no file a record is kept in — an agent left it: remove it`);
       const unshared = unsharedOf(project, unit);
       const sentOn = (/** @type {string|null} */ topic) => [
-        ...uncited.filter(({ topics }) => topics.includes(topic)).map((each) => uncitedProblem(unit, each)),
-        ...unshared.filter((each) => each.topic === topic).map((each) => unsharedProblem(unit, each)),
+        ...uncited.filter(({ topics }) => topics.includes(topic)).map((each) => uncitedProblem(project, unit, each)),
+        ...unshared.filter((each) => each.topic === topic).map((each) => unsharedProblem(project, unit, each)),
       ];
       const own = hasOwn ? [{ name: recordPlace(unit, null), problems: [...topicProblems(project, ids, unit, null), ...sentOn(null), ...strayOn(null)] }] : [];
       return [...topicsOf(unit.manifest).map((topic) => ({
@@ -1634,6 +1639,23 @@ module.exports = {
       later: own ? [] : laterOf(project, unit, topic),
       cancelled: own ? [] : cancelledOf(project, unit),
     };
+  },
+  /**
+   * Each of `files`, state-relative, holding a heading with text its own
+   * words name none of alone, with those headings, each by the name a cite
+   * gives it (`citeNameOf`), which every reader of a cite takes: what a
+   * record's brief lists of its sources.
+   * @param {{stateDir: string, unit: string, files: string[]}} at
+   * @returns {{path: string, names: string[]}[]}
+   */
+  heldTwice({ stateDir, unit, files }) {
+    return files.flatMap((at) => {
+      const text = at.endsWith('.md') ? readText(path.join(stateDir, at)) : null;
+      if (text === null) return [];
+      const headings = outlineOf(text, at === `${unit}/${JOINED_SPEC}`);
+      const names = headings.filter((heading) => heading.text && citedSection(headings, /** @type {string} */ (heading.trail.at(-1))) !== heading).map((heading) => citeNameOf(headings, heading));
+      return names.length === 0 ? [] : [{ path: at, names }];
+    });
   },
   /**
    * A record laid against its sources for its verifier's walk (`sheetOf`).

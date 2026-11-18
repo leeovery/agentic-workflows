@@ -1227,11 +1227,11 @@ const ASSET_FROM = new Map([
   ['research', 'research a legacy split superseded'],
 ]);
 
-/** An asset as a record's brief lists it: where it came from, and whether the record owes it a link, an import its unit's manifest lists. @param {MigratedAsset} asset @param {string|null} topic */
-function assetLine({ path: at, kind, origin, owner, listed: imported, held }, topic) {
+/** An asset as a record's brief lists it, by its whole path: where it came from, and whether the record owes it a link, an import its unit's manifest lists. @param {string} root @param {MigratedAsset} asset @param {string|null} topic */
+function assetLine(root, { path: at, kind, origin, owner, listed: imported, held }, topic) {
   const from = kind === 'import' ? (origin === null ? 'an import' : `which came in from ${origin}`) : ASSET_FROM.get(kind);
   const owed = !held ? ' — its file is gone, so no entry links it' : imported && owner === topic ? ` — this ${topic === null ? 'record' : 'topic'}'s to link` : '';
-  return `- ${at}, ${from}${owed}`;
+  return `- ${path.join(root, at)}, ${from}${owed}`;
 }
 
 // The folder of a unit's assets its legacy files are kept in — those the
@@ -1245,9 +1245,9 @@ const UNPLACED_ASSETS = '/assets/legacy/';
  * own files hold word for word among the rest, so said; its legacy files by
  * their place and how many, never each, where the first of them stands: a
  * project may keep thousands, and none is any record's source.
- * @param {MigratedAsset[]} assets @param {string|null} topic @param {string[]} held the paths of those its own files hold @param {string[]} [specs] the paths of the topic's specs
+ * @param {string} root @param {MigratedAsset[]} assets @param {string|null} topic @param {string[]} held the paths of those its own files hold @param {string[]} [specs] the paths of the topic's specs
  */
-function assetSections(assets, topic, held, specs = []) {
+function assetSections(root, assets, topic, held, specs = []) {
   const walks = (/** @type {MigratedAsset} */ { path: at, walkers }) => walkers.includes(topic) && !held.includes(at);
   const others = assets.filter((asset) => !walks(asset) && !specs.includes(asset.path));
   const legacy = others.filter(({ kind }) => kind === 'legacy');
@@ -1255,29 +1255,49 @@ function assetSections(assets, topic, held, specs = []) {
   return [
     '## The unit\'s assets it walks',
     '',
-    listed(assets.filter(walks).map((asset) => assetLine(asset, topic))),
+    listed(assets.filter(walks).map((asset) => assetLine(root, asset, topic))),
     '',
     '## The unit\'s other assets, never walked',
     '',
     listed(others.flatMap((asset) => {
-      if (asset.kind !== 'legacy') return [`${assetLine(asset, topic)}${held.includes(asset.path) ? ' — its own files hold it word for word' : ''}`];
-      return asset === legacy[0] ? [`- ${place(asset.path)}, ${legacy.length} ${legacy.length === 1 ? 'file' : 'files'} kept as legacy, each at its path from the unit's old folder`] : [];
+      if (asset.kind !== 'legacy') return [`${assetLine(root, asset, topic)}${held.includes(asset.path) ? ' — its own files hold it word for word' : ''}`];
+      return asset === legacy[0] ? [`- ${path.join(root, place(asset.path))}, ${legacy.length} ${legacy.length === 1 ? 'file' : 'files'} kept as legacy, each at its path from the unit's old folder`] : [];
     })),
   ];
 }
 
-/** Where a record goes, and what is said of it beside it, as its brief lists them. @param {string} root @param {string} unit @param {string|null} topic */
+/** The paths of the unit's assets a record walks, but those its own files hold word for word. @param {{assets: MigratedAsset[], held: string[]}} sources @param {string|null} topic */
+const walkedBy = ({ assets, held }, topic) => assets.filter(({ path: at, walkers }) => walkers.includes(topic) && !held.includes(at)).map(({ path: at }) => at);
+
+/** Where a record goes, and what is said of it beside it, as its brief lists them, each by its whole path. @param {string} root @param {string} unit @param {string|null} topic */
 function recordGoes(root, unit, topic) {
-  const composed = fs.existsSync(path.join(root, composedPath(unit, topic)));
+  const whole = (/** @type {(unit: string, topic: string|null) => string} */ rel) => path.join(root, rel(unit, topic));
   return [
-    `- The record composed: ${composedPath(unit, topic)}, ${composed ? 'composed already' : 'not composed yet'}`,
-    `- The verifier's findings on it: ${findingsPath(unit, topic)}`,
-    `- The verifier's rulings on it: ${rulingsPath(unit, topic)}`,
-    `- The verifier's verdict on each entry: ${checkedPath(unit, topic)}`,
-    `- The findings its composer hands back to the session: ${handbackPath(unit, topic)}`,
-    `- A carry's refusal of it: ${refusedPath(unit, topic)}`,
+    `- The record composed: ${whole(composedPath)}, ${fs.existsSync(whole(composedPath)) ? 'composed already' : 'not composed yet'}`,
+    `- The verifier's findings on it: ${whole(findingsPath)}`,
+    `- The verifier's rulings on it: ${whole(rulingsPath)}`,
+    `- The verifier's verdict on each entry: ${whole(checkedPath)}`,
+    `- The findings its composer hands back to the session: ${whole(handbackPath)}`,
+    `- A carry's refusal of it: ${whole(refusedPath)}`,
   ].join('\n');
 }
+
+/** The state line of a record's brief: where the state is, and how an entry cites a file the brief names. @param {string} root */
+const stateLine = (root) => `- **The state:** ${root} — each file below named by its whole path, which an entry cites by its path from here`;
+
+/**
+ * Each of a record's sources holding a heading with text its own words name
+ * none of alone, a line each, by its whole path: those headings, each as a
+ * cite names it, as the records directive's check reads them (`heldTwice`).
+ * @param {Filling} filling @param {string} root @param {string} unit @param {string[]} files state-relative
+ */
+function heldTwice(filling, root, unit, files) {
+  const held = topicRules(filling).heldTwice({ stateDir: root, unit, files });
+  return listed(held.map((/** @type {{path: string, names: string[]}} */ { path: at, names }) => `- ${path.join(root, at)}: ${names.map((name) => `"${name}"`).join(', ')}`));
+}
+
+/** The heading a record's brief lists its sources' headings held more than once under. */
+const HELD_TWICE = '## Headings held more than once, each as a cite names it';
 
 /**
  * Each topic a record's sessions may speak of besides its own, as its brief
@@ -1301,11 +1321,11 @@ function drawOwnRecord(filling, root, unit) {
   return [
     `- **Unit:** ${unit}, ${manifest.work_type}, ${manifest.status}`,
     `- **The record:** the unit's own, carried in discovery — each point of its discovery sessions and the assets it walks bearing on no topic's subject`,
-    `- **The state:** ${root} — each path below is from there, as an entry cites it`,
+    stateLine(root),
     '',
     '## The unit\'s discovery sessions',
     '',
-    listed(sources.sessions.map((/** @type {string} */ at) => `- ${at}`)),
+    listed(sources.sessions.map((/** @type {string} */ at) => `- ${path.join(root, at)}`)),
     '',
     '## The unit\'s topics, each carrying the points of the sessions and the assets bearing on its subject: for judging whose a point is, never sources',
     '',
@@ -1315,7 +1335,11 @@ function drawOwnRecord(filling, root, unit) {
     '',
     threadLines(sources.threads, null),
     '',
-    ...assetSections(sources.assets, null, sources.held),
+    ...assetSections(root, sources.assets, null, sources.held),
+    '',
+    HELD_TWICE,
+    '',
+    heldTwice(filling, root, unit, [...sources.sessions, ...walkedBy(sources, null)]),
     '',
     '## Where the record goes',
     '',
@@ -1336,19 +1360,19 @@ function drawMigratedTopic(filling) {
   const folder = path.join(root, unit, 'topics', topic);
   const files = (fs.existsSync(folder) ? filesUnder(folder) : []).filter((file) => !file.startsWith('mail/')).map((file) => `${unit}/topics/${topic}/${file}`).sort();
   const sources = rules.sourcesOf({ projectDir: codeRoot(filling.cwd), stateDir: root, unit, topic });
-  const sessions = sources.sessions.map((/** @type {string} */ at) => (at.startsWith(`${unit}/`) ? `- ${at}` : `- ${at}, of ${at.split('/')[0]}, which it moved from`));
-  const specs = sources.specs.map((/** @type {{path: string, part: string|null, approved: boolean, approvedOn: string|null}} */ { path: at, part, approved, approvedOn }) => `- ${specLine(at, part)}, ${approved ? approvedLine(approvedOn) : 'a draft'}`);
-  const later = sources.later.map((/** @type {{path: string, part: string|null, approvedOn: string|null}} */ { path: at, part, approvedOn }) => `- ${specLine(at, part)}${approvedOn === null ? '' : `, ${approvedLine(approvedOn)}`}`);
+  const sessions = sources.sessions.map((/** @type {string} */ at) => (at.startsWith(`${unit}/`) ? `- ${path.join(root, at)}` : `- ${path.join(root, at)}, of ${at.split('/')[0]}, which it moved from`));
+  const specs = sources.specs.map((/** @type {{path: string, part: string|null, approved: boolean, approvedOn: string|null}} */ { path: at, part, approved, approvedOn }) => `- ${specLine(path.join(root, at), part)}, ${approved ? approvedLine(approvedOn) : 'a draft'}`);
+  const later = sources.later.map((/** @type {{path: string, part: string|null, approvedOn: string|null}} */ { path: at, part, approvedOn }) => `- ${specLine(path.join(root, at), part)}${approvedOn === null ? '' : `, ${approvedLine(approvedOn)}`}`);
+  const specPaths = [...sources.specs, ...sources.later].map((/** @type {{path: string}} */ { path: at }) => at);
   return [
     `- **Unit:** ${unit}, ${manifest.work_type}, ${manifest.status}`,
     `- **Topic:** ${topic}, in ${phases.join('; ')} — its record carried in ${carried}${topicStanding(rules.neverStarted(manifest, topic, carried), sources.leaves)}`,
     ...(sources.describes ? ['- **What it is about:** no map row says it, so its record does, in `description`'] : []),
-    `- **The state:** ${root} — each path below is from there, as an entry cites it, but one under \`${OLD_STATE}/\``,
-    `- **The project:** ${sources.project} — each path under \`${OLD_STATE}/\` is from there`,
+    stateLine(root),
     '',
     '## Its files',
     '',
-    listed(files.map((file) => `- ${file}`)),
+    listed(files.map((file) => `- ${path.join(root, file)}`)),
     '',
     '## Its specs',
     '',
@@ -1378,7 +1402,11 @@ function drawMigratedTopic(filling) {
     '',
     threadLines(sources.threads, topic),
     '',
-    ...assetSections(sources.assets, topic, sources.held, sources.specs.map((/** @type {{path: string}} */ { path: at }) => at)),
+    ...assetSections(root, sources.assets, topic, sources.held, sources.specs.map((/** @type {{path: string}} */ { path: at }) => at)),
+    '',
+    HELD_TWICE,
+    '',
+    heldTwice(filling, root, unit, [...new Set([...files, ...specPaths, ...sources.sessions, ...walkedBy(sources, topic)])]),
     '',
     '## Where the record goes',
     '',
@@ -1478,7 +1506,7 @@ function phaseTask(number, task, old) {
 }
 
 /**
- * The old plan's sources for one phase, by their state paths: its tasks'
+ * The old plan's sources for one phase, by their whole paths: its tasks'
  * file and its own section of the plan, named by its heading.
  * @param {string} root @param {import('./cut-merges.cjs').CutPhase} phase @param {number} number the phase's number in its plan
  * @returns {string[]}
@@ -1491,8 +1519,8 @@ function phasePlanLines(root, phase, number) {
   const heading = plan === undefined ? undefined
     : fs.readFileSync(path.join(root, plan), 'utf8').split('\n').find((line) => new RegExp(`^#{1,6} Phase ${number}(?![0-9])`).test(line));
   const section = plan === undefined ? 'none kept'
-    : heading === undefined ? `${plan}, which heads no section for phase ${number}` : `${plan}, under "${heading}"`;
-  return [`- Its tasks' file: ${tasks ?? 'none kept'}`, `- Its section of the plan: ${section}`];
+    : heading === undefined ? `${path.join(root, plan)}, which heads no section for phase ${number}` : `${path.join(root, plan)}, under "${heading}"`;
+  return [`- Its tasks' file: ${tasks === undefined ? 'none kept' : path.join(root, tasks)}`, `- Its section of the plan: ${section}`];
 }
 
 /** @param {Filling} filling */
@@ -1500,15 +1528,17 @@ function drawMigratedPhase(filling) {
   const { unit, sources, phases, refused, phase } = migratedPhase(filling);
   const root = stateRoot(filling.cwd);
   const manifest = readWorkUnitManifest(root, unit);
+  const whole = (/** @type {string} */ at) => path.join(at.startsWith(`${OLD_STATE}/`) ? sources.project : root, at);
+  const spec = path.join(root, unit, SPEC_FILE);
   const reliances = oldReliances(phases).filter(({ phase: of }) => of.topic === phase.topic);
   const area = String(phase.area);
   const numbered = [...specAddresses(filling.cwd, unit)].filter((address) => address === area || address.startsWith(`${area}.`));
-  const sections = `- The sections ${unit}/${SPEC_FILE} numbers in its area, the only ones a piece names: ${numbered.join(', ')}`;
+  const sections = `- The sections ${spec} numbers in its area, the only ones a piece names: ${numbered.join(', ')}`;
   const own = phase.old === null
-    ? [`- Phase ${phase.number}: §${phase.area} ${phase.topic} of ${unit}/${SPEC_FILE}, which no plan put in the tracker — compose it from the area`, sections]
+    ? [`- Phase ${phase.number}: §${phase.area} ${phase.topic} of ${spec}, which no plan put in the tracker — compose it from the area`, sections]
     : [
       `- Phase ${phase.number}: phase ${phase.old.number} of ${phase.topic}'s plan, its tracker parent ${phase.old.parent}${phase.old.built ? ', the manifest counting it built' : ''}`,
-      `- Its area: §${phase.area} ${phase.topic} of ${unit}/${SPEC_FILE}`,
+      `- Its area: §${phase.area} ${phase.topic} of ${spec}`,
       sections,
       ...phasePlanLines(root, phase, phase.old.number),
     ];
@@ -1518,14 +1548,13 @@ function drawMigratedPhase(filling) {
   const { piece, findings } = piecePaths(sources, phase.number);
   return [
     `- **Unit:** ${unit}, ${manifest.work_type}, ${manifest.status}`,
-    `- **The state:** ${root} — each path below is from there, but one under \`${OLD_STATE}/\``,
-    `- **The project:** ${sources.project} — each path under \`${OLD_STATE}/\` is from there, and the code`,
+    `- **The project:** ${sources.project}, its code a source`,
     '',
     '## Its joined spec',
     '',
-    `${unit}/${SPEC_FILE}, an area for each spec joined, in build order:`,
+    `${spec}, an area for each spec joined, in build order:`,
     '',
-    listed(sources.areas.map(({ topic, spec }, at) => `- §${at + 1} ${topic}, joined from ${spec}`)),
+    listed(sources.areas.map(({ topic, spec: from }, at) => `- §${at + 1} ${topic}, joined from ${whole(from)}`)),
     '',
     '## Its cut',
     '',
@@ -1551,12 +1580,12 @@ function drawMigratedPhase(filling) {
     '',
     '## Kept as legacy',
     '',
-    sources.legacy === null ? NONE : `- ${sources.legacy}`,
+    sources.legacy === null ? NONE : `- ${whole(sources.legacy)}`,
     '',
     '## Where your piece goes',
     '',
-    `- The piece composed: ${piece}`,
-    `- The verifier's findings on it: ${findings}`,
+    `- The piece composed: ${path.join(root, piece)}`,
+    `- The verifier's findings on it: ${path.join(root, findings)}`,
   ].join('\n');
 }
 
@@ -1716,7 +1745,8 @@ const REMOVED = 'Removed since the last round';
  */
 function drawWalkSheet(filling) {
   const { sheet, removed } = verifierRound(filling);
-  const files = sheet.map(({ path: at, sections }) => [`## ${at}`, '', listed(sections.flatMap(({ section, line, end, closed, entries: citing }) => {
+  const { root } = migratedTopic(filling);
+  const files = sheet.map(({ path: at, sections }) => [`## ${path.join(root, at)}`, '', listed(sections.flatMap(({ section, line, end, closed, entries: citing }) => {
     const lines = line === end ? `line ${line}` : `lines ${line}–${end}`;
     if (closed) return [`- ${section}, ${lines}: closed — walked in an earlier round, nothing citing it changed since`];
     return [
