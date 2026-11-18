@@ -444,8 +444,9 @@
 //                  (21.10.2)
 //   migrated-topic the topic: the unit, its work type and status, the phase
 //                  its record is carried in — discovery for an epic's topic
-//                  never started — and the phases the directive carries a
-//                  topic of that it is in, the state's place and the
+//                  never started — whether it never started or leaves its
+//                  building unit at the cut, and the phases the directive
+//                  carries a topic of that it is in, the state's place and the
 //                  project's in the main checkout, each file of the topic's
 //                  folder but its mail, the unit's discovery sessions, the
 //                  other topics they may speak of with their subjects, to
@@ -453,13 +454,18 @@
 //                  reads them its specs — each where it is cited, the part
 //                  of the unit's spec.md it makes where it was joined
 //                  there, and whether it was approved, on the date its
-//                  old manifest gives, or is a draft — the unit's approved
+//                  old manifest gives, a spec joined there always, or is a
+//                  draft — the unit's approved
 //                  specs it does not draw on, the later answer to its
 //                  points, each with that date, the project's other units
 //                  cancelled, a corrigendum one wrote no later answer, its
-//                  old map and its research's threads still open; every
+//                  old map and the threads still open it carries, each
+//                  with its research where that is not of its name — a
+//                  unit's own record's those of research under no topic's
+//                  name; every
 //                  file of the unit's assets but a dotfile and its specs,
-//                  with where each came from, those the record walks apart
+//                  with where each came from, but its legacy files, named
+//                  by their place and how many, those the record walks apart
 //                  from the rest, one its own files hold word for word
 //                  among the rest, the import the record owes a link, or an
 //                  import's file gone and linked by none; and where
@@ -1218,7 +1224,6 @@ const ASSET_FROM = new Map([
   ['spec', 'a spec'],
   ['plan', 'a plan'],
   ['review', 'an old review of a build'],
-  ['legacy', 'kept as legacy, at its path from the unit\'s old folder'],
   ['research', 'research a legacy split superseded'],
 ]);
 
@@ -1229,14 +1234,23 @@ function assetLine({ path: at, kind, origin, owner, listed: imported, held }, to
   return `- ${at}, ${from}${owed}`;
 }
 
+// The folder of a unit's assets its legacy files are kept in, each at its
+// path from the unit's old folder (078).
+const LEGACY_PLACE = '/assets/legacy/';
+
 /**
  * The unit's assets as a record's brief lists them: those it walks, then
  * the rest but its specs, listed as its specs — one it would walk that its
- * own files hold word for word among the rest, so said.
+ * own files hold word for word among the rest, so said; its legacy files by
+ * their place and how many, never each, where the first of them stands: a
+ * project may keep thousands, and none is any record's source.
  * @param {MigratedAsset[]} assets @param {string|null} topic @param {string[]} held the paths of those its own files hold @param {string[]} [specs] the paths of the topic's specs
  */
 function assetSections(assets, topic, held, specs = []) {
   const walks = (/** @type {MigratedAsset} */ { path: at, walkers }) => walkers.includes(topic) && !held.includes(at);
+  const others = assets.filter((asset) => !walks(asset) && !specs.includes(asset.path));
+  const legacy = others.filter(({ kind }) => kind === 'legacy');
+  const place = (/** @type {string} */ at) => at.slice(0, at.indexOf(LEGACY_PLACE) + LEGACY_PLACE.length);
   return [
     '## The unit\'s assets it walks',
     '',
@@ -1244,8 +1258,10 @@ function assetSections(assets, topic, held, specs = []) {
     '',
     '## The unit\'s other assets, never walked',
     '',
-    listed(assets.filter((asset) => !walks(asset) && !specs.includes(asset.path))
-      .map((asset) => `${assetLine(asset, topic)}${held.includes(asset.path) ? ' — its own files hold it word for word' : ''}`)),
+    listed(others.flatMap((asset) => {
+      if (asset.kind !== 'legacy') return [`${assetLine(asset, topic)}${held.includes(asset.path) ? ' — its own files hold it word for word' : ''}`];
+      return asset === legacy[0] ? [`- ${place(asset.path)}, ${legacy.length} ${legacy.length === 1 ? 'file' : 'files'} kept as legacy, each at its path from the unit's old folder`] : [];
+    })),
   ];
 }
 
@@ -1294,6 +1310,10 @@ function drawOwnRecord(filling, root, unit) {
     '',
     listed(otherLines(sources.others, unit)),
     '',
+    '## The threads still open of its research under no topic\'s name',
+    '',
+    threadLines(sources.threads, null),
+    '',
     ...assetSections(sources.assets, null, sources.held),
     '',
     '## Where the record goes',
@@ -1320,7 +1340,7 @@ function drawMigratedTopic(filling) {
   const later = sources.later.map((/** @type {{path: string, part: string|null, approvedOn: string|null}} */ { path: at, part, approvedOn }) => `- ${specLine(at, part)}${approvedOn === null ? '' : `, ${approvedLine(approvedOn)}`}`);
   return [
     `- **Unit:** ${unit}, ${manifest.work_type}, ${manifest.status}`,
-    `- **Topic:** ${topic}, in ${phases.join('; ')} — its record carried in ${carried}${carried === NEVER_STARTED ? ', the topic never started' : ''}`,
+    `- **Topic:** ${topic}, in ${phases.join('; ')} — its record carried in ${carried}${topicStanding(rules.neverStarted(manifest, topic, carried), sources.leaves)}`,
     `- **The state:** ${root} — each path below is from there, as an entry cites it, but one under \`${OLD_STATE}/\``,
     `- **The project:** ${sources.project} — each path under \`${OLD_STATE}/\` is from there`,
     '',
@@ -1354,7 +1374,7 @@ function drawMigratedTopic(filling) {
     '',
     '## Its research\'s threads still open',
     '',
-    sources.threads.length === 0 ? 'None — no entry needs a thread.' : sources.threads.map(({ thread, status, question }) => `- ${thread}, ${status}: ${question}`).join('\n'),
+    threadLines(sources.threads, topic),
     '',
     ...assetSections(sources.assets, topic, sources.held, sources.specs.map((/** @type {{path: string}} */ { path: at }) => at)),
     '',
@@ -1370,8 +1390,25 @@ const specLine = (at, part) => `${at}${part === null ? '' : `, its part "${part}
 /** An approved spec, on the date its old manifest gives it where it gives one. @param {string|null} on */
 const approvedLine = (on) => (on === null ? 'approved' : `approved on ${on}`);
 
-/** The phase an epic's topic never started is carried in. */
-const NEVER_STARTED = 'discovery';
+/**
+ * What the topic line says of a topic beside where its record is carried:
+ * that it never started, or that it leaves its building unit.
+ * @param {boolean} neverStarted @param {boolean} leaves
+ */
+function topicStanding(neverStarted, leaves) {
+  if (neverStarted) return ', the topic never started';
+  return leaves ? ', the topic leaving its building unit, no spec joined into the unit\'s spec.md drawing on it' : '';
+}
+
+/**
+ * The threads still open a record carries, each with the research it is
+ * of where that is no research of the topic's own name; none so said.
+ * @param {{thread: string, status: string, question: string, research: string}[]} threads @param {string|null} topic
+ */
+function threadLines(threads, topic) {
+  if (threads.length === 0) return 'None — no entry needs a thread.';
+  return threads.map(({ thread, status, question, research }) => `- ${thread}, ${status}${research === topic ? '' : `, of the research ${research}`}: ${question}`).join('\n');
+}
 
 /** The call that checks the topic's record as the carry would, writing nothing. @param {Filling} filling */
 function drawRecordCheck(filling) {
