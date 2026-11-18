@@ -37,9 +37,11 @@
 //     are. A cite names the headings whose path ends with it, at a
 //     heading's start, or the one whose whole path it is, and names one
 //     alone — a heading held more than once by the path that tells it
-//     apart — in each part its topic draws on of a joined spec, every
-//     part where it draws on none: a bare heading each part holds once
-//     names one in each;
+//     apart, and headings sharing their whole path, siblings of one
+//     heading, by that path and the place among them, `{path} [2]` — among
+//     the headings of the parts its topic draws on of a joined spec, where
+//     any of them holds one it names, else among all the file's: a bare
+//     heading two parts hold names neither;
 //   - every subtopic its old discussion map holds — in the unit's manifest
 //     under `.workflows/`, which the move dropped the map from (21.5.8) —
 //     named by an entry's map item, a subtopic's name or a list of them
@@ -72,9 +74,10 @@
 // belongs to, one of those it is named on. A section is its heading's path
 // within its part — a kept spec's, within the file — named by the shortest
 // path naming it alone there, its heading or with as many of those over it
-// as tell it apart; a cite or a mark counts for the sections it names
-// alone, so a bare heading its part holds more than once counts for none
-// of its copies; and a cite counts only where its topic draws on the spec,
+// as tell it apart, and its place among those sharing its path; a cite or
+// a mark counts for the section it names alone, as the carry reads it, so
+// a bare heading held more than once counts for none of its copies; and a
+// cite counts only where its topic draws on the spec,
 // never of a spec it draws no part of, its later answer, which it cites
 // for that answer alone (21.6.3). In a joined spec a section is its part's:
 // a cite counts in the parts of its topic's specs, a mark is its part's,
@@ -84,7 +87,9 @@
 // joined spec, each whose part holds it, any section outside the parts
 // every topic's of the spec — and asks no composer for an entry. A record
 // is carried once its verifier has passed it, the findings beside it as
-// composed an empty file (`unverified`, which `ledger carry` asks); and
+// composed an empty file, or the session has settled a late round's
+// findings, the note beside it marked so (`unverified`, which `ledger
+// carry` asks); and
 // until each topic of a unit drawing on an approved spec has its record so
 // passed, and no such section is named, none of its topics is carried
 // (`unitWaits`): a topic carried could take no section found later. A
@@ -105,16 +110,21 @@
 // topic's sources and its record, never the session's own work.
 //
 // Beside the check, the points to raise (21.6.10): each question of a
-// carried record marked to raise, on a topic still live — its unit and its
-// item neither cancelled nor postponed — and started, which the engine
-// answers, once the check passes, where it has no raise yet: raised at the
-// topic, or at the unit's specification where the unit has its spec — its
-// `spec.md`, or its specs joined — past which a topic takes no raise. A topic never
-// started is carried in discovery, where nothing is decided (8.3.4): its
-// points stay open questions on it, which its first opening reads. A
-// cross-cutting unit's record is the product's: its points stay open
-// questions, the product's once the cut and the merges retire the unit
-// (21.7.5), which the product's conversation opens on.
+// carried record marked to raise, on a started topic not set aside of a
+// unit in progress, which the engine answers, once the check passes, where
+// it has no raise yet: raised at the topic, or at the unit's specification
+// where the unit has its spec — its `spec.md`, or its specs joined — past
+// which a topic takes no raise. A unit's own record is carried in
+// discovery, where nothing is decided (8.3.4), and a topic never started —
+// carried in discovery, or its item `unstarted` — reads its open questions
+// at its first opening: their points stay open questions. A cross-cutting
+// unit's record is the product's: its points stay open questions, the
+// product's once the cut and the merges retire the unit (21.7.5), which
+// the product's conversation opens on. A completed unit's points are
+// settled by the code it built; a cancelled unit's, and a topic's set
+// aside, wait with it (21.6.11). A record marking one of
+// these to raise breaks a rule (`unraised`), so the carry refuses the mark
+// that would never be raised.
 //
 // `.workflows/` is read where the move read it: the working tree of the
 // project's folder in the repository's main checkout, whichever checkout
@@ -156,6 +166,8 @@ const EPIC = 'epic';
 const LEDGER = '.ledger.jsonl';
 const OPEN_THREADS = ['open', 'digging'];
 const SET_ASIDE = ['cancelled', 'postponed'];
+const IN_PROGRESS = 'in-progress';
+const UNSTARTED = 'unstarted';
 // A spec item the person approved, in the old manifest.
 const APPROVED_SPEC = 'completed';
 // The spec a building unit's specs are joined into (078).
@@ -290,31 +302,93 @@ function outlineOf(text, joined) {
 const endsWith = ({ path: at }, name) => at === name || at.endsWith(`${PATH_JOIN}${name}`);
 
 /**
- * The headings among `headings` a name names alone: each whose whole path
- * it is — a heading at the top of a file with no one root among them —
- * else each whose path ends with it, where all of them share one path;
- * none where it names headings of several, so a heading held more than
- * once is named by its bare heading in none of its copies, and by the path
- * that tells it apart.
+ * The headings among `headings` a name names: each whose whole path it is
+ * — a heading at the top of a file with no one root among them — else each
+ * whose path ends with it, where all of them share one path; none where it
+ * names headings of several paths. Headings sharing their whole path,
+ * siblings of one heading, are named together.
  * @param {Heading[]} headings @param {string} name @returns {Heading[]}
  */
-function namedAlone(headings, name) {
+function namedBy(headings, name) {
   const whole = headings.filter(({ path: at }) => at === name);
   if (whole.length > 0) return whole;
   const named = headings.filter((heading) => endsWith(heading, name));
   return new Set(named.map(({ path: at }) => at)).size === 1 ? named : [];
 }
 
+/** A name telling apart headings that share their whole path: their name, and which of them, from one, in order. */
+const ORDINAL = /^(.*) \[([1-9][0-9]*)\]$/;
+
 /**
- * The shortest path naming a heading alone among `headings`: its own
- * heading, or with as many of those over it as tell it apart.
+ * The heading among `headings` a name names alone, or none: one it names
+ * by itself (`namedBy`), or, of the headings sharing a whole path, the one
+ * a name of them followed by its place among them names, `{name} [{n}]`.
+ * @param {Heading[]} headings @param {string} name @returns {Heading[]}
+ */
+function namedAlone(headings, name) {
+  const named = namedBy(headings, name);
+  if (named.length > 0) return named.length === 1 ? named : [];
+  const [, shared, nth] = ORDINAL.exec(name) ?? [];
+  const copies = shared === undefined ? [] : namedBy(headings, shared);
+  return copies.length > 1 && Number(nth) <= copies.length ? [copies[Number(nth) - 1]] : [];
+}
+
+/**
+ * The headings among `headings` a name reaches, alone or not: each whose
+ * path ends with it, or with what a name of headings sharing their path
+ * names before their place among them.
+ * @param {Heading[]} headings @param {string} name @returns {Heading[]}
+ */
+function reachedBy(headings, name) {
+  const reached = headings.filter((heading) => endsWith(heading, name));
+  const shared = ORDINAL.exec(name)?.[1];
+  return reached.length > 0 || shared === undefined ? reached : headings.filter((heading) => endsWith(heading, shared));
+}
+
+/**
+ * The shortest name naming a heading alone among `headings`: its own
+ * heading, or with as many of those over it as tell it apart; where others
+ * share its whole path, the shortest naming them, and its place among them.
  * @param {Heading[]} headings @param {Heading} heading
  */
 function nameOf(headings, heading) {
   const { trail } = heading;
-  const from = [...trail.keys()].reverse().find((at) => namedAlone(headings, trail.slice(at).join(PATH_JOIN)).includes(heading)) ?? 0;
-  return trail.slice(from).join(PATH_JOIN);
+  const names = [...trail.keys()].reverse().map((at) => trail.slice(at).join(PATH_JOIN));
+  const alone = names.find((name) => namedAlone(headings, name).includes(heading));
+  if (alone !== undefined) return alone;
+  const shared = /** @type {string} */ (names.find((name) => namedBy(headings, name).includes(heading)));
+  return `${shared} [${namedBy(headings, shared).indexOf(heading) + 1}]`;
 }
+
+/**
+ * A heading's path as a walk sheet shows it: where others share it, with
+ * its place among them, as a cite names it.
+ * @param {Heading[]} headings @param {Heading} heading
+ */
+function shownPath(headings, heading) {
+  const copies = headings.filter(({ path: at }) => at === heading.path);
+  return copies.length > 1 ? `${heading.path} [${copies.indexOf(heading) + 1}]` : heading.path;
+}
+
+/**
+ * The headings of a file a cite of `name` counts among: those of the parts
+ * its topic draws on of a joined spec where any of them holds a heading it
+ * reaches, else all of them.
+ * @param {Heading[]} headings @param {string} name @param {(string|null)[]|null} parts its topic's, null where it draws on none
+ * @returns {Heading[]}
+ */
+function countedAmong(headings, name, parts) {
+  const drawn = parts === null ? [] : headings.filter((heading) => parts.includes(heading.part));
+  return reachedBy(drawn, name).length > 0 ? drawn : headings;
+}
+
+/**
+ * The section a cite names, as the carry reads it: the one heading it names
+ * alone among those it counts among (`countedAmong`), or none.
+ * @param {Heading[]} headings @param {string} name @param {(string|null)[]|null} parts
+ * @returns {Heading[]}
+ */
+const citedBy = (headings, name, parts) => namedAlone(countedAmong(headings, name, parts), name);
 
 /** Headings by the part each is in, in their order. @param {Heading[]} headings @returns {Map<string|null, Heading[]>} */
 function byPartOf(headings) {
@@ -565,23 +639,16 @@ function ownFilesOf(project, unit, topic) {
 function sheetSections(project, unit, { specs, later }, entries, at) {
   const parts = partsDrawn(specs, at);
   const headings = outlineOf(readText(path.join(project.stateDir, at)) ?? '', at === `${unit.name}/${JOINED_SPEC}`);
-  const counted = (/** @type {string|null} */ part) => parts === null || parts.includes(part);
-  const byPart = [...byPartOf(headings)];
-  const namedIn = (/** @type {string} */ name, /** @type {(part: string|null) => boolean} */ kept) => byPart.filter(([part]) => kept(part)).flatMap(([, held]) => namedAlone(held, name));
-  const resolved = (/** @type {string} */ name) => {
-    const own = namedIn(name, counted);
-    return own.length > 0 ? own : namedIn(name, () => true);
-  };
   /** @type {Map<Heading, Record<string, any>[]>} */
   const citing = new Map();
   for (const entry of entries) {
     const names = (Array.isArray(entry.cites) ? entry.cites.filter(isObject) : []).filter((cite) => cite.path === at).map(({ section }) => String(section));
-    const named = new Set(names.flatMap(resolved));
+    const named = new Set(names.flatMap((name) => citedBy(headings, name, parts)));
     for (const heading of named) citing.set(heading, [...(citing.get(heading) ?? []), entry]);
   }
-  const drawn = (/** @type {Heading} */ heading) => !later.has(at) && counted(heading.part);
+  const drawn = (/** @type {Heading} */ heading) => !later.has(at) && (parts === null || parts.includes(heading.part));
   return headings.filter((heading) => (heading.text && drawn(heading)) || citing.has(heading)).map((heading) => ({
-    section: heading.path, line: heading.line, end: heading.end,
+    section: shownPath(headings, heading), line: heading.line, end: heading.end,
     entries: (citing.get(heading) ?? []).map(({ ref, event, text }) => ({ ref: String(ref), event: String(event), text: String(text ?? '') })),
   }));
 }
@@ -605,9 +672,32 @@ function sheetOf(project, unit, topic, entries) {
 /** Whether the unit has its spec, past which a point is raised at its specification: its `spec.md`, or its specs joined. @param {Project} project @param {Unit} unit */
 const hasSpec = (project, unit) => Array.isArray(unit.manifest?.spec?.joined) || isFile(path.join(project.stateDir, unit.name, JOINED_SPEC));
 
-/** Whether a topic is still live: its unit and its item neither cancelled nor postponed. @param {Record<string, any>} manifest @param {string} topic */
-const isLive = (manifest, topic) => !SET_ASIDE.includes(manifest.status)
-  && TOPIC_PHASES.every((phase) => !SET_ASIDE.includes(itemsOf(manifest.phases?.[phase]?.items)[topic]?.status));
+/**
+ * Why a point a record marks to raise is never raised at the directive's
+ * end, or null where it is: a unit's own record is carried in discovery,
+ * where nothing is decided (8.3.4); a topic never started — carried in
+ * discovery, or its item in the phase it is carried in `unstarted`, a
+ * message parked on it never opened — has its open questions read at its
+ * first opening; a cross-cutting unit's record is the product's (21.7.5);
+ * a unit not in progress — completed, its code the truth of what was
+ * built, or cancelled — and a topic set aside raise nothing (21.6.11).
+ * @param {Unit} unit @param {string|null} topic @param {string} phase the record's
+ * @returns {string|null}
+ */
+function unraised(unit, topic, phase) {
+  if (topic === null) return 'a unit\'s own record is carried in discovery, where nothing is raised';
+  if (unit.manifest?.work_type === 'cross-cutting') return 'a cross-cutting unit\'s record is the product\'s';
+  if (unit.manifest?.status !== IN_PROGRESS) return `its unit is ${unit.manifest?.status}, and only a unit in progress raises its points`;
+  if (TOPIC_PHASES.some((each) => SET_ASIDE.includes(itemsOf(unit.manifest.phases?.[each]?.items)[topic]?.status))) return 'its topic is set aside';
+  const started = phase !== 'discovery' && itemsOf(unit.manifest.phases?.[phase]?.items)[topic]?.status !== UNSTARTED;
+  return started ? null : 'its topic never started, and its first opening reads its open questions';
+}
+
+/** Each entry a record marks to raise where its point is never raised. @param {Unit} unit @param {string|null} topic @param {string} phase @param {Record<string, any>[]} record @returns {string[]} */
+function raiseProblems(unit, topic, phase, record) {
+  const why = unraised(unit, topic, phase);
+  return why === null ? [] : record.filter(({ raise }) => raise === true).map(({ ref }) => `entry ${ref} is marked to raise, and ${why}: its point is an open question, carried unmarked`);
+}
 
 /** The topic an import's origin names: its own, or a unit of one topic that is no epic's from its discovery. @param {Unit} unit @param {unknown} origin @returns {string|null} */
 function ownerOf(unit, origin) {
@@ -654,9 +744,9 @@ function partsDrawn(specs, at) {
 
 /**
  * What a cited section lacks: a file that stays with its entry, which the
- * state holds, holding a heading the cite names; and in each part the
- * topic draws on — every part where it draws on none — one heading alone
- * so named, else the paths that tell those it names apart.
+ * state holds, holding a heading the cite names; and one heading alone so
+ * named among those it counts among (`citedBy`), else the names that tell
+ * those it reaches apart.
  * @param {Project} project @param {Unit} unit @param {string|null} topic @param {{path: string, part: string|null}[]} specs the topic's
  * @param {Record<string, unknown>} cite @returns {string[]}
  */
@@ -668,14 +758,13 @@ function citeProblems(project, unit, topic, specs, { path: cited, section }) {
   if (text === null) return [`cites ${cited}, which the state does not hold`];
   const name = String(section);
   const headings = outlineOf(text, cited === `${unit.name}/${JOINED_SPEC}`);
-  if (!headings.some((heading) => endsWith(heading, name))) return [`cites "${name}" in ${cited}, which has no such heading${name.includes(PATH_JOIN) ? ' path' : ''}`];
   const parts = partsDrawn(specs, cited);
-  return [...byPartOf(headings)].filter(([part]) => parts === null || parts.includes(part)).flatMap(([part, held]) => {
-    const named = held.filter((heading) => endsWith(heading, name));
-    if (named.length === 0 || namedAlone(held, name).length > 0) return [];
-    const told = [...new Set(named.map((heading) => nameOf(held, heading)))].map((each) => `"${each}"`);
-    return [`cites "${name}" in ${cited}, which holds ${told.length} headings so named${part === null ? '' : ` in part "${part}"`} — a cite names one, by the path that tells it apart: ${told.join(', ')}`];
-  });
+  if (citedBy(headings, name, parts).length === 1) return [];
+  const among = countedAmong(headings, name, parts);
+  const reached = reachedBy(among, name);
+  if (reached.length === 0) return [`cites "${name}" in ${cited}, which has no such heading${name.includes(PATH_JOIN) ? ' path' : ''}`];
+  const told = [...new Set(reached.map((heading) => nameOf(among, heading)))].map((each) => `"${each}"`);
+  return [`cites "${name}" in ${cited}, which holds ${told.length} headings so named — a cite names one, by the path that tells it apart, or, of headings sharing their path, by its place among them: ${told.join(', ')}`];
 }
 
 /**
@@ -727,7 +816,7 @@ function citesProblems(project, unit, topic, record) {
  * @param {Project} project @param {Unit} unit @param {Record<string, any>[]} record @returns {string[]}
  */
 function ownProblems(project, unit, record) {
-  return [...undecidedProblems(record), ...citesProblems(project, unit, null, record), ...unlinkedImports(project, unit, null, record)];
+  return [...undecidedProblems(record), ...citesProblems(project, unit, null, record), ...unlinkedImports(project, unit, null, record), ...raiseProblems(unit, null, 'discovery', record)];
 }
 
 /**
@@ -752,7 +841,7 @@ function problemsOf(project, unit, topic, phase, record) {
   const threads = new Set(record.flatMap((entry) => namesOf(entry.thread)));
   const open = threadsOf(project, unit, topic).filter(({ thread }) => !threads.has(thread))
     .map(({ thread, status }) => `the thread ${thread} is still ${status} in its research, and no entry names it as its thread`);
-  return [...empty, ...undecided, ...narrow, ...cites, ...mapped, ...open, ...imports];
+  return [...empty, ...undecided, ...narrow, ...cites, ...mapped, ...open, ...imports, ...raiseProblems(unit, topic, phase, record)];
 }
 
 /** The ids the ledger's lines were given. @param {string} stateDir @returns {Set<string>} */
@@ -782,14 +871,25 @@ const carriedOf = (project, unit, topic) => readJson(path.join(project.stateDir,
 /**
  * Why a record has not passed its verifier, null where it has: the
  * verifier's findings beside it as composed, an empty file its pass, none
- * where no verifier has written.
+ * where no verifier has written since — but where the session settled a
+ * late round's findings, the note beside the record marked so, its pass
+ * (`ledger settle`).
  * @param {string} stateDir @param {string} unit @param {string|null} topic @returns {string|null}
  */
 function unverified(stateDir, unit, topic) {
   const findings = recordFile(COMPOSED, unit, topic, '.findings.txt');
   const text = readText(path.join(stateDir, findings));
-  if (text === null) return `${findings} is no file`;
+  if (text === null) return settledBySession(stateDir, unit, topic) ? null : `${findings} is no file`;
   return text.trim() === '' ? null : `its findings stand in ${findings}`;
+}
+
+/** Whether the note beside a record marks it as the session settled it. @param {string} stateDir @param {string} unit @param {string|null} topic */
+function settledBySession(stateDir, unit, topic) {
+  try {
+    return readJson(path.join(stateDir, recordFile(COMPOSED, unit, topic, '.verifying.json')))?.settled === true;
+  } catch {
+    return false;
+  }
 }
 
 /** The sections of the unit's specs the session marked as holding no topic's decision, from the state's folder. @param {string} unit */
@@ -912,12 +1012,11 @@ function uncitedOf(project, unit) {
   const uncited = new Map();
   for (const [at, drawn] of bySpec) {
     const joined = at === `${unit.name}/${JOINED_SPEC}`;
-    for (const [part, held] of byPartOf(outlineOf(readText(path.join(project.stateDir, at)) ?? '', joined))) {
-      const named = [
-        ...cites.filter((cite) => cite.path === at && (cite.parts === null || cite.parts.includes(part))).map(({ name }) => name),
-        ...markedIn(marked, at, part),
-      ];
-      const settled = new Set(named.flatMap((name) => namedAlone(held, name)));
+    const headings = outlineOf(readText(path.join(project.stateDir, at)) ?? '', joined);
+    const cited = new Set(cites.filter((cite) => cite.path === at && (cite.parts === null || cite.parts.length > 0))
+      .flatMap(({ name, parts }) => citedBy(headings, name, parts).filter((heading) => parts === null || parts.includes(heading.part))));
+    for (const [part, held] of byPartOf(headings)) {
+      const settled = new Set([...held.filter((heading) => cited.has(heading)), ...markedIn(marked, at, part).flatMap((name) => namedAlone(held, name))]);
       for (const heading of held.filter((each) => each.text && !settled.has(each))) {
         drawnBy(uncited, sectionKey(at, part, nameOf(held, heading)), byPart.get(specKey(at, part)) ?? drawn);
       }
@@ -941,7 +1040,7 @@ function unitWaits(project, unit) {
   if (!topics.some((topic) => specsOf(project, unit, topic).some(({ approved }) => approved))) return [];
   const unpassed = topics.filter((topic) => carriedOf(project, unit, topic) === null).flatMap((topic) => {
     const said = uncarried(project, unit, topic);
-    return said === PASSED ? [] : [`${unit.name}'s ${topic} ${said}`];
+    return WAITING.includes(said) ? [] : [`${unit.name}'s ${topic} ${said}`];
   });
   if (unpassed.length > 0) return unpassed;
   return uncitedOf(project, unit).map((each) => uncitedProblem(unit, each));
@@ -952,6 +1051,10 @@ const uncitedProblem = (unit, { path: at, part, section }) => `"${section}" in $
 
 /** A record its verifier has passed, waiting for the carry. */
 const PASSED = 'has passed its verifier, and waits to be carried';
+/** A record the session passed, settling a late round's findings, waiting for the carry. */
+const SETTLED = 'was settled by the session, and waits to be carried';
+/** Where a record waits for the carry alone. */
+const WAITING = [PASSED, SETTLED];
 
 /** The carry, whose guards say what a record its verifier passed still waits on. */
 const CARRY = path.join(__dirname, '..', '..', '..', 'ledger-engine', 'scripts', 'domain', 'ledger-carry.cjs');
@@ -971,7 +1074,7 @@ function uncarried(project, unit, topic) {
   return handedBack(project.stateDir, unit.name, topic)
     ?? (why === null ? null : `has not passed its verifier — ${why}`)
     ?? unsettledRound(project.stateDir, unit.name, topic, record.map(({ ref }) => String(ref)))
-    ?? PASSED;
+    ?? (settledBySession(project.stateDir, unit.name, topic) ? SETTLED : PASSED);
 }
 
 /**
@@ -1010,7 +1113,7 @@ module.exports = {
   },
   /**
    * The points to raise: each question a carried record marks `raise`, on a
-   * topic still live and started, of a unit not cross-cutting — its place,
+   * started topic not set aside of a unit in progress (`unraised`) — its place,
    * the topic's or, where the unit has its spec, its specification's, the
    * question's id and its text.
    * @param {{projectDir: string, stateDir: string}} dirs
@@ -1018,9 +1121,9 @@ module.exports = {
    */
   raises({ projectDir, stateDir }) {
     const project = projectOf(projectDir, stateDir);
-    return unitsOf(project).filter((unit) => unit.manifest?.work_type !== 'cross-cutting').flatMap((unit) => topicsOf(unit.manifest).filter((topic) => isLive(unit.manifest, topic)).flatMap((topic) => {
+    return unitsOf(project).flatMap((unit) => topicsOf(unit.manifest).flatMap((topic) => {
       const carried = carriedOf(project, unit, topic);
-      if (carried === null || carried.phase === 'discovery') return [];
+      if (carried === null || unraised(unit, topic, carried.phase) !== null) return [];
       const ids = new Map(carried.entries.map(({ ref, id }) => [ref, id]));
       const place = hasSpec(project, unit) ? `${unit.name}.specification` : `${unit.name}.${carried.phase}.${topic}`;
       return carried.record.entries.filter((entry) => entry.raise === true).map((entry) => ({ place, answers: ids.get(entry.ref), text: entry.text }));

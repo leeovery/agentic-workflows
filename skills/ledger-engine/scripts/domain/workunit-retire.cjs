@@ -32,10 +32,10 @@
 //   documents' links with it, never rebased again once it is made; each
 //   epic's promoted topic; the registry and the roadmap's sources — so a
 //   session killed part-way finishes on its next run, the unit found at
-//   `.product/assets/{unit}/` once its folder has moved. Every run renders
-//   the ledger's copies at its end, so a redo renders those a run killed
-//   before them left behind, and on every run the knowledge base drops the
-//   unit's documents, whatever the copies on disk already show.
+//   `.product/assets/{unit}/` once its folder has moved. It renders no
+//   copies and tells the knowledge base nothing: no store exists while the
+//   migration runs, and its finish renders and indexes the whole set
+//   (21.9.1).
 // - It refuses, writing nothing: outside the migration; a name that is no
 //   unit's, or a unit neither in the state nor moved; a unit of a type the
 //   reshape keeps; `.product/assets/{unit}` held already beside the unit's
@@ -65,7 +65,6 @@ const { carrySources } = require('./roadmap.cjs');
 const { PRODUCT_DIR } = require('./layout.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { relinkDocuments } = require('./follow-moves.cjs');
-const { refreshLedgerCopies } = require('./ledger-copies.cjs');
 const { purgeWorkUnitCache } = require('./cache.cjs');
 
 const SAID = 'workunit retire';
@@ -214,7 +213,6 @@ function retireWorkUnit(cwd, unit) {
       const paths = [unit, keptAt(unit), legacyKeptAt(unit), PROJECT_MANIFEST_SPEC, ...relinked, ...new Set(promoted.map(({ work_unit: epic }) => epic))];
       const message = `ledger(${unit}): retire to the product's assets`;
       const outcome = carried > 0 ? commitLedger(cwd, message, warnings, paths) : commitStateTail(cwd, paths, message, warnings);
-      refreshLedgerCopies(cwd, warnings, { remove: [{ workUnit: unit }] });
       /** @type {WorkUnitRetireResult} */
       const result = { work_unit: unit, kept: statePath(cwd, keptAt(unit)), carried, promoted, committed: outcome.committed, warnings };
       if (rewritten.length > 0) result.roadmap_sources_rewritten = rewritten;

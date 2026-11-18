@@ -326,8 +326,8 @@ describe('the directive\'s ways on', () => {
   /** Each rule the directive does not state. @param {string[]} rules */
   const unstated = (rules) => rules.filter((rule) => !TEXT.includes(rule));
 
-  it('a reversal the session settles: a ruling that changes the piece becomes a finding to amend to, one that keeps it takes the finding out — so an empty findings file is only ever a pass; a finding the third round or a later one writes settled by the session as a reversal is', () => {
-    assert.deepStrictEqual(unstated(['Where the ruling has the piece change, replace the finding with `Settled: {point}, amend to agree`', 'Where the ruling keeps the piece as it stands, take the finding out of the findings file', 'An empty findings file is only ever a pass.', 'it goes to no agent, nor does a finding the third round or a later one writes.', 'A file an agent left under the phases, which the check names, is removed.']), []);
+  it('a reversal the session settles: a ruling that changes the piece becomes a finding to amend to, one that keeps it takes the finding out — so an empty findings file is only ever a pass; a finding the third round or a later one writes settled by the session as a reversal is, its question to the person declared among the directive\'s asks', () => {
+    assert.deepStrictEqual(unstated(['Where the ruling has the piece change, replace the finding with `Settled: {point}, amend to agree`', 'Where the ruling keeps the piece as it stands, take the finding out of the findings file', 'An empty findings file is only ever a pass.', 'A reversal is a finding against a point the session settled, opening `Reverses the session:`; a new point on what an earlier round passed, or on what its findings had the piece changed to, is a finding as any other. A reversal goes to no agent, nor does a finding the third round or a later one writes.', 'A file an agent left under the phases, which the check names, is removed.', '- For a point the sources do not settle that a verifier reverses, or\n  that a finding of the third round or a later one raises: how it stands.']), []);
   });
 
   it('a task\'s criteria carried whole, and an area no plan put in the tracker section by section: the composer composing a piece from the start walks the phase, an amend answering the findings in its place and keeping everything else, the verifier every task, criterion and section, its findings every gap, never a sample; neither reads a piece composed for another phase, the unit\'s legacy files among their sources', () => {
@@ -348,6 +348,10 @@ describe('the directive\'s ways on', () => {
         'each acceptance criterion of its tasks still to build is carried by a scenario, or, for an area no plan put in the tracker, each rule of each section of the area, and it relies',
       ].filter((rule) => !template('migration-phase-verifier').includes(rule)),
     ], [[], [], []]);
+  });
+
+  it('says only a `## Research:` heading naming a research file opens a source, any other under one part of the source above it, as the check reads them', () => {
+    assert.deepStrictEqual(unstated(['Only such a heading naming a research file opens a source: any other under it, a `## Research:` heading the research\'s own title made among them, is part of the source above it.']), []);
   });
 
   it('a link the cut refuses that still holds: a task of the unit\'s on another unit\'s, the link off and the phase relying on that unit; on a later phase of its own plan, the person\'s choice of a note or a correction; on another plan\'s, or another unit\'s task on one of the unit\'s, a known edge', () => {

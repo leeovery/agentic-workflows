@@ -9,7 +9,9 @@
 //
 // - When: only while the migration runs (state-worktree.cjs's
 //   `migrationRuns`), so its commit is held for the migration's, and the
-//   trust log is told nothing (21.1.5, 21.9.3).
+//   trust log is told nothing (21.1.5, 21.9.3). It renders no copies for
+//   the knowledge base, nor indexes them: boot does both at the finish,
+//   where the knowledge question is asked (21.9.1).
 // - Where: a topic of a unit, holding an item in the phase named, one of the
 //   phases the records directive carries a topic of (079's check), live or
 //   not: a cancelled unit's topics and a cancelled topic get their records
@@ -38,7 +40,10 @@
 //   out, its alternatives and evidence — never name another entry by its
 //   ref, which the record alone reads: the ledger links by id, so a
 //   drafting label left in them means nothing there, and the carry refuses
-//   it, naming it. Every entry moves no one; a decision lands unchecked, for
+//   it, naming it. Every line it writes is tagged with the session
+//   `migration` (ledger-events.cjs, `CARRIED_SESSION`), whoever made the entry, no
+//   conversation's: the mark of an entry from before Ledger, which needs no
+//   session handed. Every entry moves no one; a decision lands unchecked, for
 //   the late one-decision check after the migration, and unlabelled, its
 //   kind and hard-to-undo mark null: no call is made while the migration
 //   runs.
@@ -58,16 +63,19 @@
 // - Verified, in its unit's order: a record is carried only once no
 //   finding its composer handed back to the session stands unsettled
 //   beside it (`handedBack`), and once its verifier has passed it, the
-//   findings beside it an empty file (079's check, `unverified`) — the
+//   findings beside it an empty file, or the session settled a late
+//   round's findings (ledger-settle.cjs; 079's check, `unverified`) — the
 //   carry clears them, and a record is carried once, so a finding left
 //   standing would never be answered — the record unchanged since that
 //   verifier's brief was issued on it (`briefedOn`), and its verdicts
 //   naming every entry its brief asked a verdict of — in a later round
 //   those not passed unchanged since (later-rounds.cjs) — and none the
-//   record it read does not hold (`unchecked`); and a topic of
-//   a unit drawing on an approved spec only once every topic of the unit
-//   has its record so passed and no section of those specs goes uncited
-//   (`unitWaits`), a topic carried taking no section found later; refused,
+//   record it read does not hold (`unchecked`); and a record of a unit
+//   whose records share a source — an approved spec, a discovery session
+//   or an asset they walk — only once each record drawing on it, the
+//   unit's own and a topic it promoted among them, is so passed and no
+//   section of it goes uncited (`unitWaits`), a record carried taking no
+//   section found later; refused,
 //   writing nothing beside the record, for the session alone keeps the
 //   order. A dry run names none of it: it is the record's composer's.
 // - Once: the whole record is appended in one write, after what it carried
@@ -86,8 +94,8 @@
 //   taking them while 079 can run. The check rests on those two things
 //   alone: the carried file's record, and each of its ids standing as a
 //   line's `id` in the ledger, never another field of a line.
-// - It refuses, carrying nothing: outside the migration; no session, but on
-//   a dry run, which tags nothing; argv of another shape; a place of
+// - It refuses, carrying nothing: outside the migration; argv of another
+//   shape; a place of
 //   another shape, a phase the directive carries no topic of, a unit the
 //   project lacks, a topic with no item in the phase, one whose item is in
 //   a later phase, a topic promoted. And what the record's composer
@@ -103,14 +111,13 @@ const path = require('path');
 const { messageOf } = require('../kernel/call.cjs');
 const { isObject } = require('../kernel/manifest-io.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
-const { handedSession } = require('../kernel/process.cjs');
 const { appendEntries, withLedger, carrying, commitLedger } = require('./ledger.cjs');
 const { newId, shortIds } = require('./ledger-ids.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { withStateLock, assertMigrationRuns } = require('./state-worktree.cjs');
 const { HELD_NOTE } = require('./commit.cjs');
-const { refreshLedgerCopies } = require('./ledger-copies.cjs');
 const { WRITES, contentFaults, saidFaults, unsealedFaults, decisionGiven } = require('./ledger-write.cjs');
+const { CARRIED_SESSION } = require('./ledger-events.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { directiveOf } = require('./directives.cjs');
 
@@ -223,6 +230,9 @@ const BESIDE_FINDINGS = Object.freeze([
   Object.freeze({ heading: '### Checked', rel: checkedPath }),
 ]);
 
+/** How many rounds are kept at `rounds`. @param {string} rounds */
+const roundsKept = (rounds) => (fs.existsSync(rounds) ? [...fs.readFileSync(rounds, 'utf8').matchAll(ROUND)].length : 0);
+
 /**
  * The last verifier's findings, at `findings`, as the round after those kept
  * at `rounds`, under its heading — an empty file its pass — and beneath
@@ -232,7 +242,7 @@ const BESIDE_FINDINGS = Object.freeze([
  */
 function lastRound(rounds, findings, beside = []) {
   if (!fs.existsSync(findings)) return null;
-  const kept = fs.existsSync(rounds) ? [...fs.readFileSync(rounds, 'utf8').matchAll(ROUND)].length : 0;
+  const kept = roundsKept(rounds);
   const text = fs.readFileSync(findings, 'utf8').trim();
   const written = beside.flatMap(({ heading, file }) => {
     const said = fs.existsSync(file) ? fs.readFileSync(file, 'utf8').trim() : '';
@@ -407,20 +417,21 @@ function argsOf(args) {
 }
 
 /**
- * The topic's record's entries, read where it is composed. Refuses a file
- * that cannot be read, and one holding no record.
- * @param {Place} place @returns {Record<string, any>[]}
+ * The topic's record's entries, read where it is composed. Refuses, in the
+ * words of `said`, the command asking, a file that cannot be read, and one
+ * holding no record.
+ * @param {Place} place @param {string} [said] @returns {Record<string, any>[]}
  */
-function readRecord({ root, unit, topic }) {
+function readRecord({ root, unit, topic }, said = SAID) {
   const file = composedPath(unit, topic);
   let record;
   try {
     record = JSON.parse(fs.readFileSync(path.join(root, file), 'utf8'));
   } catch (err) {
-    throw new Error(`${SAID}: the record could not be read from ${file}: ${messageOf(err)}`);
+    throw new Error(`${said}: the record could not be read from ${file}: ${messageOf(err)}`);
   }
   if (!isObject(record) || Object.keys(record).length !== 1 || !Array.isArray(record.entries) || !record.entries.every(isObject)) {
-    throw new Error(`${SAID}: ${file} holds no record — a record is {"entries": [...]}, each entry an object`);
+    throw new Error(`${said}: ${file} holds no record — a record is {"entries": [...]}, each entry an object`);
   }
   return record.entries;
 }
@@ -573,14 +584,14 @@ function labelFaults(entries) {
  * entry whose words name another by its ref, each question marked to raise
  * that a decision of the record answers, which `raise` would refuse, and
  * what it breaks of the records directive's rules.
- * @param {string} cwd @param {Place} place @param {Record<string, any>[]} entries @param {string|null} session
+ * @param {string} cwd @param {Place} place @param {Record<string, any>[]} entries
  * @returns {Drawn}
  */
-function drawnRecord(cwd, place, entries, session) {
+function drawnRecord(cwd, place, entries) {
   const { root, unit, phase, topic } = place;
   /** @type {Map<string, Earlier>} */
   const before = new Map();
-  const tags = { unit, topic, phase, session };
+  const tags = { unit, topic, phase, session: CARRIED_SESSION };
   const drawn = entries.map((entry, at) => entryLines(place, entry, at, before, tags));
   const answered = new Set(entries.filter(({ event }) => event === 'decided').map(({ answers }) => answers));
   const settled = [...before].filter(([ref, { raised }]) => raised && answered.has(ref))
@@ -629,12 +640,12 @@ function keepCarried({ root, unit, phase, topic }, entries, kept) {
 /**
  * The record read and drawn; where the composer must answer something, the
  * refusal, naming every fault, written beside the record.
- * @param {string} cwd @param {Place} place @param {string} session
+ * @param {string} cwd @param {Place} place
  */
-function composedRecord(cwd, place, session) {
+function composedRecord(cwd, place) {
   try {
     const entries = readRecord(place);
-    const { lines, kept, faults } = drawnRecord(cwd, place, entries, session);
+    const { lines, kept, faults } = drawnRecord(cwd, place, entries);
     if (faults.length > 0) throw new Error(`${SAID}: ${recordName(place)} breaks the records directive's rules, so nothing is carried — ${faults.join('; ')}`);
     return { entries, lines, kept };
   } catch (err) {
@@ -660,9 +671,9 @@ function refuseUnsettled(cwd, place) {
   }
   const unsettled = unsettledRound(root, unit, topic, readRecord(place).map(({ ref }) => String(ref)));
   if (unsettled !== null) throw new Error(`${SAID}: ${recordName(place)} ${unsettled}`);
-  const waits = topic === null ? [] : rules.unitWaits({ projectDir: codeRoot(cwd), stateDir: root, unit });
+  const waits = rules.unitWaits({ projectDir: codeRoot(cwd), stateDir: root, unit });
   if (waits.length > 0) {
-    throw new Error(`${SAID}: ${unit}'s ${topic} is carried once every topic of ${unit} has its record passed by its verifier and no section of its approved specs goes uncited — a topic carried takes no section found later: ${waits.join('; ')}`);
+    throw new Error(`${SAID}: ${recordName(place)} is carried once each record of ${unit} drawing on the sources its records share — its approved specs, its discovery sessions and the assets its records walk, its own record and a topic it promoted among them — has passed its verifier, and no section of those sources goes uncited: a record carried takes no section found later — ${waits.join('; ')}`);
   }
 }
 
@@ -685,7 +696,7 @@ function clearBeside({ root, unit, topic }) {
  */
 function dryRun(cwd, dotpath) {
   const place = topicPlace(cwd, dotpath, SAID);
-  return { faults: drawnRecord(cwd, place, readRecord(place), null).faults };
+  return { faults: drawnRecord(cwd, place, readRecord(place)).faults };
 }
 
 /**
@@ -703,10 +714,8 @@ function carryRecord(cwd, args) {
     assertMigrationRuns(stateRoot(cwd), SAID, 'a topic\'s record is carried into the ledger');
     const { dotpath, dry } = argsOf(args);
     if (dry) return dryRun(cwd, dotpath);
-    const session = handedSession();
-    if (session === null) throw new Error(`${SAID}: no session to tag the entries with — CLAUDE_CODE_SESSION_ID is not set`);
     const place = topicPlace(cwd, dotpath, SAID);
-    const { entries, lines, kept } = composedRecord(cwd, place, session);
+    const { entries, lines, kept } = composedRecord(cwd, place);
     const { outcome, short } = withStateLock(place.root, () => {
       const beside = idsBeside(place, warnings);
       refuseUnsettled(cwd, place);
@@ -718,7 +727,6 @@ function carryRecord(cwd, args) {
       };
     });
     clearBeside(place);
-    if (lines.length > 0) refreshLedgerCopies(cwd, warnings);
     return {
       carried: kept.length,
       ids: Object.fromEntries(kept.map(({ ref, id }) => [ref, short.get(id)])),
@@ -731,4 +739,4 @@ function carryRecord(cwd, args) {
   }
 }
 
-module.exports = { CARRY_VERB, CARRY_USAGE, DRY_RUN, placePath, recordName, carriedPath, composedPath, findingsPath, rulingsPath, handbackPath, handedBack, checkedPath, verifyingPath, noteVerifying, briefedOn, lastVerdicts, uncheckedRound, unsettledRound, lastRound, keepRound, keepRecordRound, besideFindings, refusedPath, roundsPath, settledPath, topicPlace, carryRecord };
+module.exports = { CARRY_VERB, CARRY_USAGE, DRY_RUN, placePath, recordName, readRecord, recordHash, roundsKept, carriedPath, composedPath, findingsPath, rulingsPath, handbackPath, handedBack, checkedPath, verifyingPath, noteVerifying, briefedOn, lastVerdicts, uncheckedRound, unsettledRound, lastRound, keepRound, keepRecordRound, besideFindings, refusedPath, roundsPath, settledPath, topicPlace, carryRecord };

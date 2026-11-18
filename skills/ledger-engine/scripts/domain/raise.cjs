@@ -73,7 +73,10 @@
 //   don't follow" included: a fact takes no label, adds no evidence and
 //   meets no threshold (16.3.2). It refuses `--replaces`: a fact that
 //   changes is the person's to say, and the decision it changes is replaced
-//   as any other.
+//   as any other. While the migration runs, its raises at the records
+//   directive's end are drawn so — a point its sources from before Ledger
+//   leave unsettled, a decision the person's alone to make — and why it
+//   asks says that, never that it is a fact.
 // - The seal (16.1.2): the call as given, sealed before the person answers, so
 //   its lean cannot change — `raise-shown.json` in the conversation's folder
 //   (conversation.cjs), each raise drawn there by its id, with a version of
@@ -365,7 +368,7 @@ const { isShownTask, parseShownTask } = require('./task-id.cjs');
 const { markChanged, beingRead } = require('./round-report.cjs');
 const { stepTurn } = require('./task-verbs.cjs');
 const { clearStop } = require('./position.cjs');
-const { withStateLock } = require('./state-worktree.cjs');
+const { withStateLock, migrationRuns } = require('./state-worktree.cjs');
 const { record, modelOf, projectId } = require('./trust-log.cjs');
 const { careEntries, dropCue } = require('./person.cjs');
 const { projectName } = require('./state-checks.cjs');
@@ -514,6 +517,9 @@ const RAISE_USAGE = [QUESTION_USAGE, REPLACE_USAGE, FACT_USAGE, SHOW_USAGE, ANSW
 // The sub-verbs, each a word where a draw names a place, `<unit>.<phase>`.
 const SUB_VERBS = Object.freeze(['show', 'answer', 'draw', 'aside', 'waiting']);
 const ONLY_YOU_KNOW = 'Only you know this: it\'s a fact I can\'t check.';
+// Why a point the migration raises asks: a decision its sources from before
+// Ledger left unsettled, the person's alone to make — never a fact.
+const YOURS_TO_DECIDE = 'Only you can decide this: nothing from before Ledger settles it.';
 // The key of the row a raise on a replacement draws for keeping the decision.
 const KEEP = 'keep';
 // The screen's own words, which no row's key may be in any case: the
@@ -1507,7 +1513,10 @@ async function drawRaise(cwd, args, stdin) {
     clearGateShown(session);
     return { ...askedAs(open), seal: open, redrawn: true, warnings };
   }
-  if (fact) return askedRaise(cwd, raising, { call: /** @type {Fact} */ (given), fact: true }, { rows_judged: [], label: null, model: null, reason: ONLY_YOU_KNOW, blind: false }, warnings);
+  if (fact) {
+    const reason = migrationRuns(/** @type {string} */ (findStateRoot(cwd))) ? YOURS_TO_DECIDE : ONLY_YOU_KNOW;
+    return askedRaise(cwd, raising, { call: /** @type {Fact} */ (given), fact: true }, { rows_judged: [], label: null, model: null, reason, blind: false }, warnings);
+  }
   const call = /** @type {Call} */ (given);
   const { judged, label } = await judgedAndLabelled(call, { cwd, unit: place.unit, verb: 'raise', warnings });
   const { decision, reason } = decided(cwd, raising, call, label);

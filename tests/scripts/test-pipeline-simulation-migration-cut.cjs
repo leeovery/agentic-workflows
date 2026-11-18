@@ -46,11 +46,13 @@ const { Sim, readyForSim, enterEntry, decideTopic, handoff, specEntry, specBuilt
 const { auditState } = require('./pipeline-oracle.cjs');
 
 const FINISH = require('../../skills/ledger-migrate/scripts/migrations/081-reshape-finish.cjs');
+const { renderLedgerCopies } = require('../../skills/ledger-engine/scripts/domain/ledger-copies.cjs');
 
 /**
  * The cut and the merges' world taken through the verbs, the finish and the
- * commit, at `folder`, made ready for a sim, the records indexed into the
- * store its knowledge setup brings, as the next start indexes them.
+ * commit, at `folder`, made ready for a sim, the records rendered and
+ * indexed into the store its knowledge setup brings, as the next start
+ * renders and indexes them: nothing renders them while the migration runs.
  * @param {string} folder
  */
 async function buildMigrated(folder) {
@@ -76,6 +78,7 @@ async function buildMigrated(folder) {
   harness.ok(dir, ['commit', '--migrations', '-m', "chore: apply Ledger's migrations"], { env: SESSION });
   assert.ok(!stateUnborn(dir), 'the migration\'s commit gives the state branch its first commit');
   readyForSim(dir);
+  renderLedgerCopies(dir, []);
   const indexed = await harness.callAsync(dir, ['knowledge', 'index'], { env: SESSION });
   assert.strictEqual(indexed.code, 0, indexed.stderr);
   return dir;

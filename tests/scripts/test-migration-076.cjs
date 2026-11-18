@@ -173,6 +173,7 @@ describe('engine migrate check 076-legacy-split (21.10.7)', () => {
       [{ themes: [themeOf('product-vision'), themeOf('product-vision')] }, ['two of its themes are named product-vision']],
       [{ themes: [{ kebab_name: 'product-vision', summary: ' ', description: '' }] }, ['its theme product-vision has no summary', 'its theme product-vision has no description']],
       [{ themes: [themeOf('Product.Vision')] }, ['its theme Product.Vision is no name a topic can take, which is lowercase letters, digits and hyphens, from a letter or digit']],
+      [{ themes: [themeOf('product.vision')] }, ['its theme product.vision is no name a topic can take, which is lowercase letters, digits and hyphens, from a letter or digit']],
       [{ themes: [themeOf('product-vision'), themeOf('content-layers')] }, ['its theme content-layers has no research beside its plan, content-layers.md']],
     ];
     for (const [plan, problems] of cases) {

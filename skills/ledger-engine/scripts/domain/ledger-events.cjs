@@ -8,7 +8,10 @@
 // Every event opens with the same fields: the version, its id, the event's
 // name, its tags — the work unit, the topic (none from the spec on, where
 // everything is the unit's), the phase and the session (5.2.3) — and the
-// time the engine wrote it (5.2.4). A finding about the product as a whole,
+// time the engine wrote it (5.2.4). Every line the migration carried from
+// before Ledger is tagged with the session `migration`
+// (`CARRIED_SESSION`), whoever made it: no conversation wrote it, and the
+// tag marks it as from before Ledger. A finding about the product as a whole,
 // which no unit holds, is tagged with the product's place: the unit
 // `product`, a name no work unit takes, in discovery, on no topic (8.12.9).
 // Every event a session writes but an asset link says who made it and who
@@ -218,6 +221,9 @@ const CALL_FIELDS = Object.freeze({
   mechanism: TEXT,
   product_wide: FLAG,
 });
+
+/** The session of every line the migration carried from before Ledger, whoever made it. */
+const CARRIED_SESSION = 'migration';
 
 /** What opens a move's `to` that names an item of the roadmap, not a topic (9.5.4). */
 const ROADMAP = 'roadmap:';
@@ -542,5 +548,5 @@ function parseEntry(line, number, schema = SCHEMA) {
 }
 
 module.exports = {
-  LEDGER, LEDGER_VERSION, SCHEMA, HEADER, REASONS, ASKED_BLIND, DECIDED_BY, ROADMAP, PRODUCT, ASSET_STATUSES, ROW_FIELDS, CALL_FIELDS, isPlainPath, LedgerLineError, LedgerNewer, entryKind, decidedBy, claudesCall, roadmapItemOf, eventFields, linkFields, validEvent, parseEntry,
+  LEDGER, LEDGER_VERSION, SCHEMA, HEADER, CARRIED_SESSION, REASONS, ASKED_BLIND, DECIDED_BY, ROADMAP, PRODUCT, ASSET_STATUSES, ROW_FIELDS, CALL_FIELDS, isPlainPath, LedgerLineError, LedgerNewer, entryKind, decidedBy, claudesCall, roadmapItemOf, eventFields, linkFields, validEvent, parseEntry,
 };

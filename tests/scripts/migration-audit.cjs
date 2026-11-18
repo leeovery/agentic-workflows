@@ -46,7 +46,9 @@
 //     document one file of the state holds every line of — a topic's
 //     research, discussion or investigation its topic's log and mail
 //     together, since released migrations moved part of one into its mail
-//     (054's triage, by way of 071's mailbox) — its headings, link targets,
+//     (054's triage, by way of 071's mailbox), an empty triage section
+//     054's checks have the session delete asked of neither — its
+//     headings, link targets,
 //     numbering and case aside, and the runs of `../` before an import or
 //     an asset, and a product session's bare `imports/`, which the move
 //     rewrites wherever they stand —
@@ -55,7 +57,8 @@
 //     unit's `.state/`, the old state's own ignore file, and the tools'
 //     sidecars;
 //   - every link or embed in a document the migration wrote — no legacy
-//     file, kept as it was — and every citation and asset a ledger line
+//     file, kept as it was, and none in a fence or a code span, which is
+//     code — and every citation and asset a ledger line
 //     names, where its carries moved it, and every roadmap source names a
 //     file; a link that names nothing is old only as often as the old
 //     documents the file holds held it dead, by its words and target, each
@@ -106,6 +109,11 @@ const FIX_TRACKING = /^[^/]+\/implementation\/[^/]+\/fix-tracking-[^/]*\.md$/;
 const TEXT = /\.(?:md|json)$/;
 const UNREAD = /^(?:\.cache|\.state|\.knowledge)\//;
 const LINK = /(!?)\[([^\]]*)\]\(([^)\s]+)\)/g;
+// A fence's line, its run of backticks or tildes, a closing one holding
+// the run alone; and a code span, its backtick run closed by one as long.
+const FENCE = /^ {0,3}(`{3,}|~{3,})/;
+const FENCE_CLOSE = /^ {0,3}(?:`{3,}|~{3,})[ \t]*$/;
+const CODE_SPANS = /(`+)[^`]+?\1/g;
 const SCHEME = /^[a-z][a-z0-9+.-]*:/i;
 // The runs of `../` before an import or an asset, and an import a product
 // session names from the product's folder, which the move rewrites wherever
@@ -115,6 +123,11 @@ const IMPORT_PATH = /(?:\.\.\/)+(?:imports|assets)\/|(?<![\w./-])(?:imports|asse
 // message in its mail, by the topic's folder.
 const TOPIC_DOCUMENT = /^[^/]+\/(?:research|discussion|investigation)\/([^/]+)\.md$/;
 const LOG_OR_MAIL = /^([^/]+\/topics\/([^/]+))\/(?:log\.md|mail\/[^/]+\.md)$/;
+// A research or discussion document, and the empty triage section 054's
+// checks have the session delete from one: its heading, then `(none)`
+// alone up to the next section or the end.
+const TRIAGED = /^[^/]+\/(?:research|discussion)\/[^/]+\.md$/;
+const EMPTY_TRIAGE = /^## Triage[ \t]*\n\s*\(none\)[ \t]*\n?(?=\s*(?:#{1,2}[ \t]|(?![\s\S])))/gm;
 // The separate call's binary boot runs: the suite's stub, which, unarmed, has no login.
 const CLAUDE_STUB = path.join(__dirname, 'claude-stub.sh');
 const STUB_ARMS = ['CLAUDE_STUB_ANSWERS', 'CLAUDE_STUB_LOG', 'CLAUDE_STUB_MEET'];
@@ -305,6 +318,12 @@ function manifestsValid(state, units) {
 /** A unit's manifest as the listing holds it from before the migration, empty where it holds none. @param {Listing} old @param {string} unit @returns {any} */
 const oldManifest = (old, unit) => JSON.parse(old.files[`${unit}/manifest.json`]?.text ?? '{}');
 
+/** The old state's units, by the names their folders had. @param {Listing} old */
+const oldUnits = (old) => Object.keys(old.files).filter((rel) => /^[^/]+\/manifest\.json$/.test(rel)).map((rel) => rel.split('/')[0]);
+
+/** Whether an old unit's name is `unit`'s: its own, or the one the move lowercased. @param {string} name @param {string} unit */
+const namesUnit = (name, unit) => name === unit || name.toLowerCase() === unit;
+
 // The discussion statuses a topic concluded under before the move, as the move (078) reads them.
 const CONCLUDED = ['completed', 'promoted'];
 
@@ -315,11 +334,10 @@ const CONCLUDED = ['completed', 'promoted'];
  * @param {Listing} old @param {string} unit @param {string} topic
  */
 function discussedBefore(old, unit, topic) {
-  return Object.keys(old.files).filter((rel) => /^[^/]+\/manifest\.json$/.test(rel)).some((rel) => {
-    const name = rel.split('/')[0];
+  return oldUnits(old).some((name) => {
     const item = oldManifest(old, name).phases?.discussion?.items?.[topic];
     const promotedHere = typeof item?.promoted_to === 'string' && item.promoted_to.toLowerCase() === unit;
-    return (name === unit || name.toLowerCase() === unit || promotedHere) && CONCLUDED.includes(item?.status);
+    return (namesUnit(name, unit) || promotedHere) && CONCLUDED.includes(item?.status);
   });
 }
 
@@ -339,8 +357,8 @@ function noCutWaiting(units) {
 
 /** The tracker parents of each old plan's phases a unit kept, from its old manifest. @param {Listing} old @param {string} unit @returns {string[]} */
 function oldPlanPhases(old, unit) {
-  return Object.entries(oldManifest(old, unit).phases?.planning?.items ?? {}).flatMap(([topic, item]) => Object.entries(item?.task_map ?? {})
-    .filter(([id]) => new RegExp(`^${topic}-\\d+$`).test(id)).map(([, parent]) => /** @type {string} */ (parent)));
+  return oldUnits(old).filter((name) => namesUnit(name, unit)).flatMap((name) => Object.entries(oldManifest(old, name).phases?.planning?.items ?? {})
+    .flatMap(([topic, item]) => Object.entries(item?.task_map ?? {}).filter(([id]) => new RegExp(`^${topic}-\\d+$`).test(id)).map(([, parent]) => /** @type {string} */ (parent))));
 }
 
 /**
@@ -372,8 +390,15 @@ function cutsHoldTracker(state, units, old) {
     .flatMap(([name, manifest]) => cutShortOf(state, name, manifest, old).map((found) => ({ check: 'cut-holds-tracker', found })));
 }
 
-/** The old state's text files as documents, by their paths in `.workflows/`. @param {Listing} old @returns {Doc[]} */
-const oldDocs = (old) => Object.entries(old.files).flatMap(([rel, { sha: hash, text }]) => (text === undefined ? [] : [{ rel, sha: hash, text, lines: keptLines(text) }]));
+/**
+ * The old state's text files as documents, by their paths in `.workflows/`:
+ * a research or discussion document's lines kept but an empty triage
+ * section's, which the checks stop has the session delete.
+ * @param {Listing} old @returns {Doc[]}
+ */
+const oldDocs = (old) => Object.entries(old.files).flatMap(([rel, { sha: hash, text }]) => (text === undefined ? [] : [{
+  rel, sha: hash, text, lines: keptLines(TRIAGED.test(rel) ? text.replace(EMPTY_TRIAGE, '') : text),
+}]));
 
 /**
  * Where each old document is held in the state: each document holding
@@ -452,9 +477,28 @@ function filesPlaced(state, units, old, olds, holders) {
     .map(([rel]) => ({ check: 'files-placed', found: `${OLD}/${rel} is ${CACHE_REPORT.test(rel) ? 'not in the cache\'s earlier/ as it was' : 'neither placed nor kept as legacy'}` }));
 }
 
+/**
+ * A document's text with its fenced blocks and code spans blanked, each
+ * character a space, so a link is read where it stands outside them and
+ * written as the document has it, a code span in its words among it.
+ * @param {string} text
+ */
+function proseOf(text) {
+  /** @type {string|null} */
+  let fence = null;
+  const blank = (/** @type {string} */ part) => ' '.repeat(part.length);
+  return text.split('\n').map((line) => {
+    const run = FENCE.exec(line)?.[1];
+    if (fence === null && run === undefined) return line.replace(CODE_SPANS, blank);
+    if (fence === null) fence = run ?? null;
+    else if (run !== undefined && run[0] === fence[0] && run.length >= fence.length && FENCE_CLOSE.test(line)) fence = null;
+    return blank(line);
+  }).join('\n');
+}
+
 /** Each relative link and embed of a document, `[words](target)` as written, with its target. @param {string} text */
 function linksIn(text) {
-  return [...text.matchAll(LINK)].map(([written, , , target]) => ({ written, target }))
+  return [...proseOf(text).matchAll(LINK)].map((link) => ({ written: text.slice(link.index, link.index + link[0].length), target: link[3] }))
     .filter(({ target }) => !SCHEME.test(target) && !target.startsWith('#') && !target.startsWith('/'));
 }
 

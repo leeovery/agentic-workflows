@@ -386,12 +386,15 @@ describe('the verifier\'s brief (21.10.7)', () => {
 });
 
 describe('a cite of a heading held more than once', () => {
-  it('both briefs say it names the heading\'s path, with an example, the carry refusing a bare one, which tells none of its copies apart', () => {
+  it('both briefs say it names the heading\'s path, and a heading sharing its whole path its place among them, with an example of each, the carry refusing a bare one, which tells none of its copies apart', () => {
     writeState(dir, composedPath('fumi', 'licensing'), `${RECORD}\n`);
 
     const briefs = ['migration-topic', 'migration-verifier'].map((role) => issued([role, ...LICENSING]).brief);
 
-    assert.deepStrictEqual(briefs.map((brief) => ['more than once in its part — by its path, as many of the headings over it as tell it apart, then its own: `Identity & Naming > Decision`', '`{"path": "{unit}/spec.md", "section": "Identity & Naming > Decision"}`: the carry refuses a cite naming several — a bare one tells none of its copies apart — and names the paths that do'].filter((said) => !brief.includes(said))), [[], []]);
+    assert.deepStrictEqual(briefs.map((brief) => [
+      'more than once in the parts the topic draws on, or in the whole file where none of them holds it — by its path, as many of the headings over it as tell it apart, then its own: `Identity & Naming > Decision`; and where headings share their whole path, siblings of one heading, by that path and its place among them, from one: `Skill Identity > Decision > revised [2]`, the second.',
+      '`{"path": "{unit}/spec.md", "section": "Identity & Naming > Decision"}`, and one of headings sharing their whole path by its place among them, `"Skill Identity > Decision > revised [2]"`, as the walk sheet shows it: the carry refuses a cite naming several — a bare one tells none of its copies apart — and names those that tell them apart',
+    ].filter((said) => !brief.includes(said))), [[], []]);
   });
 });
 
@@ -429,11 +432,13 @@ describe('a verifier\'s rulings', () => {
     assert.deepStrictEqual([
       unsaid('migration-verifier', [
         'Where you ruled that a point of the sources is not this record\'s, or is replaced by a later answer, write each such ruling into the rulings file the brief names, one line each, naming the point and its source\'s section.',
-        'a finding that would undo what an earlier round\'s finding had changed, or carry a point an earlier round\'s rulings set aside, opens `Reverses round {R}:`, naming that line.',
+        'A point an earlier round\'s rulings set aside, or the session settled, is closed: it is raised again only where a line of its source that ruling or settlement missed says otherwise, and that finding is a reversal, opening `Reverses round {R}:`, R the round that ruled, or `Reverses the session:`, naming that line. A new point on what an earlier round passed, or on what its findings changed, is a finding as any other, never a reversal.',
         'check that each finding is answered and each ruling kept.',
+        'Write the findings file the brief names afresh: each finding one list item, the section of the source and what the record misses or misstates,',
       ]),
+      unsaid('migration-phase-verifier', ['A point the session settled is closed: it is raised again only where a line of its source or the code that settlement missed says otherwise, and that finding is a reversal, opening `Reverses the session:`, naming that line. A new point on what an earlier round passed, or on what its findings changed, is a finding as any other, never a reversal.']),
       unsaid('migration-topic', ['Never carry a point the verifier\'s rulings below set aside, unless a point the session settled says otherwise. A finding asking for a point the rulings set aside, which no point the session settled covers, is not yours to answer: write it into the hand-back file the brief names, one line each, the finding and why you hand it back, for the session to settle as a reversal.', 'and how many findings you wrote into the hand-back file.']),
-    ], [[], []]);
+    ], [[], [], []]);
   });
 });
 
@@ -466,10 +471,12 @@ describe('the walk sheet (the verifier\'s brief)', () => {
     ].join('\n')}\n\n# The earlier rounds'`), brief);
   });
 
-  it('a joined spec\'s sections in the parts the topic draws on alone, and a section an entry cites in another part; a cite of a heading several parts hold, bare, is its part\'s, as the carry reads it', () => {
+  it('a joined spec\'s sections in the parts the topic draws on alone, and a section an entry cites in another part; a cite of a heading several parts hold, bare, is its part\'s, as the carry reads it; and of headings sharing their whole path, the one its place names, shown by it', () => {
+    fs.appendFileSync(statePath(dir, 'shop/spec.md'), '\n### Notes\n\nOne.\n\n### Notes\n\nTwo.\n');
     writeState(dir, composedPath('shop', 'weights'), JSON.stringify({ entries: [
       { ref: 'q1', event: 'asked', text: 'How do ties break?', cites: [{ path: 'shop/spec.md', section: 'Ranking' }] },
       { ref: 'q2', event: 'asked', text: 'May a wish be saved twice?', cites: [{ path: 'shop/spec.md', section: '2. Wishlist > Saving' }] },
+      { ref: 'q3', event: 'asked', text: 'Is a note kept?', cites: [{ path: 'shop/spec.md', section: 'Notes [2]' }] },
     ] }));
     const old = path.join(dir, '.workflows/shop/manifest.json');
     const manifest = JSON.parse(fs.readFileSync(old, 'utf8'));
@@ -482,7 +489,7 @@ describe('the walk sheet (the verifier\'s brief)', () => {
       '## shop/spec.md', '', '- Shop > 1. Weights > Ranking, lines 5–8', '  - q1, asked: How do ties break?',
       '- Shop > 1. Weights > Ranking > Detail, lines 9–12: no entry cites it', '- Shop > 1. Weights > Corrigenda, lines 13–16: no entry cites it',
       '- Shop > 1. Weights > Corrigenda > Detail, lines 17–20: no entry cites it',
-      '- Shop > 2. Wishlist > Saving, lines 23–26', '  - q2, asked: May a wish be saved twice?', '', '# The earlier rounds\'',
+      '- Shop > 2. Wishlist > Saving, lines 23–26', '  - q2, asked: May a wish be saved twice?', '- Shop > 2. Wishlist > Notes [2], lines 35–37', '  - q3, asked: Is a note kept?', '', '# The earlier rounds\'',
     ].join('\n')), brief);
   });
 

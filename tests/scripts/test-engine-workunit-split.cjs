@@ -11,8 +11,8 @@
 // where it now sits and each within its folder as written, and a link into
 // it from a document of the unit's following it; its ledger lines
 // carried, its record read on the epic's topic with each cite where its file
-// went and its copy following, the knowledge store indexing it there at once;
-// its places in the unit's cache purged; a roadmap item joined to it
+// went; no copy rendered nor the knowledge base told, which the migration's
+// finish does (21.9.1); its places in the unit's cache purged; a roadmap item joined to it
 // re-aimed, its source following; the unit keeping the rest; the commit held
 // for the migration's. The other way out, to the roadmap: `topic postpone`
 // takes a topic of the building unit while the migration runs, before the cut
@@ -20,8 +20,8 @@
 // once the migration's commit lands, the topic reads the record it left, its
 // entries as they stood and never current. Split again it finds everything
 // done, and naming a topic the epic it made lacks is refused; a session
-// killed after each step, split again, leaves what a run never killed leaves,
-// the store among it. Every refusal writes nothing.
+// killed after each step, split again, leaves what a run never killed
+// leaves. Every refusal writes nothing.
 //
 // Layer: verb, the kills spawned. World: the cut and the merges'
 // (migration-world.cjs), made once and copied for each test that writes,
@@ -81,16 +81,11 @@ async function indexed() {
 
 const STARS = '](../../assets/stars.md)';
 
-const MOVED = ['reviews', 'gifts'];
-
-/** The store a clean split leaves over one holding `files`: each moved topic's copy at its new path, its old one gone. @param {string[]} files */
-const splitStore = (files) => [...files.filter((file) => !MOVED.some((topic) => file === layout.record('shop', topic))), ...MOVED.map((topic) => layout.record('storefront', topic))].sort();
-
 describe('topics leave a building unit for a new epic (21.8.9, 21.8.10)', () => {
   beforeEach(() => { dir = world(); });
   afterEach(() => cleanupFixture(path.dirname(dir)));
 
-  it('the epic made, registered and its map approved, each topic where it stood; each moved whole, its lines carried and read there, its copy following, and a link into it from a document it left following it; the roadmap following; the unit keeping the rest; the commit held', () => {
+  it('the epic made, registered and its map approved, each topic where it stood; each moved whole, its lines carried and read there, and a link into it from a document it left following it; the roadmap following; the unit keeping the rest; no copy rendered, which the finish does (21.9.1); the commit held', () => {
     writeState(dir, layout.brief('shop', 'reviews'), `${readState(dir, layout.brief('shop', 'reviews'))}\nIts talk is in [the log](log.md).\n`);
     const weights = layout.topic('shop', 'weights', 'log.md');
     writeState(dir, weights, `${readState(dir, weights)}\nReviews weigh in too: [their talk](../reviews/log.md).\n`);
@@ -154,20 +149,16 @@ describe('topics leave a building unit for a new epic (21.8.9, 21.8.10)', () => 
       [layout.assets('shop', 'stars.md')],
     ]);
     assert.strictEqual(refuses(dir, ['ledger', 'record', 'shop', 'reviews'], { env: SESSION }).error, 'ledger record: shop has no topic "reviews"');
-    assert.deepStrictEqual([layout.record('storefront', 'reviews'), layout.record('shop', 'reviews')].map((rel) => Object.hasOwn(afterwards, rel)), [true, false]);
+    assert.deepStrictEqual(Object.entries(afterwards).filter(([rel]) => rel.startsWith(layout.knowledge())), Object.entries(before).filter(([rel]) => rel.startsWith(layout.knowledge())), 'no copy rendered');
     assert.ok(stateUnborn(dir));
   });
 
-  it('the knowledge store read at once: each moved topic\'s record copy indexed at its new path, its old one gone; its places in the unit\'s cache purged, every phase\'s', async () => {
-    await indexed();
+  it('its places in the unit\'s cache purged, every phase\'s', () => {
     const places = ['discovery', 'discussion'].map((phase) => layout.cache('shop', phase, 'reviews'));
     for (const place of places) writeState(dir, `${place}/entered.json`, '{}\n');
-    const before = indexedFiles(dir);
-    assert.ok(MOVED.every((topic) => before.includes(layout.record('shop', topic))), 'the store held the topics\' record copies');
 
     run(split());
 
-    assert.deepStrictEqual(indexedFiles(dir), splitStore(before));
     assert.deepStrictEqual(places.map((place) => fs.existsSync(statePath(dir, place))), [false, false], 'its places in the unit\'s cache purged');
   });
 
@@ -258,7 +249,7 @@ describe('a split killed part-way finishes on its next run', () => {
     ['the folder moved, its lines not carried', { method: 'renameSync', file: layout.topic('storefront', 'reviews'), when: 'after' }],
     ['the lines carried, the unit still holding the topics', { method: 'renameSync', file: layout.ledger, when: 'after' }],
     ['the topics gone from the unit, the epic not registered', { method: 'renameSync', file: layout.manifest('shop'), when: 'after' }],
-    ['the epic registered, the copies not yet following', { method: 'renameSync', file: `.ledger/${layout.projectManifest}`, when: 'after' }],
+    ['the epic registered', { method: 'renameSync', file: `.ledger/${layout.projectManifest}`, when: 'after' }],
   ])) {
     it(`killed with ${when}: split again, the state is a clean run's`, () => {
       killedAt(at, dir, split(), { env: SESSION });
@@ -266,26 +257,6 @@ describe('a split killed part-way finishes on its next run', () => {
       run(split());
 
       assert.deepStrictEqual(settledState(dir, ['storefront']), clean);
-    });
-  }
-});
-
-describe('a split killed between the copies and the store finishes on its next run, the store a clean run\'s', () => {
-  beforeEach(() => { dir = world(); });
-  afterEach(() => cleanupFixture(path.dirname(dir)));
-
-  for (const [when, at] of /** @type {[string, import('./engine-harness.cjs').KillPoint][]} */ ([
-    ['a moved topic\'s copy written at its new path', { method: 'renameSync', file: layout.record('storefront', 'reviews'), when: 'after' }],
-    ['a moved topic\'s old copy removed', { method: 'rmSync', file: layout.record('shop', 'reviews'), when: 'after' }],
-  ])) {
-    it(`killed with ${when}, the store not yet told: split again, each moved copy indexed at its new path, its old one gone`, async () => {
-      await indexed();
-      const before = indexedFiles(dir);
-      killedAt(at, dir, split(), { env: SESSION });
-
-      run(split());
-
-      assert.deepStrictEqual(indexedFiles(dir), splitStore(before));
     });
   }
 });

@@ -271,6 +271,14 @@ describe('each check refuses a world made to fail it', () => {
     assert.deepStrictEqual(faults(old), ['files-placed: .workflows/gateway/discussion/errors.md is neither placed nor kept as legacy']);
   });
 
+  it('files-placed: an empty triage section 054\'s checks had the session delete from a research or discussion document asked of no file; one holding a concern below its (none), deleted, placed nowhere', () => {
+    const old = structuredClone(world.old);
+    appendOld(old, 'memo/discussion/memo.md', '## Triage\n\n(none)');
+    appendOld(old, 'gateway/discussion/errors.md', '## Triage\n\n(none)\n\n### Straggler\n\nRetries back off.');
+
+    assert.deepStrictEqual(faults(old), ['files-placed: .workflows/gateway/discussion/errors.md is neither placed nor kept as legacy']);
+  });
+
   it('names-resolve: a link the migration left naming nothing where it was live, the same words dead in another old document excusing it nowhere else', () => {
     const old = structuredClone(world.old);
     appendOld(old, 'memo/discussion/memo.md', `See the ${OLD_RFC}.`);
@@ -278,6 +286,12 @@ describe('each check refuses a world made to fail it', () => {
     appendState(layout.topic('memo', 'memo', 'log.md'), `See the ${OLD_RFC}.`);
 
     assert.deepStrictEqual(faults(old), [`names-resolve: memo/topics/memo/log.md links ${OLD_RFC}, which names nothing`]);
+  });
+
+  it('names-resolve: a link\'s shape in a code span or a fence is code, naming nothing to resolve; a link whose words hold a code span is a link, named with its words as written', () => {
+    appendState(layout.topic('memo', 'memo', 'log.md'), 'Logs go through `p.log[level](text)`, and ``[a](b)`` too.\n\n```js\nlog[level](text);\n```\n\n~~~~\n[x](y.md)\n```\n~~~~\n\nSee [`spec.md`](gone.md).');
+
+    assert.deepStrictEqual(faults(), ['names-resolve: memo/topics/memo/log.md links [`spec.md`](gone.md), which names nothing']);
   });
 
   it('names-resolve: the links dead before excused in every document holding their old one — twice in one, in two, and in a document kept byte for byte in one place and rewritten in another, a roadmap import mailed to a topic, as portal\'s — counted over the same documents before and after, each occurrence, those landing in legacy apart, and each old one listed once', () => {
@@ -308,6 +322,16 @@ describe('each check refuses a world made to fail it', () => {
         `gateway/topics/errors/log.md: ${OLD_RFC}`,
       ],
     ]);
+  });
+
+  it('cut-holds-tracker: the old plan\'s phases read under the unit\'s name before the move, its own or the one the move lowercased', () => {
+    const old = structuredClone(world.old);
+    const memo = JSON.parse(/** @type {string} */ (old.files['memo/manifest.json'].text));
+    memo.phases.planning.items.memo.task_map['memo-3'] = 'tracker-gone';
+    old.files['Memo/manifest.json'] = { ...old.files['memo/manifest.json'], text: JSON.stringify(memo) };
+    delete old.files['memo/manifest.json'];
+
+    assert.deepStrictEqual(faults(old), ['cut-holds-tracker: memo\'s cut lacks the old plan\'s phase tracker-gone']);
   });
 
   it('cut-holds-tracker: a tracker the cut cannot be read against, a cut phase\'s parent gone or the tracker\'s store gone, a fault of its own, the rest of the report kept', () => {

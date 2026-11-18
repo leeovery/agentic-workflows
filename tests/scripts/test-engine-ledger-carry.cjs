@@ -18,7 +18,9 @@
 // refusal — each entry's, each check of an entry whichever others break,
 // and the directive's rules; a map item and a thread a name or a list of
 // names. The dry run answers the same faults, none for a record the carry
-// takes, writing nothing, and needs no session. The rules the records
+// takes, writing nothing. Every line it writes carries the migration's
+// mark, the session `migration`, whoever made it, and needs no session
+// handed; `ledger record` shows it. The rules the records
 // directive holds a record to are test-migration-079.cjs's.
 //
 // Layer: verb, the kill spawned. World: the records directive's
@@ -89,8 +91,8 @@ const mend = (entries) => mendFile({ entries: [...entries, KEEPS] });
 /** The refusal of licensing's record, naming every fault. @param {string[]} faults */
 const broken = (...faults) => `ledger carry: fumi's licensing breaks the records directive's rules, so nothing is carried — ${faults.join('; ')}`;
 
-/** @param {string} dotpath @param {unknown[]} entries */
-const carry = (dotpath, entries) => ok(dir, composed(dotpath, { entries }), { env: SESSION });
+/** A record carried, as the migration's session runs it, with no session handed. @param {string} dotpath @param {unknown[]} entries */
+const carry = (dotpath, entries) => ok(dir, composed(dotpath, { entries }), { env: {} });
 
 /**
  * The note a verifier's brief writes beside licensing's record of its
@@ -113,11 +115,11 @@ describe('a topic\'s record carried (21.6, 21.10.9)', () => {
   beforeEach(() => { dir = world(); });
   afterEach(() => cleanupFixture(path.dirname(dir)));
 
-  it('appended as one: each entry tagged, its content and its links by id, moving no one, a decision unchecked, its asset links after it; what was carried kept; the commit held', () => {
+  it('appended as one: each line tagged, its session the migration\'s mark, whoever made it, no session handed; its content and its links by id, moving no one, a decision unchecked, its asset links after it; what was carried kept; the commit held', () => {
     const res = carry(LICENSING, [QUESTION, DECISION, FINDING]);
     const entries = ledgerEntries(statePath(dir));
     const [q, d, , f] = entries;
-    const tags = { v: 1, unit: 'fumi', topic: 'licensing', phase: 'discussion', session: SESSION.CLAUDE_CODE_SESSION_ID };
+    const tags = { v: 1, unit: 'fumi', topic: 'licensing', phase: 'discussion', session: 'migration' };
 
     assert.deepStrictEqual(res, { ok: true, carried: 3, ids: { q1: q.id.slice(0, res.ids.q1.length), d1: d.id.slice(0, res.ids.d1.length), f1: f.id.slice(0, res.ids.f1.length) }, committed: null, note: 'held for the migration\'s commit' });
     assert.deepStrictEqual(lines(), [
@@ -135,6 +137,15 @@ describe('a topic\'s record carried (21.6, 21.10.9)', () => {
       unit: 'fumi', phase: 'discussion', topic: 'licensing', entries: [{ ref: 'q1', id: q.id }, { ref: 'd1', id: d.id }, { ref: 'f1', id: f.id }], record: { entries: [QUESTION, DECISION, FINDING] },
     });
     assert.ok(stateUnborn(dir));
+    assert.deepStrictEqual(ok(dir, ['ledger', 'record', 'fumi', 'licensing'], { env: SESSION }).decisions.map(({ session }) => session), ['migration'], 'ledger record shows the mark');
+  });
+
+  it('21.9.1: nothing written while the migration runs renders or indexes for the knowledge base — the carry, nor a write after it — which the finish does, so a store it cannot build says nothing mid-migration', () => {
+    writeState(dir, layout.knowledge('config.json'), '{"knowledge":{}}\n');
+    const carried = carry(LICENSING, [QUESTION, DECISION, FINDING]);
+    const asked = ok(dir, ['ledger', 'ask', 'fumi.discussion.search'], { env: SESSION, stdin: JSON.stringify({ text: 'Who pays for the trial?', by: 'claude', who_moved_whom: 'none' }) });
+
+    assert.deepStrictEqual([carried.warnings, asked.warnings, fs.readdirSync(statePath(dir, layout.knowledge())).sort()], [undefined, undefined, ['config.json']]);
   });
 
   it('21.S44: a cancelled unit\'s topic is carried as any other, its entries in the ledger', () => {
@@ -246,6 +257,107 @@ describe('a topic\'s record carried (21.6, 21.10.9)', () => {
   });
 });
 
+describe('the session\'s settlement of a late round (21.6.10)', () => {
+  beforeEach(() => { dir = world(); });
+  afterEach(() => cleanupFixture(path.dirname(dir)));
+
+  const SETTLE = ['ledger', 'settle', LICENSING];
+  const AMENDED = { ...DECISION, text: 'Fourteen days, from sign-up.' };
+  const FIXED = { numbers: [1], settled: 'fixed', why: 'The log starts it at sign-up.' };
+  const RULED_OUT = { numbers: [2, 3], settled: 'ruled-out', why: 'No line of the log shows them deciding.' };
+  const ROUNDS = '## Round 1\n\nOne.\n\n## Round 2\n\nTwo.\n';
+  const STANDING = '1. Trial Length: the trial starts at sign-up, not at the first sale.\n2. Decision: d1 credits the person.\n   The log shows no one deciding.\n3. Decision: d1 names no maker.\n';
+
+  /** @param {unknown} settlement @returns {import('./engine-harness.cjs').CallOptions} */
+  const given = (settlement) => ({ env: SESSION, stdin: JSON.stringify(settlement) });
+
+  /**
+   * Licensing's record at its third round, `kept` rounds before it: its
+   * verifier briefed on the record as composed, its findings standing and
+   * its verdict on each entry; then the record as amended.
+   * @param {unknown[]} amended @param {string} [kept]
+   */
+  function lateRound(amended, kept = ROUNDS) {
+    composed(LICENSING, { entries: [QUESTION, DECISION] });
+    writeState(dir, roundsPath('fumi', 'licensing'), kept);
+    writeState(dir, verifyingPath('fumi', 'licensing'), noted(['q1', 'd1'], ['q1', 'd1']));
+    writeState(dir, findingsPath('fumi', 'licensing'), STANDING);
+    writeState(dir, checkedPath('fumi', 'licensing'), 'q1: ok\nd1: see finding\n');
+    writeState(dir, composedPath('fumi', 'licensing'), JSON.stringify({ entries: amended }));
+  }
+
+  it('from the third round, keeps the verifier\'s round and the session\'s after it, each finding as settled and why, and passes the record as it stands: the carry takes it, and refuses it changed since', () => {
+    lateRound([QUESTION, AMENDED]);
+
+    const res = ok(dir, SETTLE, given({ findings: [RULED_OUT, FIXED] }));
+    const waiting = ok(dir, ['migrate', 'check', '079-records'], { env: SESSION }).unfinished.find(({ name }) => name === 'fumi.discussion.licensing')?.problems;
+    writeState(dir, composedPath('fumi', 'licensing'), JSON.stringify({ entries: [QUESTION, DECISION] }));
+    const changed = untouched(['ledger', 'carry', LICENSING]);
+    writeState(dir, composedPath('fumi', 'licensing'), JSON.stringify({ entries: [QUESTION, AMENDED] }));
+    const rounds = `${ROUNDS}\n## Round 3\n\n${STANDING}\n### Checked\n\nq1: ok\nd1: see finding\n\n## Round 4\n\nSettled by the session:\n\n- Findings 2, 3: ruled out — ${RULED_OUT.why}\n- Finding 1: fixed — ${FIXED.why}\n`;
+
+    assert.deepStrictEqual([res.round, res.settled, readState(dir, roundsPath('fumi', 'licensing')), waiting], [4, 2, rounds, ['was settled by the session, and waits to be carried']]);
+    assert.strictEqual(changed, 'ledger carry: fumi\'s licensing has changed since its verifier was briefed on it: a record is carried as its verifier read it — brief a fresh verifier');
+    assert.strictEqual(ok(dir, ['ledger', 'carry', LICENSING], { env: SESSION }).carried, 2);
+    assert.deepStrictEqual([readState(dir, roundsPath('fumi', 'licensing')), lines()[1].text], [rounds, AMENDED.text]);
+  });
+
+  it('once the session has passed the record, refused until a fresh verifier reads it: a finding written since is the session\'s own', () => {
+    lateRound([QUESTION, AMENDED]);
+    ok(dir, SETTLE, given({ findings: [RULED_OUT, FIXED] }));
+    writeState(dir, findingsPath('fumi', 'licensing'), '1. Refunds: the spec\'s section is carried by no record.\n');
+
+    assert.strictEqual(refusedUntouched(dir, SETTLE, given({ findings: [FIXED] }), harness), 'ledger settle: fumi\'s licensing was passed by the session, and no verifier has read it since — a finding written since is the session\'s own, which a fresh verifier reads once the record is amended: brief a fresh verifier');
+  });
+
+  it('every finding of the round named by its number, each once: one the round lacks, one twice, or one left unnamed refused, nothing written; a findings file of no list item is one finding', () => {
+    lateRound([QUESTION, AMENDED]);
+    const refused = (/** @type {unknown[]} */ findings) => refusedUntouched(dir, SETTLE, given({ findings }), harness);
+    const not = (/** @type {string} */ problems) => `ledger settle: fumi's licensing's round 3 holds findings 1 to 3, and the settlement is not each once — ${problems}: name every finding of the round by its number, one entry naming several settled alike`;
+
+    assert.deepStrictEqual([refused([FIXED]), refused([FIXED, { ...RULED_OUT, numbers: [1, 2, 3, 4] }])], [
+      not('it leaves 2, 3 unsettled'),
+      not('it names 4, which the round lacks; it names 1 twice'),
+    ]);
+    writeState(dir, findingsPath('fumi', 'licensing'), 'Trial Length: the trial starts at sign-up,\nnot at the first sale.\n');
+    assert.deepStrictEqual([refused([FIXED, RULED_OUT]), ok(dir, SETTLE, given({ findings: [FIXED] })).settled], [
+      'ledger settle: fumi\'s licensing\'s round 3 holds one finding, and the settlement is not each once — it names 2, 3, which the round lacks: name every finding of the round by its number, one entry naming several settled alike',
+      1,
+    ]);
+  });
+
+  it('refused, nothing written: the settlement of another shape, findings handed back standing, none standing or a pass, a round before the third, a verdict missing, and a finding fixed on a record as its verifier read it', () => {
+    const shape = 'ledger settle: the settlement is {"findings": [...]}, one at least, each {"numbers", "settled", "why"}: the numbers of the findings it settles, one at least; fixed or ruled-out; and why, one line';
+    lateRound([QUESTION, AMENDED]);
+    const shapes = [{ findings: [] }, { findings: [{ ...FIXED, settled: 'done' }] }, { findings: [{ ...FIXED, why: 'two\nlines' }] }, { findings: [FIXED], more: true }, { findings: [{ ...FIXED, numbers: [] }] }, { findings: [{ ...FIXED, numbers: ['1'] }] }]
+      .map((settlement) => refusedUntouched(dir, SETTLE, given(settlement), harness));
+    writeState(dir, handbackPath('fumi', 'licensing'), '- Carry the pricing.\n');
+    const handed = refusedUntouched(dir, SETTLE, given({ findings: [FIXED] }), harness);
+    fs.rmSync(statePath(dir, handbackPath('fumi', 'licensing')));
+    writeState(dir, checkedPath('fumi', 'licensing'), 'q1: ok\n');
+    const unchecked = refusedUntouched(dir, SETTLE, given({ findings: [FIXED] }), harness);
+    writeState(dir, roundsPath('fumi', 'licensing'), '## Round 1\n\nOne.\n');
+    const second = refusedUntouched(dir, SETTLE, given({ findings: [FIXED] }), harness);
+    writeState(dir, findingsPath('fumi', 'licensing'), '\n');
+    const passed = refusedUntouched(dir, SETTLE, given({ findings: [FIXED] }), harness);
+    fs.rmSync(statePath(dir, findingsPath('fumi', 'licensing')));
+    const unwritten = refusedUntouched(dir, SETTLE, given({ findings: [FIXED] }), harness);
+    lateRound([QUESTION, DECISION]);
+    const unamended = refusedUntouched(dir, SETTLE, given({ findings: [RULED_OUT, FIXED] }), harness);
+    const none = `ledger settle: fumi's licensing has no findings standing in ${findingsPath('fumi', 'licensing')} — the session settles what a verifier found, and a record with none has passed, or waits on its verifier`;
+
+    assert.deepStrictEqual([...shapes, handed, unchecked, second, passed, unwritten, unamended], [shape, shape, shape, shape, shape, shape,
+      `ledger settle: fumi's licensing has findings handed back to the session in ${handbackPath('fumi', 'licensing')}: settle each into .cache/migrate/records/fumi/licensing.settled.md, replace it in ${findingsPath('fumi', 'licensing')} with \`Settled: {point}, amend to agree\` where the record changes, or take it out where it stands, then remove ${handbackPath('fumi', 'licensing')}`,
+      `ledger settle: fumi's licensing has no verdict from its last verifier on every entry its brief asked one of — it names no verdict on d1: a verifier writes a line for each entry its walk sheet does not mark passed, \`{ref}: ok\` or \`{ref}: see finding\`, and one that does not has given no verdict — remove ${findingsPath('fumi', 'licensing')}, ${rulingsPath('fumi', 'licensing')} and ${checkedPath('fumi', 'licensing')}, and brief a fresh verifier`,
+      'ledger settle: fumi\'s licensing\'s findings are round 2\'s, and the session settles a verifier\'s from round 3 on — before it, a fresh per-topic agent amends the record and a fresh verifier reads what changed',
+      none, none,
+      'ledger settle: fumi\'s licensing is as its verifier read it, so no finding of it is fixed — have the record amended to answer it, or rule it out',
+    ]);
+    assert.deepStrictEqual(ok(dir, SETTLE, given({ findings: [{ ...RULED_OUT, numbers: [3, 1, 2] }] })).round, 4, 'every finding ruled out, the record as its verifier read it');
+    assert.ok(readState(dir, roundsPath('fumi', 'licensing')).includes(`## Round 3\n\n${STANDING}`), 'the verifier\'s findings kept as it wrote them');
+  });
+});
+
 describe('a redo never duplicates (21.10.9)', () => {
   beforeEach(() => { dir = world(); });
   afterEach(() => cleanupFixture(path.dirname(dir)));
@@ -283,10 +395,9 @@ describe('the refusals, nothing written', () => {
   before(() => { dir = world(); });
   after(() => cleanupFixture(path.dirname(dir)));
 
-  it('no session, argv of another shape, and a place naming no topic, writing nothing; no record composed, or a file holding none, writing its refusal beside the record', () => {
+  it('argv of another shape, and a place naming no topic, writing nothing; no record composed, or a file holding none, writing its refusal beside the record', () => {
     const usage = 'Usage: engine ledger carry <work-unit>.<phase>.<topic>|<work-unit>.discovery [--dry-run]   (the record as JSON, {"entries": [...]}, composed at .cache/migrate/records/{unit}/{topic}.json in the state, a unit\'s own at .cache/migrate/records/{unit}.json)';
     assert.deepStrictEqual([
-      untouched(['ledger', 'carry', LICENSING], { env: {} }),
       untouched(['ledger', 'carry']),
       untouched(['ledger', 'carry', '--dry-run']),
       untouched(['ledger', 'carry', '--file', 'record.json']),
@@ -303,7 +414,6 @@ describe('the refusals, nothing written', () => {
       mendFile({ entries: [QUESTION], more: true }),
       mendFile({ entries: ['q1'] }),
     ], [
-      'ledger carry: no session to tag the entries with — CLAUDE_CODE_SESSION_ID is not set',
       usage,
       usage,
       usage,

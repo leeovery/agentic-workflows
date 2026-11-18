@@ -65,8 +65,10 @@ const entriesHeld = (entries) => Object.fromEntries(entries.map((entry) => [Stri
 /**
  * The note beside a record its verifier is briefed on: the record's hash,
  * the refs it gives a verdict on, each entry hashed and as held, the
- * sections it walks, and what the rounds before it left.
- * @typedef {{hash: string, refs: string[], entries: Record<string, string>, held: Record<string, Held>, sections: Record<string, string[]>, before: Past}} Note
+ * sections it walks, and what the rounds before it left; or, `settled`,
+ * the record as the session passed it, settling a late round's findings
+ * (ledger-settle.cjs).
+ * @typedef {{hash: string, refs: string[], entries: Record<string, string>, held: Record<string, Held>, sections: Record<string, string[]>, before: Past, settled?: true}} Note
  */
 
 /** Before any round. @type {Past} */

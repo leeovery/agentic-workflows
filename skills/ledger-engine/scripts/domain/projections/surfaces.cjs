@@ -280,7 +280,12 @@ function drawLabel(label) {
  * @typedef {{kind: 'engine', argv: string[]} | {kind: 'handoff', skill: string, args: string[]} | {kind: 'invoke', skill: string, args: string[]} | {kind: 'continue'}} Next
  */
 
-/** @typedef {{prose: GateProse|null, rows: Map<string, GateRow>, options: GateOption[], typed: GateTyped[], next: Map<GateRow, Next>}} GateCollection */
+/**
+ * The gate a command is collecting; `literal` where the menu's words are
+ * another's, written as given, so a code span in them reaches the payload
+ * as written (`wordsAsWritten`).
+ * @typedef {{prose: GateProse|null, rows: Map<string, GateRow>, options: GateOption[], typed: GateTyped[], next: Map<GateRow, Next>, literal: boolean}} GateCollection
+ */
 
 /** @typedef {{key: string, word: string|null, head: string, tail: string|null, detail: string|null, recommended: boolean, next: Next|null}} ShownOption */
 /** A typed row, answered in words — a Comment, an Ask. @typedef {{label: string, next: Next|null}} ShownTyped */
@@ -325,7 +330,7 @@ function gateSurfaceAnnounced() {
  * @returns {void}
  */
 function openGate() {
-  collected = { prose: null, rows: new Map(), options: [], typed: [], next: new Map() };
+  collected = { prose: null, rows: new Map(), options: [], typed: [], next: new Map(), literal: false };
   shown = null;
   stepped = false;
 }
@@ -407,13 +412,39 @@ function escapeMarkdown(text) {
   return String(text).replace(/[\\`*_~[\]<>]/g, (c) => `\\${c}`);
 }
 
+// A code span: a backtick run, then text, closed by a run as long, on its
+// line.
+const CODE_SPAN = /((?<!`)(`+)(?!`)[^\n]*?[^`\n]\2(?!`))/;
+
+/** Prose escaped as `escapeMarkdown` escapes it, each code span in it kept one. @param {string} text */
+function escapeProse(text) {
+  const parts = String(text).split(CODE_SPAN);
+  return parts.map((part, at) => (at % 3 === 0 ? escapeMarkdown(part) : at % 3 === 1 ? part : '')).join('');
+}
+
+/**
+ * The menu being collected draws another's words as written, its code
+ * spans among them: the payload keeps each span's backticks, which the
+ * engine's own markup drops.
+ * @returns {void}
+ */
+function wordsAsWritten() {
+  if (collected !== null) collected.literal = true;
+}
+
 // A code span's content and an escaped character are literal text; every
 // other marker is presentation.
-const MARKUP = /`([^`]*)`|\\([!-/:-@[-`{-~])|\*\*|~~|[`*]/g;
+const MARKUP = /(?<!`)(`+)(?!`)(.*?[^`])\1(?!`)|\\([!-/:-@[-`{-~])|\*\*|~~|[`*]/g;
 
-/** Prose without the engine's markup — the payload states no presentation. @param {string} text @returns {string} */
+/**
+ * Prose without the engine's markup — the payload states no presentation —
+ * but, in a menu drawing another's words as written, each code span kept
+ * whole (`wordsAsWritten`).
+ * @param {string} text @returns {string}
+ */
 function stripMarkup(text) {
-  return String(text).replace(MARKUP, (_, code, escaped) => code ?? escaped ?? '').trim();
+  const literal = collected?.literal === true;
+  return String(text).replace(MARKUP, (whole, _run, code, escaped) => (code === undefined ? escaped ?? '' : literal ? whole : code)).trim();
 }
 
 /** A label part as text, `null` when the row draws none. @param {string|undefined} part @returns {string|null} */
@@ -869,5 +900,5 @@ function treeList(items, { indent = '     ', width = displayWidth() } = {}) {
   return out.join('\n');
 }
 
-module.exports = { DOTS, NBSP, NOTE_SEPARATOR, gateSurfaceAnnounced, openGate, gateShown, gateStepped, illustrate, section, menuSection, GATE_MOD_INSTRUCTION, RENDER_FORMS, emitAs, timedInstruction, STOP_CLAUSE, MENU_INSTRUCTION, titleSection, dataSection, CONTINUE_CLAUSE, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, menuFrame, menu, drawLabel, cmdOption, bareOption, promptOption, escapeMarkdown, callout, indentedBody, bulletRow, clipped, treeList };
+module.exports = { DOTS, NBSP, NOTE_SEPARATOR, gateSurfaceAnnounced, openGate, gateShown, gateStepped, illustrate, section, menuSection, GATE_MOD_INSTRUCTION, RENDER_FORMS, emitAs, timedInstruction, STOP_CLAUSE, MENU_INSTRUCTION, titleSection, dataSection, CONTINUE_CLAUSE, CONTINUE_INSTRUCTION, CONTINUE_MARKDOWN_INSTRUCTION, menuFrame, menu, drawLabel, cmdOption, bareOption, promptOption, escapeMarkdown, escapeProse, wordsAsWritten, callout, indentedBody, bulletRow, clipped, treeList };
 

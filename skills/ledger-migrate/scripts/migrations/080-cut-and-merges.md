@@ -26,8 +26,8 @@
 - For each link in the tracker the cut refuses that the sources do not
   settle: whether it still holds; and for one that holds on a later phase
   of its own old plan, which way on.
-- For a point a verifier reverses that the sources do not settle: how it
-  stands.
+- For a point the sources do not settle that a verifier reverses, or
+  that a finding of the third round or a later one raises: how it stands.
 - Nothing else.
 
 ## What It Does
@@ -109,7 +109,7 @@ node .claude/skills/ledger-engine/scripts/engine.cjs brief migration-phase-verif
 
 Dispatch each brief's agent with its pointer alone; phases' agents can run at once, each writing its own piece. Where a verifier finds something, a fresh per-phase agent amends that piece, its brief carrying the findings, and the verifier reads what changed since, its brief carrying every round before and the changes, until it passes the piece. A piece is never edited by hand. A file an agent left under the phases, which the check names, is removed.
 
-A finding that opens `Reverses round {R}:` would undo what an earlier round had the piece changed to: it goes to no agent, nor does a finding the third round or a later one writes. Settle the point from the phase's sources and the code; where they don't settle it, ask the person in prose, naming what each round found and what each rests on, and **STOP.** Wait for user response. Write the ruling, a line naming the point and what settles it, into `phases/{N}.settled.md`, which every later brief of the phase carries as closed. Where the ruling has the piece change, replace the finding with `Settled: {point}, amend to agree`: a fresh per-phase agent amends the piece to answer it, and the verifier reads it again, its brief keeping it as a round. Where the ruling keeps the piece as it stands, take the finding out of the findings file; where no finding is left, the file empty, the piece has passed. An empty findings file is only ever a pass.
+A reversal is a finding against a point the session settled, opening `Reverses the session:`; a new point on what an earlier round passed, or on what its findings had the piece changed to, is a finding as any other. A reversal goes to no agent, nor does a finding the third round or a later one writes. Settle the point from the phase's sources and the code; where they don't settle it, ask the person in prose, naming what each round found and what each rests on, and **STOP.** Wait for user response. Write the ruling, a line naming the point and what settles it, into `phases/{N}.settled.md`, which every later brief of the phase carries as closed. Where the ruling has the piece change, replace the finding with `Settled: {point}, amend to agree`: a fresh per-phase agent amends the piece to answer it, and the verifier reads it again, its brief keeping it as a round. Where the ruling keeps the piece as it stands, take the finding out of the findings file; where no finding is left, the file empty, the piece has passed. An empty findings file is only ever a pass.
 
 ### A Phase's Piece
 
@@ -181,7 +181,7 @@ Write each `Settled:` ruling above, a task of this unit's on another unit's and 
 
 ## An Epic's Research
 
-The move kept research that fed several topics on the epic's discovery log, in a session of its own, `{unit}/discovery/session-{NNN}.md`, opening on the migration's line, each source under `## Research: {source}`, `{source}` the name of the research file it came from. Place each source by judgment:
+The move kept research that fed several topics on the epic's discovery log, in a session of its own, `{unit}/discovery/session-{NNN}.md`, opening on the migration's line, each source under `## Research: {source}`, `{source}` the name of the research file it came from. Only such a heading naming a research file opens a source: any other under it, a `## Research:` heading the research's own title made among them, is part of the source above it. Place each source by judgment:
 
 - **Where it bears.** A topic it bears on is one whose conversation needs what the section holds to be had: its decisions turn on it, or it answers that topic's questions. A section bearing on one theme of the epic goes to that topic; one bearing on several goes to each.
 - **Epic-wide.** A section that bears on the epic as a whole, or on no topic more than another, stays where it is: the records step carried what it holds on the epic's own record.
