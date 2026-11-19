@@ -41,7 +41,7 @@ describe('GitHub\'s landing driver across nested repositories, each asked in tur
       state.squash = { ...GITHUB_SQUASH };
     };
     for (const dir of [at.dir, at.ext]) onGithub(dir, squashing);
-    const read = (/** @type {string} */ repo) => ['auth status --hostname github.com', `api repos/acme/${repo}`];
+    const read = (/** @type {string} */ repo) => [`api repos/acme/${repo}`];
     const set = (/** @type {string} */ repo) => `api --method PATCH repos/acme/${repo} -f squash_merge_commit_title=PR_TITLE -f squash_merge_commit_message=PR_BODY -F allow_merge_commit=true`;
     const squashes = () => [at.dir, at.ext, at.lib].map((dir) => github(dir).squash);
     const fromPulls = { squash_merge_commit_title: 'PR_TITLE', squash_merge_commit_message: 'PR_BODY' };
@@ -61,7 +61,7 @@ describe('GitHub\'s landing driver across nested repositories, each asked in tur
     const before = [at.dir, at.ext].map((dir) => calls(dir).length);
     assert.strictEqual(ok(at.dir, ['github-squash', 'yes']).github_squash, 'set');
     assert.deepStrictEqual([at.dir, at.ext].map((dir, i) => calls(dir).slice(before[i])), [read('portal'), read('ext')]);
-    assert.deepStrictEqual([calls(at.lib).slice(-3), squashes()], [[...read('lib'), set('lib')], [fromPulls, fromPulls, fromPulls]]);
+    assert.deepStrictEqual([calls(at.lib).slice(-2), squashes()], [[...read('lib'), set('lib')], [fromPulls, fromPulls, fromPulls]]);
   });
 
   it('refuses a merge in one repository carrying the warnings of those landed before it', () => {

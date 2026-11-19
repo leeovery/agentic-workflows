@@ -73,9 +73,10 @@
 // archived or not), kept as legacy (below); the knowledge store is not, and
 // the next boot builds it from the config, with no setup question (21.9.6).
 // The old `.state/` holds the old engine's record, `migrations`, rebuilt,
-// and the environment setup file, free text no environment field takes —
-// the first ready to build asks the setup afresh — kept as legacy, as is any
-// other file there. `.roadmap/` is
+// and the environment setup file, whose words are a note among the steps
+// that prepare the project's environment, unconfirmed, for the first ready
+// to build to draw on the setup's screen (reshape/old-system.cjs), the file
+// kept nowhere; any other file there is kept as legacy. `.roadmap/` is
 // `.product/` (21.5.7): its sessions as they are but for their headings,
 // demoted as a log's documents are, each note out of its kind's folder under
 // its inbox name, and `imports/` as `assets/`, the documents' links to an
@@ -94,8 +95,10 @@
 // in the project folder is carried into the state as it is, the files its
 // tool keeps local ignored in the state's own `.gitignore`, written
 // otherwise as the engine writes it (7.5.4). A task driver's folder whose
-// declaration is missing or does not read is named in the notice the move
-// hands back.
+// declaration is missing or does not read, and whose tracker a plan of the
+// project used — an old planning item's format names the folder — is named
+// in the notice the move hands back, its store left where it is; one no
+// plan used left nothing behind, and is named nowhere.
 //
 // The user-level folder (21.5.19, P7): `WORKFLOWS_CONFIG_DIR` or
 // `~/.config/workflows/` moves into `LEDGER_CONFIG_DIR` or
@@ -168,8 +171,20 @@
 //     there (`../imports/{name}`, the name one `imports/` holds) are
 //     rewritten to the asset's place from the document's own; each
 //     `imports[]` entry's path follows its file (21.5.7);
-//   - plans go to `assets/plans/{topic}/` and review folders to
-//     `assets/reviews/{topic}/`, names kept; a spec goes to
+//   - every file the old system's own agents and trackers wrote in a
+//     topic's folder of the old plan's phases — the plan, its phases' and
+//     tasks' files and its reviews' tracking, the spec reviews' tracking,
+//     the build's tracking, analysis, staging, consolidation and fix
+//     tracking, and the review's reports and change-set checks, each
+//     matched by its whole path below the folder as they write it, never by
+//     a fragment a topic's or a section's slug can hold
+//     (reshape/old-system.cjs) — is copied, as
+//     the old cache's reports are, byte for byte into the unit's `earlier/`
+//     in the state's ignored cache, at its path below the unit's old
+//     folder, never committed and never legacy, the migration's cut reading
+//     a building unit's plans there (080); any other file of those folders
+//     but a spec is kept as legacy;
+//   - a spec goes to
 //     `assets/specs/{topic}.md` where the unit's building has not started —
 //     an implementation item in progress or completed; where it has, every
 //     spec past its gate — its item completed, or in progress where its topic
@@ -200,16 +215,11 @@
 //     a quick-fix's spec goes to `assets/specs/` whatever its building, and
 //     once the quick-fix is completed — its status says so, or every phase
 //     of its old pipeline, scoping, implementation and review, completed,
-//     whatever its status reads — its spec is its `summary.md` and its plan
-//     is kept as legacy, its spec, plan, implementation and review items
-//     going (21.5.15, 21.5.16),
+//     whatever its status reads — its spec is its `summary.md`, its spec,
+//     plan, implementation and review items going (21.5.15, 21.5.16),
 //     its status completed but where it was cancelled (21.5.14);
 //   - the unit's `.state/` goes whole, holding the old engine's analysis
-//     caches only (21.5.17); implementation folders, holding the build's
-//     analysis and fix reports, and the spec and plan reviews' tracking
-//     files, each matched by its whole name as those reviews write it, never
-//     by a fragment a topic's or a section's slug can hold, are kept as
-//     legacy; seeds stay as they are;
+//     caches only (21.5.17); seeds stay as they are;
 //   - the files the person's tools leave beside theirs (`.DS_Store` and the
 //     rest of the engine's list) are neither carried nor named;
 //   - a cancelled unit moves as any other (21.5.14).
@@ -245,7 +255,7 @@
 // any decided topic's; any other is cancelled, as the cancel leaves one, no
 // decision written, its mail going to the inbox with a cancelled topic's.
 // A unit whose building has not started keeps no spec or planning items:
-// its specs and plans are reference assets now, and its one spec is written
+// its specs are reference assets now, and its one spec is written
 // fresh once its topics are decided (21.8.2, 21.8.3); a unit completed or
 // cancelled keeps no spec, planning, implementation or review items either,
 // history that waits on no cut (21.8.11), nor does a completed quick-fix,
@@ -283,7 +293,9 @@
 // legacy: a unit's into `.cache/{unit}/earlier/` at its path below the
 // unit's folder in the old cache, each unit's name in it as it is carried, where
 // the unit's ending purges them as it purges the rest of its cache; any
-// other into `.cache/earlier/` at its path below the old cache.
+// other into `.cache/earlier/` at its path below the old cache. The files
+// the old system wrote in a unit's own folder join them in the unit's
+// `earlier/`, at their paths below that folder.
 //
 // Every moved document's links and embeds, resolved from where the document
 // was, follow what they name — a file the move places or keeps, a folder
@@ -326,7 +338,10 @@
 //     on it, and the wait its discussion holds on one;
 //   - a unit renamed to its lowercase name where another unit holds that
 //     name already is moved onto it — a folder a case-insensitive disk, as
-//     a Mac's is, never holds beside the other.
+//     a Mac's is, never holds beside the other;
+//   - a file the old system wrote in a unit's folder and a report of the
+//     old cache at the same path below the unit's folder there are one
+//     file in its `earlier/`, the cache's report.
 //
 
 const fs = require('fs');
@@ -334,6 +349,7 @@ const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
 const { carryLinters } = require('./reshape/linters.cjs');
+const { OLD_PLAN_PHASES, oldSystemFile, ENVIRONMENT_SETUP, withSetupNote } = require('./reshape/old-system.cjs');
 const {
   OLD_STATE: CODE_TREE_STATE, STATE_DIR, STATE_GITIGNORE, SIDECAR_NAME, git, mainCheckout, projectInMain, stateBorn, placeStateWorktree, writeWhole, preLedgerStores, unreadStores,
 } = require('./reshape/shared.cjs');
@@ -407,7 +423,6 @@ const PAST_THE_TOPICS = ['specification', 'planning', 'implementation', 'review'
 // A quick-fix's pipeline as today's engine runs it.
 const QUICK_FIX_PIPELINE = ['scoping', 'implementation', 'review'];
 
-const DELIVERY_PHASES = ['specification', 'planning', 'review'];
 // Folders carried whole under a name of the layout's, their files as they are.
 const CARRIED = { imports: 'assets', seeds: 'seeds' };
 const DROP = Symbol('drop');
@@ -468,13 +483,8 @@ const EXPERIMENT_FILES = ['problem.md', 'design.md', 'report.md'];
 const MAILBOX_MESSAGE = /^(research|discussion|investigation)\/\.mailbox\/([^/]+)\/([^/]+\.md)$/;
 const SESSION = /^discovery\/sessions\/(session-([0-9]{3,})\.md)$/;
 const INBOX_ITEM = /^(?:\.archived\/)?(?:ideas|bugs|quickfixes)\/[0-9]{4}-[0-9]{2}-[0-9]{2}--[a-z0-9]+(?:-[a-z0-9]+)*\.md$/;
-// The review tracking files today's spec and plan reviews write at the top
-// of their folders, each named whole — a topic's or a section's slug never
-// makes one of these — kept as legacy, never among the plans.
-const TRACKING_FILES = {
-  specification: /^review-(?:input|gap-analysis|claims)-tracking-c[0-9]+\.md$/,
-  planning: /^review-(?:traceability|integrity)-tracking-c[0-9]+\.md$/,
-};
+// A file the old system wrote, copied into its unit's cache.
+const OLD_SYSTEMS = Symbol('the old system\'s');
 
 const ID_ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
 const ID_LENGTH = 21;
@@ -1140,18 +1150,17 @@ function moveMail(move) {
 }
 
 /**
- * Where a spec, a plan or a review folder's file goes, unit-relative;
- * JOINED for a spec joined into `spec.md`, or null for one the layout has
- * no place for: a review's tracking file, and a completed quick-fix's plan
- * among them.
+ * Where a file of a topic's folder of the old plan's phases goes,
+ * unit-relative: OLD_SYSTEMS for one the old system wrote; a spec as a
+ * reference asset, a completed quick-fix's as its summary, or JOINED for
+ * one joined into `spec.md`; and null for any other, which the layout has
+ * no place for.
  * @param {UnitMove} move @param {string} top @param {string} topic @param {string} below
  * @returns {string|symbol|null}
  */
 function deliveryPlace(move, top, topic, below) {
-  if (Object.hasOwn(TRACKING_FILES, top) && TRACKING_FILES[top].test(below)) return null;
-  if (top === 'planning') return move.quickFixDone ? null : `assets/plans/${topic}/${below}`;
-  if (top === 'review') return `assets/reviews/${topic}/${below}`;
-  if (below !== 'specification.md') return null;
+  if (oldSystemFile(`${top}/${topic}/${below}`)) return OLD_SYSTEMS;
+  if (top !== 'specification' || below !== 'specification.md') return null;
   if (move.joined.includes(topic)) return JOINED;
   return move.quickFixDone ? 'summary.md' : `assets/specs/${topic}.md`;
 }
@@ -1278,8 +1287,8 @@ function experimentPlace(at, inside, named = EXPERIMENT_RECORD) {
 
 /**
  * Where a file of the unit's goes, unit-relative, by its place today: DROP,
- * or null as `deliveryPlace` says; a split's superseded copy of research
- * kept as reference.
+ * or OLD_SYSTEMS or null as `deliveryPlace` says; a split's superseded copy
+ * of research kept as reference.
  * @param {UnitMove} move @param {string} rel
  * @returns {string|symbol|null}
  */
@@ -1295,7 +1304,7 @@ function placeOf(move, rel) {
   if (inside.length === 0) return null;
   if (top === 'experiment') return move.topics.has(topic) ? experimentPlace(`topics/${topic}/experiments`, inside) : null;
   if (top === 'discovery') return briefPlace(move, topic, inside);
-  return DELIVERY_PHASES.includes(top) ? deliveryPlace(move, top, topic, inside.join('/')) : null;
+  return OLD_PLAN_PHASES.includes(top) ? deliveryPlace(move, top, topic, inside.join('/')) : null;
 }
 
 /** The names of the files a unit's `imports/` holds. @param {string} unitDir @returns {Set<string>} */
@@ -1373,6 +1382,13 @@ const filesByPlace = (move) => move.files.filter((rel) => rel !== 'manifest.json
  * @param {UnitMove} move @returns {string[]}
  */
 const legacyFiles = (move) => filesByPlace(move).filter((rel) => placeOf(move, rel) === null);
+
+/**
+ * The unit's files the old system wrote, unit-relative, each copied into
+ * the unit's cache.
+ * @param {UnitMove} move @returns {string[]}
+ */
+const oldSystemFiles = (move) => filesByPlace(move).filter((rel) => placeOf(move, rel) === OLD_SYSTEMS);
 
 /** @typedef {[string, {to: string, anchor: string}]} PlaceEntry */
 
@@ -1747,10 +1763,22 @@ function filesOf(from, name) {
 function cacheReports(from, units, renames) {
   return filesUnder(path.join(from, OLD_CACHE)).filter((rel) => rel.endsWith('.md')).map((rel) => {
     const [unit, ...below] = rel.split('/');
-    const to = units.has(unit) ? `${CACHE}/${renamedPath(unit, renames)}/${EARLIER}/${renamedPath(below.join('/'), renames)}` : `${CACHE}/${EARLIER}/${rel}`;
-    return [`${OLD_CACHE}/${rel}`, to];
+    return [`${OLD_CACHE}/${rel}`, units.has(unit) ? earlierOf(unit, below.join('/'), renames) : `${CACHE}/${EARLIER}/${rel}`];
   });
 }
+
+/**
+ * The files the old system wrote in each unit's folder, each to the unit's
+ * `earlier/` in the state's cache, beside the old cache's reports, at its
+ * path below the unit's old folder, every name of a unit in either as it is
+ * carried.
+ * @param {UnitMove[]} moves @param {Map<string, string>} renames @returns {[string, string][]}
+ */
+const oldSystemsKept = (moves, renames) => moves.flatMap((unit) => oldSystemFiles(unit)
+  .map((rel) => /** @type {[string, string]} */ ([`${unit.unit}/${rel}`, earlierOf(unit.unit, rel, renames)])));
+
+/** A unit's file's place in the unit's `earlier/`, state-relative, by its path below the unit's old folder. @param {string} unit @param {string} below @param {Map<string, string>} renames */
+const earlierOf = (unit, below, renames) => `${CACHE}/${renamedPath(unit, renames)}/${EARLIER}/${renamedPath(below, renames)}`;
 
 /**
  * Every file kept as it was written byte for byte at its place, its place
@@ -2018,6 +2046,13 @@ function legacyNote(legacy, placed) {
 }
 
 /**
+ * Whether a plan of the project used the tracker of the task driver's
+ * folder `name`: an old planning item's format names it.
+ * @param {Map<string, Record<string, any>>} manifests @param {string} name
+ */
+const plannedIn = (manifests, name) => [...manifests.values()].some((manifest) => Object.values(itemsOf(manifest, 'planning')).some((item) => isObject(item) && item.format === name));
+
+/**
  * The move of the project at `projectDir` — its own folder, nested in its
  * repository or at the top, as the main checkout holds it — into the state
  * worktree at the repository's main checkout.
@@ -2059,14 +2094,14 @@ function move(projectDir, reportUpdate, reportSkip) {
   const promoted = promotions(manifests);
   const moves = [...manifests].map(([name, manifest]) => unitMove(from, state, name, manifest, promoted, relocations));
   const product = productPlan(from);
-  const reports = cacheReports(from, new Set(manifests.keys()), renames);
+  const reports = [...oldSystemsKept(moves, renames), ...cacheReports(from, new Set(manifests.keys()), renames)];
   /** @type {Legacy} */
   const legacy = new Map([
     ...[
       ...strayInbox(from, renames),
       ...product.filter(({ at }) => at === null).map(({ source }) => source),
       ...entries.filter((name) => !READ_OR_REBUILT.includes(name) && !manifests.has(name)).flatMap((name) => filesOf(from, name)),
-      ...filesUnder(path.join(from, '.state')).map((rel) => `.state/${rel}`).filter((rel) => rel !== OLD_RECORD),
+      ...filesUnder(path.join(from, '.state')).map((rel) => `.state/${rel}`).filter((rel) => rel !== OLD_RECORD && rel !== ENVIRONMENT_SETUP),
     ].map((rel) => /** @type {[string, string]} */ ([rel, `${PRODUCT}/${LEGACY}/${rel}`])),
     ...moves.flatMap((unit) => legacyFiles(unit).map((rel) => /** @type {[string, string]} */ ([`${unit.unit}/${rel}`, `${unit.unit}/${LEGACY}/${rel}`]))),
   ]);
@@ -2094,7 +2129,9 @@ function move(projectDir, reportUpdate, reportSkip) {
     reportUpdate();
   }
   keepAsItWas(from, state, [...legacy, ...reports], relocations);
-  writeProjectManifest(state, projectManifest, relocations, unfoldered, mistyped, oldStateArrived(project));
+  const setup = path.join(from, ENVIRONMENT_SETUP);
+  const carried = withSetupNote(projectManifest, fs.existsSync(setup) ? fs.readFileSync(setup, 'utf8') : null);
+  writeProjectManifest(state, carried, relocations, unfoldered, mistyped, oldStateArrived(project));
   renameUnits(state, renames, new Set(stores.flatMap(({ files }) => files)));
   journalCorrections(state, mistyped, renames);
   const placed = (/** @type {string} */ rel) => renamedPath(rel, renames);
@@ -2109,15 +2146,15 @@ function move(projectDir, reportUpdate, reportSkip) {
     userNote,
     lintersNote,
   ].filter((note) => note !== null);
-  const notice = unreadStores(unread, 'the move carried no store declared there into the state: a store this project kept for such a tracker stays where it is');
+  const notice = unreadStores(unread.filter((name) => plannedIn(manifests, name)), 'the store this project\'s plans kept for its tracker stays where it is, outside the state');
   if (notes.length === 0 && notice === null) return undefined;
   return { ...(notes.length === 0 ? {} : { verify: notes.join(' ') }), ...(notice === null ? {} : { notice }) };
 }
 
 module.exports = {
   id: '078',
-  description: 'move the project from .workflows/ into the layout in .ledger/, the state worktree on an unborn ledger-state — each topic\'s log, mail, brief and experiments in its own folder, imports as assets, plans, specs and reviews as reference, the retired state dropped; the roadmap as the product, the baseline docs as its assets, the tracker\'s store and the knowledge config in the state, the user-level folder to ~/.config/ledger/, and the project\'s files to the new names',
-  info: 'The reshape moves the project\'s state out of .workflows/ into .ledger/, a worktree of its own unborn branch, ledger-state, committing nothing. Each topic\'s research, discussion and investigation become its log, its mail one sequence in its own folder, a cancelled topic\'s mail ideas in the inbox; research feeding several topics goes to a discovery session of the migration\'s, and a legacy split\'s superseded copies to the unit\'s assets as reference; imports become assets; every moved document\'s links follow the files they name; plans, reviews and specs not yet built become reference assets, a completed quick-fix\'s spec its summary, a quick-fix whose scoping, implementation and review all completed counting as completed; a unit whose name breaks the kebab-case rule by its case alone is carried under its lowercase name, every reference the move writes following; the old engine\'s caches and the retired manifest state go, and every file with no place of its own, implementation folders and the reviews\' tracking files among them, is kept as it was under its unit\'s assets/legacy/, or the product\'s. A registry entry typed otherwise than its unit\'s manifest takes the manifest\'s type, listed among the review\'s corrections. The roadmap becomes .product/, its imports its assets, its sessions naming them there, and its items\' sources following their files; the baseline docs become reference in .product/assets/baseline/, a native, skipped or completed baseline remembered as the brownfield offer\'s answer, and with none, when the old state first entered git recorded, so the offer\'s judgment reads the history before then; the plan format and project skills defaults go, the session-label opt-in is renamed session_labels, and no driver is set, so the defaults serve; the tracker\'s store and the checkout\'s knowledge config are carried into the state, the knowledge store left for the next boot to build. The user-level folder moves to ~/.config/ledger/, a link to it left in its place for projects still on today\'s skills. The code tree\'s .gitignore gains .ledger/, the settings hooks name the engine\'s new path, and .worktreeinclude loses its .workflows/ lines, none of it staged. .workflows/ and the tracker\'s store are left as they are until the migration\'s commit.',
+  description: 'move the project from .workflows/ into the layout in .ledger/, the state worktree on an unborn ledger-state — each topic\'s log, mail, brief and experiments in its own folder, imports as assets, specs as reference, the old system\'s own files in the unit\'s cache, the retired state dropped; the roadmap as the product, the baseline docs as its assets, the tracker\'s store and the knowledge config in the state, the user-level folder to ~/.config/ledger/, and the project\'s files to the new names',
+  info: 'The reshape moves the project\'s state out of .workflows/ into .ledger/, a worktree of its own unborn branch, ledger-state, committing nothing. Each topic\'s research, discussion and investigation become its log, its mail one sequence in its own folder, a cancelled topic\'s mail ideas in the inbox; research feeding several topics goes to a discovery session of the migration\'s, and a legacy split\'s superseded copies to the unit\'s assets as reference; imports become assets; every moved document\'s links follow the files they name; specs not yet built become reference assets, a completed quick-fix\'s spec its summary, a quick-fix whose scoping, implementation and review all completed counting as completed; a unit whose name breaks the kebab-case rule by its case alone is carried under its lowercase name, every reference the move writes following; the old engine\'s caches and the retired manifest state go; every file the old system\'s own agents and trackers wrote — the plans, the build\'s tracking and analysis, the reviews\' tracking and reports — is copied, as the old cache\'s reports are, into its unit\'s earlier/ in the state\'s ignored cache; and every other file with no place of its own is kept as it was under its unit\'s assets/legacy/, or the product\'s. A registry entry typed otherwise than its unit\'s manifest takes the manifest\'s type, listed among the review\'s corrections. The roadmap becomes .product/, its imports its assets, its sessions naming them there, and its items\' sources following their files; the baseline docs become reference in .product/assets/baseline/, a native, skipped or completed baseline remembered as the brownfield offer\'s answer, and with none, when the old state first entered git recorded, so the offer\'s judgment reads the history before then; the plan format and project skills defaults go, the session-label opt-in is renamed session_labels, and no driver is set, so the defaults serve; the old environment setup file\'s words become a note among the steps that prepare the environment, unconfirmed, for the first ready to build to show; the tracker\'s store and the checkout\'s knowledge config are carried into the state, the knowledge store left for the next boot to build. The user-level folder moves to ~/.config/ledger/, a link to it left in its place for projects still on today\'s skills. The code tree\'s .gitignore gains .ledger/, the settings hooks name the engine\'s new path, and .worktreeinclude loses its .workflows/ lines, none of it staged. .workflows/ and the tracker\'s store are left as they are until the migration\'s commit.',
   run({ projectDir, reportUpdate, reportSkip }) {
     return move(projectDir, reportUpdate, reportSkip);
   },

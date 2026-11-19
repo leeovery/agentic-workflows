@@ -199,7 +199,7 @@ describe('migration 081: the code side\'s drops journaled for the migration\'s c
     assert.deepStrictEqual(journalOf(dir), { drops: ['.workflows', STORE, ...LOCALS] });
   });
 
-  it('names in its notice each task driver\'s folder whose declaration is missing or does not read, journaling the stores the rest declare', () => {
+  it('hands back no notice for a task driver\'s folder whose declaration is missing or does not read — it drops nothing there, and the move names it — journaling the stores the rest declare', () => {
     const skills = path.join(folder(), 'skills');
     const migrations = path.join(skills, 'ledger-migrate/scripts/migrations');
     const drivers = path.join(skills, 'ledger-engine/scripts/drivers/task');
@@ -212,10 +212,7 @@ describe('migration 081: the code side\'s drops journaled for the migration\'s c
 
     const { handed } = run(dir, require(path.join(migrations, '081-reshape-finish.cjs')));
 
-    assert.deepStrictEqual(handed, {
-      notice: `The task driver folders ${path.join(drivers, 'bare')}, ${path.join(drivers, 'broken')} hold no pre-ledger-store.json that reads, so the migration's commit drops no store declared there: a store this project kept for such a tracker stays on the default branch and on disk.`,
-    });
-    assert.deepStrictEqual(journalOf(dir), { drops: ['.workflows', STORE, ...LOCALS] });
+    assert.deepStrictEqual([handed, journalOf(dir)], [undefined, { drops: ['.workflows', STORE, ...LOCALS] }]);
   });
 });
 

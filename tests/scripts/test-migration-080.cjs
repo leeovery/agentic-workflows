@@ -214,6 +214,26 @@ describe('the pieces (21.7, 21.8)', () => {
     assert.strictEqual(harness.refuses(dir, ['migrate', 'join', 'shop', '--directive', DIRECTIVE, '--phase', '5', '--dry-run'], { env: SESSION }).error, 'migrate join: shop\'s cut has no phase 5 — its phases are numbered 1 to 4');
   });
 
+  it('a cancelled quick-fix with a plan in the tracker has it closed all the same, each task done standing (21.8.12)', () => {
+    const manifest = JSON.parse(readState(dir, layout.manifest('memo')));
+    writeState(dir, layout.manifest('memo'), JSON.stringify({ ...manifest, work_type: 'quick-fix', status: 'cancelled' }, null, 2));
+    SIDE.taskByHand(statePath(dir), 'done', 'Write a memo');
+
+    assert.deepStrictEqual(lacks('memo'), [`its plan memo, in the tracker under ${PLANS.memo.root}, is not closed yet`]);
+    assert.strictEqual(run(['task', 'close-plan', 'memo', '--parent', PLANS.memo.root]).closed, 1);
+    assert.deepStrictEqual([lacks('memo'), SIDE.planStanding(statePath(dir), 'memo')['Write a memo']], [null, ['done', null]]);
+  });
+
+  it('an unfinished quick-fix with a plan in the tracker is no piece: it keeps its unit, and its old tasks, done and open, are left as they stand, never cut nor closed (21.5.21)', () => {
+    const manifest = JSON.parse(readState(dir, layout.manifest('memo')));
+    writeState(dir, layout.manifest('memo'), JSON.stringify({ ...manifest, work_type: 'quick-fix', status: 'in-progress' }, null, 2));
+    SIDE.taskByHand(statePath(dir), 'done', 'Write a memo');
+
+    assert.deepStrictEqual([lacks('memo'), unfinished().some(({ name }) => name === 'memo'), SIDE.planStanding(statePath(dir), 'memo')], [null, false, {
+      'Write a memo': ['done', null], 'Pin a memo': ['open', null],
+    }]);
+  });
+
   it('a cancelled unit whose building started, its specs joined: its plan in the tracker closed all the same, each task done standing and the rest closed for the cancel (21.8.4, 21.8.11)', () => {
     const manifest = JSON.parse(readState(dir, layout.manifest('memo')));
     writeState(dir, layout.manifest('memo'), JSON.stringify({ ...manifest, status: 'cancelled', spec: { joined: ['memo'] } }, null, 2));
@@ -499,8 +519,8 @@ describe('the per-phase agents and the join (21.10.5, E7)', () => {
         `- Phase 4: phase 2 of pay's plan, its tracker parent ${PLANS.pay.phases[1]}`,
         `- Its area: §2 pay of ${statePath(dir, 'shop/spec.md')}`,
         `- The sections ${statePath(dir, 'shop/spec.md')} numbers in its area, the only ones a piece names: 2`,
-        `- Its tasks' file: ${statePath(dir, 'shop/assets/plans/pay/phase-2-tasks.md')}`,
-        `- Its section of the plan: ${statePath(dir, 'shop/assets/plans/pay/planning.md')}, under "### Phase 2: Charges"`,
+        `- Its tasks' file: ${statePath(dir, '.cache/shop/earlier/planning/pay/phase-2-tasks.md')}`,
+        `- Its section of the plan: ${statePath(dir, '.cache/shop/earlier/planning/pay/planning.md')}, under "### Phase 2: Charges"`,
       ].join('\n'),
       '### Its tasks\n\n- 4.1, pay-2-1 — "Charge the card", done; the manifest credits it done\n\n- 4.2, pay-2-2 — "Refund a charge", in progress; the manifest credits it done\n\n```markdown\n**Problem**: A charge is kept for good.',
       `### Where the manifest and the tracker disagree\n\n- ${REFUND_DISAGREES}`,
@@ -511,7 +531,7 @@ describe('the per-phase agents and the join (21.10.5, E7)', () => {
     assert.ok(brief.endsWith(`# The directive\n\n${piece}\n`), brief);
     assert.ok(brief.includes(`check again until it names none:\n\n\`${ENGINE_RUN} migrate join shop --directive ${DIRECTIVE} --phase 4 --dry-run\`\n`), brief);
     assert.strictEqual(brief.split('engine.cjs').length - 1, 1, 'the directive drawn without the session\'s engine calls, the piece\'s check the brief\'s one');
-    assert.ok(composer('5').includes(`- Its tasks' file: none kept\n- Its section of the plan: ${statePath(dir, 'shop/assets/plans/pay/planning.md')}, under "### Phase 3: Export"`));
+    assert.ok(composer('5').includes(`- Its tasks' file: none kept\n- Its section of the plan: ${statePath(dir, '.cache/shop/earlier/planning/pay/planning.md')}, under "### Phase 3: Export"`));
 
     assert.deepStrictEqual(['1', '9'].map((phase) => refusedUntouched(dir, ['brief', 'migration-phase', 'shop', '--directive', DIRECTIVE, '--phase', phase], { env: SESSION }, harness)), [
       'brief: phase 1 of shop\'s cut is built, and the manifest and the tracker agree — the join writes it',

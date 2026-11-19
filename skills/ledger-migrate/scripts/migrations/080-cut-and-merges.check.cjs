@@ -31,7 +31,9 @@
 //     not, whose old plans put tasks in the tracker, each a planning item
 //     with a tracker root and a task map: done once `task close-plan` has
 //     marked each root closed (`.cache/migrate/closed/{unit}/{root}.json`,
-//     21.8.4, 21.8.12);
+//     21.8.4, 21.8.12) — never a quick-fix's still in progress, which keeps
+//     its unit, its old tasks left as they stand, never taken up or closed
+//     (21.5.21);
 //   - `{unit}`, a cross-cutting unit: done once it has left the registry,
 //     its folder kept in the product's assets, and no epic holds a topic
 //     promoted to it (21.7.3, 21.7.5) — its entries product-wide, which the
@@ -53,7 +55,8 @@
 // mixed unit's question draws (21.8.10); and a building unit's sources as
 // the cut reads them (`unitSourcesOf`), from which the engine lays its cut
 // out, phase by phase, for the agents and the join (cut-merges.cjs) — the
-// joined spec's areas, each old plan's files, tracker root and phases, each
+// joined spec's areas, each old plan's files, which the move copied into the
+// unit's `earlier/` in the state's cache (078), tracker root and phases, each
 // phase's name as its plan heads it and its goal as its plan gives it, its
 // parent and its tasks in the plan's own order with the manifest's credit
 // of each, the dependencies between the old plans, the folder kept as
@@ -76,6 +79,7 @@ const OLD_PLAN = ['specification', 'planning', 'implementation'];
 const STAGING = '.cache/migrate/cut-and-merges';
 const CUT_MARKS = '.cache/migrate/cut';
 const CLOSED_MARKS = '.cache/migrate/closed';
+const QUICK_FIX = 'quick-fix';
 const PRODUCT_ASSETS = '.product/assets';
 // The section of the directive its agents' briefs draw.
 const BRIEFED = ["A Phase's Piece"];
@@ -101,6 +105,9 @@ const RESEARCH_FILE = /^(.+)\.md$/;
 const OLD_PLAN_FILE = 'planning.md';
 const PHASE_HEADING = /^#{1,6} Phase ([0-9]+)(?![0-9])[ \t]*[:.—–-]?[ \t]*(.*?)[ \t#]*$/;
 const GOAL_LINE = /^\*\*Goal\*\*:[ \t]*(.*?)[ \t]*$/;
+
+/** An old plan's folder, state-relative, by its parts: where the move copied it, in its unit's `earlier/`. @param {string} unit @param {string} topic */
+const oldPlanAt = (unit, topic) => ['.cache', unit, 'earlier', 'planning', topic];
 
 /** @param {unknown} v @returns {v is Record<string, any>} */
 const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
@@ -252,7 +259,10 @@ const isCut = (project, unit) => isFile(path.join(project.stateDir, CUT_MARKS, `
  * keeps as its own.
  * @param {Project} project @param {string} unit @param {Record<string, any>|null} now
  */
-const isBuilding = (project, unit, now) => now !== null && now.work_type !== 'quick-fix' && (holdsOldPlan(now) || isCut(project, unit));
+const isBuilding = (project, unit, now) => now !== null && now.work_type !== QUICK_FIX && (holdsOldPlan(now) || isCut(project, unit));
+
+/** Whether a unit is a quick-fix still in progress, whose old tasks stand as they are (21.5.21). @param {Record<string, any>} now */
+const keepsItsTasks = (now) => now.work_type === QUICK_FIX && now.status === 'in-progress';
 
 /** @param {string[]} names */
 const listed = (names) => names.join(', ');
@@ -446,7 +456,7 @@ function piecesOfUnit(project, unit) {
   const pieces = [];
   if (now?.work_type === 'cross-cutting' || before?.work_type === 'cross-cutting') pieces.push({ name: unit, problems: retiringProblems(project, unit) });
   else if (isBuilding(project, unit, now)) pieces.push({ name: unit, problems: buildingProblems(project, unit, /** @type {Record<string, any>} */ (now), before) });
-  else if (now !== null && now.status !== 'completed' && trackerPlans(before).length > 0) pieces.push({ name: unit, problems: closingProblems(project, unit, before) });
+  else if (now !== null && now.status !== 'completed' && !keepsItsTasks(now) && trackerPlans(before).length > 0) pieces.push({ name: unit, problems: closingProblems(project, unit, before) });
   const sessions = now === null ? [] : migrationSessions(project, unit);
   if (sessions.length > 0) pieces.push({ name: `${unit}/research`, problems: placementProblems(project, unit, sessions) });
   return pieces;
@@ -481,7 +491,7 @@ function phaseHeads(folder) {
 
 /**
  * Each old plan of a building unit as the cut reads it: its topic, its
- * files kept in the unit's assets, its tracker root, its phases — each its
+ * files the move copied into the unit's cache, its tracker root, its phases — each its
  * number, the name its plan heads it with and the goal it gives it, each
  * null where it gives none, its parent in the tracker and its tasks in the
  * plan's own order,
@@ -493,7 +503,7 @@ function phaseHeads(folder) {
 function plansOf(project, unit, before) {
   const implementation = phaseItems(before, 'implementation');
   return Object.entries(phaseItems(before, 'planning')).filter(([, item]) => isObject(item)).map(([topic, item]) => {
-    const folder = path.join(project.stateDir, unit, 'assets', 'plans', topic);
+    const folder = path.join(project.stateDir, ...oldPlanAt(unit, topic));
     const heads = phaseHeads(folder);
     const map = itemsOf(item.task_map);
     const credited = new Set(Array.isArray(implementation[topic]?.completed_tasks) ? implementation[topic].completed_tasks.map(String) : []);
@@ -517,7 +527,7 @@ function plansOf(project, unit, before) {
     };
     return {
       topic,
-      files: filesUnder(folder).map((file) => `${unit}/assets/plans/${topic}/${file}`),
+      files: filesUnder(folder).map((file) => path.posix.join(...oldPlanAt(unit, topic), file)),
       root: typeof item.external_id === 'string' ? item.external_id : null,
       phases: [...phases.values()].sort((a, b) => a.number - b.number).map((phase) => ({
         ...phase,

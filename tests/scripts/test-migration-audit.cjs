@@ -21,9 +21,11 @@
 // their own: a decision asked of a topic decided in its old discussion
 // alone, read under its unit's name before the move or the unit's it was
 // promoted from, never of one of research alone; a field of a manifest no engine
-// module names, the project's, a unit's, a phase's or an item's; a build's fix-tracking report 051 moved
-// out of the old cache placed where the move kept it, and no other report
-// so; of the old `.state/` the old engine's record alone rebuilt; a link broken where it was live, its words dead in another
+// module names, the project's, a unit's, a phase's or an item's; a unit's
+// file the old system wrote, a build's fix-tracking report 051 moved out of
+// the old cache among them, placed in its unit's earlier/, and one changed
+// there not; the old environment setup file placed as the note on the
+// project's environment alone; a link broken where it was live, its words dead in another
 // document; the links dead
 // before excused wherever their old documents went, one kept byte for
 // byte in one place and rewritten in another among them, counted over the
@@ -114,7 +116,7 @@ describe('a project the whole sequence migrated', () => {
         units: { epic: { 'in-progress': 1, completed: 1 }, feature: { 'in-progress': 1, cancelled: 1 }, 'quick-fix': { completed: 1 } },
         decisions: 6 + AUTH_MAP.length,
         legacy_files: 1,
-        earlier: 2,
+        earlier: 4,
         dead_links: { before: 1, after: 1, after_already_dead: 1, legacy: 0 },
       },
       already_dead: [`gateway/topics/auth/log.md: ${OLD_RFC}`],
@@ -135,7 +137,8 @@ describe('a project the whole sequence migrated', () => {
     const config = path.join(root, 'config');
     const env = { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}`, LEDGER_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'the-callers' };
     delete env.LEDGER_CLAUDE;
-    const carried = JSON.parse(/** @type {string} */ (fs.readFileSync(statePath(world.dir, layout.ledger), 'utf8').split('\n').find((line) => line.includes('"event":"decided"'))));
+    const carried = fs.readFileSync(statePath(world.dir, layout.ledger), 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line))
+      .find((line) => line.event === 'decided' && fs.existsSync(statePath(world.dir, layout.manifest(line.unit))));
     appendState(layout.ledger, JSON.stringify({ ...carried, id: newId(), at: new Date().toISOString(), session: 'a-conversation', given: 'own', unchecked: true }));
     commitAll(world.dir, 'a decision that landed unchecked since the migration');
     const head = stateGit(world.dir, ['rev-parse', 'HEAD']);
@@ -249,24 +252,20 @@ describe('each check refuses a world made to fail it', () => {
     ]);
   });
 
-  it('files-placed: a build\'s fix-tracking report of the old cache, which 051 moved into the unit\'s implementation folder in a project behind it, placed byte for byte where the move kept it; any other report of the old cache so kept is not', () => {
+  it('files-placed: a unit\'s file the old system wrote placed byte for byte in its unit\'s earlier/, at its path below the unit\'s folder — a build\'s fix-tracking report 051 moved out of the old cache into the unit\'s implementation folder, in a project behind it, among them; one changed there is not', () => {
     const old = structuredClone(world.old);
-    const { sha } = old.files['shop/implementation/cart/report.md'];
-    old.files['.cache/shop/implementation/cart/fix-tracking-cart-1-1.md'] = { sha };
-    old.files['.cache/shop/implementation/cart/review-001.md'] = { sha };
+    const report = '# Fix tracking: cart-1-1\n';
+    fs.writeFileSync(statePath(world.dir, layout.cache('shop', 'earlier', 'implementation', 'cart', 'fix-tracking-cart-1-1.md')), report);
+    old.files['.cache/shop/implementation/cart/fix-tracking-cart-1-1.md'] = { sha: crypto.createHash('sha256').update(report).digest('hex') };
+    appendState(layout.cache('shop', 'earlier', 'implementation', 'cart', 'analysis-tasks-c1.md'), 'Changed since.');
 
-    assert.deepStrictEqual(audit(world.dir, old).faults.map(({ check, found }) => `${check}: ${found}`), [
-      'files-placed: .workflows/.cache/shop/implementation/cart/review-001.md is not in the cache\'s earlier/ as it was',
-    ]);
+    assert.deepStrictEqual(faults(old), ['files-placed: .workflows/shop/implementation/cart/analysis-tasks-c1.md is neither placed nor kept as legacy']);
   });
 
-  it('files-placed: of the old .state/, only the old engine\'s record is rebuilt; the environment setup file kept nowhere is a fault', () => {
-    const old = structuredClone(world.old);
-    old.files['.state/environment-setup.md'] = { sha: crypto.createHash('sha256').update('No special setup required.\n').digest('hex') };
+  it('files-placed: the old environment setup file placed where the project\'s environment holds the note its words make, and no other way', () => {
+    changeManifest(layout.projectManifest, (project) => { delete project.environment; });
 
-    assert.deepStrictEqual(audit(world.dir, old).faults.map(({ check, found }) => `${check}: ${found}`), [
-      'files-placed: .workflows/.state/environment-setup.md is neither placed nor kept as legacy',
-    ]);
+    assert.deepStrictEqual(faults(), ['files-placed: .workflows/.state/environment-setup.md is neither placed nor kept as legacy']);
   });
 
   it('files-placed: a topic\'s old document a released migration took part of into the topic\'s mail — 054\'s triage, by way of 071\'s mailbox, as codeintel\'s cost economics — placed where its log and its mail together hold every line; its lines in another topic\'s mail placed nowhere', () => {
@@ -336,8 +335,11 @@ describe('each check refuses a world made to fail it', () => {
     const old = structuredClone(world.old);
     const memo = JSON.parse(/** @type {string} */ (old.files['memo/manifest.json'].text));
     memo.phases.planning.items.memo.task_map['memo-3'] = 'tracker-gone';
-    old.files['Memo/manifest.json'] = { ...old.files['memo/manifest.json'], text: JSON.stringify(memo) };
-    delete old.files['memo/manifest.json'];
+    old.files['memo/manifest.json'] = { ...old.files['memo/manifest.json'], text: JSON.stringify(memo) };
+    for (const rel of Object.keys(old.files).filter((at) => at.startsWith('memo/'))) {
+      old.files[`Memo/${rel.slice('memo/'.length)}`] = old.files[rel];
+      delete old.files[rel];
+    }
 
     assert.deepStrictEqual(faults(old), ['cut-holds-tracker: memo\'s cut lacks the old plan\'s phase tracker-gone']);
   });

@@ -179,17 +179,20 @@ describe('a topic\'s record carried (21.6, 21.10.9)', () => {
     assert.deepStrictEqual([kept('fumi', 'support').entries, fs.existsSync(statePath(dir, layout.ledger))], [[], false]);
   });
 
-  it('a record its verifier has not passed — no findings beside it, or findings standing — refused, nothing written, nor anything beside the record: the carry clears them, and a record is carried once', () => {
+  it('a record its verifier has not passed — none briefed on it, one briefed yet to report, or findings standing — refused, nothing written, nor anything beside the record: the carry clears them, and a record is carried once', () => {
     const args = composed(LICENSING, { description: DESCRIBED, entries: [QUESTION, DECISION] });
     const findings = findingsPath('fumi', 'licensing');
     const why = 'a record is carried once its verifier passes it, its findings file empty, for the carry clears the findings beside it and a record is carried once, so a finding left standing would never be answered';
     fs.rmSync(statePath(dir, findings));
-    const unverified = untouched(args);
+    const unbriefed = untouched(args);
+    writeState(dir, verifyingPath('fumi', 'licensing'), noted(['q1', 'd1'], ['q1', 'd1']));
+    const unreported = untouched(args);
     writeState(dir, findings, '## Trial Length\n\nDropped.\n');
     const standing = untouched(args);
 
-    assert.deepStrictEqual([unverified, standing], [
-      `ledger carry: fumi's licensing has not passed its verifier — ${statePath(dir, findings)} is no file: ${why}`,
+    assert.deepStrictEqual([unbriefed, unreported, standing], [
+      `ledger carry: fumi's licensing has not passed its verifier — no verifier has been briefed on it: ${why}`,
+      `ledger carry: fumi's licensing has not passed its verifier — its verifier has not reported yet, no findings written to ${statePath(dir, findings)}: ${why}`,
       `ledger carry: fumi's licensing has not passed its verifier — its findings stand in ${statePath(dir, findings)}: ${why}`,
     ]);
   });
@@ -236,8 +239,9 @@ describe('a topic\'s record carried (21.6, 21.10.9)', () => {
   it('a record whose verifier gave no verdict on every entry its brief asked one of refused, nothing written: one missing, one it never read, or none at all — asked as its brief recorded them, an entry it read but was not asked of given one or not, else as the record holds them', () => {
     const args = composed(LICENSING, { description: DESCRIBED, entries: [QUESTION, DECISION] });
     const checked = checkedPath('fumi', 'licensing');
-    const way = `: a verifier writes a line for each entry its walk sheet does not mark passed, \`{ref}: ok\` or \`{ref}: see finding\`, and one that does not has given no verdict — remove ${statePath(dir, findingsPath('fumi', 'licensing'))}, ${statePath(dir, rulingsPath('fumi', 'licensing'))} and ${statePath(dir, checked)}, and brief a fresh verifier`;
-    const told = (said) => `ledger carry: fumi's licensing has no verdict from its last verifier on every entry its brief asked one of — ${said}${way}`;
+    const findings = statePath(dir, findingsPath('fumi', 'licensing'));
+    const way = (/** @type {string} */ files) => `: a verifier writes a line for each entry its walk sheet does not mark passed, \`{ref}: ok\` or \`{ref}: see finding\`, and one that does not has given no verdict — remove ${files}, and brief a fresh verifier`;
+    const told = (/** @type {string} */ said, files = `${findings} and ${statePath(dir, checked)}`) => `ledger carry: fumi's licensing has no verdict from its last verifier on every entry its brief asked one of — ${said}${way(files)}`;
     writeState(dir, checked, 'q1: ok\n');
     const missing = untouched(args);
     writeState(dir, checked, 'q1: ok\nd1: ok\nf9: ok\n');
@@ -250,7 +254,7 @@ describe('a topic\'s record carried (21.6, 21.10.9)', () => {
 
     assert.deepStrictEqual([missing, unknown, none, briefed], [
       told('it names no verdict on d1'), told('it names f9, which the record it read does not hold'),
-      told(`${statePath(dir, checked)} is no file; it names no verdict on q1, d1`), told('it names no verdict on d1; it names f9, which the record it read does not hold'),
+      told(`${statePath(dir, checked)} is no file; it names no verdict on q1, d1`, findings), told('it names no verdict on d1; it names f9, which the record it read does not hold'),
     ]);
   });
 
@@ -357,7 +361,7 @@ describe('the session\'s settlement of a late round (21.6.10)', () => {
 
     assert.deepStrictEqual([...shapes, handed, unchecked, second, passed, unwritten, unamended], [shape, shape, shape, shape, shape, shape,
       `ledger settle: fumi's licensing has findings handed back to the session in ${statePath(dir, handbackPath('fumi', 'licensing'))}: settle each into ${statePath(dir, '.cache/migrate/records/fumi/licensing.settled.md')}, replace it in ${statePath(dir, findingsPath('fumi', 'licensing'))} with \`Settled: {point}, amend to agree\` where the record changes, or take it out where it stands, then remove ${statePath(dir, handbackPath('fumi', 'licensing'))}`,
-      `ledger settle: fumi's licensing has no verdict from its last verifier on every entry its brief asked one of — it names no verdict on d1: a verifier writes a line for each entry its walk sheet does not mark passed, \`{ref}: ok\` or \`{ref}: see finding\`, and one that does not has given no verdict — remove ${statePath(dir, findingsPath('fumi', 'licensing'))}, ${statePath(dir, rulingsPath('fumi', 'licensing'))} and ${statePath(dir, checkedPath('fumi', 'licensing'))}, and brief a fresh verifier`,
+      `ledger settle: fumi's licensing has no verdict from its last verifier on every entry its brief asked one of — it names no verdict on d1: a verifier writes a line for each entry its walk sheet does not mark passed, \`{ref}: ok\` or \`{ref}: see finding\`, and one that does not has given no verdict — remove ${statePath(dir, findingsPath('fumi', 'licensing'))} and ${statePath(dir, checkedPath('fumi', 'licensing'))}, and brief a fresh verifier`,
       'ledger settle: fumi\'s licensing\'s findings are round 2\'s, and the session settles a verifier\'s from round 3 on — before it, a fresh per-topic agent amends the record and a fresh verifier reads what changed',
       none, none,
       'ledger settle: fumi\'s licensing is as its verifier read it, so no finding of it is fixed — have the record amended to answer it, or rule it out',

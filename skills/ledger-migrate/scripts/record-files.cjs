@@ -14,7 +14,10 @@
 // What the carry would still refuse a record its verifier passed for is
 // read from them alone: findings handed back to the session (`handedBack`),
 // and the record changed since its verifier was briefed on it, or its
-// verdicts missing an entry its brief asked one of (`unsettledRound`).
+// verdicts missing an entry its brief asked one of (`unsettledRound`,
+// `verdictGaps`). Where a record's round stands is read from them too: the
+// rounds kept (`roundsKept`), each finding standing (`findingItems`), and
+// the round the session settles from (`SETTLED_FROM`).
 //
 
 const crypto = require('crypto');
@@ -96,6 +99,24 @@ const roundsPath = (unit, topic) => recordFile(COMPOSED, unit, topic, ENDINGS.ro
 /** The points of the record the session settled where a verifier reversed an earlier round. @param {string} unit @param {string|null} topic */
 const settledPath = (unit, topic) => recordFile(COMPOSED, unit, topic, ENDINGS.settled);
 
+/** The heading each verifier's round is kept under in the rounds file. */
+const ROUND = /^## Round (\d+)$/gm;
+
+/** The first round whose findings the session settles, in a verifier's place (`ledger settle`). */
+const SETTLED_FROM = 3;
+
+/** A finding's opening line in a findings file: a list item at the line's start. */
+const FINDING = /^(?:[-*+]|[0-9]+[.)])[ \t]+/;
+
+/** How many rounds are kept at `rounds`. @param {string} rounds */
+const roundsKept = (rounds) => (fs.existsSync(rounds) ? [...fs.readFileSync(rounds, 'utf8').matchAll(ROUND)].length : 0);
+
+/** Each finding a findings file's text holds, its list items' opening lines bare of their marks, or its text one finding where it holds none. @param {string} text */
+function findingItems(text) {
+  const items = text.split('\n').filter((line) => FINDING.test(line)).map((line) => line.replace(FINDING, ''));
+  return items.length > 0 ? items : [text.trim()];
+}
+
 /** A file's lines holding anything, trimmed; none where it is no file. @param {string} file */
 const linesOf = (file) => (fs.existsSync(file) ? fs.readFileSync(file, 'utf8').split('\n').map((line) => line.trim()).filter(Boolean) : []);
 
@@ -123,29 +144,52 @@ function handedBack(root, unit, topic) {
 }
 
 /**
- * Where the last verifier's verdicts do not name each entry its brief
- * asked a verdict of, or name one the record it read does not hold — the
- * note its brief was issued on, else, where none was, `refs` for both —
- * what is missing, and the way on, said of the record; else null. A consistency guard alone:
- * what each verdict says is the verifier's.
+ * The last verifier's verdicts held to the entries its brief asked a verdict
+ * of — the note its brief was issued on, else, where none was, `refs` for
+ * both: whether its verdicts file is missing, though a verdict was asked;
+ * each entry asked of it names no verdict on; and each it names that the
+ * record it read does not hold.
  * @param {string} root @param {string} unit @param {string|null} topic @param {string[]} refs
- * @returns {string|null}
+ * @returns {{unwritten: boolean, missing: string[], unknown: string[]}}
  */
-function unchecked(root, unit, topic, refs) {
+function verdictGaps(root, unit, topic, refs) {
   const note = briefedOn(root, unit, topic);
   const asked = note?.refs ?? refs;
   const held = note === null ? refs : Object.keys(note.entries);
   const checked = path.join(root, checkedPath(unit, topic));
   const named = linesOf(checked).map(verdictRef);
-  const missing = asked.filter((ref) => !named.includes(ref));
-  const unknown = [...new Set(named.filter((ref) => !held.includes(ref)))];
+  return {
+    unwritten: !fs.existsSync(checked) && asked.length > 0,
+    missing: asked.filter((ref) => !named.includes(ref)),
+    unknown: [...new Set(named.filter((ref) => !held.includes(ref)))],
+  };
+}
+
+/** The files a verifier that gave no verdict on every entry left, to remove before a fresh one is briefed, whole: those it wrote of its findings, rulings and verdicts. @param {string} root @param {string} unit @param {string|null} topic */
+const verdictlessFiles = (root, unit, topic) => [findingsPath, rulingsPath, checkedPath].map((rel) => path.join(root, rel(unit, topic))).filter((file) => fs.existsSync(file));
+
+/** Files as a sentence names them: `a`, `a and b`, `a, b and c`. @param {string[]} files */
+const inWords = (files) => (files.length < 3 ? files.join(' and ') : `${files.slice(0, -1).join(', ')} and ${files.at(-1)}`);
+
+/**
+ * Where the last verifier's verdicts do not name each entry its brief
+ * asked a verdict of, or name one the record it read does not hold
+ * (`verdictGaps`), what is missing, and the way on, said of the record;
+ * else null. A consistency guard alone: what each verdict says is the
+ * verifier's.
+ * @param {string} root @param {string} unit @param {string|null} topic @param {string[]} refs
+ * @returns {string|null}
+ */
+function unchecked(root, unit, topic, refs) {
+  const { unwritten, missing, unknown } = verdictGaps(root, unit, topic, refs);
+  const checked = path.join(root, checkedPath(unit, topic));
   const told = [
-    ...(fs.existsSync(checked) || asked.length === 0 ? [] : [`${checked} is no file`]),
+    ...(unwritten ? [`${checked} is no file`] : []),
     ...(missing.length > 0 ? [`it names no verdict on ${missing.join(', ')}`] : []),
     ...(unknown.length > 0 ? [`it names ${unknown.join(', ')}, which the record it read does not hold`] : []),
   ];
   if (told.length === 0) return null;
-  return `has no verdict from its last verifier on every entry its brief asked one of — ${told.join('; ')}: a verifier writes a line for each entry its walk sheet does not mark passed, \`{ref}: ok\` or \`{ref}: see finding\`, and one that does not has given no verdict — remove ${path.join(root, findingsPath(unit, topic))}, ${path.join(root, rulingsPath(unit, topic))} and ${checked}, and brief a fresh verifier`;
+  return `has no verdict from its last verifier on every entry its brief asked one of — ${told.join('; ')}: a verifier writes a line for each entry its walk sheet does not mark passed, \`{ref}: ok\` or \`{ref}: see finding\`, and one that does not has given no verdict — remove ${inWords(verdictlessFiles(root, unit, topic))}, and brief a fresh verifier`;
 }
 
 /**
@@ -163,6 +207,6 @@ function unsettledRound(root, unit, topic, refs) {
 }
 
 module.exports = {
-  CARRIED, COMPOSED, RECORD_ENDINGS, recordFile, carriedPath, composedPath, findingsPath, refusedPath, rulingsPath, handbackPath, checkedPath, verifyingPath, roundsPath, settledPath,
-  linesOf, recordHash, briefedOn, verdictRef, handedBack, unchecked, unsettledRound,
+  CARRIED, COMPOSED, RECORD_ENDINGS, SETTLED_FROM, recordFile, carriedPath, composedPath, findingsPath, refusedPath, rulingsPath, handbackPath, checkedPath, verifyingPath, roundsPath, settledPath,
+  linesOf, roundsKept, findingItems, recordHash, briefedOn, verdictRef, handedBack, verdictGaps, verdictlessFiles, unchecked, unsettledRound,
 };

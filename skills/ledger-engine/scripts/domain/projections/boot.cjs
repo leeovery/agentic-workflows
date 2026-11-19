@@ -430,16 +430,20 @@ const BANNER_ART = Object.freeze([
   '▀▀▀░▀▀▀░▀▀░░▀▀▀░▀▀▀░▀░▀',
 ]);
 
+const BANNER_TAGLINE = Object.freeze(['A G E N T I C', 'W O R K F L O W S']);
+
 /**
- * The banner the bare command opens on (18.2.15): the art, the installed
- * version right-aligned beneath it, then the title.
+ * The banner the bare command opens on (18.2.15): the art, and beside it a
+ * bar with the tagline and the installed version, then the title. The plain
+ * space after each art row is the properties fence's break between key and
+ * value, drawing the art and the bar in two colours.
  * @param {string} version
  * @returns {string}
  */
 function banner(version) {
-  const width = Math.max(...BANNER_ART.map((line) => [...line].length));
+  const beside = [...BANNER_TAGLINE, version];
   return [
-    section('DISPLAY: banner', emitAs('properties'), [...BANNER_ART, version.padStart(width)].join('\n')),
+    section('DISPLAY: banner', emitAs('properties'), BANNER_ART.map((row, i) => `${row} │ ${beside[i]}`).join('\n')),
     titleSection('Ledger'),
   ].join('\n');
 }

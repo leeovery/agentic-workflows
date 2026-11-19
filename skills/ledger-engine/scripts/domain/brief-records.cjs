@@ -442,7 +442,10 @@
 //                  brief's second level and those beneath it kept in step:
 //                  what an agent does, never the session's own work
 //                  (21.10.2)
-//   migrated-topic the topic: the unit, its work type and status, the phase
+//   migrated-topic the topic: the unit, its work type and status — of a
+//                  cancelled unit, that its record holds what its sources
+//                  settle as any does, its decisions governing nothing,
+//                  and marks no point to raise — the phase
 //                  its record is carried in — discovery for an epic's topic
 //                  never started — whether it never started or leaves its
 //                  building unit at the cut, and the phases the directive
@@ -1222,8 +1225,6 @@ const migratedTopic = (filling) => topicPlace(filling.cwd, filling.given.topic, 
 /** Where an asset came from, by its kind, an import's from where its manifest says. */
 const ASSET_FROM = new Map([
   ['spec', 'a spec'],
-  ['plan', 'a plan'],
-  ['review', 'an old review of a build'],
   ['research', 'research a legacy split superseded'],
 ]);
 
@@ -1235,21 +1236,17 @@ function assetLine(root, { path: at, kind, origin, owner, listed: imported, held
 }
 
 // The unit's assets no agent reads, listed by their folder and how many: its
-// legacy files, kept each at its path from the unit's old folder (078), and
-// its plans and old reviews, the building's reference.
+// legacy files, kept each at its path from the unit's old folder (078).
 const FOLDED = new Map([
   ['legacy', { folder: '/assets/legacy/', counted: (/** @type {number} */ count) => `${count} ${count === 1 ? 'file' : 'files'} kept as legacy, each at its path from the unit's old folder` }],
-  ['plan', { folder: '/assets/plans/', counted: (/** @type {number} */ count) => `${count} ${count === 1 ? 'plan' : 'plans'}` }],
-  ['review', { folder: '/assets/reviews/', counted: (/** @type {number} */ count) => `${count} old ${count === 1 ? 'review of a build' : 'reviews of builds'}` }],
 ]);
 
 /**
  * The unit's assets as a record's brief lists them: those it walks, then
  * the rest but its specs, listed as its specs — one it would walk that its
- * own files hold word for word among the rest, so said; its legacy files,
- * plans and old reviews by their folder and how many, never each, where the
- * first of each kind stands: a project may keep thousands, and no agent
- * reads one.
+ * own files hold word for word among the rest, so said; its legacy files
+ * by their folder and how many, never each, where the first stands: a
+ * project may keep thousands, and no agent reads one.
  * @param {string} root @param {MigratedAsset[]} assets @param {string|null} topic @param {string[]} held the paths of those its own files hold @param {string[]} [specs] the paths of the topic's specs
  */
 function assetSections(root, assets, topic, held, specs = []) {
@@ -1315,6 +1312,12 @@ const HELD_TWICE = '## Headings held more than once, each as a cite names it';
  */
 const otherLines = (others, unit) => others.map(({ topic, unit: of, to, subject }) => `- ${topic}${of === unit ? '' : `, of ${of}`}${to === null ? '' : `, moved to ${to}`}${subject === null ? '' : `: ${subject}`}`);
 
+/** What a record's brief says of a cancelled unit's record. */
+const CANCELLED_RECORD = 'its record holds what its sources settle, as any record does, its decisions carried as decisions, which govern nothing while the unit is cancelled; it marks no point to raise, for its points wait with it';
+
+/** A record's unit as its brief names it: its work type and status, and for a cancelled unit what its record holds. @param {string} unit @param {Record<string, any>} manifest */
+const unitLine = (unit, manifest) => `- **Unit:** ${unit}, ${manifest.work_type}, ${manifest.status}${manifest.status === 'cancelled' ? ` — ${CANCELLED_RECORD}` : ''}`;
+
 /**
  * A unit's own record as its brief draws it: the unit, the discovery
  * sessions and the assets it is composed from — each point of them bearing
@@ -1327,7 +1330,7 @@ function drawOwnRecord(filling, root, unit) {
   const manifest = readWorkUnitManifest(root, unit);
   const sources = topicRules(filling).sourcesOf({ projectDir: codeRoot(filling.cwd), stateDir: root, unit, topic: null });
   return [
-    `- **Unit:** ${unit}, ${manifest.work_type}, ${manifest.status}`,
+    unitLine(unit, manifest),
     `- **The record:** the unit's own, carried in discovery — each point of its discovery sessions and the assets it walks bearing on no topic's subject`,
     stateLine(root),
     '',
@@ -1373,7 +1376,7 @@ function drawMigratedTopic(filling) {
   const later = sources.later.map((/** @type {{path: string, part: string|null, approvedOn: string|null}} */ { path: at, part, approvedOn }) => `- ${specLine(path.join(root, at), part)}${approvedOn === null ? '' : `, ${approvedLine(approvedOn)}`}`);
   const specPaths = [...sources.specs, ...sources.later].map((/** @type {{path: string}} */ { path: at }) => at);
   return [
-    `- **Unit:** ${unit}, ${manifest.work_type}, ${manifest.status}`,
+    unitLine(unit, manifest),
     `- **Topic:** ${topic}, in ${phases.join('; ')} — its record carried in ${carried}${topicStanding(rules.neverStarted(manifest, topic, carried), sources.leaves)}`,
     ...(sources.describes ? ['- **What it is about:** no map row says it, so its record does, in `description`'] : []),
     stateLine(root),
@@ -1756,7 +1759,7 @@ function drawWalkSheet(filling) {
   const { root } = migratedTopic(filling);
   const files = sheet.map(({ path: at, sections }) => [`## ${path.join(root, at)}`, '', listed(sections.flatMap(({ section, line, end, closed, entries: citing }) => {
     const lines = line === end ? `line ${line}` : `lines ${line}–${end}`;
-    if (closed) return [`- ${section}, ${lines}: closed — walked in an earlier round, nothing citing it changed since`];
+    if (closed) return [`- ${section}, ${lines}: closed — walked in an earlier round, every entry citing it passed unchanged, and none that cited it then gone from it`];
     return [
       `- ${section}, ${lines}${citing.length === 0 ? ': no entry cites it' : ''}`,
       ...citing.map(({ ref, event, text, mark }) => `  - ${ref}, ${event}${mark === null ? '' : `, ${ENTRY_MARKS[mark]}`}: ${claimOf(text)}`),

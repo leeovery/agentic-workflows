@@ -298,7 +298,9 @@ describe('the split\'s place (21.4.2)', () => {
     assert.deepStrictEqual([installed.filter((name) => /split/.test(name)), steps.filter((step) => fs.existsSync(path.join(MIGRATE_SCRIPTS, 'migrations', step)))], [[], steps]);
   });
 
-  it('spells no path from the session\'s folder: every path into the state is the check\'s', () => {
-    assert.ok(!fs.readFileSync(DIRECTIVE, 'utf8').includes('.ledger/'));
+  it('spells no path from the session\'s folder: every path into the state is the check\'s, each engine call run from the project\'s folder', () => {
+    const text = fs.readFileSync(DIRECTIVE, 'utf8');
+
+    assert.deepStrictEqual([text.includes('.ledger/'), text.includes('Run every engine call from the project\'s folder: the check names each file and folder by its whole path.')], [false, true]);
   });
 });

@@ -2747,7 +2747,8 @@ const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */
 // Code's hooks and of the gate mod (`conversation`, `board`), run for any
 // conversation; the capture line and the retry its note names, run from a
 // project the conversation may never boot (22.1.8, 18.6.8), each commit by
-// its scope's flag; and the walkthrough's and help's screens. While the
+// its scope's flag; the banner the bare command opens on, ahead of boot;
+// and the walkthrough's and help's screens. While the
 // migration waits on its commit — its finish stop, where boot never stamps —
 // the environment setup's `show` and `set` go through too, so the review's
 // linters check can be made (`FINISH_EXEMPT`). Nothing refuses a call with no
@@ -2757,7 +2758,7 @@ const BOOT_EXEMPT = /** @type {Readonly<Record<string, '*'|readonly string[]>>} 
   boot: '*',
   'state-merge': ['pick'],
   render: Object.freeze([
-    ...Object.values(BOOT_STOPS), 'migrations-applied', 'migration-gate',
+    ...Object.values(BOOT_STOPS), 'migrations-applied', 'migration-gate', 'banner',
     'walkthrough-offer', 'walkthrough-screen', 'walkthrough-topic', 'help', 'help-topics',
   ]),
   gate: ['state lost gate', 'state merge gate', 'migration gate'],

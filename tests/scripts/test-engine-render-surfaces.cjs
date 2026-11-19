@@ -605,22 +605,22 @@ describe('the boot and knowledge gate surfaces', () => {
     }
   });
 
-  it('18.2.15: the banner the bare command opens on — the art in a properties fence, the version the release writes into the engine beneath it, right-aligned, then the title', () => {
+  it('18.2.15: the banner the bare command opens on — LEDGER\'s art in a properties fence, beside it a bar with the tagline and the version the release writes into the engine, the plain space after each art row the break between its two colours, then the title', () => {
     const root = path.join(__dirname, '..', '..');
     const versionFile = /^version_file = "(.*)"$/m.exec(fs.readFileSync(path.join(root, '.mint.toml'), 'utf8'))?.[1];
     assert.strictEqual(versionFile, 'skills/ledger-engine/content/version.txt', 'the release writes the version where the banner reads it');
     const version = fs.readFileSync(path.join(root, versionFile), 'utf8').trim();
-    const [marker, ...lines] = renderSurface(dir, 'banner', {}).split('\n');
-    const art = lines.slice(0, 3);
 
-    assert.strictEqual(marker, '=== DISPLAY: banner (emit verbatim as a properties code block (```properties fence)) ===');
-    assert.deepStrictEqual(art, [
-      '█░░░█▀▀░█▀▄░█▀▀░█▀▀░█▀▄',
-      '█░░░█▀▀░█░█░█░█░█▀▀░█▀▄',
-      '▀▀▀░▀▀▀░▀▀░░▀▀▀░▀▀▀░▀░▀',
-    ], 'the art spells LEDGER');
-    assert.strictEqual(lines[3], version.padStart([...art[0]].length));
-    assert.match(lines.slice(4).join('\n'), /^=== TITLE[^\n]*===\n# \*\*`■ Ledger`\*\*$/m);
+    assert.strictEqual(renderSurface(dir, 'banner', {}), [
+      '=== DISPLAY: banner (emit verbatim as a properties code block (```properties fence)) ===',
+      '█░░░█▀▀░█▀▄░█▀▀░█▀▀░█▀▄ │ A G E N T I C',
+      '█░░░█▀▀░█░█░█░█░█▀▀░█▀▄ │ W O R K F L O W S',
+      `▀▀▀░▀▀▀░▀▀░░▀▀▀░▀▀▀░▀░▀ │ ${version}`,
+      '',
+      '=== TITLE (emit verbatim as markdown (not a code block) — the view\'s chrome heading) ===',
+      '# **`■ Ledger`**',
+      '',
+    ].join('\n'));
   });
 
   it('the state lost stop and the offers on GitHub are yes/no gates naming the project by its main checkout\'s folder', () => {

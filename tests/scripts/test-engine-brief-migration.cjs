@@ -103,9 +103,6 @@ const UNIT_ASSETS = Object.freeze({
   '.DS_Store': 'Finder\n',
   'deck/pitch.md': '# Pitch\n\nFor teams.\n',
   'flow.png': 'PNG the flow\n',
-  'plans/licensing/plan.md': '# Plan\n\nTask one.\n',
-  'plans/search/plan.md': '# Plan\n\nRank by weight.\n',
-  'reviews/licensing/report.md': '# Review\n\nAll good.\n',
   'legacy/implementation/licensing/report.md': '# Analysis\n\nFast enough.\n',
   'legacy/implementation/licensing/tracking.md': '# Tracking\n\nTask one done.\n',
 });
@@ -454,7 +451,7 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
     assert.match(brief, /^- \*\*Topic:\*\* support, in discovery, pending — its record carried in discovery, the topic never started$/m);
   });
 
-  it('every file of the unit\'s assets but a dotfile, with where each came from — its legacy files, plans and old reviews by their folder and how many, never each: the markdown ones the topic walks — an import, listed or come in with them, and research a legacy split superseded bearing its name — apart from the rest but its own spec, listed as its spec alone; research bearing no topic\'s name walked by none in a unit with no record of its own', () => {
+  it('every file of the unit\'s assets but a dotfile, with where each came from — its legacy files by their folder and how many, never each: the markdown ones the topic walks — an import, listed or come in with them, and research a legacy split superseded bearing its name — apart from the rest but its own spec, listed as its spec alone; research bearing no topic\'s name walked by none in a unit with no record of its own', () => {
     for (const [rel, text] of Object.entries(UNIT_ASSETS)) writeState(dir, layout.assets('fumi', ...rel.split('/')), text);
 
     const { brief } = issued(['migration-topic', ...LICENSING]);
@@ -469,9 +466,7 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
       '## The unit\'s other assets, never walked', '',
       '- {state}/fumi/assets/flow.png, an import',
       '- {state}/fumi/assets/legacy/, 2 files kept as legacy, each at its path from the unit\'s old folder',
-      '- {state}/fumi/assets/plans/, 2 plans',
       '- {state}/fumi/assets/research/exploration-superseded-20260101.md, research a legacy split superseded',
-      '- {state}/fumi/assets/reviews/, 1 old review of a build',
       '- {state}/fumi/assets/old.md, which came in from discussion/licensing — its file is gone, so no entry links it', '',
     ].join('\n')), brief);
     assert.deepStrictEqual([brief.includes('.DS_Store'), brief.split('fumi/assets/specs/commerce.md').length - 1], [false, 1]);
@@ -493,9 +488,7 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
       '## The unit\'s other assets, never walked', '',
       '- {state}/fumi/assets/flow.png, an import',
       '- {state}/fumi/assets/legacy/, 2 files kept as legacy, each at its path from the unit\'s old folder',
-      '- {state}/fumi/assets/plans/, 2 plans',
       '- {state}/fumi/assets/research/licensing-superseded-20260101.md, research a legacy split superseded',
-      '- {state}/fumi/assets/reviews/, 1 old review of a build',
       '- {state}/fumi/assets/specs/commerce.md, a spec',
       '- {state}/fumi/assets/old.md, which came in from discussion/licensing — its file is gone, so no entry links it', '',
     ].join('\n')), brief);
@@ -514,10 +507,10 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
     ]), [[true, true], [true, true]]);
   });
 
-  it('21.S44: a cancelled unit\'s topic is briefed as any other, the import from its discovery its own to link', () => {
+  it('21.S44: a cancelled unit\'s topic is briefed as any other, the import from its discovery its own to link, its unit line saying what its record holds: what its sources settle, its decisions governing nothing, no point marked to raise', () => {
     const { brief } = issued(['migration-topic', '--topic', 'gone.discussion.gone', '--directive', '079-records']);
 
-    assert.ok(brief.includes('- **Unit:** gone, feature, cancelled\n- **Topic:** gone, in discussion, in-progress — its record carried in discussion\n'), brief);
+    assert.ok(brief.includes('- **Unit:** gone, feature, cancelled — its record holds what its sources settle, as any record does, its decisions carried as decisions, which govern nothing while the unit is cancelled; it marks no point to raise, for its points wait with it\n- **Topic:** gone, in discussion, in-progress — its record carried in discussion\n'), brief);
     assert.ok(brief.includes(`${CANCELLED}\n\nNone recorded.\n`), 'its own unit is not among the others cancelled');
     assert.ok(brief.includes('## The unit\'s assets it walks\n\n- {state}/gone/assets/notes.md, which came in from discovery — this topic\'s to link\n'), brief);
   });
@@ -644,7 +637,7 @@ describe('the walk sheet (the verifier\'s brief)', () => {
     ].join('\n')}\n\n# The earlier rounds'`), brief);
   });
 
-  it('the assets a record walks after its discovery sessions, each section holding text, a unit\'s own record\'s too — a split\'s research the topic\'s bearing its name, the own record\'s bearing none; no spec, plan, old review, legacy file or other file, and no file holding no section to walk', () => {
+  it('the assets a record walks after its discovery sessions, each section holding text, a unit\'s own record\'s too — a split\'s research the topic\'s bearing its name, the own record\'s bearing none; no spec, legacy file or other file, and no file holding no section to walk', () => {
     for (const [rel, text] of Object.entries(UNIT_ASSETS)) writeState(dir, layout.assets('fumi', ...rel.split('/')), text);
     writeState(dir, layout.unit('fumi', 'discovery', 'session-001.md'), '## Pricing\n\nSeats.\n');
     writeState(dir, composedPath('fumi', 'licensing'), `${RECORD}\n`);
@@ -665,18 +658,18 @@ describe('the walk sheet (the verifier\'s brief)', () => {
   });
 
   it('of a file it does not walk, an asset another record walks or none, only the sections an entry cites', () => {
-    writeState(dir, layout.assets('fumi', 'plans', 'licensing', 'plan.md'), '# Plan\n\nTask one.\n\n## Later\n\nTask two.\n');
+    writeState(dir, layout.assets('fumi', 'legacy', 'notes', 'plan.md'), '# Plan\n\nTask one.\n\n## Later\n\nTask two.\n');
     writeState(dir, layout.assets('fumi', 'research', 'exploration-superseded-20260101.md'), '# Exploration\n\nSeats or usage.\n\n## Hosting\n\nOur servers.\n');
     writeState(dir, composedPath('fumi', null), `${RECORD}\n`);
     writeState(dir, composedPath('fumi', 'licensing'), JSON.stringify({ entries: [
-      { ref: 'f1', event: 'found', text: 'Task two waits.', cites: [{ path: 'fumi/assets/plans/licensing/plan.md', section: 'Later' }] },
+      { ref: 'f1', event: 'found', text: 'Task two waits.', cites: [{ path: 'fumi/assets/legacy/notes/plan.md', section: 'Later' }] },
       { ref: 'f2', event: 'found', text: 'Hosting is ours.', cites: [{ path: 'fumi/assets/research/exploration-superseded-20260101.md', section: 'Hosting' }] },
     ] }));
 
     const { brief } = issued(['migration-verifier', ...LICENSING]);
 
     assert.ok(brief.includes(`\n\n${[
-      '## {state}/fumi/assets/plans/licensing/plan.md', '', '- Plan > Later, lines 5–7', '  - f1, found: Task two waits.', '',
+      '## {state}/fumi/assets/legacy/notes/plan.md', '', '- Plan > Later, lines 5–7', '  - f1, found: Task two waits.', '',
       '## {state}/fumi/assets/research/exploration-superseded-20260101.md', '', '- Exploration > Hosting, lines 5–7', '  - f2, found: Hosting is ours.',
     ].join('\n')}\n\n# The earlier rounds`), brief);
   });
@@ -794,16 +787,16 @@ describe('the verifier\'s verdict on each entry', () => {
     writeState(dir, composedPath('fumi', 'licensing'), RECORD2);
     issued(['migration-verifier', ...LICENSING]);
     const read = JSON.parse(readState(dir, verifyingPath('fumi', 'licensing')));
-    const way = `a verifier writes a line for each entry its walk sheet does not mark passed, \`{ref}: ok\` or \`{ref}: see finding\`, and one that does not has given no verdict — remove ${statePath(dir, findingsPath('fumi', 'licensing'))}, ${statePath(dir, rulingsPath('fumi', 'licensing'))} and ${statePath(dir, checkedPath('fumi', 'licensing'))}, and brief a fresh verifier`;
+    const way = `a verifier writes a line for each entry its walk sheet does not mark passed, \`{ref}: ok\` or \`{ref}: see finding\`, and one that does not has given no verdict — remove ${statePath(dir, findingsPath('fumi', 'licensing'))}{and checked}, and brief a fresh verifier`;
     const refusedBrief = (/** @type {string[]} */ args, /** @type {RegExp} */ pattern) => assert.match(refusedUntouched(dir, ['brief', ...args], { env: SESSION }, harness), pattern);
-    const refusal = (/** @type {string} */ told) => new RegExp(`^brief: fumi's licensing has no verdict from its last verifier on every entry its brief asked one of — ${escaped(told)}: ${escaped(way)}$`);
+    const refusal = (/** @type {string} */ told, checked = true) => new RegExp(`^brief: fumi's licensing has no verdict from its last verifier on every entry its brief asked one of — ${escaped(told)}: ${escaped(way.replace('{and checked}', checked ? ` and ${statePath(dir, checkedPath('fumi', 'licensing'))}` : ''))}$`);
 
     verdict('The trial is wrong.\n', 'q1: see finding\n');
     refusedBrief(['migration-topic', ...LICENSING], refusal('it names no verdict on q2'));
     writeState(dir, checkedPath('fumi', 'licensing'), 'q1: see finding\nq2: ok\nq9: ok\n');
     refusedBrief(['migration-verifier', ...LICENSING], refusal('it names q9, which the record it read does not hold'));
     fs.rmSync(statePath(dir, checkedPath('fumi', 'licensing')));
-    refusedBrief(['migration-topic', ...LICENSING], refusal(`${statePath(dir, checkedPath('fumi', 'licensing'))} is no file; it names no verdict on q1, q2`));
+    refusedBrief(['migration-topic', ...LICENSING], refusal(`${statePath(dir, checkedPath('fumi', 'licensing'))} is no file; it names no verdict on q1, q2`, false));
     writeState(dir, checkedPath('fumi', 'licensing'), 'q1: see finding\nq2: ok\n');
     writeState(dir, composedPath('fumi', 'licensing'), `${RECORD}\n`);
     issued(['migration-topic', ...LICENSING]);
@@ -830,7 +823,7 @@ describe('a later round (21.10.18)', () => {
   const D1 = { ref: 'd1', event: 'decided', answers: 'q1', text: 'Thirty days.', cites: [log] };
   const F1 = { ref: 'f1', event: 'found', text: 'A week converts as well.', cites: [report] };
   const Q2 = { ref: 'q2', event: 'asked', text: 'Does the corrigendum hold?', cites: [{ path: 'fumi/assets/specs/commerce.md', section: 'Corrigenda' }] };
-  const CLOSED = 'closed — walked in an earlier round, nothing citing it changed since';
+  const CLOSED = 'closed — walked in an earlier round, every entry citing it passed unchanged, and none that cited it then gone from it';
 
   /** The verifier's brief issued on licensing's record of `entries`: its walk sheet, and the refs it gives a verdict on. @param {Record<string, unknown>[]} entries */
   function round(entries) {
@@ -889,7 +882,7 @@ describe('a later round (21.10.18)', () => {
   it('the verifiers\' briefs: an open section walked, a closed one no finding; a later round checks what changed and raises nothing on what an earlier one passed unchanged, leanness judged on it alone; a verdict on each entry not passed unchanged', () => {
     assert.deepStrictEqual([
       unsaid('migration-verifier', [
-        'Walk every open section of the sheet, every section in a first round: a closed one was walked in an earlier round, nothing citing it changed since, and is no finding, and your findings are every gap the walk turns up, never a sample.',
+        'Walk every open section of the sheet, every section in a first round: a closed one was walked in an earlier round, every entry citing it passed unchanged, and none that cited it then gone from it, and is no finding; a section an entry stopped citing is open again, and your findings are every gap the walk turns up, never a sample.',
         'In a later round, check each finding answered, each entry or line changed since true to its source, and that no entry the sheet lists as removed since the last round took a point still to carry; raise nothing on what an earlier round passed unchanged.',
         '- nothing is carried twice — in a later round, judged on what changed since alone;',
         'Write the checked file the brief names afresh, a line for each entry of the record the sheet does not mark passed unchanged, by its ref: `{ref}: ok`, or `{ref}: see finding` where a finding names it.',
