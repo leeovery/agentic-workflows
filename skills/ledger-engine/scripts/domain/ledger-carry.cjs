@@ -130,7 +130,7 @@ const { codeRoot } = require('../kernel/code-root.cjs');
 const { directiveOf } = require('./directives.cjs');
 const {
   carriedPath, composedPath, findingsPath, refusedPath, rulingsPath, handbackPath, checkedPath, verifyingPath, roundsPath, settledPath,
-  linesOf, recordHash, verdictRef, handedBack, unchecked, unsettledRound, briefedOn: briefedNote,
+  linesOf, roundsKept, recordHash, verdictRef, handedBack, unchecked, unsettledRound, briefedOn: briefedNote,
 } = require('../../../ledger-migrate/scripts/record-files.cjs');
 
 /** The record the last verifier was briefed on, as a later round reads it, or null where none was. @type {(root: string, unit: string, topic: string|null) => import('./later-rounds.cjs').Note|null} */
@@ -186,17 +186,11 @@ const RECORDS_DIRECTIVE = '079-records';
  */
 const recordsRules = () => require(directiveOf(RECORDS_DIRECTIVE).check);
 
-/** The heading a verifier's round is kept under. */
-const ROUND = /^## Round (\d+)$/gm;
-
 /** What a record's verifier writes beside its findings, kept with them in its round, each under its heading, in this order. */
 const BESIDE_FINDINGS = Object.freeze([
   Object.freeze({ heading: '### Rulings', rel: rulingsPath }),
   Object.freeze({ heading: '### Checked', rel: checkedPath }),
 ]);
-
-/** How many rounds are kept at `rounds`. @param {string} rounds */
-const roundsKept = (rounds) => (fs.existsSync(rounds) ? [...fs.readFileSync(rounds, 'utf8').matchAll(ROUND)].length : 0);
 
 /**
  * The last verifier's findings, at `findings`, as the round after those kept

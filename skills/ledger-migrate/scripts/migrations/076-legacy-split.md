@@ -17,7 +17,7 @@
 
 An old migration seeded each epic's map from its research, so some epics still hold broad research in progress: one file covering several themes, on one item of the map. Each such file, a source, is cut into topic-sized research files, each its own item on the map, the person choosing the cut. This session stages each source's plan; the next step applies every plan by code. Nothing in `.workflows/` changes here.
 
-Each source is one piece of the check. A source not yet done is named with its file, under `.workflows/` in the project's folder in the main checkout, and the folder its plan goes in.
+Each source is one piece of the check. A source not yet done is named with its file, under `.workflows/` in the project's folder in the main checkout, and the folder its plan goes in. Run every engine call from the project's folder: the check names each file and folder by its whole path.
 
 ## A Source's Plan
 

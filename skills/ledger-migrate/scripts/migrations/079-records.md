@@ -17,8 +17,8 @@
 ## Asks
 
 - Nothing for any one entry, but a point the record's sources do not
-  settle that a verifier reverses, or that a finding of the third round or
-  a later one raises.
+  settle that a verifier reverses, that a composer hands back, or that a
+  finding of the third round or a later one raises.
 - At the end, each point no source settles on a started topic of a unit
   in progress that stays in its unit, raised one at a time: answered, or
   left open.
@@ -105,13 +105,19 @@ node .claude/skills/ledger-engine/scripts/engine.cjs brief migration-topic --top
 
 A record composed already, by this session or an earlier one, is amended, never composed from the start: each brief carries the verifier's findings, every round's rulings, the carry's refusal and the points this session settled, waiting beside the record.
 
+Run the check after each agent returns. It names each record's next step, `next`, as the rules below have it; take that step:
+
+```bash
+node .claude/skills/ledger-engine/scripts/engine.cjs migrate check 079-records
+```
+
 Once it has returned, settle first each finding it handed back, as below: the verifier's brief and the carry are refused while its hand-back file stands. Then, where no `Settled:` finding stands, check the record as the carry would; this names every fault and writes nothing:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs ledger carry {place} --dry-run
 ```
 
-Where it names a fault, a fresh per-topic agent amends the record, its own check naming the faults. Where it names none, the verifier reads the record against its sources, walking the sheet its brief draws: every section of every source, in order, with the entries citing each — from the second round, every section the sheet marks open, a closed one walked in an earlier round, nothing citing it changed since. It reads each section in its source, checks that what each entry beneath it takes from the section is what the section says, and each point the section makes is carried or not this record's — that a cited heading exists is no check — and writes its findings beside the record, an empty file its pass; its rulings: each point of the sources it ruled is not this record's, or is replaced by a later answer, in whole or in part, naming what still stands, one line each, with its source; and its verdict on each entry the sheet does not mark passed unchanged, `{ref}: ok` or `{ref}: see finding`. Its brief carries every round of findings and rulings before it, keeps the last as a round in the rounds file beside the record, its rulings and verdicts with it, and clears them, so a verifier that never writes leaves no verdict. The next brief and the carry are refused while the last verifier's verdicts miss an entry its brief asked a verdict of, or name one the record it read does not hold: remove what it wrote, and brief a fresh verifier. The carry refuses a record changed since its verifier was briefed on it — brief a fresh verifier — and keeps the passing round with the rounds before it:
+Where it names a fault, a fresh per-topic agent amends the record, its own check naming the faults. Where it names none, the verifier reads the record against its sources, walking the sheet its brief draws: every section of every source, in order, with the entries citing each — from the second round, every section the sheet marks open, a closed one walked in an earlier round, every entry citing it passed unchanged, and none that cited it then gone from it — a section an entry stopped citing is open again. It reads each section in its source, checks that what each entry beneath it takes from the section is what the section says, and each point the section makes is carried or not this record's — that a cited heading exists is no check — and writes its findings beside the record, an empty file its pass; its rulings: each point of the sources it ruled is not this record's, or is replaced by a later answer, in whole or in part, naming what still stands, one line each, with its source; and its verdict on each entry the sheet does not mark passed unchanged, `{ref}: ok` or `{ref}: see finding`. Its brief carries every round of findings and rulings before it, keeps the last as a round in the rounds file beside the record, its rulings and verdicts with it, and clears them, so a verifier that never writes leaves no verdict. The next brief and the carry are refused while the last verifier's verdicts miss an entry its brief asked a verdict of, or name one the record it read does not hold: remove what it wrote, and brief a fresh verifier. The carry refuses a record changed since its verifier was briefed on it — brief a fresh verifier — and keeps the passing round with the rounds before it:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs brief migration-verifier --topic {place} --directive 079-records

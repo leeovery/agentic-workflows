@@ -16,7 +16,7 @@
 // runs it, boot by boot: the guard and the chain to the records directive,
 // whose work is scripted — each topic's record the fixture's, checked by
 // the carry's dry run, one settled by the session past its third verifier
-// round, then carried —
+// round, then carried once the check names each ready to carry —
 // then the cut and the merges', scripted too — the cross-cutting unit
 // retired, the feature's phase still to build composed and joined into its
 // cut — then the finish, the review's summary and gate, and the yes's
@@ -254,6 +254,8 @@ function workDirective(dir, env, directive) {
     compose('shop.discussion.cart', cart);
     compose('shop.discussion.pay', RECORDS_COMPOSED['shop.discussion.pay']);
     settleLate(dir, opts, 'exports.discussion.exports');
+    const steps = harness.ok(dir, ['migrate', 'check', RECORDS], opts).unfinished.map((/** @type {{name: string, next: string}} */ { name, next }) => [name, next]);
+    assert.deepStrictEqual(steps.sort(), Object.keys(RECORDS_COMPOSED).sort().map((place) => [place, `ready to carry: \`ledger carry ${place}\``]), 'the check names each record passed ready to carry, the step the session takes');
     for (const place of Object.keys(RECORDS_COMPOSED)) harness.ok(dir, ['ledger', 'carry', place], opts);
   } else {
     harness.ok(dir, ['workunit', 'retire', 'caching'], opts);

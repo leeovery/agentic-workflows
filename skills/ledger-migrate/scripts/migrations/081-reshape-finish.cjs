@@ -16,8 +16,8 @@
 // shared.cjs, `preLedgerStores`), which the move carried into the state
 // (21.5.18) — the store's files, and the ones its tool keeps local: each
 // file in the folder a local pattern names that the pattern matches. A task
-// driver's folder whose declaration is missing or does not read is named
-// in the notice it hands back.
+// driver's folder whose declaration is missing or does not read declares
+// no store to drop, and hands back no notice: the move's names it.
 //
 // What it journals, for the engine's commit door, so the engine names
 // neither (E9): `.ledger/.cache/migrate/finish.json`, `{drops}`, each named
@@ -50,7 +50,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { OLD_STATE, STATE_DIR, mainCheckout, projectInMain, stateBorn, writeWhole, preLedgerStores, unreadStores } = require('./reshape/shared.cjs');
+const { OLD_STATE, STATE_DIR, mainCheckout, projectInMain, stateBorn, writeWhole, preLedgerStores } = require('./reshape/shared.cjs');
 
 const CACHE = '.cache';
 const JOURNAL = path.join(CACHE, 'migrate', 'finish.json');
@@ -117,14 +117,12 @@ module.exports = {
     const project = main === null ? here : projectInMain(here, main);
     if (main === null || !fs.existsSync(path.join(project, OLD_STATE)) || stateBorn(main)) {
       reportSkip();
-      return undefined;
+      return;
     }
-    const { stores, unread } = preLedgerStores();
+    const { stores } = preLedgerStores();
     const state = path.join(main, STATE_DIR);
     dropImports(state);
     writeWhole(path.join(state, CACHE), path.join(state, JOURNAL), `${JSON.stringify({ drops: dropsOf(project, stores) }, null, 2)}\n`);
     reportUpdate();
-    const notice = unreadStores(unread, 'the migration\'s commit drops no store declared there: a store this project kept for such a tracker stays on the default branch and on disk');
-    return notice === null ? undefined : { notice };
   },
 };

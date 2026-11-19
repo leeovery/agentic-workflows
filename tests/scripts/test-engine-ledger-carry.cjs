@@ -179,17 +179,20 @@ describe('a topic\'s record carried (21.6, 21.10.9)', () => {
     assert.deepStrictEqual([kept('fumi', 'support').entries, fs.existsSync(statePath(dir, layout.ledger))], [[], false]);
   });
 
-  it('a record its verifier has not passed — no findings beside it, or findings standing — refused, nothing written, nor anything beside the record: the carry clears them, and a record is carried once', () => {
+  it('a record its verifier has not passed — none briefed on it, one briefed yet to report, or findings standing — refused, nothing written, nor anything beside the record: the carry clears them, and a record is carried once', () => {
     const args = composed(LICENSING, { description: DESCRIBED, entries: [QUESTION, DECISION] });
     const findings = findingsPath('fumi', 'licensing');
     const why = 'a record is carried once its verifier passes it, its findings file empty, for the carry clears the findings beside it and a record is carried once, so a finding left standing would never be answered';
     fs.rmSync(statePath(dir, findings));
-    const unverified = untouched(args);
+    const unbriefed = untouched(args);
+    writeState(dir, verifyingPath('fumi', 'licensing'), noted(['q1', 'd1'], ['q1', 'd1']));
+    const unreported = untouched(args);
     writeState(dir, findings, '## Trial Length\n\nDropped.\n');
     const standing = untouched(args);
 
-    assert.deepStrictEqual([unverified, standing], [
-      `ledger carry: fumi's licensing has not passed its verifier — ${statePath(dir, findings)} is no file: ${why}`,
+    assert.deepStrictEqual([unbriefed, unreported, standing], [
+      `ledger carry: fumi's licensing has not passed its verifier — no verifier has been briefed on it: ${why}`,
+      `ledger carry: fumi's licensing has not passed its verifier — its verifier has not reported yet, no findings written to ${statePath(dir, findings)}: ${why}`,
       `ledger carry: fumi's licensing has not passed its verifier — its findings stand in ${statePath(dir, findings)}: ${why}`,
     ]);
   });
