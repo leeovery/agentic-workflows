@@ -104,6 +104,29 @@ describe('the environment setup\'s screen (22.5.7, 22.5.8)', () => {
     ]);
   });
 
+  it('draws a note of several lines under its row, line by line: each line\'s own indent kept, a long line wrapped at it, and its blank lines kept', () => {
+    const note = [
+      '## Prerequisites',
+      '',
+      '- Xcode 16 or later, its command line tools installed and selected, before anything else builds',
+      '  - Swift 6',
+      '',
+      'Then open the workspace.',
+    ].join('\n');
+    const { display } = drawn({ prepare: [{ name: 'From before Ledger', when: 'first', note }] }, true);
+    const at = display.indexOf('TO PREPARE THE ENVIRONMENT');
+    assert.deepStrictEqual(display.slice(at + 1, display.indexOf('WHAT CAN\'T RUN AT ONCE, SO FAR') - 1), [
+      '  · From before Ledger — a note, never run',
+      '    ## Prerequisites',
+      '',
+      '    - Xcode 16 or later, its command line tools installed and',
+      '    selected, before anything else builds',
+      '      - Swift 6',
+      '',
+      '    Then open the workspace.',
+    ]);
+  });
+
   it('22.S14, 15.S3: from manage, the parts as recorded, the verify setup beside them read only, and the gate keeping it', () => {
     const { display, gate } = drawn({ verify: VERIFY }, true);
     assert.deepStrictEqual([display.filter((line) => /^[A-Z]/.test(line)), block(display, 'THE VERIFY SETUP, BUILT BY A TASK')], [

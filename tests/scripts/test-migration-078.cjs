@@ -438,6 +438,7 @@ const SHOP_OLD_SYSTEMS = [
   'specification/ranking/review-input-tracking-c1.md',
   'specification/ranking/review-gap-analysis-tracking-c2.md',
   'specification/ranking/review-claims-tracking-c1.md',
+  'specification/ranking/review-gap-tracking-c1.md',
   'planning/ranking/planning.md',
   'planning/ranking/phase-1-tasks.md',
   'planning/ranking/tasks/ranking-1-1.md',
@@ -799,11 +800,16 @@ describe('migration 078: the move into the layout in .ledger/', () => {
       assert.strictEqual(read('.gitignore'), `${STATE_GITIGNORE}${PRE_LEDGER.localFiles.join('\n')}\n`);
     });
 
-    it('22.5.11: carries the environment setup file\'s words, its template\'s heading aside, as a note among the steps that prepare the environment, unconfirmed, which the setup\'s screen at the first ready to build draws; the file kept nowhere — neither legacy nor in the cache', () => {
+    it('22.5.11: carries the environment setup file\'s words, its template\'s heading aside, as a note among the steps that prepare the environment, unconfirmed, which the setup\'s screen at the first ready to build draws line by line under its row; the file kept nowhere — neither legacy nor in the cache', () => {
       const setup = setupOf(dir);
       assert.deepStrictEqual([setup.prepare, setup.confirmed], [[SETUP_NOTE], null]);
-      assert.ok(environmentSetupScreen({ project: 'Shop', setup, manage: false }).replace(/\s+/g, ' ')
-        .includes(`· From before Ledger: ${SETUP_NOTE.note.replace(/\s+/g, ' ')} — a note, never run`));
+      assert.ok(environmentSetupScreen({ project: 'Shop', setup, manage: false }).includes([
+        'TO PREPARE THE ENVIRONMENT, AS FOUND',
+        '  · From before Ledger — a note, never run',
+        '    Go must be available on the system (`go` toolchain in PATH).',
+        '    No other special setup required.',
+        '',
+      ].join('\n')));
       assert.deepStrictEqual(tree(state).filter((rel) => rel.endsWith('environment-setup.md')), []);
     });
 
@@ -1294,7 +1300,7 @@ describe('migration 078: a small project', () => {
     }
   });
 
-  it('keeps nothing as legacy, and carries nothing onto the environment, from an old .state/ holding only the old engine\'s record and an empty environment setup file; one holding its template\'s heading alone carries nothing either', () => {
+  it('keeps nothing as legacy, and carries nothing onto the environment, from an old .state/ holding only the old engine\'s record and an empty environment setup file; one holding its template\'s heading alone, or the old skill\'s own sentence for no setup, carries nothing either', () => {
     dir = tempProject('migration-078-old-record-');
     try {
       write(dir, '.workflows/manifest.json', json({ work_units: {} }));
@@ -1303,7 +1309,7 @@ describe('migration 078: a small project', () => {
       commitAll(dir);
       const { returned } = run(dir);
       assert.deepStrictEqual([tree(path.join(dir, '.ledger'), '.product'), returned?.verify ?? null, 'environment' in movedProject()], [[], null, false]);
-      assert.strictEqual(setupNote('# Environment Setup\n\n'), null);
+      assert.deepStrictEqual(['# Environment Setup\n\n', '# Environment Setup\n\nNo special setup required.\n', 'No special setup required.'].map(setupNote), [null, null, null]);
     } finally {
       cleanupFixture(dir);
     }

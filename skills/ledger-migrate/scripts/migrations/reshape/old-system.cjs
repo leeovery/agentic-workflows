@@ -24,7 +24,8 @@
 // never run, and the setup never confirmed, so the first ready to build
 // draws it on the setup's screen, where Claude reshapes it with what the
 // repository shows and the person says yes (22.5.3). The words are carried
-// as they stand, never judged. A file holding nothing more carries nothing;
+// as they stand, never judged. A file holding nothing more, or only the old
+// skill's own sentence for no setup, carries nothing;
 // the environment's other steps are kept, and a step of that name already
 // there stands as it is (`withSetupNote`). The file itself is kept nowhere:
 // git's history holds it.
@@ -32,7 +33,7 @@
 
 /** @type {Readonly<Record<string, RegExp>>} */
 const WRITTEN = {
-  specification: /^review-(?:input|gap-analysis|claims)-tracking-c[0-9]+\.md$/,
+  specification: /^review-(?:input|gap(?:-analysis)?|claims)-tracking-c[0-9]+\.md$/,
   planning: /^(?:planning|phase-[0-9]+-tasks|tasks\/[A-Za-z0-9-]+-[0-9]+-[0-9]+[a-z]*|review-(?:traceability|integrity)-tracking-c[0-9]+|review\/(?:traceability|integrity)-c[0-9]+)\.md$/,
   implementation: /^(?:implementation|analysis-(?:standards|duplication|architecture|tasks|report)-c[0-9]+|review-(?:tasks|report)-c[0-9]+|consolidation-(?:findings|tasks)-p[0-9]+|ad-hoc-tasks-[0-9]+|fix-tracking-[A-Za-z0-9-]+-[0-9]+-[0-9]+[a-z]*)\.md$/,
   review: /^(?:report(?:(?:-[a-z]+)?-[0-9]+-[0-9]+[a-z]*)?|change-set-c[0-9]+-[a-z0-9-]+)\.md$/,
@@ -45,6 +46,8 @@ const UNMOVED_TASK = /^-[0-9]+-[0-9]+[a-z]*\.md$/;
 const ENVIRONMENT_SETUP = '.state/environment-setup.md';
 const STEP_NAME = 'From before Ledger';
 const TEMPLATE_HEADING = /^#[ \t]+Environment Setup[ \t]*(?:\r?\n|$)/;
+// The old skill's own words for a project needing no setup.
+const NO_SETUP = 'No special setup required.';
 
 /** @param {unknown} v @returns {v is Record<string, any>} */
 const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
@@ -63,12 +66,13 @@ function oldSystemFile(rel) {
 
 /**
  * The note step the environment setup file's words make, or null where it
- * holds none but the template's heading.
+ * holds none but the template's heading and the old skill's sentence for no
+ * setup.
  * @param {string} text @returns {{name: string, when: 'first', note: string}|null}
  */
 function setupNote(text) {
   const note = text.replace(TEMPLATE_HEADING, '').replace(/^(?:[ \t]*\r?\n)+/, '').trimEnd();
-  return note === '' ? null : { name: STEP_NAME, when: 'first', note };
+  return note === '' || note === NO_SETUP ? null : { name: STEP_NAME, when: 'first', note };
 }
 
 /**
