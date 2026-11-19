@@ -51,6 +51,9 @@ describe('pipeline simulation: the build\'s questions', () => {
     const parked = await raised(locking, 'Does a read lock the ledger?', '1.1');
     assert.deepStrictEqual([parked.decision, parked.parked, parked.task], ['ask', 'Q1', '1.1'], 'the question parks its task, numbered');
     assert.strictEqual(parked.line, 'Task 1.1 parks on Q1, waiting for you: Does a read lock the ledger? The other tasks carry on.');
+    // Drawn as it parks; the work carries on while it waits for the person's answer.
+    const drawn = sim.run(['raise', 'draw', wu, 'Q1']);
+    assert.deepStrictEqual([drawn.question, drawn.parks], ['Q1', ['1.1']], 'the question is drawn from its park');
     sim.run(['task', 'start', wu, '1.2']);
     const ordering = asked('Does a fold keep the ledger\'s order?', '1.2');
     await raised(ordering, 'Does a fold keep the ledger\'s order?', '1.2');
@@ -67,14 +70,13 @@ describe('pipeline simulation: the build\'s questions', () => {
     const indexing = asked('Does the index hold every entry?', '1.4');
     const indexed = sim.run(['ledger', 'decide', build, '--answers', indexing, '--task', '1.4'], null, JSON.stringify({ ...made, text: 'The index holds every entry.', why: 'Every event counts.' })).id;
 
-    // The person, ready, takes Q1: drawn from its park, not followed at first, answered against the lean.
-    const drawn = sim.run(['raise', 'draw', wu, 'Q1']);
-    assert.deepStrictEqual([drawn.question, drawn.parks], ['Q1', ['1.1']], 'the question is drawn from its park');
+    // The person answers Q1: not followed at first, then answered against the lean, the receipt naming Q2 next.
     assert.strictEqual(sim.run(['raise', 'answer', drawn.raise, '--didnt-follow']).receipt, 'Q1 still open, explained again · still waiting · 2 waiting on you');
     const answered = sim.run(['raise', 'answer', drawn.raise, '--pick', '2'], null, JSON.stringify({ why: 'Readers never wait on a writer.' }));
-    assert.strictEqual(answered.receipt, 'Q1 answered · task 1.1 builds again · 1 waiting on you');
+    assert.strictEqual(answered.receipt, 'Q1 answered · task 1.1 builds again · 1 waiting on you · next: Q2');
 
-    // Q2 set aside stays waiting, and is answered through its raise alone.
+    // Q2, drawn as the receipt names it, set aside stays waiting, and is answered through its raise alone.
+    sim.run(['raise', 'draw', wu, 'Q2']);
     assert.strictEqual(sim.run(['raise', 'aside', wu, 'Q2']).receipt, 'Q2 set aside · still waiting · 1 waiting on you');
     assert.deepStrictEqual(waiting(), [['Q2', ['1.2', '1.3']]], 'a question set aside still waits');
     sim.refuses(['ledger', 'decide', build, '--answers', ordering], /the person answers it through the raise alone: raise draw ledger Q2$/, null,
@@ -97,7 +99,7 @@ describe('pipeline simulation: the build\'s questions', () => {
     const versioning = sim.run(['ledger', 'ask', build], null, JSON.stringify({ ...made, text: 'Does every line carry its version?' })).id;
     const gap = await sim.runAsync(['raise', build, '--answers', versioning], null, JSON.stringify({ ...leaningCall('Yes.', 'No.'), question: 'Does every line carry its version?' }));
     assert.deepStrictEqual([gap.parked, gap.task], ['Q4', null], 'a call made in no task waits parking none');
-    // The person draws it; task 1.4's builder then meets it and joins it, yet not following the screen drawn blocks no build work: the call was decided parking none.
+    // Drawn as it waits; task 1.4's builder then meets it and joins it, yet not following the screen drawn blocks no build work: the call was decided parking none.
     const versioned = sim.run(['raise', 'draw', wu, 'Q4']);
     await raised(versioning, 'Does every line carry its version?', '1.4');
     assert.strictEqual(sim.run(['raise', 'answer', versioned.raise, '--didnt-follow']).receipt, 'Q4 still open, explained again · still waiting · 1 waiting on you');

@@ -90,9 +90,11 @@
 //   queue, `discussing.json` in its folder, which the gate mod keeps —
 //   `{"discussing", "queue"}`, the question under discussion and those
 //   queued after it, by number: the first of them still waiting and not
-//   just recorded. With no queue, or none still waiting, it names none; a
-//   queue that cannot be read names none, and says so as a warning. An
-//   explained-again question is still under discussion, so names no next.
+//   just recorded. Where the queue names none, an answer's next is the
+//   oldest question still waiting that parks a task, and a setting aside
+//   names none; a queue that cannot be read names none, and says so as a
+//   warning. An explained-again question is still under discussion, so
+//   names no next.
 // - A task against its questions (13.4.6), what the task verbs read: the
 //   tasks each question waiting parks, so a task parked never shows as
 //   ready, is never done nor its account taken while a question parks it,
@@ -677,14 +679,24 @@ function nextUp(session, recorded, waiting, warnings) {
   try {
     queue = JSON.parse(fs.readFileSync(file, 'utf8'));
   } catch (err) {
-    warnings.push(`the discussion queue, ${file}, cannot be read, so the receipt names no next question: ${messageOf(err)}`);
+    warnings.push(`the discussion queue, ${file}, cannot be read, so the receipt names no next question from it: ${messageOf(err)}`);
     return null;
   }
   if (!isObject(queue) || !Array.isArray(queue.queue)) {
-    warnings.push(`the discussion queue, ${file}, holds no {"discussing", "queue"}, so the receipt names no next question`);
+    warnings.push(`the discussion queue, ${file}, holds no {"discussing", "queue"}, so the receipt names no next question from it`);
     return null;
   }
   return [queue.discussing, ...queue.queue].find((name) => typeof name === 'string' && !recorded.includes(name) && waiting.includes(name)) ?? null;
+}
+
+/**
+ * The oldest question of `unit` still waiting that parks a task, by its
+ * number, none of those `recorded`: an answer's next where the queue names
+ * none.
+ * @param {Folded} read @param {string} unit @param {string[]} recorded @returns {string|null}
+ */
+function oldestParking(read, unit, recorded) {
+  return waitingOf(read, unit).map((q) => (q.tasks.length > 0 ? numbered(q.number) : null)).find((name) => name !== null && !recorded.includes(name)) ?? null;
 }
 
 /**
@@ -778,11 +790,13 @@ function aheadWords({ task, changed, held, closed }, meant, freed) {
 function answeredReceipt(cwd, unit, parks, before, warnings, turnNow, read, { ahead = null, left = null } = {}) {
   const root = /** @type {string} */ (findStateRoot(cwd));
   const name = numbered(parks.number);
-  const { meant, waiting } = readQuestions(root, warnings, (read) => ({ meant: answerMeans(read, unit, parks, before), waiting: waitingNumbers(read, unit) }));
+  const { meant, waiting, parking } = readQuestions(root, warnings, (read) => ({
+    meant: answerMeans(read, unit, parks, before), waiting: waitingNumbers(read, unit), parking: oldestParking(read, unit, [name]),
+  }));
   const freed = (/** @type {string|null} */ how) => ('freed' in meant ? freedWords(meant.freed, turnNow(), read, meant.freed.length === 1 ? how : null) : waitsWords(meant.waits));
   const means = ahead === null ? freed(null) : aheadWords(ahead, meant, freed);
   const outcome = left === null ? 'answered' : `answered · my answer stands as the builder's: ${left}`;
-  return receiptLine([name], outcome, means, waiting.length, nextUp(handedSession(), [name], waiting, warnings));
+  return receiptLine([name], outcome, means, waiting.length, nextUp(handedSession(), [name], waiting, warnings) ?? parking);
 }
 
 /**

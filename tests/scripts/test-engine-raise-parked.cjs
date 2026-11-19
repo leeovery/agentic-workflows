@@ -668,17 +668,18 @@ describe('raise draw (12.13.10, 12.13.18–12.13.20, 12.S33, 12.S34)', () => {
 });
 
 describe('the answer and its receipt (12.13.15, 12.13.16, 20.6.9, 12.S35, 20.S6)', () => {
-  it('12.S35: a pick lands the person\'s decision for the task its question parks, its raise event blocking the build, and answers the receipt — the task building again, how many still wait, and the next the discussion queue names; the board no longer lists it', () => {
+  it('12.S35: a pick lands the person\'s decision for the task its question parks, its raise event blocking the build, and answers the receipt — the task building again, how many still wait, and the next the discussion queue names, before an older question parking a task; the board no longer lists it', () => {
     parked(1, '2.3');
     parked(2, '2.4', { question: made.size });
-    discussing({ discussing: 'Q1', queue: ['Q2'] });
+    parked(3, '2.5', { question: made.title });
+    discussing({ discussing: 'Q1', queue: ['Q3'] });
 
     const res = drawnAndPicked('Q1');
 
-    assert.strictEqual(res.receipt, 'Q1 answered · task 2.3 builds again · 1 waiting on you · next: Q2');
+    assert.strictEqual(res.receipt, 'Q1 answered · task 2.3 builds again · 2 waiting on you · next: Q3');
     assert.deepStrictEqual([lastEntry().event, lastEntry().by, lastEntry().task, lastEntry().sealed], ['decided', 'person', '2.3', CURSOR.text]);
     assert.deepStrictEqual(logged(), [raiseEvent(full(res.id), { blocks_build: true })]);
-    assert.deepStrictEqual(waitingNumbers(), ['Q2']);
+    assert.deepStrictEqual(waitingNumbers(), ['Q2', 'Q3']);
   });
 
   /** The ledger's line count. */
@@ -710,8 +711,8 @@ describe('the answer and its receipt (12.13.15, 12.13.16, 20.6.9, 12.S35, 20.S6)
 
     assert.deepStrictEqual(['2.3', '2.4', '2.5'].map(marked), [null, { round: 1, n: 1, passed_until: null }, null]);
     assert.deepStrictEqual(receipts.slice(0, 2), [
-      'Q1 answered · task 2.3 builds again once its pair has read round 1 · 2 waiting on you',
-      'Q2 answered · task 2.4 builds again once its pair has read round 1 · 1 waiting on you',
+      'Q1 answered · task 2.3 builds again once its pair has read round 1 · 2 waiting on you · next: Q2',
+      'Q2 answered · task 2.4 builds again once its pair has read round 1 · 1 waiting on you · next: Q3',
     ]);
   });
 
@@ -747,10 +748,14 @@ describe('the answer and its receipt (12.13.15, 12.13.16, 20.6.9, 12.S35, 20.S6)
     assert.strictEqual(receipt, 'Q1 answered · task 2.4 builds again once its pair has read round 2 · nothing waiting on you');
   });
 
-  it('with no discussion queue the receipt names no next, and with none left nothing waits', () => {
+  it('with no discussion queue the receipt names the oldest question still parking a task, passing over one that parks none; with none left nothing waits and none is named', () => {
     parked(1, '2.3');
+    parked(2, null, { question: made.size });
+    parked(3, '2.5', { question: made.title });
 
-    assert.strictEqual(drawnAndPicked('Q1').receipt, 'Q1 answered · task 2.3 builds again · nothing waiting on you');
+    assert.strictEqual(drawnAndPicked('Q1').receipt, 'Q1 answered · task 2.3 builds again · 2 waiting on you · next: Q3');
+    assert.strictEqual(drawnAndPicked('Q3').receipt, 'Q3 answered · task 2.5 builds again · 1 waiting on you');
+    assert.strictEqual(drawnAndPicked('Q2').receipt, 'Q2 answered · no task waited on it · nothing waiting on you');
   });
 
   it('16.3.8: a fact parked is answered as a fact — the person\'s decision for its task, sealing no lean, nothing in the trust log, "I don\'t follow" counted on the seal alone — and answers the receipt', () => {
@@ -807,7 +812,7 @@ describe('the answer and its receipt (12.13.15, 12.13.16, 20.6.9, 12.S35, 20.S6)
     parked(1, '2.6', { question: made.size });
     parked(2, '2.6', { question: made.title });
 
-    assert.strictEqual(drawnAndPicked('Q1').receipt, 'Q1 answered · task 2.6 waits on Q2 · 1 waiting on you');
+    assert.strictEqual(drawnAndPicked('Q1').receipt, 'Q1 answered · task 2.6 waits on Q2 · 1 waiting on you · next: Q2');
   });
 
   it('the receipt names only the tasks the answer freed: a replacement kept, then proposed again for another task and kept again, frees that task alone', () => {
@@ -983,7 +988,7 @@ describe('raise aside (12.13.17)', () => {
     const res = ok(dir, ['raise', 'aside', UNIT, 'Q1'], { env: conversation() });
 
     assert.strictEqual(res.receipt, 'Q1 set aside · still waiting · 1 waiting on you');
-    assert.match(res.warnings[0], /^the discussion queue, .*discussing\.json, cannot be read, so the receipt names no next question: /);
+    assert.match(res.warnings[0], /^the discussion queue, .*discussing\.json, cannot be read, so the receipt names no next question from it: /);
   });
 
   it('refuses the whole call where any question named waits no longer, and argv of another shape', () => {
@@ -1002,7 +1007,7 @@ describe('the discussion queue the gate mod keeps (P16, 20.6.9)', () => {
     return found[1];
   };
 
-  it('the engine reads the queue by the name the mod writes it under, a queue emptied naming no next; its receipts open with the words the mod reads them by', () => {
+  it('the engine reads the queue by the name the mod writes it under, a queue emptied naming no next — but an answer\'s the oldest question still parking a task; its receipts open with the words the mod reads them by', () => {
     parked(1, '2.3');
     parked(2, '2.4', { question: made.size });
     assert.strictEqual(modLiteral('DISCUSSING'), DISCUSSING);
@@ -1013,7 +1018,7 @@ describe('the discussion queue the gate mod keeps (P16, 20.6.9)', () => {
 
     assert.deepStrictEqual([aside, answered], [
       { ok: true, receipt: `Q1 ${modLiteral('SET_ASIDE')} · still waiting · 2 waiting on you` },
-      `Q2 ${modLiteral('ANSWERED')} · task 2.4 builds again · 1 waiting on you`,
+      `Q2 ${modLiteral('ANSWERED')} · task 2.4 builds again · 1 waiting on you · next: Q1`,
     ]);
   });
 });

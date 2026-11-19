@@ -7,7 +7,7 @@ allowed-tools: Bash(node .claude/skills/ledger-engine/scripts/engine.cjs *)
 
 # The Build
 
-The work unit's build: every phase of its cut, from its first phase's start to its last phase's close, then straight on into the review phase, all in this one conversation. You orchestrate and delegate: a task writer writes each phase's tasks as it starts, a builder builds each task, a pair of reviewers reviews it, and other agents consolidate a phase's notes and review the phase whole, each from a brief the engine issues and never from this conversation. You schedule the work, land what the agents find through the doors, fix the nits a review leaves, and keep the person out of it except where the engine stops for them. Nothing here decides the product afresh: the spec is concluded, and a call the build meets goes to the ledger or the person.
+The work unit's build: every phase of its cut, from its first phase's start to its last phase's close, then straight on into the review phase, all in this one conversation. You orchestrate and delegate: a task writer writes each phase's tasks as it starts, a builder builds each task, a pair of reviewers reviews it, and other agents consolidate a phase's notes and review the phase whole, each from a brief the engine issues and never from this conversation. You schedule the work, land what the agents find through the doors, and fix the nits a review leaves. Nothing here decides the product afresh: the spec is concluded, and a call the build meets goes to the ledger or the person.
 
 ## Arguments
 
@@ -55,7 +55,7 @@ No task ready with a phase still to start means that phase starts next.
 
 ### The Person
 
-The build runs start to finish without the person, stopping only where the engine stops it. In the build, every question for the person goes through `raise`: one asked in plain prose is a slip. A waiting question is never a gate, and the build never goes back to a menu for one.
+Every question for the person goes through `raise`: one asked in plain prose is a slip. A waiting question is never a gate, and the build never goes back to a menu for one.
 
 ### The Build Log
 
@@ -87,7 +87,7 @@ Invoke `/ledger-review-process {work_type} {work_unit}`.
 
 ## Something Outside the Plan
 
-A bug the person reports, a gap or a find an agent reports beyond its task, anything the plan never held. Load **[outside-the-plan.md](references/outside-the-plan.md)** and follow its instructions as written, with place = `implementation`.
+A bug the person reports, something they ask for, a gap or a find an agent reports beyond its task, anything the plan never held. Load **[outside-the-plan.md](references/outside-the-plan.md)** and follow its instructions as written, with place = `implementation`.
 
 ## Ready to Discuss a Question
 

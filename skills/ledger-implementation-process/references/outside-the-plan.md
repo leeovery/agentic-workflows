@@ -4,10 +4,12 @@
 
 ---
 
-Something the plan never held has turned up: a bug the person reports, a gap or a find an agent reports beyond its task, a finding a phase review leaves for later. Judge where it goes and land it through one door. No code changes without a task, and a find never corrects the spec, which is concluded: one bearing on a decision lands on the ledger, at `{work_unit}.{place}`, the place the caller names: the build's, `implementation`, or the review phase's, `review`, while its fix tasks run. Write anything a door takes from a file to `.ledger/.cache/{work_unit}/build/`.
+Something the plan never held has turned up: a bug the person reports, something they ask for, a gap or a find an agent reports beyond its task, a finding a phase review leaves for later. Judge where it goes and its weight, and land it through one door. No code changes without a task, and a find never corrects the spec, which is concluded: one bearing on a decision lands on the ledger, at `{work_unit}.{place}`, the place the caller names: the build's, `implementation`, or the review phase's, `review`, while its fix tasks run. Write anything a door takes from a file to `.ledger/.cache/{work_unit}/build/`.
 
 ## The Doors
 
+- **Something small the person asks for**, a word bolded or a colour changed — onto an open task it fits, as theirs (`task add … --by person`), or made by you with no agent and committed against an open task, as a nit fix is.
+- **Too big for this work** — say so in a line: "this deserves its own planning: now, or park it?". Now, invoke `/ledger {words}`; parked, the last door.
 - **A task in this phase, or a later one already written** — write its file, then record it and link it after any unfinished task it waits on:
 
   ```bash

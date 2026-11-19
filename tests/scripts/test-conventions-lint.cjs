@@ -1077,6 +1077,26 @@ function checkNoResumeSections(files) {
 }
 
 // ---------------------------------------------------------------------------
+// Check 39 — no skill paces the person out of the work (CONVENTIONS.md, Who
+// Holds What): nothing runs the work without them or keeps them out of it,
+// and no question waits until they say they are ready for it.
+// ---------------------------------------------------------------------------
+
+const PACING = /\bkeep (?:the person|them) out\b|\bruns?(?: start to finish)? without the person\b|\b(?:once|until|when) (?:the person|they) (?:says? (?:they are|they're) |(?:is|are) )ready to (?:discuss|talk)\b/i;
+
+function checkNoPacing(files) {
+  const out = [];
+  for (const file of files) {
+    const lines = readLines(file);
+    const { inFence } = parseFences(lines);
+    lines.forEach((line, i) => {
+      if (!inFence[i] && PACING.test(line)) out.push({ file, line: i + 1, message: 'paces the person out of the work — a skill says where things go, how they are recorded and what is guarded, never how Claude paces itself' });
+    });
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
 // Check 36 — a skill that draws a menu whose back draws the start menu loads
 // the start menu's reference, so the start menu's rows have their prose when
 // that `next` draws it in the skill's conversation. The start skill owns the
@@ -1145,6 +1165,7 @@ const CHECKS = [
   ['36: a skill drawing a menu whose back is the start menu loads start-menu.md', checkBackToStartLoads],
   ['37: the start skill\'s description opens with its trigger, and every other skill a handoff lands on says it is reached only through one', checkDescriptions],
   ['38: no skill keeps a section of its own on resuming', checkNoResumeSections],
+  ['39: no skill paces the person out of the work', checkNoPacing],
 ];
 
 function report(violations) {
@@ -1909,6 +1930,13 @@ test('check 38 (no resume section) — 24.S14: catches a heading on resuming aft
       ['skills/ledger-x/SKILL.md', 7],
       ['skills/ledger-x/references/work.md', 1],
     ], `got ${report(checkNoResumeSections([skill, reference]))}`);
+  });
+});
+
+test('check 39 (no pacing) — catches a line keeping the person out of the work, running it without them, or holding a question until they say they are ready to discuss it; passes the person turning to the questions themselves, a gate set aside until they are ready to move on, and a fenced example', () => {
+  withTemp((dir) => {
+    const skill = write(dir, 'skills/ledger-x/SKILL.md', ['# X', '', 'You land what the agents find, and keep the person out of it except where the engine stops for them.', '', 'The build runs start to finish without the person.', '', 'A question is drawn only once the person says they are ready to discuss it.', '', 'The person says they are ready to talk about a waiting question.', '', 'Ask whether they are ready to move on.', '', '```markdown', 'Hold it until they are ready to talk.', '```', ''].join('\n'));
+    assert.deepStrictEqual(checkNoPacing([skill]).map((x) => x.line), [3, 5, 7], `got ${report(checkNoPacing([skill]))}`);
   });
 });
 

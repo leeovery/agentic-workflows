@@ -203,7 +203,7 @@ describe('task close takes the task off its questions', () => {
     assert.deepStrictEqual(waiting(), [['Q1', ['2.4']], ['Q2', []]]);
     const { res, sections } = okSections(dir, ['raise', 'draw', UNIT, 'Q2'], { env: conversation() });
     assert.deepStrictEqual([res.parks, sections.split('\n')[2]], [[], 'Q2 · Fumi']);
-    assert.strictEqual(answer(res.raise, ['--pick', '1']).receipt, 'Q2 answered · no task waited on it · 1 waiting on you');
+    assert.strictEqual(answer(res.raise, ['--pick', '1']).receipt, 'Q2 answered · no task waited on it · 1 waiting on you · next: Q1');
     assert.strictEqual(answered('Q1').receipt, 'Q1 answered · task 2.4 builds again · nothing waiting on you');
   });
 
@@ -375,7 +375,7 @@ describe('a blind question whose call went ahead holds its task open at its done
     await park(made.size, '2.3');
 
     assert.deepStrictEqual(waiting(), [['Q1', ['2.3']], ['Q2', ['2.3']]]);
-    assert.strictEqual(answeredQ1('lean').receipt, 'Q1 answered · task 2.3 stands as built, waiting on Q2 · 1 waiting on you');
+    assert.strictEqual(answeredQ1('lean').receipt, 'Q1 answered · task 2.3 stands as built, waiting on Q2 · 1 waiting on you · next: Q2');
     assert.deepStrictEqual([waiting(), ready()], [[['Q2', ['2.3']]], ['2.2', '2.4']]);
   });
 

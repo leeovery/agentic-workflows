@@ -109,7 +109,7 @@ Once a round's fix tasks are done, the next round reads again, whole, every area
 
 ## The Person
 
-The review runs without the person but for its reports and finish. Every question for them goes through `raise`, at the review's place: one asked in plain prose is a slip. One that waits — raised in a round, as one is settled, or for a fix task — is never a gate. Load **[waiting-on-the-person.md](../ledger-implementation-process/references/waiting-on-the-person.md)** and follow its instructions as written.
+Every question for the person goes through `raise`, at the review's place: one asked in plain prose is a slip. One that waits — raised in a round, as one is settled, or for a fix task — is never a gate. Load **[waiting-on-the-person.md](../ledger-implementation-process/references/waiting-on-the-person.md)** and follow its instructions as written.
 
 ## Doors
 
@@ -151,7 +151,7 @@ node .claude/skills/ledger-engine/scripts/engine.cjs render review-calls {work_u
 
 ## Something Outside the Plan
 
-While the fix tasks run, a bug the person reports, or a gap or a find an agent reports beyond its task. Load **[outside-the-plan.md](../ledger-implementation-process/references/outside-the-plan.md)** and follow its instructions as written, with place = `review` and N = the fix phase.
+While the fix tasks run, a bug the person reports, something they ask for, or a gap or a find an agent reports beyond its task. Load **[outside-the-plan.md](../ledger-implementation-process/references/outside-the-plan.md)** and follow its instructions as written, with place = `review` and N = the fix phase.
 
 ## Ready to Discuss a Question
 
