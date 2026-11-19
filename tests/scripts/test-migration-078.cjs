@@ -20,8 +20,7 @@
 // committed, nothing staged, and `.workflows/` and the store untouched;
 // each
 // unit's files in the layout, each review never folded in folded into its
-// topic's log, a person's files named for tracking or
-// analysis placed as any other; nothing in a
+// topic's log; nothing in a
 // topic's folder no topic owns; its manifest less research and the retired
 // state, the dead end off every topic — one whose work concluded keeping its
 // close, any other cancelled with its mail sent to the inbox; the project's manifest with its id, the baseline's skip its
@@ -30,12 +29,16 @@
 // assets; the store and the knowledge config, never the knowledge store, in
 // the state; the hooks naming the engine's new path and the `.workflows/` lines
 // gone from `.worktreeinclude`; the user-level folder moved and linked;
-// every file written in a place the layout holds; every file the layout has
-// no other place for — the environment setup file, free text no environment
-// field takes, implementation folders and the reviews' tracking
-// files, a research folder of its own as evvi's sessions kept one, a unit's
-// design images as portal's — kept byte for byte as legacy, in its unit's
-// assets or the product's, and named; the old cache's reports, folded in or
+// every file written in a place the layout holds; the environment setup
+// file's words a note among the steps that prepare the environment,
+// unconfirmed, the file kept nowhere; every file the layout has no other
+// place for — the notes Claude or the person left beside the old system's
+// files, named for tracking, analysis or a task, a research folder of its
+// own as evvi's sessions kept one, a unit's design images as portal's —
+// kept byte for byte as legacy, in its unit's assets or the product's, and
+// named; every kind of file the old system's agents and trackers wrote in a
+// unit's folder copied byte for byte into the unit's `earlier/` in the
+// state's ignored cache, never named; the old cache's reports, folded in or
 // not, of a topic, of none, with no agent row or of no unit, copied byte for
 // byte into the state's ignored cache, a unit's into its `earlier/` and any
 // other into the cache's, and never named as legacy; the old cache's other
@@ -61,10 +64,12 @@
 // a merge stopped in the main checkout, an epic's topics never started,
 // each on the map given its row's description as its brief where none came
 // to it, whatever its items, an old `.state/` holding only the old engine's
-// record, which keeps nothing as legacy, the projects with nothing to move, a native baseline, a completed one and
+// record and an empty environment setup file, which keeps nothing as legacy
+// and carries nothing onto the environment, the projects with nothing to move, a native baseline, a completed one and
 // one under way, defaults of the plan's format and the project skills alone,
-// read for its task driver after, a task driver's folder whose declaration
-// does not read, a `.worktreeinclude` of `.workflows/` lines alone,
+// read for its task driver after, two task drivers' folders whose
+// declaration does not read, one whose tracker a plan used and one none
+// did, a `.worktreeinclude` of `.workflows/` lines alone,
 // settings that do not parse, a user-level folder the engine's holds a
 // different copy of a file in, and one that is a link elsewhere. The
 // tracker's store is where its driver's frozen declaration says a project
@@ -94,6 +99,9 @@ const { execFileSync } = require('child_process');
 const { git, initRepo, cleanupFixture } = require('./engine-harness.cjs');
 const MIGRATION = require('../../skills/ledger-migrate/scripts/migrations/078-reshape-move.cjs');
 const { carryLinters } = require('../../skills/ledger-migrate/scripts/migrations/reshape/linters.cjs');
+const { setupNote } = require('../../skills/ledger-migrate/scripts/migrations/reshape/old-system.cjs');
+const { setupOf } = require('../../skills/ledger-engine/scripts/domain/environment.cjs');
+const { environmentSetupScreen } = require('../../skills/ledger-engine/scripts/domain/projections/environment-setup.cjs');
 const { layoutPlace } = require('../../skills/ledger-engine/scripts/domain/layout.cjs');
 const { huntIn, HUNT_HEADINGS } = require('../../skills/ledger-engine/scripts/domain/investigation-log.cjs');
 const { heardIn } = require('../../skills/ledger-engine/scripts/domain/discovery-log.cjs');
@@ -235,6 +243,10 @@ const EDGES = [
   '```', '## Inside a fence', '```sh', '## Still inside: a run with words after it closes nothing', '```', '',
   '## After the fences', '',
 ].join('\n');
+// The old environment setup file as its template laid it out, mint's, and
+// the note its words make on the environment.
+const ENVIRONMENT_SETUP = '# Environment Setup\n\nGo must be available on the system (`go` toolchain in PATH).\nNo other special setup required.\n';
+const SETUP_NOTE = { name: 'From before Ledger', when: 'first', note: 'Go must be available on the system (`go` toolchain in PATH).\nNo other special setup required.' };
 // A review never marked incorporated whose report, of two headings, the
 // discussion holds already, word for word.
 const FOLDED_REPORT = '### F1: Two saves\n\nOne wins.\n\n### F2: No lock\n\nNothing orders them.\n';
@@ -414,6 +426,59 @@ const SHOP = {
   },
 };
 
+// Every kind of file the old system's agents and trackers wrote in a
+// unit's folder, by its path there, as the old skills name them: the
+// spec reviews' tracking; the plan, its phases' and tasks' files — one at
+// the plan's top, named for its topic, where 007 moved none — and its
+// reviews' tracking, an older review's under review/; the build's tracking,
+// analysis, staging, consolidation and fix tracking; and the review's
+// reports, an analysis task's among them, and change-set checks, two named
+// for a section of tracking or analysis.
+const SHOP_OLD_SYSTEMS = [
+  'specification/ranking/review-input-tracking-c1.md',
+  'specification/ranking/review-gap-analysis-tracking-c2.md',
+  'specification/ranking/review-claims-tracking-c1.md',
+  'planning/ranking/planning.md',
+  'planning/ranking/phase-1-tasks.md',
+  'planning/ranking/tasks/ranking-1-1.md',
+  'planning/ranking/review-integrity-tracking-c1.md',
+  'planning/ranking/review-traceability-tracking-c3.md',
+  'planning/ranking/review/traceability-c1.md',
+  'planning/event-tracking/planning.md',
+  'planning/event-tracking/tasks/event-tracking-1-1.md',
+  'planning/usage-analysis/usage-analysis-1-1.md',
+  'implementation/ranking/implementation.md',
+  'implementation/ranking/analysis-standards-c1.md',
+  'implementation/ranking/analysis-duplication-c1.md',
+  'implementation/ranking/analysis-architecture-c1.md',
+  'implementation/ranking/analysis-tasks-c1.md',
+  'implementation/ranking/analysis-report-c12.md',
+  'implementation/ranking/review-tasks-c1.md',
+  'implementation/ranking/review-report-c1.md',
+  'implementation/ranking/consolidation-findings-p2.md',
+  'implementation/ranking/consolidation-tasks-p2.md',
+  'implementation/ranking/ad-hoc-tasks-1.md',
+  'implementation/ranking/fix-tracking-ranking-1-1.md',
+  'review/ranking/report.md',
+  'review/ranking/report-1-1.md',
+  'review/ranking/report-2-3a.md',
+  'review/ranking/report-analysis-1-1.md',
+  'review/ranking/change-set-c1-ranking.md',
+  'review/ranking/change-set-c2-order-tracking.md',
+  'review/ranking/change-set-c3-cost-analysis.md',
+  'review/usage-analysis/report-1-1.md',
+];
+
+// Each file the old system wrote in a unit's folder, by its path below
+// `.workflows/`, and where the move copies it, by its path below the
+// state's cache: the shop's, the core's spec tracking and each quick-fix's
+// plan.
+const OLD_SYSTEMS_EARLIER = new Map([
+  ...SHOP_OLD_SYSTEMS.map((rel) => /** @type {[string, string]} */ ([`shop/${rel}`, `shop/earlier/${rel}`])),
+  ['core/specification/search/review-input-tracking-c1.md', 'core/earlier/specification/search/review-input-tracking-c1.md'],
+  ...['dropped', 'patch', 'redo', 'rescope', 'stale', 'typo'].map((wu) => /** @type {[string, string]} */ ([`${wu}/planning/${wu}/planning.md`, `${wu}/earlier/planning/${wu}/planning.md`])),
+]);
+
 const unit = (name, workType, status, phases) => ({ name, work_type: workType, status, description: name, created: '2026-01-01', phases });
 
 /** A quick-fix's plan item as scoping registers it. @param {string} wu */
@@ -437,7 +502,8 @@ function todaysProject(dir) {
   w('.inbox/ideas/2026-02-01--dark-mode.md', '# Dark mode\n');
   w('.inbox/.archived/bugs/2026-01-02--old-crash.md', '# Old crash\n');
   w('.inbox/ideas/rough-notes.md', 'no item\'s name\n');
-  w('.state/environment-setup.md', 'No special setup required.\n');
+  w('.state/environment-setup.md', ENVIRONMENT_SETUP);
+  w('.state/handoff.md', '# A note the old .state/ held beside it\n');
   w('.state/migrations', '001\n072\n');
   w('.knowledge/config.json', KNOWLEDGE_CONFIG);
   w('.knowledge/store.bin', 'the checkout\'s store\n');
@@ -531,23 +597,11 @@ function todaysProject(dir) {
   w('shop/discovery/sessions/session-001.md', '# Discovery Session 001\n');
   w('shop/discussion/ranking.md', '# Discussion: Ranking\n');
   w('shop/specification/ranking/specification.md', '# Specification: Ranking\n');
-  w('shop/specification/ranking/review-input-tracking-c1.md', 'tracking\n');
-  w('shop/planning/ranking/planning.md', '# Plan: Ranking\n');
-  w('shop/planning/ranking/phase-1-tasks.md', '# Phase 1\n');
-  w('shop/planning/ranking/tasks/ranking-1-1.md', '# Task 1.1\n');
-  w('shop/planning/ranking/review-integrity-tracking-c1.md', 'tracking\n');
-  w('shop/implementation/ranking/fix-tracking-ranking-1-1.md', 'tracking\n');
-  w('shop/implementation/ranking/analysis-tasks-c1.md', 'analysis\n');
-  w('shop/review/ranking/report.md', '# Review\n');
-  w('shop/review/ranking/report-1-1.md', '# Task review\n');
-  w('shop/review/ranking/change-set-c1-ranking.md', '# Change set\n');
-  w('shop/review/ranking/change-set-c2-order-tracking.md', '# Change set: Order Tracking\n');
-  w('shop/review/ranking/change-set-c3-cost-analysis.md', '# Change set: Cost Analysis\n');
+  for (const rel of SHOP_OLD_SYSTEMS) w(`shop/${rel}`, `# The old system's ${rel}\n`);
+  w('shop/implementation/ranking/analysis-findings-c1.md', '# Findings the agents gave inline, captured by Claude\n');
+  w('shop/planning/ranking/ranking-4-1-deviations.md', '# Deviations from the task, Claude\'s\n');
+  w('shop/planning/ranking/audit-test-helpers.md', '# An audit Claude left beside the plan\n');
   w('shop/discussion/event-tracking.md', '# Discussion: Event Tracking\n');
-  w('shop/planning/event-tracking/planning.md', '# Plan: Event Tracking\n');
-  w('shop/planning/event-tracking/tasks/event-tracking-1-1.md', '# Task 1.1\n');
-  w('shop/planning/usage-analysis/usage-analysis-1-1.md', '# Task 1.1, as an older plan kept it\n');
-  w('shop/review/usage-analysis/report-1-1.md', '# Task review\n');
   w('shop/imports/.DS_Store', 'sidecar\n');
   w('shop/imports/sketch.md', '# Sketch\n');
   w('shop/Thumbs.db', 'sidecar\n');
@@ -654,8 +708,8 @@ describe('migration 078: the move into the layout in .ledger/', () => {
       assert.deepStrictEqual({ updates: result.updates, skips: result.skips }, { updates: 13, skips: 0 });
       assert.deepStrictEqual(result.returned, {
         verify: 'These had no place of their own in .ledger/, so each is kept, as it was, as legacy, at its path from its old folder: '
-          + '7 files in .ledger/.product/assets/legacy/, 10 in .ledger/core/assets/legacy/, 1 in .ledger/dropped/assets/legacy/, 4 in .ledger/shop/assets/legacy/, '
-          + '1 in .ledger/stale/assets/legacy/, 1 in .ledger/stall/assets/legacy/, 3 in .ledger/tally/assets/legacy/, 1 in .ledger/typo/assets/legacy/. '
+          + '7 files in .ledger/.product/assets/legacy/, 9 in .ledger/core/assets/legacy/, 3 in .ledger/shop/assets/legacy/, '
+          + '1 in .ledger/stall/assets/legacy/, 3 in .ledger/tally/assets/legacy/. '
           + 'These files of experiment records, neither a record\'s problem, design or report nor in its data/, were moved under its data/, at their paths from the record\'s folder: '
           + '.ledger/core/topics/alpha/experiments/E1-frame-budget/E1.1-one-monitor/data/sample.tsv, .ledger/core/topics/alpha/experiments/E1-frame-budget/data/harness/run.sh, '
           + '.ledger/core/topics/alpha/experiments/E1-frame-budget/data/rubric.md. A path a record\'s text or script spells out is left as written.',
@@ -678,7 +732,7 @@ describe('migration 078: the move into the layout in .ledger/', () => {
     });
 
     it('copies the old cache\'s reports, folded in or not, of a topic or of none, with no agent row, or of no unit, byte for byte into the state\'s ignored cache — a unit\'s into its earlier/ at its path below the unit\'s folder in the old cache, any other into the cache\'s own at its path below the old cache — naming none of them as legacy, so the unit\'s ending purges them with the rest of its cache', () => {
-      assert.deepStrictEqual(tree(state, '.cache'), [...EARLIER].map(([, to]) => to).sort(), 'the reports alone, no scratch file left');
+      assert.deepStrictEqual(tree(state, '.cache'), [...EARLIER, ...OLD_SYSTEMS_EARLIER].map(([, to]) => to).sort(), 'the reports and the old system\'s files alone, no scratch file left');
       for (const [was, to] of EARLIER) assert.deepStrictEqual(fs.readFileSync(path.join(state, '.cache', to)), fs.readFileSync(path.join(dir, '.workflows/.cache', was)), to);
       const copies = [...EARLIER].map(([, to]) => `.cache/${to}`);
       assert.deepStrictEqual(git(state, ['check-ignore', '--', ...copies]).trim().split('\n'), copies, 'every one ignored in the state');
@@ -698,7 +752,7 @@ describe('migration 078: the move into the layout in .ledger/', () => {
         + 'All [the counting](../../assets/legacy/research/counting/), and ![the flow](../../assets/legacy/design/flow%20chart.png).');
     });
 
-    it('points a moved document\'s links at the documents the move placed elsewhere — research folded into a log at its heading, a link\'s own anchor kept, a sibling\'s discussion, a brief, a session, a seed, an inbox item and its unit\'s manifest, as portal\'s — a built unit\'s spec joined into its spec.md at its area\'s heading — and leaves the spec\'s folder, its tracking file kept as legacy, as written', () => {
+    it('points a moved document\'s links at the documents the move placed elsewhere — research folded into a log at its heading, a link\'s own anchor kept, a sibling\'s discussion, a brief, a session, a seed, an inbox item and its unit\'s manifest, as portal\'s — a built unit\'s spec joined into its spec.md at its area\'s heading — and leaves the spec\'s folder, its tracking files copied into the unit\'s cache, as written', () => {
       assert.strictEqual(read('tally/topics/tally/log.md').split('\n\nPer ')[1], '[the research](log.md#research), [its ties](log.md#ties), [ranking](../../../shop/topics/ranking/log.md#discussion), '
         + '[the brief](brief.md), [the session](../../discovery/session-001.md), [the seed](../../seeds/2026-01-01--tally.md), [the idea](../../../.inbox/ideas/2026-02-01--dark-mode.md), [its manifest](../../manifest.json), [the spec](../../../shop/spec.md#1-ranking) and [its folder](../../shop/specification/ranking/).\n');
     });
@@ -731,19 +785,26 @@ describe('migration 078: the move into the layout in .ledger/', () => {
           },
         },
         brownfield_offer: 'skipped',
-        environment: { linters: [{ name: 'eslint', command: 'npx eslint .' }, { name: 'swiftformat', command: 'swiftformat . --lint', fix: 'swiftformat .' }] },
+        environment: { prepare: [SETUP_NOTE], linters: [{ name: 'eslint', command: 'npx eslint .' }, { name: 'swiftformat', command: 'swiftformat . --lint', fix: 'swiftformat .' }] },
         product_session: '002',
       });
       assert.strictEqual(Object.keys(project)[0], 'project_id');
     });
 
-    it('carries the inbox as it is, keeps the environment setup file, free text no environment field takes, as legacy byte for byte, and writes the state\'s own ignore file, ignoring the files the tracker\'s tool keeps local (7.5.4)', () => {
+    it('carries the inbox as it is, and writes the state\'s own ignore file, ignoring the files the tracker\'s tool keeps local (7.5.4)', () => {
       assert.deepStrictEqual(tree(state, '.inbox').filter((rel) => !rel.startsWith('ideas/' + TODAY)), [
         '.archived/bugs/2026-01-02--old-crash.md', 'ideas/2026-02-01--dark-mode.md',
       ]);
       assert.strictEqual(read('.inbox/ideas/2026-02-01--dark-mode.md'), '# Dark mode\n');
-      assert.deepStrictEqual([read('.product/assets/legacy/.state/environment-setup.md'), fs.existsSync(path.join(state, '.state/environment-setup.md'))], ['No special setup required.\n', false]);
       assert.strictEqual(read('.gitignore'), `${STATE_GITIGNORE}${PRE_LEDGER.localFiles.join('\n')}\n`);
+    });
+
+    it('22.5.11: carries the environment setup file\'s words, its template\'s heading aside, as a note among the steps that prepare the environment, unconfirmed, which the setup\'s screen at the first ready to build draws; the file kept nowhere — neither legacy nor in the cache', () => {
+      const setup = setupOf(dir);
+      assert.deepStrictEqual([setup.prepare, setup.confirmed], [[SETUP_NOTE], null]);
+      assert.ok(environmentSetupScreen({ project: 'Shop', setup, manage: false }).replace(/\s+/g, ' ')
+        .includes(`· From before Ledger: ${SETUP_NOTE.note.replace(/\s+/g, ' ')} — a note, never run`));
+      assert.deepStrictEqual(tree(state).filter((rel) => rel.endsWith('environment-setup.md')), []);
     });
 
     it('carries the tracker\'s store, found where the task driver says it lives, as it is, and none of its tool\'s local files (21.5.18)', () => {
@@ -774,7 +835,7 @@ describe('migration 078: the move into the layout in .ledger/', () => {
         'assets/legacy/.inbox/ideas/rough-notes.md',
         'assets/legacy/.roadmap/draft.txt',
         'assets/legacy/.roadmap/notes/ideas/2026-01-03--points-expiry.md',
-        'assets/legacy/.state/environment-setup.md',
+        'assets/legacy/.state/handoff.md',
         'assets/legacy/README.md',
         'assets/legacy/scratch/notes.txt',
         'assets/market.md',
@@ -974,7 +1035,6 @@ describe('migration 078: the move into the layout in .ledger/', () => {
         'assets/legacy/research/multi-tenancy/TenantTestCase.php',
         'assets/legacy/research/multi-tenancy/overview.md',
         'assets/legacy/specification/search/order-tracking-notes.md',
-        'assets/legacy/specification/search/review-input-tracking-c1.md',
         'assets/notes.md',
         'assets/research/exploration-superseded-2026-01-01-1200.md',
         'assets/specs/search.md',
@@ -1075,24 +1135,11 @@ describe('migration 078: the move into the layout in .ledger/', () => {
   });
 
   describe('an epic whose building started (21.S49)', () => {
-    it('keeps its sessions, puts its plans and review folders in its assets with their files\' names, joins its built spec into spec.md, and keeps its implementation folders and tracking files as legacy', () => {
+    it('keeps its sessions, joins its built spec into spec.md, takes every file the old system wrote out of its folder — its plans, its build\'s and its reviews\' — and keeps the files Claude left beside them as legacy', () => {
       assert.deepStrictEqual(tree(state, 'shop'), [
-        'assets/legacy/implementation/ranking/analysis-tasks-c1.md',
-        'assets/legacy/implementation/ranking/fix-tracking-ranking-1-1.md',
-        'assets/legacy/planning/ranking/review-integrity-tracking-c1.md',
-        'assets/legacy/specification/ranking/review-input-tracking-c1.md',
-        'assets/plans/event-tracking/planning.md',
-        'assets/plans/event-tracking/tasks/event-tracking-1-1.md',
-        'assets/plans/ranking/phase-1-tasks.md',
-        'assets/plans/ranking/planning.md',
-        'assets/plans/ranking/tasks/ranking-1-1.md',
-        'assets/plans/usage-analysis/usage-analysis-1-1.md',
-        'assets/reviews/ranking/change-set-c1-ranking.md',
-        'assets/reviews/ranking/change-set-c2-order-tracking.md',
-        'assets/reviews/ranking/change-set-c3-cost-analysis.md',
-        'assets/reviews/ranking/report-1-1.md',
-        'assets/reviews/ranking/report.md',
-        'assets/reviews/usage-analysis/report-1-1.md',
+        'assets/legacy/implementation/ranking/analysis-findings-c1.md',
+        'assets/legacy/planning/ranking/audit-test-helpers.md',
+        'assets/legacy/planning/ranking/ranking-4-1-deviations.md',
         'assets/sketch.md',
         'discovery/session-001.md',
         'manifest.json',
@@ -1119,15 +1166,15 @@ describe('migration 078: the move into the layout in .ledger/', () => {
   });
 
   describe('quick-fixes, and a cancelled unit', () => {
-    it('makes a completed quick-fix\'s spec its summary, its plan legacy, and its scoping and every item past the topics\' gone — its spec\'s, its plan\'s and its implementation\'s, which today\'s engine never reads (21.S45)', () => {
-      assert.deepStrictEqual(tree(state, 'typo'), ['assets/legacy/planning/typo/planning.md', 'manifest.json', 'summary.md']);
+    it('makes a completed quick-fix\'s spec its summary, its plan the old system\'s, in its cache, and its scoping and every item past the topics\' gone — its spec\'s, its plan\'s and its implementation\'s, which today\'s engine never reads (21.S45)', () => {
+      assert.deepStrictEqual(tree(state, 'typo'), ['manifest.json', 'summary.md']);
       assert.strictEqual(read('typo/summary.md'), '# Typo\n\nFix the typo in the header.\n');
       assert.deepStrictEqual(manifestOf('typo').phases, {});
     });
 
-    it('keeps a quick-fix whose old pipeline is not done — built with its review still owed, or its implementation or its scoping reopened after its review — as one being built: its spec and plan reference assets, and their items less the retired state', () => {
+    it('keeps a quick-fix whose old pipeline is not done — built with its review still owed, or its implementation or its scoping reopened after its review — as one being built: its spec a reference asset, its plan the old system\'s, in its cache, and their items less the retired state', () => {
       const built = (/** @type {string} */ wu, /** @type {string} */ building, /** @type {boolean} */ reviewed) => [
-        [`assets/plans/${wu}/planning.md`, `assets/specs/${wu}.md`, 'manifest.json'], 'in-progress', {
+        [`assets/specs/${wu}.md`, 'manifest.json'], 'in-progress', {
           specification: { items: { [wu]: { status: 'completed' } } },
           planning: { items: { [wu]: quickFixPlan(wu) } },
           implementation: { items: { [wu]: { status: building } } },
@@ -1141,31 +1188,23 @@ describe('migration 078: the move into the layout in .ledger/', () => {
       ]);
     });
 
-    it('moves a quick-fix whose old pipeline completed — its scoping, implementation and review — as a completed one, whatever its status reads: its spec its summary, its plan legacy and every item of its old pipeline gone; in progress, it is completed; cancelled, it stays so (21.5.15, 21.5.14)', () => {
+    it('moves a quick-fix whose old pipeline completed — its scoping, implementation and review — as a completed one, whatever its status reads: its spec its summary, its plan in its cache and every item of its old pipeline gone; in progress, it is completed; cancelled, it stays so (21.5.15, 21.5.14)', () => {
       assert.deepStrictEqual(['stale', 'dropped'].map((wu) => [tree(state, wu), read(`${wu}/summary.md`), manifestOf(wu).status, manifestOf(wu).phases]), [
-        [['assets/legacy/planning/stale/planning.md', 'manifest.json', 'summary.md'], '# stale\n\nFixed.\n', 'completed', {}],
-        [['assets/legacy/planning/dropped/planning.md', 'manifest.json', 'summary.md'], '# dropped\n\nFixed.\n', 'cancelled', {}],
+        [['manifest.json', 'summary.md'], '# stale\n\nFixed.\n', 'completed', {}],
+        [['manifest.json', 'summary.md'], '# dropped\n\nFixed.\n', 'cancelled', {}],
       ]);
     });
 
-    it('keeps every tracking and analysis file as legacy, known by its whole name, the review reports and the person\'s files named for tracking or analysis placed as any other (21.S46)', () => {
-      const moved = tree(state).filter((rel) => !rel.startsWith('.'));
-      assert.deepStrictEqual(moved.filter((rel) => /tracking|analysis/.test(rel)), [
+    it('copies every file the old system wrote, each kind known by its whole path below its topic\'s folder, byte for byte into its unit\'s earlier/ in the state\'s ignored cache, at its path below the unit\'s old folder, never as legacy and never named for the review; the files Claude or the person left beside them, named for tracking, analysis or a task, kept as legacy (21.S46)', () => {
+      for (const [was, to] of OLD_SYSTEMS_EARLIER) assert.deepStrictEqual(fs.readFileSync(path.join(state, '.cache', to)), fs.readFileSync(path.join(dir, '.workflows', was)), to);
+      const copies = [...OLD_SYSTEMS_EARLIER].map(([, to]) => `.cache/${to}`);
+      assert.deepStrictEqual(git(state, ['check-ignore', '--', ...copies]).trim().split('\n'), copies, 'every one ignored in the state');
+      assert.deepStrictEqual(tree(state).filter((rel) => !rel.startsWith('.') && /tracking|analysis|deviations/.test(rel)), [
         'core/assets/legacy/specification/search/order-tracking-notes.md',
-        'core/assets/legacy/specification/search/review-input-tracking-c1.md',
-        'shop/assets/legacy/implementation/ranking/analysis-tasks-c1.md',
-        'shop/assets/legacy/implementation/ranking/fix-tracking-ranking-1-1.md',
-        'shop/assets/legacy/planning/ranking/review-integrity-tracking-c1.md',
-        'shop/assets/legacy/specification/ranking/review-input-tracking-c1.md',
-        'shop/assets/plans/event-tracking/planning.md',
-        'shop/assets/plans/event-tracking/tasks/event-tracking-1-1.md',
-        'shop/assets/plans/usage-analysis/usage-analysis-1-1.md',
-        'shop/assets/reviews/ranking/change-set-c2-order-tracking.md',
-        'shop/assets/reviews/ranking/change-set-c3-cost-analysis.md',
-        'shop/assets/reviews/usage-analysis/report-1-1.md',
+        'shop/assets/legacy/implementation/ranking/analysis-findings-c1.md',
+        'shop/assets/legacy/planning/ranking/ranking-4-1-deviations.md',
         'shop/topics/event-tracking/log.md',
       ]);
-      assert.ok(moved.includes('shop/assets/reviews/ranking/report.md'));
     });
 
     it('neither carries nor names the files the person\'s tools leave beside theirs', () => {
@@ -1255,14 +1294,16 @@ describe('migration 078: a small project', () => {
     }
   });
 
-  it('keeps nothing as legacy from an old .state/ holding only the old engine\'s record', () => {
+  it('keeps nothing as legacy, and carries nothing onto the environment, from an old .state/ holding only the old engine\'s record and an empty environment setup file; one holding its template\'s heading alone carries nothing either', () => {
     dir = tempProject('migration-078-old-record-');
     try {
       write(dir, '.workflows/manifest.json', json({ work_units: {} }));
       write(dir, '.workflows/.state/migrations', '001\n072\n');
+      write(dir, '.workflows/.state/environment-setup.md', '');
       commitAll(dir);
       const { returned } = run(dir);
-      assert.deepStrictEqual([tree(path.join(dir, '.ledger'), '.product'), returned?.verify ?? null], [[], null]);
+      assert.deepStrictEqual([tree(path.join(dir, '.ledger'), '.product'), returned?.verify ?? null, 'environment' in movedProject()], [[], null, false]);
+      assert.strictEqual(setupNote('# Environment Setup\n\n'), null);
     } finally {
       cleanupFixture(dir);
     }
@@ -1488,10 +1529,10 @@ describe('migration 078: a small project', () => {
     }
   });
 
-  it('carries a unit whose name breaks the kebab-case rule by its case alone under its lowercase name — its folder, its registry entry, its items and every reference the move wrote to it following, its legacy files kept byte for byte at their renamed paths, its old cache\'s report copied into its cache under the new name, its archived inbox item in the archive under the new name — and names the rename for the review; a name breaking the rule otherwise carried as it stands', () => {
+  it('carries a unit whose name breaks the kebab-case rule by its case alone under its lowercase name — its folder, its registry entry, its items and every reference the move wrote to it following, its legacy file kept byte for byte at its renamed path, its old cache\'s report and the files the old system wrote copied into its cache under the new name, their words as they were, its archived inbox item in the archive under the new name — and names the rename for the review; a name breaking the rule otherwise carried as it stands', () => {
     dir = tempProject('migration-078-case-');
     const FIX = 'drop-A-flag';
-    const LEGACY_ANALYSIS = `# Analysis: ${FIX}\n`;
+    const LEGACY_NOTE = `# Notes on ${FIX}\n`;
     try {
       write(dir, '.workflows/manifest.json', json({
         work_units: { [FIX]: { work_type: 'quick-fix' }, tally: { work_type: 'feature' }, Old_Tally: { work_type: 'feature' } },
@@ -1500,7 +1541,8 @@ describe('migration 078: a small project', () => {
       write(dir, `.workflows/${FIX}/manifest.json`, json(unit(FIX, 'quick-fix', 'completed', quickFixPhases(FIX, 'completed'))));
       write(dir, `.workflows/${FIX}/specification/${FIX}/specification.md`, '# Drop the flag\n\nAttach without -A.\n');
       write(dir, `.workflows/${FIX}/planning/${FIX}/planning.md`, `# Plan: ${FIX}\n`);
-      write(dir, `.workflows/${FIX}/implementation/${FIX}/analysis-tasks-c1.md`, LEGACY_ANALYSIS);
+      write(dir, `.workflows/${FIX}/implementation/${FIX}/analysis-tasks-c1.md`, `# Analysis: ${FIX}\n`);
+      write(dir, `.workflows/${FIX}/implementation/${FIX}/notes.md`, LEGACY_NOTE);
       write(dir, `.workflows/.cache/${FIX}/implementation/${FIX}/review-001.md`, '# Review\n');
       write(dir, '.workflows/tally/manifest.json', json(unit('tally', 'feature', 'in-progress', { discussion: { items: { tally: { status: 'in-progress' } } } })));
       write(dir, '.workflows/tally/discussion/tally.md', `# Discussion: Tally\n\nCorrected by \`${FIX}\`: [its spec](../../${FIX}/specification/${FIX}/specification.md).\n`);
@@ -1518,12 +1560,15 @@ describe('migration 078: a small project', () => {
       assert.deepStrictEqual(fs.readdirSync(state).filter((name) => name.toLowerCase() === 'old_tally'), ['Old_Tally']);
       assert.deepStrictEqual([fix.name, fix.phases], ['drop-a-flag', {}]);
       assert.strictEqual(read('tally/topics/tally/log.md').split('\n\n').slice(-1)[0], 'Corrected by `drop-a-flag`: [its spec](../../../drop-a-flag/summary.md).\n');
-      assert.deepStrictEqual(tree(state, 'drop-a-flag'), ['assets/legacy/implementation/drop-a-flag/analysis-tasks-c1.md', 'assets/legacy/planning/drop-a-flag/planning.md', 'manifest.json', 'summary.md']);
-      assert.deepStrictEqual([read('drop-a-flag/assets/legacy/implementation/drop-a-flag/analysis-tasks-c1.md'), fs.readdirSync(state).filter((name) => name.toLowerCase() === 'drop-a-flag')], [LEGACY_ANALYSIS, ['drop-a-flag']]);
-      assert.deepStrictEqual([tree(state, '.cache'), fs.readdirSync(path.join(state, '.cache'))], [['drop-a-flag/earlier/implementation/drop-a-flag/review-001.md'], ['drop-a-flag']]);
-      assert.ok(tree(state).every((rel) => !rel.includes(FIX) && (rel.includes('/assets/legacy/') || !fs.readFileSync(path.join(state, rel)).includes(FIX))), 'no path names the old name, and no word but a legacy file\'s');
+      assert.deepStrictEqual(tree(state, 'drop-a-flag'), ['assets/legacy/implementation/drop-a-flag/notes.md', 'manifest.json', 'summary.md']);
+      assert.deepStrictEqual([read('drop-a-flag/assets/legacy/implementation/drop-a-flag/notes.md'), fs.readdirSync(state).filter((name) => name.toLowerCase() === 'drop-a-flag')], [LEGACY_NOTE, ['drop-a-flag']]);
+      assert.deepStrictEqual([tree(state, '.cache'), fs.readdirSync(path.join(state, '.cache'))], [[
+        'drop-a-flag/earlier/implementation/drop-a-flag/analysis-tasks-c1.md', 'drop-a-flag/earlier/implementation/drop-a-flag/review-001.md', 'drop-a-flag/earlier/planning/drop-a-flag/planning.md',
+      ], ['drop-a-flag']]);
+      assert.strictEqual(read('.cache/drop-a-flag/earlier/planning/drop-a-flag/planning.md'), `# Plan: ${FIX}\n`);
+      assert.ok(tree(state).every((rel) => !rel.includes(FIX) && (rel.includes('/assets/legacy/') || rel.startsWith('.cache/') || !fs.readFileSync(path.join(state, rel)).includes(FIX))), 'no path names the old name, and no word but a legacy file\'s or a cache copy\'s');
       assert.match(String(returned?.verify), /^This unit's name broke the rule a unit's name keeps .* by case alone, so it is carried under its lowercase name.*: drop-A-flag is drop-a-flag\./);
-      assert.match(String(returned?.verify), / 2 files in \.ledger\/drop-a-flag\/assets\/legacy\/\.$/, 'the place named by the unit\'s new name');
+      assert.match(String(returned?.verify), / 1 file in \.ledger\/drop-a-flag\/assets\/legacy\/\.$/, 'the place named by the unit\'s new name');
     } finally {
       cleanupFixture(dir);
     }
@@ -1671,7 +1716,7 @@ describe('migration 078: a small project', () => {
     }
   });
 
-  it('names in its notice each task driver\'s folder whose declaration does not read, carrying no store of it', () => {
+  it('names in its notice each task driver\'s folder whose declaration does not read and whose tracker a plan used, its store left where it is; one no plan used names nothing, nothing having happened', () => {
     dir = tempProject('migration-078-unread-');
     const skills = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'migration-078-skills-')));
     try {
@@ -1680,11 +1725,16 @@ describe('migration 078: a small project', () => {
       fs.cpSync(path.join(__dirname, '../../skills/ledger-migrate/scripts/migrations'), migrations, { recursive: true });
       fs.cpSync(TASK_DRIVERS, drivers, { recursive: true });
       write(drivers, 'broken/pre-ledger-store.json', '{"files": ".broken/store", "localFiles": []}\n');
+      write(drivers, 'unused/pre-ledger-store.json', '{"files": ".unused/store", "localFiles": []}\n');
       feature();
+      write(dir, '.workflows/tally/manifest.json', json(unit('tally', 'feature', 'in-progress', {
+        discussion: { items: { tally: { status: 'completed' } } }, planning: { items: { tally: { status: 'in-progress', format: 'broken' } } },
+      })));
+      commitAll(dir);
       const copy = require(path.join(migrations, '078-reshape-move.cjs'));
       const returned = copy.run({ projectDir: dir, reportUpdate: () => {}, reportSkip: () => {} });
       assert.deepStrictEqual(returned, {
-        notice: `The task driver folder ${path.join(drivers, 'broken')} holds no pre-ledger-store.json that reads, so the move carried no store declared there into the state: a store this project kept for such a tracker stays where it is.`,
+        notice: `The task driver folder ${path.join(drivers, 'broken')} holds no pre-ledger-store.json that reads, so the store this project's plans kept for its tracker stays where it is, outside the state.`,
       });
     } finally {
       cleanupFixture(dir);

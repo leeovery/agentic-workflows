@@ -499,8 +499,8 @@ describe('the per-phase agents and the join (21.10.5, E7)', () => {
         `- Phase 4: phase 2 of pay's plan, its tracker parent ${PLANS.pay.phases[1]}`,
         `- Its area: §2 pay of ${statePath(dir, 'shop/spec.md')}`,
         `- The sections ${statePath(dir, 'shop/spec.md')} numbers in its area, the only ones a piece names: 2`,
-        `- Its tasks' file: ${statePath(dir, 'shop/assets/plans/pay/phase-2-tasks.md')}`,
-        `- Its section of the plan: ${statePath(dir, 'shop/assets/plans/pay/planning.md')}, under "### Phase 2: Charges"`,
+        `- Its tasks' file: ${statePath(dir, '.cache/shop/earlier/planning/pay/phase-2-tasks.md')}`,
+        `- Its section of the plan: ${statePath(dir, '.cache/shop/earlier/planning/pay/planning.md')}, under "### Phase 2: Charges"`,
       ].join('\n'),
       '### Its tasks\n\n- 4.1, pay-2-1 — "Charge the card", done; the manifest credits it done\n\n- 4.2, pay-2-2 — "Refund a charge", in progress; the manifest credits it done\n\n```markdown\n**Problem**: A charge is kept for good.',
       `### Where the manifest and the tracker disagree\n\n- ${REFUND_DISAGREES}`,
@@ -511,7 +511,7 @@ describe('the per-phase agents and the join (21.10.5, E7)', () => {
     assert.ok(brief.endsWith(`# The directive\n\n${piece}\n`), brief);
     assert.ok(brief.includes(`check again until it names none:\n\n\`${ENGINE_RUN} migrate join shop --directive ${DIRECTIVE} --phase 4 --dry-run\`\n`), brief);
     assert.strictEqual(brief.split('engine.cjs').length - 1, 1, 'the directive drawn without the session\'s engine calls, the piece\'s check the brief\'s one');
-    assert.ok(composer('5').includes(`- Its tasks' file: none kept\n- Its section of the plan: ${statePath(dir, 'shop/assets/plans/pay/planning.md')}, under "### Phase 3: Export"`));
+    assert.ok(composer('5').includes(`- Its tasks' file: none kept\n- Its section of the plan: ${statePath(dir, '.cache/shop/earlier/planning/pay/planning.md')}, under "### Phase 3: Export"`));
 
     assert.deepStrictEqual(['1', '9'].map((phase) => refusedUntouched(dir, ['brief', 'migration-phase', 'shop', '--directive', DIRECTIVE, '--phase', phase], { env: SESSION }, harness)), [
       'brief: phase 1 of shop\'s cut is built, and the manifest and the tracker agree — the join writes it',

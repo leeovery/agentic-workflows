@@ -7,9 +7,10 @@
 // decided topic whose old map decided nine subtopics, with a link already
 // dead and an import its words name outside a link; a feature being built, its plan in the tracker, its
 // first phase built and its second still to build; a completed epic of two
-// specs, its build's report with no place; the cross-cutting unit; a
-// cancelled feature; a completed quick-fix; the roadmap with a note and a
-// session; and in the old cache, ignored, a report of the epic's, one of the
+// specs, its build's report with no place and the analysis the old system
+// wrote for it; the cross-cutting unit; a cancelled feature; a completed
+// quick-fix; the roadmap with a note and a session; the old environment
+// setup file; and in the old cache, ignored, a report of the epic's, one of the
 // cross-cutting unit's and a draft of no unit's — beside the hooks today's
 // product leaves. `oldProject` makes
 // it; `migrateWhole` takes it through the whole sequence as the start skill
@@ -79,6 +80,7 @@ function oldFiles(plan, idOf) {
     '.workflows/.cache/caching/discussion/invalidation/review-001.md': '### F1: Stale reads\n\nA read races its purge.\n',
     '.workflows/.cache/spec-draft.md': '# Draft\n\nA section never joined.\n',
     '.workflows/.state/migrations': [...MIGRATED_TO_070, '071', '072'].map((id) => `${id}\n`).join(''),
+    '.workflows/.state/environment-setup.md': '# Environment Setup\n\nNode 20 and pnpm; run pnpm install first.\n',
     '.workflows/manifest.json': jsonText({
       work_units: { gateway: { work_type: 'epic' }, caching: { work_type: 'cross-cutting' }, memo: { work_type: 'feature' }, shop: { work_type: 'epic' }, exports: { work_type: 'feature' }, typo: { work_type: 'quick-fix' } },
       roadmap: { horizons: ['next'], items: { 'dark-mode': { horizon: 'next', summary: 'Dark mode', kind: 'idea', origin: 'harvest', sources: ['.roadmap/notes/ideas/2026-01-07--dark-mode.md'] } } },
@@ -130,6 +132,7 @@ function oldFiles(plan, idOf) {
     '.workflows/shop/specification/cart/specification.md': doc('Specification: Cart', { Adding: 'One tap adds an item.', Notes: 'The cart keeps items a week.' }),
     '.workflows/shop/specification/pay/specification.md': `---\ntopic: pay\nstatus: concluded\n---\n\n${doc('Specification: Pay', { Cards: 'Visa and more are taken.', Notes: 'See the plan.' })}`,
     '.workflows/shop/implementation/cart/report.md': doc('Build report: Cart', { Built: 'Every task landed.' }),
+    '.workflows/shop/implementation/cart/analysis-tasks-c1.md': doc('Analysis tasks: Cart', { Tasks: 'None proposed.' }),
     '.workflows/exports/manifest.json': jsonText({
       name: 'exports', work_type: 'feature', status: 'cancelled', description: 'Exports', created: '2026-01-05',
       phases: { discussion: { items: { exports: TALKING } } },
