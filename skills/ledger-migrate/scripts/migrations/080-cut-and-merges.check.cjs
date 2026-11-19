@@ -31,8 +31,9 @@
 //     not, whose old plans put tasks in the tracker, each a planning item
 //     with a tracker root and a task map: done once `task close-plan` has
 //     marked each root closed (`.cache/migrate/closed/{unit}/{root}.json`,
-//     21.8.4, 21.8.12) — never a quick-fix's, which keeps its unit, its old
-//     tasks left as they stand, never taken up or closed (21.5.21);
+//     21.8.4, 21.8.12) — never a quick-fix's still in progress, which keeps
+//     its unit, its old tasks left as they stand, never taken up or closed
+//     (21.5.21);
 //   - `{unit}`, a cross-cutting unit: done once it has left the registry,
 //     its folder kept in the product's assets, and no epic holds a topic
 //     promoted to it (21.7.3, 21.7.5) — its entries product-wide, which the
@@ -260,6 +261,9 @@ const isCut = (project, unit) => isFile(path.join(project.stateDir, CUT_MARKS, `
  */
 const isBuilding = (project, unit, now) => now !== null && now.work_type !== QUICK_FIX && (holdsOldPlan(now) || isCut(project, unit));
 
+/** Whether a unit is a quick-fix still in progress, whose old tasks stand as they are (21.5.21). @param {Record<string, any>} now */
+const keepsItsTasks = (now) => now.work_type === QUICK_FIX && now.status === 'in-progress';
+
 /** @param {string[]} names */
 const listed = (names) => names.join(', ');
 
@@ -452,7 +456,7 @@ function piecesOfUnit(project, unit) {
   const pieces = [];
   if (now?.work_type === 'cross-cutting' || before?.work_type === 'cross-cutting') pieces.push({ name: unit, problems: retiringProblems(project, unit) });
   else if (isBuilding(project, unit, now)) pieces.push({ name: unit, problems: buildingProblems(project, unit, /** @type {Record<string, any>} */ (now), before) });
-  else if (now !== null && now.status !== 'completed' && now.work_type !== QUICK_FIX && trackerPlans(before).length > 0) pieces.push({ name: unit, problems: closingProblems(project, unit, before) });
+  else if (now !== null && now.status !== 'completed' && !keepsItsTasks(now) && trackerPlans(before).length > 0) pieces.push({ name: unit, problems: closingProblems(project, unit, before) });
   const sessions = now === null ? [] : migrationSessions(project, unit);
   if (sessions.length > 0) pieces.push({ name: `${unit}/research`, problems: placementProblems(project, unit, sessions) });
   return pieces;

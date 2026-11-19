@@ -1460,7 +1460,7 @@ describe('the next step the check names on each record, so the session learns a 
     ]);
   });
 
-  it('a section no record cites, or a contradiction another record names, once the session settles it into the record — a `Settled:` finding naming it — is no longer to read: what is left is read first, then the record is amended', () => {
+  it('a section no record cites, or a contradiction another record names, once the session settles it into the record — a `Settled:` finding naming it — is no longer to read — a word holding its name naming it not — what is left is read first, then the record is amended', () => {
     dir = world();
     const [q1, d1] = GOOD['shop.discussion.weights'];
     carryArgs(dir, 'shop.discussion.weights', [q1, d1]);
@@ -1481,12 +1481,15 @@ describe('the next step the check names on each record, so the session learns a 
       carryArgs(dir, `fumi.discussion.${topic}`, /** @type {unknown[]} */ (entries));
     }
     const odds = nexts()['fumi.discussion.licensing'];
+    writeState(dir, findingsPath('fumi', 'licensing'), '- Settled: ExtraSeats and Flats at odds, amend to agree\n');
+    const inOtherWords = nexts()['fumi.discussion.licensing'];
     writeState(dir, findingsPath('fumi', 'licensing'), '- Settled: Seats and Flat at odds, amend to agree\n');
 
-    assert.deepStrictEqual([deeper, one, amend, odds, nexts()['fumi.discussion.licensing']], [
+    assert.deepStrictEqual([deeper, one, amend, odds, inOtherWords, nexts()['fumi.discussion.licensing']], [
       '3 uncited sections to read: settle each into this record, or mark it',
       'an uncited section to read: settle each into this record, or mark it',
       'a fresh per-topic agent amends it, its brief carrying the findings; once it returns, a fresh verifier reads it',
+      'a contradiction another record names to judge: settle each into this record, or mark it',
       'a contradiction another record names to judge: settle each into this record, or mark it',
       'a fresh per-topic agent amends it, its brief carrying the findings; once it returns, a fresh verifier reads it',
     ]);

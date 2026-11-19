@@ -1662,10 +1662,19 @@ function settledForAmend(project, unit, topic) {
   return (names) => items.length > 0 && names.every((name) => items.some((item) => namesWhole(item, name)));
 }
 
-/** Whether `text` names `name` whole: never as the start of a deeper heading's path, `{name} > …`. @param {string} text @param {string} name */
+const WORD_CHAR = /[\p{L}\p{N}]/u;
+
+/**
+ * Whether `text` names `name` whole: at the text's edge or a character no
+ * word holds on each side, and never as the start of a deeper heading's
+ * path, `{name} > …`.
+ * @param {string} text @param {string} name
+ */
 function namesWhole(text, name) {
+  const bounded = (/** @type {number} */ at) => at < 0 || at >= text.length || !WORD_CHAR.test(text[at]);
   for (let at = text.indexOf(name); at !== -1; at = text.indexOf(name, at + 1)) {
-    if (!text.startsWith(PATH_JOIN, at + name.length)) return true;
+    const end = at + name.length;
+    if (bounded(at - 1) && bounded(end) && !text.startsWith(PATH_JOIN, end)) return true;
   }
   return false;
 }
