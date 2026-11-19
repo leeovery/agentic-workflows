@@ -117,10 +117,10 @@ describe('pipeline simulation: from the migration\'s cut and merges', () => {
     assert.match(fs.readFileSync(statePath(sim.dir, layout.knowledge('product.md')), 'utf8'), /^Every write purges its keys\.$/m);
   });
 
-  it('21.S27: the epic nothing of which was built sits in discussion, its three specs and its plan reference in its assets, its topics where they stood, the topic it promoted gone; once every topic is decided its one spec is written fresh, through the review and ready to build (21.8.2, 21.8.3)', () => {
+  it('21.S27: the epic nothing of which was built sits in discussion, its three specs reference in its assets and its plan in its cache, its topics where they stood, the topic it promoted gone; once every topic is decided its one spec is written fresh, through the review and ready to build (21.8.2, 21.8.3)', () => {
     const wu = 'gateway';
     assert.deepStrictEqual(['auth', 'limits', 'errors'].map((spec) => fs.existsSync(statePath(sim.dir, layout.assets(wu, 'specs', `${spec}.md`)))), [true, true, true]);
-    assert.ok(fs.existsSync(statePath(sim.dir, layout.assets(wu, 'plans', 'auth', 'planning.md'))));
+    assert.ok(fs.existsSync(statePath(sim.dir, layout.cache(wu, 'earlier', 'planning', 'auth', 'planning.md'))));
     const { phases } = sim.manifest(wu);
     assert.deepStrictEqual([Object.keys(phases).sort(), Object.entries(phases.discussion.items).map(([topic, { status }]) => [topic, status])],
       [['discovery', 'discussion'], [['auth', 'completed'], ['limits', 'completed'], ['errors', 'in-progress']]]);

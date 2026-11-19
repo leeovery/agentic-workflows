@@ -103,9 +103,6 @@ const UNIT_ASSETS = Object.freeze({
   '.DS_Store': 'Finder\n',
   'deck/pitch.md': '# Pitch\n\nFor teams.\n',
   'flow.png': 'PNG the flow\n',
-  'plans/licensing/plan.md': '# Plan\n\nTask one.\n',
-  'plans/search/plan.md': '# Plan\n\nRank by weight.\n',
-  'reviews/licensing/report.md': '# Review\n\nAll good.\n',
   'legacy/implementation/licensing/report.md': '# Analysis\n\nFast enough.\n',
   'legacy/implementation/licensing/tracking.md': '# Tracking\n\nTask one done.\n',
 });
@@ -454,7 +451,7 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
     assert.match(brief, /^- \*\*Topic:\*\* support, in discovery, pending — its record carried in discovery, the topic never started$/m);
   });
 
-  it('every file of the unit\'s assets but a dotfile, with where each came from — its legacy files, plans and old reviews by their folder and how many, never each: the markdown ones the topic walks — an import, listed or come in with them, and research a legacy split superseded bearing its name — apart from the rest but its own spec, listed as its spec alone; research bearing no topic\'s name walked by none in a unit with no record of its own', () => {
+  it('every file of the unit\'s assets but a dotfile, with where each came from — its legacy files by their folder and how many, never each: the markdown ones the topic walks — an import, listed or come in with them, and research a legacy split superseded bearing its name — apart from the rest but its own spec, listed as its spec alone; research bearing no topic\'s name walked by none in a unit with no record of its own', () => {
     for (const [rel, text] of Object.entries(UNIT_ASSETS)) writeState(dir, layout.assets('fumi', ...rel.split('/')), text);
 
     const { brief } = issued(['migration-topic', ...LICENSING]);
@@ -469,9 +466,7 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
       '## The unit\'s other assets, never walked', '',
       '- {state}/fumi/assets/flow.png, an import',
       '- {state}/fumi/assets/legacy/, 2 files kept as legacy, each at its path from the unit\'s old folder',
-      '- {state}/fumi/assets/plans/, 2 plans',
       '- {state}/fumi/assets/research/exploration-superseded-20260101.md, research a legacy split superseded',
-      '- {state}/fumi/assets/reviews/, 1 old review of a build',
       '- {state}/fumi/assets/old.md, which came in from discussion/licensing — its file is gone, so no entry links it', '',
     ].join('\n')), brief);
     assert.deepStrictEqual([brief.includes('.DS_Store'), brief.split('fumi/assets/specs/commerce.md').length - 1], [false, 1]);
@@ -493,9 +488,7 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
       '## The unit\'s other assets, never walked', '',
       '- {state}/fumi/assets/flow.png, an import',
       '- {state}/fumi/assets/legacy/, 2 files kept as legacy, each at its path from the unit\'s old folder',
-      '- {state}/fumi/assets/plans/, 2 plans',
       '- {state}/fumi/assets/research/licensing-superseded-20260101.md, research a legacy split superseded',
-      '- {state}/fumi/assets/reviews/, 1 old review of a build',
       '- {state}/fumi/assets/specs/commerce.md, a spec',
       '- {state}/fumi/assets/old.md, which came in from discussion/licensing — its file is gone, so no entry links it', '',
     ].join('\n')), brief);
@@ -644,7 +637,7 @@ describe('the walk sheet (the verifier\'s brief)', () => {
     ].join('\n')}\n\n# The earlier rounds'`), brief);
   });
 
-  it('the assets a record walks after its discovery sessions, each section holding text, a unit\'s own record\'s too — a split\'s research the topic\'s bearing its name, the own record\'s bearing none; no spec, plan, old review, legacy file or other file, and no file holding no section to walk', () => {
+  it('the assets a record walks after its discovery sessions, each section holding text, a unit\'s own record\'s too — a split\'s research the topic\'s bearing its name, the own record\'s bearing none; no spec, legacy file or other file, and no file holding no section to walk', () => {
     for (const [rel, text] of Object.entries(UNIT_ASSETS)) writeState(dir, layout.assets('fumi', ...rel.split('/')), text);
     writeState(dir, layout.unit('fumi', 'discovery', 'session-001.md'), '## Pricing\n\nSeats.\n');
     writeState(dir, composedPath('fumi', 'licensing'), `${RECORD}\n`);
@@ -665,18 +658,18 @@ describe('the walk sheet (the verifier\'s brief)', () => {
   });
 
   it('of a file it does not walk, an asset another record walks or none, only the sections an entry cites', () => {
-    writeState(dir, layout.assets('fumi', 'plans', 'licensing', 'plan.md'), '# Plan\n\nTask one.\n\n## Later\n\nTask two.\n');
+    writeState(dir, layout.assets('fumi', 'legacy', 'notes', 'plan.md'), '# Plan\n\nTask one.\n\n## Later\n\nTask two.\n');
     writeState(dir, layout.assets('fumi', 'research', 'exploration-superseded-20260101.md'), '# Exploration\n\nSeats or usage.\n\n## Hosting\n\nOur servers.\n');
     writeState(dir, composedPath('fumi', null), `${RECORD}\n`);
     writeState(dir, composedPath('fumi', 'licensing'), JSON.stringify({ entries: [
-      { ref: 'f1', event: 'found', text: 'Task two waits.', cites: [{ path: 'fumi/assets/plans/licensing/plan.md', section: 'Later' }] },
+      { ref: 'f1', event: 'found', text: 'Task two waits.', cites: [{ path: 'fumi/assets/legacy/notes/plan.md', section: 'Later' }] },
       { ref: 'f2', event: 'found', text: 'Hosting is ours.', cites: [{ path: 'fumi/assets/research/exploration-superseded-20260101.md', section: 'Hosting' }] },
     ] }));
 
     const { brief } = issued(['migration-verifier', ...LICENSING]);
 
     assert.ok(brief.includes(`\n\n${[
-      '## {state}/fumi/assets/plans/licensing/plan.md', '', '- Plan > Later, lines 5–7', '  - f1, found: Task two waits.', '',
+      '## {state}/fumi/assets/legacy/notes/plan.md', '', '- Plan > Later, lines 5–7', '  - f1, found: Task two waits.', '',
       '## {state}/fumi/assets/research/exploration-superseded-20260101.md', '', '- Exploration > Hosting, lines 5–7', '  - f2, found: Hosting is ours.',
     ].join('\n')}\n\n# The earlier rounds`), brief);
   });

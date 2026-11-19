@@ -39,10 +39,15 @@
 //     cache byte for byte in the state's ignored cache, at its path below
 //     its unit's folder there under the unit's `earlier/`, or at its path
 //     below the old cache under the cache's own, its case aside, unless its
-//     unit was retired, its cache purged, or it is a build's fix-tracking
-//     report, which 051 moved into the unit's implementation folder, byte
-//     for byte anywhere in the state; any other byte for byte anywhere
-//     in the state, a manifest where its unit or the project is, or a
+//     unit was retired, its cache purged — a build's fix-tracking report
+//     051 moved into the unit's implementation folder among them, which
+//     the move copies to the same place; a unit's file the old system's
+//     agents or trackers wrote (reshape/old-system.cjs) the same way, at its
+//     path below the unit's folder under the unit's `earlier/`; the old
+//     environment setup file's words, but for its template's heading, a
+//     note among the steps that prepare the project's environment; any
+//     other byte for byte anywhere in the state, a manifest where its unit
+//     or the project is, or a
 //     document one file of the state holds every line of — a topic's
 //     research, discussion or investigation its topic's log and mail
 //     together, since released migrations moved part of one into its mail
@@ -66,8 +71,9 @@
 //
 // The report, as JSON: `ok`, the `faults`, each its check and what it
 // found, and the counts a rehearsal reports — units by type and status,
-// decisions, legacy files, the old cache's documents in the cache's
-// `earlier/` folders, and the dead links: those of the documents
+// decisions, legacy files, the files in the cache's `earlier/` folders —
+// the old cache's documents and those the old system wrote in a unit's
+// folder — and the dead links: those of the documents
 // outside legacy before the migration and after, those after that are old,
 // and those of the legacy files as they stand — with the dead links found
 // old listed, each once.
@@ -93,6 +99,7 @@ const schema = require(path.join(SCRIPTS, 'kernel/manifest-schema.cjs'));
 const { SIDECAR_NAME } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { rehomedPlaces, asRehomed } = require(path.join(SCRIPTS, 'domain/ledger-rehomed.cjs'));
 const { chosenDriver } = require(path.join(SCRIPTS, 'domain/drivers.cjs'));
+const { oldSystemFile, ENVIRONMENT_SETUP, setupNote } = require(path.join(MIGRATIONS, 'reshape/old-system.cjs'));
 
 const OLD = '.workflows';
 const STATE = '.ledger';
@@ -102,12 +109,8 @@ const REBUILT = [/^\.cache\/(?!.*\.md$)/, /^\.state\/migrations$/, /^\.knowledge
 const CACHE_REPORT = /^\.cache\/(.+\.md)$/;
 // Where the state's cache holds them: a unit's `earlier/`, or the cache's own.
 const EARLIER = /^\.cache\/(?:[^/]+\/)?earlier\//;
-// A build's fix-tracking report, which 051 moved out of the old cache into
-// the unit's committed implementation folder, a project behind it among the
-// chain the migration runs.
-const FIX_TRACKING = /^[^/]+\/implementation\/[^/]+\/fix-tracking-[^/]*\.md$/;
 const TEXT = /\.(?:md|json)$/;
-const UNREAD = /^(?:\.cache|\.state|\.knowledge)\//;
+const UNREAD = /^(?:\.cache|\.knowledge)\/|^\.state\/(?!environment-setup\.md$)/;
 const LINK = /(!?)\[([^\]]*)\]\(([^)\s]+)\)/g;
 // A fence's line, its run of backticks or tildes, a closing one holding
 // the run alone; and a code span, its backtick run closed by one as long.
@@ -445,15 +448,27 @@ function topicHolds(state) {
 }
 
 /**
- * Whether the state's cache holds a document of the old cache byte for
- * byte where the move copies it, its case aside: a unit's in the unit's
- * `earlier/`, any other in the cache's own.
- * @param {State} state @param {Listing} old @param {string} report its path below the old cache @param {OldFile} file
+ * Whether the state's cache holds a file byte for byte where the move
+ * copies it, its case aside: a unit's in the unit's `earlier/`, any other
+ * in the cache's own.
+ * @param {State} state @param {Listing} old @param {string} report its path below the old cache, or below the old state @param {OldFile} file
  */
 function earlierHeld(state, old, report, file) {
   const [unit, ...below] = report.split('/');
   const at = `${unit}/manifest.json` in old.files ? `.cache/${unit}/earlier/${below.join('/')}` : `.cache/earlier/${report}`;
   return state.earlier.get(at.toLowerCase()) === file.sha;
+}
+
+/**
+ * Whether the project's environment holds, among the steps that prepare it,
+ * the note the old environment setup file's words make, or the file makes
+ * none.
+ * @param {State} state @param {OldFile} file
+ */
+function setupCarried(state, file) {
+  const step = setupNote(file.text ?? '');
+  const prepare = state.project.environment?.prepare;
+  return step === null || (Array.isArray(prepare) && prepare.some((held) => held?.name === step.name && held.note === step.note));
 }
 
 /** @param {State} state @param {Map<string, any>} units @param {Listing} old @param {Doc[]} olds @param {(doc: Doc) => Doc[]} holders */
@@ -464,7 +479,10 @@ function filesPlaced(state, units, old, olds, holders) {
   /** @param {string} rel @param {OldFile} file */
   const placed = (rel, file) => {
     const report = CACHE_REPORT.exec(rel)?.[1];
-    if (report !== undefined) return earlierHeld(state, old, report, file) || retired(report.split('/')[0]) || (FIX_TRACKING.test(report) && state.shas.has(file.sha));
+    if (report !== undefined) return earlierHeld(state, old, report, file) || retired(report.split('/')[0]);
+    const [owner, ...below] = rel.split('/');
+    if (`${owner}/manifest.json` in old.files && oldSystemFile(below.join('/'))) return earlierHeld(state, old, rel, file) || retired(owner);
+    if (rel === ENVIRONMENT_SETUP) return setupCarried(state, file);
     if (state.shas.has(file.sha)) return true;
     if (rel === 'manifest.json') return state.files.includes('manifest.json');
     const unit = /^([^/]+)\/manifest\.json$/.exec(rel)?.[1];

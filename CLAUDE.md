@@ -98,7 +98,7 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 - `.ledger/{work_unit}/spikes/{NNN}-{slug}/` — the unit's spikes
 - `.ledger/.state/` — the migrations ledger
 - `.ledger/.cache/{work_unit}/{phase}/{topic}/` — gitignored session state, scratch, presence and `entered.json`, when the place was last entered, and in `.showings/` the learned gates' showings held there; `.cache/.session-labels/` the session-label store, tmux's records at its top and Portal's in `portal/`
-- `.ledger/.cache/{work_unit}/earlier/` — the old cache's reports from before Ledger, copied by the migration, each at its path below the unit's folder in the old cache, purged with the unit's cache; `.cache/earlier/` those of no unit, each at its path below the old cache
+- `.ledger/.cache/{work_unit}/earlier/` — the old cache's reports from before Ledger, and the files the old system's agents and trackers wrote in the unit's folder, copied by the migration, each at its path below the unit's folder in the old cache or the old state, purged with the unit's cache; `.cache/earlier/` those of no unit, each at its path below the old cache
 - `.ledger/.cache/.showings/` — the import reprompt's showing held, at no place
 - `.ledger/.cache/migrate/` — the migration's staging: the split's plans (`split/`), each topic's record as composed (`records/`) and as carried (`carried/`), each building unit's pieces and plan (`cut-and-merges/{unit}/`), the cut's and the closed plans' marks (`cut/`, `closed/`), and the finish's drops (`finish.json`)
 - `.ledger/.cache/.set-aside/{work_unit}/round-{N}/put-{k}/` — what the review's put back set aside; outlives the unit

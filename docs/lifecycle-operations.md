@@ -66,7 +66,7 @@ A decision is never edited. A changed mind, a new fact, another topic's decision
 
 ## The legacy files
 
-A project moved across from before Ledger can hold files the move found no place for: old plans, agent reports, research. They are kept as **legacy files**, with their piece of work or with the product, until each is sorted. While any wait, the start menu shows a row for them, *Sort the legacy files from the migration*, and an epic's menu shows its own.
+A project moved across from before Ledger can hold files the move found no place for: notes left beside the work, references, images, research. They are kept as **legacy files**, with their piece of work or with the product, until each is sorted. While any wait, the start menu shows a row for them, *Sort the legacy files from the migration*, and an epic's menu shows its own.
 
 Sorting is a short pass, at your pace:
 

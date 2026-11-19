@@ -1222,8 +1222,6 @@ const migratedTopic = (filling) => topicPlace(filling.cwd, filling.given.topic, 
 /** Where an asset came from, by its kind, an import's from where its manifest says. */
 const ASSET_FROM = new Map([
   ['spec', 'a spec'],
-  ['plan', 'a plan'],
-  ['review', 'an old review of a build'],
   ['research', 'research a legacy split superseded'],
 ]);
 
@@ -1235,21 +1233,17 @@ function assetLine(root, { path: at, kind, origin, owner, listed: imported, held
 }
 
 // The unit's assets no agent reads, listed by their folder and how many: its
-// legacy files, kept each at its path from the unit's old folder (078), and
-// its plans and old reviews, the building's reference.
+// legacy files, kept each at its path from the unit's old folder (078).
 const FOLDED = new Map([
   ['legacy', { folder: '/assets/legacy/', counted: (/** @type {number} */ count) => `${count} ${count === 1 ? 'file' : 'files'} kept as legacy, each at its path from the unit's old folder` }],
-  ['plan', { folder: '/assets/plans/', counted: (/** @type {number} */ count) => `${count} ${count === 1 ? 'plan' : 'plans'}` }],
-  ['review', { folder: '/assets/reviews/', counted: (/** @type {number} */ count) => `${count} old ${count === 1 ? 'review of a build' : 'reviews of builds'}` }],
 ]);
 
 /**
  * The unit's assets as a record's brief lists them: those it walks, then
  * the rest but its specs, listed as its specs — one it would walk that its
- * own files hold word for word among the rest, so said; its legacy files,
- * plans and old reviews by their folder and how many, never each, where the
- * first of each kind stands: a project may keep thousands, and no agent
- * reads one.
+ * own files hold word for word among the rest, so said; its legacy files
+ * by their folder and how many, never each, where the first stands: a
+ * project may keep thousands, and no agent reads one.
  * @param {string} root @param {MigratedAsset[]} assets @param {string|null} topic @param {string[]} held the paths of those its own files hold @param {string[]} [specs] the paths of the topic's specs
  */
 function assetSections(root, assets, topic, held, specs = []) {
