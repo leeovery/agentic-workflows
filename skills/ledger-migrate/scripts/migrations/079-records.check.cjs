@@ -201,8 +201,7 @@
 // it draws no part of among them, only the sections cited. The unit's assets are every file under its
 // `assets/` but a dotfile, each with where it came from, and an import
 // whose file is gone; those walked are its markdown files but its specs,
-// read as specs, its plans and old reviews, the building's reference,
-// which the cut reads where building started, and its legacy files, which
+// read as specs, and its legacy files, which
 // the person sorts after the migration (21.5.24): the documents the person
 // shared, walked by each of the unit's records, and the research a legacy
 // split superseded (21.5.25), walked by the topic it was copied from alone
@@ -263,10 +262,10 @@ const ASSETS = 'assets';
 // The directive this checks, by its file's name.
 const DIRECTIVE = path.basename(__filename, '.check.cjs');
 // The folders of a unit's assets the move fills (078), by what each holds.
-const ASSET_FOLDERS = new Map([['specs', 'spec'], ['plans', 'plan'], ['reviews', 'review'], ['legacy', 'legacy'], ['research', 'research']]);
-// The kinds of asset no record walks: a spec, read as a spec; a plan and an
-// old review, the building's reference; a legacy file, the person's to sort.
-const UNWALKED = Object.freeze(['spec', 'plan', 'review', 'legacy']);
+const ASSET_FOLDERS = new Map([['specs', 'spec'], ['legacy', 'legacy'], ['research', 'research']]);
+// The kinds of asset no record walks: a spec, read as a spec; a legacy file,
+// the person's to sort.
+const UNWALKED = Object.freeze(['spec', 'legacy']);
 // A legacy split's copy of the research it superseded (077), by the name of
 // the research it copied.
 const SUPERSEDED_COPY = /^(.+)-superseded-[^/]+\.md$/;

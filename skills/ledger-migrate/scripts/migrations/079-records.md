@@ -37,7 +37,7 @@ Paths below are from the state's folder, but one under `.workflows/`, which is f
 - Its old discussion map and its research's threads, in its unit's manifest under `.workflows/`, as the move read them; a promoted topic's research as the unit it came from holds it.
 - Its reviews never folded in, which the move appended to its log, each under `## Review {id}, never folded in`.
 - Its unit's discovery sessions, `{unit}/discovery/session-{NNN}.md`, the migration's own among them where research fed several topics, and for a promoted topic those of the unit it came from.
-- Its unit's assets its brief lists to walk: each markdown file in `{unit}/assets/` but its specs, its plans, its old reviews and its legacy files — the documents the person shared; and the research a legacy split superseded, in `assets/research/`, a topic's where it bears the topic's name, else the unit's own record's alone. Its later answers decide what of an asset is current, as of any source.
+- Its unit's assets its brief lists to walk: each markdown file in `{unit}/assets/` but its specs and its legacy files — the documents the person shared; and the research a legacy split superseded, in `assets/research/`, a topic's where it bears the topic's name, else the unit's own record's alone. Its later answers decide what of an asset is current, as of any source.
 
 A unit's own record has the unit's discovery sessions, the assets its brief lists to walk, and the threads still open of research under no topic's name that its brief lists, as its sources.
 

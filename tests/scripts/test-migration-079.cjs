@@ -1033,11 +1033,11 @@ describe('what the check reads once a record is carried', () => {
     assert.deepStrictEqual(unfinished()['fumi.discussion.licensing'].filter((problem) => problem.includes(commerce)), [uncited('fumi', 'licensing', commerce, 'Corrigenda')]);
   });
 
-  it('21.6.14: once every record walking them has one composed, each section of a walked asset holding text that no record cites, nor the session marks, is named on the topic it came in from, else on each topic where the unit has no record of its own; no spec, plan, old review, legacy file or other file is', () => {
+  it('21.6.14: once every record walking them has one composed, each section of a walked asset holding text that no record cites, nor the session marks, is named on the topic it came in from, else on each topic where the unit has no record of its own; no spec, legacy file or other file is', () => {
     dir = world();
     writeState(dir, layout.assets('fumi', 'rates.md'), '# Rates\n\nPer seat.\n\n## Discounts\n\nNone.\n');
     writeState(dir, layout.assets('fumi', 'sso.md'), '# SSO\n\nOne sign-in.\n');
-    for (const rel of ['plans/licensing/plan.md', 'reviews/licensing/report.md', 'legacy/notes.md', 'specs/draft.md', 'notes.txt']) writeState(dir, layout.assets('fumi', ...rel.split('/')), '# Kept\n\nText.\n');
+    for (const rel of ['legacy/notes.md', 'specs/draft.md', 'notes.txt']) writeState(dir, layout.assets('fumi', ...rel.split('/')), '# Kept\n\nText.\n');
     const fumi = Object.entries(GOOD).filter(([at]) => at.startsWith('fumi.'));
     for (const [dotpath, entries] of [...fumi, ['platform.discussion.auth', GOOD['platform.discussion.auth']]].filter(([at]) => at !== 'fumi.discovery.support')) {
       const [unit, , topic] = dotpath.split('.');
@@ -1579,7 +1579,7 @@ describe('the directive\'s example record, frozen with 079', () => {
       '- **A shared spec.** From a spec several topics draw on, carry each point bearing on this topic\'s subject, its log discussing it or not, and each section its findings send it.',
       'and the unit\'s other topics, each with what it is about, to judge whose a point is by, and the unit\'s other assets, each with where it came from: they are not sources. Each record is carried from its own sources alone, never another topic\'s log, brief or record',
       '— and never the project\'s code: a record is what its sources decided.',
-      '- Its unit\'s assets its brief lists to walk: each markdown file in `{unit}/assets/` but its specs, its plans, its old reviews and its legacy files — the documents the person shared; and the research a legacy split superseded, in `assets/research/`, a topic\'s where it bears the topic\'s name, else the unit\'s own record\'s alone. Its later answers decide what of an asset is current, as of any source.',
+      '- Its unit\'s assets its brief lists to walk: each markdown file in `{unit}/assets/` but its specs and its legacy files — the documents the person shared; and the research a legacy split superseded, in `assets/research/`, a topic\'s where it bears the topic\'s name, else the unit\'s own record\'s alone. Its later answers decide what of an asset is current, as of any source.',
       'A unit\'s own record has the unit\'s discovery sessions, the assets its brief lists to walk, and the threads still open of research under no topic\'s name that its brief lists, as its sources.',
     ].filter((rule) => !sources.includes(rule)), []);
   });
