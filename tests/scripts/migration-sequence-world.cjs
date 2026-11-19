@@ -256,7 +256,7 @@ function workDirective(dir, env, directive) {
     settleLate(dir, opts, 'exports.discussion.exports');
     const steps = harness.ok(dir, ['migrate', 'check', RECORDS], opts).unfinished.map((/** @type {{name: string, next: string}} */ { name, next }) => [name, next]);
     assert.deepStrictEqual(steps.sort(), Object.keys(RECORDS_COMPOSED).sort().map((place) => [place, `ready to carry: \`ledger carry ${place}\``]), 'the check names each record passed ready to carry, the step the session takes');
-    for (const place of Object.keys(RECORDS_COMPOSED)) harness.ok(dir, ['ledger', 'carry', place], opts);
+    for (const [place] of steps) harness.ok(dir, ['ledger', 'carry', place], opts);
   } else {
     harness.ok(dir, ['workunit', 'retire', 'caching'], opts);
     writeState(dir, layout.cache('migrate', 'cut-and-merges', 'memo', 'phases', '2.json'), JSON.stringify(SHARING_PIECE));

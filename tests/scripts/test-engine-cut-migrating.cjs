@@ -688,7 +688,7 @@ describe('the plan from before Ledger of a unit that built nothing, closed throu
       `the plan from before Ledger under ${PLANS.memo.root} holds "Write a memo" done, so unit memo built some of it — the tracker wins: none of it is closed, and the migration stops there, telling the person so`);
   });
 
-  it('types a quick-fix\'s tasks fix, as a bugfix\'s, and any other unit\'s feat (21.5.21)', () => {
-    assert.deepStrictEqual(['quick-fix', 'bugfix', 'feature', 'epic'].map(migratedType), ['fix', 'fix', 'feat', 'feat']);
+  it('types a bugfix\'s tasks fix, and any other unit\'s feat, a quick-fix never being cut (21.5.21)', () => {
+    assert.deepStrictEqual(['bugfix', 'feature', 'epic'].map(migratedType), ['fix', 'feat', 'feat']);
   });
 });
