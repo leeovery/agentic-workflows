@@ -389,7 +389,7 @@ describe('a second session at a directive (21.10.10, P7)', () => {
 });
 
 describe('the board while a session carries the migration on', () => {
-  it('reads the session, at no position, as migrating, never at the start menu, while the migration\'s row stands, and at the start menu once it is gone', () => {
+  it('reads the session, at no position, as migrating, never at the start menu, while the migration\'s row stands, and at no place once it is gone', () => {
     const carrying = { CLAUDE_CODE_SESSION_ID: 'carrying', CLAUDE_PID: String(process.pid) };
     engine.ok(dir, ['boot'], { env: carrying, unbooted: true });
     const place = () => {
@@ -399,7 +399,7 @@ describe('the board while a session carries the migration on', () => {
 
     assert.deepStrictEqual(place(), [['migrating'], false]);
     engine.ok(dir, ['presence', 'cleanup', 'carrying']);
-    assert.deepStrictEqual(place(), [['at the start menu'], true]);
+    assert.deepStrictEqual(place(), [[], true]);
   });
 });
 

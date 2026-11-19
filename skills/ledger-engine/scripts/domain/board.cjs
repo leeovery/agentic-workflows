@@ -442,7 +442,7 @@ function boardRead(cwd, { session, tab, page }, opts, warnings) {
   return {
     version: BOARD_VERSION,
     place,
-    banner: here === null || finished !== null ? allBanner(cwd, migrating ? 'migrating' : position?.name ?? 'at the start menu', finished) : { name: here.title, ...(read === null ? placeBanner(here) : withWaits(here, read.banned)) },
+    banner: here === null || finished !== null ? allBanner(cwd, migrating ? 'migrating' : position?.name ?? null, finished) : { name: here.title, ...(read === null ? placeBanner(here) : withWaits(here, read.banned)) },
     unit: tabAt === null ? null : { unit: tabAt.unit, title: tabAt.title },
     tab,
     view: page === null ? drawn(tabView) : drawn(() => {
