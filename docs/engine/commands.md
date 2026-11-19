@@ -29,7 +29,7 @@ Two carve-outs. The **`render`** surfaces pass every value but the address as a 
 
 **The state** is `.ledger/` in the repository's main checkout, a worktree of its own branch, `ledger-state`. A state commit is made there and pushed; a code commit on the branch checked out. A command's writes and commit hold the state's writer lock, `.ledger/.lock`; every engine commit is confined to the paths its action wrote.
 
-**Until boot has run.** A command run with a session id (`CLAUDE_CODE_SESSION_ID`) refuses, writing nothing, until boot has stamped that conversation for the project at the installed version: `{command}: this conversation has not booted Ledger for {main checkout} on this version — invoke the start skill, /ledger, which runs engine boot before anything else`. The stamp is the conversation folder's `booted.json`. What goes through without it — boot, its stops' screens and answers, the hooks' and the gate mod's targets, capture — is `BOOT_EXEMPT` in `engine.cjs`. A command with no session id is no conversation's, and nothing refuses it.
+**Until boot has run.** A command run with a session id (`CLAUDE_CODE_SESSION_ID`) refuses, writing nothing, until boot has stamped that conversation for the project at the installed version: `{command}: this conversation has not booted Ledger for {main checkout} on this version — invoke the start skill, /ledger, which runs engine boot before anything else`. The stamp is the conversation folder's `booted.json`. What goes through without it — boot, the banner the bare command opens on ahead of it, its stops' screens and answers, the hooks' and the gate mod's targets, capture — is `BOOT_EXEMPT` in `engine.cjs`. A command with no session id is no conversation's, and nothing refuses it.
 
 ## Boot and setup
 

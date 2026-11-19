@@ -30,7 +30,7 @@ const { startMenuRead } = require(path.join(ROOT, 'skills/ledger-engine/scripts/
 const { startMenuScreen } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/projections/start-menu.cjs'));
 const { stateGit } = require('./engine-harness.cjs');
 const {
-  Sim, startUnit, handoff, handoffBy, answerGate, typeAtGate, startPick, startNew, startWith, startMenu, epicPick, carryOn, mappedEpic, enterEntry, waitAgents, presenceRow, briefDraft, roadmapMenu,
+  Sim, startUnit, handoff, handoffBy, answerGate, typeAtGate, startPick, startNew, startBare, startWith, startMenu, epicPick, carryOn, mappedEpic, enterEntry, waitAgents, presenceRow, briefDraft, roadmapMenu,
 } = require('./pipeline-world.cjs');
 
 const PRODUCT = 'product';
@@ -122,7 +122,7 @@ describe('pipeline simulation: discovery\'s entry', () => {
     assert.ok(!fs.existsSync(logPath(sim, PRODUCT, 2)), 'one product conversation, one log');
   });
 
-  it('work brought in conversation comes through the one entry: boot given the words sends new work to Start in this conversation, with no menu, and words naming a unit in progress into it as the start menu\'s number does; the bare command draws the menu (8.S79, 18.S72, 25.S10)', () => {
+  it('work brought in conversation comes through the one entry: boot given the words sends new work to Start in this conversation, with no menu, and words naming a unit in progress into it as the start menu\'s number does; the bare command draws the banner before boot, then the menu (8.S79, 18.S72, 18.2.15, 25.S10)', () => {
     const conversation = sim.conversations;
     const brought = startWith(sim, 'Change what the help command prints when it has no topic');
     assert.deepStrictEqual([brought.go, brought.route], ['route', { kind: 'start', words: 'Change what the help command prints when it has no topic', next: { kind: 'invoke', skill: 'ledger-discovery', args: ['start', 'none'] } }]);
@@ -135,7 +135,7 @@ describe('pipeline simulation: discovery\'s entry', () => {
     const { invoked } = handoffBy(sim, ['handoff', 'unit', 'help-topic']);
     assert.deepStrictEqual([named.go, named.route.unit, `/${named.route.next.skill} ${named.route.next.args.join(' ')}`], ['route', 'help-topic', invoked]);
 
-    assert.strictEqual(sim.run(['boot']).go, 'menu');
+    assert.strictEqual(startBare(sim).go, 'menu', 'the bare command, in a new conversation, draws the banner before boot, then the menu');
     assert.ok(startMenu(sim).some(({ next }) => next?.kind === 'engine' && next.argv.join(' ') === 'handoff unit help-topic'), 'the menu lists the unit');
   });
 

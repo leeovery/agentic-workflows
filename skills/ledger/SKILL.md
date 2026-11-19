@@ -14,7 +14,13 @@ Load **[framework.md](../ledger-shared/references/framework.md)** and follow its
 
 ## Boot
 
-Boot runs first, given the words, and its answer says where the start goes. A migration may change `.claude/settings.json`, so run it with the sandbox disabled, the words on stdin as they stand, the call described as `Start Ledger`:
+On the bare command, with no words, fetch the banner first:
+
+```bash
+node .claude/skills/ledger-engine/scripts/engine.cjs render banner
+```
+
+Boot runs next, given the words, and its answer says where the start goes. A migration may change `.claude/settings.json`, so run it with the sandbox disabled, the words on stdin as they stand, the call described as `Start Ledger`:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs boot <<'WORDS'
@@ -46,13 +52,7 @@ Then its `next`:
 
 ## The Opening
 
-Past every stop, boot answers `go`. Where it is `menu`, the bare command, fetch the banner first:
-
-```bash
-node .claude/skills/ledger-engine/scripts/engine.cjs render banner
-```
-
-Then work each of boot's `gates` in its order, as **The Setup Gates** says, and go where `go` says, as **Where the Start Goes** says.
+Past every stop, boot answers `go`. Work each of boot's `gates` in its order, as **The Setup Gates** says, and go where `go` says, as **Where the Start Goes** says.
 
 ## The Setup Gates
 
