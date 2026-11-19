@@ -507,10 +507,10 @@ describe('the per-topic agent\'s brief (21.10.5)', () => {
     ]), [[true, true], [true, true]]);
   });
 
-  it('21.S44: a cancelled unit\'s topic is briefed as any other, the import from its discovery its own to link', () => {
+  it('21.S44: a cancelled unit\'s topic is briefed as any other, the import from its discovery its own to link, its unit line saying what its record holds: what its sources settle, its decisions governing nothing, no point marked to raise', () => {
     const { brief } = issued(['migration-topic', '--topic', 'gone.discussion.gone', '--directive', '079-records']);
 
-    assert.ok(brief.includes('- **Unit:** gone, feature, cancelled\n- **Topic:** gone, in discussion, in-progress — its record carried in discussion\n'), brief);
+    assert.ok(brief.includes('- **Unit:** gone, feature, cancelled — its record holds what its sources settle, as any record does, its decisions carried as decisions, which govern nothing while the unit is cancelled; it marks no point to raise, for its points wait with it\n- **Topic:** gone, in discussion, in-progress — its record carried in discussion\n'), brief);
     assert.ok(brief.includes(`${CANCELLED}\n\nNone recorded.\n`), 'its own unit is not among the others cancelled');
     assert.ok(brief.includes('## The unit\'s assets it walks\n\n- {state}/gone/assets/notes.md, which came in from discovery — this topic\'s to link\n'), brief);
   });
@@ -823,7 +823,7 @@ describe('a later round (21.10.18)', () => {
   const D1 = { ref: 'd1', event: 'decided', answers: 'q1', text: 'Thirty days.', cites: [log] };
   const F1 = { ref: 'f1', event: 'found', text: 'A week converts as well.', cites: [report] };
   const Q2 = { ref: 'q2', event: 'asked', text: 'Does the corrigendum hold?', cites: [{ path: 'fumi/assets/specs/commerce.md', section: 'Corrigenda' }] };
-  const CLOSED = 'closed — walked in an earlier round, nothing citing it changed since';
+  const CLOSED = 'closed — walked in an earlier round, every entry citing it passed unchanged, and none that cited it then gone from it';
 
   /** The verifier's brief issued on licensing's record of `entries`: its walk sheet, and the refs it gives a verdict on. @param {Record<string, unknown>[]} entries */
   function round(entries) {
@@ -882,7 +882,7 @@ describe('a later round (21.10.18)', () => {
   it('the verifiers\' briefs: an open section walked, a closed one no finding; a later round checks what changed and raises nothing on what an earlier one passed unchanged, leanness judged on it alone; a verdict on each entry not passed unchanged', () => {
     assert.deepStrictEqual([
       unsaid('migration-verifier', [
-        'Walk every open section of the sheet, every section in a first round: a closed one was walked in an earlier round, nothing citing it changed since, and is no finding, and your findings are every gap the walk turns up, never a sample.',
+        'Walk every open section of the sheet, every section in a first round: a closed one was walked in an earlier round, every entry citing it passed unchanged, and none that cited it then gone from it, and is no finding; a section an entry stopped citing is open again, and your findings are every gap the walk turns up, never a sample.',
         'In a later round, check each finding answered, each entry or line changed since true to its source, and that no entry the sheet lists as removed since the last round took a point still to carry; raise nothing on what an earlier round passed unchanged.',
         '- nothing is carried twice — in a later round, judged on what changed since alone;',
         'Write the checked file the brief names afresh, a line for each entry of the record the sheet does not mark passed unchanged, by its ref: `{ref}: ok`, or `{ref}: see finding` where a finding names it.',

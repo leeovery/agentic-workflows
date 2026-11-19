@@ -137,7 +137,8 @@ describe('a project the whole sequence migrated', () => {
     const config = path.join(root, 'config');
     const env = { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}`, LEDGER_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: 'the-callers' };
     delete env.LEDGER_CLAUDE;
-    const carried = JSON.parse(/** @type {string} */ (fs.readFileSync(statePath(world.dir, layout.ledger), 'utf8').split('\n').find((line) => line.includes('"event":"decided"'))));
+    const carried = fs.readFileSync(statePath(world.dir, layout.ledger), 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line))
+      .find((line) => line.event === 'decided' && fs.existsSync(statePath(world.dir, layout.manifest(line.unit))));
     appendState(layout.ledger, JSON.stringify({ ...carried, id: newId(), at: new Date().toISOString(), session: 'a-conversation', given: 'own', unchecked: true }));
     commitAll(world.dir, 'a decision that landed unchecked since the migration');
     const head = stateGit(world.dir, ['rev-parse', 'HEAD']);

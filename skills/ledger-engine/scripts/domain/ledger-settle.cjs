@@ -44,13 +44,11 @@ const { entryHashes, entriesHeld, pastOf } = require('./later-rounds.cjs');
 const {
   topicPlace, recordName, readRecord, recordHash, roundsKept, findingsPath, roundsPath, handedBack, uncheckedRound, briefedOn, lastVerdicts, keepRecordRound, noteVerifying,
 } = require('./ledger-carry.cjs');
+const { SETTLED_FROM, findingItems } = require('../../../ledger-migrate/scripts/record-files.cjs');
 
 const SETTLE_VERB = 'settle';
 const SETTLE_USAGE = 'ledger settle <work-unit>.<phase>.<topic>|<work-unit>.discovery   (every finding of the round by its number as JSON on stdin, {"findings": [{"numbers", "settled", "why"}]}, settled fixed or ruled-out)';
 const SAID = 'ledger settle';
-
-/** The first round whose findings the session settles. */
-const SETTLED_FROM = 3;
 
 /** How each finding may be settled, and how the session's round says it. @type {Readonly<Record<string, string>>} */
 const SETTLED_AS = Object.freeze({ fixed: 'fixed', 'ruled-out': 'ruled out' });
@@ -62,15 +60,6 @@ const isNumbers = (numbers) => Array.isArray(numbers) && numbers.length > 0 && n
 
 /** @param {unknown} one @returns {one is Settled} */
 const isSettled = (one) => isObject(one) && Object.keys(one).length === 3 && isNumbers(one.numbers) && Object.hasOwn(SETTLED_AS, /** @type {string} */ (one.settled)) && LINE.test(one.why);
-
-// A finding's opening line: a list item at the line's start.
-const FINDING = /^(?:[-*+]|[0-9]+[.)])[ \t]/;
-
-/** How many findings a findings file holds: its list items, or its text one where it holds none. @param {string} text */
-function findingsIn(text) {
-  const items = text.split('\n').filter((line) => FINDING.test(line)).length;
-  return items > 0 ? items : 1;
-}
 
 /** Numbers as the session's round names them. @param {number[]} numbers */
 const numbered = (numbers) => `${numbers.length === 1 ? 'Finding' : 'Findings'} ${numbers.join(', ')}`;
@@ -110,7 +99,7 @@ function standingRound(place) {
   }
   const unchecked = uncheckedRound(root, unit, topic);
   if (unchecked !== null) throw new Error(`${SAID}: ${recordName(place)} ${unchecked}`);
-  return { round, count: findingsIn(text) };
+  return { round, count: findingItems(text).length };
 }
 
 /**

@@ -62,7 +62,7 @@
 // named in its old plan's order — the plan's task ids by number, then the
 // letters after it (`oldPlanOrder`) — each task a correction ends ended,
 // a close keeping what was found as its reason, and each task neither done
-// nor closed given its type, fix in a bugfix or quick-fix and feat in any other
+// nor closed given its type, fix in a bugfix and feat in any other
 // (21.5.21); then the unit's files, `spec.md` with the
 // plan's blocks of scenarios, any a run before wrote replaced,
 // `build/notes.md` the notes whole, numbered from 1, and the manifest — the
@@ -129,7 +129,7 @@ const CORRECTION_ENDS = Object.freeze(['task', 'title', 'to']);
 const ENDS = Object.freeze(['done', 'closed']);
 
 /** The type each task neither done nor closed takes, by the unit's type: feat where none is named (21.5.21). */
-const TYPES = Object.freeze({ bugfix: 'fix', 'quick-fix': 'fix' });
+const TYPES = Object.freeze({ bugfix: 'fix' });
 
 /** The type the migration gives each task neither done nor closed of a unit of `workType` (21.5.21). @param {string} workType */
 const migratedType = (workType) => TYPES[/** @type {keyof TYPES} */ (workType)] ?? 'feat';
