@@ -34,7 +34,7 @@ In a bugfix, **the root-cause validator** re-traces the cause from the record an
 
 - **The task writer** writes each build phase's tasks as the phase starts, against the code the phases before it left.
 - **The builder** builds one task, with the tests that prove it, to its task, the spec's sections it cites and the decided calls, proves it by running the product, commits it through the engine's door, writes its account, and takes its review's fix rounds.
-- **The reviewer** runs as a pair, two independent reviewers who did not write the code, at three reviews: each task's change, each build phase's whole change, and the whole change against one area of the spec in the review phase. Each runs the tests and reports each finding with its call and the user scenario that meets it.
+- **The reviewer** is an independent reviewer who did not write the code, at three reviews: each task's change, read by the reviewers Claude chooses for it, usually one; and as a pair, each build phase's whole change and the whole change against one area of the spec in the review phase. Each runs the tests and reports each finding with its call and the user scenario that meets it.
 - **The consolidation agent**, at a build phase's end, reads its notes for later against the phase's finished code, drops what the code settled, and makes the rest tasks of the phase.
 - **The test-surface agent**, in the review phase, reads every test of the whole change against every scenario the spec asks them to guard, runs them, and breaks what they guard to see that they notice.
 

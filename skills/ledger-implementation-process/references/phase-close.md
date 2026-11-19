@@ -34,7 +34,7 @@ A report that does not read — the checklist naming it, or `land phase` refusin
 node .claude/skills/ledger-engine/scripts/engine.cjs task settle {work_unit} --phase {N} --file .ledger/.cache/{work_unit}/build/settle.md [--fixes {task},…]
 ```
 
-The fix tasks go through the task loop, each passed by its pair; no phase review runs over them again. A finding for a later phase, or a note for later in the review's reports, lands through the doors (**[outside-the-plan.md](outside-the-plan.md)**, place = `implementation`).
+The fix tasks go through the task loop, each passed by its reviewers; no phase review runs over them again. A finding for a later phase, or a note for later in the review's reports, lands through the doors (**[outside-the-plan.md](outside-the-plan.md)**, place = `implementation`).
 
 ## The Merge
 

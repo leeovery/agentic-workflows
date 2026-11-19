@@ -93,6 +93,23 @@ describe('the gate after a task, in step (12.14.3, 12.12.7, 3.3.8, 13.4.7)', () 
     assert.match(refused(['step-gate', UNIT, '1.1']), /^render step-gate: pay builds in auto, where no gate follows a task — /, 'in auto no gate follows a task (3.S17)');
   });
 
+  it('13.3.4: a task recorded as reviewed by none has its gate with no account taken, its description and why no reviewer read it in the account\'s place', () => {
+    writeState(dir, layout.unit(UNIT, 'build/tasks/1.3/review.json'), JSON.stringify({ reviewers: 0, why: 'A sentence of copy.' }));
+
+    assert.strictEqual(sectionOf(screen(['step-gate', UNIT, '1.3']), 'DISPLAY: step gate'), [
+      '▪ Mail the receipt (task 1.3)',
+      '',
+      '- Phase: 1 — Cards',
+      '- Position: 3 of 3 in phase',
+      '',
+      'WHAT IT DOES',
+      '  Mail the receipt works at the till, and the customer sees it.',
+      '',
+      '  No reviewer read it, as recorded, and that record is its account: A sentence of copy.',
+      '',
+    ].join('\n'));
+  });
+
   it('is refused before the task\'s account is taken, once the task is done, and in auto — writing nothing', () => {
     const seen = [refused(['step-gate', UNIT, '1.3'])];
     accountTaken(dir, UNIT, '1.1');

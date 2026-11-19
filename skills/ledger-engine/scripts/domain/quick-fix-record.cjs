@@ -46,8 +46,9 @@
 // The close stands on every fix ended, done or closed — one a question
 // parks named parked on it, its way on the question's raise, a fix its
 // blind question holds open among them (questions.cjs, `heldOpen`) — and
-// each fix done passed by its pair, as its rounds' reports say
-// (`pairVerdict`), and recorded (`recordedFixes`).
+// each fix done passed by its pair, as its rounds' reports say, or
+// recorded as reviewed by none (`pairVerdict`), and recorded
+// (`recordedFixes`).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -64,7 +65,7 @@ const { trackedPhase, copiedTasks, givenText, ENDED, STATUS_WORDS } = require('.
 const { headingLevels, fencedLines, unclosedFence } = require('./spec-sections.cjs');
 const { committed } = require('./task-account.cjs');
 const { parkedOf } = require('./task-parks.cjs');
-const { taskRounds, pairPassed, changedUnder } = require('./round-report.cjs');
+const { taskRounds, pairPassed, changedUnder, reviewedNone } = require('./round-report.cjs');
 const { refusing } = require('./staged-payload.cjs');
 const { summaryFile, SUMMARY_PHASE } = require('./knowledge/artifacts.cjs');
 const { syncKnowledge } = require('./knowledge/sync.cjs');
@@ -296,12 +297,13 @@ function takeOutRecord(cwd, ref) {
 
 /**
  * The round a fix's pair ended its review in, every reviewer passing it or
- * the orchestrator settling it, and whether it was settled; null where its
- * review has not ended so, or the fix changed under that round since
- * (round-report.cjs).
+ * the orchestrator settling it, and whether it was settled — round 0 for
+ * one recorded as reviewed by none; null where its review has not ended
+ * so, or the fix changed under that round since (round-report.cjs).
  * @param {string} cwd @param {TaskRef} ref @returns {{round: number, settled: boolean}|null}
  */
 function pairVerdict(cwd, ref) {
+  if (reviewedNone(cwd, ref) !== null) return { round: 0, settled: false };
   const rounds = taskRounds(cwd, ref);
   const last = rounds.at(-1);
   if (last === undefined || !pairPassed(last) || changedUnder(cwd, ref, rounds) !== null) return null;

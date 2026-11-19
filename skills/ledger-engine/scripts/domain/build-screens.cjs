@@ -20,13 +20,15 @@
 //   in progress.
 // - `task-landed <unit> <task>`: a task's landing summary, once its account
 //   is taken — a bugfix's reproducing task's once its bug is proven too
-//   (bug-proven.cjs), as it lands.
+//   (bug-proven.cjs), as it lands; one reviewed by none (round-report.cjs)
+//   with no account, its record saying why, and what changed its outcome
+//   (task-file.cjs, `outcomeOf`).
 // - `task-account <unit> <task>`: any task's account, printed when asked —
 //   one not yet taken drawn without it — a quick-fix's fix's and its
 //   review's fix tasks' among them, each built through the task loop and
 //   accounted as any task is (19.5.3).
 // - `step-gate <unit> <task>`: the gate after a task, in step alone, once
-//   its account is taken and before it is done — a bugfix's reproducing
+//   its account is taken, or it is reviewed by none, and before it is done — a bugfix's reproducing
 //   task's once its bug is proven too — and for a task an answer freed
 //   while another went on, once that one is done (12.7.9); in auto none
 //   follows a task (12.12.7).
@@ -71,7 +73,7 @@ const { engineItemsHold } = require('./checklist.cjs');
 const { outcomeOf, criteriaTexts, criterionWords, holdsScenario, namesScenario, scenarioIds } = require('./task-file.cjs');
 const { finishedUnits } = require('./ledger-units.cjs');
 const { accountPath, takenFigures, readAccount } = require('./task-account.cjs');
-const { taskRounds } = require('./round-report.cjs');
+const { taskRounds, reviewedNone } = require('./round-report.cjs');
 const { heldStack, tipCommits } = require('./phase-stack.cjs');
 const { branchHead } = require('./fix-branch.cjs');
 const { runsOf } = require('./runs.cjs');
@@ -113,8 +115,14 @@ function namedTask(cwd, { dotpath: unit = '', item }, surface, { quickFix = fals
   return { manifest, ref, task: taskOf(cwd, ref) };
 }
 
-/** How a task's review ended: in which round, and whether passed or settled. @param {Round[]} rounds @returns {Reviewed} */
-const reviewedOf = (rounds) => ({ rounds: rounds.length, settled: /** @type {Round} */ (rounds.at(-1)).settled });
+/** How a task's review ended: in which round, by how many reviewers, and whether passed or settled. @param {Round[]} rounds @returns {Reviewed} */
+function reviewedOf(rounds) {
+  const last = /** @type {Round} */ (rounds.at(-1));
+  return { rounds: rounds.length, settled: last.settled, reviewers: last.reports.length, none: null };
+}
+
+/** A task reviewed by none, as recorded, `why`. @param {string} why @returns {Reviewed} */
+const reviewedByNone = (why) => ({ rounds: 0, settled: false, reviewers: 0, none: why });
 
 /** Each summary's heading under `## Reviews`: each round's, and after each round settled, its settlement's. @param {Round[]} rounds */
 const reviewHeadings = (rounds) => rounds.flatMap(({ round, settled }) => [`Round ${round}`, ...(settled ? ['Settled'] : [])]);
@@ -134,8 +142,9 @@ function takenAccount(cwd, ref) {
   return { sections, differences, reviews: reviews.map((summary, at) => ({ heading: headings[at], summary })), reviewed: reviewedOf(rounds), figures };
 }
 
-/** The account a screen needs, refused where `task account` has not taken it. @param {string} cwd @param {TaskRef} ref */
+/** The account a screen needs, refused where `task account` has not taken it; none for a task reviewed by none, which owes none. @param {string} cwd @param {TaskRef} ref */
 function requiredAccount(cwd, ref) {
+  if (reviewedNone(cwd, ref) !== null) return null;
   const account = takenAccount(cwd, ref);
   if (account === null) throw new Error(`${taskName(ref)} has no account taken — it lands once its account is: task account ${ref.unit} ${shownTask(ref)}`);
   return account;
@@ -152,7 +161,7 @@ function accountView(cwd, manifest, ref, task, account) {
   const shown = shownTask(ref);
   const tasks = (rows ?? []).filter((row) => row.status !== 'closed' || shownTask(row.ref) === shown).map((row) => shownTask(row.ref));
   return {
-    head: headOf(manifest, ref, task), at: tasks.indexOf(shown) + 1, of: tasks.length, does: outcomeOf(task.text), closed: task.status === 'closed', before: landedBefore(manifest)(ref), account,
+    head: headOf(manifest, ref, task), at: tasks.indexOf(shown) + 1, of: tasks.length, does: outcomeOf(task.text), closed: task.status === 'closed', before: landedBefore(manifest)(ref), none: reviewedNone(cwd, ref), account,
   };
 }
 
@@ -235,9 +244,9 @@ function taskLandedSurface(cwd, args) {
     const criteria = criteriaTexts(task.text);
     return landingScreen({
       head: headOf(manifest, ref, task),
-      reviewed: account.reviewed,
+      reviewed: account?.reviewed ?? reviewedByNone(/** @type {string} */ (reviewedNone(cwd, ref))),
       calls: callsOf(cwd, ref).length,
-      changed: account.sections['What was done'],
+      changed: account?.sections['What was done'] ?? outcomeOf(task.text),
       criteria: criteria.map(criterionWords),
       product: projectName(cwd),
       ...ranOf(cwd, manifest, ref, task, criteria),

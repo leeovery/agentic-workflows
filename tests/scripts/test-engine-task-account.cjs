@@ -25,6 +25,12 @@
 // then the task's account taken, a later round passing or not (13.4.6); and
 // every refusal writing and committing nothing — a last round with a bug
 // standing (13.S3) and no repository holding the task's branch among them.
+// `engine task review <unit> <task> --reviewers <0|1|2> --file <why>`, the
+// orchestrator's choice of a task's reviewers with why, committed before
+// its first round: one reviewer reading by `a` alone; none ending its
+// review with no round and no account, the record its account, so it is
+// done with none taken; and a one-line task, `task create --title --type`,
+// the orchestrator's own work, reviewed by none alone.
 //
 // Layer: verb. World: a project with one work unit, built once and copied:
 // its first phase written in the tracker, its second task started and its
@@ -50,7 +56,7 @@ const { createManifest, templateFolder, useTempFolder } = require('./discovery-t
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const {
-  readReport, taskRounds, roundUnderReview, recordReviewer, recordLaidOut,
+  readReport, taskRounds, taskPassed, roundUnderReview, recordReviewer, recordLaidOut,
 } = require(path.join(SCRIPTS, 'domain/round-report.cjs'));
 const { readAccount } = require(path.join(SCRIPTS, 'domain/task-account.cjs'));
 const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
@@ -348,6 +354,89 @@ describe('the rounds read with the reviewers\' count changed (13.3.4, 2.4.6)', (
 
     assert.deepStrictEqual(rounds(['a']), [[1, ['a', 'b'], false], [2, ['a', 'b'], true], [3, ['a'], true]]);
     assert.throws(() => roundUnderReview(dir, TASK, ['a']), { message: 'round 3 of task 1.2 of pay passed — its review is over' });
+  });
+});
+
+describe('task review: the orchestrator\'s choice of a task\'s reviewers (13.3.4)', () => {
+  const folder = useTempFolder('task-review-');
+  beforeEach(() => { dir = accountWorld(path.join(folder(), 'project')); });
+
+  /** A file of the test's own, its text as given: its path. @param {string} name @param {string} text */
+  const fileOf = (name, text) => {
+    fs.writeFileSync(path.join(folder(), name), text);
+    return path.join(folder(), name);
+  };
+  const T11 = Object.freeze({ unit: UNIT, phase: 1, n: 1 });
+  /** Task `task` reviewed by `count`, why "Mechanical.": the verb's answer. @param {string} task @param {string} count */
+  const reviewed = (task, count) => ok(dir, ['task', 'review', UNIT, task, '--reviewers', count, '--file', fileOf('why.md', 'Mechanical.\n')]);
+  /** A refusal of `task review`, writing and committing nothing: its error. @param {string[]} args */
+  const refusedReview = (args) => refusedPristine(dir, ['task', 'review', UNIT, ...args]).error;
+
+  it('records the count and why beside the task\'s reports, committed alone; one reviewer reads by `a` alone — its round passes on its one report, the review over, and reviewer b never briefed', () => {
+    const res = reviewed('1.1', '1');
+
+    assert.deepStrictEqual(res, { ok: true, task: '1.1', id: 'pay-1-1', reviewers: 1, committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim() });
+    assert.strictEqual(lastMessage(dir), 'task(pay): review 1.1 by 1');
+    assert.deepStrictEqual(touched(statePath(dir), 'HEAD'), ['A\tpay/build/tasks/1.1/review.json']);
+    assert.deepStrictEqual(JSON.parse(readState(dir, layout.unit(UNIT, 'build/tasks/1.1/review.json'))), { reviewers: 1, why: 'Mechanical.' });
+    assert.strictEqual(roundUnderReview(dir, T11), 1);
+    writeState(dir, roundAt('1.1', 1, 'a'), reportOf([['nit', 'A comment names the task.']]));
+    assert.deepStrictEqual(taskRounds(dir, T11).map(({ round, reports, passes }) => [round, reports.map(({ reviewer }) => reviewer), passes]), [[1, ['a'], true]]);
+    assert.strictEqual(taskPassed(dir, T11), true);
+    assert.throws(() => roundUnderReview(dir, T11), { message: 'round 1 of task 1.1 of pay passed — its review is over' });
+  });
+
+  it('none ends the review with no round and no account, its record its account: passed, its account refused, done with none taken, and no reviewer reading it', () => {
+    reviewed('1.1', '0');
+
+    assert.strictEqual(taskPassed(dir, T11), true);
+    assert.throws(() => roundUnderReview(dir, T11), { message: 'task 1.1 of pay is reviewed by none, as recorded — Mechanical.: no reviewer reads it' });
+    assert.strictEqual(refusedPristine(dir, ['task', 'account', UNIT, '1.1']).error, 'task account: task 1.1 of pay is reviewed by none, as recorded — Mechanical.: that record is its account, so it lands with none taken');
+    ok(dir, ['task', 'start', UNIT, '1.1'], { env: SESSION });
+    ok(dir, ['task', 'done', UNIT, '1.1'], { env: SESSION });
+  });
+
+  it('a task with none recorded is reviewed by the kernel\'s count, its done refused with no account taken', () => {
+    assert.match(refusedPristine(dir, ['task', 'done', UNIT, '1.1'], { env: SESSION }).error, /^task done: task 1\.1 of pay has no account taken of its review as it stands — /);
+    writeState(dir, roundAt('1.1', 1, 'a'), reportOf([]));
+    assert.strictEqual(roundUnderReview(dir, T11), 1, 'one report of two leaves the round under review');
+  });
+
+  it('a one-line task, its title and type alone, is the orchestrator\'s own work: reviewed by none alone, it is done with no account', () => {
+    const created = ok(dir, ['task', 'create', UNIT, '1', '--title', 'Bold the total', '--type', 'chore']);
+
+    assert.strictEqual(created.task, '1.3');
+    assert.strictEqual(ok(dir, ['task', 'show', UNIT, '1.3']).text, '# Bold the total\n\n## Type\n\nchore');
+    assert.strictEqual(refusedReview(['1.3', '--reviewers', '1', '--file', fileOf('why.md', 'Bold.\n')]), 'task review: task 1.3 of pay is a one-line task, your own work with no reviewer — record none');
+    reviewed('1.3', '0');
+    ok(dir, ['task', 'start', UNIT, '1.3'], { env: SESSION });
+    ok(dir, ['task', 'done', UNIT, '1.3'], { env: SESSION });
+  });
+
+  it('task create takes a task file or a one-line task, never both nor half of one: a title of one line, a type of the kinds', () => {
+    const file = fileOf('task.md', taskText('Refund a card', ['A refund lands.']));
+    const usage = 'Usage: engine task create <unit> <N> --file <path> | <unit> <N> --title <line> --type <type>';
+    for (const args of [['--file', file, '--title', 'Bold', '--type', 'chore'], ['--title', 'Bold'], ['--type', 'chore'], []]) {
+      assert.strictEqual(refusedPristine(dir, ['task', 'create', UNIT, '1', ...args]).error, usage, args.join(' '));
+    }
+    assert.strictEqual(refusedPristine(dir, ['task', 'create', UNIT, '1', '--title', 'Bold', '--type', 'polish']).error, 'the type "polish" is not one of feat, fix, refactor, perf, test, docs, build, ci, chore');
+  });
+
+  it('refused, writing and committing nothing: a task whose first round is briefed or reported, a count beyond the kernel\'s or no count, no why, a task ended, and arguments of another shape', () => {
+    const why = fileOf('why.md', 'Mechanical.\n');
+
+    assert.strictEqual(refusedReview(['1.2', '--reviewers', '1', '--file', why]), 'task review: task 1.2 of pay\'s first round is briefed already — its reviewers are chosen before it');
+    recordReviewer(dir, T11, 1, 'a', SESSION.CLAUDE_CODE_SESSION_ID);
+    assert.strictEqual(refusedReview(['1.1', '--reviewers', '1', '--file', why]), 'task review: task 1.1 of pay\'s first round is briefed already — its reviewers are chosen before it');
+    fs.rmSync(statePath(dir, '.cache/pay/build/tasks/1.1/briefed.json'));
+    assert.strictEqual(refusedReview(['1.1', '--reviewers', '3', '--file', why]), 'task review: 3 is no count of reviewers — 0 to 2');
+    assert.strictEqual(refusedReview(['1.1', '--reviewers', 'one', '--file', why]), 'task review: one is no count of reviewers — 0 to 2');
+    fs.writeFileSync(why, '\n');
+    assert.match(refusedReview(['1.1', '--reviewers', '0', '--file', why]), /^task review: .*why\.md holds nothing to review by$/);
+    accountTaken(dir, UNIT, '1.2');
+    ok(dir, ['task', 'done', UNIT, '1.2'], { env: SESSION });
+    assert.strictEqual(refusedReview(['1.2', '--reviewers', '0', '--file', why]), 'task review: task 1.2 of pay is done — its reviewers are chosen before it is reviewed');
+    assert.strictEqual(refusedReview(['1.1', '--file', why]), 'Usage: engine task review <unit> <task> --reviewers <0|1|2> --file <why>');
   });
 });
 

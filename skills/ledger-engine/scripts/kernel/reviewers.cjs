@@ -2,8 +2,9 @@
 
 // ---------------------------------------------------------------------------
 // Kernel: the reviewers' count (13.3.4) — how many reviewer agents review
-// each task, each phase and each area of the review phase side by side, two
-// as ruled. Two is a measurement of today's review recall, so the model
+// each phase and each area of the review phase side by side, and each task
+// the orchestrator records none of its own for (round-report.cjs), two as
+// ruled. Two is a measurement of today's review recall, so the model
 // pass's re-measure changes this one value (2.4.6). Each reviewer is known
 // by a letter, `a` onwards: the layout's report places take one each
 // (layout.cjs), a fix round's brief carries each one's report

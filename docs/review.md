@@ -1,6 +1,6 @@
 # Review
 
-The review phase is the last phase: the whole change held up against the specification's intent, with the product run, once every phase of [the build](the-build.md) has closed. It is the third kind of review the work meets, after each task's reviewer pair and each phase's review, and the only one that reads the change as a whole against what was agreed.
+The review phase is the last phase: the whole change held up against the specification's intent, with the product run, once every phase of [the build](the-build.md) has closed. It is the third kind of review the work meets, after each task's review and each phase's review, and the only one that reads the change as a whole against what was agreed.
 
 The build runs straight into it in the same conversation, with no stop between them. After a break, the menus move back into it where it stood. A quick-fix has one only when you ask for one at its close.
 
@@ -18,7 +18,7 @@ The review works in rounds. Each round reads, lands what it finds, and reports t
 
 Each call to file or drop a finding, and each serious finding or bug dropped in scope, is a call on the ledger with its reason, so you can see later what was set aside and why.
 
-**The fix tasks.** A round's fix tasks are one more phase of the build, its own, each task's acceptance scenario the user scenario of the finding it fixes. They are built in the build's own task loop, each passed by its reviewer pair, in the build's position. A fix phase has no phase review: the areas its tasks changed are read again instead.
+**The fix tasks.** A round's fix tasks are one more phase of the build, its own, each task's acceptance scenario the user scenario of the finding it fixes. They are built in the build's own task loop, each passed by its reviewers, in the build's position. A fix phase has no phase review: the areas its tasks changed are read again instead.
 
 **The report.** Each round's report is drawn for you: what was read, what was found, where each finding went, and what goes to the inbox. It is not a gate. The review carries on.
 

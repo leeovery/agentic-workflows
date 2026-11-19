@@ -19,7 +19,8 @@
 // it never waits on a writer (`trackedUnit`, `withStoreCopy`).
 // A unit's phases are written into the tracker as each starts, so it holds
 // only those (7.4.1); a task is made from the task template in a file, one
-// call per task (7.1.3, 12.5.3) — a quick-fix's referencing no spec, since it
+// call per task (7.1.3, 12.5.3), or as a one-line task from its title and
+// type alone (task-file.cjs) — a quick-fix's referencing no spec, since it
 // has none (19.5.5), fix 1.n naming its scenarios n.S1 and on — its id the
 // engine's (task-id.cjs), numbered after the highest its phase holds. An
 // addition goes onto a task not yet ended, marked as the orchestrator's or
@@ -113,9 +114,10 @@
 // build past a problem (13.11.9, position.cjs).
 // The verbs refuse in the engine's words: a tool the driver needs missing or
 // failing, a phase not written, a task the tracker lacks or already holds, a
-// task already ended. Beside them, three take the build's records, each its
-// own module's: account, a task's account and its rounds' reports, and
-// settle, the orchestrator's settlement of a failed round (task-account.cjs)
+// task already ended. Beside them, four take the build's records, each its
+// own module's: account, a task's account and its rounds' reports; review,
+// the orchestrator's choice of its reviewers; and settle, the
+// orchestrator's settlement of a failed round (task-account.cjs)
 // or, with `--phase`, of a phase review that failed (phase-settlement.cjs);
 // and note, a note for later (notes.cjs). No verb removes a phase: a moved
 // quick-fix's phases, its fixes' and its review's, are taken out by the
@@ -156,7 +158,7 @@ const { resolveDriver, chosenDriver, settingOf, needsRefusal } = require('./driv
 const { ignoreInState, withIgnored, migrationRuns } = require('./state-worktree.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { TASK_TYPES, taskId, sameTask, shownTask, parseShownTask, parsePhase, taskName, phaseName } = require('./task-id.cjs');
-const { NO_SPEC, breaksLine, readTaskText, specReferenceOf, scenarioIds } = require('./task-file.cjs');
+const { NO_SPEC, breaksLine, readTaskText, specReferenceOf, scenarioIds, oneLineText } = require('./task-file.cjs');
 const { recordTask, clearTask, clearTasks, recordStop } = require('./position.cjs');
 const { tasksInFlight } = require('./conversation.cjs');
 const {
@@ -447,12 +449,33 @@ function refuseOthersScenarios(ref, text) {
   if (others.length > 0) throw new TaskRefusal(`${taskName(ref)}, a quick-fix's fix, names its scenarios ${ref.n}.S1, ${ref.n}.S2 and on — not ${others.join(', ')}`);
 }
 
-/** `task create`: a task of the phase from a task file, numbered after its highest. @param {string} cwd @param {string} unit @param {string} given @param {string} file */
-function createTask(cwd, unit, given, file) {
+/**
+ * A one-line task's (task-file.cjs): its title, one line, and its type, one
+ * of the kinds.
+ * @param {string} title @param {string} type @returns {import('./task-file.cjs').TaskText}
+ */
+function oneLineTask(title, type) {
+  if (breaksLine(title)) throw new Error('the title breaks its line — a title is one line');
+  if (!TASK_TYPES.includes(type)) throw new Error(`the type "${type}" is not one of ${TASK_TYPES.join(', ')}`);
+  return { title, type, text: oneLineText(title, type) };
+}
+
+const CREATE_USAGE = '<unit> <N> --file <path> | <unit> <N> --title <line> --type <type>';
+
+/**
+ * `task create`: a task of the phase from a task file, or a one-line task
+ * from its title and type, numbered after its highest; refused, with the
+ * usage, given both forms or neither.
+ * @param {string} cwd @param {string} unit @param {string} given @param {string} [file] @param {string} [title] @param {string} [type]
+ */
+function createTask(cwd, unit, given, file, title, type) {
+  if ((file === undefined) === (title === undefined && type === undefined) || (file === undefined && (title === undefined || type === undefined))) {
+    throw new Error(`Usage: engine task create ${CREATE_USAGE}`);
+  }
   const phase = parsePhase(given);
   requireUnit(cwd, unit);
   const quickFix = quickFixBuild(loadWorkUnitManifest(cwd, unit));
-  const task = fileTask(cwd, unit, file, quickFix);
+  const task = file === undefined ? oneLineTask(/** @type {string} */ (title).trim(), /** @type {string} */ (type).trim()) : fileTask(cwd, unit, file, quickFix);
   return withTracker(cwd, unit, `create in phase ${phase}`, (driver, root) => {
     const rows = driver.list(root, unit, phase);
     if (rows === null) throw unwritten(unit, phase);
@@ -1428,7 +1451,7 @@ function settleVerb(cwd, [unit, task], file, phase, fixes) {
  */
 const TASK_VERBS = Object.freeze({
   phase: { usage: '<unit> <N> --title <title>', arity: 2, flags: ['title'], run: (cwd, [unit, phase], title) => writePhase(cwd, unit, phase, title) },
-  create: { usage: '<unit> <N> --file <path>', arity: 2, flags: ['file'], run: (cwd, [unit, phase], file) => createTask(cwd, unit, phase, file) },
+  create: { usage: CREATE_USAGE, arity: 2, mayTake: ['file', 'title', 'type'], run: (cwd, [unit, phase], file, title, type) => createTask(cwd, unit, phase, file, title, type) },
   add: { usage: '<unit> <task> --file <path> --by <orchestrator|person>', arity: 2, flags: ['file', 'by'], run: (cwd, [unit, task], file, by) => addToTask(cwd, unit, task, file, by) },
   type: { usage: '<unit> <task> <type>', arity: 3, run: (cwd, [unit, task, type]) => typeTask(cwd, unit, task, type) },
   'close-plan': { usage: '<unit> --parent <tracker-id>', arity: 1, flags: ['parent'], run: (cwd, [unit], parent) => closePlan(cwd, unit, parent) },
@@ -1443,6 +1466,7 @@ const TASK_VERBS = Object.freeze({
   worktree: { usage: '<unit> <task>', arity: 2, run: (cwd, [unit, task]) => worktreeTask(cwd, unit, task) },
   stopped: { usage: '<unit> <task>', arity: 2, run: (cwd, [unit, task]) => stoppedTask(cwd, unit, task) },
   account: { usage: '<unit> <task>', arity: 2, run: (cwd, [unit, task]) => account().takeAccount(cwd, unit, task) },
+  review: { usage: '<unit> <task> --reviewers <0|1|2> --file <why>', arity: 2, flags: ['reviewers', 'file'], run: (cwd, [unit, task], reviewers, file) => account().reviewTask(cwd, unit, task, reviewers, file) },
   settle: { usage: SETTLE_USAGE, arity: 1, optional: 1, flags: ['file'], mayTake: ['phase', 'fixes'], run: settleVerb },
   note: { usage: '<unit> --file <note> [--phase <N>]', arity: 1, flags: ['file'], mayTake: ['phase'], run: (cwd, [unit], file, phase) => notes().depositNote(cwd, unit, file, phase) },
 });

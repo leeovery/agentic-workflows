@@ -91,7 +91,7 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 - `.ledger/{work_unit}/topics/{topic}/` — a topic's own place: `brief.md` its brief, `log.md` its conversation's log, `experiments/{id}-{slug}/` one experiment record, `mail/` the messages waiting for it, `earlier/` the files a unit moved to another type set aside from before
 - `.ledger/{work_unit}/spec.md` — the unit's one spec
 - `.ledger/{work_unit}/summary.md` — a quick-fix's short record after the work
-- `.ledger/{work_unit}/build/` — the build's `log.md` and `notes.md`; `notes-answered.json`, the notes for later a quick-fix's close answered; `tasks/{task}.md` with each task's round reports, `figures.json` and settlements; `phases/phase-{N}/` with the phase review's reports, the consolidation and `settlement.json`; `runs/{scenario}/run-NNN.json`, the verification runs
+- `.ledger/{work_unit}/build/` — the build's `log.md` and `notes.md`; `notes-answered.json`, the notes for later a quick-fix's close answered; `tasks/{task}.md` with each task's round reports, `review.json` its reviewers chosen, `figures.json` and settlements; `phases/phase-{N}/` with the phase review's reports, the consolidation and `settlement.json`; `runs/{scenario}/run-NNN.json`, the verification runs
 - `.ledger/{work_unit}/review/` — the review phase's rounds: `round-{N}.json`, `round-{N}.md`, `round-{N}-checks.md`, `round-{N}-reads.json`, and `round-{N}/` holding the readers' reports
 - `.ledger/{work_unit}/seeds/` — the inbox items the unit was started from
 - `.ledger/{work_unit}/assets/` — the files the user shared; `assets/legacy/` the unit's files from before Ledger the migration had no other place for, each at its path from the unit's old folder

@@ -47,6 +47,16 @@
 // `started`), null where it never moved; and when it finished, as the
 // account is taken.
 //
+// A task reviewed by none, as `task review` recorded (round-report.cjs),
+// owes no account: the record and its why are the task's account of
+// itself, so it lands with none taken, and `task account` refuses it.
+// `task review <unit> <task> --reviewers <0|1|2> --file <why>` is that
+// record, the orchestrator's choice of how many reviewers read the task and
+// why, at `review.json` beside the reports, committed, pushed: refused once
+// the task's first round is briefed or reported, for a count beyond the
+// kernel's, and for a one-line task (task-file.cjs) any but none, its work
+// the orchestrator's own.
+//
 // An account is taken once the task's last round passed, or once the
 // orchestrator settled it. `task settle <unit> <task> --file <why>` is that
 // settlement, of a task that looks stuck (13.4.6): the file's text, why and
@@ -81,7 +91,8 @@ const { messageOf } = require('../kernel/call.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { headingLevels } = require('./spec-sections.cjs');
 const { BULLET, listItems, saysNone, saysNoneIn } = require('./list-items.cjs');
-const { criteriaOf } = require('./task-file.cjs');
+const { criteriaOf, isOneLine } = require('./task-file.cjs');
+const { REVIEWER_LETTERS } = require('../kernel/reviewers.cjs');
 const { parseShownTask, shownTask, taskId, taskName } = require('./task-id.cjs');
 const { holdingBranch, taskWorktree, mergeTree } = require('./landing-git.cjs');
 const { trackedTask, trackedStart, givenText, ENDED } = require('./task-verbs.cjs');
@@ -91,7 +102,7 @@ const { quickFixBranch } = require('./landing-names.cjs');
 const { refusing } = require('./staged-payload.cjs');
 const { READERS, readersDone } = require('./scratch.cjs');
 const {
-  taskFolder, settlementPath, taskRounds, pairPassed, endedWords, changedUnder, changedRefusal,
+  taskFolder, settlementPath, roundReportPath, reviewPath, reviewedNone, briefedOf, taskRounds, pairPassed, endedWords, changedUnder, changedRefusal,
 } = require('./round-report.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
@@ -364,6 +375,7 @@ function reviewedTask(cwd, unit, given, said, ended) {
 function accountOwed(cwd, ref) {
   /** @type {ReturnType<typeof accountOwed>} */
   const none = { owed: null, faults: null, changed: null, waiting: null };
+  if (reviewedNone(cwd, ref) !== null) return none;
   /** @type {import('./round-report.cjs').Round[]} */
   let rounds;
   try {
@@ -415,6 +427,8 @@ function committed(cwd, files, message, warnings, answer) {
 function takeAccount(cwd, unit, given) {
   const said = 'task account';
   const refuse = refuserFor(said);
+  const none = refusing(said, () => reviewedNone(cwd, parseShownTask(unit, given)));
+  if (none !== null) refuse(`task ${given} of ${unit} is reviewed by none, as recorded — ${none}: that record is its account, so it lands with none taken`);
   const { ref, task, rounds, last } = reviewedTask(cwd, unit, given, said, 'its account is taken as it lands, before task done');
   refuseParked(cwd, ref, said);
   if (!pairPassed(last)) {
@@ -466,14 +480,40 @@ function settleTask(cwd, unit, given, file) {
 }
 
 /**
+ * `task review`: the orchestrator's choice of how many reviewers read the
+ * task, and why, recorded (the header's).
+ * @param {string} cwd @param {string} unit @param {string} given @param {string} count @param {string} file
+ */
+function reviewTask(cwd, unit, given, count, file) {
+  const said = 'task review';
+  const refuse = refuserFor(said);
+  const ref = refusing(said, () => parseShownTask(unit, given));
+  const task = refusing(said, () => trackedTask(cwd, ref));
+  if (ENDED.includes(task.status)) refuse(`${taskName(ref)} is ${task.status} — its reviewers are chosen before it is reviewed`);
+  const reviewers = Number(count);
+  if (!/^[0-9]+$/.test(count) || reviewers > REVIEWER_LETTERS.length) refuse(`${count} is no count of reviewers — 0 to ${REVIEWER_LETTERS.length}`);
+  if (reviewers > 0 && isOneLine(task.text)) refuse(`${taskName(ref)} is a one-line task, your own work with no reviewer — record none`);
+  const reported = REVIEWER_LETTERS.some((letter) => fs.existsSync(statePath(cwd, roundReportPath(ref, 1, letter))));
+  if (briefedOf(cwd, ref).round > 0 || reported) refuse(`${taskName(ref)}'s first round is briefed already — its reviewers are chosen before it`);
+  const why = refusing(said, () => givenText(cwd, file, 'review by'));
+  fs.mkdirSync(path.dirname(statePath(cwd, reviewPath(ref))), { recursive: true });
+  writeJsonAtomic(statePath(cwd, reviewPath(ref)), { reviewers, why });
+  return committed(cwd, [reviewPath(ref)], `task(${unit}): review ${shownTask(ref)} by ${reviewers}`, [...(task.warnings ?? [])], {
+    task: shownTask(ref), id: taskId(ref), reviewers,
+  });
+}
+
+/**
  * How far the task stands towards landing (12.14): `building` while its
  * review is not over — no round read whole, a last round failed, or the
  * task changed under it; `owed` once it is, its account not taken over
- * every round of it; `taken` once it is; each with its last round.
+ * every round of it; `taken` once it is; each with its last round. A task
+ * reviewed by none is `taken`, owing no account.
  * @param {string} cwd @param {TaskRef} ref
  * @returns {{stage: 'building'|'owed'|'taken', last: Round|undefined}}
  */
 function landingStage(cwd, ref) {
+  if (reviewedNone(cwd, ref) !== null) return { stage: 'taken', last: undefined };
   /** @type {Round[]} */
   let rounds;
   try {
@@ -532,7 +572,8 @@ function reviewOverWay(cwd, ref) {
 
 /**
  * Refuse, in the words of `said`, a task that lands with no account taken
- * of its review as it stands (12.14) — a quick-fix's among them, each of
+ * of its review as it stands (12.14) — but one reviewed by none, its record
+ * its account — a quick-fix's among them, each of
  * its tasks passed by its pair as any task is (19.5.3, 19.5.22): one a
  * question parks, which waits on the answer and owes none yet; one changed
  * under its last round; one whose account was never taken, or was taken
@@ -541,6 +582,7 @@ function reviewOverWay(cwd, ref) {
  */
 function refuseUnaccounted(cwd, ref, said) {
   refuseParked(cwd, ref, said);
+  if (reviewedNone(cwd, ref) !== null) return;
   const rounds = refusing(said, () => taskRounds(cwd, ref));
   const changed = changedUnder(cwd, ref, rounds);
   if (changed !== null) throw new Error(`${said}: ${changedRefusal(cwd, ref, changed)}`);
@@ -549,5 +591,5 @@ function refuseUnaccounted(cwd, ref, said) {
 }
 
 module.exports = {
-  SECTIONS, accountPath, figuresPath, takenFigures, readAccount, accountOwed, takeAccount, settleTask, refuserFor, committed, refuseUnaccounted, landingStage, reviewOverWay,
+  SECTIONS, accountPath, figuresPath, takenFigures, readAccount, accountOwed, takeAccount, settleTask, reviewTask, refuserFor, committed, refuseUnaccounted, landingStage, reviewOverWay,
 };

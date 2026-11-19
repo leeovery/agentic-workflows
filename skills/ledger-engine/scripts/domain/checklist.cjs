@@ -124,7 +124,6 @@ const { confirmedAt } = require('./environment.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { fingerprint } = require('../kernel/fingerprint.cjs');
-const { REVIEWERS } = require('../kernel/reviewers.cjs');
 const unitBranch = require('./unit-branch.cjs');
 
 /** @typedef {import('./phase-checks.cjs').Reading} PhaseReading */
@@ -423,7 +422,7 @@ const POINTS = Object.freeze({
     takes: ['<work-unit>', '<N>'],
     place: onPhase('close'),
     items: [
-      { key: 'tasks-passed', text: `every task passed each of its ${REVIEWERS} reviewers`, check: ofPhase(checks.tasksPassed) },
+      { key: 'tasks-passed', text: 'every task passed each of its reviewers, or was recorded as reviewed by none', check: ofPhase(checks.tasksPassed) },
       {
         key: 'phase-review-passed', text: 'the phase review passed and its fixes landed', check: (named) => reviewFaults(named).length === 0, way: (named) => reviewFaults(named).join('; '),
       },

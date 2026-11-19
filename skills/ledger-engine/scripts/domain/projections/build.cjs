@@ -51,7 +51,7 @@ const { STATUS_WORDS } = require('../task-verbs.cjs');
 
 /** A task as a screen names it: its number, title, and its phase's number and name. @typedef {{task: string, title: string, phase: number, phase_name: string}} TaskHead */
 /** A task started, with what Claude says of it. @typedef {TaskHead & {changes: string, watch: string}} Started */
-/** How a task's review ended: its rounds, and whether the orchestrator settled the last. @typedef {{rounds: number, settled: boolean}} Reviewed */
+/** How a task's review ended: its rounds, whether the orchestrator settled the last, how many reviewers read it, and why none did where the orchestrator recorded none. @typedef {{rounds: number, settled: boolean, reviewers: number, none: string|null}} Reviewed */
 /** One of a task's cut scenarios, by its id and as its criterion reads, and what running it proved. @typedef {{scenario: string, criterion: string, standing: import('../runs.cjs').Standing}} Ran */
 /**
  * A task landing: the task, how its review ended, the calls it sent to the
@@ -65,11 +65,12 @@ const { STATUS_WORDS } = require('../task-verbs.cjs');
 /**
  * A task's account as a screen draws it: the task, its place in its phase,
  * what it does, whether it closed, whether it landed before the migration
- * cut the unit, and its account where one is written — its sections, its
+ * cut the unit, why no reviewer read it where none was to, and its account
+ * where one is written — its sections, its
  * differences, its rounds' summaries by their headings, how its review
  * ended and its figures.
  * @typedef {{
- *   head: TaskHead, at: number, of: number, does: string, closed: boolean, before: boolean,
+ *   head: TaskHead, at: number, of: number, does: string, closed: boolean, before: boolean, none: string|null,
  *   account: {sections: Record<string, string>, differences: string[], reviews: {heading: string, summary: string}[], reviewed: Reviewed, figures: Figures}|null,
  * }} AccountView
  */
@@ -174,7 +175,9 @@ function roundWords({ rounds, settled }) {
 
 /** How a task's review ended, as the landing says it. @param {Reviewed} reviewed */
 function landedVerdict(reviewed) {
-  return reviewed.settled ? `the orchestrator settled its review ${roundWords(reviewed)}` : `its reviewer pair passed it ${roundWords(reviewed)}`;
+  if (reviewed.none !== null) return `no reviewer read it, as recorded: ${reviewed.none}`;
+  if (reviewed.settled) return `the orchestrator settled its review ${roundWords(reviewed)}`;
+  return `its ${reviewed.reviewers === 1 ? 'reviewer' : 'reviewer pair'} passed it ${roundWords(reviewed)}`;
 }
 
 /** The calls a task sent to the ledger, as the landing says them. @param {number} calls */
@@ -237,8 +240,9 @@ function reviewsBlock(reviews) {
   return block('REVIEWS', reviews.flatMap(({ heading, summary }) => [`  ${heading}`, ...prose(summary, '    ')]).join('\n'));
 }
 
-/** Why a task has no account: it landed before the migration cut the unit, closed without one, or has yet to land. @param {boolean} closed @param {boolean} before */
-function absentAccount(closed, before) {
+/** Why a task has no account: no reviewer read it, as recorded, which is its account; it landed before the migration cut the unit, closed without one, or has yet to land. @param {boolean} closed @param {boolean} before @param {string|null} none */
+function absentAccount(closed, before, none) {
+  if (none !== null) return `No reviewer read it, as recorded, and that record is its account: ${none}`;
   if (before) return 'No account was written: it landed before the migration cut the unit.';
   return closed ? 'No account was written: it closed without one.' : 'No account is written yet: its builder writes it as the task lands.';
 }
@@ -248,7 +252,7 @@ function absentAccount(closed, before) {
  * where `reviews`.
  * @param {AccountView} view @param {{reviews: boolean}} opts
  */
-function accountDisplay({ head, at, of, does, closed, before, account }, { reviews }) {
+function accountDisplay({ head, at, of, does, closed, before, none, account }, { reviews }) {
   const blocks = [
     taskMarker(head),
     ...(account === null ? [] : [accountVerdict(account.reviewed)]),
@@ -256,7 +260,7 @@ function accountDisplay({ head, at, of, does, closed, before, account }, { revie
     block('WHAT IT DOES', prose(does, '  ').join('\n')),
   ];
   if (account === null) {
-    blocks.push(`  ${absentAccount(closed, before)}`);
+    blocks.push(`  ${absentAccount(closed, before, none)}`);
   } else {
     blocks.push(doneBlock(account), differsBlock(account.differences));
     if (reviews) blocks.push(reviewsBlock(account.reviews));

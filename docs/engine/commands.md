@@ -735,6 +735,7 @@ The authority gate after the review phase's report, and a quick-fix's close. Its
 ```text
 task phase <work-unit> <N> --title <title>
 task create <work-unit> <N> --file <path>
+task create <work-unit> <N> --title <line> --type <type>
 task add <work-unit> <task> --file <path> --by <orchestrator|person>
 task type <work-unit> <task> <type>
 task close-plan <work-unit> --parent <tracker-id>
@@ -749,6 +750,7 @@ task show <work-unit> <task>
 task worktree <work-unit> <task>
 task stopped <work-unit> <task>
 task account <work-unit> <task>
+task review <work-unit> <task> --reviewers <0|1|2> --file <why>
 task settle <work-unit> <task> --file <why>
 task settle <work-unit> --phase <N> --file <why> [--fixes <task>,…]
 task note <work-unit> --file <note> [--phase <N>]
@@ -757,13 +759,13 @@ task note <work-unit> --file <note> [--phase <N>]
 The build's tasks. **The tracker's verbs** are the only way Ledger touches a tracker, through the project's task driver (`drivers.task`, written as the default by the first verb needing it). A verb names a task `{phase}.{n}` beside its unit; its internal id, `{unit}-{phase}-{n}`, is the lasting one, in commit subjects, branch names and trailers. A verb that writes commits the tracker's store on the state branch. A tool the driver needs that is missing, too old or failing refuses the verb, naming it (**`drivers`**).
 
 - **`phase`** — writes a phase into the tracker as it starts. Answers `phase`.
-- **`create`** — a task of a written phase from the task template in a file, every fault named at once. Answers `{task, id}`.
+- **`create`** — a task of a written phase from the task template in a file, every fault named at once; or, with `--title` and `--type`, a one-line task, the orchestrator's own work, with no builder and no reviewer. Answers `{task, id}`.
 - **`add`** — an addition onto a task not yet ended, `--by` the orchestrator or the person. Once a round has been briefed it marks the task changed, so its pair reads it again (or its builder is briefed again) before its account. Answers `{task, id}`.
 - **`type`** — gives a task another type. Answers `{task, id, type}`.
 - **`link`** — holds a task after an unfinished one of its phase or an earlier one. Answers `{task, after}`.
 - **`ready`** — the tasks waiting with nothing before them and no question parking them: `{tasks: [{task, id, title}], back?}`, `back` (in step, or in a quick-fix's one checkout) the freed task whose turn has come.
 - **`start`** — puts the task in progress and in flight on the conversation's position. Refused before the phase's start checklist closes, and in step (or a quick-fix's one checkout) while another task is in flight or at its gate. A quick-fix's start puts the project's own checkout on `fix/{unit}` (answering `branch`, and `put_back` or `cut_again` where it applies), refused while that checkout holds the person's uncommitted changes. Answers `{task, id}`.
-- **`done`** — ends the task done. Refused while a question parks it (`raise draw <unit> Q{n}`), before its account is taken, for a bugfix's task 1.1 until its test proves the bug (`verify run … --unfixed`), and for a quick-fix's fix with no commit of its own (close it as met), not yet in the pull request (`land open`), or leaving the checkout uncommitted. Answers `{task, id, removed?, next?}`, `removed` the child worktrees taken apart, `next` (`render finish {unit}`) where the last fix task ends a quick-fix's review the person asked for: run it.
+- **`done`** — ends the task done. Refused while a question parks it (`raise draw <unit> Q{n}`), before its account is taken — but for a task reviewed by none, whose record is its account — for a bugfix's task 1.1 until its test proves the bug (`verify run … --unfixed`), and for a quick-fix's fix with no commit of its own (close it as met), not yet in the pull request (`land open`), or leaving the checkout uncommitted. Answers `{task, id, removed?, next?}`, `removed` the child worktrees taken apart, `next` (`render finish {unit}`) where the last fix task ends a quick-fix's review the person asked for: run it.
 - **`close`** — ends the task without it being done, `--reason` kept; takes it off every question parking it (`unparked`). Never for a bugfix's task 1.1, nor a quick-fix's fix holding work of its own (its change is given up by a fix of its own that reverts it). A quick-fix's fix closed keeps its set-aside work, `kept_aside`. Answers `{task, id, removed?, unparked?, next?}`; `next` is the phase's mutation run where it ends its phase, and `render finish {unit}` where the last fix task ends a quick-fix's review the person asked for: run it.
 - **`list`** — a phase's tasks: `{phase, tasks: [{task, id, title, status}]}`, status `open`, `in-progress`, `done` or `closed`.
 - **`show`** — the task whole: `{task, id, title, status, type, text, additions, after, reason}`.
@@ -773,7 +775,8 @@ The build's tasks. **The tracker's verbs** are the only way Ledger touches a tra
 
 **The build's records**, each committed with what it took:
 
-- **`account`** — takes the task's account, `build/tasks/{task}.md` with every round's reports, `build/tasks/{task}/round-{N}-{letter}.md` (the formats `domain/task-account.cjs`'s and `domain/round-report.cjs`'s), and the task's figures, `build/tasks/{task}/figures.json`. Answers `{task, id, rounds, figures, settled?}`. Refused while a question parks the task, while its last round neither passed nor was settled, where it changed after its last round passed (its pair reads it again first), and where the account or a report does not read, every fault named.
+- **`account`** — takes the task's account, `build/tasks/{task}.md` with every round's reports, `build/tasks/{task}/round-{N}-{letter}.md` (the formats `domain/task-account.cjs`'s and `domain/round-report.cjs`'s), and the task's figures, `build/tasks/{task}/figures.json`. Answers `{task, id, rounds, figures, settled?}`. Refused for a task reviewed by none, while a question parks the task, while its last round neither passed nor was settled, where it changed after its last round passed (its pair reads it again first), and where the account or a report does not read, every fault named.
+- **`review`** — the orchestrator's choice of how many reviewers read the task, with why, at `build/tasks/{task}/review.json`; with none recorded, the kernel's two. One reads by `a` alone; none ends the review with no round and needs no account. Answers `{task, id, reviewers}`. Refused once the task's first round is briefed, for a count beyond two, and for a one-line task any but none.
 - **`settle`** — the orchestrator's settlement of a task's failed last round, written beside its reports (`{task, id, round}`); with `--phase`, of a phase's failed review, naming its fix tasks in `--fixes`, at `build/phases/phase-{N}/settlement.json` (`{phase, fixes}`). Refused where the round passed, or the review is not complete or passed.
 - **`note`** — a note for later into `build/notes.md`, `## Note {k}`, held for a phase not yet written with `--phase`. Answers `{number, phase?}`.
 
@@ -834,8 +837,8 @@ Response `{id, role, agent, pointer}`, with `committed` where reading the tracke
 
 **The build's**, for a task (`<unit> <task>`, as `{phase}.{n}`) or a phase of the cut (`<unit> <N>`):
 
-- **`builder`** — the task's builder. Takes a stop off the task.
-- **`reviewer`** — `--letter` the reviewer of the pair, for the round. Refused where that report is in already, and once the task's review is over.
+- **`builder`** — the task's builder. Takes a stop off the task. Refused for a one-line task, the orchestrator's own.
+- **`reviewer`** — `--letter` one of the task's reviewers, for the round. Refused where that report is in already, once the task's review is over, for a letter beyond the reviewers `task review` recorded, and for a task reviewed by none.
 - **`fix`** — the last round's reports, sent to the builder by SendMessage. Refused where no builder was briefed in this conversation, or the task changed since (send the builder its brief first).
 - **`task-writer`** — writes a phase's tasks.
 - **`consolidation`** — the phase's notes against its tasks.

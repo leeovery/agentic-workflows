@@ -179,7 +179,7 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
     assert.strictEqual(sectionOf(out, 'DISPLAY: finish'), [
       'Typo — ready to close',
       '',
-      'REVIEWED BY THE PAIR',
+      'REVIEWED',
       `  ├─ ✓ 1.1 ${FLAG} · passed in round 1`,
       `  └─ ✓ 1.2 ${HELP} · passed in round 1`,
       '',
@@ -206,7 +206,7 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
     const out = closeScreen(view);
 
     assert.match(sectionOf(out, 'MENU: finish'), /\*\*`y\/yes`\*\* {4}→ Close it — mark it complete\n/);
-    assert.match(sectionOf(out, 'DISPLAY: finish'), /^Typo — ready to close\n\nREVIEWED BY THE PAIR\n {2}No fix was done\.\n\n/);
+    assert.match(sectionOf(out, 'DISPLAY: finish'), /^Typo — ready to close\n\nREVIEWED\n {2}No fix was done\.\n\n/);
   });
 
   it('19.5.13: draws each fix\'s verdict from its pair — one its pair failed, its review settled by the orchestrator, closes said as settled in its round', () => {
@@ -222,7 +222,22 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
     run(['quick-fix', 'record', UNIT, '1.3', '--file', recordFile(dir, 3, RECORDS[1])]);
     closeable();
 
-    assert.match(sectionOf(screen(), 'DISPLAY: finish'), new RegExp(`\\nREVIEWED BY THE PAIR\\n {2}├─ ✓ 1\\.1 ${FLAG} · passed in round 1\\n {2}├─ ✓ 1\\.2 ${HELP} · passed in round 1\\n {2}└─ ✓ 1\\.3 ${DOCS} · settled in round 1\\n\\n`));
+    assert.match(sectionOf(screen(), 'DISPLAY: finish'), new RegExp(`\\nREVIEWED\\n {2}├─ ✓ 1\\.1 ${FLAG} · passed in round 1\\n {2}├─ ✓ 1\\.2 ${HELP} · passed in round 1\\n {2}└─ ✓ 1\\.3 ${DOCS} · settled in round 1\\n\\n`));
+  });
+
+  it('13.3.4: a fix recorded as reviewed by none is done with no round and no account, and the close takes it, said as not reviewed', () => {
+    dir = world();
+    createFix(dir, 3, DOCS, as());
+    run(['task', 'review', UNIT, '1.3', '--reviewers', '0', '--file', writeState(dir, layout.cache('why.md'), 'One word in the docs.\n')]);
+    run(['task', 'start', UNIT, '1.3']);
+    createFile(dir, 'docs/flag.md', '--colour\n');
+    run(['commit', '--paths', 'docs/flag.md', '--task', UNIT, '1.3', '-m', `fix(${UNIT}): spell the docs --colour`]);
+    run(['land', 'open', UNIT, '1.3']);
+    run(['task', 'done', UNIT, '1.3']);
+    run(['quick-fix', 'record', UNIT, '1.3', '--file', recordFile(dir, 3, RECORDS[1])]);
+    closeable();
+
+    assert.match(sectionOf(screen(), 'DISPLAY: finish'), new RegExp(`\\nREVIEWED\\n {2}├─ ✓ 1\\.1 ${FLAG} · passed in round 1\\n {2}├─ ✓ 1\\.2 ${HELP} · passed in round 1\\n {2}└─ ✓ 1\\.3 ${DOCS} · not reviewed, as recorded\\n\\n`));
   });
 
   it('19.5.25: refuses while a question asked in its conversation stands open, after a /clear as before it, naming it and the raise that asks it again — its checklist\'s questions-answered held open over it, naming the same', async () => {
@@ -243,7 +258,7 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
     dir = world();
     closeable();
     assert.strictEqual(sectionOf(screen(), 'DISPLAY: finish'), [
-      'Typo — ready to close', '', 'REVIEWED BY THE PAIR', `  ├─ ✓ 1.1 ${FLAG} · passed in round 1`, `  └─ ✓ 1.2 ${HELP} · passed in round 1`, '',
+      'Typo — ready to close', '', 'REVIEWED', `  ├─ ✓ 1.1 ${FLAG} · passed in round 1`, `  └─ ✓ 1.2 ${HELP} · passed in round 1`, '',
       `Nothing was proven by running ${projectName(dir)} — the project has no way to run it`, '',
     ].join('\n'));
   });

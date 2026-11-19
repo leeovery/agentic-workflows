@@ -232,7 +232,7 @@ const { commitStateTail, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { remoteName, nestedRemoteName } = require('./remote.cjs');
 const { assertUnit, parsePhase, parseShownTask, parseTaskId, shownTask, taskId } = require('./task-id.cjs');
 const { trackedTask, trackedPhase, trackedBuild, phaseWritten, ENDED } = require('./task-verbs.cjs');
-const { taskRounds, pairPassed, changedUnder, changedRefusal, phaseReviewBegun } = require('./round-report.cjs');
+const { taskRounds, pairPassed, changedUnder, changedRefusal, phaseReviewBegun, reviewedNone } = require('./round-report.cjs');
 const { verifySetup } = require('./environment.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { cutLength, cutPhases, buildLength, quickFixBuild, fixesBegun, isFixPhase, builtSince, hasLanded } = require('./derivations.cjs');
@@ -1031,10 +1031,15 @@ function landOpen(cwd, unit, task) {
  * Refuse a task its pair has not passed: no round of its review reported,
  * its last round failed and not settled (12.1.4, 13.4.6), or the task
  * changed under that round since — read off its rounds' reports alone,
- * refused as their read refuses.
+ * refused as their read refuses; a task reviewed by none, as its account's
+ * absence is refused (task-account.cjs).
  * @param {string} cwd @param {TaskRef} ref
  */
 function refuseUnpassed(cwd, ref) {
+  if (reviewedNone(cwd, ref) !== null) {
+    account().refuseUnaccounted(cwd, ref, 'land');
+    return;
+  }
   const shown = shownTask(ref);
   let rounds;
   try {

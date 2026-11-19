@@ -327,6 +327,7 @@ ${Object.values(MAP_USAGE).map((usage) => `  ${usage}`).join('\n')}
   experiment abandon <work-unit> <topic> <id> --reason <one line>
   task phase <work-unit> <N> --title <title>
   task create <work-unit> <N> --file <path>
+  task create <work-unit> <N> --title <line> --type <type>
   task add <work-unit> <task> --file <path> --by <orchestrator|person>
   task type <work-unit> <task> <type>
   task close-plan <work-unit> --parent <tracker-id>
@@ -341,6 +342,7 @@ ${Object.values(MAP_USAGE).map((usage) => `  ${usage}`).join('\n')}
   task worktree <work-unit> <task>
   task stopped <work-unit> <task>
   task account <work-unit> <task>
+  task review <work-unit> <task> --reviewers <0|1|2> --file <why>
   task settle <work-unit> <task> --file <why>
   task settle <work-unit> --phase <N> --file <why> [--fixes <task>,…]
   task note <work-unit> --file <note> [--phase <N>]
@@ -1264,8 +1266,8 @@ function runExperiment(call, argv) {
 // ---------------------------------------------------------------------------
 // task — the tracker's verbs through the project's task driver
 // (domain/task-verbs.cjs): phase, create, add, type, link, ready, start,
-// done, close, list and show, and beside them the build's records, account
-// and settle (domain/task-account.cjs), settle --phase, a phase review's
+// done, close, list and show, and beside them the build's records, account,
+// review and settle (domain/task-account.cjs), settle --phase, a phase review's
 // (domain/phase-settlement.cjs), and note (domain/notes.cjs), each
 // committing what it wrote to the state branch; worktree, the task's
 // worktree laid out for its builder (domain/task-worktree.cjs); and stopped,

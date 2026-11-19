@@ -33,7 +33,8 @@
 // taken, to its taking; else the orchestrator's to read for its notes for
 // later and the nits the task's commits do not yet fix, fixed in the
 // worktree that has its branch out, then the new builder's for the account
-// (task-account.cjs, `reviewOverWay`); anything else its new builder's —
+// (task-account.cjs, `reviewOverWay`); one recorded as reviewed by none,
+// its new builder's, landing once built; anything else its new builder's —
 // a quick-fix's fix whose work its park set aside its start's first, which
 // puts it back (fix-aside.cjs), then that way. A task a question parks is
 // put in flight as well, but no builder goes to it until the person answers
@@ -148,7 +149,7 @@ const { ofQuickFix } = require('./task-base.cjs');
 const { heldAside } = require('./fix-aside.cjs');
 const { recordedRounds, mergingWords } = require('./review-phase.cjs');
 const { shownTask, parseShownTask } = require('./task-id.cjs');
-const { roundStanding, taskRounds, pairPassed } = require('./round-report.cjs');
+const { roundStanding, taskRounds, pairPassed, reviewedNone } = require('./round-report.cjs');
 const { reproducingHold } = require('./bug-proven.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { stepsAt, concurrency } = require('./environment.cjs');
@@ -496,6 +497,7 @@ function roundWords(cwd, session, ref) {
   }
   const over = reviewOverWay(cwd, ref);
   if (over !== null) return `${over.said} — ${over.way}`;
+  if (reviewedNone(cwd, ref) !== null) return 'no reviewer reads it, as recorded — its builder goes afresh on its branch, and once it is built it lands';
   return 'its builder and pair go afresh on its branch';
 }
 

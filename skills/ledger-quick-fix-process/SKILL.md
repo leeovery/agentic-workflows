@@ -7,7 +7,7 @@ allowed-tools: Bash(node .claude/skills/ledger-engine/scripts/engine.cjs *)
 
 # Quick-Fix
 
-Settled work of any size, needing no decision beyond a quick call, made in one sitting: from its first fix to its close, all in this conversation, with no document and no plan before the work. You orchestrate and delegate: each fix is a task, built by a builder and passed by a pair of reviewers through the build's own task loop, each from a brief the engine issues. You write the fixes as tasks, their builders build them; you land what the agents find through the doors, fix the nits a review leaves, and write each fix's short record. Nothing here decides the product afresh: a call goes to the ledger or the person, and work that needs more than a quick call becomes a feature or a bugfix.
+Settled work of any size, needing no decision beyond a quick call, made in one sitting: from its first fix to its close, all in this conversation, with no document and no plan before the work. You orchestrate and delegate: each fix is a task, built by a builder and passed by the reviewers you choose through the build's own task loop, each from a brief the engine issues. You write the fixes as tasks, their builders build them; you land what the agents find through the doors, fix the nits a review leaves, and write each fix's short record. Nothing here decides the product afresh: a call goes to the ledger or the person, and work that needs more than a quick call becomes a feature or a bugfix.
 
 ## Arguments
 
@@ -45,7 +45,7 @@ The change was settled with the person when this work was started: carry it out.
 
 ### Writing a Fix
 
-Write each fix as a task of phase 1, in the tracker's template, to `.ledger/.cache/{work_unit}/build/fix.md`: a level-one title on one line; then `## Type` — `feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `build`, `ci` or `chore` — `## Problem`, `## Solution` and `## Outcome`, in the product's terms; `## Acceptance scenarios`, a list, each as the person would see it; and `## Spec reference`, `none`. Its pair reads it against its acceptance in its own words, so say there everything the fix must hold. Where the project records a verify setup and the fix changes what the product does, a criterion it is proven by running opens with its scenario's id, `{n}.S{k}` for fix `1.{n}`. Then record it:
+Write each fix as a task of phase 1, in the tracker's template, to `.ledger/.cache/{work_unit}/build/fix.md`: a level-one title on one line; then `## Type` — `feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `build`, `ci` or `chore` — `## Problem`, `## Solution` and `## Outcome`, in the product's terms; `## Acceptance scenarios`, a list, each as the person would see it; and `## Spec reference`, `none`. Its reviewers read it against its acceptance in its own words, so say there everything the fix must hold. Where the project records a verify setup and the fix changes what the product does, a criterion it is proven by running opens with its scenario's id, `{n}.S{k}` for fix `1.{n}`. Then record it:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs task create {work_unit} 1 --file .ledger/.cache/{work_unit}/build/fix.md
@@ -57,7 +57,7 @@ A refusal names every fault: answer them and record it again.
 
 The fixes are built in the same loop as every task of a build: load **[the-task-loop.md](../ledger-implementation-process/references/the-task-loop.md)** and follow its instructions as written, with place = `implementation` and N = `1`. They run with no stop between them: the close is the quick-fix's one gate.
 
-Once a fix's pair has passed it and its nits are committed, write its short record: what changed, why, and what it leaves out, each in the product's terms, to `.ledger/.cache/{work_unit}/build/record.md` under three level-two headings, `## What changed`, `## Why` and `## Leaves out`, none empty. Record it:
+Once a fix's review has passed it and its nits are committed, or it is built where no reviewer reads it, write its short record: what changed, why, and what it leaves out, each in the product's terms, to `.ledger/.cache/{work_unit}/build/record.md` under three level-two headings, `## What changed`, `## Why` and `## Leaves out`, none empty. Record it:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs quick-fix record {work_unit} {task} --file .ledger/.cache/{work_unit}/build/record.md
@@ -75,7 +75,7 @@ Append to the build's log, `.ledger/{work_unit}/build/log.md`, as the work goes:
 
 ## Doors
 
-- A fix → `task create {work_unit} 1 --file {path}`; its order → `task link {work_unit} {task} --after {task}`.
+- A fix → `task create {work_unit} 1 --file {path}`, or a one-line one, your own, `--title "{line}" --type {type}` in place of the file; its reviewers → `task review {work_unit} {task} --reviewers {count:[0|1|2]} --file {why}`; its order → `task link {work_unit} {task} --after {task}`.
 - What runs → `task ready {work_unit} 1`, `task start {work_unit} {task}`.
 - An agent → `brief builder|fix {work_unit} {task}`, `brief reviewer {work_unit} {task} --letter {letter}`; then the Agent call with the agent and the pointer `brief` answers, or SendMessage of the pointer to the agent already working the fix.
 - Your fix of a nit → `commit --paths {file}… --task {work_unit} {task} -m "{message}"`.
@@ -98,7 +98,7 @@ Append to the build's log, `.ledger/{work_unit}/build/log.md`, as the work goes:
 
 Finish closes on its checklist; `checklist show finish {work_unit}` lists its items. `inbox-closed` reads the build's log for its `Resolved:` lines: check the live inbox against what was built, claim in the log each item the work resolved, and close them, `inbox close {work_unit} {path} …`. Yours is `build-log-closed` — the build's log ends on what the fixes came to, nothing left in flight.
 
-Where `notes-answered` stays open, the notes for later its fixes' builders and pairs left stand. Answer each by one finding, filed to the inbox or dropped: `{"area": "notes", "scope": "out", "call", "text", "from": ["notes#{k}"], "inbox": "{path}", "ledger": "{id}"}`, or `"drop": "{why}"` in place of `inbox`. `notes#{k}` is note {k} of `.ledger/{work_unit}/build/notes.md`; `call` is the finding's weight, `serious`, `bug` or `nit`; `inbox` is the path `inbox file` answered; `ledger` is the id of your decision to file or drop it (**Doors**). Write them as `{"findings": […]}` to `.ledger/.cache/{work_unit}/build/notes.json` and record them:
+Where `notes-answered` stays open, the notes for later its fixes' builders and reviewers left stand. Answer each by one finding, filed to the inbox or dropped: `{"area": "notes", "scope": "out", "call", "text", "from": ["notes#{k}"], "inbox": "{path}", "ledger": "{id}"}`, or `"drop": "{why}"` in place of `inbox`. `notes#{k}` is note {k} of `.ledger/{work_unit}/build/notes.md`; `call` is the finding's weight, `serious`, `bug` or `nit`; `inbox` is the path `inbox file` answered; `ledger` is the id of your decision to file or drop it (**Doors**). Write them as `{"findings": […]}` to `.ledger/.cache/{work_unit}/build/notes.json` and record them:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs quick-fix notes {work_unit} --file .ledger/.cache/{work_unit}/build/notes.json

@@ -624,9 +624,10 @@ const {
   ownTexts, recordTaking, recordCutTaking, outstanding, cutRequests, reviewedSpec, sectionsToReview, waitingGaps, gapsWaiting, passesRunningOn, waitingOn,
 } = require('./spec-passes.cjs');
 const { messageOf, ENGINE_RUN } = require('../kernel/call.cjs');
-const { specReferenceOf, scenariosOf } = require('./task-file.cjs');
+const { specReferenceOf, scenariosOf, isOneLine } = require('./task-file.cjs');
 const {
   taskFolder, taskRounds, roundReportPath, roundUnderReview, unbuiltRefusal, phaseReviewPath, reportFaults, roundStanding, readRefusal, recordReviewer, recordBuilder, pendingChange, briefedOf,
+  lettersOf, reviewedNone,
 } = require('./round-report.cjs');
 const { workBranch, builtOnBases, ownWork } = require('./task-base.cjs');
 const { freedAt } = require('./task-parks.cjs');
@@ -2542,7 +2543,10 @@ function drawSetupTo(filling) {
 
 /** @param {Filling} filling */
 function drawAccountTo(filling) {
-  const { ref } = taskOf(filling);
+  const { ref, task } = taskOf(filling);
+  if (isOneLine(task.text)) throw new Error(`${taskName(ref)} is a one-line task, the orchestrator's own work with no builder — make it in the conversation and commit it through the door`);
+  const none = reviewedNone(filling.cwd, ref);
+  if (none !== null) return `None: the orchestrator recorded that no reviewer reads the task — ${none} — and that record is its account. Write no account; once the task is built, report **built**.`;
   const standing = roundStanding(filling.cwd, ref, filling.session);
   if (standing !== null) throw new Error(readRefusal(ref, standing));
   const {
@@ -2579,7 +2583,16 @@ const bindFix = (filling) => briefedPast(filling, null);
 /** A reviewer's brief issued: the round its pair is briefed for, and the conversation briefing this reviewer, recorded (round-report.cjs). @param {Filling} filling */
 function bindReviewer(filling) {
   const { ref } = taskOf(filling);
-  recordReviewer(filling.cwd, ref, roundUnderReview(filling.cwd, ref), letterOf(filling), filling.session);
+  recordReviewer(filling.cwd, ref, roundUnderReview(filling.cwd, ref), taskLetterOf(filling), filling.session);
+}
+
+/** The reviewer's letter `--letter` names, refused where it names none of those the task's review records (round-report.cjs, `lettersOf`). @param {Filling} filling */
+function taskLetterOf(filling) {
+  const letter = letterOf(filling);
+  const { ref } = taskOf(filling);
+  const letters = lettersOf(filling.cwd, ref);
+  if (letters.length > 0 && !letters.includes(letter)) throw new Error(`${taskName(ref)} is read by reviewer ${letters.join(' and ')} alone, as recorded — brief that one, never reviewer ${letter}`);
+  return letter;
 }
 
 /**
@@ -2674,7 +2687,7 @@ function drawRoundReportTo(filling) {
   const round = roundUnderReview(filling.cwd, ref);
   const unbuilt = unbuiltRefusal(filling.cwd, ref, round);
   if (unbuilt !== null) throw new Error(unbuilt);
-  return reportPlace(filling, roundReportPath(ref, round, letterOf(filling)));
+  return reportPlace(filling, roundReportPath(ref, round, taskLetterOf(filling)));
 }
 
 /** @param {Filling} filling */
