@@ -214,6 +214,16 @@ describe('the pieces (21.7, 21.8)', () => {
     assert.strictEqual(harness.refuses(dir, ['migrate', 'join', 'shop', '--directive', DIRECTIVE, '--phase', '5', '--dry-run'], { env: SESSION }).error, 'migrate join: shop\'s cut has no phase 5 — its phases are numbered 1 to 4');
   });
 
+  it('an unfinished quick-fix with a plan in the tracker is no piece: it keeps its unit, and its old tasks, done and open, are left as they stand, never cut nor closed (21.5.21)', () => {
+    const manifest = JSON.parse(readState(dir, layout.manifest('memo')));
+    writeState(dir, layout.manifest('memo'), JSON.stringify({ ...manifest, work_type: 'quick-fix', status: 'in-progress' }, null, 2));
+    SIDE.taskByHand(statePath(dir), 'done', 'Write a memo');
+
+    assert.deepStrictEqual([lacks('memo'), unfinished().some(({ name }) => name === 'memo'), SIDE.planStanding(statePath(dir), 'memo')], [null, false, {
+      'Write a memo': ['done', null], 'Pin a memo': ['open', null],
+    }]);
+  });
+
   it('a cancelled unit whose building started, its specs joined: its plan in the tracker closed all the same, each task done standing and the rest closed for the cancel (21.8.4, 21.8.11)', () => {
     const manifest = JSON.parse(readState(dir, layout.manifest('memo')));
     writeState(dir, layout.manifest('memo'), JSON.stringify({ ...manifest, status: 'cancelled', spec: { joined: ['memo'] } }, null, 2));

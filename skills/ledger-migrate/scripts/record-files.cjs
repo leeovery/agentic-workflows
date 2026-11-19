@@ -165,8 +165,11 @@ function verdictGaps(root, unit, topic, refs) {
   };
 }
 
-/** The files a verifier that gave no verdict on every entry leaves, to remove before a fresh one is briefed, whole. @param {string} root @param {string} unit @param {string|null} topic */
-const verdictlessFiles = (root, unit, topic) => [findingsPath, rulingsPath, checkedPath].map((rel) => path.join(root, rel(unit, topic)));
+/** The files a verifier that gave no verdict on every entry left, to remove before a fresh one is briefed, whole: those it wrote of its findings, rulings and verdicts. @param {string} root @param {string} unit @param {string|null} topic */
+const verdictlessFiles = (root, unit, topic) => [findingsPath, rulingsPath, checkedPath].map((rel) => path.join(root, rel(unit, topic))).filter((file) => fs.existsSync(file));
+
+/** Files as a sentence names them: `a`, `a and b`, `a, b and c`. @param {string[]} files */
+const inWords = (files) => (files.length < 3 ? files.join(' and ') : `${files.slice(0, -1).join(', ')} and ${files.at(-1)}`);
 
 /**
  * Where the last verifier's verdicts do not name each entry its brief
@@ -186,8 +189,7 @@ function unchecked(root, unit, topic, refs) {
     ...(unknown.length > 0 ? [`it names ${unknown.join(', ')}, which the record it read does not hold`] : []),
   ];
   if (told.length === 0) return null;
-  const [findings, rulings] = verdictlessFiles(root, unit, topic);
-  return `has no verdict from its last verifier on every entry its brief asked one of — ${told.join('; ')}: a verifier writes a line for each entry its walk sheet does not mark passed, \`{ref}: ok\` or \`{ref}: see finding\`, and one that does not has given no verdict — remove ${findings}, ${rulings} and ${checked}, and brief a fresh verifier`;
+  return `has no verdict from its last verifier on every entry its brief asked one of — ${told.join('; ')}: a verifier writes a line for each entry its walk sheet does not mark passed, \`{ref}: ok\` or \`{ref}: see finding\`, and one that does not has given no verdict — remove ${inWords(verdictlessFiles(root, unit, topic))}, and brief a fresh verifier`;
 }
 
 /**

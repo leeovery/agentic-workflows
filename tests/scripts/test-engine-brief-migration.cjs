@@ -787,16 +787,16 @@ describe('the verifier\'s verdict on each entry', () => {
     writeState(dir, composedPath('fumi', 'licensing'), RECORD2);
     issued(['migration-verifier', ...LICENSING]);
     const read = JSON.parse(readState(dir, verifyingPath('fumi', 'licensing')));
-    const way = `a verifier writes a line for each entry its walk sheet does not mark passed, \`{ref}: ok\` or \`{ref}: see finding\`, and one that does not has given no verdict — remove ${statePath(dir, findingsPath('fumi', 'licensing'))}, ${statePath(dir, rulingsPath('fumi', 'licensing'))} and ${statePath(dir, checkedPath('fumi', 'licensing'))}, and brief a fresh verifier`;
+    const way = `a verifier writes a line for each entry its walk sheet does not mark passed, \`{ref}: ok\` or \`{ref}: see finding\`, and one that does not has given no verdict — remove ${statePath(dir, findingsPath('fumi', 'licensing'))}{and checked}, and brief a fresh verifier`;
     const refusedBrief = (/** @type {string[]} */ args, /** @type {RegExp} */ pattern) => assert.match(refusedUntouched(dir, ['brief', ...args], { env: SESSION }, harness), pattern);
-    const refusal = (/** @type {string} */ told) => new RegExp(`^brief: fumi's licensing has no verdict from its last verifier on every entry its brief asked one of — ${escaped(told)}: ${escaped(way)}$`);
+    const refusal = (/** @type {string} */ told, checked = true) => new RegExp(`^brief: fumi's licensing has no verdict from its last verifier on every entry its brief asked one of — ${escaped(told)}: ${escaped(way.replace('{and checked}', checked ? ` and ${statePath(dir, checkedPath('fumi', 'licensing'))}` : ''))}$`);
 
     verdict('The trial is wrong.\n', 'q1: see finding\n');
     refusedBrief(['migration-topic', ...LICENSING], refusal('it names no verdict on q2'));
     writeState(dir, checkedPath('fumi', 'licensing'), 'q1: see finding\nq2: ok\nq9: ok\n');
     refusedBrief(['migration-verifier', ...LICENSING], refusal('it names q9, which the record it read does not hold'));
     fs.rmSync(statePath(dir, checkedPath('fumi', 'licensing')));
-    refusedBrief(['migration-topic', ...LICENSING], refusal(`${statePath(dir, checkedPath('fumi', 'licensing'))} is no file; it names no verdict on q1, q2`));
+    refusedBrief(['migration-topic', ...LICENSING], refusal(`${statePath(dir, checkedPath('fumi', 'licensing'))} is no file; it names no verdict on q1, q2`, false));
     writeState(dir, checkedPath('fumi', 'licensing'), 'q1: see finding\nq2: ok\n');
     writeState(dir, composedPath('fumi', 'licensing'), `${RECORD}\n`);
     issued(['migration-topic', ...LICENSING]);
