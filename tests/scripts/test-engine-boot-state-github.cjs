@@ -154,7 +154,8 @@ describe('what boot offers on GitHub (4.4.6, 4.S10, 4.S30, 7.2.18)', () => {
       '',
       '**`y/yes`** → Set both on Portal\'s repository',
       '**`n/no`**  → Leave them as they are — *Ledger won\'t merge a phase\'s*',
-      `${'\u00a0'.repeat(8)}*pull requests until they're set*`,
+      `${'\u00a0'.repeat(8)}*pull requests without the squash default, nor land work*`,
+      `${'\u00a0'.repeat(8)}*of several phases without merge commits*`,
       '',
     ].join('\n'));
     const gate = announced(() => auditGate(engine.output(main, ['render', 'github-squash-gate']), 'github squash gate'));

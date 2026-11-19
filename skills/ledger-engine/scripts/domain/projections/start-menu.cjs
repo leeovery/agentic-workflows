@@ -18,7 +18,7 @@
 //   place named where only one holds any; its next reads them,
 //   `asset legacy`, for the pass that sorts them (legacy-files.cjs).
 // - Then p/product, always, with its sessions' count and last date once it
-//   has sessions, and the brownfield research while it is owed (18.2.13,
+//   has sessions holding talk, and the brownfield research while it is owed (18.2.13,
 //   8.12.13); s/start, into discovery, which finds the type (18.2.7);
 //   t/triage (18.2.9, projections/triage.cjs); r/roadmap, always;
 //   e/verdicts, only while verdicts wait (18.2.11); v/view, once a unit

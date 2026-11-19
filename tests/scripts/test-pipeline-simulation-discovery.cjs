@@ -4,7 +4,10 @@
 // The pipeline simulation's discovery entry: the ways into the product's
 // conversation — the start menu's p, the roadmap's p and start's new-work
 // rows, each handing into `discovery none` — and its one log carried on from
-// conversation to conversation, each caught up from the last; the next
+// conversation to conversation, each caught up from the last; work brought
+// in words taking its type call in no session of the product's, so a fix
+// asked for in one window never stops, reads or closes the product's talk
+// going on in another; the next
 // day's session, after the last one ended on its roadmap items; the note a
 // compaction carries at either level; the brownfield offer's research, owed
 // from its yes until the findings land; the conversation moving between the
@@ -31,6 +34,7 @@ const { startMenuScreen } = require(path.join(ROOT, 'skills/ledger-engine/script
 const { stateGit } = require('./engine-harness.cjs');
 const {
   Sim, startUnit, handoff, handoffBy, answerGate, typeAtGate, startPick, startNew, startBare, startWith, startMenu, epicPick, carryOn, mappedEpic, enterEntry, waitAgents, presenceRow, briefDraft, roadmapMenu,
+  startThisWork,
 } = require('./pipeline-world.cjs');
 
 const PRODUCT = 'product';
@@ -122,21 +126,34 @@ describe('pipeline simulation: discovery\'s entry', () => {
     assert.ok(!fs.existsSync(logPath(sim, PRODUCT, 2)), 'one product conversation, one log');
   });
 
-  it('work brought in conversation comes through the one entry: boot given the words sends new work to Start in this conversation, with no menu, and words naming a unit in progress into it as the start menu\'s number does; the bare command draws the banner before boot, then the menu (8.S79, 18.S72, 18.2.15, 25.S10)', () => {
+  it('work brought in conversation comes through the one entry: boot given the words sends new work to Start\'s type call in this conversation, with no menu, and words naming a unit in progress into it as the start menu\'s number does — so Claude brings the request itself, which goes to Start beside a unit in progress; the bare command draws the banner before boot, then the menu (8.S79, 18.S72, 18.2.15, 25.S10)', () => {
     const conversation = sim.conversations;
     const brought = startWith(sim, 'Change what the help command prints when it has no topic');
     assert.deepStrictEqual([brought.go, brought.route], ['route', { kind: 'start', words: 'Change what the help command prints when it has no topic', next: { kind: 'invoke', skill: 'ledger-discovery', args: ['start', 'none'] } }]);
-    const opened = sim.run(['enter', 'discovery', PRODUCT]);
+    const opened = sim.run(['enter', 'discovery', PRODUCT, '--type-call']);
     assert.strictEqual(opened.entered, true);
     assert.strictEqual(sim.conversations, conversation, 'the route opens in place, nothing cleared: what the person said stays with the work');
 
-    startUnit(sim, 'quick-fix', 'help-topic', 'What help prints with no topic');
+    startThisWork(sim, { type: 'quick-fix', name: 'help-topic', description: 'What help prints with no topic', reason: 'One known change.' });
+    assert.strictEqual(startWith(sim, 'Make the sidebar margin match on narrow windows').route?.kind, 'start', 'the request, not a go-ahead, beside a unit in progress');
     const named = startWith(sim, 'carry on with help-topic');
     const { invoked } = handoffBy(sim, ['handoff', 'unit', 'help-topic']);
     assert.deepStrictEqual([named.go, named.route.unit, `/${named.route.next.skill} ${named.route.next.args.join(' ')}`], ['route', 'help-topic', invoked]);
 
     assert.strictEqual(startBare(sim).go, 'menu', 'the bare command, in a new conversation, draws the banner before boot, then the menu');
     assert.ok(startMenu(sim).some(({ next }) => next?.kind === 'engine' && next.argv.join(' ') === 'handoff unit help-topic'), 'the menu lists the unit');
+  });
+
+  it('8.2.9: a fix asked for in one window while another talks product — its type call asks that window nothing, and its yes starts the quick-fix in place and leaves the product\'s session open, for that window to end its own session after', () => {
+    const talking = sim.session('product-window');
+    talking.run(['enter', 'discovery', PRODUCT]);
+    startWith(sim, 'Change what the help command prints when it has no topic');
+    sim.run(['enter', 'discovery', PRODUCT, '--type-call']);
+    const asked = /=== MENU: held topic gate /.test(sim.sections);
+    const started = startThisWork(sim, { type: 'quick-fix', name: 'help-topic', description: 'What help prints with no topic', reason: 'One known change.' });
+    const ended = talking.run(['discovery-session', 'close', PRODUCT, '-m', 'discovery(product): end the session']);
+
+    assert.deepStrictEqual([asked, started.product_session_closed, started.next.kind, ended.session], [false, null, 'invoke', '001']);
   });
 
   it('the next day\'s opening, after the session was ended, opens the next log and reads where it had got to (8.S69)', () => {
@@ -172,8 +189,11 @@ describe('pipeline simulation: discovery\'s entry', () => {
     assert.strictEqual(next.started, true);
     assert.deepStrictEqual([named(sim, 'session log'), named(sim, 'log'), named(sim, 'research owed')],
       [[logPath(sim, PRODUCT, 1)], [logPath(sim, PRODUCT, 2)], ['no']]);
-    assert.match(/** @type {any} */ (startMenuScreen(startMenuRead(sim.dir)).rows.find((row) => row.key === 'p')?.label).tail, /^2 sessions, last on /,
-      'the start menu\'s row counts the sessions and names the last date');
+    const tail = () => /** @type {any} */ (startMenuScreen(startMenuRead(sim.dir)).rows.find((row) => row.key === 'p')?.label).tail;
+    const opened = tail();
+    fs.appendFileSync(logPath(sim, PRODUCT, 2), '\nSeats before pricing.\n');
+    assert.match(opened, /^1 session, last on /, 'a session nothing has been said in yet is not counted');
+    assert.match(tail(), /^2 sessions, last on /, 'the start menu\'s row counts the sessions holding talk and names the last date');
   });
 
   it('a compaction at either level names the skill, the open log and the log\'s transcript to catch up from (8.S67, 8.S75, 24.S19)', () => {

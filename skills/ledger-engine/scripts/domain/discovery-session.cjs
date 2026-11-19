@@ -17,7 +17,9 @@
 // (state-worktree.cjs).
 //
 // close clears the marker and commits the place's scope with the caller's
-// message — the unit's discovery scope, or the product's — the log with it.
+// message — the unit's discovery scope, or the product's — the log with it;
+// the product's drops the calling conversation's position there, which
+// the session it ended held.
 // The knowledge base never indexes a log (8.14.7).
 //
 // The log's content is the conversation's: the engine writes no prose of its
@@ -38,7 +40,7 @@ const { PRODUCT } = require('../kernel/manifest-schema.cjs');
 const { commitStateTail, noteCommitOutcome, discoveryScope, PRODUCT_SCOPE } = require('./commit.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 const { PRODUCT_SESSIONS } = require('./layout.cjs');
-const { namedConversations } = require('./topic-log.cjs');
+const { handedSession } = require('../kernel/process.cjs');
 
 const SESSION_LOG = /^session-(\d+)\.md$/;
 
@@ -165,22 +167,6 @@ function activeSession(cwd, name) {
 }
 
 /**
- * The product's conversation as the start menu names it (18.2.13): how many
- * sessions it has had, and the date of the latest conversation its logs name
- * — null while none names one.
- * @param {string} cwd @returns {{sessions: number, last: string|null}}
- */
-function productConversation(cwd) {
-  const dir = statePath(cwd, PRODUCT_SESSIONS);
-  const logs = sessionLogs(dir);
-  for (const { file } of [...logs].reverse()) {
-    const latest = namedConversations(path.join(dir, file)).at(-1);
-    if (latest !== undefined) return { sessions: logs.length, last: latest.date };
-  }
-  return { sessions: logs.length, last: null };
-}
-
-/**
  * Install a place's next log, empty, and set the marker to it: the number
  * one past the highest on disk.
  * @param {string} cwd @param {SessionPlace} place @param {Marker} marker
@@ -226,11 +212,20 @@ function openSession(cwd, name) {
  * @property {string[]} warnings   non-blocking failures (the commit, its push)
  */
 
+/** The calling conversation's position dropped where it is the product's conversation, whose session it ended. */
+function leaveTheProduct() {
+  const { readPosition, dropPosition } = require('./position.cjs');
+  const sessionId = handedSession();
+  const at = sessionId === null ? null : readPosition(sessionId);
+  if (at !== null && at.name === PRODUCT && at.phase === undefined) dropPosition(sessionId);
+}
+
 /**
  * Close a place's open session: clear the marker, then commit the place's
  * scope with the caller's message — one call covers whatever the session
- * left uncommitted. A peer session's topic files are never swept: discovery
- * runs beside live discussion sessions.
+ * left uncommitted. The product's, ended, takes the calling conversation
+ * out of the product's conversation. A peer session's topic files are
+ * never swept: discovery runs beside live discussion sessions.
  * @param {string} cwd project root
  * @param {string} name a work unit, or `product`
  * @param {{message: string}} opts  commit message — it varies by caller, so it arrives via -m
@@ -248,6 +243,7 @@ function closeDiscoverySession(cwd, name, { message }) {
     return { number: marker.active, log };
   });
 
+  if (name === PRODUCT) leaveTheProduct();
   /** @type {string[]} */
   const warnings = [];
   const outcome = commitStateTail(cwd, place.scope(), message, warnings);
@@ -259,5 +255,5 @@ function closeDiscoverySession(cwd, name, { message }) {
 
 module.exports = {
   openSession, closeDiscoverySession, sessionLogs, latestSessionLog, productSession,
-  activeSession, sessionLogsAt, productConversation,
+  activeSession, sessionLogsAt,
 };

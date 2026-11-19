@@ -19,11 +19,14 @@
 //   bug's investigation, a quick-fix's one session — the unit's page at its
 //   menu and in a phase whose view comes later (29.14.2), and All work at
 //   the start menu or a project-level place — and once a unit's finish
-//   completes it from its review phase (20.10.4), or a quick-fix's close
-//   from its one session (20.14.2), All work too, the banner the unit's
-//   close (D38) — while its position still names that place, and at the
-//   start menu boot hands it to, until the session records a position again
-//   (position.cjs); an epic's finish goes to its menu. While a session
+//   completes it from its review phase (20.10.4), All work too, the banner
+//   the unit's close (D38) — while its position still names that place, and
+//   at the start menu boot hands it to, until the session records a
+//   position again (position.cjs); an epic's finish goes to its menu. A
+//   quick-fix's close leaves the closing conversation at no place
+//   (topic-leave.cjs), so its All work is the project's, plain (20.14.2);
+//   another session still sitting in the quick-fix draws the close's banner
+//   as above. While a session
 //   carries the migration on, its row at the migration's place there
 //   (presence.cjs), a session at no position is migrating, never at the
 //   start menu. The session's tasks
@@ -327,8 +330,8 @@ function pageOf(tab, ref, pageUnit) {
 
 /**
  * Whether a unit was finished from its review phase, or a quick-fix closed
- * from its one session, the start menu next (the header's), at the phase
- * the session's place names.
+ * from its one session (the header's), at the phase the session's place
+ * names.
  * @param {BoardAt|null} at @param {string|null|undefined} phase
  */
 function finishedFrom(at, phase) {
