@@ -816,8 +816,9 @@ function ledgerAuditsOf(dir) {
 }
 
 // The ledger's copies in the knowledge directory, held to the records: a
-// copy for each place a shown entry is placed in — its unit's own level, or
-// a topic, never the product's place — and for no other; each naming every
+// copy for each place a shown entry is placed in — its unit's own level, a
+// topic, or the product's place, whose copy shows its findings alone — and
+// for no other; each naming every
 // entry shown there and no entry that is not shown, so no replaced answer is
 // in one; the product record's file naming the shown entries marked
 // product-wide alone; no words of an entry that is not shown — a question's
@@ -835,8 +836,10 @@ function ledgerAuditsOf(dir) {
 function auditCopies(root, events, shownAt, placed, headings, full, ctx) {
   /** @type {Map<string, string[]>} */
   const expected = new Map();
+  const byId = new Map(events.map((e) => [e.id, e]));
+  const finding = (/** @type {string} */ id) => byId.get(id).event === 'found' || byId.get(id).of === 'finding';
   for (const id of shownAt.keys()) {
-    for (const { unit, topic } of placed(id).filter((at) => at.unit !== PRODUCT)) {
+    for (const { unit, topic } of placed(id).filter((at) => at.unit !== PRODUCT || finding(id))) {
       const file = topic === null ? `${RECORDS_DIR}/${unit}.md` : `${RECORDS_DIR}/${unit}/${topic}.md`;
       expected.set(file, [...(expected.get(file) ?? []), id]);
     }
@@ -852,7 +855,6 @@ function auditCopies(root, events, shownAt, placed, headings, full, ctx) {
     assert.deepStrictEqual(ids.filter((id) => !names.includes(id)), [], ctx(`${file} does not name every entry its record shows`));
     assert.deepStrictEqual(names.filter((id) => !shownAt.has(id)), [], ctx(`${file} names an entry that is not current`));
   }
-  const byId = new Map(events.map((e) => [e.id, e]));
   assert.deepStrictEqual([...new Set(named(PRODUCT_FILE))].sort(), [...shownAt.keys()].filter((id) => byId.get(id).product_wide === true).sort(),
     ctx('the product record\'s file does not name the shown entries marked product-wide alone'));
   /** @param {Record<string, any>} e @returns {string[]} */

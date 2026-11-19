@@ -45,6 +45,10 @@ const { placeOf, folderUnder } = require('../kernel/repos.cjs');
 const { withStateLock, migrationRuns, stateBorn, commitFirst } = require('./state-worktree.cjs');
 const { commitStateScoped, commitStagedScoped, OWNED_PATHS } = require('./commit.cjs');
 
+// The record of the migrations applied, state-relative, which the runner
+// writes and a directive's close appends to.
+const MIGRATIONS_RECORD = '.state/migrations';
+
 // Where the runner journals what its runs owe the run that completes,
 // state-relative: in the cache, which no state commit takes.
 const MIGRATION_JOURNALS = '.cache/migrate';
@@ -92,6 +96,11 @@ function finishJournal(cwd) {
     throw new Error(`the migration's finish journal ${file} holds no { drops }, a list of paths inside the project's folder`);
   }
   return { drops: journal.drops };
+}
+
+/** Whether the reshape waits on its commit: its finish journal is there, read or not. @param {string} cwd */
+function finishWaits(cwd) {
+  return fs.existsSync(statePath(cwd, MIGRATION_JOURNALS, FINISH_JOURNAL));
 }
 
 /**
@@ -209,4 +218,4 @@ function commitMigrations(cwd, message) {
   return { state, code };
 }
 
-module.exports = { MIGRATION_JOURNALS, finishing, finishOwed, projectInMain, codeFiles, commitMigrations };
+module.exports = { MIGRATIONS_RECORD, MIGRATION_JOURNALS, finishWaits, finishing, finishOwed, projectInMain, codeFiles, commitMigrations };

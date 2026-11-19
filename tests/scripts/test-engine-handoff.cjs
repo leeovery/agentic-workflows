@@ -409,7 +409,7 @@ describe('engine handoff — refusals', () => {
   });
 
   it('a skill no move into work lands on refuses, naming the targets — scoping among them, no pipeline holding it (19.5.5)', () => {
-    for (const skill of ['ledger-help', 'ledger-bridge', 'ledger-research-process', 'ledger-scoping-process', 'ledger-log-idea', 'ledger-nonsense']) {
+    for (const skill of ['ledger-help', 'ledger-bridge', 'ledger-research-process', 'ledger-scoping-process', 'ledger-keep', 'ledger-nonsense']) {
       refused(dir, [skill], new RegExp(`^"${skill}" is not a handoff target — a handoff moves into work: ledger-discovery, `));
     }
   });

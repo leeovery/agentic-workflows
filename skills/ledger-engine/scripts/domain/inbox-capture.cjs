@@ -2,8 +2,8 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: the capture line (18.6.1–18.6.3, 18.6.8) — `inbox capture
-// <idea|bug|quick-fix> [--project <folder>]`, the one engine call a capture
-// skill makes, from a session in any project.
+// <idea|bug|quick-fix> [--project <folder>]`, the keep skill's way into the
+// inbox, from a session in any project.
 //
 // The item's text comes on stdin, markdown opening on its title, its first
 // `# Title`. It is written at `.inbox/{folder}/{YYYY-MM-DD}--{slug}.md`, the

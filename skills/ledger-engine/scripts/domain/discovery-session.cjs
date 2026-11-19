@@ -10,11 +10,12 @@
 //     `.product/sessions/session-NNN.md`, its marker `product_session` on the
 //     project manifest, under the project's lock.
 //
-// The entry opens one where none is open (`openSession`, enter.cjs): the
-// next session number from the logs on disk, its log made empty for the
-// conversation to write, and the marker set — one manifest write, no commit:
-// the session is live, and every state commit takes its log along
-// (state-worktree.cjs).
+// The entry opens one where none is open (`openSession`, enter.cjs), and so
+// does a write to the product's fixed lists (`sessionOpen`,
+// discovery-log.cjs): the next session number from the logs on disk, its
+// log made empty for the conversation to write, and the marker set — one
+// manifest write, no commit: the session is live, and every state commit
+// takes its log along (state-worktree.cjs).
 //
 // close clears the marker and commits the place's scope with the caller's
 // message — the unit's discovery scope, or the product's — the log with it.
@@ -218,6 +219,18 @@ function openSession(cwd, name) {
 }
 
 /**
+ * The session a place has open, or its next opened where none is — read
+ * and opened under the place's lock, so two writers meeting none open one.
+ * No commit: the writer's.
+ * @param {string} cwd @param {string} name a work unit, or `product`
+ * @returns {string}
+ */
+function sessionOpen(cwd, name) {
+  const place = sessionPlace(cwd, name);
+  return place.withMarker((marker) => marker.active ?? installLog(cwd, place, marker).session);
+}
+
+/**
  * @typedef {object} DiscoverySessionCloseResult
  * @property {string} session      the closed session's number string (e.g. `002`)
  * @property {string} session_log  the closed log's path
@@ -258,6 +271,6 @@ function closeDiscoverySession(cwd, name, { message }) {
 }
 
 module.exports = {
-  openSession, closeDiscoverySession, sessionLogs, latestSessionLog, productSession,
+  openSession, sessionOpen, closeDiscoverySession, sessionLogs, latestSessionLog, productSession,
   activeSession, sessionLogsAt, productConversation,
 };

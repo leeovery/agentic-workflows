@@ -24,6 +24,12 @@
 //   one from a folder in no repository the state can sit in has no project,
 //   no work to touch and no boot that could stamp it: nothing refuses
 //   either.
+// - The keep's doors go through without the stamp while the checkout owes
+//   no migration on this version (22.1.8, engine.cjs `KEEP_FORMS`): its
+//   migrations record holds the installed migrations' highest id — the
+//   runner records each once it completes, in order — and the reshape
+//   waits on no commit. One read of the record and a stat; a record that
+//   does not read is owed.
 // - Written whole under the lock beside it, so two projects booted at once
 //   in one conversation both stand; a file that does not read is written
 //   over. The gate mod copies the file across a handoff's clear, unread, so
@@ -33,10 +39,11 @@
 const fs = require('fs');
 const path = require('path');
 const { LOCK_TIMEOUT_MS, isObject, withStateLockFile, writeJsonAtomic } = require('../kernel/manifest-io.cjs');
-const { stateRoot } = require('../kernel/state-root.cjs');
+const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { conversationDir } = require('./conversation.cjs');
 const { BOOTED } = require('./user-files.cjs');
 const { highestMigration } = require('../../../ledger-migrate/scripts/migration-ids.cjs');
+const { MIGRATIONS_RECORD, finishWaits } = require('./migration-commit.cjs');
 
 const STAMP_LOCK = { timeoutMs: LOCK_TIMEOUT_MS, name: 'the lock on the conversation\'s boot stamp' };
 
@@ -110,4 +117,23 @@ function unbootedRefusal(cwd, sessionId) {
   return `this conversation has not booted Ledger for ${key} on this version — invoke the start skill, /ledger, which runs engine boot before anything else`;
 }
 
-module.exports = { stampBoot, unbootedRefusal };
+/** Why a keep's door is refused while the checkout owes a migration (`owesMigration`). */
+const MIGRATION_OWED = 'this checkout owes Ledger\'s migration on this version — on the person\'s yes, run boot\'s migration, then this again';
+
+/**
+ * Whether the checkout `cwd` is in owes a migration on this version (the
+ * header's).
+ * @param {string} cwd @returns {boolean}
+ */
+function owesMigration(cwd) {
+  let record;
+  try {
+    record = fs.readFileSync(statePath(cwd, MIGRATIONS_RECORD), 'utf8');
+  } catch {
+    return true;
+  }
+  const installed = installedMigration();
+  return (installed !== null && !record.split('\n').includes(installed)) || finishWaits(cwd);
+}
+
+module.exports = { MIGRATION_OWED, stampBoot, unbootedRefusal, owesMigration };

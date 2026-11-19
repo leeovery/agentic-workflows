@@ -495,17 +495,8 @@ function checkLoadFooters(files) {
 // marker, a signpost, an ask — carrying anything that varies (a braced token
 // or an @if/@foreach directive) is refused: what has a shape of its own or
 // reads state renders from the engine, and a plain line naming values the
-// conversation holds is Claude's own, said inline, never fenced. The capture
-// skills (`ledger-log-*`) are exempt: they are no flow of Ledger's: no
-// steps, deliberately structureless.
+// conversation holds is Claude's own, said inline, never fenced.
 // ---------------------------------------------------------------------------
-
-// The capture skills, read from the folder directly under the corpus root's
-// `skills/`.
-function isCaptureSkill(file, root) {
-  const [top, skill = ''] = path.relative(root, file).split(path.sep);
-  return top === 'skills' && skill.startsWith('ledger-log-');
-}
 
 /** @param {string[]} content */
 function isTemplated(content) {
@@ -532,56 +523,13 @@ function templatedRenderSites(file) {
   return sites;
 }
 
-function checkNoTemplatedRenders(files, root = REPO) {
+function checkNoTemplatedRenders(files) {
   return files
-    .filter((file) => !isCaptureSkill(file, root))
     .flatMap((file) => templatedRenderSites(file).map((line) => ({
       file,
       line,
       message: "a templated fence rendered from prose — render it from the engine, or say it inline as Claude's own line (CONVENTIONS → Display)",
     })));
-}
-
-// ---------------------------------------------------------------------------
-// Check 13b — what earns the capture skills check 13's exemption: each
-// knows nothing of the engine beyond its one line (18.6.2). Its SKILL.md
-// names the engine — its script, its folder or the state — on one line
-// past its frontmatter alone, the capture line for its kind; its
-// `allowed-tools` grants that line and nothing else; and no other file of
-// the skill names the engine at all.
-// ---------------------------------------------------------------------------
-
-const ENGINE_WORDS = /engine\.cjs|ledger-engine|\.ledger\b/;
-const CAPTURE_LINE = /^node \.claude\/skills\/ledger-engine\/scripts\/engine\.cjs inbox capture (idea|bug|quick-fix)(?: |$)/;
-
-/** The line after a file's frontmatter, 0 where it has none. @param {string[]} lines */
-function pastFrontmatter(lines) {
-  if (lines[0] !== '---') return 0;
-  const close = lines.indexOf('---', 1);
-  return close === -1 ? 0 : close + 1;
-}
-
-/** A capture skill's file's faults. @param {string} file @returns {{file: string, line: number, message: string}[]} */
-function captureFaults(file) {
-  const lines = readLines(file);
-  const from = pastFrontmatter(lines);
-  const named = lines.map((text, at) => ({ text, at })).filter(({ text, at }) => at >= from && ENGINE_WORDS.test(text));
-  if (path.basename(file) !== 'SKILL.md') {
-    return named.map(({ at }) => ({ file, line: at + 1, message: 'a capture skill names the engine in its SKILL.md\'s one capture line alone — no other file of it names the engine' }));
-  }
-  const kind = named.length === 1 ? CAPTURE_LINE.exec(named[0].text)?.[1] : undefined;
-  if (kind === undefined) {
-    const at = named.find(({ text }) => !CAPTURE_LINE.test(text))?.at ?? named[1]?.at ?? from;
-    return [{ file, line: at + 1, message: 'a capture skill names the engine on one line alone, its capture line: node .claude/skills/ledger-engine/scripts/engine.cjs inbox capture <kind> …' }];
-  }
-  const grant = `allowed-tools: Bash(node .claude/skills/ledger-engine/scripts/engine.cjs inbox capture ${kind} *)`;
-  const grants = lines.slice(0, from).map((text, at) => ({ text, at })).filter(({ text }) => text.startsWith('allowed-tools:'));
-  if (grants.length === 1 && grants[0].text === grant) return [];
-  return [{ file, line: (grants[0]?.at ?? 0) + 1, message: `a capture skill's allowed-tools grants its capture line alone — ${grant}` }];
-}
-
-function checkCaptureSkills(files, root = REPO) {
-  return files.filter((file) => isCaptureSkill(file, root)).flatMap(captureFaults);
 }
 
 // ---------------------------------------------------------------------------
@@ -724,7 +672,8 @@ function checkRenderForms(files) {
 // the user's way in, among them — opens its `## Instructions` section on the
 // framework load. Every other backbone of Ledger's carries neither the section
 // nor the load: a skill only ever opened in place runs in a conversation that
-// already holds the framework, and the capture skills are exempt.
+// already holds the framework, and the keep skill runs in any conversation,
+// Ledger's or not.
 // ---------------------------------------------------------------------------
 
 const FRAMEWORK_LOAD = 'Load **[framework.md](../ledger-shared/references/framework.md)** and follow its instructions as written';
@@ -1025,12 +974,15 @@ function checkBootStops(files, stops = STOPS) {
 
 // ---------------------------------------------------------------------------
 // Check 37 — a skill's description is all Claude sees of it until it is
-// invoked (18.2.16, 18.2.17). The start skill's opens with its trigger;
-// every other skill a handoff lands on (`HANDOFF_TARGETS`) says it is reached
-// only through a Ledger handoff, never invoked directly.
+// invoked (18.2.16, 18.2.17). The start skill's opens with its trigger, and
+// names both things it is reached for: any change to what the code does,
+// and talk that turns to the product itself (8.2.15, 8.2.17); every other
+// skill a handoff lands on (`HANDOFF_TARGETS`) says it is reached only
+// through a Ledger handoff, never invoked directly.
 // ---------------------------------------------------------------------------
 
 const TRIGGER = /^Use (?:for|when)\b/;
+const REACHED_FOR = [/\bany change to what this project's code does\b/, /\btalk that turns to the product itself\b/];
 const HANDOFF_ONLY = /Reached only through a Ledger handoff, never invoked directly\b/;
 
 /** The frontmatter's `description`, and its line; null where it has none. @param {string[]} lines */
@@ -1050,6 +1002,7 @@ function checkDescriptions(files, targets = HANDOFF_TARGETS) {
     const line = description?.line ?? 1;
     if (skillNameOf(file) === START_SKILL) {
       if (!TRIGGER.test(description?.text ?? '')) out.push({ file, line, message: 'the start skill\'s description opens with its trigger — "Use for …"' });
+      if (!REACHED_FOR.every((said) => said.test(description?.text ?? ''))) out.push({ file, line, message: 'the start skill\'s description names what it is reached for — "any change to what this project\'s code does" and "talk that turns to the product itself"' });
     } else if (!HANDOFF_ONLY.test(description?.text ?? '')) {
       out.push({ file, line, message: 'a skill a handoff lands on says in its description it is reached only through a Ledger handoff, never invoked directly' });
     }
@@ -1071,6 +1024,24 @@ function checkNoResumeSections(files) {
     const { inFence } = parseFences(lines);
     lines.forEach((line, i) => {
       if (!inFence[i] && RESUME_HEADING.test(line)) out.push({ file, line: i + 1, message: 'a section of its own on resuming — the engine\'s note carries the recovery whole' });
+    });
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Check 39 — the keep skill opens no gate (18.11.6): no file of it answers a
+// gate or fetches a screen, its one render the send report, a receipt.
+// ---------------------------------------------------------------------------
+
+const KEEP_SKILL = 'ledger-keep';
+const OPENS_A_GATE = /\bgate ["'{]|engine\.cjs gate\b|\brender (?!send-report\b)[a-z{]/;
+
+function checkKeepOpensNoGate(files) {
+  const out = [];
+  for (const file of files.filter((f) => skillFolderOf(f) === KEEP_SKILL)) {
+    readLines(file).forEach((line, i) => {
+      if (OPENS_A_GATE.test(line)) out.push({ file, line: i + 1, message: 'the keep skill opens no gate — it answers none and fetches no screen but the send report' });
     });
   }
   return out;
@@ -1129,7 +1100,6 @@ const CHECKS = [
   ['10: reference-file attribution', checkAttribution],
   ['11: load-directive footers (On return)', checkLoadFooters],
   ['13: nothing rendered from prose varies', checkNoTemplatedRenders],
-  ['13b: a capture skill knows the engine by its one capture line alone', checkCaptureSkills],
   ['14: buried invocation imperatives', checkBuriedInvoke],
   ['15: cross-file section references', checkCrossFileSections],
   ['21: an engine section\'s form is its marker\'s alone', checkSectionFormsAreTheMarkers],
@@ -1145,6 +1115,7 @@ const CHECKS = [
   ['36: a skill drawing a menu whose back is the start menu loads start-menu.md', checkBackToStartLoads],
   ['37: the start skill\'s description opens with its trigger, and every other skill a handoff lands on says it is reached only through one', checkDescriptions],
   ['38: no skill keeps a section of its own on resuming', checkNoResumeSections],
+  ['39: the keep skill opens no gate', checkKeepOpensNoGate],
 ];
 
 function report(violations) {
@@ -1436,16 +1407,15 @@ test('check 11 (load footers) — catches bare proceed after a load, permits gat
   });
 });
 
-test('check 13 (nothing rendered from prose varies) — catches a templated fence of any kind outside any fence, skips static fences and the capture skills (6.S21)', () => {
+test('check 13 (nothing rendered from prose varies) — catches a templated fence of any kind outside any fence, skips static fences (6.S21)', () => {
   withTemp((dir) => {
-    const sites = (file) => checkNoTemplatedRenders([file], dir).map((v) => v.line);
+    const sites = (file) => checkNoTemplatedRenders([file]).map((v) => v.line);
     const instr = '> *Output the next fenced block as markdown (not a code block):*\n\n';
     const templatedMenu = instr + '```\n· · · · · · · · · · · ·\nContinue "{topic}"?\n\n- **`y/yes`**\n· · · · · · · · · · · ·\n```\n';
     const textInstr = '> *Output the next fenced block as a text code block (```text fence):*';
-    const capture = `${textInstr}\n\n\`\`\`text\nLogged idea: {slug}\n\`\`\`\n`;
 
     const fresh = write(dir, 'skills/x/a.md', templatedMenu + '\n' + templatedMenu);
-    const v1 = checkNoTemplatedRenders([fresh], dir);
+    const v1 = checkNoTemplatedRenders([fresh]);
     assert.deepStrictEqual(v1.map((v) => v.line), [1, 11], 'every templated fence is caught, at its instruction');
     assert.match(v1[0].message, /a templated fence rendered from prose — render it from the engine, or say it inline as Claude's own line \(CONVENTIONS → Display\)/);
 
@@ -1457,11 +1427,6 @@ test('check 13 (nothing rendered from prose varies) — catches a templated fenc
 
     const outer = write(dir, 'skills/x/i.md', `${instr}\`\`\`\`markdown\n\`\`\`text\nStatic.\n\`\`\`\nTask {id} authored.\n\`\`\`\`\n`);
     assert.deepStrictEqual(sites(outer), [1], 'a four-backtick fence runs past the inner fence it holds');
-
-    assert.deepStrictEqual(sites(write(dir, 'skills/ledger-log-idea/SKILL.md', capture)), [], 'the capture skills are exempt');
-    assert.deepStrictEqual(sites(write(dir, 'skills/ledger-log-idea/references/r.md', capture)), [], "the exemption covers the capture skill's whole folder");
-    assert.deepStrictEqual(sites(write(dir, 'skills/x/references/skills/ledger-log-idea/SKILL.md', capture)), [1], 'a capture-named folder nested inside another skill is not exempt');
-    assert.deepStrictEqual(sites(write(dir, 'skills/ledger-login/SKILL.md', capture)), [1], 'the exemption is the capture skills alone');
 
     const statik = write(dir, 'skills/x/c.md', instr + '```\n· · · · · · · · · · · ·\nProceed?\n- **`y/yes`**\n· · · · · · · · · · · ·\n```\n');
     assert.deepStrictEqual(sites(statik), [], 'static menu is always fine');
@@ -1485,26 +1450,6 @@ test('check 13 (nothing rendered from prose varies) — catches a templated fenc
       '> *Output the next fenced block as a ` ```diff ` code block:*\n\n```diff\n {context}\n-{removed lines}\n+{new lines}\n```\n'
     );
     assert.deepStrictEqual(sites(diffForm), [1], 'any instruction form is inside the check');
-  });
-});
-
-test('check 13b (capture skills) — 18.S22: catches a second engine line, the state named in prose, a grant wider than the line or for another kind, and a reference naming the engine; permits the one capture line and a skill that is no capture skill', () => {
-  withTemp((dir) => {
-    const faults = (/** @type {string} */ rel, /** @type {string} */ text) => checkCaptureSkills([write(dir, rel, text)], dir).map(({ line, message }) => `${line} ${message.split(' — ')[0].split(':')[0]}`);
-    const line = 'node .claude/skills/ledger-engine/scripts/engine.cjs inbox capture bug [--project {folder}] <<\'ITEM\'';
-    const grant = (kind = 'bug') => `allowed-tools: Bash(node .claude/skills/ledger-engine/scripts/engine.cjs inbox capture ${kind} *)`;
-    const skill = (/** @type {string} */ head, /** @type {string} */ body) => `---\nname: ledger-log-bug\n${head}\n---\n\nCaptures a bug.\n\n\`\`\`bash\n${line}\n{text}\nITEM\n\`\`\`\n${body}`;
-    const at = 'skills/ledger-log-bug/SKILL.md';
-
-    assert.deepStrictEqual(faults(at, skill(grant(), '')), [], 'the one capture line and its grant');
-    assert.deepStrictEqual(faults(at, skill(grant(), '\nThen run `node .claude/skills/ledger-engine/scripts/engine.cjs commit --inbox`.\n')), ['14 a capture skill names the engine on one line alone, its capture line'], 'a second engine line');
-    assert.deepStrictEqual(faults(at, skill(grant(), '\nIt lands in `.ledger/.inbox/bugs/`.\n')), ['14 a capture skill names the engine on one line alone, its capture line'], 'the state named in prose');
-    assert.deepStrictEqual(faults(at, skill('allowed-tools: Bash(node .claude/skills/ledger-engine/scripts/engine.cjs *)', '')), ["3 a capture skill's allowed-tools grants its capture line alone"], 'a grant of the whole engine');
-    assert.deepStrictEqual(faults(at, skill(`${grant()}, Read`, '')), ["3 a capture skill's allowed-tools grants its capture line alone"], 'another tool granted beside it');
-    assert.deepStrictEqual(faults(at, skill(grant('idea'), '')), ["3 a capture skill's allowed-tools grants its capture line alone"], 'a grant for another kind');
-    assert.deepStrictEqual(faults(at, skill('', '')), ["1 a capture skill's allowed-tools grants its capture line alone"], 'no grant');
-    assert.deepStrictEqual(faults('skills/ledger-log-bug/references/r.md', '# R\n\nRun engine.cjs.\n'), ["3 a capture skill names the engine in its SKILL.md's one capture line alone"], 'a reference naming the engine');
-    assert.deepStrictEqual(faults('skills/ledger-login/SKILL.md', '---\nname: x\n---\n\nRun engine.cjs twice: engine.cjs.\nengine.cjs\n'), [], 'a skill that is no capture skill');
   });
 });
 
@@ -1713,7 +1658,7 @@ test('check 24 (render forms) — catches a bare code block, a legacy or reworde
   });
 });
 
-test('check 27 (framework load) — catches a skill a conversation opens on whose Instructions section is missing or opens on anything else, and an Instructions section or framework load on a skill only ever opened in place; permits the opening load with a trailing clause, a recovery protocol\'s re-load, fenced content, a capture skill, and a skill outside Ledger', () => {
+test('check 27 (framework load) — catches a skill a conversation opens on whose Instructions section is missing or opens on anything else, and an Instructions section or framework load on a skill only ever opened in place; permits the opening load with a trailing clause, a recovery protocol\'s re-load, fenced content, the keep skill, and a skill outside Ledger', () => {
   withTemp((dir) => {
     const LOAD = 'Load **[framework.md](../ledger-shared/references/framework.md)** and follow its instructions as written.';
     const start = write(dir, 'skills/ledger/SKILL.md', [
@@ -1726,22 +1671,24 @@ test('check 27 (framework load) — catches a skill a conversation opens on whos
       '# Review', '', '## Instructions', '', LOAD, '', '---', '', '## Resuming After Context Refresh', '', RELOAD, '',
     ].join('\n'));
     const recovering = write(dir, 'skills/ledger-in-place/SKILL.md', ['Work in the conversation already open.', '', '## Step 1: Work', '', RELOAD, ''].join('\n'));
-    const capture = write(dir, 'skills/ledger-log-idea/SKILL.md', 'Capture an idea.\n');
+    const keep = write(dir, 'skills/ledger-keep/SKILL.md', 'Keep it where it goes.\n');
     const fenced = write(dir, 'skills/ledger-help/SKILL.md', ['# Help', '', '```markdown', '## Instructions', '', LOAD, '```', ''].join('\n'));
     const tooling = write(dir, '.claude/skills/review-work/SKILL.md', `## Instructions\n\n${LOAD}\n`);
-    const ok = checkFrameworkLoad([start, phase, recovering, capture, fenced, tooling]);
+    const ok = checkFrameworkLoad([start, phase, recovering, keep, fenced, tooling]);
     assert.strictEqual(ok.length, 0, `the opening loads, the recovery re-load, fenced content and the tooling skill are clean, got ${report(ok)}`);
 
     const missing = write(dir, 'skills/ledger-discovery/SKILL.md', ['---', 'name: ledger-discovery', '---', '', 'Discover.', '', '## Step 0: Boot', ''].join('\n'));
     const late = write(dir, 'skills/ledger-roadmap/SKILL.md', ['The roadmap.', '', '## Instructions', '', 'Read the map first.', '', LOAD, ''].join('\n'));
     const inPlace = write(dir, 'skills/ledger-continue-linear/SKILL.md', ['Continue.', '', '## Instructions', '', LOAD, '', '---', '', '## Step 1: Menu', '', `→ ${LOAD}`, ''].join('\n'));
-    const v = checkFrameworkLoad([missing, late, inPlace]);
+    const keeping = write(dir, 'skills/ledger-keep/SKILL.md', ['Keep it where it goes.', '', LOAD, ''].join('\n'));
+    const v = checkFrameworkLoad([missing, late, inPlace, keeping]);
     assert.deepStrictEqual(v.map((x) => [skillNameOf(x.file), x.line]), [
       ['ledger-discovery', 5],
       ['ledger-roadmap', 3],
       ['ledger-continue-linear', 3],
       ['ledger-continue-linear', 5],
       ['ledger-continue-linear', 11],
+      ['ledger-keep', 3],
     ], `each miss is caught once, at its line, got ${report(v)}`);
     assert.match(v[0].message, /^ledger-discovery is a skill a conversation opens on — its `## Instructions` section opens with the framework load$/);
     assert.match(v[2].message, /^ledger-continue-linear is not a skill a conversation opens on — it carries no framework load and no `## Instructions` section$/);
@@ -1883,20 +1830,26 @@ test('check 35 (boot\'s stops as data) — catches a start skill that fetches no
   });
 });
 
-test('check 37 (descriptions) — 18.S73: catches a start skill whose description opens on anything but its trigger or that has none, and a skill a handoff lands on whose description does not say it is reached only through one; passes every other skill by', () => {
+test('check 37 (descriptions) — 18.S73: catches a start skill whose description opens on anything but its trigger or that has none, or leaves out a change to the code or talk of the product, and a skill a handoff lands on whose description does not say it is reached only through one; passes every other skill by', () => {
   withTemp((dir) => {
     const skill = (name, description) => write(dir, `skills/${name}/SKILL.md`, ['---', `name: ${name}`, ...(description === null ? [] : [`description: ${description}`]), 'user-invocable: false', '---', '', 'Body.', ''].join('\n'));
     const HANDED = 'Ledger\'s review phase. Reached only through a Ledger handoff, never invoked directly; work comes into Ledger through /ledger.';
+    const BOTH = 'any change to what this project\'s code does, and for talk that turns to the product itself.';
     const targets = ['ledger', 'ledger-review-process', 'ledger-roadmap'];
-    const clean = [skill('ledger', 'Use for any change to what this project\'s code does.'), skill('ledger-review-process', HANDED), skill('ledger-roadmap', HANDED), skill('ledger-log-idea', 'Capture an idea in the inbox.')];
+    const clean = [skill('ledger', `Use for ${BOTH}`), skill('ledger-review-process', HANDED), skill('ledger-roadmap', HANDED), skill('ledger-keep', 'Use whenever something of substance comes up.')];
     assert.deepStrictEqual(checkDescriptions(clean, targets), [], `got ${report(checkDescriptions(clean, targets))}`);
 
-    const broken = [skill('ledger', 'Ledger\'s entry. Use for any change.'), skill('ledger-review-process', 'Ledger\'s review phase.'), skill('ledger-roadmap', null)];
+    const broken = [skill('ledger', `Ledger's entry. Use for ${BOTH}`), skill('ledger-review-process', 'Ledger\'s review phase.'), skill('ledger-roadmap', null)];
     assert.deepStrictEqual(checkDescriptions(broken, targets).map((x) => [skillNameOf(x.file), x.line]), [
       ['ledger', 3],
       ['ledger-review-process', 3],
       ['ledger-roadmap', 1],
     ], `got ${report(checkDescriptions(broken, targets))}`);
+
+    const reachedFor = (description) => checkDescriptions([skill('ledger', description)], targets).map((x) => x.message);
+    const unnamed = ['the start skill\'s description names what it is reached for — "any change to what this project\'s code does" and "talk that turns to the product itself"'];
+    assert.deepStrictEqual(reachedFor('Use for any change to what this project\'s code does, however small.'), unnamed, 'talk of the product left out');
+    assert.deepStrictEqual(reachedFor('Use for talk that turns to the product itself.'), unnamed, 'a change to the code left out');
   });
 });
 
@@ -1909,6 +1862,20 @@ test('check 38 (no resume section) — 24.S14: catches a heading on resuming aft
       ['skills/ledger-x/SKILL.md', 7],
       ['skills/ledger-x/references/work.md', 1],
     ], `got ${report(checkNoResumeSections([skill, reference]))}`);
+  });
+});
+
+test('check 39 (the keep skill opens no gate) — 18.11.6: catches a gate answered or a screen fetched in any file of the keep skill; passes the send report, a gate named in prose, and another skill opening one', () => {
+  withTemp((dir) => {
+    const call = (verb) => `\`\`\`bash\nnode .claude/skills/ledger-engine/scripts/engine.cjs ${verb}\n\`\`\`\n`;
+    const keep = write(dir, 'skills/ledger-keep/SKILL.md', ['Keep it.', '', call('render send-report {work_unit}.{topic} --sent {path}'), 'Work its `migration-review` gate alone.', '', call('gate "record proposal" --pick {key}'), '- A pick → `render horizon-pick --park {name}`.', ''].join('\n'));
+    const reference = write(dir, 'skills/ledger-keep/references/aside.md', '# Aside\n\nThen `gate {name} --pick {key}`.\n');
+    const other = write(dir, 'skills/ledger-roadmap/SKILL.md', call('render roadmap'));
+    assert.deepStrictEqual(checkKeepOpensNoGate([keep, reference, other]).map((x) => [posix(path.relative(dir, x.file)), x.line]), [
+      ['skills/ledger-keep/SKILL.md', 10],
+      ['skills/ledger-keep/SKILL.md', 13],
+      ['skills/ledger-keep/references/aside.md', 3],
+    ], `got ${report(checkKeepOpensNoGate([keep, reference, other]))}`);
   });
 });
 

@@ -227,7 +227,7 @@ Every screen the engine draws keeps to the existing design system; a new screen 
 
 ## Files
 
-The capture skills (`ledger-log-*`) write to the inbox and nothing else. They run no flow, and stay structureless: no gates, no references, no framework load, and the display rule's check passes over them.
+The keep skill (`ledger-keep`) keeps what is said, in any conversation, through the doors its map names. It runs no flow, and stays structureless: no gates, no references, no framework load.
 
 ### Frontmatter
 

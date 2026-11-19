@@ -1,6 +1,6 @@
 ---
 name: ledger
-description: Use for any change to what this project's code does, however small, and whenever the person asks to run something through Ledger — invoke it with their words, unless this conversation is already in a Ledger phase, which takes them itself. Comments, docs and formatting that change no behaviour go straight through; in doubt, use it.
+description: Use for any change to what this project's code does, however small; for talk that turns to the product itself, what it is, who it is for and where it is going; and whenever the person asks to run something through Ledger. Invoke it with their words, unless this conversation is already in a Ledger phase, which takes them itself. Comments, docs and formatting that change no behaviour go straight through; in doubt, use it.
 allowed-tools: Bash(node .claude/skills/ledger-engine/scripts/engine.cjs *)
 ---
 

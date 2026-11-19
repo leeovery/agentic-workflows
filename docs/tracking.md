@@ -38,19 +38,21 @@ The other rows:
 - **`m/manage`** is where work changes shape — pivot, absorb, cancel, bring back — and where the project's setup, its drivers and [the matrix](trust.md#the-matrix) are changed. [Lifecycle operations](lifecycle-operations.md) covers the reshaping; [configuration](configuration.md) the setup and drivers.
 - **`h/help`** is on every menu: what the screen is for and what each row does, then an invitation to ask about anything else. The start menu's help also leads to the walkthrough and to a card on each part of Ledger.
 
-You rarely need the menu to start. Ask Claude for a change in the middle of any conversation and it takes your words into Ledger itself, going straight into Start or into the piece of work they name; the start menu is drawn only when you type the bare command.
+You rarely need the menu to start. Ask Claude for a change in the middle of any conversation and it takes your words into Ledger itself, going straight into Start or into the piece of work they name; talk that turns to the product itself, what it is, who it is for and where it is going, carries the product's conversation on the same way. The start menu is drawn only when you type the bare command.
 
 ## The inbox
 
 Not every thought arrives ready to become a piece of work. Mid-way through building one thing you notice another that is broken, an idea worth exploring later, or a small change that ought to happen sometime. The inbox is where such thoughts wait so you can keep working.
 
-You capture by asking, in any conversation — "log that as an idea", "log this bug", "log a quick-fix" — and Claude writes a short note into the inbox of the project it concerns, committed at once, then carries on with what you were doing. There are three kinds:
+Claude keeps what comes up in any conversation, Ledger's or not, where Ledger keeps it, and carries on with what you were doing: an idea, a bug or a fix for later goes into the inbox of the project it concerns, committed at once, with one line saying so, whether you asked or it came up in passing; say "drop that" and it goes. There are three kinds:
 
 - an **idea**: something you might build or explore;
 - a **bug**: something broken — its symptoms, the conditions, the impact;
 - a **quick-fix**: settled work needing no decision — what, where and why.
 
-Capture is deliberately narrow. It writes your thought down faithfully and nothing more: it doesn't read the code, judge the idea, diagnose the bug or suggest an approach. The thinking happens later, if you decide the thought is worth it. A capture made from a session in another project lands in the inbox of the project it concerns.
+A capture writes your thought down as you said it, never padded; the thinking happens later, if you decide the thought is worth it. A capture made from a session in another project lands in the inbox of the project it concerns.
+
+The rest has its places too. A view of the product, a direction you dropped and why, and what a spike showed go into the product's conversation's log, from whichever conversation you said them in; a fact about the code or the platform becomes a finding the knowledge base can find; a file you share is kept among the product's files, linked from what it shows; and a point for a topic already under way reaches it as a message. None of these asks you anything.
 
 ## Triage
 
@@ -91,4 +93,4 @@ A started item leaves the roadmap, which shows only what still waits; from then 
 
 ## The product record
 
-The roadmap holds what is planned. What the product *is* — who it is for, what it values, the standing rules that cut across topics — is the **product record**: the entries on the [ledger](trust.md#the-ledger) marked product-wide, read as one view. Every topic's opening reads it. Discussion decides it; the product's conversation only feeds it, and its logs stay as the source the roadmap's items point back to.
+The roadmap holds what is planned. What the product *is* — who it is for, what it values, the standing rules that cut across topics — is the **product record**: the entries on the [ledger](trust.md#the-ledger) marked product-wide, read as one view. Every topic's opening reads it, and beside it your views of the product and the directions not taken, as your input, the record speaking where both do. Discussion decides it; the product's conversation only feeds it, and its logs stay as the source the roadmap's items point back to.

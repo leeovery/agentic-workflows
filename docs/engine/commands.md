@@ -29,7 +29,7 @@ Two carve-outs. The **`render`** surfaces pass every value but the address as a 
 
 **The state** is `.ledger/` in the repository's main checkout, a worktree of its own branch, `ledger-state`. A state commit is made there and pushed; a code commit on the branch checked out. A command's writes and commit hold the state's writer lock, `.ledger/.lock`; every engine commit is confined to the paths its action wrote.
 
-**Until boot has run.** A command run with a session id (`CLAUDE_CODE_SESSION_ID`) refuses, writing nothing, until boot has stamped that conversation for the project at the installed version: `{command}: this conversation has not booted Ledger for {main checkout} on this version — invoke the start skill, /ledger, which runs engine boot before anything else`. The stamp is the conversation folder's `booted.json`. What goes through without it — boot, the banner the bare command opens on ahead of it, its stops' screens and answers, the hooks' and the gate mod's targets, capture — is `BOOT_EXEMPT` in `engine.cjs`. A command with no session id is no conversation's, and nothing refuses it.
+**Until boot has run.** A command run with a session id (`CLAUDE_CODE_SESSION_ID`) refuses, writing nothing, until boot has stamped that conversation for the project at the installed version: `{command}: this conversation has not booted Ledger for {main checkout} on this version — invoke the start skill, /ledger, which runs engine boot before anything else`. The stamp is the conversation folder's `booted.json`. What goes through without it — boot, the banner the bare command opens on ahead of it, its stops' screens and answers, the hooks' and the gate mod's targets, capture — is `BOOT_EXEMPT` in `engine.cjs`. The keep skill's doors in the forms it uses (`KEEP_FORMS`) — `discovery-log … product`, `asset spike|import|add|status product`, `ledger find product.discovery`, `topic send … --from product`, `render send-report`, `roadmap state`, `roadmap add … --origin park:product` — go through too while the checkout owes no migration on this version: its migrations record holds the installed migrations' highest id, and the reshape waits on no commit. While one is owed they refuse: `{command}: this checkout owes Ledger's migration on this version — on the person's yes, run boot's migration, then this again`. A command with no session id is no conversation's, and nothing refuses it.
 
 ## Boot and setup
 
@@ -209,7 +209,7 @@ Refused for every write: a place not live; a topic past the unit's spec (settle 
 
 - **`record`** — the entries standing at a unit or topic, each with what it replaced folded beneath it, its confirmations and its linked files (`assets`, `{path, status, into}`): `{unit, topic, live, questions, findings, decisions, moved, merged, other_topics}`.
 - **`map`** — a topic's questions as they stand (`open`, `answered`, `merged`, `later`, `moved-away`, `elsewhere`, `question-set-aside`) with their answers; one an experiment measures is marked `waiting_on`: `{unit, topic, live, questions}`.
-- **`product`** — the product-wide findings and decisions; with no unit, `questions`, the product's own; and `discovery`, what discovery found at the product, unit or topic named.
+- **`product`** — the product-wide findings and decisions; with no unit, `questions`, the product's own; `discovery`, what discovery found at the product, unit or topic named; and each list the product's logs keep that holds an entry, every session's in order: `not_taken` (`[{direction, why}]`), `views` and `spikes` (`[{spike, tool, link, showed}]`).
 - **`affected`** — current entries a replacement changed under them, waiting to be confirmed or replaced: `{unit, topic, live, waiting, affected}`.
 - **`since`** — Claude's current decisions no look on this machine has covered, with their linked files.
 - **`shown`** — as `since`, marking each call it shows as looked at (`.ledger/.cache/.marks/{unit}.json`).
@@ -226,8 +226,8 @@ Refused for every write: a place not live; a topic past the unit's spec (settle 
 ```text
 asset spike <work-unit|product> <slug>
 asset import <work-unit|product> <path> …
-asset add <work-unit> <path> --entry <id> [--status <canonical|reference>]
-asset status <work-unit> <path> <canonical|reference> [--entry <id>]
+asset add <work-unit|product> <path> --entry <id> [--status <canonical|reference>]
+asset status <work-unit|product> <path> <canonical|reference> [--entry <id>]
 asset lift <work-unit> <path> --into <path-in-project> --entry <id>
 asset legacy [<work-unit|product>]
 asset keep <work-unit|product> <path> [<work-unit|product> <path> …]
@@ -238,9 +238,9 @@ Spikes, the files the person shared, the links from the ledger's entries to the 
 
 - **`spike`** — the unit's, or the product's, next spike folder, `{wu}/spikes/NNN-{slug}/` or `.product/spikes/…`, and its twin under the cache for dependencies and builds. Answers `spike` (`001-frame`), `path` (from the state root, the one a link names), `folder` and `cache` (absolute). Commits nothing. Refuses a slug a spike has already (carry on in it).
 - **`import`** — lands the person's shared files in `{wu}/assets/` or `.product/assets/`, renamed to the landing's rules. Answers `imports` (paths from the state root) and `skipped_imports`. Commits nothing. A path naming no file, or a folder, refuses the whole call, naming each in `missing_imports`, the payload for `render import-reprompt`.
-- **`add`** — an entry's first link to a file under the unit's or product's `assets/` or a spike, with its `--status`, `canonical` or `reference` (a spike's file defaults to `reference`). Refuses a path elsewhere, a file not on disk (save it there first), and an entry already linking it (change it with `status`).
-- **`status`** — changes the status on every current entry of the unit linking the file, or the one named.
-- **`lift`** — records a linked file lifted into the project at `--into`, a path from the project's root.
+- **`add`** — an entry's first link to a file under the unit's or product's `assets/` or a spike, with its `--status`; at `product`, the entry a finding standing at the product's place, `canonical` or `reference` (a spike's file defaults to `reference`). Refuses a path elsewhere, a file not on disk (save it there first), and an entry already linking it (change it with `status`).
+- **`status`** — changes the status on every current entry of the unit, or of the product's place, linking the file, or the one named.
+- **`lift`** — records a linked file lifted into the project at `--into`, a path from the project's root; a unit's alone.
 
 The link verbs append `asset` events and commit the ledger with the files its links name; each answers `path`, `links` (`[{id, entry}]`), `committed`, and where nothing new was linked `committed: null` with a `note`.
 
@@ -463,7 +463,7 @@ A topic's mail, an epic's map, and a topic's leaving. A topic phase's item is st
 
 **Mail.** One mailbox a topic, `{wu}/topics/{topic}/mail/NNN-{slug}.md`.
 
-- **`send`** — lands a message from a scratch file under `.ledger/.cache/`, its first line the title; `--from` names the sender (a topic, `{unit}.discovery`, `{unit}.specification`, `{unit}.{topic}`, or `E{n}`). A decided topic goes back in progress (`reopened: true`); a postponed one keeps it for its return; a cancelled or removed topic, or a cancelled unit, gets it in the inbox as an idea. Answers `unit`, `topic`, `message_path` (or `inbox_path`), `committed`, `note?`. Refuses a quick-fix, a completed unit, and a unit past its spec.
+- **`send`** — lands a message from a scratch file under `.ledger/.cache/`, its first line the title; `--from` names the sender (a topic, `{unit}.discovery`, `{unit}.specification`, `{unit}.{topic}`, `product` for a conversation outside the unit, or `E{n}`). A decided topic goes back in progress (`reopened: true`); a postponed one keeps it for its return; a cancelled or removed topic, or a cancelled unit, gets it in the inbox as an idea. Answers `unit`, `topic`, `message_path` (or `inbox_path`), `committed`, `note?`. Refuses a quick-fix, a completed unit, and a unit past its spec.
 - **`mailbox`** — what waits, in landing order: `count`, `files` (absolute paths). Takes no lock.
 - **`answered`** — removes the message `NNN-slug` once `--entry` names the question it raised on this topic, or one a move brought here, and commits the removal. Answers `answered`, `entry`, `remaining`, `committed`.
 
@@ -528,16 +528,16 @@ Discovery's sessions, at an epic (logs at `{wu}/discovery/session-NNN.md`, marke
 ### `discovery-log`
 
 ```text
-discovery-log not-taken <epic> --direction "<direction>" --why "<why>"
-discovery-log view <epic> --text "<view>"
-discovery-log spike <epic> <spike> --tool "<tool>" --showed "<what it showed>" [--link <live link>]
+discovery-log not-taken <epic|product> --direction "<direction>" --why "<why>"
+discovery-log view <epic|product> --text "<view>"
+discovery-log spike <epic|product> <spike> --tool "<tool>" --showed "<what it showed>" [--link <live link>]
 ```
 
-The three lists in an epic's open discovery log, `{wu}/discovery/session-{NNN}.md`, that the board reads. Each verb puts one line under its heading — `## Not taken`, `## Views of the product`, `## Spikes` — and commits nothing; the log rides the next state commit. Each answers `log` (from the state root), `heading` and `line`.
+The three lists in an epic's open discovery log, `{wu}/discovery/session-{NNN}.md`, that the board reads, and in the product's, `.product/sessions/session-{NNN}.md`, that `ledger product` reads. Each verb puts one line under its heading — `## Not taken`, `## Views of the product`, `## Spikes` — after the calling conversation's line where the log last names another. At an epic it commits nothing, the log riding the next state commit. At the product it writes from any conversation: where no session is open it opens one, holding and closing nothing, and it commits the product's scope. Each answers `log` (from the state root), `heading` and `line`, and at the product `committed` and `note?`.
 
 - **`not-taken`** — a direction not taken, and why.
 - **`view`** — a view of the product.
-- **`spike`** — a spike the epic holds (named as `asset spike` answered it), the tool it used and what it showed, `--link` a web address for the tool.
+- **`spike`** — a spike the epic or the product holds (named as `asset spike` answered it), the tool it used and what it showed, `--link` a web address for the tool.
 
 Each refuses, writing nothing, a unit that is no epic, an epic with no discovery session open, and a value that is empty, past one line, or holds ` — `.
 
@@ -1077,7 +1077,7 @@ The inbox, `.ledger/.inbox/{ideas|bugs|quickfixes}/`, its archived items under `
 
 - **`archive`**, **`restore`**, **`delete`** — move live items to the archive, back, or delete archived ones. Answer `archived`, `restored` or `deleted`, and `committed`, then the receipt, `DISPLAY: confirmation`: the archive names one item by its title and several by their count; the restore and the delete a line an item, the delete's title read from git's last copy of the file. `restore` takes the item's `Resolved:` line out of the build log of the unit that closed it, answering `unclaimed: [{path, unit}]`.
 - **`close`** — archives live items and records who resolved each on the project manifest (`inbox_closed`): the unit whose work resolved it, or `none` for one the person fixed straight away. Answers `{closed, unit, committed}`.
-- **`capture`** — the capture skills' one line: the item's text on stdin, titled by its first `# Title`, written at `.inbox/{folder}/{date}--{slug}.md`, committed and pushed. `--project` captures into another project's folder. Answers `{captured, committed}`, then a one-line `DISPLAY`, `Logged {kind}: "{title}"`. A failed commit is noted with its retry, `engine commit --inbox`. Refuses a folder with no Ledger state and a text with no title.
+- **`capture`** — the keep skill's way into the inbox: the item's text on stdin, titled by its first `# Title`, written at `.inbox/{folder}/{date}--{slug}.md`, committed and pushed. `--project` captures into another project's folder. Answers `{captured, committed}`, then a one-line `DISPLAY`, `Logged {kind}: "{title}"`. A failed commit is noted with its retry, `engine commit --inbox`. Refuses a folder with no Ledger state and a text with no title.
 - **`file`** — files a review finding out of scope, or a quick-fix's note at its close, from `{kind, text, call}`, `call` Claude's filing decision at `{unit}.review` (`{unit}.implementation` at the close). Answers `{filed, committed}`. Refuses an item filed already at that path (group the finding with it, or title it apart).
 
 ### `roadmap`

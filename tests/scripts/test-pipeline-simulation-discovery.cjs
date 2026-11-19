@@ -10,7 +10,9 @@
 // from its yes until the findings land; the conversation moving between the
 // product, an epic's discovery and a topic in one session, with no handoff;
 // and the epic menu's d into its discovery, where the map changes at the
-// person's word.
+// person's word; and what a conversation outside Ledger keeps of the
+// product, through the keep's doors, with no boot, read by a topic's
+// opening.
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -28,7 +30,8 @@ const path = require('path');
 const ROOT = path.join(__dirname, '../..');
 const { startMenuRead } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/start-menu.cjs'));
 const { startMenuScreen } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/projections/start-menu.cjs'));
-const { stateGit } = require('./engine-harness.cjs');
+const { stateGit, statePath, commitOnState } = require('./engine-harness.cjs');
+const { highestMigration } = require(path.join(ROOT, 'skills/ledger-migrate/scripts/migration-ids.cjs'));
 const {
   Sim, startUnit, handoff, handoffBy, answerGate, typeAtGate, startPick, startNew, startBare, startWith, startMenu, epicPick, carryOn, mappedEpic, enterEntry, waitAgents, presenceRow, briefDraft, roadmapMenu,
 } = require('./pipeline-world.cjs');
@@ -317,5 +320,34 @@ describe('pipeline simulation: discovery\'s entry', () => {
     assert.strictEqual(presenceRow(sim.run(['presence', 'scan', wu]), 'discussion', wu), undefined);
     assert.deepStrictEqual(carryOn(sim).position, { name: PRODUCT });
     assert.strictEqual(sim.conversations, conversation);
+  });
+
+  it('a conversation outside Ledger keeps what is said of the product through the keep\'s doors, never booted: a view and a direction dropped in the product\'s log, a finding at its place with the file it rests on, a message to a topic; the topic\'s opening reads them all (8.14.12, 18.11.1, 18.11.7, 10.1.9)', () => {
+    mappedEpic(sim, EPIC, ['licensing']);
+    commitOnState(statePath(sim.dir), { '.state/migrations': `${highestMigration()}\n` }, 'migrations: the record, as boot left it');
+    sim.open();
+    sim.refuses(['render', 'start-menu'], /has not booted Ledger/);
+
+    sim.run(['discovery-log', 'view', PRODUCT, '--text', 'Notes are furniture.']);
+    sim.run(['discovery-log', 'not-taken', PRODUCT, '--direction', 'A web client', '--why', 'the Mac is the product']);
+    const finding = sim.run(['ledger', 'find', `${PRODUCT}.discovery`], null,
+      JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'The brand is blue.', how: 'the brand guide', known: 'documented' })).id;
+    const shared = path.join(sim.configDir, 'brand-guide.pdf');
+    fs.writeFileSync(shared, 'blue\n');
+    const [guide] = sim.run(['asset', 'import', PRODUCT, shared]).imports;
+    sim.run(['asset', 'add', PRODUCT, guide, '--entry', finding, '--status', 'reference']);
+    const sent = sim.run(['topic', 'send', EPIC, 'licensing', '--from', PRODUCT, '--slug', 'brand-colour',
+      '--content', sim.write(`.ledger/.cache/${PRODUCT}/discovery/${PRODUCT}/message-brand-colour.md`, 'Brand colour\n\nThe brand is blue; a licence screen shows it.\n')]);
+    assert.match(fs.readFileSync(sent.message_path, 'utf8'), /^From The product · /m);
+    assert.match(sim.render(['send-report', `${EPIC}.licensing`, '--sent', sent.message_path], { expect: 'content' }), /^Sent to Licensing, on Fumi$/m);
+    assert.strictEqual(stateGit(sim.dir, ['status', '--porcelain', '--', '.product', '.ledger.jsonl', EPIC]), '', 'every door committed what it kept');
+
+    sim.run(['boot']);
+    enterEntry(sim, EPIC, 'discussion', 'licensing');
+    assert.ok(named(sim, 'mail').includes(sent.message_path), 'the message waits for the opening');
+    const call = /^product: `node \S+ (ledger product .+)`$/m.exec(sim.sections)?.[1];
+    const read = JSON.parse(sim.read(/** @type {string} */ (call).split(' ')));
+    assert.deepStrictEqual([read.views, read.not_taken], [['Notes are furniture.'], [{ direction: 'A web client', why: 'the Mac is the product' }]]);
+    assert.deepStrictEqual(read.discovery.map((/** @type {{id: string, assets: object[]}} */ e) => [e.id, e.assets]), [[finding, [{ path: guide, status: 'reference', into: null }]]]);
   });
 });
