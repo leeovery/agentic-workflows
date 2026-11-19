@@ -183,8 +183,9 @@
 // marked to raise whose `at_odds` holds the same sections, a candidate for
 // the session to judge one point with it or not by the texts the engine
 // gives it; and each record marked as its own log's for them, its
-// decisions citing a side, listed until the person's answer replaces
-// them or the session marks that it agrees.
+// decisions citing a side, listed once the person answers until the
+// answer replaces them or the session marks that it agrees; left open
+// once raised, it is listed no more.
 //
 // `.workflows/` is read where the move read it: the working tree of the
 // project's folder in the repository's main checkout, whichever checkout
@@ -1587,7 +1588,7 @@ function heldStep(project, unit, topic, round) {
     ];
     if (gaps.length > 0) return `its verifier ${gaps.join(' and ')}: remove ${inWords(verdictlessFiles(root, unit.name, topic))}, and brief a fresh verifier`;
   }
-  return findings === null && note !== null && note.settled !== true && !changed ? 'its verifier has not reported yet: wait for it' : null;
+  return findings === null && note !== null && note.settled !== true && !changed ? 'its verifier has not reported yet: wait for it; once it has returned without writing its findings, brief a fresh verifier' : null;
 }
 
 /**
@@ -1648,6 +1649,28 @@ function waitStep(waited) {
 }
 
 /**
+ * Whether the session has settled into a record what `names` names, the
+ * record not yet amended to it: each a `Settled:` finding standing beside
+ * the record names — a section no record cited, or the sections of a
+ * contradiction — so the record's next step is its amend, never reading
+ * them again.
+ * @param {Project} project @param {Unit} unit @param {string|null} topic @returns {(names: string[]) => boolean}
+ */
+function settledForAmend(project, unit, topic) {
+  const findings = readText(path.join(project.stateDir, findingsPath(unit.name, topic)));
+  const items = findings === null || findings.trim() === '' ? [] : findingItems(findings).filter((item) => item.startsWith('Settled:'));
+  return (names) => items.length > 0 && names.every((name) => items.some((item) => namesWhole(item, name)));
+}
+
+/** Whether `text` names `name` whole: never as the start of a deeper heading's path, `{name} > …`. @param {string} text @param {string} name */
+function namesWhole(text, name) {
+  for (let at = text.indexOf(name); at !== -1; at = text.indexOf(name, at + 1)) {
+    if (!text.startsWith(PATH_JOIN, at + name.length)) return true;
+  }
+  return false;
+}
+
+/**
  * The one step the session takes next on a record not done, in the
  * directive's terms: what stops it (`heldStep`), what the session reads or
  * removes on it (`sessionStep`), what its verifiers still owe
@@ -1692,6 +1715,7 @@ module.exports = {
         const strayed = strays.filter((stray) => stray.topic === topic || (stray.topic === null && !hasOwn)).map(({ at }) => path.join(stateDir, at));
         const sent = uncited.filter(({ topics }) => topics.includes(topic));
         const odds = unshared.filter((each) => each.topic === topic);
+        const settled = settledForAmend(project, unit, topic);
         const problems = [
           ...topicProblems(project, ids, unit, topic),
           ...sent.map((each) => uncitedProblem(project, unit, topic, each)),
@@ -1700,7 +1724,12 @@ module.exports = {
         ];
         const name = recordPlace(unit, topic);
         if (problems.length === 0) return { name, problems };
-        const next = nextStep(project, ids, unit, topic, { strays: strayed, uncited: sent.length, unshared: odds.length, waited: () => (waited ??= unitsWaitedOn(project, unit)) });
+        const next = nextStep(project, ids, unit, topic, {
+          strays: strayed,
+          uncited: sent.filter(({ section }) => !settled([section])).length,
+          unshared: odds.filter(({ sides }) => !settled(sides.map(({ section }) => section))).length,
+          waited: () => (waited ??= unitsWaitedOn(project, unit)),
+        });
         return { name, problems, next };
       };
       return [...topicsOf(unit.manifest).map(piece), ...(hasOwn ? [piece(null)] : [])];

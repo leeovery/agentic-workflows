@@ -74,7 +74,7 @@ const { SESSION, recordsMigration, refusedKeeping, refusedUntouched, passedBesid
 const { templateFolder, copyWorld } = require('./discovery-test-utils.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
-const { composedPath, carriedPath, findingsPath, rulingsPath, checkedPath, verifyingPath, refusedPath, settledPath, roundsPath, handbackPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
+const { composedPath, carriedPath, findingsPath, checkedPath, verifyingPath, refusedPath, settledPath, roundsPath, handbackPath } = require(path.join(SCRIPTS, 'domain/ledger-carry.cjs'));
 
 /** Where the session marks the sections of a unit's specs holding no topic's decision. @param {string} unit */
 const sectionsMarked = (unit) => `.cache/migrate/records/${unit}.sections.json`;
@@ -785,7 +785,7 @@ describe('the points to raise (21.6.10, 21.S25)', () => {
       'Where another record carries the point, record the answer on it too: merge its question, at its own `place` as listed, into the answer,',
       'each `{"key", "name", "text", "notice"}` — its key, a short name for the answer, the answer, and what the person would notice were it the one, each one line;',
       'node .claude/skills/ledger-engine/scripts/engine.cjs ledger merge {place} --question {answers} --into {answered}',
-      'and, as `settled_on`, each record marked as its own log\'s for the same sections, `{"place", "decisions"}`, each decision of it citing a side still current, `{"id", "text"}`. A point with `settled_on` stays listed, once answered with its own `answered`, until each is done.',
+      'and, as `settled_on`, each record marked as its own log\'s for the same sections, `{"place", "decisions"}`, each decision of it citing a side still current, `{"id", "text"}`. A point with `settled_on` stays listed, once answered with its own `answered`, until each is done; one the person leaves open is raised, and listed no more.',
       'Where a point is `settled_on` a record, tell the person, as its mechanism, that that record\'s own log settled it after the approval, and how: its decisions\' texts.',
       'Where a point is `settled_on` a record, once the person answers it: where the answer agrees with that record\'s decisions, nothing changes on that record — mark it so, `"agrees": true` beside its `log` mark. Where it differs, the person\'s answer is the newer one: record it on that record too, replacing each of its decisions listed,',
       'node .claude/skills/ledger-engine/scripts/engine.cjs ledger replace {place} --replaces {id} --reason other-topic --cause {answered}',
@@ -851,6 +851,7 @@ describe('the points to raise (21.6.10, 21.S25)', () => {
     const listedOn = settled();
     const teamPoint = raiseOf(teams.text);
     const { res: drawnTeams } = await okSectionsAsync(dir, ['raise', teamPoint.place, '--answers', teamPoint.answers, '--fact'], { env: SESSION, stdin: JSON.stringify({ question: teams.text, rows: [], mechanism: 'Search\'s own log settled it after the rates: per team.', product_wide: false }) });
+    const leftOpen = settled();
     ok(dir, ['raise', 'answer', drawnTeams.raise, '--own'], { env: SESSION, stdin: JSON.stringify({ text: 'Per seat, teams too.', why: 'The person said so.' }) });
     const answeredOn = settled();
     ownLog({ agrees: true });
@@ -860,8 +861,9 @@ describe('the points to raise (21.6.10, 21.S25)', () => {
     ok(dir, ['ledger', 'replace', on, '--replaces', replacing.id, '--reason', 'other-topic', '--cause', personal.id], { env: SESSION, stdin: JSON.stringify({ text: 'Per seat, teams too.', why: 'The person said so.', by: 'person', given: 'own', who_moved_whom: 'none', drops: [replacing.text] }) });
     const current = ok(dir, ['ledger', 'record', 'fumi', 'search']).decisions.map((/** @type {{text: string}} */ { text }) => text).filter((/** @type {string} */ text) => text.startsWith('Per'));
 
-    assert.deepStrictEqual([listedOn, answeredOn, agreed, settled(), current], [
+    assert.deepStrictEqual([listedOn, leftOpen, answeredOn, agreed, settled(), current], [
       [[[], [['fumi.discussion.search', ['Per team.']]]]],
+      [],
       [[['Per seat, teams too.'], [['fumi.discussion.search', ['Per team.']]]]],
       [],
       [],
@@ -964,7 +966,7 @@ describe('what the check reads once a record is carried', () => {
     assert.deepStrictEqual([composed, marked, unchecked, passed, changed, ok(dir, ['ledger', 'carry', 'shop.discussion.weights', '--dry-run'], { env: SESSION }).faults], [
       ['has not passed its verifier — no verifier has been briefed on it', ...shopUncited('1. Weights', ['Ranking', 'Ranking > Detail']), ...shopUncited('2. Wishlist', ['Saving', 'Ranking'])],
       ['has not passed its verifier — no verifier has been briefed on it', ...shopUncited('1. Weights', ['Ranking', 'Ranking > Detail'])],
-      `has no verdict from its last verifier on every entry its brief asked one of — ${statePath(dir, checkedPath('shop', 'weights'))} is no file; it names no verdict on q1, d1: a verifier writes a line for each entry its walk sheet does not mark passed, \`{ref}: ok\` or \`{ref}: see finding\`, and one that does not has given no verdict — remove ${statePath(dir, findingsPath('shop', 'weights'))}, ${statePath(dir, rulingsPath('shop', 'weights'))} and ${statePath(dir, checkedPath('shop', 'weights'))}, and brief a fresh verifier`,
+      `has no verdict from its last verifier on every entry its brief asked one of — ${statePath(dir, checkedPath('shop', 'weights'))} is no file; it names no verdict on q1, d1: a verifier writes a line for each entry its walk sheet does not mark passed, \`{ref}: ok\` or \`{ref}: see finding\`, and one that does not has given no verdict — remove ${statePath(dir, findingsPath('shop', 'weights'))}, and brief a fresh verifier`,
       ['has passed its verifier, and waits to be carried', ...shopUncited('1. Weights', ['Ranking', 'Ranking > Detail'])],
       'has changed since its verifier was briefed on it: a record is carried as its verifier read it — brief a fresh verifier',
       [],
@@ -1405,7 +1407,9 @@ describe('the next step the check names on each record, so the session learns a 
   };
   const next = () => nexts()[GONE];
 
-  it('through a record\'s rounds: its verifier briefed, awaited, its findings answered by an agent, a reversal and a late round by the session, a verifier that gave no verdict replaced, a record changed since read again, what an agent left removed, findings handed back settled — then ready to carry', () => {
+  const UNREPORTED = 'its verifier has not reported yet: wait for it; once it has returned without writing its findings, brief a fresh verifier';
+
+  it('through a record\'s rounds: its verifier briefed, awaited — and, once it returns without writing or its files are removed, briefed afresh — its findings answered by an agent, a reversal and a late round by the session, a verifier that gave no verdict replaced, naming only the files it wrote, a record changed since read again, what an agent left removed, findings handed back settled — then ready to carry', () => {
     dir = world();
     const record = GOOD[GONE];
     const hash = composeGone(record);
@@ -1428,6 +1432,8 @@ describe('the next step the check names on each record, so the session learns a 
     composeGone(record);
     reported('- The cause is dropped.\n', '');
     walked.push(next());
+    for (const rel of [findingsPath, checkedPath]) fs.rmSync(statePath(dir, rel('gone', 'gone')));
+    walked.push(next());
     reported('', 'q1: ok\n');
     writeState(dir, `${composedPath('gone', 'gone')}.draft`, '{}');
     walked.push(next());
@@ -1440,16 +1446,49 @@ describe('the next step the check names on each record, so the session learns a 
     const dry = `\`ledger carry ${GONE} --dry-run\``;
     assert.deepStrictEqual(walked, [
       `check it with ${dry}, then brief its verifier`,
-      'its verifier has not reported yet: wait for it',
+      UNREPORTED,
       'a fresh per-topic agent amends it, its brief carrying the findings; once it returns, a fresh verifier reads it',
       'a finding reverses an earlier ruling or the session: settle it from the record\'s sources, or ask the person',
       `round 3's findings are yours to settle: settle each, then pass it with \`ledger settle ${GONE}\``,
       'a fresh per-topic agent amends it, its brief carrying the findings; once it returns, a fresh verifier reads it',
       `it was amended since its verifier read it: check it with ${dry}, then brief a fresh verifier`,
-      `its verifier gave no verdict on q1: remove ${statePath(dir, findingsPath('gone', 'gone'))}, ${statePath(dir, rulingsPath('gone', 'gone'))} and ${statePath(dir, checkedPath('gone', 'gone'))}, and brief a fresh verifier`,
+      `its verifier gave no verdict on q1: remove ${statePath(dir, findingsPath('gone', 'gone'))} and ${statePath(dir, checkedPath('gone', 'gone'))}, and brief a fresh verifier`,
+      UNREPORTED,
       `remove what an agent left beside its record: ${statePath(dir, `${composedPath('gone', 'gone')}.draft`)}`,
       `settle each finding its composer handed back, then remove ${statePath(dir, handbackPath('gone', 'gone'))}`,
       `ready to carry: \`ledger carry ${GONE}\``,
+    ]);
+  });
+
+  it('a section no record cites, or a contradiction another record names, once the session settles it into the record — a `Settled:` finding naming it — is no longer to read: what is left is read first, then the record is amended', () => {
+    dir = world();
+    const [q1, d1] = GOOD['shop.discussion.weights'];
+    carryArgs(dir, 'shop.discussion.weights', [q1, d1]);
+    const settle = (/** @type {string[]} */ sections) => writeState(dir, findingsPath('shop', 'weights'), sections.map((section) => `- Settled: ${section}, amend to agree\n`).join(''));
+    settle(['1. Weights > Ranking > Detail']);
+    const deeper = nexts()['shop.discussion.weights'];
+    settle(['1. Weights > Ranking > Detail', '1. Weights > Ranking', '2. Wishlist > Saving']);
+    const one = nexts()['shop.discussion.weights'];
+    settle(['1. Weights > Ranking > Detail', '1. Weights > Ranking', '2. Wishlist > Saving', '2. Wishlist > Ranking']);
+    const amend = nexts()['shop.discussion.weights'];
+
+    writeState(dir, RATES, '# Rates\n\n## Seats\n\nPer seat.\n\n## Flat\n\nA flat rate.\n');
+    const seats = [
+      { ref: 'q9', event: 'asked', text: 'How many seats does a team start with?', by: 'claude', cites: [rate('Seats')] },
+      { ref: 'd9', event: 'decided', answers: 'q9', text: 'Five.', why: 'The rates say so.', by: 'claude', given: 'carried', cites: [rate('Seats')] },
+    ];
+    for (const [topic, entries] of [['billing', [...GOOD['fumi.discovery.billing'], ratesAtOdds('q9')]], ['search', GOOD['fumi.discussion.search']], ['licensing', [...GOOD['fumi.discussion.licensing'], ...seats]], ['support', []]]) {
+      carryArgs(dir, `fumi.discussion.${topic}`, /** @type {unknown[]} */ (entries));
+    }
+    const odds = nexts()['fumi.discussion.licensing'];
+    writeState(dir, findingsPath('fumi', 'licensing'), '- Settled: Seats and Flat at odds, amend to agree\n');
+
+    assert.deepStrictEqual([deeper, one, amend, odds, nexts()['fumi.discussion.licensing']], [
+      '3 uncited sections to read: settle each into this record, or mark it',
+      'an uncited section to read: settle each into this record, or mark it',
+      'a fresh per-topic agent amends it, its brief carrying the findings; once it returns, a fresh verifier reads it',
+      'a contradiction another record names to judge: settle each into this record, or mark it',
+      'a fresh per-topic agent amends it, its brief carrying the findings; once it returns, a fresh verifier reads it',
     ]);
   });
 
@@ -1559,7 +1598,7 @@ describe('the directive\'s example record, frozen with 079', () => {
       'A reversal is a finding against a point an earlier round\'s rulings set aside, opening `Reverses round {R}:`, R the round that ruled, or against one the session settled, opening `Reverses the session:`; a new point on what an earlier round passed, or on what its findings had the record changed to, is a finding as any other. A reversal goes to no agent, nor does a finding a per-topic agent handed back unanswered, asking for a point the rulings set aside, in the hand-back file beside the record, nor a finding the third round or a later one writes.',
       'a fresh verifier reads what changed since, until one passes it.',
       'A file an agent left beside the records, which the check names, is removed.',
-      'Once it has returned, settle first each finding it handed back, as below: the verifier\'s brief and the carry are refused while its hand-back file stands. Then, where no `Settled:` finding stands, check the record as the carry would',
+      'Once the per-topic agent has returned, settle first each finding it handed back, as below: the verifier\'s brief and the carry are refused while its hand-back file stands. Then, where no `Settled:` finding stands, check the record as the carry would',
       'Settle every handed-back finding before anything else.',
       'Once every handed-back finding is settled, remove the hand-back file. Then, where a `Settled:` finding stands, a fresh per-topic agent amends the record to answer it, and a fresh verifier reads it again, its brief keeping it as a round.',
       'The verifier\'s round and the session\'s after it are kept with the rounds, and the record goes to the carry as it stands:\n\n```bash\nnode .claude/skills/ledger-engine/scripts/engine.cjs ledger settle {place}\n```',

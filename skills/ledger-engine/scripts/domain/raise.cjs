@@ -2207,9 +2207,10 @@ function raiseWaits([verb]) {
  * any, by its own, with its text, `raised` where this conversation drew it,
  * and the answers it holds already, `answered`, each by its short id and
  * text. A point `settled_on` a record's own log keeps there each decision
- * still current, and is listed, answered or raised, while any is — its
- * `answered` beside it once it is answered — until the person's answer is
- * recorded on that record too, or the session marks that it agrees.
+ * still current; once answered, it is listed while any is, its `answered`
+ * beside it, until the person's answer is recorded on that record too, or
+ * the session marks that it agrees. Raised and left open, it is raised, and
+ * listed no more: the record's own log keeps its answer.
  * @template {{place: string, answers: string, text: string, candidates?: {place: string, answers: string, text: string}[], settled_on?: {place: string, decisions: {id: string, text: string}[]}[]}} P
  * @param {string} cwd @param {P[]} points
  * @returns {P[]}
@@ -2227,7 +2228,7 @@ function unraised(cwd, points) {
       .map(({ place, decisions }) => ({ place, decisions: decisions.filter(({ id }) => facts.has(id) && !notCurrent(read, id)).map(({ id, text }) => ({ id: short(id), text })) }))
       .filter(({ decisions }) => decisions.length > 0);
     const stands = (/** @type {P} */ { answers }) => (facts.has(answers) ? questionStands(read, answers) : null);
-    const listed = (/** @type {P} */ point) => (stands(point) === 'open' && !sealed.has(point.answers)) || ((stands(point) === 'open' || stands(point) === 'answered') && standing(point).length > 0);
+    const listed = (/** @type {P} */ point) => (stands(point) === 'open' && !sealed.has(point.answers)) || (stands(point) === 'answered' && standing(point).length > 0);
     return points.filter(listed).map((point) => ({
       ...point,
       answers: short(point.answers),
