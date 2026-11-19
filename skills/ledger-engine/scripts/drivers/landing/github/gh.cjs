@@ -8,7 +8,8 @@
 // extension among them where gh does not know the command. A call that
 // fails is refused in the words of what happened and the way on — gh not
 // signed in, GitHub's rate limit, GitHub out of reach — or else in GitHub's
-// own words, to settle what they name and land again. gh's own calls exit 4
+// own words, to settle what they name and land again; a setting setup could
+// not make is said by the same reasons, in setup's words. gh's own calls exit 4
 // where it is not signed in; the extension exits 4 on any failure of
 // GitHub's API, so its calls are told apart by their words alone. A call
 // that cannot run at all throws as it falls, for the seam to name the tool
@@ -51,6 +52,38 @@ function saidBy(ran) {
 /** Whether a failed run says gh is not signed in: gh's own exit for it, or its words. @param {string[]} args @param {Ran} ran @param {string} said */
 const signedOut = (args, ran, said) => (args[0] !== 'stack' && ran.status === 4) || SIGNED_OUT.test(said);
 
+/** @typedef {'signed-out'|'rate-limit'|'offline'|'refused'} Failure */
+
+/**
+ * Why a run that ran and exited non-zero failed, with what it said: gh not
+ * signed in, GitHub's rate limit, GitHub out of reach, or else refused.
+ * @param {string[]} args @param {Ran} ran
+ * @returns {{why: Failure, said: string}}
+ */
+function failureOf(args, ran) {
+  const said = saidBy(ran);
+  if (signedOut(args, ran, said)) return { why: 'signed-out', said };
+  if (RATE_LIMITED.test(said)) return { why: 'rate-limit', said };
+  if (OFFLINE.test(said)) return { why: 'offline', said };
+  return { why: 'refused', said };
+}
+
+/** A landing's refusal of a call, by why it failed. @type {Record<Failure, (said: string) => string>} */
+const LANDING_SAYS = {
+  'signed-out': () => `it is not signed in to ${HOST} — sign in with \`gh auth login\`, and land again`,
+  'rate-limit': (said) => `GitHub's rate limit stopped it (${said}) — wait for the limit to reset, and land again`,
+  offline: (said) => `it could not reach GitHub (${said}) — land again once the network is back`,
+  refused: (said) => `${said} — settle what GitHub names, then land again`,
+};
+
+/** Setup's reason a setting is not made, by why its call failed. @type {Record<Failure, (said: string) => string>} */
+const SETUP_SAYS = {
+  'signed-out': () => `${GH} is not signed in to ${HOST}`,
+  'rate-limit': (said) => `GitHub's rate limit stopped it (${said})`,
+  offline: (said) => `${GH} could not reach GitHub (${said})`,
+  refused: (said) => `${GH} refused it: ${said}`,
+};
+
 /**
  * gh's answer to `args`, refused where it fails: `what` names the call, as
  * a refusal says what gh could not do.
@@ -63,11 +96,8 @@ function gh(args, what, opts) {
   if (code === 'ETIMEDOUT') throw new Error(`land: gh could not ${what}: GitHub did not answer within ${TIMEOUT_MS / 1000} s — land again once it does`);
   if (ran.error) throw ran.error;
   if (ran.status === 0) return ran.stdout;
-  const said = saidBy(ran);
-  if (signedOut(args, ran, said)) throw new Error(`land: gh could not ${what}: it is not signed in to ${HOST} — sign in with \`gh auth login\`, and land again`);
-  if (RATE_LIMITED.test(said)) throw new Error(`land: gh could not ${what}: GitHub's rate limit stopped it (${said}) — wait for the limit to reset, and land again`);
-  if (OFFLINE.test(said)) throw new Error(`land: gh could not ${what}: it could not reach GitHub (${said}) — land again once the network is back`);
-  throw new Error(`land: gh could not ${what}: ${said} — settle what GitHub names, then land again`);
+  const { why, said } = failureOf(args, ran);
+  throw new Error(`land: gh could not ${what}: ${LANDING_SAYS[why](said)}`);
 }
 
 /**
@@ -94,29 +124,40 @@ const ghVersion = () => versionOf(['--version'], /^gh version (\S+)/);
 const stackVersion = () => versionOf(['stack', '--version'], /^gh stack version (\S+)/);
 
 /**
+ * Why a call setup made did not make its setting, as setup's warning says
+ * it: gh missing or unable to run, or the call's failure.
+ * @param {string[]} args @param {Ran} ran
+ * @returns {string}
+ */
+function whyUnset(args, ran) {
+  const error = /** @type {NodeJS.ErrnoException|undefined} */ (ran.error);
+  if (error?.code === 'ENOENT') return `${GH} is not installed`;
+  if (error) return `${GH} could not run: ${error.message}`;
+  const { why, said } = failureOf(args, ran);
+  return SETUP_SAYS[why](said);
+}
+
+/**
  * Why gh did not make a setting on GitHub through its API, or null where it
  * did — or where `held`, read first, finds it made already, and it is left
- * as it is: gh missing, signed out, or refused, each said as setup's warning
- * says it. A read that fails leaves the call to say why.
+ * as it is. The call alone decides whether gh is signed in: `auth status`
+ * fails where any account gh holds for the host does, the one in use
+ * working. A read that fails as signed out makes no call; any other leaves
+ * the call to say why.
  * @param {string} cwd @param {string[]} api the call's arguments past `api`
  * @param {{input?: string, held?: {read: string[], made: (read: string) => boolean}}} [opts]
  * @returns {string|null}
  */
 function setOnGithub(cwd, api, { input, held } = {}) {
-  const signedIn = spawnGh(['auth', 'status', '--hostname', HOST], { cwd });
-  if (signedIn.error) {
-    const missing = /** @type {NodeJS.ErrnoException} */ (signedIn.error).code === 'ENOENT';
-    return missing ? `${GH} is not installed` : `${GH} could not run: ${signedIn.error.message}`;
-  }
-  if (signedIn.status !== 0) return `${GH} is not signed in to ${HOST}`;
   if (held !== undefined) {
-    const read = spawnGh(['api', ...held.read], { cwd });
+    const args = ['api', ...held.read];
+    const read = spawnGh(args, { cwd });
     if (read.status === 0 && held.made(read.stdout)) return null;
+    if (read.status !== 0 && signedOut(args, read, saidBy(read))) return SETUP_SAYS['signed-out']('');
   }
-  const made = spawnGh(['api', ...api], { cwd, input });
-  if (made.error) return `${GH} could not run: ${made.error.message}`;
-  if (made.status !== 0) return `${GH} refused it: ${(made.stderr || made.stdout || `exit ${made.status}`).trim()}`;
-  return null;
+  const args = ['api', ...api];
+  const made = spawnGh(args, { cwd, input });
+  return made.status === 0 ? null : whyUnset(args, made);
 }
 
 module.exports = { gh, ghVersion, stackVersion, setOnGithub };

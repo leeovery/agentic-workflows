@@ -7,10 +7,11 @@
 // branch (`github-rule`, 4.4.6, 4.S10, 4.S30) and the squash default the
 // landing needs, merge commits allowed beside it for a unit's own branch
 // (`github-squash`, 7.2.18, 7.2.38). Each is offered until answered,
-// and set on a yes alone, through gh — signed in first, then GitHub's API —
-// recorded, `set`, `declined` or `failed` with why, and never offered
-// again; a setting gh could not make is said, with where to make it by hand,
-// and setup carries on. The rule's answer is recorded once. The squash
+// and set on a yes alone, through GitHub's API, the call deciding whether
+// gh is signed in, never `auth status` — recorded, `set`, `declined` or
+// `failed` with why, and never offered again; a setting gh could not make
+// is said, by why its call failed, with where to make it by hand, and setup
+// carries on. The rule's answer is recorded once. The squash
 // default is offered only where the project lands through GitHub, read
 // first and left as it is where it is set, and a yes to it is taken again
 // once answered; across nested repositories, it is
@@ -43,7 +44,6 @@ const project = useLandingWorld('github-setup-', (dir) => {
 /** The project manifest as the state branch holds it. @param {string} dir */
 const committedManifest = (dir) => JSON.parse(git(dir, ['show', `ledger-state:${layout.projectManifest}`]));
 
-const AUTH = 'auth status --hostname github.com';
 const SET_SQUASH = 'api --method PATCH repos/acme/portal -f squash_merge_commit_title=PR_TITLE -f squash_merge_commit_message=PR_BODY -F allow_merge_commit=true';
 
 /**
@@ -81,13 +81,13 @@ const OFFERS = [
 
 for (const offer of OFFERS) {
   describe(`${offer.verb}: setup's offer, answered`, () => {
-    it('offered, and set by a yes alone, through gh signed in, recorded so it is never offered again', () => {
+    it('offered, and set by a yes alone, through GitHub\'s API where gh\'s auth status fails as another account gh holds does, recorded so it is never offered again', () => {
       const dir = project();
       assert.deepStrictEqual([offer.offered(dir), offer.held(dir)], [true, offer.before]);
 
-      const out = ok(dir, [offer.verb, 'yes']);
+      const out = ok(dir, [offer.verb, 'yes'], { GH_STUB_FAULT: 'signed-out@auth status' });
 
-      assert.deepStrictEqual(calls(dir), [AUTH, ...offer.calls]);
+      assert.deepStrictEqual(calls(dir), offer.calls);
       assert.deepStrictEqual(offer.held(dir), offer.set);
       assert.deepStrictEqual([out[offer.field], out.reason, out.warnings], ['set', undefined, undefined]);
       assert.strictEqual(out.committed, git(dir, ['rev-parse', '--short', 'ledger-state']).trim());
@@ -104,10 +104,12 @@ for (const offer of OFFERS) {
       assert.strictEqual(offer.offered(dir), false);
     });
 
-    for (const [why, fault, reason] of [
-      ['gh is missing', null, 'gh is not installed'],
-      ['gh is not signed in', 'signed-out', 'gh is not signed in to github.com'],
-      ['GitHub refuses it', 'refused@api', 'gh refused it: HTTP 403: Resource not accessible by integration'],
+    for (const [why, fault, reason, called] of [
+      ['gh is missing', null, 'gh is not installed', []],
+      ['gh is not signed in, its first call exiting 4', 'signed-out', 'gh is not signed in to github.com', offer.calls.slice(0, 1)],
+      ['GitHub\'s rate limit stops it', 'rate-limit', 'GitHub\'s rate limit stopped it (GraphQL: API rate limit already exceeded for user ID 1.)', offer.calls],
+      ['GitHub is out of reach', 'offline', 'gh could not reach GitHub (error connecting to api.github.com check your internet connection or https://githubstatus.com)', offer.calls],
+      ['GitHub refuses it', 'refused@api', 'gh refused it: HTTP 403: Resource not accessible by integration', offer.calls],
     ]) {
       it(`a yes where ${why} says so and carries on, recorded as failed with why, never offered again`, () => {
         const dir = project();
@@ -117,7 +119,7 @@ for (const offer of OFFERS) {
           const out = ok(dir, [offer.verb, 'yes'], fault === null ? { PATH: bin } : { GH_STUB_FAULT: fault });
 
           assert.deepStrictEqual([out[offer.field], out.reason, out.warnings], ['failed', reason, [offer.unset(reason)]]);
-          assert.deepStrictEqual(offer.held(dir), offer.before);
+          assert.deepStrictEqual([calls(dir), offer.held(dir)], [called, offer.before]);
           assert.deepStrictEqual(committedManifest(dir)[offer.field], { status: 'failed', reason });
           assert.strictEqual(offer.offered(dir), false);
         } finally {
@@ -145,7 +147,7 @@ describe('github-squash: a yes taken again', () => {
     assert.strictEqual(ok(dir, ['github-squash', 'yes']).github_squash, 'set');
     const out = ok(dir, ['github-squash', 'yes']);
 
-    assert.deepStrictEqual(calls(dir), [AUTH, 'api repos/acme/portal', SET_SQUASH, AUTH, 'api repos/acme/portal']);
+    assert.deepStrictEqual(calls(dir), ['api repos/acme/portal', SET_SQUASH, 'api repos/acme/portal']);
     assert.deepStrictEqual([out.github_squash, out.committed, github(dir).squash], ['set', null, OFFERS[1].set]);
     assert.deepStrictEqual(committedManifest(dir).github_squash, { status: 'set' });
   });
@@ -158,7 +160,7 @@ describe('github-squash: a yes taken again', () => {
     });
 
     assert.strictEqual(ok(dir, ['github-squash', 'yes']).github_squash, 'set');
-    assert.deepStrictEqual([calls(dir).slice(3), github(dir).merges], [[AUTH, 'api repos/acme/portal', SET_SQUASH], true]);
+    assert.deepStrictEqual([calls(dir).slice(2), github(dir).merges], [['api repos/acme/portal', SET_SQUASH], true]);
   });
 });
 
