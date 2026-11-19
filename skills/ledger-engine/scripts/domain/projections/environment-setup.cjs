@@ -5,7 +5,8 @@
 // drawn from the setup on the project manifest (environment-verbs.cjs): its
 // title, `Environment setup — {Project}`; HOW TO RUN {PROJECT}, each command
 // the setup holds; TO PREPARE THE ENVIRONMENT, each step with when it runs,
-// a note saying it never runs; WHAT CAN'T RUN AT ONCE, SO FAR; and the
+// a note saying it never runs, its lines, blank ones kept, under its row
+// where it holds several; WHAT CAN'T RUN AT ONCE, SO FAR; and the
 // LINTERS. At the project's first ready to build each part reads "as found"
 // and the verify setup is never shown, the first phase's tasks building it
 // after (22.5.9); its foot says it is asked once, and its gate, `environment
@@ -52,14 +53,28 @@ function row(text) {
   return wrap(text, displayWidth() - BULLET.length).map((line, at) => `${at === 0 ? BULLET : HANGING}${line}`).join('\n');
 }
 
-/** A block: its heading, then its rows, or the line saying it holds none. @param {string} heading @param {string[]} rows @param {string} none */
-function block(heading, rows, none) {
-  return [heading, ...(rows.length === 0 ? [row(none)] : rows.map(row))].join('\n');
+/** A note's line under its row, wrapped at its own indent inside the hanging one; a blank line kept. @param {string} line */
+function noteLine(line) {
+  if (line.trim() === '') return '';
+  const lead = HANGING + (/^[ \t]*/.exec(line)?.[0] ?? '');
+  return wrap(line, Math.max(1, displayWidth() - lead.length)).map((part) => `${lead}${part}`).join('\n');
 }
 
-/** A step's row: its name, its command or its note, and when it runs. @param {Step} step */
+/** A block: its heading, then its rows as drawn, or the line saying it holds none. @param {string} heading @param {string[]} rows @param {string} none */
+function block(heading, rows, none) {
+  return [heading, ...(rows.length === 0 ? [row(none)] : rows)].join('\n');
+}
+
+/**
+ * A step's row: its name, its command and when it runs, or its note, never
+ * run; a note of more than one line drawn line by line under its row.
+ * @param {Step} step
+ */
 function stepRow(step) {
-  return 'command' in step ? `${step.name}: ${step.command} — ${WHEN[step.when]}` : `${step.name}: ${step.note} — a note, never run`;
+  if ('command' in step) return row(`${step.name}: ${step.command} — ${WHEN[step.when]}`);
+  const lines = step.note.split(/\r?\n/);
+  if (lines.length === 1) return row(`${step.name}: ${step.note} — a note, never run`);
+  return [row(`${step.name} — a note, never run`), ...lines.map(noteLine)].join('\n');
 }
 
 /** The verify setup, read only, as manage shows it. @param {Setup['verify']} verify */
@@ -69,7 +84,7 @@ function verifyBlock(verify) {
   return block(heading, [
     `In ${verify.place}, its feature map ${verify.feature_map}`,
     ...VERIFY_PARTS.map((part) => `${VERIFY_NAMES[part]}: ${verify[part]}`),
-  ], '');
+  ].map(row), '');
 }
 
 /** The screen's display. @param {SetupView} view */
@@ -80,11 +95,11 @@ function setupDisplay({ project, setup, manage }) {
     `Environment setup — ${project}`,
     block(`HOW TO RUN ${project.toUpperCase()}`, Object.entries(COMMANDS).flatMap(([key, name]) => {
       const command = setup.run[/** @type {keyof typeof COMMANDS} */ (key)];
-      return command === undefined ? [] : [`${name}: ${command}`];
+      return command === undefined ? [] : [row(`${name}: ${command}`)];
     }), none),
     block(`TO PREPARE THE ENVIRONMENT${found}`, setup.prepare.map(stepRow), none),
-    block('WHAT CAN\'T RUN AT ONCE, SO FAR', setup.concurrency.map(({ what }) => what), 'Nothing found yet — a build records it when it learns it'),
-    block(`LINTERS${found}`, setup.linters.map(({ name, command, fix }) => `${name} — ${command}${fix === undefined ? '' : `, its fix ${fix}`}`), none),
+    block('WHAT CAN\'T RUN AT ONCE, SO FAR', setup.concurrency.map(({ what }) => row(what)), 'Nothing found yet — a build records it when it learns it'),
+    block(`LINTERS${found}`, setup.linters.map(({ name, command, fix }) => row(`${name} — ${command}${fix === undefined ? '' : `, its fix ${fix}`}`)), none),
   ];
   if (manage) blocks.push(verifyBlock(setup.verify));
   return blocks.join('\n\n');

@@ -14,7 +14,7 @@ Read what is recorded first:
 node .claude/skills/ledger-engine/scripts/engine.cjs environment show
 ```
 
-At ready to build, start from what is recorded and read the repository for what it lacks: how to run the product, what a fresh checkout needs before it builds and tests, and the linters the project runs. Record each part found before the screen. From manage, set each part the person's Comment changes. A part is written whole, its JSON on stdin:
+At ready to build, start from what is recorded and read the repository for what it lacks: how to run the product, what a fresh checkout needs before it builds and tests, and the linters the project runs. A *From before Ledger* note in prepare is the setup the project kept before Ledger: turn what it says into the parts, a note only for a step no command does, and record prepare without it. Record each part found before the screen. From manage, set each part the person's Comment changes. A part is written whole, its JSON on stdin:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs environment set {part:[run|prepare|concurrency|linters]}
