@@ -174,7 +174,7 @@ describe('task worktree: every repository laid out (12.7.10, 7.2.21)', () => {
     git(at.lib, ['add', '.gitignore', '.worktreeinclude']);
     git(at.lib, ['commit', '-q', '-m', 'ignore the secret']);
     createFile(at.dir, '.claude/settings.local.json', JSON.stringify({ worktree: { symlinkDirectories: ['vendor'] } }));
-    const { task } = ok(at.dir, ['task', 'create', UNIT, '3', '--title', 'Bold the fee', '--type', 'feat']);
+    const { task } = ok(at.dir, ['task', 'create', UNIT, '3', '--title', 'Bold the fee', '--type', 'feat', '--why', 'one word, nothing for a reviewer to read']);
     const session = building(at.dir, [task]);
 
     const laid = ok(at.dir, layOut(task), as(session));

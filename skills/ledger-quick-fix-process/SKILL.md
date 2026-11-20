@@ -53,7 +53,7 @@ node .claude/skills/ledger-engine/scripts/engine.cjs task create {work_unit} 1 -
 
 A refusal names every fault: answer them and record it again.
 
-A fix that is one small change you make yourself — a word bolded, a colour — is a one-line task instead, with no builder and no reviewer: `task create {work_unit} 1 --title "{line}" --type {type}`; start it, make it in the checkout and commit it through the door.
+A fix that is one small change you make yourself — a word bolded, a colour — is a one-line task instead, with no builder and no reviewer: `task create {work_unit} 1 --title "{line}" --type {type} --why "{why no reviewer need read it}"`; start it, make it in the checkout and commit it through the door.
 
 ### Building the Fixes
 
@@ -77,7 +77,7 @@ Append to the build's log, `.ledger/{work_unit}/build/log.md`, as the work goes:
 
 ## Doors
 
-- A fix → `task create {work_unit} 1 --file {path}`, or a one-line fix `task create {work_unit} 1 --title "{line}" --type {type}`; its reviewers → `task review {work_unit} {task} --reviewers {count:[1|2]} --file {why}`; its order → `task link {work_unit} {task} --after {task}`.
+- A fix → `task create {work_unit} 1 --file {path}`, or a one-line fix `task create {work_unit} 1 --title "{line}" --type {type} --why "{why no reviewer need read it}"`; its reviewers → `task review {work_unit} {task} --reviewers {count:[1|2]} --file {why}`; its order → `task link {work_unit} {task} --after {task}`.
 - What runs → `task ready {work_unit} 1`, `task start {work_unit} {task}`.
 - An agent → `brief builder|fix {work_unit} {task}`, `brief reviewer {work_unit} {task} --letter {letter}`; then the Agent call with the agent and the pointer `brief` answers, or SendMessage of the pointer to the agent already working the fix.
 - Your fix of a nit → `commit --paths {file}… --task {work_unit} {task} -m "{message}"`.

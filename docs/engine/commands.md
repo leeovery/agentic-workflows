@@ -736,7 +736,7 @@ The authority gate after the review phase's report, and a quick-fix's close. Its
 ```text
 task phase <work-unit> <N> --title <title>
 task create <work-unit> <N> --file <path>
-task create <work-unit> <N> --title <line> --type <type>
+task create <work-unit> <N> --title <line> --type <type> --why <reason>
 task add <work-unit> <task> --file <path> --by <orchestrator|person>
 task type <work-unit> <task> <type>
 task close-plan <work-unit> --parent <tracker-id>
@@ -760,7 +760,7 @@ task note <work-unit> --file <note> [--phase <N>]
 The build's tasks. **The tracker's verbs** are the only way Ledger touches a tracker, through the project's task driver (`drivers.task`, written as the default by the first verb needing it). A verb names a task `{phase}.{n}` beside its unit; its internal id, `{unit}-{phase}-{n}`, is the lasting one, in commit subjects, branch names and trailers. A verb that writes commits the tracker's store on the state branch. A tool the driver needs that is missing, too old or failing refuses the verb, naming it (**`drivers`**).
 
 - **`phase`** — writes a phase into the tracker as it starts. Answers `phase`.
-- **`create`** — a task of a written phase from the task template in a file, every fault named at once; or, with `--title` and `--type`, a one-line task, the orchestrator's own work, with no builder, reviewed by none by its shape, its `review.json` written with it. Answers `{task, id}`. Refused for a phase not written, naming `task phase`, which writes it first; and for a phase whose stack has landed, but a quick-fix's.
+- **`create`** — a task of a written phase from the task template in a file, every fault named at once; or, with `--title`, `--type` and `--why`, a one-line task, the orchestrator's own work, with no builder, reviewed by none by its shape, its `review.json` written with it, `--why` its reason for making it so. Answers `{task, id}`. Refused for a phase not written, naming `task phase`, which writes it first; and for a phase whose stack has landed, but a quick-fix's.
 - **`add`** — an addition onto a task not yet ended, `--by` the orchestrator or the person. Once a round has been briefed it marks the task changed, so its pair reads it again (or its builder is briefed again) before its account. Answers `{task, id}`.
 - **`type`** — gives a task another type. Answers `{task, id, type}`.
 - **`link`** — holds a task after an unfinished one of its phase or an earlier one. Answers `{task, after}`.

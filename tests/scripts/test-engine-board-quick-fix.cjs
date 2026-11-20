@@ -119,7 +119,7 @@ describe('a quick-fix\'s fixes on the board (20.14)', () => {
     dir = working();
     atTheFixes();
     run(['task', 'close', UNIT, '1.1', '--reason', 'Folded into 1.3.']);
-    run(['task', 'create', UNIT, '1', '--title', 'Spell the docs --colour', '--type', 'fix']);
+    run(['task', 'create', UNIT, '1', '--title', 'Spell the docs --colour', '--type', 'fix', '--why', 'one word, nothing for a reviewer to read']);
     run(['task', 'start', UNIT, '1.3']);
     const line = board().view.fixes.find((/** @type {{task: string}} */ fix) => fix.task === '1.3');
 

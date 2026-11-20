@@ -463,10 +463,7 @@ function oneLineTask(title, type) {
   return { title, type, text: oneLineText(title, type) };
 }
 
-const CREATE_USAGE = '<unit> <N> --file <path> | <unit> <N> --title <line> --type <type>';
-
-/** Why no reviewer reads a one-line task, as its record says it. */
-const ONE_LINE_WHY = 'a one-line task, the orchestrator\'s own work';
+const CREATE_USAGE = '<unit> <N> --file <path> | <unit> <N> --title <line> --type <type> --why <reason>';
 
 /**
  * Whether the phase's stack has landed, its tasks `rows` as the tracker
@@ -483,13 +480,15 @@ function phaseMerged(cwd, unit, manifest, phase, rows) {
 
 /**
  * `task create`: a task of the phase from a task file, or a one-line task
- * from its title and type, its record of no reviewer written beside it,
- * numbered after its highest; refused, with the usage, given both forms or
- * neither, and for a phase whose stack has landed.
- * @param {string} cwd @param {string} unit @param {string} given @param {string} [file] @param {string} [title] @param {string} [type]
+ * from its title and type, its record of no reviewer written beside it with
+ * `why`, the orchestrator's reason for making it so, numbered after its
+ * highest; refused, with the usage, given both forms, neither or a part of
+ * the one-line form, and for a phase whose stack has landed.
+ * @param {string} cwd @param {string} unit @param {string} given @param {string} [file] @param {string} [title] @param {string} [type] @param {string} [why]
  */
-function createTask(cwd, unit, given, file, title, type) {
-  if ((file === undefined) === (title === undefined && type === undefined) || (file === undefined && (title === undefined || type === undefined))) {
+function createTask(cwd, unit, given, file, title, type, why) {
+  const oneLine = [title, type, why].filter((value) => value !== undefined).length;
+  if ((file === undefined) !== (oneLine === 3) || (file !== undefined && oneLine > 0)) {
     throw new Error(`Usage: engine task create ${CREATE_USAGE}`);
   }
   const phase = parsePhase(given);
@@ -507,7 +506,7 @@ function createTask(cwd, unit, given, file, title, type) {
     if (driver.show(root, ref) !== null) throw new TaskRefusal(`the tracker already holds ${taskName(ref)}`);
     if (quickFix && phase === FIXES_PHASE.number) refuseOthersScenarios(ref, task.text);
     driver.createTask(root, ref, task);
-    if (file === undefined) recorded.push(recordReview(cwd, ref, { reviewers: 0, why: ONE_LINE_WHY }));
+    if (file === undefined) recorded.push(recordReview(cwd, ref, { reviewers: 0, why: /** @type {string} */ (why).trim() }));
     return named(ref);
   }, { describe: ({ task: shown }) => `create ${shown}`, beside: () => recorded });
 }
@@ -1479,7 +1478,7 @@ function settleVerb(cwd, [unit, task], file, phase, fixes) {
  */
 const TASK_VERBS = Object.freeze({
   phase: { usage: '<unit> <N> --title <title>', arity: 2, flags: ['title'], run: (cwd, [unit, phase], title) => writePhase(cwd, unit, phase, title) },
-  create: { usage: CREATE_USAGE, arity: 2, mayTake: ['file', 'title', 'type'], run: (cwd, [unit, phase], file, title, type) => createTask(cwd, unit, phase, file, title, type) },
+  create: { usage: CREATE_USAGE, arity: 2, mayTake: ['file', 'title', 'type', 'why'], run: (cwd, [unit, phase], file, title, type, why) => createTask(cwd, unit, phase, file, title, type, why) },
   add: { usage: '<unit> <task> --file <path> --by <orchestrator|person>', arity: 2, flags: ['file', 'by'], run: (cwd, [unit, task], file, by) => addToTask(cwd, unit, task, file, by) },
   type: { usage: '<unit> <task> <type>', arity: 3, run: (cwd, [unit, task, type]) => typeTask(cwd, unit, task, type) },
   'close-plan': { usage: '<unit> --parent <tracker-id>', arity: 1, flags: ['parent'], run: (cwd, [unit], parent) => closePlan(cwd, unit, parent) },

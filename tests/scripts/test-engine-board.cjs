@@ -190,7 +190,7 @@ describe('the tabs (20.3)', () => {
   it('a one-line task done says when it finished among the unit\'s moments, as the newest commit on its branch was made', () => {
     enterBuild();
     ok(dir, ['task', 'done', UNIT, '1.1'], { env: env() });
-    ok(dir, ['task', 'create', UNIT, '1', '--title', 'Bold the total', '--type', 'feat'], { env: env() });
+    ok(dir, ['task', 'create', UNIT, '1', '--title', 'Bold the total', '--type', 'feat', '--why', 'one word, nothing for a reviewer to read'], { env: env() });
     ok(dir, ['task', 'start', UNIT, '1.4'], { env: env() });
     const built = branchWith(dir, 4, 'Bold the total', [['src/total.js', 'export const total = 1;\n']]);
     ok(dir, ['task', 'done', UNIT, '1.4'], { env: env() });

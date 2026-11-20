@@ -77,7 +77,7 @@ describe('pipeline simulation: review by judgment in the build', () => {
     loop.landedTask('1.1');
     sim.run(['task', 'close', WU, '1.2', '--reason', 'Folded into 1.3.']);
 
-    assert.strictEqual(sim.run(['task', 'create', WU, '1', '--title', 'Bold the entry\'s title', '--type', 'chore']).task, '1.3');
+    assert.strictEqual(sim.run(['task', 'create', WU, '1', '--title', 'Bold the entry\'s title', '--type', 'chore', '--why', 'one word, nothing for a reviewer to read']).task, '1.3');
     sim.refuses(['task', 'review', WU, '1.3', '--reviewers', '1', '--file', sim.write(`.ledger/.cache/${WU}/build/review.md`, 'A word bolded.\n')], /a one-line task, reviewed by none by its shape/);
     sim.run(['task', 'start', WU, '1.3']);
     sim.refuses(['brief', 'builder', WU, '1.3'], /task 1\.3 of ledgerly is a one-line task, the orchestrator's own work with no builder/);
@@ -91,7 +91,7 @@ describe('pipeline simulation: review by judgment in the build', () => {
     sim.refuses(['land', 'open', WU, '1.3'], /task 1\.3 of ledgerly is not built — a one-line task goes on once its branch holds a commit of its own made through the door since anything added to it/);
     loop.committed(own, '1.3', { 'src/show.css': '.title { font-weight: bold; color: red; }\n' }, `chore(${WU}): bold the entry's title in red`);
     const summary = sim.render(['task-landed', WU, '1.3'], { expect: 'content' });
-    assert.match(summary, /\n✓ Landed — no reviewer read it: a one-line task, the\n {2}orchestrator's own work · no calls went to the ledger\n\nWHAT CHANGED\n {2}1 file changed · \+1 −0\n/);
+    assert.match(summary, /\n✓ Landed — no reviewer read it: one word, nothing for a\n {2}reviewer to read · no calls went to the ledger\n\nWHAT CHANGED\n {2}1 file changed · \+1 −0\n/);
     assert.doesNotMatch(summary, /ITS TESTS PROVE|Bold the entry's title works/);
     loop.landedTask('1.3');
     assert.ok(!fs.existsSync(own), 'its layout taken apart as it is done');

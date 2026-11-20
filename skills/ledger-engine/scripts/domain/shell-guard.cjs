@@ -555,28 +555,17 @@ function stateOf(folder) {
 const ENDED = ['completed', 'cancelled'];
 
 /**
- * Whether the unit's work goes on: not completed or cancelled, or its
- * manifest unread, which the guard never takes for ended.
- * @param {string|null} state @param {string} unit
+ * Whether the unit's work goes on in the state: not completed or
+ * cancelled; `unread` where its manifest is not read — the conversation's
+ * own tasks never taken for ended, another's, which may be another
+ * project's, never taken for this one's.
+ * @param {string|null} state @param {string} unit @param {boolean} unread
  */
-function stillLive(state, unit) {
+function live(state, unit, unread) {
   try {
-    return state === null || !ENDED.includes(JSON.parse(fs.readFileSync(path.join(state, unit, 'manifest.json'), 'utf8')).status);
+    return state === null ? unread : !ENDED.includes(JSON.parse(fs.readFileSync(path.join(state, unit, 'manifest.json'), 'utf8')).status);
   } catch {
-    return true;
-  }
-}
-
-/**
- * Whether the project's state holds the unit, its work not ended: another
- * conversation's tasks may be another project's.
- * @param {string|null} state @param {string} unit
- */
-function liveHere(state, unit) {
-  try {
-    return state !== null && !ENDED.includes(JSON.parse(fs.readFileSync(path.join(state, unit, 'manifest.json'), 'utf8')).status);
-  } catch {
-    return false;
+    return unread;
   }
 }
 
@@ -611,12 +600,12 @@ function inFlightOf(cwd, { session_id: session }) {
     own: once(() => {
       const tasks = named === null ? [] : tasksInFlight(named);
       const state = tasks.length === 0 ? null : stateOf(cwd);
-      return tasks.filter(({ unit }) => stillLive(state, unit));
+      return tasks.filter(({ unit }) => live(state, unit, true));
     }),
     others: once(() => {
       const tasks = otherConversations(named === null ? '' : safeId(named)).flatMap(tasksInFlight);
       const state = tasks.length === 0 ? null : stateOf(cwd);
-      return tasks.filter(({ unit }) => liveHere(state, unit));
+      return tasks.filter(({ unit }) => live(state, unit, false));
     }),
   };
 }

@@ -95,7 +95,7 @@ describe('the gate after a task, in step (12.14.3, 12.12.7, 3.3.8, 13.4.7)', () 
   });
 
   it('13.3.4: a one-line task has its gate with no account once it is built, its title and that no reviewer read it in the account\'s place, with its change; a Comment takes it off its gate until a commit made since', () => {
-    ok(dir, ['task', 'create', UNIT, '1', '--title', 'Bold the total', '--type', 'feat'], { env: env() });
+    ok(dir, ['task', 'create', UNIT, '1', '--title', 'Bold the total', '--type', 'feat', '--why', 'one word, nothing for a reviewer to read'], { env: env() });
     assert.match(refused(['step-gate', UNIT, '1.4']), /^render step-gate: task 1\.4 of pay is not built — a one-line task goes on once its branch holds a commit of its own/);
     branchWith(dir, 4, 'Bold the total', [['src/total.js', 'export const total = 1;\nexport const bold = 2;\n']]);
 
@@ -108,7 +108,7 @@ describe('the gate after a task, in step (12.14.3, 12.12.7, 3.3.8, 13.4.7)', () 
       'WHAT IT DOES',
       '  Bold the total',
       '',
-      '  No account, and no reviewer: a one-line task, the orchestrator\'s own work.',
+      '  No account, and no reviewer: one word, nothing for a reviewer to read.',
       '  1 file changed · +2 −0',
       '',
     ].join('\n'));
@@ -120,7 +120,7 @@ describe('the gate after a task, in step (12.14.3, 12.12.7, 3.3.8, 13.4.7)', () 
     fs.writeFileSync(path.join(dir, 'src/total.js'), 'export const total = 1;\nexport const bold = 3;\n');
     git(dir, ['commit', '-q', '-am', `feat(${UNIT}): red\n\nLedger-Task: ${UNIT}-1-4\nLedger-Additions: 1`]);
     git(dir, ['checkout', '-q', 'main']);
-    assert.match(screen(['step-gate', UNIT, '1.4']), /\n {2}No account, and no reviewer: a one-line task, the orchestrator's own work\.\n/, 'its gate again once a commit names the addition');
+    assert.match(screen(['step-gate', UNIT, '1.4']), /\n {2}No account, and no reviewer: one word, nothing for a reviewer to read\.\n/, 'its gate again once a commit names the addition');
   });
 
   it('is refused before the task\'s account is taken, once the task is done, and in auto — writing nothing', () => {

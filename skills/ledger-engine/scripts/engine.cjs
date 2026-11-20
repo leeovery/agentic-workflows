@@ -329,7 +329,7 @@ ${Object.values(MAP_USAGE).map((usage) => `  ${usage}`).join('\n')}
   experiment abandon <work-unit> <topic> <id> --reason <one line>
   task phase <work-unit> <N> --title <title>
   task create <work-unit> <N> --file <path>
-  task create <work-unit> <N> --title <line> --type <type>
+  task create <work-unit> <N> --title <line> --type <type> --why <reason>
   task add <work-unit> <task> --file <path> --by <orchestrator|person>
   task type <work-unit> <task> <type>
   task close-plan <work-unit> --parent <tracker-id>

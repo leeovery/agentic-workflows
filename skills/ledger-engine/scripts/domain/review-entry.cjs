@@ -45,7 +45,9 @@
 // as a reviewer's, so a return to the round briefs only the readers whose
 // reports are not; the fix phase a failing round's fixes are under way in —
 // the last round's while its fix tasks wait, else the round under review's,
-// where its fix tasks are written and a request met before them goes (P14);
+// where its fix tasks are written and a request met before them goes (P14),
+// and once a round ended the phase, the one after it, where a request met
+// before finish goes;
 // each task of the last round's fix phase not yet done, its findings'
 // fixes and any written there beyond them, and in step its fix phase
 // waiting at its merge's gate once they are (14.6.2); each builder's note
@@ -168,12 +170,13 @@ function readsLine(unit, { round, required, reads }, step) {
  * The fix phase a failing round's fixes are under way in (P14): the last
  * round's, while its fix tasks wait; else the round under review's, where
  * its fix tasks are written, and where a request met before them goes;
- * none once the review phase has ended.
- * @param {Record<string, any>} manifest @param {ReviewStanding} standing @returns {string|null}
+ * once a round ended the review phase, the one after it, where a request
+ * met before finish goes.
+ * @param {Record<string, any>} manifest @param {ReviewStanding} standing @returns {string}
  */
 function fixPhaseWords(manifest, { rounds, round, ended, waiting }) {
   if (waiting.length > 0) return `phase ${fixPhase(manifest, rounds.length)}, where round ${rounds.length}'s fix tasks are built`;
-  if (ended) return null;
+  if (ended) return `phase ${fixPhase(manifest, round)}, where a request met before finish goes`;
   return `phase ${fixPhase(manifest, round)}, where round ${round}'s fix tasks are written`;
 }
 
@@ -184,13 +187,12 @@ function areaWords(unit, manifest, { name, number, title }) {
 
 /** Where the review phase stands, a line each: the round, the areas, the reads, the reports in, the fix phase, the fix tasks waiting and, in step, their phase's merge. @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {ReviewStanding} standing @returns {Line[]} */
 function standingLines(cwd, unit, manifest, standing) {
-  const fixes = fixPhaseWords(manifest, standing);
   return [
     ['round', roundWords(unit, standing)],
     ...standing.areas.map((area) => /** @type {Line} */ (['area', areaWords(unit, manifest, area)])),
     ...(standing.ended ? [] : [/** @type {Line} */ (['reads', readsLine(unit, standing, manifest.build?.position === 'step')])]),
     ...reportsIn(cwd, unit, standing).map((file) => /** @type {Line} */ (['report in', file])),
-    ...(fixes === null ? [] : [/** @type {Line} */ (['fix phase', fixes])]),
+    ['fix phase', fixPhaseWords(manifest, standing)],
     ...standing.waiting.map((fix) => /** @type {Line} */ (['fix task waiting', fix])),
     ...(standing.merging === null ? [] : [/** @type {Line} */ (['merge waiting', mergingWords(unit, standing.merging)])]),
     ...notesLines(cwd, unit, standing),

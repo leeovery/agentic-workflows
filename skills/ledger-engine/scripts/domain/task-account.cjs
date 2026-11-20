@@ -438,7 +438,7 @@ function takeAccount(cwd, unit, given) {
   const said = 'task account';
   const refuse = refuserFor(said);
   const none = refusing(said, () => reviewedNone(cwd, parseShownTask(unit, given)));
-  if (none !== null) refuse(`task ${given} of ${unit} is ${none}: it lands with no account taken`);
+  if (none !== null) refuse(`task ${given} of ${unit} is a one-line task: it lands with no account taken`);
   const { ref, task, rounds, last } = reviewedTask(cwd, unit, given, said, 'its account is taken as it lands, before task done');
   refuseParked(cwd, ref, said);
   if (!pairPassed(last)) {

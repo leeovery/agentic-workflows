@@ -159,7 +159,7 @@ describe('commit --task: the task in flight (6.S8)', () => {
 
     assert.strictEqual(
       refusedUncommitted(dir, commitArgs(), as(ELSEWHERE)),
-      'commit --task: task 1.1 of pay is closed, and a task ended takes no more work — make it a task of its own with `engine task create pay 1 --file <task.md>`, or, something small, a one-line task with `engine task create pay 1 --title <line> --type <type>`',
+      'commit --task: task 1.1 of pay is closed, and a task ended takes no more work — make it a task of its own with `engine task create pay 1 --file <task.md>`, or, something small, a one-line task with `engine task create pay 1 --title <line> --type <type> --why <reason>`',
     );
   });
 

@@ -299,7 +299,7 @@ describe('the answer: where the build stands, and what to read beside the ledger
   });
 
   it('13.3.4: a one-line task goes by whether it is built — the orchestrator\'s own to make in its worktree until its branch holds a commit of its own made since anything added to it, then its landing', () => {
-    ok(dir, ['task', 'create', UNIT, '1', '--title', 'Bold the size', '--type', 'chore']);
+    ok(dir, ['task', 'create', UNIT, '1', '--title', 'Bold the size', '--type', 'chore', '--why', 'one word, nothing for a reviewer to read']);
     ok(dir, ['task', 'start', UNIT, '1.4'], { env: env() });
     /** Task 1.4's line, the entry's. */
     const own = () => enter([UNIT]).sections.split('\n').find((line) => line.startsWith('in flight: task 1.4'));

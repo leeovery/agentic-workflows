@@ -233,7 +233,7 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
 
   it('13.3.4: a one-line fix is done with no round and no account, and the close takes it, said as not reviewed with why, under a mark of its own', () => {
     dir = world();
-    run(['task', 'create', UNIT, '1', '--title', DOCS, '--type', 'fix']);
+    run(['task', 'create', UNIT, '1', '--title', DOCS, '--type', 'fix', '--why', 'one word, nothing for a reviewer to read']);
     run(['task', 'start', UNIT, '1.3']);
     createFile(dir, 'docs/flag.md', '--colour\n');
     run(['commit', '--paths', 'docs/flag.md', '--task', UNIT, '1.3', '-m', `fix(${UNIT}): spell the docs --colour`]);
@@ -242,7 +242,7 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
     run(['quick-fix', 'record', UNIT, '1.3', '--file', recordFile(dir, 3, RECORDS[1])]);
     closeable();
 
-    assert.match(sectionOf(screen(), 'DISPLAY: finish'), new RegExp(`\\nREVIEWED\\n {2}├─ ✓ 1\\.1 ${FLAG} · passed in round 1\\n {2}├─ ✓ 1\\.2 ${HELP} · passed in round 1\\n {2}└─ ○ 1\\.3 ${DOCS} · not reviewed: a one-line\\n {5}task, the orchestrator's own work\\n\\n`));
+    assert.match(sectionOf(screen(), 'DISPLAY: finish'), new RegExp(`\\nREVIEWED\\n {2}├─ ✓ 1\\.1 ${FLAG} · passed in round 1\\n {2}├─ ✓ 1\\.2 ${HELP} · passed in round 1\\n {2}└─ ○ 1\\.3 ${DOCS} · not reviewed: one word,\\n {5}nothing for a reviewer to read\\n\\n`));
   });
 
   it('19.5.25: refuses while a question asked in its conversation stands open, after a /clear as before it, naming it and the raise that asks it again — its checklist\'s questions-answered held open over it, naming the same', async () => {

@@ -167,7 +167,7 @@ function refuseEnded(cwd, ref, manifest) {
   if (task === undefined || !ENDED.includes(task.status)) return;
   const fix = quickFixBuild(manifest) && ref.phase === FIXES_PHASE.number;
   const next = fix ? tasks.find((held) => held.ref.n > ref.n && !ENDED.includes(held.status)) : undefined;
-  const own = `make it a task of its own with \`engine task create ${ref.unit} ${ref.phase} --file <task.md>\`, or, something small, a one-line task with \`engine task create ${ref.unit} ${ref.phase} --title <line> --type <type>\``;
+  const own = `make it a task of its own with \`engine task create ${ref.unit} ${ref.phase} --file <task.md>\`, or, something small, a one-line task with \`engine task create ${ref.unit} ${ref.phase} --title <line> --type <type> --why <reason>\``;
   const way = next === undefined ? own : `commit it under the fix it is for — start the next with ${startCall(ref.unit, shownTask(next.ref))} — or ${own}`;
   throw new Error(`commit --task: ${taskName(ref)} is ${task.status}, and a task ended takes no more work — ${way}`);
 }

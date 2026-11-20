@@ -8,7 +8,8 @@
 // surface at round 1, then those `review reads` named, from the areas whose
 // findings made fix tasks (14.3.3) — each of the round's reports in and
 // reading, so a return briefs only the rest — the fix phase a round's fix
-// tasks are written or built in, numbered from the cut (P14), the fix tasks
+// tasks are written or built in, numbered from the cut (P14) — once a round
+// ended the review phase, the one after it, where a request goes — the fix tasks
 // waited on, none closed, and in step their phase's merge at its gate
 // (14.6.2), each round's report, the spec, the record and the build's log;
 // once a round ends the review phase, how it ended and what is next; and the
@@ -53,6 +54,9 @@ const reportLine = (round) => `round report: ${statePath(dir, `${UNIT}/review/ro
 
 /** The fix phase line: the phase a round's fix tasks are `written` or `built` in. @param {number} phase @param {number} round @param {'written'|'built'} how */
 const fixPhaseLine = (phase, round, how) => `fix phase: phase ${phase}, where round ${round}'s fix tasks are ${how}`;
+
+/** The fix phase line once a round ended the review phase: where a request met before finish goes. @param {number} phase */
+const requestPhaseLine = (phase) => `fix phase: phase ${phase}, where a request met before finish goes`;
 
 /** The reads line while round 2's are not yet named. */
 const UNNAMED = `reads: not yet named — once round 1's fix tasks are done, review reads ${UNIT} names them from what those changed, among them 1-cards`;
@@ -127,10 +131,10 @@ describe('the answer: the round under review, the spec\'s areas, and what the ro
     assert.strictEqual(enter().sections, data(['round: round 2', ...AREA_LINES, unnamed, fixPhaseLine(4, 2, 'written'), BASE_LINE, reportLine(1), ...readsAfter()]));
   });
 
-  it('once a round passes with no fix task, the review phase is over, finish next, and nothing is read', () => {
+  it('once a round passes with no fix task, the review phase is over, finish next, and nothing is read — the fix phase after it named, where a request met before finish goes', () => {
     reviewPassed();
 
-    assert.strictEqual(enter().sections, data(['round: the review phase passed in round 1 — finish is next', ...AREA_LINES, BASE_LINE, reportLine(1), ...readsAfter()]));
+    assert.strictEqual(enter().sections, data(['round: the review phase passed in round 1 — finish is next', ...AREA_LINES, requestPhaseLine(3), BASE_LINE, reportLine(1), ...readsAfter()]));
   });
 
   it('13.4.4: a round passing with nits fixed in its fix phase ends the review phase once their fix tasks are done, no area read again for them', () => {
@@ -147,7 +151,7 @@ describe('the answer: the round under review, the spec\'s areas, and what the ro
     assert.strictEqual(building, data([
       'round: the review phase passed in round 1 — its fix tasks are built, then finish', ...AREA_LINES, fixPhaseLine(3, 1, 'built'), 'fix task waiting: 3.1 not started', BASE_LINE, reportLine(1), ...readsAfter(),
     ]));
-    assert.strictEqual(enter().sections, data(['round: the review phase passed in round 1 — finish is next', ...AREA_LINES, BASE_LINE, reportLine(1), ...readsAfter()]));
+    assert.strictEqual(enter().sections, data(['round: the review phase passed in round 1 — finish is next', ...AREA_LINES, requestPhaseLine(3), BASE_LINE, reportLine(1), ...readsAfter()]));
   });
 });
 

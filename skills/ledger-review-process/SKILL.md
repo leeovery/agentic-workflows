@@ -55,7 +55,7 @@ Each move once the one before it holds:
    - Each `builder note` the entry names is an item of the round too, `notes#{k}`, note {k} of the `notes` file — a note a fix task's builder left — answered as a report's note is; a finding answering those alone is of the area `notes`.
 
    Each file-or-drop call out of scope, and each serious finding or bug dropped in scope, is your call on the ledger with its reason. A finding filed goes to the inbox once its call is in.
-3. **The fix tasks.** A round's fix tasks are one more phase of the build, its own: phase {N}, as the entry's `fix phase` line names it. Write the phase, where nothing raised during the round wrote it, then each fix as a task, findings one change fixes sharing it: its type `fix`, its acceptance scenario the finding's user scenario, its spec reference the area — a quick-fix's, `none`.
+3. **The fix tasks.** A round's fix tasks are one more phase of the build, its own: phase {N}, as the entry's `fix phase` line names it. Write the phase, unless a request met during the round wrote it already, then each fix as a task, findings one change fixes sharing it: its type `fix`, its acceptance scenario the finding's user scenario, its spec reference the area — a quick-fix's, `none`.
 4. **The record.** Write the round to `.ledger/.cache/{work_unit}/review/round.json` and record it, `review round {work_unit} --file .ledger/.cache/{work_unit}/review/round.json`. A refusal names every fault. A report missing or not reading goes back to its reader: brief it again, and never edit a reader's report. A tree changed is **The Working Tree**. Put every other fault right, and record the round again.
 5. **The report.** Draw it:
 

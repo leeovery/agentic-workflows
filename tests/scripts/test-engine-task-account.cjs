@@ -389,7 +389,7 @@ describe('task review: the orchestrator\'s choice of a task\'s reviewers (13.3.4
   });
 
   it('a one-line task is built by its branch: a commit of its own through the door, never a merge — until then not passed, and its done refused', () => {
-    ok(dir, ['task', 'create', UNIT, '1', '--title', 'Bold the total', '--type', 'chore']);
+    ok(dir, ['task', 'create', UNIT, '1', '--title', 'Bold the total', '--type', 'chore', '--why', 'one word, nothing for a reviewer to read']);
     ok(dir, ['task', 'start', UNIT, '1.3'], { env: SESSION });
     const T13 = { unit: UNIT, phase: 1, n: 3 };
     git(dir, ['checkout', '-q', '-b', taskBranch(T13, 'chore', 'Bold the total'), 'main']);
@@ -414,15 +414,16 @@ describe('task review: the orchestrator\'s choice of a task\'s reviewers (13.3.4
     assert.strictEqual(roundUnderReview(dir, T11), 1, 'one report of two leaves the round under review');
   });
 
-  it('a one-line task, its title and type alone, is the orchestrator\'s own work, reviewed by none by its shape: its record made with it, and its reviewers never chosen nor read', () => {
-    const created = ok(dir, ['task', 'create', UNIT, '1', '--title', 'Bold the total', '--type', 'chore']);
+  it('a one-line task, its title and type alone, is the orchestrator\'s own work, reviewed by none by its shape: its record made with it, saying the orchestrator\'s own reason, and its reviewers never chosen nor read', () => {
+    const created = ok(dir, ['task', 'create', UNIT, '1', '--title', 'Bold the total', '--type', 'chore', '--why', ' a word bolded, nothing to read ']);
     const T13 = { unit: UNIT, phase: 1, n: 3 };
 
     assert.strictEqual(created.task, '1.3');
     assert.strictEqual(ok(dir, ['task', 'show', UNIT, '1.3']).text, '# Bold the total\n\n## Type\n\nchore');
     assert.ok(touched(statePath(dir), 'HEAD').includes('A\tpay/build/tasks/1.3/review.json'), 'its record committed with it');
-    assert.throws(() => roundUnderReview(dir, T13), { message: 'task 1.3 of pay is a one-line task, the orchestrator\'s own work: no reviewer reads it' });
-    assert.strictEqual(refusedPristine(dir, ['task', 'account', UNIT, '1.3']).error, 'task account: task 1.3 of pay is a one-line task, the orchestrator\'s own work: it lands with no account taken');
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(path.join(statePath(dir), UNIT, 'build/tasks/1.3/review.json'), 'utf8')), { reviewers: 0, why: 'a word bolded, nothing to read' });
+    assert.throws(() => roundUnderReview(dir, T13), { message: 'task 1.3 of pay is a one-line task: no reviewer reads it' });
+    assert.strictEqual(refusedPristine(dir, ['task', 'account', UNIT, '1.3']).error, 'task account: task 1.3 of pay is a one-line task: it lands with no account taken');
     for (const count of ['1', '2']) assert.strictEqual(refusedReview(['1.3', '--reviewers', count, '--file', fileOf('why.md', 'Bold.\n')]), 'task review: task 1.3 of pay is a one-line task, reviewed by none by its shape — your own work, with no reviewer to choose');
   });
 
@@ -432,16 +433,17 @@ describe('task review: the orchestrator\'s choice of a task\'s reviewers (13.3.4
     const landed = { phases: [{ name: 'Cards', goal: 'Cards are taken.', scenarios: ['1.S1'], sections: ['1'], relies_on: [], built: true }] };
     fs.writeFileSync(file, JSON.stringify({ ...manifest, cut: landed }));
 
-    assert.strictEqual(refusedPristine(dir, ['task', 'create', UNIT, '1', '--title', 'Bold the date', '--type', 'chore']).error, 'phase 1 of pay\'s stack has landed — a task goes into a phase still being built, or the review\'s fix phase');
+    assert.strictEqual(refusedPristine(dir, ['task', 'create', UNIT, '1', '--title', 'Bold the date', '--type', 'chore', '--why', 'one word, nothing for a reviewer to read']).error, 'phase 1 of pay\'s stack has landed — a task goes into a phase still being built, or the review\'s fix phase');
   });
 
-  it('task create takes a task file or a one-line task, never both nor half of one: a title of one line, a type of the kinds', () => {
+  it('task create takes a task file or a one-line task, never both nor part of one: a title of one line, a type of the kinds, and the orchestrator\'s reason no reviewer reads it', () => {
     const file = fileOf('task.md', taskText('Refund a card', ['A refund lands.']));
-    const usage = 'Usage: engine task create <unit> <N> --file <path> | <unit> <N> --title <line> --type <type>';
-    for (const args of [['--file', file, '--title', 'Bold', '--type', 'chore'], ['--title', 'Bold'], ['--type', 'chore'], []]) {
+    const usage = 'Usage: engine task create <unit> <N> --file <path> | <unit> <N> --title <line> --type <type> --why <reason>';
+    const parts = [['--file', file, '--title', 'Bold', '--type', 'chore', '--why', 'Bold.'], ['--file', file, '--why', 'Bold.'], ['--title', 'Bold', '--type', 'chore'], ['--title', 'Bold', '--why', 'Bold.'], ['--title', 'Bold'], ['--type', 'chore'], ['--title', 'Bold', '--type', 'chore', '--why', ' '], []];
+    for (const args of parts) {
       assert.strictEqual(refusedPristine(dir, ['task', 'create', UNIT, '1', ...args]).error, usage, args.join(' '));
     }
-    assert.strictEqual(refusedPristine(dir, ['task', 'create', UNIT, '1', '--title', 'Bold', '--type', 'polish']).error, 'the type "polish" is not one of feat, fix, refactor, perf, test, docs, build, ci, chore');
+    assert.strictEqual(refusedPristine(dir, ['task', 'create', UNIT, '1', '--title', 'Bold', '--type', 'polish', '--why', 'one word, nothing for a reviewer to read']).error, 'the type "polish" is not one of feat, fix, refactor, perf, test, docs, build, ci, chore');
   });
 
   it('refused, writing and committing nothing: a task whose first round is briefed or reported, a count beyond the kernel\'s or no count, no why, a task ended, and arguments of another shape', () => {

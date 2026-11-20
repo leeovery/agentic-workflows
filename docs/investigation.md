@@ -20,7 +20,7 @@ Claude traces from where you meet the bug back to its source: the data's path, t
 
 What the code or a run shows lands on the ledger as a finding saying how it is known: read in the code, documented with its source, or exploratory, with the command and its result. A check run to test a hypothesis is logged with what it showed. Each hypothesis's state follows the evidence: confirmed, or ruled out, a dead end kept and never deleted, or intended, where you say the behaviour is meant. A new suspect joins as a hypothesis of its own.
 
-Whenever hypotheses resolve, a **check-in** shows what was resolved and what is checked next, and the trace moves on without waiting for you. Between check-ins, a line or two on what just flipped keeps you with the hunt without stopping it.
+Whenever hypotheses resolve, a **check-in** shows what was resolved and what is checked next, and the trace moves on without waiting for you.
 
 ## What only you can say
 

@@ -729,7 +729,7 @@ function unbuiltRefusal(cwd, ref, round) {
  * @returns {number}
  */
 function roundUnderReview(cwd, ref, letters = lettersOf(cwd, ref)) {
-  if (letters.length === 0) throw new Error(`${taskName(ref)} is ${reviewedNone(cwd, ref)}: no reviewer reads it`);
+  if (letters.length === 0) throw new Error(`${taskName(ref)} is a one-line task: no reviewer reads it`);
   const held = heldFiles(cwd, ref);
   const last = lastReported(held);
   if (last === 0) return 1;

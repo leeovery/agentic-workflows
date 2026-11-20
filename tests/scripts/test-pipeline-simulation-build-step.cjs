@@ -125,7 +125,7 @@ describe('pipeline simulation: the build in step', () => {
     for (const letter of ['a', 'b']) landed(placeIn(sim, loop.brief(['phase-review', WU, '1', '--letter', letter]), 'Where your report goes'), PASSED);
     sim.render(['phase-merge-gate', WU, '1'], { expect: 'content' });
     sim.run(answerGate(sim, 'phase merge', '--pick', 'y').next.argv);
-    sim.refuses(['task', 'create', WU, '1', '--title', 'Bold the title', '--type', 'fix'], /phase 1 of ledger's stack has landed/);
+    sim.refuses(['task', 'create', WU, '1', '--title', 'Bold the title', '--type', 'fix', '--why', 'one word, nothing for a reviewer to read'], /phase 1 of ledger's stack has landed/);
     sim.run(['checklist', 'close', 'phase-close', WU, '1']);
     assert.strictEqual(sim.run(['enter', 'review', WU]).entered, true, 'every phase merged, the review phase is entered');
   });
