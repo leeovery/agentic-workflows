@@ -15,12 +15,16 @@
 // names who wrote last.
 //
 // What it reads, as it found the home before writing anything:
-//   - the product's: its two latest logs in full, the roadmap, the product
+//   - the product's: its two latest logs holding talk in full — a log a
+//     conversation opened and said nothing in never pushes the talk out of
+//     what a return reads — the roadmap, the product
 //     record with the code's findings, and whether the baseline's research
 //     is owed (8.2.10, 8.12.13) — where it starts work from seeds, the seeds
-//     in place of the logs, and only those (18.8.15, seeds.cjs);
-//   - an epic's: its older logs by their closing lines, its two latest in
-//     full, the pointers its first log keeps into the product's sessions
+//     in place of the logs, and only those (18.8.15, seeds.cjs) — and where
+//     this conversation writes start this work's payload, a file of its own
+//     (`conversationFile`, start-this-work.cjs);
+//   - an epic's: its older logs by their closing lines, its two latest
+//     holding talk in full, the pointers its first log keeps into the product's sessions
 //     (8.14.3), its map, and the product record with what discovery found of
 //     the unit (8.6.7) — and, from seeds, each roadmap idea to take in
 //     (18.8.4);
@@ -28,6 +32,20 @@
 //     that conversation's transcript, to catch the log up from its last write
 //     onward, or one line that the transcript is gone (8.14.9) — none where
 //     the log ends on a level move's pointer, its talk carried on elsewhere.
+//
+// The type call (`--type-call`, at the product alone): a piece of work
+// brought to Start — in the person's words, from the start menu, or from
+// what triage or the roadmap picked — takes its type call in no session of
+// the product's conversation (8.2.9). Nothing is asked first, started,
+// written or recorded: the conversation holds no place, so another window
+// talking product is never asked about nor its session closed, and the
+// call answers only what the type call reads — the roadmap, the live inbox,
+// and the seeds where the work starts from any — and where the payload is
+// written.
+//
+// The start menu's count of the product's conversation is of its logs
+// holding talk too (`productConversation`, 18.2.13), with the date of the
+// latest conversation they name.
 //
 // A level move (`--move`) carries the conversation on from where it is
 // working — the product's conversation, an epic's discovery, or a topic's
@@ -81,6 +99,22 @@ const homeTitle = (unit) => (unit === PRODUCT ? 'the product\'s conversation' : 
 /** A home's log, state-relative. @param {string} unit @param {string} session */
 const logAt = (unit, session) => `${sessionLogsAt(unit)}/session-${session}.md`;
 
+/**
+ * A file of the calling conversation's own in the product's discovery cache:
+ * `{stem}-{session}.json`, or `{stem}.json` where no session is handed.
+ * @param {string} cwd @param {string} stem
+ */
+function conversationFile(cwd, stem) {
+  const sessionId = handedSession();
+  return statePath(cwd, '.cache', PRODUCT, 'discovery', PRODUCT, sessionId === null ? `${stem}.json` : `${stem}-${sessionId}.json`);
+}
+
+/** Where this conversation writes start this work's payload, which its yes removes. @param {string} cwd */
+const payloadFile = (cwd) => conversationFile(cwd, 'start-this-work-payload');
+
+/** The DATA's line naming this conversation's payload. @param {string} cwd @returns {Line} */
+const payloadLine = (cwd) => as('payload')(payloadFile(cwd));
+
 /** A home's logs on disk, in order, as absolute paths. @param {string} cwd @param {string} unit */
 function homeLogs(cwd, unit) {
   const dir = statePath(cwd, sessionLogsAt(unit));
@@ -109,6 +143,21 @@ function writtenLines(file) {
  */
 function closingLine(file) {
   return beyondLists(linesOf(file)).map((line) => line.trim()).filter((line) => line !== '' && !isHeader(line) && !line.startsWith(POINTER)).at(-1) ?? null;
+}
+
+/** A home's logs holding talk, in order: each with a written line of its own beyond the lines the engine keeps. @param {string} cwd @param {string} unit */
+const talkLogs = (cwd, unit) => homeLogs(cwd, unit).filter((log) => closingLine(log) !== null);
+
+/**
+ * The product's conversation as the start menu names it (the header's): how
+ * many sessions holding talk it has had, and the date of the latest
+ * conversation they name — null while none names one.
+ * @param {string} cwd @returns {{sessions: number, last: string|null}}
+ */
+function productConversation(cwd) {
+  const logs = talkLogs(cwd, PRODUCT);
+  const latest = logs.map((log) => namedConversations(log).at(-1)).filter((named) => named !== undefined).at(-1);
+  return { sessions: logs.length, last: latest?.date ?? null };
 }
 
 /**
@@ -164,25 +213,42 @@ function catchUp({ cwd, unit, started }) {
  */
 function productReads(at) {
   return [
-    ...(at.seeds === null ? homeLogs(at.cwd, PRODUCT).slice(-RECENT).map(as('session log')) : seedReads(at.cwd, PRODUCT, at.seeds)),
+    ...(at.seeds === null ? talkLogs(at.cwd, PRODUCT).slice(-RECENT).map(as('session log')) : seedReads(at.cwd, PRODUCT, at.seeds)),
     as('roadmap')(`\`${ENGINE_COMMAND} roadmap state\``),
     as('product')(`\`${productCall()}\``),
     as('research owed')(researchOwed(at.manifest) ? 'yes' : 'no'),
+    payloadLine(at.cwd),
     ...catchUp(at),
   ];
 }
 
 /** What an epic's discovery reads (8.6.7, 8.14.3), and each roadmap idea its seeds take in (18.8.4). @param {Entering} at @returns {Line[]} */
 function epicReads(at) {
-  const logs = homeLogs(at.cwd, at.unit);
+  const talk = talkLogs(at.cwd, at.unit);
   return [
-    ...logs.slice(0, -RECENT).map((log) => as('older log')(closedBy(log))),
-    ...logs.slice(-RECENT).map(as('session log')),
-    ...shapedBy(logs[0]).map(as('shaped by')),
+    ...talk.slice(0, -RECENT).map((log) => as('older log')(closedBy(log))),
+    ...talk.slice(-RECENT).map(as('session log')),
+    ...shapedBy(homeLogs(at.cwd, at.unit)[0]).map(as('shaped by')),
     as('map')(`\`${mapCall(at.unit)}\``),
     as('product')(`\`${productCall(at.unit)}\``),
     ...(at.seeds === null ? [] : seedReads(at.cwd, at.unit, at.seeds)),
     ...catchUp(at),
+  ];
+}
+
+/**
+ * What the type call reads (the header's): the seeds where the work starts
+ * from any, the roadmap and the live inbox — refused at an epic, whose
+ * discovery shapes work already started.
+ * @param {Standing} at @param {string|null} seeds @returns {Line[]}
+ */
+function typeCallReads({ cwd, unit }, seeds) {
+  if (unit !== PRODUCT) throw new Error(`the type call is the product's, for work not yet started — "${unit}" is started: enter discovery ${unit}`);
+  return [
+    ...(seeds === null ? [] : seedReads(cwd, PRODUCT, seeds)),
+    as('roadmap')(`\`${ENGINE_COMMAND} roadmap state\``),
+    as('inbox')(statePath(cwd, '.inbox')),
+    payloadLine(cwd),
   ];
 }
 
@@ -269,6 +335,7 @@ const DISCOVERY = Object.freeze({
   writesHeader: true,
   move: departure,
   seeds: ({ cwd, unit }, seeds) => { assertSeeds(cwd, unit, seeds); },
+  typeCall: typeCallReads,
 });
 
-module.exports = { DISCOVERY, SHAPED_BY };
+module.exports = { DISCOVERY, SHAPED_BY, productConversation, conversationFile, payloadFile };

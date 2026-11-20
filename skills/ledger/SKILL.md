@@ -6,7 +6,7 @@ allowed-tools: Bash(node .claude/skills/ledger-engine/scripts/engine.cjs *)
 
 ## Arguments
 
-- `$ARGUMENTS` — the person's words, whole: what they asked for in the conversation, or typed after the command. The bare command has none.
+- `$ARGUMENTS` — the person's words, whole: what they asked for in the conversation — the request itself, never the go-ahead that followed it — or typed after the command. The bare command has none.
 
 ## Instructions
 

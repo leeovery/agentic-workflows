@@ -4,10 +4,14 @@
 // Start this work (ledger-engine/scripts/domain/start-this-work.cjs): the
 // authority gate at the work-type commit — `render start-this-work` staging
 // Claude's payload and drawing the screen the spec draws, creating nothing
-// (8.S16), with no name question (8.S21); `start-this-work yes` creating the
-// unit from the staged copy as one transaction, its first log pointing into
-// the product's sessions (8.S64), the product's session closed, and what
-// comes next for each type (8.S47, 24.S1, 24.S2, 24.S15); and every refusal,
+// (8.S16), with no name question (8.S21), staged apart for each
+// conversation; `start-this-work yes` creating the unit from the staged copy
+// as one transaction, its first log pointing into the product's sessions
+// (8.S64), the product's session closed where the work leaves the
+// conversation's place there — never at a quick-fix's yes or a type call's,
+// nor while another live window holds the product's conversation — and what
+// comes next for each type (8.S47, 24.S1, 24.S2, 24.S15);
+// and every refusal,
 // at the screen and at a yes the project moved under, writing nothing —
 // a type it does not create, cross-cutting among them (8.S2, 19.S1), a
 // taken or numbered name (8.S57), a one-topic unit beside a waiting roadmap
@@ -28,12 +32,22 @@ const fs = require('fs');
 
 const { ok, output, refusedPristine, sectionOf, readManifest, readState, statePath, lastMessage, touched, head, layout, writeState } = require('./engine-harness.cjs');
 const { joinedTo } = require('./roadmap-world.cjs');
+const { withEnv } = require('./discovery-test-utils.cjs');
+const { readPosition } = require('../../skills/ledger-engine/scripts/domain/conversation.cjs');
+const { leavePosition } = require('../../skills/ledger-engine/scripts/domain/position.cjs');
 const { PRODUCT_LOG, IDEA, BUG, SESSION, useGatesWorld, gatesHelpers, failingWrites, manifestTemp } = require('./discovery-gates-world.cjs');
 
 const dir = useGatesWorld();
 const { scratch, payload, screen, answer, run } = gatesHelpers(dir);
 
-const STAGED = layout.cache('product', 'discovery', 'product', 'start-this-work.json');
+const STAGED = layout.cache('product', 'discovery', 'product', `start-this-work-${SESSION.CLAUDE_CODE_SESSION_ID}.json`);
+const PAYLOAD = layout.cache('product', 'discovery', 'product', `start-this-work-payload-${SESSION.CLAUDE_CODE_SESSION_ID}.json`);
+
+/** This conversation in the product's conversation, its place there, where it talks before a start. */
+const inTheProduct = () => ok(dir(), ['enter', 'discovery', 'product'], { env: SESSION });
+
+/** Another live window holding the product's conversation, as its entry beats there. */
+const peerInTheProduct = () => ok(dir(), ['presence', 'beat', 'product', 'discovery', 'product'], { env: { CLAUDE_CODE_SESSION_ID: 'other-window', CLAUDE_PID: String(process.ppid) } });
 
 /** Fumi, as the spec draws its start: an epic from the product's notes. */
 const FUMI = Object.freeze({
@@ -99,6 +113,7 @@ describe('start this work, the screen (8.8.2, 8.S16, 8.S21)', () => {
 
 describe('start this work, the yes (8.8.1, 8.14.3, 8.14.11)', () => {
   it('creates the epic in one commit — its seeds out of the inbox, its roadmap item joined, its first log pointing into the product\'s session, that session closed — and carries on into its discovery with no handoff (8.S16, 8.S64, 24.S15)', () => {
+    inTheProduct();
     const res = started({ ...FUMI, seeds: [statePath(dir(), IDEA)], roadmap: ['note-sync'] });
     assert.deepStrictEqual(res, {
       ok: true,
@@ -122,9 +137,57 @@ describe('start this work, the yes (8.8.1, 8.14.3, 8.14.11)', () => {
       `A\t${layout.manifest('fumi')}`,
       'A\tfumi/seeds/2026-06-01-smart-retry.md',
       `D\t${IDEA}`,
+      `M\t${PRODUCT_LOG}`,
       'M\tmanifest.json',
     ]);
     assert.ok(!fs.existsSync(statePath(dir(), STAGED)), 'the staged payload goes');
+  });
+
+  it('8.2.9: a type call\'s yes, the conversation in no place, takes no place in the product\'s sessions, leaves the product\'s open session to the conversation talking there, and enters the epic\'s discovery, having no place to move from', () => {
+    const { shaped_by: _shaped, ...called } = FUMI;
+    const res = started(called);
+    assert.deepStrictEqual([res.product_session_closed, readManifest(dir(), '.').product_session, readState(dir(), layout.session('fumi', '001')), res.next],
+      [null, '001', '', { kind: 'engine', argv: ['enter', 'discovery', 'fumi'] }]);
+    assert.ok(!touched(statePath(dir()), 'HEAD').some((line) => line.includes('.product/')), 'the product\'s sessions are not the yes\'s to commit');
+  });
+
+  it('8.14.11: a quick-fix started in the product\'s conversation never ends its session; a feature started there ends it as the work leaves the conversation', () => {
+    inTheProduct();
+    const { brief: _brief, ...quick } = oneTopic('quick-fix', 'typo-fix');
+    const fix = started(quick);
+    const leftOpen = readManifest(dir(), '.').product_session;
+    const feature = started(oneTopic('feature', 'saved-filters'));
+    assert.deepStrictEqual([fix.product_session_closed, leftOpen, feature.product_session_closed, readManifest(dir(), '.').product_session], [null, '001', '001', undefined]);
+  });
+
+  it('8.14.11: a feature started in the product\'s conversation leaves its session open while another live window holds that conversation', () => {
+    inTheProduct();
+    peerInTheProduct();
+    const res = started(oneTopic('feature', 'saved-filters'));
+    assert.deepStrictEqual([res.product_session_closed, readManifest(dir(), '.').product_session, res.next.kind], [null, '001', 'handoff']);
+  });
+
+  it('8.14.11: closes no session this conversation is not in — not one it ended, whose end dropped its place there, nor the next, which another window opened', () => {
+    inTheProduct();
+    ok(dir(), ['discovery-session', 'close', 'product', '-m', 'discovery(product): end session 001'], { env: SESSION });
+    const placed = withEnv(SESSION, () => readPosition(SESSION.CLAUDE_CODE_SESSION_ID));
+    ok(dir(), ['enter', 'discovery', 'product'], { env: { CLAUDE_CODE_SESSION_ID: 'other-window' } });
+    const res = started(oneTopic('feature', 'saved-filters'));
+    assert.deepStrictEqual([placed, res.product_session_closed, readManifest(dir(), '.').product_session], [null, null, '002']);
+  });
+
+  it('removes this conversation\'s payload with its staged copy', () => {
+    const file = writeState(dir(), PAYLOAD, JSON.stringify(oneTopic('feature', 'saved-filters')));
+    output(dir(), ['render', 'start-this-work', '--file', file], { env: SESSION });
+    run(answer('start this work', 'y'));
+    assert.deepStrictEqual([fs.existsSync(file), fs.existsSync(statePath(dir(), STAGED))], [false, false]);
+  });
+
+  it('stages each conversation\'s start apart: a start staged in another window is never the one this yes lands', () => {
+    screen(['start-this-work'], FUMI);
+    output(dir(), ['render', 'start-this-work', '--file', payload(oneTopic('bugfix', 'login-loop'))], { env: { CLAUDE_CODE_SESSION_ID: 'other-window' } });
+    assert.strictEqual(run(answer('start this work', 'y')).work_unit, 'fumi');
+    assert.ok(!fs.existsSync(statePath(dir(), 'login-loop')));
   });
 
   it('lands a feature\'s one topic with its brief, the draft consumed, and hands off into its discussion — carried by the mod where it runs, inline where it does not (8.7.7, 8.S47, 24.S1, 24.S2)', () => {
@@ -207,10 +270,18 @@ describe('start this work, refused (8.2.4, 8.8.18)', () => {
     assert.match(screen(['start-this-work'], { ...FUMI, name: 'atlas-offline' }), /^Atlas Offline \(epic\)$/m);
   });
 
-  it('refuses shaped_by naming no place in the product\'s sessions, or none at all', () => {
+  it('refuses shaped_by naming no place in the product\'s sessions, or, in the product\'s conversation, none at all', () => {
+    inTheProduct();
     assert.match(refusedStage({ ...FUMI, shaped_by: [] }), /^render start-this-work: shaped_by names at least one place in \.product\/sessions\/ — /);
     assert.match(refusedStage({ ...FUMI, shaped_by: ['atlas/discovery/session-001.md'] }), /^render start-this-work: shaped_by: "atlas\/discovery\/session-001\.md" is no place in the product's sessions — /);
     assert.strictEqual(refusedStage({ ...FUMI, shaped_by: ['.product/sessions/session-009.md#x'] }), 'render start-this-work: shaped_by: .product/sessions/session-009.md#x names no log on disk');
+  });
+
+  it('stages a type call\'s work with no shaped_by in a conversation whose talk the product\'s open log names, its place there left as a boot on the person\'s words leaves it', () => {
+    inTheProduct();
+    withEnv(SESSION, () => leavePosition(SESSION.CLAUDE_CODE_SESSION_ID));
+    const { shaped_by: _shaped, ...called } = FUMI;
+    assert.match(screen(['start-this-work'], called), /^Fumi \(epic\)$/m);
   });
 
   it('refuses a one-topic unit without its brief, and a brief for an epic or a quick-fix', () => {

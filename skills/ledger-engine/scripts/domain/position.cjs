@@ -52,6 +52,10 @@
 // conversation is at no place while its builders go on (conversation.cjs) —
 // until each task closes, the position going with the last, or a position
 // is recorded again, which carries them only to a place of the same unit.
+// A quick-fix closed or cancelled from inside its session is the exception:
+// the conversation carries on there, so it leaves the unit's place whole,
+// its tasks in flight with it, and no place left (`leaveUnit`,
+// topic-leave.cjs) — nothing holds a commit it makes afterwards.
 //
 // The engine is the file's one writer, and writes only for a conversation
 // that runs Ledger: recording a position marks the conversation first
@@ -466,6 +470,22 @@ function dropPosition(sessionId) {
   });
 }
 
+/**
+ * The conversation `sessionId` leaves the unit's place whole, where its
+ * position names it: the position gone with the unit's tasks in flight,
+ * and no place left (the header's).
+ * @param {string|null} sessionId @param {string} workUnit
+ */
+function leaveUnit(sessionId, workUnit) {
+  if (!sessionId) return;
+  underPositionLock(sessionId, (file) => {
+    if (storedPosition(sessionId)?.name !== workUnit) return false;
+    fs.rmSync(file, { force: true });
+    fs.rmSync(leftPath(sessionId), { force: true });
+    return true;
+  });
+}
+
 // ---------------------------------------------------------------------------
 // What a conversation re-reads to carry on from its position: the skill that
 // runs the work there, then the topic's documents. A linear unit's place
@@ -839,6 +859,6 @@ function positionSections(reads) {
 }
 
 module.exports = {
-  readPosition, assertPlace, isPlace, recordPosition, recordTask, recordTasksAt, recordBuilder, recordWorktree, recordStop, clearStop, clearTask, clearTasks, leavePosition, dropPosition,
+  readPosition, assertPlace, isPlace, recordPosition, recordTask, recordTasksAt, recordBuilder, recordWorktree, recordStop, clearStop, clearTask, clearTasks, leavePosition, dropPosition, leaveUnit,
   placeLine, skillAt, positionReads, positionSections,
 };

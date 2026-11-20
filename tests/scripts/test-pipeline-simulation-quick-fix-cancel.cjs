@@ -6,9 +6,16 @@
 // committed; the cancel through its confirm from inside the quick-fix's
 // session — what the holder had not committed set aside, the checkout
 // taken back, the pull request closed and the branch kept — and its
-// receipt; then reactivated, the held fix started again, its work put
-// back, built and done, and the close landing both. The cancel's own rules
-// are test-engine-landing-conformance-quick-fix-nested-cancel.cjs's.
+// receipt, carrying on in the conversation, as its close does; then
+// reactivated, the held fix started again, its work put back, built and
+// done, and the close landing both. The cancel's own rules are
+// test-engine-landing-conformance-quick-fix-nested-cancel.cjs's. And three
+// quick-fixes started from the product's talk in one conversation — one
+// closed, one cancelled, one moved — each leaving the product's session
+// open: the close and the cancel carry on in the conversation, whose talk
+// of the product goes on in that session, the move hands off into the
+// feature's discussion as any start does, and a return in a new window
+// reads the one log (8.14.11).
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -20,15 +27,19 @@ require('./hermetic-env.cjs');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
-const { git } = require('./engine-harness.cjs');
-const { Sim, answerGate, startUnit, writeTasks, finishClosed, fixBuilt } = require('./pipeline-world.cjs');
+const fs = require('fs');
+const path = require('path');
+const { git, statePath } = require('./engine-harness.cjs');
+const { Sim, answerGate, startUnit, startThisWork, startBare, startPick, writeTasks, finishClosed, fixBuilt } = require('./pipeline-world.cjs');
+
+const CONTINUE = Object.freeze({ kind: 'continue' });
 
 describe('pipeline simulation: quick-fix cancelled mid-fix', () => {
   let sim;
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('quick-fix: cancelled with a fix done and the next holding work not committed — the work set aside, the checkout taken back, the receipt naming both; reactivated, the work put back, the fix built, and the close landing both', () => {
+  it('quick-fix: cancelled with a fix done and the next holding work not committed — the work set aside, the checkout taken back, the receipt naming both, and on in the conversation; reactivated, the work put back, the fix built, and the close landing both', () => {
     const wu = 'typo';
     startUnit(sim, 'quick-fix', wu, 'The --color flag is spelt --colour');
     sim.run(['enter', 'implementation', wu]);
@@ -57,7 +68,56 @@ describe('pipeline simulation: quick-fix cancelled mid-fix', () => {
     sim.render(['finish', wu], { expect: 'content' });
     const yes = sim.run(answerGate(sim, 'finish', '--pick', 'y').next.argv);
 
-    assert.deepStrictEqual([cancelled.checkout, left, started.put_back], ['main', 'main', ['src/help.js']]);
+    assert.deepStrictEqual([cancelled.checkout, cancelled.next, left, started.put_back], ['main', CONTINUE, 'main', ['src/help.js']]);
     assert.deepStrictEqual([yes.landed.map((/** @type {{merged: string[]}} */ { merged }) => merged), sim.manifest(wu).status], [[[flag, help]], 'completed']);
+  });
+
+  it('three quick-fixes from the product\'s talk in one conversation — closed, cancelled, moved — each leave its session open, the close and the cancel carrying on with the talk in it and the move handing off into its discussion, so the talk keeps one log, and a return in a new window reads the pricing talk', () => {
+    sim.handOver();
+    sim.run(['enter', 'discovery', 'product']);
+    const log = /** @type {string} */ (sim.sections.match(/^log: (.*)$/m)?.[1]);
+    const rel = path.relative(statePath(sim.dir), log);
+    fs.appendFileSync(log, '\n## Pricing {#pricing}\n\nThree tiers, the middle one leading.\n');
+    /** A quick-fix the talk settled, started in this conversation and carried into its fixes: the session its yes closed. @param {string} wu */
+    const fromTheTalk = (wu) => {
+      fs.appendFileSync(log, `\n## ${wu} {#${wu}}\n\nA settled fix.\n`);
+      const started = startThisWork(sim, { type: 'quick-fix', name: wu, description: `Fix ${wu}.`, reason: 'Settled and small.', shaped_by: [`${rel}#${wu}`] });
+      sim.run(['enter', 'implementation', wu]);
+      return started.product_session_closed;
+    };
+    /** The conversation carried on by `next`, then talking product again: whether that started a session. @param {object} next */
+    const back = (next) => {
+      assert.deepStrictEqual(next, CONTINUE);
+      return sim.run(['enter', 'discovery', 'product']).started;
+    };
+
+    const closed = [fromTheTalk('typo')];
+    const [fix] = writeTasks(sim, 'typo', 1, [{ title: 'Spell the flag --colour', type: 'fix', reference: 'none', scenarios: ['1.S1 Given the flag, when it is passed, then it reads --colour.'] }]);
+    sim.run(['task', 'start', 'typo', fix]);
+    fixBuilt(sim, 'typo', fix, ['src/flag.js'], { record: 'The flag.' });
+    sim.write('.ledger/typo/build/log.md', '# The fixes\n');
+    finishClosed(sim, 'typo');
+    sim.render(['finish', 'typo'], { expect: 'content' });
+    const started = [back(sim.run(answerGate(sim, 'finish', '--pick', 'y').next.argv).next)];
+
+    closed.push(fromTheTalk('drop-me'));
+    sim.render(['cancel-gate', 'drop-me'], { expect: 'content' });
+    started.push(back(sim.run(answerGate(sim, 'cancel gate', '--pick', 'y').next.argv).next));
+
+    closed.push(fromTheTalk('grows'));
+    const brief = sim.write('.ledger/.cache/grows/build/brief.md', '# grows\n\nWhat the fix showed.\n');
+    sim.run(['workunit', 'move', 'grows', '--to', 'feature', '--file', sim.write('.ledger/.cache/grows/build/move.json', { description: 'Grows, as a feature.', reason: 'It needs a decision.', brief })]);
+    const moved = sim.run(answerGate(sim, 'start this work', '--pick', 'y').next.argv).next;
+    const open = sim.manifest('.').product_session;
+
+    sim.run(['discovery-session', 'close', 'product', '-m', 'discovery(product): end session 001']);
+    startBare(sim);
+    startPick(sim, 'p');
+    sim.handOver();
+    sim.run(['enter', 'discovery', 'product']);
+    const read = [...sim.sections.matchAll(/^session log: (.*)$/gm)].map((m) => m[1]);
+
+    assert.deepStrictEqual([closed, started, moved, open, read], [[null, null, null], [false, false], { kind: 'handoff', skill: 'ledger-discussion-process', args: ['feature', 'grows'] }, '001', [log]]);
+    assert.match(fs.readFileSync(read[0], 'utf8'), /Three tiers, the middle one leading\./);
   });
 });

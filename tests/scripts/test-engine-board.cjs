@@ -59,11 +59,11 @@ const { board, enterBuild, issued, project } = boardHelpers(() => dir, () => con
 const refused = (args) => refusedPristine(dir, ['board', ...args], { env: env() }).error;
 
 describe('the board at the start menu (20.3.3, 20.16)', () => {
-  it('shows All work with the project\'s units, no unit\'s tab, and a banner naming the project at the start menu', () => {
+  it('shows All work with the project\'s units, no unit\'s tab, and a banner naming the project alone, claiming no place', () => {
     assert.deepStrictEqual(board(), {
       version: BOARD_VERSION,
       place: { unit: null, type: null, phase: null, topic: null },
-      banner: { name: project(), state: 'idle', facts: [place('at the start menu')] },
+      banner: { name: project(), state: 'idle', facts: [] },
       unit: null,
       tab: 'this',
       view: {

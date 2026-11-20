@@ -8,12 +8,20 @@
 // other unit — where its laboratory left for the menu goes, and its finish
 // (24.1.2, 14.6.2), a finished epic's menu its complete variant (18.4.23).
 //
+// A quick-fix's close and its cancel are the exception: each carries on in
+// the conversation, with nothing drawn (19.5.1, 24.1.5), and the
+// conversation leaves the quick-fix's place where it is there, its tasks
+// in flight with it, so nothing holds the conversation afterwards
+// (`leaveUnit`, position.cjs). Its move starts the new type as any start
+// does (workunit-move.cjs).
+//
 // A topic cancelled or postponed (`topic cancel`, `topic postpone`) takes
 // the conversation sitting in its discussion to its epic's menu; a unit
 // cancelled (`workunit cancel`) takes the conversation sitting in any phase
-// of it to the start menu. From anywhere else — another topic of the epic,
-// its menu, manage on the start menu — the calling flow carries on. Where
-// the conversation sits is its position (position.cjs).
+// of it to the start menu — but a quick-fix, as above. From anywhere else
+// — another topic of the epic, its menu, manage on the start menu — the
+// calling flow carries on. Where the conversation sits is its position
+// (position.cjs).
 //
 // A cancel, or the removal of a topic not yet started, puts each roadmap
 // item it took in back on the horizon it came from; one whose horizon was
@@ -32,8 +40,10 @@
 // ---------------------------------------------------------------------------
 
 const { handedSession } = require('../kernel/process.cjs');
-const { readPosition } = require('./position.cjs');
+const { readPosition, leaveUnit } = require('./position.cjs');
+const { readWorkUnitManifest } = require('../kernel/manifest-io.cjs');
 const { UNIT_PHASES } = require('./derivations.cjs');
+const { stateRoot } = require('../kernel/state-root.cjs');
 const { roadmapState } = require('./roadmap.cjs');
 
 /** @typedef {import('./projections/surfaces.cjs').Next} Next */
@@ -55,6 +65,26 @@ const ontoEpic = (workUnit) => ({ kind: 'handoff', skill: 'ledger-continue-epic'
  */
 function ontoMenu(workUnit, workType) {
   return workType === 'epic' ? ontoEpic(workUnit) : ONTO_START;
+}
+
+/**
+ * A quick-fix left from inside its session (the header's): the
+ * conversation carries on, its place and the unit's tasks in flight left.
+ * @param {string} workUnit @returns {Next}
+ */
+function leftQuickFix(workUnit) {
+  leaveUnit(handedSession(), workUnit);
+  return CONTINUE;
+}
+
+/**
+ * Where a unit's finish goes (the header's): a quick-fix's close on in the
+ * conversation, any other unit onto its own menu.
+ * @param {string} workUnit @param {string} workType
+ * @returns {Next}
+ */
+function afterFinish(workUnit, workType) {
+  return workType === 'quick-fix' ? leftQuickFix(workUnit) : ontoMenu(workUnit, workType);
 }
 
 /** Where the calling conversation sits, or null where it sits nowhere. */
@@ -95,11 +125,13 @@ function leaveNext(workUnit, topic) {
 }
 
 /**
- * The `next` of a unit cancelled, from the calling conversation's position.
- * @param {string} workUnit
+ * The `next` of a unit cancelled (the header's): a quick-fix's on in the
+ * conversation, any other's from the calling conversation's position.
+ * @param {string} cwd @param {string} workUnit
  * @returns {Next}
  */
-function unitLeaveNext(workUnit) {
+function unitLeaveNext(cwd, workUnit) {
+  if (readWorkUnitManifest(stateRoot(cwd), workUnit).work_type === 'quick-fix') return leftQuickFix(workUnit);
   return seatIn(workUnit) === null ? CONTINUE : ONTO_START;
 }
 
@@ -134,11 +166,11 @@ const thenArgs = (names) => (names.length === 0 ? [] : ['--then', names.join(','
 /**
  * Where the verb goes once every item it put back has a horizon: a topic's
  * as `leaveNext` says, a unit's as `unitLeaveNext` says.
- * @param {string} from @returns {Next}
+ * @param {string} cwd @param {string} from @returns {Next}
  */
-function wayOn(from) {
+function wayOn(cwd, from) {
   const { workUnit, topic } = putBackBy(from);
-  return topic === null ? unitLeaveNext(workUnit) : leaveNext(workUnit, topic);
+  return topic === null ? unitLeaveNext(cwd, workUnit) : leaveNext(workUnit, topic);
 }
 
 /**
@@ -151,9 +183,11 @@ function wayOn(from) {
 function putBackNext(cwd, from, names) {
   const homeless = new Set(roadmapState(cwd).items.filter((row) => row.horizon === null && row.state === 'waiting').map((row) => row.name));
   const [first, ...rest] = names.filter((name) => homeless.has(name));
+  // Worked before any pick: a quick-fix's leaves the conversation's place at the cancel itself.
+  const way = wayOn(cwd, from);
   return first === undefined
-    ? wayOn(from)
+    ? way
     : { kind: 'engine', argv: ['render', 'horizon-pick', '--back', first, '--from', from, ...thenArgs(rest)] };
 }
 
-module.exports = { ontoEpic, ontoMenu, seatIn, sittingIn, leaveNext, putBackNext, putBackBy, stillToAsk, thenArgs };
+module.exports = { ontoEpic, ontoMenu, afterFinish, seatIn, sittingIn, leaveNext, putBackNext, putBackBy, stillToAsk, thenArgs };

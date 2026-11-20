@@ -23,21 +23,21 @@ Load **[framework.md](../ledger-shared/references/framework.md)** and follow its
 
 ## Done When
 
-The engine holds the session closed: the person's yes at start this work created the unit, their yes at approve the map landed the epic's map, or they ended the session and `discovery-session close` closed it. The product's conversation itself never finishes; each of its sessions does.
+The person's yes at start this work created the unit, closing the product's session where the work leaves this conversation; their yes at approve the map landed the epic's map; or they ended the session and `discovery-session close` closed it. The product's conversation itself never finishes; each of its sessions does.
 
 ## Entering
 
 Every engine call is `node .claude/skills/ledger-engine/scripts/engine.cjs {verb} …`, each verb under **Doors**. A conversation a move carried here is entered already, and entering again reads it as it stands.
 
-Where `$2` is not `none`, the entry takes it as `--seeds "{seeds}"`.
+Where `$0` is not `none`, the person brings a piece of work: the entry is its type call, `--type-call`, in no session of the product's conversation. Where `$2` is not `none`, the entry takes it as `--seeds "{seeds}"`.
 
 ```bash
-node .claude/skills/ledger-engine/scripts/engine.cjs enter discovery {home} [--seeds "{seeds}"]
+node .claude/skills/ledger-engine/scripts/engine.cjs enter discovery {home} [--type-call] [--seeds "{seeds}"]
 ```
 
 A refusal names the way on: say it in a line. Where another session holds the home, the entry asks first; carrying on from it ends the turn.
 
-Then read what the DATA names that this conversation does not hold already: each `session log` in full; each `older log` by the closing line it carries; each `shaped by` section of the product's sessions; the `map`, the `roadmap` and the `product` record, by running each call; each `seed` in full; and for each `roadmap seed`, its `note` in full and the parts of the logs its `source` lines point at — and where its row in `roadmap state` carries `earlier`, the record the topic left in the epic that postponed it: its brief, log and mail in full and its record by running the call, as input never changed. Do what `catch up` says. The `log` is this conversation's (**The Log**). Where `research owed` is `yes`, load **[researching-the-code.md](references/researching-the-code.md)** and follow its instructions as written before you open.
+Then read what the DATA names that this conversation does not hold already: each `session log` in full; each `older log` by the closing line it carries; each `shaped by` section of the product's sessions; the `map`, the `roadmap` and the `product` record, by running each call; the `inbox`'s items by their titles; each `seed` in full; and for each `roadmap seed`, its `note` in full and the parts of the logs its `source` lines point at — and where its row in `roadmap state` carries `earlier`, the record the topic left in the epic that postponed it: its brief, log and mail in full and its record by running the call, as input never changed. Do what `catch up` says. The `log` is this conversation's (**The Log**). Where `research owed` is `yes`, load **[researching-the-code.md](references/researching-the-code.md)** and follow its instructions as written before you open.
 
 Then open the conversation; never stop in silence once you have read.
 
@@ -46,8 +46,8 @@ Then open the conversation; never stop in silence once you have read.
 What you say is your own, and the way in decides what it opens on:
 - **A return** — `none`, or any way into an epic's discovery — opens with a short account of where the conversation had got to: the threads it was circling, the person's leans, what was left open. Then ask where they want to take it. A first session, with no logs, asks what is on their mind the way it sits in their head.
 - **A roadmap idea to take in**, each `take in`, opens an epic's discovery on it: talk it through as a new topic of the map, taken in as **Changing the Map** says, `--from-roadmap {item}`.
-- **A work type or seeds**, in the product's conversation, open on that piece of work, whatever the history. A type is a hint to trust: confirm it lightly once the description fits, and reconsider only on a clear, strong signal. Seeds open on one sketch across them all and a question that pulls on its shape, but an inbox item that already names its cause and fix is confirmed in one line, not shaped again. With nothing to read, ask the person to describe the work the way it sits in their head, and invite any notes, screenshots or files that frame it.
-- **`start`** carries the product's conversation on with no announcement and takes what the person brings, asking for it only where they have said nothing yet: talk about the product carries on from where its sessions had got to, and a piece of work goes to the type call.
+- **A work type or seeds** open on that piece of work, whatever the history. A type is a hint to trust: confirm it lightly once the description fits, and reconsider only on a clear, strong signal. Seeds open on one sketch across them all and a question that pulls on its shape, but an inbox item that already names its cause and fix is confirmed in one line, not shaped again. With nothing to read, ask the person to describe the work the way it sits in their head, and invite any notes, screenshots or files that frame it.
+- **`start`** takes what the person brings with no announcement, asking for it only where they have said nothing yet: a piece of work goes to the type call; talk about the product carries the product's conversation on — enter it as **Entering** says, without `--type-call`, read what its DATA names, and answer from where its sessions had got to.
 
 A conversation a move carried here is going already: carry it on.
 
@@ -87,7 +87,7 @@ As new work takes shape, match it against the waiting roadmap items and the live
 
 ### The Log
 
-The DATA's `log` is the record everything here comes back to, and nothing talked about is lost. Keep it as the conversation goes: what was explored at whatever depth, the person's leans, the false paths and why they were dropped, the open questions, the research with its sources, and a link to every spike and file. Write it in sections under headings named for what they cover, so a brief, a roadmap item or a unit's first log can point at a part by its anchor. Three headings are the engine's — `## Not taken`, `## Views of the product` and `## Spikes` — written only through `discovery-log`, nothing of Claude's under them, each entry recorded through its door as the conversation reaches it: each path dropped and why, there and nowhere else; each thing the person said of the product as a whole; and what each spike showed, with the tool it was made in and its live link where it lives in an outside tool. Before the session closes — at start this work, approve the map or the session's end — end it on a line saying where the conversation got to: a later return reads it.
+The DATA's `log` is the record everything here comes back to, and nothing talked about is lost. The type call keeps none: what the person said reaches the work through start this work's payload. Keep it as the conversation goes: what was explored at whatever depth, the person's leans, the false paths and why they were dropped, the open questions, the research with its sources, and a link to every spike and file. Write it in sections under headings named for what they cover, so a brief, a roadmap item or a unit's first log can point at a part by its anchor. Three headings are the engine's — `## Not taken`, `## Views of the product` and `## Spikes` — written only through `discovery-log`, nothing of Claude's under them, each entry recorded through its door as the conversation reaches it: each path dropped and why, there and nowhere else; each thing the person said of the product as a whole; and what each spike showed, with the tool it was made in and its live link where it lives in an outside tool. Before the session closes — at start this work for work that leaves this conversation, approve the map or the session's end — end it on a line saying where the conversation got to: a later return reads it.
 
 ## Doors
 
