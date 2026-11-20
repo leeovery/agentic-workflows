@@ -9,16 +9,19 @@
 // worktree, from another window or its own with no fix in flight, refused
 // between its fixes and at its close gate, one in the person's checkout
 // passing; the person on a branch of their own with changes not committed
-// from the first fix's start to the close, their branch, its tip and their
-// changes never moved, the quick-fix's worktree named untracked there, as
-// the engine's own layouts are, until the close takes it apart; the conversation run from a worktree of the
-// person's own, on their branch, the quick-fix's worktree laid out in the
-// main checkout, and the branch it lands on, out there, brought up by the
-// close; and, under the local landing driver, the close over the person's
-// checkout with that branch out and changes the landing touches refused,
-// nothing landed and the unit still in progress, then landing once the
-// changes are out of the way. The close over them through a host, standing
-// with the person's checkout left behind:
+// from the first fix's start to the close, their branch, its tip and what
+// git names changed there never moved, the quick-fix's worktree kept out
+// of it by the repository's exclude file; the conversation run from a
+// worktree of the person's own, on their branch, the quick-fix's worktree
+// laid out in the main checkout, and the branch it lands on, out there,
+// brought up by the close; under the local landing driver, the close over
+// the person's checkout with that branch out and changes the landing
+// touches refused, nothing landed and the unit still in progress, then
+// landing once the changes are out of the way; and a quick-fix named as a
+// reader's scratch is, its worktree apart from that scratch and never
+// taken apart by the sweep of its readers (project-layout.cjs,
+// `kindName`). The close over the person's changes through a host,
+// standing with their checkout left behind:
 // tests/drivers/github/test-landing-quick-fix-pull.cjs.
 //
 // Layer: git. World: quick-fix-world.cjs's quick-fix and a second beside
@@ -44,6 +47,7 @@ const {
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { quickFixBranch } = require(path.join(SCRIPTS, 'domain/landing-names.cjs'));
 const { layoutsFolder, layoutFolderName } = require(path.join(SCRIPTS, 'domain/project-layout.cjs'));
+const { READERS, readersDone } = require(path.join(SCRIPTS, 'domain/scratch.cjs'));
 
 /** The second quick-fix, built in the other window, and its one fix. */
 const OTHER = Object.freeze({ unit: 'tidy', description: 'The readme spells colour the American way', title: 'Spell the readme colour', file: 'README.md', text: '# The project, in colour\n' });
@@ -80,8 +84,8 @@ const entered = (cwd, unit, as) => okSections(cwd, ['enter', 'implementation', u
 /** The branch the checkout at `at` has out. @param {string} at */
 const branchOut = (at) => git(at, ['branch', '--show-current']).trim();
 
-/** The person's checkout at `at` as they left it: its branch, its tip, what git names changed there, sorted, and the file fix 1.1 changes. @param {string} at */
-const theirs = (at) => [branchOut(at), git(at, ['rev-parse', 'HEAD']).trim(), git(at, ['status', '--porcelain', '--untracked-files=all']).split('\n').filter(Boolean).sort(), fs.readFileSync(path.join(at, FLAG.file), 'utf8')];
+/** The person's checkout at `at` as they left it: its branch, its tip, what git names changed there and the file fix 1.1 changes. @param {string} at */
+const theirs = (at) => [branchOut(at), git(at, ['rev-parse', 'HEAD']).trim(), git(at, ['status', '--porcelain', '--untracked-files=all']), fs.readFileSync(path.join(at, FLAG.file), 'utf8')];
 
 /** The person's changes written in their checkout at `at`. @param {string} at */
 const mineWritten = (at) => Object.entries(MINE).forEach(([file, text]) => createFile(at, file, text));
@@ -158,7 +162,7 @@ describe('a quick-fix built beside the other windows (12.7.8)', () => {
 });
 
 describe('a quick-fix built beside the person\'s own work, their checkout never moved (19.5.3)', () => {
-  it('the person on a branch of their own with changes not committed, one to a file the fix changes: the fix\'s start, its commit, its done and the close leave their branch, its tip and their changes as they were — the quick-fix\'s worktree named untracked there until the close takes it apart — the fix landing on the branch it lands on', () => {
+  it('the person on a branch of their own with changes not committed, one to a file the fix changes: the fix\'s start, its commit, its done and the close leave their branch, its tip and what git names changed there as they were, the quick-fix\'s worktree never among it, the fix landing on the branch it lands on', () => {
     dir = world();
     git(dir, ['switch', '-q', '-c', 'mine']);
     mineWritten(dir);
@@ -174,9 +178,7 @@ describe('a quick-fix built beside the person\'s own work, their checkout never 
     ok(dir, ['finish', 'yes', UNIT], one());
     seen.push(theirs(dir));
 
-    const [branch, tip, changes, flag] = before;
-    const laid = [branch, tip, [...changes, `?? ${path.relative(dir, fixTree(dir))}/`].sort(), flag];
-    assert.deepStrictEqual(seen, [laid, laid, before]);
+    assert.deepStrictEqual(seen, [before, before, before]);
     assert.deepStrictEqual([git(dir, ['show', `main:${FLAG.file}`]), readManifest(dir, UNIT).status, fs.existsSync(fixTree(dir))], [FLAG.text, 'completed', false]);
   });
 
@@ -215,5 +217,22 @@ describe('a quick-fix built beside the person\'s own work, their checkout never 
     assert.strictEqual(error, `finish yes: land: main is checked out at ${dir}, with changes not committed: ${FLAG.file}, so nothing moved — commit them, or detach your checkout from main with \`git switch --detach\`, which leaves it at ${tip.slice(0, 7)} with its edits, and land again; switching your checkout back to main is yours, when you're ready`);
     assert.deepStrictEqual(stood, [tip, 'in-progress', true, MINE[FLAG.file]]);
     assert.deepStrictEqual([git(dir, ['log', '-1', '--format=%s', 'main']).trim(), fs.readFileSync(path.join(dir, FLAG.file), 'utf8'), readManifest(dir, UNIT).status], [`fix(${UNIT}): ${DESCRIPTION}`, FLAG.text, 'completed']);
+  });
+});
+
+describe('a quick-fix\'s worktree beside the engine\'s other layouts', () => {
+  it('a quick-fix named as a reader\'s scratch is, scratch-x-tests: its worktree and the scratch of unit x\'s test surface lie apart, and the sweep of x\'s readers takes that scratch apart alone, the worktree kept on the quick-fix\'s branch', () => {
+    dir = world();
+    const unit = 'scratch-x-tests';
+    const log = writeState(dir, layout.cache(unit, 'session-001.md'), '# Discovery Session 001\n');
+    ok(dir, ['workunit', 'create', unit, 'quick-fix', '--description', 'A fix named as a scratch is', '--session-log-file', log]);
+    entered(dir, unit, one());
+    ok(dir, ['task', 'create', unit, '1', '--file', writeState(dir, layout.cache(`${unit}-fix-1.md`), fixFile(1, FLAG.title))], one());
+    const { worktree } = ok(dir, ['task', 'start', unit, '1.1'], one());
+    const scratch = ok(dir, ['scratch', 'lay', 'x-tests', git(dir, ['rev-parse', 'HEAD']).trim()]).path;
+
+    const swept = readersDone(dir, READERS.unit('x'));
+
+    assert.deepStrictEqual([swept, fs.existsSync(scratch), fs.existsSync(worktree), branchOut(worktree)], [['x-tests'], false, true, quickFixBranch(unit)]);
   });
 });

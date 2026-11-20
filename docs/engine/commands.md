@@ -921,7 +921,7 @@ scratch remove <name>
 
 A reviewer's scratch worktree, where the build's reviewers and the review's readers run the tests, make a break and run the product, never in a checkout of the work. Each reader's brief names its two calls. Neither writes the state; the engine takes apart each layout its readers leave once they are done.
 
-- **`lay`** — lays the project out afresh at `.claude/worktrees/ledger-scratch-{name}`, every repository at the commit given (each child `{folder}={commit}`), prepared as Claude Code prepares an isolation worktree, with the setup's worktree steps run there (it can take minutes). Answers `{name, path}`. Refuses a repository given no commit, a commit it lacks, and a step that fails.
+- **`lay`** — lays the project out afresh at `.claude/worktrees/ledger-scratch.{name}`, every repository at the commit given (each child `{folder}={commit}`), prepared as Claude Code prepares an isolation worktree, with the setup's worktree steps run there (it can take minutes). Answers `{name, path}`. Refuses a repository given no commit, a commit it lacks, and a step that fails.
 - **`remove`** — takes it apart. Answers `{name, removed: true}`.
 
 ### `review`

@@ -42,7 +42,7 @@ const fs = require('fs');
 const { tryGit } = require('../kernel/git.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { projectRepos } = require('../kernel/repos.cjs');
-const { layOutCommits, scratchTop, layoutsFolder, layoutFolderName, takeApart } = require('./project-layout.cjs');
+const { layOutCommits, scratchTop, layoutsFolder, layoutFolderName, kindName, takeApart } = require('./project-layout.cjs');
 const { refusing } = require('./staged-payload.cjs');
 const { repoNamed } = require('./phase-stack.cjs');
 
@@ -56,8 +56,8 @@ const SCRATCH_USAGE = [
 /** A scratch worktree's name: lowercase words, digits, dots and dashes. */
 const NAME = /^[a-z0-9][a-z0-9.-]*$/;
 
-/** What a scratch worktree's layout is named before its own name, apart from the mutation run's (project-layout.cjs). */
-const SCRATCH = 'scratch-';
+/** A scratch worktree's layout's name, by its own (project-layout.cjs). @param {string} name */
+const scratchLayout = (name) => kindName('scratch', name);
 
 /**
  * A reader's scratch worktree's name (the header's): a task's reviewer's, a
@@ -91,11 +91,11 @@ const READERS = Object.freeze({
  */
 function readersDone(cwd, readers) {
   const folder = layoutsFolder(codeRoot(cwd));
-  const prefix = layoutFolderName(SCRATCH);
+  const prefix = layoutFolderName(scratchLayout(''));
   const left = fs.existsSync(folder) ? fs.readdirSync(folder).filter((entry) => entry.startsWith(prefix)).map((entry) => entry.slice(prefix.length)).filter((name) => readers.test(name)) : [];
   if (left.length === 0) return [];
   const repos = projectRepos(codeRoot(cwd));
-  for (const name of left) takeApart(repos, scratchTop(repos[0], `${SCRATCH}${name}`));
+  for (const name of left) takeApart(repos, scratchTop(repos[0], scratchLayout(name)));
   return left;
 }
 
@@ -130,7 +130,7 @@ function commitsGiven(repos, own, children) {
 function scratchOf(cwd, name) {
   if (!NAME.test(name)) throw new Error(`"${name}" is no scratch worktree's name — lowercase words, digits, dots and dashes`);
   const repos = projectRepos(codeRoot(cwd));
-  return { repos, top: scratchTop(repos[0], `${SCRATCH}${name}`) };
+  return { repos, top: scratchTop(repos[0], scratchLayout(name)) };
 }
 
 /** `scratch lay`. @param {string} cwd @param {string} name @param {string} own @param {string[]} children */

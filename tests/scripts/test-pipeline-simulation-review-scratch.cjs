@@ -11,9 +11,9 @@
 // engine its brief names by its absolute path, and takes the worktree apart
 // by the second once its report is written; the round passes, and its
 // report reads the scenario proven by running it. A reader that dies
-// leaves its layout, which the project here does not ignore: the round,
-// its tree check passing over each, takes its readers' apart, and finish
-// any of the unit's still left.
+// leaves its layout, which the repository's exclude file keeps out of the
+// project's checkout: the round takes its readers' apart, and finish any
+// of the unit's still left.
 //
 // Layer: simulation. World: this file's own, built once on the named world
 // `worlds.cutClosed`, itself built once per run (pipeline-world.cjs) — a
@@ -101,7 +101,7 @@ describe('pipeline simulation: an area read in its reader\'s scratch worktree', 
       dies(['brief', 'test-surface', WU, '--base', 'main']),
     ];
     const leftover = laidBeside(sim, readers[0].reader, `${WU}-phase-1-a`);
-    assert.match(git(sim.dir, ['status', '--porcelain', '--untracked-files=all']), /^\?\? \.claude\/worktrees\/ledger-scratch-ledger-tests\/$/m, 'the project does not ignore the layouts');
+    assert.doesNotMatch(git(sim.dir, ['status', '--porcelain', '--untracked-files=all']), /\.claude\/worktrees\/ledger-/, 'the repository\'s exclude file keeps the layouts out of the project\'s checkout');
 
     sim.run(['review', 'round', WU, '--file', sim.write(`.ledger/.cache/${WU}/review/round.json`, { can_now: ['Keep a ledger.'], findings: [] })]);
     assert.deepStrictEqual([...readers.map(({ project }) => project), leftover].map((top) => fs.existsSync(top)), [false, false, false, true], 'the round\'s readers\' taken apart, no other');

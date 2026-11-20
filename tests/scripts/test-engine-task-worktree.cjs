@@ -35,7 +35,10 @@
 // code and output and run again by the call after, and a call while
 // another runs them refused (22.5.1, 22.S35). A task stays in flight once
 // boot routes the conversation's words, its worktree laid out after
-// (24.2.4). Taking the worktree apart as the task ends, and
+// (24.2.4). The engine's own layouts — a one-line task's, a quick-fix's
+// worktree — kept out of the project's checkout by the line the layout
+// keeps in the repository's exclude file (project-layout.cjs). Taking the
+// worktree apart as the task ends, and
 // tasks side by side: test-engine-task-worktree-end.cjs.
 // ---------------------------------------------------------------------------
 
@@ -47,8 +50,9 @@ const fs = require('fs');
 const path = require('path');
 
 const {
-  ok, refuses, git, tip, createFile, initRepo, statePath, commitAll, confirmEnvironment, holdLock, lockAttempts, layout, FROZEN_AT,
+  ok, refuses, git, tip, createFile, initRepo, statePath, writeState, commitAll, confirmEnvironment, holdLock, lockAttempts, layout, FROZEN_AT,
 } = require('./engine-harness.cjs');
+const { fixFile } = require('./quick-fix-world.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { NESTED, NESTED_TASKS, TRACKER, commitFiles, followRemedy } = require('./landing-world.cjs');
 const { readPosition, tasksInFlight } = require('../../skills/ledger-engine/scripts/domain/conversation.cjs');
@@ -191,6 +195,23 @@ describe('task worktree: every repository laid out (12.7.10, 7.2.21)', () => {
     ok(at.dir, ['task', 'close', UNIT, task, '--reason', 'Not needed.'], as(session));
     assert.ok(!fs.existsSync(top), 'its layout taken apart');
     assert.ok(git(at.dir, ['branch', '--list', laid.branch]).includes(laid.branch), 'its branch kept');
+  });
+
+  it('the engine\'s own layouts, a one-line task\'s and a quick-fix\'s worktree, are kept out of the project\'s checkout by the one line the layout keeps in the repository\'s exclude file: git status there names neither, and git add -A takes neither', () => {
+    const at = project();
+    const { task } = ok(at.dir, ['task', 'create', UNIT, '3', '--title', 'Bold the fee', '--type', 'feat', '--why', 'one word, nothing for a reviewer to read']);
+    ok(at.dir, layOut(task), as(building(at.dir, [task])));
+    const log = writeState(at.dir, layout.cache('fee', 'session-001.md'), '# Discovery Session 001\n');
+    ok(at.dir, ['workunit', 'create', 'fee', 'quick-fix', '--description', 'The fee is spelt fea', '--session-log-file', log]);
+    const fixing = as(building(at.dir, []));
+    ok(at.dir, ['enter', 'implementation', 'fee'], fixing);
+    ok(at.dir, ['task', 'create', 'fee', '1', '--file', writeState(at.dir, layout.cache('fee-fix-1.md'), fixFile(1, 'Spell the fee'))], fixing);
+    ok(at.dir, ['task', 'start', 'fee', '1.1'], fixing);
+    const status = git(at.dir, ['status', '--porcelain', '--untracked-files=all']);
+    git(at.dir, ['add', '-A']);
+    const excluded = fs.readFileSync(path.join(at.dir, '.git', 'info', 'exclude'), 'utf8').split('\n').filter((line) => line.includes('.claude/worktrees'));
+
+    assert.deepStrictEqual([status, git(at.dir, ['diff', '--cached', '--name-only']), excluded], ['', '', ['/.claude/worktrees/ledger-*/']]);
   });
 
   it('answers each repository laid out already where it is run again, making nothing', () => {

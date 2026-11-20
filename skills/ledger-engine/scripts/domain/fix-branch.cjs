@@ -19,8 +19,10 @@
 //   as the project is and prepared as Claude Code prepares an isolation
 //   worktree (project-layout.cjs, `layOut`) — the branch checked out as it
 //   stands, or, in a nested repository lacking it, made at the tip of the
-//   branch it lands on as the host has it (`landingTips`, landing.cjs) —
-//   and the start then runs the environment setup's steps for each
+//   branch it lands on as it stands here, no host asked, so a clone the
+//   quick-fix never touches never has its host called (R18; `tipsHere`,
+//   landing.cjs), the landing taking a branch cut from an older tip as it
+//   takes any — and the start then runs the environment setup's steps for each
 //   worktree there (task-verbs.cjs). It stays until the close, a cancel or
 //   a move takes it apart (`takeFixApart`); a park leaves it as it is.
 // - The holder's done and close are refused while the worktree holds
@@ -170,7 +172,7 @@ function refuseDirtyLeave(cwd, unit) {
  * (landing-record.cjs), so a task landed by hand stays landed as its branch
  * is cut again — then the quick-fix's worktree laid out where it is not,
  * every repository there on the branch, a nested one lacking it made at the
- * tip of the branch it lands on as the host has it. Answers the branch, the
+ * tip of the branch it lands on as it stands here. Answers the branch, the
  * project's folder in the worktree, and each repository the readying cut
  * again, with its warnings, where it did.
  * @param {string} cwd @param {string} unit
@@ -184,7 +186,7 @@ function layOutFix(cwd, unit) {
   const { project, repos, top, root } = fixWorktree(cwd, unit);
   if (!fs.existsSync(top)) {
     const lacking = repos.filter((repo) => !lg.branches(repo.path).has(branch));
-    const tips = lacking.length === 0 ? new Map() : landing().landingTips(project, unit, repos, lacking);
+    const tips = lacking.length === 0 ? new Map() : landing().tipsHere(project, unit, repos, lacking);
     layOut(repos.map((repo) => ({ repo, at: path.join(root, repo.dir), make: { inPlace: false, start: tips.get(repo.dir) ?? null } })), branch, project);
   }
   const said = [...remakes, ...warnings];

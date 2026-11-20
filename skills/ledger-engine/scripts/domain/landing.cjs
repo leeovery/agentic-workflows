@@ -37,8 +37,12 @@
 // task the consolidation writes ends after it. `finish` refuses, naming
 // what did not land, a phase it merged offered to merge again, so it never
 // loops. Read here too: for the close in step, whether a phase's tasks are
-// each in its stack (`allChained`); and, for a task with nothing of its
-// unit's below it, where it starts in each repository (`landingTips`).
+// each in its stack (`allChained`); for a task with nothing of its
+// unit's below it, where it starts in each repository (`landingTips`);
+// and where a quick-fix's worktree lays out a nested repository lacking its
+// branch, the branch it lands on as it stands here, no host asked, so a
+// clone the quick-fix never touches never has its host called (R18,
+// `tipsHere`).
 // Which of a unit's tasks landed is read for every type from its landing
 // record, else by its change (task-landed.cjs), each driver asking it of
 // the read its repository's context carries (`landedOn`). Every verb keeps
@@ -784,8 +788,11 @@ function touching(project, driver, task, holding) {
  * @returns {string}
  */
 function landsOn(driver, ctx) {
-  return driver.landsOn?.(ctx) ?? /** @type {string} */ (lg.branches(ctx.root).get(ctx.into));
+  return driver.landsOn?.(ctx) ?? tipHere(ctx);
 }
+
+/** The tip here of the branch a repository's context lands on. @param {LandingContext} ctx */
+const tipHere = (ctx) => /** @type {string} */ (lg.branches(ctx.root).get(ctx.into));
 
 /**
  * The commit a task with none of its unit's work below it starts at in each
@@ -805,9 +812,20 @@ function landingTips(cwd, unit, repos, wanted) {
     try {
       return [repo.dir, landsOn(driver, ctx)];
     } catch {
-      return [repo.dir, /** @type {string} */ (lg.branches(ctx.root).get(ctx.into))];
+      return [repo.dir, tipHere(ctx)];
     }
   }));
+}
+
+/**
+ * The tip here of the branch each of `wanted` lands on, by its folder, no
+ * host asked (the header's). The project is read once, from `repos`.
+ * @param {string} cwd the project's folder @param {string} unit @param {Repo[]} repos the project's @param {Repo[]} wanted
+ * @returns {Map<string, string>}
+ */
+function tipsHere(cwd, unit, repos, wanted) {
+  const project = projectOf(cwd, unit, repos);
+  return new Map(wanted.map((repo) => [repo.dir, tipHere(contextOf(project, repo))]));
 }
 
 /**
@@ -2056,5 +2074,5 @@ module.exports = {
   landFinish: (cwd, unit) => recording(cwd, unit, () => landFinish(cwd, unit)),
   /** `land finish` past its refusals, its landings written for finish's yes's commit of the unit to carry, `then` the step a refusal's way on runs again. @param {string} cwd @param {string} unit @param {string} then */
   finishMerge: (cwd, unit, then) => recording(cwd, unit, () => finishMerge(cwd, unit, then), true),
-  allChained, landingTips, mutationRun, quickFixLanding, quickFixClose, cancelClose, mayHoldOpen, workFrom, unendedRefusal, reviewOpened,
+  allChained, landingTips, tipsHere, mutationRun, quickFixLanding, quickFixClose, cancelClose, mayHoldOpen, workFrom, unendedRefusal, reviewOpened,
 };

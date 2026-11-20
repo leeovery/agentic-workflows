@@ -38,7 +38,7 @@ const NAME = 'pay-1.1-a';
 const at = (repo) => git(repo, ['rev-parse', 'HEAD']).trim();
 
 /** Where the scratch worktree `name` sits: beside the builders' isolation worktrees. @param {string} [name] */
-const scratchAt = (name = NAME) => path.join(fs.realpathSync(dir), '.claude', 'worktrees', `ledger-scratch-${name}`);
+const scratchAt = (name = NAME) => path.join(fs.realpathSync(dir), '.claude', 'worktrees', `ledger-scratch.${name}`);
 
 /** How many worktrees `repo` has registered. @param {string} repo */
 const registered = (repo) => git(repo, ['worktree', 'list', '--porcelain']).split('\n').filter((line) => line.startsWith('worktree ')).length;

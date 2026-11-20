@@ -58,10 +58,8 @@
 // The engine lays its own worktrees out beside Claude Code's, in
 // `.claude/worktrees/` of the main checkout, each named `ledger-…` — the
 // mutation run's, each reader's scratch (project-layout.cjs) and a
-// quick-fix's worktree (fix-branch.cjs). Where the
-// project does not ignore that folder, git names each untracked in the
-// project's own checkout; none is ever the person's change, so every read
-// of what the checkout holds passes over them (`codeChanges`).
+// quick-fix's worktree (fix-branch.cjs) — which the repository's exclude
+// file keeps out of its checkouts (project-layout.cjs, `keepLayoutsOut`).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -82,8 +80,6 @@ const LAYOUTS = '.claude/worktrees';
 /** How each of the engine's own layouts there is named, before its name. */
 const LAYOUT = 'ledger-';
 
-/** One of the engine's own layouts, as git names it untracked in the project's own checkout. */
-const OWN_LAYOUT = new RegExp(`^${LAYOUTS.replaceAll('.', '\\.')}/${LAYOUT}[^/]+/$`);
 const SETTINGS = ['.claude/settings.json', '.claude/settings.local.json'];
 
 /** The marker a worktree keeps in its own git directory once its steps have passed, and the claim a call holds while it runs steps (the header's). */
@@ -272,19 +268,16 @@ function removePreparedLinks(repo, at, project) {
   for (const entry of dirtyEntries(at, repo.prefix)) if (prepared(at, entry)) fs.unlinkSync(path.join(at, entry.path));
 }
 
-/** Whether a change git names in a checkout of `repo` is one of the engine's own layouts (the header's). @param {Repo} repo @param {Entry} entry */
-const ownLayout = (repo, { path: entry, status }) => repo.dir === '' && status === '??' && OWN_LAYOUT.test(entry);
-
 /**
  * What the checkouts of `repos`, the project's, hold not committed, in
  * project paths (kernel/repos.cjs, `projectDirtyEntries`), less the links
- * preparation made in each and the engine's own layouts; a rename read as
- * its two paths where `renames` is off.
+ * preparation made in each; a rename read as its two paths where
+ * `renames` is off.
  * @param {Repo[]} repos @param {{renames?: boolean}} [opts] @returns {Entry[]}
  */
 function codeChanges(repos, { renames = true } = {}) {
   const prepared = preparedIn(repos);
-  return projectDirtyEntries(repos, { kept: (repo, entry) => !prepared(repo.path, entry) && !ownLayout(repo, entry), renames });
+  return projectDirtyEntries(repos, { kept: (repo, entry) => !prepared(repo.path, entry), renames });
 }
 
 /**
