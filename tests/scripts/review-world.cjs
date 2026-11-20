@@ -278,15 +278,12 @@ function fixPhaseWritten(phase, tasks) {
 const inStep = () => createManifest(dir, UNIT, { ...readManifest(dir, UNIT), build: { position: 'step' } });
 
 /**
- * Task 2.2 written in the cut's last phase before it closed, then done, its
- * branch not landed: the phase's stack waits to merge — at its gate, in step.
+ * Task 2.2 in the cut's last phase, as its phase was written with it, then
+ * done, its branch not landed: the phase's stack waits to merge — at its
+ * gate, in step.
  */
 function cutUnmerged() {
-  const manifest = readManifest(dir, UNIT);
-  const { 'phase-2-close': closed, ...open } = manifest.checklists;
-  createManifest(dir, UNIT, { ...manifest, checklists: open });
-  taskMade(2, 'Refund twice', '§2.1');
-  createManifest(dir, UNIT, { ...readManifest(dir, UNIT), checklists: { ...open, 'phase-2-close': closed } });
+  DRIVER.createTask(statePath(dir), { unit: UNIT, phase: 2, n: 2 }, readTaskText(taskText('Refund twice', '§2.1')));
   fixBuilt(2, 2, 'Refund twice', 'main', 'src/twice.js');
 }
 

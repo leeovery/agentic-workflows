@@ -213,7 +213,7 @@ describe('the points of a unit\'s work, each its exact list (6.4.6–6.4.10, 6.S
         'relies-on-done engine open: what the phase relies on is done: closed, and its stack merged',
       ],
       close: [
-        'tasks-passed engine open: every task passed each of its reviewers, or was recorded as reviewed by none',
+        'tasks-passed engine open: every task passed each of its reviewers, or was a one-line task built',
         'phase-review-passed engine open: the phase review passed and its fixes landed',
         'scenarios-reported engine open: each scenario proven or reported not proven',
         'notes-consolidated engine done: the notes for later read by the consolidation agent, then made into tasks or dropped with a reason',

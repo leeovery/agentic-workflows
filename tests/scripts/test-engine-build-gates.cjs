@@ -93,21 +93,21 @@ describe('the gate after a task, in step (12.14.3, 12.12.7, 3.3.8, 13.4.7)', () 
     assert.match(refused(['step-gate', UNIT, '1.1']), /^render step-gate: pay builds in auto, where no gate follows a task — /, 'in auto no gate follows a task (3.S17)');
   });
 
-  it('13.3.4: a task recorded as reviewed by none has its gate with no account taken once it is built, its description, why no reviewer read it and its change in the account\'s place', () => {
-    writeState(dir, layout.unit(UNIT, 'build/tasks/1.3/review.json'), JSON.stringify({ reviewers: 0, why: 'A sentence of copy.' }));
-    assert.match(refused(['step-gate', UNIT, '1.3']), /^render step-gate: task 1\.3 of pay is not built — no reviewer reads it/);
-    branchWith(dir, 3, 'Mail the receipt', [['src/mail.js', 'export const mail = 1;\nexport const send = 2;\n']]);
+  it('13.3.4: a one-line task has its gate with no account once it is built, its title and that no reviewer read it in the account\'s place, with its change', () => {
+    ok(dir, ['task', 'create', UNIT, '1', '--title', 'Bold the total', '--type', 'feat'], { env: env() });
+    assert.match(refused(['step-gate', UNIT, '1.4']), /^render step-gate: task 1\.4 of pay is not built — a one-line task goes on once its branch holds a commit of its own/);
+    branchWith(dir, 4, 'Bold the total', [['src/total.js', 'export const total = 1;\nexport const bold = 2;\n']]);
 
-    assert.strictEqual(sectionOf(screen(['step-gate', UNIT, '1.3']), 'DISPLAY: step gate'), [
-      '▪ Mail the receipt (task 1.3)',
+    assert.strictEqual(sectionOf(screen(['step-gate', UNIT, '1.4']), 'DISPLAY: step gate'), [
+      '▪ Bold the total (task 1.4)',
       '',
       '- Phase: 1 — Cards',
-      '- Position: 3 of 3 in phase',
+      '- Position: 4 of 4 in phase',
       '',
       'WHAT IT DOES',
-      '  Mail the receipt works at the till, and the customer sees it.',
+      '  Bold the total',
       '',
-      '  No reviewer read it, as recorded, and that record is its account: A sentence of copy.',
+      '  No account, and no reviewer: a one-line task, the orchestrator\'s own work.',
       '  1 file changed · +2 −0',
       '',
     ].join('\n'));

@@ -33,10 +33,10 @@
 // taken, to its taking; else the orchestrator's to read for its notes for
 // later and the nits the task's commits do not yet fix, fixed in the
 // worktree that has its branch out, then the new builder's for the account
-// (task-account.cjs, `reviewOverWay`); one recorded as reviewed by none,
-// by whether it is built (task-base.cjs, `builtUnreviewed`): built, to its
-// landing; a one-line task, the orchestrator's own to make in a worktree
-// laid out for it; else its new builder's; anything else its new builder's —
+// (task-account.cjs, `reviewOverWay`); a one-line task, by whether it is
+// built (task-base.cjs, `builtOneLine`): built, to its landing; else the
+// orchestrator's own to make in the worktree `task worktree` lays out for
+// it; anything else its new builder's —
 // a quick-fix's fix whose work its park set aside its start's first, which
 // puts it back (fix-aside.cjs), then that way. A task a question parks is
 // put in flight as well, but no builder goes to it until the person answers
@@ -90,8 +90,8 @@
 // linked after (12.6.4) — and, in step, behind the task in flight where it
 // goes on beside it, held until that one is done (task-verbs.cjs,
 // `stepTurn`); else at its gate once it lands: in progress, parked by no
-// question, its pair passed and its account taken (task-account.cjs) — one
-// no reviewer reads, once it is built — with
+// question, its reviewers passed and its account taken (task-account.cjs) —
+// a one-line task, once it is built — with
 // nothing added to it since and nothing changed under its last round
 // (round-report.cjs) — an addition, the person's Comment at its gate among
 // them (13.11.3), is reworked and read again first, the task in progress
@@ -140,7 +140,7 @@ const { isoNow } = require('./dates.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { seedFiles } = require('./reads.cjs');
 const { summaryFile } = require('./knowledge/artifacts.cjs');
-const { STATUS_WORDS, ENDED, goesOn, takesTurns, turnOf, turnEnds, writePhase, trackedPhase, trackedTask } = require('./task-verbs.cjs');
+const { STATUS_WORDS, ENDED, goesOn, takesTurns, turnOf, turnEnds, writePhase, trackedPhase } = require('./task-verbs.cjs');
 const { heldCodeSessions } = require('./presence.cjs');
 const { codeGate } = require('./projections/enter.cjs');
 const { tasksInFlight } = require('./conversation.cjs');
@@ -148,8 +148,7 @@ const { recordTasksAt } = require('./position.cjs');
 const { waitingAndFreed, parkedTasks, askedOpen } = require('./questions.cjs');
 const { reading, phaseLists, phaseTasks, phaseLanded, mergeWaiting, fixesOwed, passed } = require('./phase-checks.cjs');
 const { takenFigures, reviewOverWay, landingWay } = require('./task-account.cjs');
-const { ofQuickFix, builtUnreviewed } = require('./task-base.cjs');
-const { isOneLine } = require('./task-file.cjs');
+const { ofQuickFix, builtOneLine } = require('./task-base.cjs');
 const { heldAside } = require('./fix-aside.cjs');
 const { recordedRounds, mergingWords } = require('./review-phase.cjs');
 const { shownTask, parseShownTask } = require('./task-id.cjs');
@@ -282,8 +281,8 @@ const additionsOf = (at, ref) => phaseTasks(at, ref.phase)?.find((task) => shown
 
 /**
  * Whether a task in progress stands at its gate: in step, parked by no
- * question, its account taken with nothing added to it since, and its pair
- * passed — one no reviewer reads, once it is built (the header's).
+ * question, its account taken with nothing added to it since, and its
+ * reviewers passed — a one-line task, once it is built (the header's).
  * @param {Reading} at @param {TaskRow} row @param {string[]} parked
  */
 function atGate(at, { ref, status }, parked) {
@@ -451,7 +450,7 @@ function heldBy(unit, { task, stopped }, standing, turn) {
   if (standing?.status === 'behind') return { holds: STATUS_WORDS.behind, then: `it goes on once ${turn?.checkout ? turnEnds(turn) : 'that task is done'}, and no builder goes to it until then` };
   if (standing?.unproven !== undefined) return { holds: 'its account taken, its bug not yet proven', then: standing.unproven };
   if (standing?.status === 'at-gate') {
-    return { holds: STATUS_WORDS['at-gate'], then: `it waits on the person's go there, the gate drawn again with render step-gate ${unit} ${task}, and its builder is never sent afresh` };
+    return { holds: STATUS_WORDS['at-gate'], then: `it waits on the person's go there, the gate drawn again with render step-gate ${unit} ${task}, and no agent is sent to it afresh` };
   }
   return null;
 }
@@ -484,7 +483,7 @@ function afreshWords(cwd, session, unit, task) {
 function roundWords(cwd, session, ref) {
   const { unit } = ref;
   const task = shownTask(ref);
-  if (reviewedNone(cwd, ref) !== null) return unreviewedWords(cwd, ref);
+  if (reviewedNone(cwd, ref) !== null) return oneLineWords(cwd, ref);
   const standing = roundStanding(cwd, ref, session);
   if (standing !== null) {
     const open = standing.readers.filter(({ state }) => state !== 'reported');
@@ -507,17 +506,15 @@ function roundWords(cwd, session, ref) {
 }
 
 /**
- * Where a task no reviewer reads goes, by whether it is built (task-base.cjs,
- * `builtUnreviewed`): built, to its landing; a one-line task, the
- * orchestrator's own work, made in its worktree; else its new builder's.
+ * Where a one-line task goes, by whether it is built (task-base.cjs,
+ * `builtOneLine`): built, to its landing; else made in its worktree, the
+ * orchestrator's own work.
  * @param {string} cwd @param {TaskRef} ref
  */
-function unreviewedWords(cwd, ref) {
-  const detail = trackedTask(cwd, ref);
-  const task = `${ref.unit} ${shownTask(ref)}`;
-  if (builtUnreviewed(cwd, ref, detail)) return `no reviewer reads it, as recorded, and it is built — ${landingWay(cwd, ref)}`;
-  if (isOneLine(detail.text)) return `a one-line task, your own work with no builder — make it in a worktree laid out for it, engine task worktree ${task}, commit it through the door, and land it`;
-  return 'no reviewer reads it, as recorded — its builder goes afresh on its branch, and once it is built it lands';
+function oneLineWords(cwd, ref) {
+  if (builtOneLine(cwd, ref)) return `a one-line task, built — ${landingWay(cwd, ref)}`;
+  const where = ofQuickFix(cwd, ref.unit) ? 'make it in the project\'s checkout' : `lay out its worktree, engine task worktree ${ref.unit} ${shownTask(ref)}`;
+  return `a one-line task, your own work with no builder — ${where}, commit it there through the door, and land it`;
 }
 
 /**

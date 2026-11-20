@@ -225,9 +225,9 @@ function reliedOnDone(at, phase) {
 }
 
 /**
- * Whether a task's pair passed it — a task no reviewer reads once it is
- * done, which it was only once built and chained (task-verbs.cjs), its own
- * commits on the default branch after the phase merges; not where its
+ * Whether a task's reviewers passed it — a one-line task once it is done,
+ * which it was only once built (task-account.cjs), its own work on the
+ * default branch after the phase merges; not where its
  * rounds do not read, said as a warning.
  * @param {Reading} at @param {{ref: import('./task-id.cjs').TaskRef, status: string}} row
  */

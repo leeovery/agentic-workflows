@@ -25,15 +25,14 @@
 // then the task's account taken, a later round passing or not (13.4.6); and
 // every refusal writing and committing nothing — a last round with a bug
 // standing (13.S3) and no repository holding the task's branch among them.
-// `engine task review <unit> <task> --reviewers <0|1|2> --file <why>`, the
+// `engine task review <unit> <task> --reviewers <1|2> --file <why>`, the
 // orchestrator's choice of a task's reviewers with why, committed before
-// its first round: one reviewer reading by `a` alone; none ending its
-// review with no round and no account, the record its account, the task
-// built — and so passed, and done — only once its branch holds a commit of
-// its own through the door since its builder's brief and its latest
-// change, never a merge; a one-line task, `task create --title --type`,
-// the orchestrator's own work, reviewed by none by its shape, its record
-// made with it; and no task created in a phase closed.
+// its first round: one reviewer reading by `a` alone, never none; a
+// one-line task, `task create --title --type`, the orchestrator's own work,
+// reviewed by none by its shape, its record made with it, with no round and
+// no account, built — and so passed, and done — once its branch holds a
+// commit of its own through the door, never a merge; and no task created
+// in a phase whose stack has landed.
 //
 // Layer: verb. World: a project with one work unit, built once and copied:
 // its first phase written in the tracker, its second task started and its
@@ -59,7 +58,7 @@ const { createManifest, templateFolder, useTempFolder } = require('./discovery-t
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const {
-  readReport, taskRounds, taskPassed, roundUnderReview, recordReviewer, recordBuilder, recordLaidOut,
+  readReport, taskRounds, taskPassed, roundUnderReview, recordReviewer, recordLaidOut,
 } = require(path.join(SCRIPTS, 'domain/round-report.cjs'));
 const { readAccount } = require(path.join(SCRIPTS, 'domain/task-account.cjs'));
 const { appendEntry } = require(path.join(SCRIPTS, 'domain/ledger.cjs'));
@@ -389,38 +388,24 @@ describe('task review: the orchestrator\'s choice of a task\'s reviewers (13.3.4
     assert.throws(() => roundUnderReview(dir, T11), { message: 'round 1 of task 1.1 of pay passed — its review is over' });
   });
 
-  it('none ends the review with no round and no account, its record its account: no reviewer reads it, its account is refused, and it passes only once built', () => {
-    reviewed('1.1', '0');
-
-    assert.strictEqual(taskPassed(dir, T11), true, 'its branch holds a commit of its own, and no builder was briefed');
-    assert.throws(() => roundUnderReview(dir, T11), { message: 'task 1.1 of pay is reviewed by none, as recorded — Mechanical.: no reviewer reads it' });
-    assert.strictEqual(refusedPristine(dir, ['task', 'account', UNIT, '1.1']).error, 'task account: task 1.1 of pay is reviewed by none, as recorded — Mechanical.: that record is its account, so it lands with none taken');
-  });
-
-  it('a task no reviewer reads is built by its branch: a commit of its own through the door since its builder\'s brief and since the latest change to it, never a merge, and its done refused until then', () => {
-    reviewed('1.1', '0');
-    ok(dir, ['task', 'start', UNIT, '1.1'], { env: SESSION });
-    /** The task's branch given a commit of its own. */
-    const built = () => {
-      git(dir, ['checkout', '-q', CARD]);
-      workCommit(dir, 'pay-1-1', { 'src/card.js': `export const card = ${Date.now()};\n` });
-      git(dir, ['checkout', '-q', 'main']);
-    };
-
-    recordBuilder(dir, T11, 0, null, { '': tip(dir, CARD) });
-    assert.strictEqual(taskPassed(dir, T11), false, 'nothing committed since its builder\'s brief');
-    assert.strictEqual(refusedPristine(dir, ['task', 'done', UNIT, '1.1'], { env: SESSION }).error, 'task done: task 1.1 of pay is not built — no reviewer reads it, so it goes on once its branch holds a commit of its own, made through the door since its builder\'s latest brief, the one an answer or a change to it sends');
+  it('a one-line task is built by its branch: a commit of its own through the door, never a merge — until then not passed, and its done refused', () => {
+    ok(dir, ['task', 'create', UNIT, '1', '--title', 'Bold the total', '--type', 'chore']);
+    ok(dir, ['task', 'start', UNIT, '1.3'], { env: SESSION });
+    const T13 = { unit: UNIT, phase: 1, n: 3 };
+    git(dir, ['checkout', '-q', '-b', taskBranch(T13, 'chore', 'Bold the total'), 'main']);
     workCommit(dir, 'pay-0-0', { 'src/main.js': 'export const main = 1;\n' });
-    git(dir, ['checkout', '-q', CARD]);
-    git(dir, ['merge', '-q', '--no-ff', '-m', 'merge main\n\nLedger-Task: pay-1-1', 'main']);
     git(dir, ['checkout', '-q', 'main']);
-    assert.strictEqual(taskPassed(dir, T11), false, 'a merge is no work of its own');
-    built();
-    assert.strictEqual(taskPassed(dir, T11), true);
-    ok(dir, ['task', 'add', UNIT, '1.1', '--file', fileOf('addition.md', 'Mask the card.\n'), '--by', 'person']);
-    assert.strictEqual(taskPassed(dir, T11), false, 'a change made since it was built');
-    built();
-    assert.strictEqual(taskPassed(dir, T11), true);
+
+    assert.strictEqual(taskPassed(dir, T13), false, 'no commit of its own');
+    assert.strictEqual(refusedPristine(dir, ['task', 'done', UNIT, '1.3'], { env: SESSION }).error, 'task done: task 1.3 of pay is not built — a one-line task goes on once its branch holds a commit of its own, made through the door in its worktree, engine task worktree pay 1.3');
+    git(dir, ['checkout', '-q', taskBranch(T13, 'chore', 'Bold the total')]);
+    git(dir, ['merge', '-q', '--no-ff', '-m', 'merge main\n\nLedger-Task: pay-1-3', CARD]);
+    git(dir, ['checkout', '-q', 'main']);
+    assert.strictEqual(taskPassed(dir, T13), false, 'a merge is no work of its own');
+    git(dir, ['checkout', '-q', taskBranch(T13, 'chore', 'Bold the total')]);
+    workCommit(dir, 'pay-1-3', { 'src/total.css': '.total { font-weight: bold; }\n' });
+    git(dir, ['checkout', '-q', 'main']);
+    assert.strictEqual(taskPassed(dir, T13), true);
   });
 
   it('a task with none recorded is reviewed by the kernel\'s count, its done refused with no account taken', () => {
@@ -436,20 +421,18 @@ describe('task review: the orchestrator\'s choice of a task\'s reviewers (13.3.4
     assert.strictEqual(created.task, '1.3');
     assert.strictEqual(ok(dir, ['task', 'show', UNIT, '1.3']).text, '# Bold the total\n\n## Type\n\nchore');
     assert.ok(touched(statePath(dir), 'HEAD').includes('A\tpay/build/tasks/1.3/review.json'), 'its record committed with it');
-    assert.throws(() => roundUnderReview(dir, T13), { message: 'task 1.3 of pay is reviewed by none, as recorded — a one-line task, the orchestrator\'s own work: no reviewer reads it' });
-    for (const count of ['0', '1']) assert.strictEqual(refusedReview(['1.3', '--reviewers', count, '--file', fileOf('why.md', 'Bold.\n')]), 'task review: task 1.3 of pay is a one-line task, reviewed by none by its shape — your own work, with no reviewer to choose');
+    assert.throws(() => roundUnderReview(dir, T13), { message: 'task 1.3 of pay is a one-line task, the orchestrator\'s own work: no reviewer reads it' });
+    assert.strictEqual(refusedPristine(dir, ['task', 'account', UNIT, '1.3']).error, 'task account: task 1.3 of pay is a one-line task, the orchestrator\'s own work: it lands with no account taken');
+    for (const count of ['1', '2']) assert.strictEqual(refusedReview(['1.3', '--reviewers', count, '--file', fileOf('why.md', 'Bold.\n')]), 'task review: task 1.3 of pay is a one-line task, reviewed by none by its shape — your own work, with no reviewer to choose');
   });
 
-  it('task create refuses a phase closed, its stack merged: a task goes into the phase being built — one closed whose stack waits to merge still takes one', () => {
+  it('task create refuses a phase whose stack has landed, closed or not: a task goes into a phase still being built', () => {
     const file = path.join(statePath(dir), UNIT, 'manifest.json');
     const manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
-    fs.writeFileSync(file, JSON.stringify({ ...manifest, checklists: { 'phase-1-close': { closed: FROZEN_AT } } }));
-    const waiting = ok(dir, ['task', 'create', UNIT, '1', '--title', 'Bold the total', '--type', 'chore']).task;
-    const merged = { phases: [{ name: 'Cards', goal: 'Cards are taken.', scenarios: ['1.S1'], sections: ['1'], relies_on: [], built: true }] };
-    fs.writeFileSync(file, JSON.stringify({ ...manifest, cut: merged, checklists: { 'phase-1-close': { closed: FROZEN_AT } } }));
+    const landed = { phases: [{ name: 'Cards', goal: 'Cards are taken.', scenarios: ['1.S1'], sections: ['1'], relies_on: [], built: true }] };
+    fs.writeFileSync(file, JSON.stringify({ ...manifest, cut: landed }));
 
-    assert.strictEqual(waiting, '1.3');
-    assert.strictEqual(refusedPristine(dir, ['task', 'create', UNIT, '1', '--title', 'Bold the date', '--type', 'chore']).error, 'phase 1 of pay is closed, its stack merged — a task goes into the phase being built, or the review\'s fix phase');
+    assert.strictEqual(refusedPristine(dir, ['task', 'create', UNIT, '1', '--title', 'Bold the date', '--type', 'chore']).error, 'phase 1 of pay\'s stack has landed — a task goes into a phase still being built, or the review\'s fix phase');
   });
 
   it('task create takes a task file or a one-line task, never both nor half of one: a title of one line, a type of the kinds', () => {
@@ -468,14 +451,13 @@ describe('task review: the orchestrator\'s choice of a task\'s reviewers (13.3.4
     recordReviewer(dir, T11, 1, 'a', SESSION.CLAUDE_CODE_SESSION_ID);
     assert.strictEqual(refusedReview(['1.1', '--reviewers', '1', '--file', why]), 'task review: task 1.1 of pay\'s first round is briefed already — its reviewers are chosen before it');
     fs.rmSync(statePath(dir, '.cache/pay/build/tasks/1.1/briefed.json'));
-    assert.strictEqual(refusedReview(['1.1', '--reviewers', '3', '--file', why]), 'task review: 3 is no count of reviewers — 0 to 2');
-    assert.strictEqual(refusedReview(['1.1', '--reviewers', 'one', '--file', why]), 'task review: one is no count of reviewers — 0 to 2');
+    for (const count of ['0', '3', 'one']) assert.strictEqual(refusedReview(['1.1', '--reviewers', count, '--file', why]), `task review: ${count} is no count of reviewers — 1 to 2`);
     fs.writeFileSync(why, '\n');
-    assert.match(refusedReview(['1.1', '--reviewers', '0', '--file', why]), /^task review: .*why\.md holds nothing to review by$/);
+    assert.match(refusedReview(['1.1', '--reviewers', '1', '--file', why]), /^task review: .*why\.md holds nothing to review by$/);
     accountTaken(dir, UNIT, '1.2');
     ok(dir, ['task', 'done', UNIT, '1.2'], { env: SESSION });
-    assert.strictEqual(refusedReview(['1.2', '--reviewers', '0', '--file', why]), 'task review: task 1.2 of pay is done — its reviewers are chosen before it is reviewed');
-    assert.strictEqual(refusedReview(['1.1', '--file', why]), 'Usage: engine task review <unit> <task> --reviewers <0|1|2> --file <why>');
+    assert.strictEqual(refusedReview(['1.2', '--reviewers', '1', '--file', why]), 'task review: task 1.2 of pay is done — its reviewers are chosen before it is reviewed');
+    assert.strictEqual(refusedReview(['1.1', '--file', why]), 'Usage: engine task review <unit> <task> --reviewers <1|2> --file <why>');
   });
 });
 

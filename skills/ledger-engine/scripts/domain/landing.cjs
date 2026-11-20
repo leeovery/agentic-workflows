@@ -1031,7 +1031,7 @@ function landOpen(cwd, unit, task) {
  * Refuse a task its reviewers have not passed: no round of its review reported,
  * its last round failed and not settled (12.1.4, 13.4.6), or the task
  * changed under that round since — read off its rounds' reports alone,
- * refused as their read refuses; a task reviewed by none until it is built
+ * refused as their read refuses; a one-line task until it is built
  * (task-account.cjs, `refuseUnaccounted`).
  * @param {string} cwd @param {TaskRef} ref
  */

@@ -57,7 +57,7 @@ describe('a task at its gate, met again after a /clear (12.7.9, 12.14.3)', () =>
     const step = takenOver();
     position('auto');
 
-    const atGate = 'in flight: task 1.1, at its gate — it waits on the person\'s go there, the gate drawn again with render step-gate pay 1.1, and its builder is never sent afresh';
+    const atGate = 'in flight: task 1.1, at its gate — it waits on the person\'s go there, the gate drawn again with render step-gate pay 1.1, and no agent is sent to it afresh';
     assert.deepStrictEqual(step, ['phase: phase 1 of 3, "Cards": running — tasks 1.1 at its gate, 1.2 not started, 1.3 not started', atGate, atGate]);
     assert.deepStrictEqual(takenOver().slice(0, 2), [
       'phase: phase 1 of 3, "Cards": running — tasks 1.1 in progress, 1.2 not started, 1.3 not started',

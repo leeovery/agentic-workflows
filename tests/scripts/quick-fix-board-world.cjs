@@ -93,7 +93,7 @@ const unwritten = fixtureFrom('engine-board-quick-fix-unwritten-', (dir) => {
 }, { kept: made });
 
 /** A fix's line as the view holds it. @param {string} task @param {string} title @param {string} state @param {{since?: string|null, on?: string[], rounds?: object}} [more] */
-const fix = (task, title, state, { since = null, on = [], rounds = {} } = {}) => ({ task, title, state, since, on, rounds: { sent_back: 0, reading: null, passed: null, settled: false, ...rounds } });
+const fix = (task, title, state, { since = null, on = [], rounds = {} } = {}) => ({ task, title, state, since, on, rounds: { sent_back: 0, reading: null, passed: null, settled: false, unreviewed: false, ...rounds } });
 
 /**
  * The board as a suite's conversation reads it, in the project `dir`

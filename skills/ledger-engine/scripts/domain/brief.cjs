@@ -22,8 +22,7 @@
 // A template is markdown in the engine's content (`content/briefs/{role}.md`,
 // 6.5.2): the template's own words, and a slot, `{{record}}` alone on its
 // line, for each record its role draws on, filled by that record's drawn
-// form (brief-records.cjs) — a record drawing none leaves its section out,
-// from its level-one heading to the next. A template holding a slot that is no whole line,
+// form (brief-records.cjs). A template holding a slot that is no whole line,
 // a slot no record answers, one its role does not draw on, or a record's
 // slot missing or twice, is refused before anything is read.
 //
@@ -243,21 +242,12 @@ function templateOf(role, text) {
   return text;
 }
 
-/**
- * A template's slots filled with what each record drew, the section holding
- * one that drew none left out whole, from its level-one heading to the next.
- * @param {string} template @param {Record<string, string|null>} drawn
- */
+/** A template's slots filled with what each record drew. @param {string} template @param {Record<string, string>} drawn */
 function filled(template, drawn) {
-  const fill = (/** @type {string} */ line) => {
+  return template.split('\n').map((line) => {
     const slot = /^\{\{([^{}]*)\}\}$/.exec(line);
     return slot === null ? line : drawn[slot[1]];
-  };
-  return template.split(/\n(?=# )/)
-    .map((section) => section.split('\n').map(fill))
-    .filter((lines) => !lines.includes(null))
-    .map((lines) => lines.join('\n'))
-    .join('\n');
+  }).join('\n');
 }
 
 /**
@@ -352,7 +342,7 @@ function trackedTo(cwd, unit, phase, warnings) {
  * Each record drawn for `filling`, by its slot, then what each binds bound;
  * where either refuses the brief, what each closes on a refusal closed.
  * @param {Filling} filling @param {readonly string[]} records @param {string[]} warnings
- * @returns {Record<string, string|null>}
+ * @returns {Record<string, string>}
  */
 function drawnRecords(filling, records, warnings) {
   try {

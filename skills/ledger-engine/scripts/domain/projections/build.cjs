@@ -51,7 +51,7 @@ const { STATUS_WORDS } = require('../task-verbs.cjs');
 
 /** A task as a screen names it: its number, title, and its phase's number and name. @typedef {{task: string, title: string, phase: number, phase_name: string}} TaskHead */
 /** A task started, with what Claude says of it. @typedef {TaskHead & {changes: string, watch: string}} Started */
-/** How a task's review ended: its rounds, whether the orchestrator settled the last, how many reviewers read it, and why none did where the orchestrator recorded none. @typedef {{rounds: number, settled: boolean, reviewers: number, none: string|null}} Reviewed */
+/** How a task's review ended: its rounds, whether the orchestrator settled the last, how many reviewers read it, and why none did, a one-line task. @typedef {{rounds: number, settled: boolean, reviewers: number, none: string|null}} Reviewed */
 /** One of a task's cut scenarios, by its id and as its criterion reads, and what running it proved. @typedef {{scenario: string, criterion: string, standing: import('../runs.cjs').Standing}} Ran */
 /**
  * A task landing: the task, how its review ended, the calls it sent to the
@@ -65,9 +65,9 @@ const { STATUS_WORDS } = require('../task-verbs.cjs');
 /**
  * A task's account as a screen draws it: the task, its place in its phase,
  * what it does, whether it closed, whether it landed before the migration
- * cut the unit, why no reviewer read it where none was to, with its change
- * where its branch holds one, and its account
- * where one is written — its sections, its
+ * cut the unit, why no reviewer read it, a one-line task, with its change
+ * where its branch holds one, and its account where one is written — its
+ * sections, its
  * differences, its rounds' summaries by their headings, how its review
  * ended and its figures.
  * @typedef {{
@@ -176,7 +176,7 @@ function roundWords({ rounds, settled }) {
 
 /** How a task's review ended, as the landing says it. @param {Reviewed} reviewed */
 function landedVerdict(reviewed) {
-  if (reviewed.none !== null) return `no reviewer read it, as recorded: ${reviewed.none}`;
+  if (reviewed.none !== null) return `no reviewer read it: ${reviewed.none}`;
   if (reviewed.settled) return `the orchestrator settled its review ${roundWords(reviewed)}`;
   return `its ${reviewed.reviewers === 1 ? 'reviewer' : 'reviewer pair'} passed it ${roundWords(reviewed)}`;
 }
@@ -244,9 +244,9 @@ function reviewsBlock(reviews) {
   return block('REVIEWS', reviews.flatMap(({ heading, summary }) => [`  ${heading}`, ...prose(summary, '    ')]).join('\n'));
 }
 
-/** Why a task has no account: no reviewer read it, as recorded, which is its account; it landed before the migration cut the unit, closed without one, or has yet to land. @param {boolean} closed @param {boolean} before @param {string|null} none */
+/** Why a task has no account: a one-line task, which owes none; it landed before the migration cut the unit, closed without one, or has yet to land. @param {boolean} closed @param {boolean} before @param {string|null} none */
 function absentAccount(closed, before, none) {
-  if (none !== null) return `No reviewer read it, as recorded, and that record is its account: ${none}`;
+  if (none !== null) return `No account, and no reviewer: ${none}.`;
   if (before) return 'No account was written: it landed before the migration cut the unit.';
   return closed ? 'No account was written: it closed without one.' : 'No account is written yet: its builder writes it as the task lands.';
 }
@@ -410,4 +410,4 @@ function stopScreen(standing, finished, quickFix = false) {
   return markerSection(standing, quickFix) + stopped + section('DISPLAY: build stop report', CONTINUE_INSTRUCTION, report);
 }
 
-module.exports = { landingScreen, accountScreen, stepGateScreen, phaseMergeGateScreen, headlineScreen, progressText, progressScreen, stopScreen };
+module.exports = { changedWords, landingScreen, accountScreen, stepGateScreen, phaseMergeGateScreen, headlineScreen, progressText, progressScreen, stopScreen };

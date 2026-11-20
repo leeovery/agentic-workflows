@@ -368,13 +368,13 @@ const stillReading = (letter) => `reviewer ${letter}, briefed in this conversati
 const briefedEarlier = (letter) => `reviewer ${letter} was briefed in an earlier conversation, or not at all: brief it for the round, engine brief reviewer pay 1.2 --letter ${letter}`;
 
 /** Why task 1.2 changed after round `round` passed, as the account and the chain refuse it, its builder briefed on the change. @param {number} round */
-const changedAfter = (round) => `task 1.2 of pay changed after round ${round} passed — something was added to it, or a call of it decided against its lean — so its pair reads it again first: engine brief reviewer pay 1.2 --letter <letter>, each reviewer of round ${round + 1}`;
+const changedAfter = (round) => `task 1.2 of pay changed after round ${round} passed — something was added to it, or a call of it decided against its lean — so its reviewers read it again first: engine brief reviewer pay 1.2 --letter <letter>, each reviewer of round ${round + 1}`;
 
 /** Why task 1.2 changed after round `round` passed while its builder is still to be briefed on the change, which round `next` reads. @param {number} round @param {number} next */
-const changedUnbuilt = (round, next) => `task 1.2 of pay changed after round ${round} passed — something was added to it, or a call of it decided against its lean — so its builder builds it first, engine brief builder pay 1.2, then its pair reads it in round ${next}`;
+const changedUnbuilt = (round, next) => `task 1.2 of pay changed after round ${round} passed — something was added to it, or a call of it decided against its lean — so its builder builds it first, engine brief builder pay 1.2, then its reviewers read it in round ${next}`;
 
 /** Why a reviewer of task 1.2 is refused for round `round` while a change waits on its builder's brief. @param {number} round */
-const unbuilt = (round) => `task 1.2 of pay changed since its builder's last brief — something was added to it, or one of its calls decided against its lean — so its builder builds it before its pair reads it: send its builder its brief first, engine brief builder pay 1.2, then each reviewer of round ${round}`;
+const unbuilt = (round) => `task 1.2 of pay changed since its builder's last brief — something was added to it, or one of its calls decided against its lean — so its builder builds it before its reviewers read it: send its builder its brief first, engine brief builder pay 1.2, then each reviewer of round ${round}`;
 
 /** The fix brief `id` of round 1 of task 1.2, its reports alone: a's failing, b's passing. @param {string} id */
 const fixOfRound1 = (id) => `Brief ${id} — the fix round's, for pay task 1.2\n\n${filledTemplate('fix', { reports: `# Reviewer A's report\n\n${REPORT}\n\n# Reviewer B's report\n\n${PASSED}` })}`;

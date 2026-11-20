@@ -121,7 +121,7 @@ One task's way through the build: a builder builds it, the reviewers Claude chos
 
 **reviewer pair**:
 The two independent reviewer agents, run side by side, that each phase's review and the review phase's are done by, and a task's where Claude chooses two. Fresh to the code, never the builder that wrote it; the same pair reads again after a finding.
-_Avoid_: the reviewer (as if there were one)
+_Avoid_: the reviewer, for a phase's review or the review phase's (as if there were one)
 
 **phase review**:
 The one independent review closing each build phase: a reviewer pair over the phase's whole change, its tasks' criteria, its coherence, and where it meets what earlier phases built. Its fixes land before the phase closes.

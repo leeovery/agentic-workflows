@@ -20,15 +20,16 @@
 //   in progress.
 // - `task-landed <unit> <task>`: a task's landing summary, once its account
 //   is taken — a bugfix's reproducing task's once its bug is proven too
-//   (bug-proven.cjs), as it lands; one reviewed by none (round-report.cjs)
-//   with no account, its record saying why, and what changed its outcome
-//   (task-file.cjs, `outcomeOf`).
+//   (bug-proven.cjs), as it lands; a one-line task's, which owes no
+//   account, once it is built, saying no reviewer read it, and under what
+//   changed its files changed (task-account.cjs, `changeOf`).
 // - `task-account <unit> <task>`: any task's account, printed when asked —
 //   one not yet taken drawn without it — a quick-fix's fix's and its
 //   review's fix tasks' among them, each built through the task loop and
 //   accounted as any task is (19.5.3).
 // - `step-gate <unit> <task>`: the gate after a task, in step alone, once
-//   its account is taken, or it is reviewed by none, and before it is done — a bugfix's reproducing
+//   its account is taken, or a one-line task's once it is built, and before
+//   it is done — a bugfix's reproducing
 //   task's once its bug is proven too — and for a task an answer freed
 //   while another went on, once that one is done (12.7.9); in auto none
 //   follows a task (12.12.7).
@@ -72,9 +73,9 @@ const { trackedTask, trackedLists, goingOn, phaseOpen, turnRefusal, ENDED, STATU
 const { engineItemsHold } = require('./checklist.cjs');
 const { outcomeOf, criteriaTexts, criterionWords, holdsScenario, namesScenario, scenarioIds } = require('./task-file.cjs');
 const { finishedUnits } = require('./ledger-units.cjs');
-const { accountPath, takenFigures, readAccount, changeOf, unbuiltWords } = require('./task-account.cjs');
+const { accountPath, takenFigures, readAccount, changeOf, unbuiltOneLine } = require('./task-account.cjs');
 const { taskRounds, reviewedNone } = require('./round-report.cjs');
-const { builtUnreviewed } = require('./task-base.cjs');
+const { builtOneLine } = require('./task-base.cjs');
 const { heldStack, tipCommits } = require('./phase-stack.cjs');
 const { branchHead } = require('./fix-branch.cjs');
 const { runsOf } = require('./runs.cjs');
@@ -86,7 +87,7 @@ const { parseShownTask, parsePhase, shownTask, taskName, phaseName } = require('
 const { filled, shaped, listed, readPayload, refusing } = require('./staged-payload.cjs');
 const { recordedBranch } = require('./landing-git.cjs');
 const {
-  landingScreen, accountScreen, stepGateScreen, phaseMergeGateScreen, headlineScreen, progressScreen, stopScreen,
+  changedWords, landingScreen, accountScreen, stepGateScreen, phaseMergeGateScreen, headlineScreen, progressScreen, stopScreen,
 } = require('./projections/build.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
@@ -122,7 +123,7 @@ function reviewedOf(rounds) {
   return { rounds: rounds.length, settled: last.settled, reviewers: last.reports.length, none: null };
 }
 
-/** A task reviewed by none, as recorded, `why`. @param {string} why @returns {Reviewed} */
+/** A one-line task's review, by none, `why` as recorded. @param {string} why @returns {Reviewed} */
 const reviewedByNone = (why) => ({ rounds: 0, settled: false, reviewers: 0, none: why });
 
 /** Each summary's heading under `## Reviews`: each round's, and after each round settled, its settlement's. @param {Round[]} rounds */
@@ -143,10 +144,10 @@ function takenAccount(cwd, ref) {
   return { sections, differences, reviews: reviews.map((summary, at) => ({ heading: headings[at], summary })), reviewed: reviewedOf(rounds), figures };
 }
 
-/** The account a screen needs, refused where `task account` has not taken it; none for a task reviewed by none, which owes none, refused until it is built (task-base.cjs). @param {string} cwd @param {TaskRef} ref */
+/** The account a screen needs, refused where `task account` has not taken it; none for a one-line task, which owes none, refused until it is built (task-base.cjs). @param {string} cwd @param {TaskRef} ref */
 function requiredAccount(cwd, ref) {
   if (reviewedNone(cwd, ref) !== null) {
-    if (!builtUnreviewed(cwd, ref)) throw new Error(unbuiltWords(ref));
+    if (!builtOneLine(cwd, ref)) throw new Error(unbuiltOneLine(ref));
     return null;
   }
   const account = takenAccount(cwd, ref);
@@ -157,8 +158,8 @@ function requiredAccount(cwd, ref) {
 /**
  * A task's account as a screen draws it, with its place among its phase's
  * tasks not closed — a closed task's own among them — whether it landed
- * before the migration cut the unit, and for one no reviewer reads, why,
- * and its change as its figures would count it (task-account.cjs).
+ * before the migration cut the unit, and for a one-line task, why no
+ * reviewer read it, and its change as figures count one (task-account.cjs).
  * @param {string} cwd @param {Record<string, any>} manifest @param {TaskRef} ref @param {TaskDetail} task @param {AccountView['account']} account @returns {AccountView}
  */
 function accountView(cwd, manifest, ref, task, account) {
@@ -252,7 +253,7 @@ function taskLandedSurface(cwd, args) {
       head: headOf(manifest, ref, task),
       reviewed: account?.reviewed ?? reviewedByNone(/** @type {string} */ (reviewedNone(cwd, ref))),
       calls: callsOf(cwd, ref).length,
-      changed: account?.sections['What was done'] ?? outcomeOf(task.text),
+      changed: account?.sections['What was done'] ?? changedWords(/** @type {import('./task-account.cjs').Change} */ (changeOf(cwd, ref, task))),
       criteria: criteria.map(criterionWords),
       product: projectName(cwd),
       ...ranOf(cwd, manifest, ref, task, criteria),

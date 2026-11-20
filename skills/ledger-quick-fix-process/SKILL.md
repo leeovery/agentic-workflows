@@ -57,7 +57,7 @@ A refusal names every fault: answer them and record it again.
 
 The fixes are built in the same loop as every task of a build: load **[the-task-loop.md](../ledger-implementation-process/references/the-task-loop.md)** and follow its instructions as written, with place = `implementation` and N = `1`. They run with no stop between them: the close is the quick-fix's one gate.
 
-Once a fix's review has passed it and its nits are committed, or it is built where no reviewer reads it, write its short record: what changed, why, and what it leaves out, each in the product's terms, to `.ledger/.cache/{work_unit}/build/record.md` under three level-two headings, `## What changed`, `## Why` and `## Leaves out`, none empty. Record it:
+Once a fix's review has passed it and its nits are committed, or a one-line fix is built, write its short record: what changed, why, and what it leaves out, each in the product's terms, to `.ledger/.cache/{work_unit}/build/record.md` under three level-two headings, `## What changed`, `## Why` and `## Leaves out`, none empty. Record it:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs quick-fix record {work_unit} {task} --file .ledger/.cache/{work_unit}/build/record.md
@@ -75,7 +75,7 @@ Append to the build's log, `.ledger/{work_unit}/build/log.md`, as the work goes:
 
 ## Doors
 
-- A fix → `task create {work_unit} 1 --file {path}`; its reviewers → `task review {work_unit} {task} --reviewers {count:[0|1|2]} --file {why}`; its order → `task link {work_unit} {task} --after {task}`.
+- A fix → `task create {work_unit} 1 --file {path}`; its reviewers → `task review {work_unit} {task} --reviewers {count:[1|2]} --file {why}`; its order → `task link {work_unit} {task} --after {task}`.
 - What runs → `task ready {work_unit} 1`, `task start {work_unit} {task}`.
 - An agent → `brief builder|fix {work_unit} {task}`, `brief reviewer {work_unit} {task} --letter {letter}`; then the Agent call with the agent and the pointer `brief` answers, or SendMessage of the pointer to the agent already working the fix.
 - Your fix of a nit → `commit --paths {file}… --task {work_unit} {task} -m "{message}"`.
@@ -116,7 +116,7 @@ A refusal names the way on: take it, then draw the close again. After each verdi
 
 ## Something Outside the Plan
 
-A bug the person reports, something they ask for, a gap or a find an agent reports beyond its fix, anything the change never held. Load **[outside-the-plan.md](../ledger-implementation-process/references/outside-the-plan.md)** and follow its instructions as written, with place = `implementation`; a fix it calls for is one more task of phase 1, written as **Writing a Fix** says.
+A bug the person reports, something they ask for, a gap or a find an agent reports beyond its fix, anything the change never held. Load **[outside-the-plan.md](../ledger-implementation-process/references/outside-the-plan.md)** and follow its instructions as written, with place = `implementation`; a fix it calls for is one more task of phase 1, a one-line task or one written as **Writing a Fix** says.
 
 ## Ready to Discuss a Question
 

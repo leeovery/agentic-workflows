@@ -168,6 +168,31 @@ describe('task worktree: every repository laid out (12.7.10, 7.2.21)', () => {
     );
   });
 
+  it('13.3.4: lays a one-line task out from the project\'s checkout in the engine\'s own layout, every repository on its branch and prepared as Claude Code prepares an isolation worktree; answers it laid out already run again; and takes it apart as the task ends, refused while it holds changes not committed', () => {
+    const at = project();
+    for (const [file, text] of Object.entries({ '.gitignore': '.secret\nvendor/\n', '.worktreeinclude': '.secret\n', '.secret': 'SECRET=1\n', 'vendor/kit.txt': 'kit\n' })) createFile(at.lib, file, text);
+    git(at.lib, ['add', '.gitignore', '.worktreeinclude']);
+    git(at.lib, ['commit', '-q', '-m', 'ignore the secret']);
+    createFile(at.dir, '.claude/settings.local.json', JSON.stringify({ worktree: { symlinkDirectories: ['vendor'] } }));
+    const { task } = ok(at.dir, ['task', 'create', UNIT, '3', '--title', 'Bold the fee', '--type', 'feat']);
+    const session = building(at.dir, [task]);
+
+    const laid = ok(at.dir, layOut(task), as(session));
+    const top = path.join(fs.realpathSync(at.dir), '.claude', 'worktrees', `ledger-${UNIT}-${task}`);
+    const lib = path.join(top, 'lib');
+    assert.deepStrictEqual([fs.realpathSync(laid.worktree), laid.repos.map(({ repo, already }) => [repo, already ?? false])], [top, [['.', false], ['ext', false], ['lib', false]]]);
+    assert.deepStrictEqual(checkoutsOf(top).map(([branch]) => branch), [laid.branch, laid.branch, laid.branch]);
+    assert.deepStrictEqual([fs.readFileSync(path.join(lib, '.secret'), 'utf8'), fs.lstatSync(path.join(lib, 'vendor')).isSymbolicLink()], ['SECRET=1\n', true]);
+    assert.deepStrictEqual(ok(at.dir, layOut(task), as(session)).repos.map(({ already }) => already), [true, true, true]);
+
+    createFile(lib, 'loose.txt', 'not committed\n');
+    assert.match(refuses(at.dir, ['task', 'close', UNIT, task, '--reason', 'Not needed.'], as(session)).error, /^task close: .*\/lib holds changes not committed: loose\.txt, so nothing moved/);
+    fs.rmSync(path.join(lib, 'loose.txt'));
+    ok(at.dir, ['task', 'close', UNIT, task, '--reason', 'Not needed.'], as(session));
+    assert.ok(!fs.existsSync(top), 'its layout taken apart');
+    assert.ok(git(at.dir, ['branch', '--list', laid.branch]).includes(laid.branch), 'its branch kept');
+  });
+
   it('answers each repository laid out already where it is run again, making nothing', () => {
     const at = project();
     const session = building(at.dir, ['3.1']);

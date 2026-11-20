@@ -298,25 +298,21 @@ describe('the answer: where the build stands, and what to read beside the ledger
     ]);
   });
 
-  it('13.3.4: a task no reviewer reads goes by whether it is built — its new builder until its branch holds a commit of its own, then its landing; a one-line task is the orchestrator\'s own to make', () => {
-    const why = path.join(dir, '..', `${path.basename(dir)}-why.md`);
-    fs.writeFileSync(why, 'A one-line check.\n');
-    const unbuilt = lineOf(() => ok(dir, ['task', 'review', UNIT, '1.2', '--reviewers', '0', '--file', why]));
-    const built = lineOf(() => {
-      git(dir, ['checkout', '-q', '-b', taskBranch({ unit: UNIT, phase: 1, n: 2 }, 'feat', 'Size a note')]);
-      createFile(dir, 'src/size.js', 'export const size = 1;\n');
-      git(dir, ['add', '-A']);
-      git(dir, ['commit', '-q', '-m', `feat(${UNIT}): size a note\n\nLedger-Task: ${UNIT}-1-2`]);
-      git(dir, ['checkout', '-q', 'main']);
-    });
+  it('13.3.4: a one-line task goes by whether it is built — the orchestrator\'s own to make in its worktree until its branch holds a commit of its own, then its landing', () => {
     ok(dir, ['task', 'create', UNIT, '1', '--title', 'Bold the size', '--type', 'chore']);
     ok(dir, ['task', 'start', UNIT, '1.4'], { env: env() });
-    const own = enter([UNIT]).sections.split('\n').find((line) => line.startsWith('in flight: task 1.4'));
+    /** Task 1.4's line, the entry's. */
+    const own = () => enter([UNIT]).sections.split('\n').find((line) => line.startsWith('in flight: task 1.4'));
+    const unbuilt = own();
+    git(dir, ['checkout', '-q', '-b', taskBranch({ unit: UNIT, phase: 1, n: 4 }, 'chore', 'Bold the size')]);
+    createFile(dir, 'src/size.css', '.size { font-weight: bold; }\n');
+    git(dir, ['add', '-A']);
+    git(dir, ['commit', '-q', '-m', `chore(${UNIT}): bold the size\n\nLedger-Task: ${UNIT}-1-4`]);
+    git(dir, ['checkout', '-q', 'main']);
 
-    assert.deepStrictEqual([unbuilt, built, own], [
-      'in flight: task 1.2, no builder dispatched here — no reviewer reads it, as recorded — its builder goes afresh on its branch, and once it is built it lands',
-      `in flight: task 1.2, no builder dispatched here — no reviewer reads it, as recorded, and it is built — show its landing, render task-landed ${UNIT} 1.2, then land it, engine land open ${UNIT} 1.2`,
-      `in flight: task 1.4, no builder dispatched here — a one-line task, your own work with no builder — make it in a worktree laid out for it, engine task worktree ${UNIT} 1.4, commit it through the door, and land it`,
+    assert.deepStrictEqual([unbuilt, own()], [
+      `in flight: task 1.4, no builder dispatched here — a one-line task, your own work with no builder — lay out its worktree, engine task worktree ${UNIT} 1.4, commit it there through the door, and land it`,
+      `in flight: task 1.4, no builder dispatched here — a one-line task, built — show its landing, render task-landed ${UNIT} 1.4, then land it, engine land open ${UNIT} 1.4`,
     ]);
   });
 

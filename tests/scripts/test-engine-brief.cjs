@@ -329,7 +329,7 @@ describe('the builder\'s brief (6.5.1–6.5.5, 6.S15)', () => {
     /** The brief's account place, drawn whole. */
     const accountTo = () => {
       const { brief } = issued(['builder', UNIT, '1.1']);
-      return brief.slice(brief.indexOf(heading) + heading.length, brief.indexOf('\n\nAs the task lands, write its account to the file named above'));
+      return brief.slice(brief.indexOf(heading) + heading.length, brief.indexOf('\n\n# Where the verify setup goes'));
     };
     const place = `\`${statePath(dir, 'pay/build/tasks/1.1.md')}\``;
     const unread = 'The account there does not read — its sections are `## What was done`, `## Where in the code`, `## What the tests prove`, `## Differs from the task`, `## Reviews`, in that order, and no other at level two; yours replaces it.';

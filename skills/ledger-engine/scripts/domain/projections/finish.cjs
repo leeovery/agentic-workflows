@@ -21,7 +21,8 @@
 // A quick-fix's close, its finish gate (19.5.13), is drawn the same but for
 // its title, `{Title} — ready to close`; each fix done with its review's
 // verdict, under REVIEWED, the round its reviewers passed it in or the
-// orchestrator settled it, or that no reviewer read it, as recorded; what running the product proved,
+// orchestrator settled it, or, ○, that no reviewer read it, a one-line
+// fix, with why; what running the product proved,
 // under its title — PROVEN BY RUNNING {PRODUCT}, each fix's scenario a line,
 // ✓ where proven, else its standing — or one line saying the project has
 // no way to run it (P9); each fix's work a question's park set aside and
@@ -134,7 +135,7 @@ function finishScreen(view) {
 const LANDS = Object.freeze({ 'pull request': 'merge its pull request', commits: 'land its commits' });
 
 /** A fix's line under its review's verdicts: round 0 is no reviewer's, as recorded, with why. @param {PairVerdict} verdict */
-const pairLine = ({ task, title, round, settled, why }) => `✓ ${task} ${title} · ${round === 0 ? `not reviewed: ${why}` : `${settled ? 'settled' : 'passed'} in round ${round}`}`;
+const pairLine = ({ task, title, round, settled, why }) => (round === 0 ? `○ ${task} ${title} · not reviewed: ${why}` : `✓ ${task} ${title} · ${settled ? 'settled' : 'passed'} in round ${round}`);
 
 /** Each fix done with its review's verdict (19.5.13). @param {CloseView} view */
 function pairBlock({ pair }) {

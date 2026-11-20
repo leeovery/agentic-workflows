@@ -375,7 +375,7 @@ describe('the step gate: a bugfix\'s reproducing task stands at its gate once it
     dir = proven();
     stepped();
 
-    assert.strictEqual(lineOf(), `in flight: task 1.1, at its gate — it waits on the person's go there, the gate drawn again with render step-gate ${UNIT} 1.1, and its builder is never sent afresh`);
+    assert.strictEqual(lineOf(), `in flight: task 1.1, at its gate — it waits on the person's go there, the gate drawn again with render step-gate ${UNIT} 1.1, and no agent is sent to it afresh`);
   });
 });
 

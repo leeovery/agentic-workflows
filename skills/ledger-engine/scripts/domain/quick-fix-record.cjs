@@ -47,7 +47,7 @@
 // parks named parked on it, its way on the question's raise, a fix its
 // blind question holds open among them (questions.cjs, `heldOpen`) — and
 // each fix done passed by its reviewers, as its rounds' reports say, or
-// recorded as reviewed by none, with why (`pairVerdict`), and recorded
+// a one-line fix, read by none, with why (`pairVerdict`), and recorded
 // (`recordedFixes`).
 // ---------------------------------------------------------------------------
 
@@ -298,7 +298,7 @@ function takeOutRecord(cwd, ref) {
 /**
  * The round a fix's reviewers ended its review in, every reviewer passing
  * it or the orchestrator settling it, and whether it was settled — round 0
- * for one recorded as reviewed by none, with the record's why; null where
+ * for a one-line fix, read by none, with its record's why; null where
  * its review has not ended so, or the fix changed under that round since
  * (round-report.cjs).
  * @param {string} cwd @param {TaskRef} ref @returns {{round: number, settled: boolean, why: string|null}|null}

@@ -51,10 +51,10 @@ describe('pipeline simulation: the build\'s questions', () => {
     const parked = await raised(locking, 'Does a read lock the ledger?', '1.1');
     assert.deepStrictEqual([parked.decision, parked.parked, parked.task], ['ask', 'Q1', '1.1'], 'the question parks its task, numbered');
     assert.strictEqual(parked.line, 'Task 1.1 parks on Q1, waiting for you: Does a read lock the ledger? The other tasks carry on.');
-    // Drawn as it parks; the work carries on while it waits for the person's answer.
+    // What can go on is dispatched first, then the question drawn; the work carries on while it waits for the person's answer.
+    sim.run(['task', 'start', wu, '1.2']);
     const drawn = sim.run(['raise', 'draw', wu, 'Q1']);
     assert.deepStrictEqual([drawn.question, drawn.parks], ['Q1', ['1.1']], 'the question is drawn from its park');
-    sim.run(['task', 'start', wu, '1.2']);
     const ordering = asked('Does a fold keep the ledger\'s order?', '1.2');
     await raised(ordering, 'Does a fold keep the ledger\'s order?', '1.2');
     // The task writer, reworking 1.3 before it starts, meets the same question: the open task joins Q2.

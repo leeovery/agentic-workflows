@@ -342,7 +342,7 @@ ${Object.values(MAP_USAGE).map((usage) => `  ${usage}`).join('\n')}
   task worktree <work-unit> <task>
   task stopped <work-unit> <task>
   task account <work-unit> <task>
-  task review <work-unit> <task> --reviewers <0|1|2> --file <why>
+  task review <work-unit> <task> --reviewers <1|2> --file <why>
   task settle <work-unit> <task> --file <why>
   task settle <work-unit> --phase <N> --file <why> [--fixes <task>,…]
   task note <work-unit> --file <note> [--phase <N>]

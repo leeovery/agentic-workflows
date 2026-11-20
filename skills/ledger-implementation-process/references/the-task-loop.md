@@ -20,11 +20,11 @@ node .claude/skills/ledger-engine/scripts/engine.cjs render build-headline {work
 
 ## A Quick-Fix's Tasks
 
-A quick-fix's tasks — its fixes, and its review's fix tasks — are built in the project's own checkout, on its one branch, one at a time: the task in flight holds the checkout until it is done or closed, or a question parks it. Once an answer frees it and `task ready` answers it as `back`, start it again, `task start {work_unit} {task}`, then send its builder its brief again; a start refused names the way on. Its builder's Agent call takes no worktree, and your nit fixes are made and committed in the checkout while the fix holds it: a parked fix's nits wait until it holds the checkout again. Its reviewers read its own commits alone. It has no headline, no landing summary, no gate and no stack: its pull request takes every commit as it is made, so run `land open {work_unit} {task}` each time its builder reports it built or fixed and once your nit fixes are committed. Once its account is taken, or once it is built where no reviewer reads it, it lands with `land open` again, then `task done`. Its notes for later, its builders' and its reviewers', go into the notes as any task's do, and its close answers them, or its review where the person asks for one.
+A quick-fix's tasks — its fixes, and its review's fix tasks — are built in the project's own checkout, on its one branch, one at a time: the task in flight holds the checkout until it is done or closed, or a question parks it. Once an answer frees it and `task ready` answers it as `back`, start it again, `task start {work_unit} {task}`, then send its builder its brief again; a start refused names the way on. Its builder's Agent call takes no worktree, and your nit fixes are made and committed in the checkout while the fix holds it: a parked fix's nits wait until it holds the checkout again. Its reviewers read its own commits alone. It has no headline, no landing summary, no gate and no stack: its pull request takes every commit as it is made, so run `land open {work_unit} {task}` each time its builder reports it built or fixed and once your nit fixes are committed. Once its account is taken, or a one-line fix is built, it lands with `land open` again, then `task done`. Its notes for later, its builders' and its reviewers', go into the notes as any task's do, and its close answers them, or its review where the person asks for one.
 
 ## Its Review
 
-Before a task's first round, choose its reviewers and record why: `task review {work_unit} {task} --reviewers {count:[0|1|2]} --file {why}`. Lean towards a review: usually one reviewer, two where the stakes call for it; a very small, mechanical change — a one-liner, a comment, a test name, a visual tweak — may go unreviewed.
+Before briefing a task's builder, choose its reviewers and record why: `task review {work_unit} {task} --reviewers {count:[1|2]} --file {why}` — usually one, two where the stakes call for it.
 
 ## The Builder
 
@@ -37,14 +37,14 @@ node .claude/skills/ledger-engine/scripts/engine.cjs brief builder {work_unit} {
 Every later message to the task's builder goes to the id its Agent call answered, by SendMessage of a pointer `brief` issued — the id held in the entry's `in flight` after a compaction. A builder is never replaced while its task is in flight here. An agent this conversation holds no id for, one an earlier conversation dispatched, is sent nothing: its brief goes in an Agent call of its own, as **The Builder** and **The Reviewers** make them.
 
 When it reports, land what it lists first. Each call — a way it took that the record left open — goes on the ledger for its task, `ledger ask {work_unit}.{place} --task {task}`, then `raise {work_unit}.{place} --answers {question_id} --parks {task}`, its way your lean. Each question it lists goes the same way, put as the person meets the product. Each note goes into the notes for later, `task note {work_unit} --file {note}`, written to `.ledger/.cache/{work_unit}/build/note.md`. Then go on by its status:
-- **Built**, or **fixed** — its reviewers read it (**The Reviewers**), or with none, it lands (**Landing**).
+- **Built**, or **fixed** — its reviewers read it (**The Reviewers**).
 - **Stopped** — **A Builder That Stops**.
 - **Accounted** — its account is written (**Landing**).
 - **Merged** — its branch holds its chain's tip again, its account taken: land it, from `land open` (**Landing**).
 
 ## The Reviewers
 
-Brief each of its reviewers, `{letter}` `a`, and `b` where it has two, then make their Agent calls side by side, with no worktree:
+Brief each of its reviewers, `{letter}` `a`, and `b` where it has two, then make their Agent calls at once, with no worktree:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs brief reviewer {work_unit} {task} --letter {letter}
@@ -69,7 +69,7 @@ A question raised for a task, or for the phase, can wait on the person. Load **[
 
 ## Landing
 
-A task no reviewer reads takes no account: once it is built, it lands. Any other, once the builder reports its account written, take it:
+A one-line task takes no account: once it is built, it lands. Any other, once the builder reports its account written, take it:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs task account {work_unit} {task}
@@ -96,7 +96,7 @@ It is refused where the build runs in auto, where no gate follows a task: land i
 - **auto** — run its `next`, then land the task.
 - **technical** — retell the task's account from the code's side (**[technical-lens.md](../../ledger-shared/references/technical-lens.md)**), then run its `next`.
 - **show** — draw what the task built as diagrams, then run its `next`.
-- **Comment** — the person's change goes onto the task as theirs, `--by person`, before the builder goes back in; its reviewers read the task again, a new account is taken, and its gate comes again once the task stands at it. Where this conversation holds no builder for the task, after a `/clear`, it goes through **The Builder** afresh, its new builder carrying on from where the work stands. A task no reviewer reads, or a one-line task, you change yourself, committed through the door, and its gate comes again.
+- **Comment** — the person's change goes onto the task as theirs, `--by person`, before the builder goes back in; its reviewers read the task again, a new account is taken, and its gate comes again once the task stands at it. Where this conversation holds no builder for the task, after a `/clear`, it goes through **The Builder** afresh, its new builder carrying on from where the work stands. A one-line task you change yourself, committed through the door, and its gate comes again.
 
 Land a task into its phase's stack:
 

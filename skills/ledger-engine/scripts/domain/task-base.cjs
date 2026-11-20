@@ -25,33 +25,28 @@
 //   each repository holding the branch, those it holds past the branch the
 //   repository lands on that the door stamped with the task
 //   (commit-task.cjs), oldest first (`ownCommits`).
-// - A task no reviewer reads (round-report.cjs, `reviewedNone`) has no
-//   rounds and no account to prove it built, so the one read of whether it
-//   is built is its branch's (`builtUnreviewed`): in a repository holding
-//   it, a commit the door stamped with the task, merges aside, past the
-//   branch the repository lands on, past the tips its branch stood at as
-//   its builder was first briefed past the latest freeing and change
-//   (`branchTips`) — so the answer's brief starts it again — and past those
-//   as the latest change to it was marked (round-report.cjs, `markOf`), so
-//   a change made since is built; and no answer freeing it since its
-//   builder's latest brief, which it waits for — but a one-line task's,
-//   which no builder is briefed for, the orchestrator's own work.
+// - A one-line task, the orchestrator's own work, has no rounds and no
+//   account to prove it built, so it is built once its branch holds work of
+//   its own (`builtOneLine`): in a repository holding it, a commit the door
+//   stamped with the task, merges aside, past the branch the repository
+//   lands on. It finished as the newest commit on its branch was made
+//   (`oneLineFinished`), the time the board says it finished.
 // ---------------------------------------------------------------------------
 
-const { laidOutOf, briefedOf, markOf } = require('./round-report.cjs');
-const { isOneLine } = require('./task-file.cjs');
+const { laidOutOf } = require('./round-report.cjs');
 const { projectRepos } = require('../kernel/repos.cjs');
 const { taskBranch, quickFixBranch } = require('./landing-names.cjs');
 const { quickFixBuild } = require('./derivations.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
-const { taskId, taskName, shownTask } = require('./task-id.cjs');
+const { taskId, taskName } = require('./task-id.cjs');
 const { branches, branchesHeldBy, defaultBranch, landingBranch, landingRev, isAncestor, latestOf, stampedPast, holdingBranch } = require('./landing-git.cjs');
 const { remoteName } = require('./remote.cjs');
 const { workBelow } = require('./review-change.cjs');
 const { repoLanded } = require('./task-landed.cjs');
 const { dayBefore } = require('./dates.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
+const { git } = require('../kernel/git.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 /** @typedef {import('../kernel/repos.cjs').Repo} Repo */
@@ -134,34 +129,28 @@ function ownCommits(cwd, ref, repo) {
 const ownWork = (cwd, ref, holding) => holding.map((repo) => ({ repo, commits: ownCommits(cwd, ref, repo) })).filter(({ commits }) => commits.length > 0);
 
 /**
- * The tip of the task's branch in each repository holding it, by its
- * folder, `''` the project's own: where a brief to its builder starts its
- * work from (the header's).
- * @param {string} cwd @param {TaskRef} ref @param {{type: string|null, title: string}} task
- * @returns {Record<string, string>}
+ * Whether a one-line task is built (the header's), its detail as the
+ * tracker holds it.
+ * @param {string} cwd @param {TaskRef} ref @param {{type: string|null, title: string}} [task]
  */
-function branchTips(cwd, ref, task) {
-  const branch = workBranch(cwd, ref, task);
-  const { holding } = holdingBranch(ref.unit, projectRepos(codeRoot(cwd)), branch);
-  return Object.fromEntries(holding.map((repo) => [repo.dir, /** @type {string} */ (branches(repo.path).get(branch))]));
-}
-
-/**
- * Whether a task no reviewer reads is built (the header's), its detail as
- * the tracker holds it.
- * @param {string} cwd @param {TaskRef} ref @param {{type: string|null, title: string, text: string}} [task]
- */
-function builtUnreviewed(cwd, ref, task = require('./task-verbs.cjs').trackedTask(cwd, ref)) {
-  const briefed = briefedOf(cwd, ref);
-  if (!isOneLine(task.text) && (require('./task-parks.cjs').freedAt(cwd, ref.unit).get(shownTask(ref)) ?? 0) > briefed.builder) return false;
-  const marked = markOf(cwd, ref);
+function builtOneLine(cwd, ref, task = require('./task-verbs.cjs').trackedTask(cwd, ref)) {
   const branch = workBranch(cwd, ref, task);
   const { holding } = holdingBranch(ref.unit, projectRepos(codeRoot(cwd)), branch);
   const id = taskId(ref);
-  return holding.some((repo) => {
-    const tips = [briefed.tips?.[repo.dir], marked.tips?.[repo.dir]].filter((tip) => tip !== undefined).filter((tip) => isAncestor(repo.path, tip, `refs/heads/${branch}`));
-    return stampedPast(repo.path, `refs/heads/${branch}`, [landingBranch(cwd, repo, ref.unit), ...tips], stampKey()).some(({ value }) => value === id);
-  });
+  return holding.some((repo) => stampedPast(repo.path, `refs/heads/${branch}`, landingBranch(cwd, repo, ref.unit), stampKey()).some(({ value }) => value === id));
 }
 
-module.exports = { projectDefault, baseRev, ofQuickFix, workBranch, builtOnBases, ownWork, branchTips, builtUnreviewed };
+/**
+ * When a one-line task finished (the header's): the newest commit on its
+ * branch in any repository holding it, as ISO time; null where none does.
+ * @param {string} cwd @param {TaskRef} ref
+ * @returns {string|null}
+ */
+function oneLineFinished(cwd, ref) {
+  const branch = workBranch(cwd, ref, require('./task-verbs.cjs').trackedTask(cwd, ref));
+  const { holding } = holdingBranch(ref.unit, projectRepos(codeRoot(cwd)), branch);
+  const times = holding.map((repo) => git(repo.path, ['log', '-1', '--format=%cI', `refs/heads/${branch}`]).trim()).sort();
+  return times.at(-1) ?? null;
+}
+
+module.exports = { projectDefault, baseRev, ofQuickFix, workBranch, builtOnBases, ownWork, builtOneLine, oneLineFinished };

@@ -307,7 +307,7 @@ describe('the build\'s templates', () => {
   });
 
   it('12.14: the builder writes its account to the file its brief names', () => {
-    assert.ok(template('builder').includes('# Where your account goes\n\n{{account-to}}\n\nAs the task lands, write its account to the file named above'));
+    assert.ok(template('builder').includes('As the task lands, write its account to the file under "Where your account goes"'));
   });
 
   it('12.3.2–12.3.5, 12.10.3, 15.8.5: the task writer\'s principles and the consolidation\'s rules, each in the words that carry it', () => {

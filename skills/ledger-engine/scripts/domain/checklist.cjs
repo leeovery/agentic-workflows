@@ -422,7 +422,7 @@ const POINTS = Object.freeze({
     takes: ['<work-unit>', '<N>'],
     place: onPhase('close'),
     items: [
-      { key: 'tasks-passed', text: 'every task passed each of its reviewers, or was recorded as reviewed by none', check: ofPhase(checks.tasksPassed) },
+      { key: 'tasks-passed', text: 'every task passed each of its reviewers, or was a one-line task built', check: ofPhase(checks.tasksPassed) },
       {
         key: 'phase-review-passed', text: 'the phase review passed and its fixes landed', check: (named) => reviewFaults(named).length === 0, way: (named) => reviewFaults(named).join('; '),
       },
