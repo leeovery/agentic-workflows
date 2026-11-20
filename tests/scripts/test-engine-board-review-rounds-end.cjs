@@ -22,6 +22,7 @@ const {
   UNIT, SESSION_ID, EVERY, FOUND, useWorld, env, enter, reported, recorded, fixPhaseWritten, reviewCall, filed, finishClosed, finishReady, secondRoundReady, ok,
 } = require('./review-world.cjs');
 const { place } = require('./board-world.cjs');
+const { writeState, readManifest, layout, commitAll } = require('./engine-harness.cjs');
 const { area, tests, FINISH, facts, placed, reviewBoard } = require('./review-board-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
@@ -81,6 +82,15 @@ describe('a round that passed (20.10.1, 20.10.4)', () => {
       { view: ['all', true, [UNIT]], banner: close, unit: null, questions: [] },
       { name: projectName(dir), state: 'idle', facts: [place('roadmap')] },
     ]);
+  });
+
+  it('an epic\'s finish leaves it alike, the banner its close (D38)', () => {
+    finishReady();
+    writeState(dir, layout.manifest(UNIT), JSON.stringify({ ...readManifest(dir, UNIT), work_type: 'epic' }, null, 2));
+    commitAll(dir, 'pay an epic');
+    ok(dir, ['finish', 'yes', UNIT], { env: env() });
+
+    assert.deepStrictEqual(ok(dir, ['board', SESSION_ID], { env: env() }).banner, { name: 'Pay', state: 'done', facts: [...facts('epic', 'complete'), place('at the start menu')] });
   });
 });
 

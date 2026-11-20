@@ -51,7 +51,7 @@ Some calls reach you whatever the counts say:
 
 ## How a question reaches you
 
-A question arrives cold and product first: what is being decided, Claude's lean, what you would notice either way, and why it asks — the kind, or the reason it always asks. The mechanism sits behind `t/technical`. `e/explain` says you don't follow: it counts as no answer, Claude explains again, and the question stays open.
+A question arrives cold and product first: what is being decided, Claude's lean, what you would notice either way, and, where a rule always brings it to you, that reason. The mechanism sits behind `t/technical`, beside how Claude's calls of its kind have gone where those sent it to you. `e/explain` says you don't follow: it counts as no answer, Claude explains again, and the question stays open.
 
 Questions come one at a time. In a discussion each is slotted into the conversation at a natural pause; where several wait at once they come back to back, each answered before the next shows. In the build a question parks only the tasks that depend on it, and the rest carry on.
 
@@ -61,13 +61,13 @@ Questions come one at a time. In a discussion each is slotted into the conversat
 
 ## Verdicts
 
-A departure is an answer of yours that changes Claude's lean. Each one gets a **verdict**: what the product would have lost had Claude built its own answer — nothing, a fix later, or a real loss. Verdicts are what the ask rule learns from, and they are asked where you already sign off, so none is left to a page you would have to remember to open: a topic's decided screen, ready to build, an investigation's conclusion, finish, and a quick-fix's close. Where you changed nothing, nothing is added.
+A departure is an answer of yours that changes Claude's lean. Each one gets a **verdict**: what the product would have lost had Claude built its own answer — nothing, a fix later, or a real loss. Verdicts are what the ask rule learns from, and they are asked where you already sign off, so none is left to a page you would have to remember to open: a topic's decided screen, ready to build, finish, and a quick-fix's close. Where you changed nothing, nothing is added.
 
 A verdict you can't call yet can be skipped. It waits in the **verdict queue**, reached from the Verdicts row on the start menu or an epic's menu while any wait, one at a time, oldest first. Until judged, a departure counts as a real loss, so a backlog only makes Claude ask more. A blind answer that differs from Claude's is a departure too, and so is a later reversal: an "I agree" given in fatigue and overturned later counts as an overturn.
 
 ## Routine gates are learned
 
-Beyond the questions, some of Ledger's own stops are routine: what to do with a file you shared that could not be found, whether to wait for a topic's review agents at its close, an investigation's plan and conclusion, whether to run an experiment now or later. Each asks until your answers show you pick the same row nearly every time; then it runs on its own with a one-line report in its place, such as "Investigation concluded [auto]. Moving to the specification." It asks again once your answers start to vary, and a blind ask still shows it now and then. No gate ships automatic, the authority gates never learn, and in the build's step position every one of them stops.
+Beyond the questions, some of Ledger's own stops are routine: what to do with a file you shared that could not be found, whether to wait for a topic's review agents at its close, an investigation's plan, whether to run an experiment now or later. Each asks until your answers show you pick the same row nearly every time; then it runs on its own with a one-line report in its place, such as "Investigation concluded [auto]. Moving to the specification." It asks again once your answers start to vary, and a blind ask still shows it now and then. No gate ships automatic, the authority gates never learn, and in the build's step position every one of them stops.
 
 ## The matrix
 

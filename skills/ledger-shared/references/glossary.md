@@ -81,7 +81,7 @@ A controlled measurement in its own laboratory, designed before it is run, spawn
 Code or design built to be looked at or pressed and never wired into the product — a design board, draft code, a working prototype. What it shows is evidence, kept as an asset of the work.
 
 **investigation**:
-The bugfix's route to the cause: gathering symptoms, reading the code, and arriving at the root cause before anything is specified. Its conclusion asks a verdict on each call the person changed in it.
+The bugfix's route to the cause: gathering symptoms, reading the code, and arriving at the root cause before anything is specified. It closes into the specification with no gate of its own: its recap is shown at ready to build, whose yes concludes it.
 
 **specification**:
 The contract: a piece of work's one spec, written from its decided topics (a bugfix's investigation), each statement traced to the entry it comes from, cut into phases and approved at ready to build. Once concluded it is never corrected: a later change replaces the decision itself.
@@ -98,7 +98,7 @@ The specification's cut into build phases, in the order they are built, each nam
 _Avoid_: the plan, planning
 
 **ready to build**:
-The authority gate that closes the specification: one screen showing the spec's outline and its phase cut, where the person approves both and picks the build's position, auto or step. The drivers are checked there, the environment setup is asked for the first time, and verdicts are asked for the calls the person changed in the spec's review.
+The authority gate that closes the specification: one screen showing the spec's outline and its phase cut, where the person approves both and picks the build's position, auto or step. The drivers are checked there, the environment setup is asked for the first time, and verdicts are asked for the calls the person changed in the spec's review. A feature's shares the screen with its decided, a bugfix's with its investigation's recap and verdicts.
 
 **implementation**:
 The building phase, which the screens call the build. One conversation runs it across every phase of the cut, and straight into the review phase.
@@ -217,7 +217,7 @@ A question's kind — process, danger, contract, scope, look, words, behaviour o
 _Avoid_: category; kind of work (another thing)
 
 **verdict**:
-What Claude's answer would have cost the product, given for each call where the person's answer changed Claude's lean: nothing, a fix later, or a real loss. It is asked where the person signs off — decided, ready to build, an investigation's conclusion, finish and a quick-fix's close — and skip leaves it in the verdict queue. Every call not yet judged counts as a real loss until it is; verdicts are what the ask rule learns from.
+What Claude's answer would have cost the product, given for each call where the person's answer changed Claude's lean: nothing, a fix later, or a real loss. It is asked where the person signs off — decided, ready to build, finish and a quick-fix's close — and skip leaves it in the verdict queue. Every call not yet judged counts as a real loss until it is; verdicts are what the ask rule learns from.
 
 **the verdict queue**:
 The verdicts still waiting, reached from the Verdicts row on the start menu or an epic's menu while any wait, and given one at a time, oldest first.

@@ -623,7 +623,7 @@ describe('the boot and knowledge gate surfaces', () => {
     ].join('\n'));
   });
 
-  it('the state lost stop and the offers on GitHub are yes/no gates naming the project by its main checkout\'s folder', () => {
+  it('the state lost stop and the rule\'s offer on GitHub are yes/no gates naming the project by its main checkout\'s folder', () => {
     const name = titlecase(path.basename(dir));
     const lost = renderSurface(dir, 'state-lost-gate', {});
     assert.match(lost, /=== DISPLAY: state lost stop[^\n]*\n⚑ Boot stopped: Ledger's state branch is gone\n/);
@@ -633,10 +633,6 @@ describe('the boot and knowledge gate surfaces', () => {
     assert.ok(unwrap(rule).includes(`Yes adds the rule to ${name}'s repository.`), rule);
     assert.match(rule, /\*\*`◆ Add that rule on GitHub\?`\*\*/);
     assert.match(unwrap(rule), /\*\*`n\/no`\*\*\s+→ Leave it unset — \*setup carries on without it\*/);
-    const squash = renderSurface(dir, 'github-squash-gate', {});
-    assert.ok(unwrap(squash).includes(`Yes sets both on ${name}'s repository.`), squash);
-    assert.match(squash, /\*\*`◆ Set both on GitHub\?`\*\*/);
-    assert.match(unwrap(squash), /\*\*`n\/no`\*\*\s+→ Leave them as they are — \*Ledger won't merge a phase's\* \*pull requests until they're set\*/);
   });
 
   it('the stop the gate mod\'s band tests draw carrying ⚑ (18.S43) is the engine\'s answer under the gate surface, its project named Fumi', async () => {

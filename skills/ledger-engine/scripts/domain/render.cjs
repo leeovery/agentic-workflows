@@ -9,15 +9,15 @@
 // branching renders inside the surface: the caller never chooses between
 // gated and auto output.
 //
-// Surfaces read; they never write a state commit takes, and write three
-// things beside. `map` moves the last-looked mark as
-// it draws, since the map shown in the conversation is the person looking
+// Surfaces read; they never write a state commit takes, and write four
+// things beside. `map` moves the last-looked mark as it draws, since the map shown in the conversation is the person looking
 // (5.8.14). `decided --file` stages Claude's payload in the topic's cache,
 // what the gate's yes lands (decided.cjs); `start-this-work --file` and
 // `approve-map --file` stage theirs in discovery's cache the same way
-// (start-this-work.cjs, approve-map.cjs), and `conclude --file` the recap in
-// the investigation's (investigation-conclude.cjs). A menu leaves the
-// conversation's position where its registry says (menus.cjs).
+// (start-this-work.cjs, approve-map.cjs). `convergence`, due and settling
+// nothing, starts the topic's run again in its cache, as the person's no
+// does (convergence.cjs). A menu leaves the conversation's position where
+// its registry says (menus.cjs).
 
 const fs = require('fs');
 const path = require('path');
@@ -34,14 +34,13 @@ const {
   ORIGINS: WALKTHROUGH_ORIGINS, loadScreen, loadCard, walkthroughOffer, walkthroughScreen, walkthroughTopic,
 } = require('./projections/walkthrough.cjs');
 const { helpTopicsSurface } = require('./projections/help-topics.cjs');
-const { RESHAPE_PARTS, migrationsApplied, migrationGate, stateLostGate, repoStop, migrationGuardStop, migrationChecksStop, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, banner, workPick, knowledgeGate, knowledgeAsk, knowledgeReady, knowledgeNotDone, KEY_PROVIDERS } = require('./projections/boot.cjs');
+const { RESHAPE_PARTS, migrationsApplied, migrationGate, stateLostGate, repoStop, migrationGuardStop, migrationChecksStop, githubRuleGate, labelGate, brownfieldOfferGate, banner, workPick, knowledgeGate, knowledgeAsk, knowledgeReady, knowledgeNotDone, KEY_PROVIDERS } = require('./projections/boot.cjs');
 const { readiness } = require('./knowledge/status.cjs');
 const { knowledgeFiles } = require('../kernel/knowledge/files.cjs');
 const { readMetadata } = require('../kernel/knowledge/store.cjs');
 const { detectSystemConfig } = require('./boot.cjs');
 const { pickRows } = require('./boot-route.cjs');
 const { messageOf } = require('../kernel/call.cjs');
-const { githubSquashNested } = require('./github-setup.cjs');
 const { multiplexerHere } = require('./session-label.cjs');
 const { roadmapState, hasRoadmapNode } = require('./roadmap.cjs');
 const { putBackBy, stillToAsk, thenArgs, ontoMenu } = require('./topic-leave.cjs');
@@ -63,7 +62,6 @@ const { approveMapSurface, approveMapStrikeSurface } = require('./approve-map.cj
 const { readyToBuildSurface } = require('./ready-to-build.cjs');
 const { buildHeadlineSurface, taskLandedSurface, taskAccountSurface, stepGateSurface, phaseMergeGateSurface, buildStopSurface, buildProgressSurface } = require('./build-screens.cjs');
 const { investigationPlanSurface, investigationCheckInSurface } = require('./investigation.cjs');
-const { concludeSurface } = require('./investigation-conclude.cjs');
 const decisionPoint = require('./decision-point.cjs');
 const { reviewReportSurface, reviewCallsSurface } = require('./review-round.cjs');
 const { reviewTreeSurface } = require('./review-tree.cjs');
@@ -915,7 +913,6 @@ const SURFACES = {
   'git-floor-stop': () => gitFloorStopSurface(),
   'repo-stop': repoStopSurface,
   'github-rule-gate': (cwd) => githubRuleGate(projectName(cwd)),
-  'github-squash-gate': (cwd) => githubSquashGate(projectName(cwd), githubSquashNested(cwd)),
   'label-gate': () => labelGateSurface(),
   'knowledge-gate': knowledgeGateSurface,
   'knowledge-ask': knowledgeAskSurface,
@@ -951,7 +948,6 @@ const SURFACES = {
   'finish': finishSurface,
   'investigation-plan': investigationPlanSurface,
   'investigation-check-in': investigationCheckInSurface,
-  'conclude': concludeSurface,
   'help': (_cwd, { dotpath, item, ...flags }) => helpSurface(dotpath, { arg: item, flags }),
   'verdicts': (cwd, { unit }) => verdictsSurface(cwd, unit ?? null),
   'start-menu': (cwd) => startMenuSurface(cwd),

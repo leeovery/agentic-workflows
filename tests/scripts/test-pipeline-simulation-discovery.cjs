@@ -150,11 +150,10 @@ describe('pipeline simulation: discovery\'s entry', () => {
     const shared = sim.write('notes/pricing.md', '# Pricing\n');
     sim.refuses(['asset', 'import', PRODUCT, shared, 'notes/gone.png'], /notes\/gone\.png/);
     // The person asks first in their own words, which sets the prompt
-    // aside; shown again, they skip.
-    const reprompt = () => sim.render(['import-reprompt', '--file', sim.write('.ledger/.cache/product/discovery/product/import-reprompt.json', { missing: ['notes/gone.png'] })], { expect: 'content' });
-    reprompt();
+    // aside; once it is answered, their skip answers the prompt where it
+    // waits, never drawn again.
+    sim.render(['import-reprompt', '--file', sim.write('.ledger/.cache/product/discovery/product/import-reprompt.json', { missing: ['notes/gone.png'] })], { expect: 'content' });
     typeAtGate(sim, 'import reprompt', 'is the png one I need?');
-    reprompt();
     answerGate(sim, 'import reprompt', '--pick', 's');
     assert.deepStrictEqual(sim.run(['asset', 'import', PRODUCT, shared]).imports, ['.product/assets/pricing.md']);
 

@@ -11,8 +11,8 @@
 // intended, and the fix direction's step back and options, Claude's lean
 // marked (20.S19); nothing of earlier fixes (20.S20); each decision read
 // where its chain stands now; a raise named by the decision it asks about,
-// drawn again the same line; the conclude waiting from its draw to the
-// person's pick, never on the start menu's count; a call refused before the
+// drawn again the same line; the investigation closed into its spec with
+// no gate, nothing of it waiting on the person; a call refused before the
 // ledger is read; the investigation dated by its close on the
 // unit's tab, opened there once concluded, the hunt's moments in its
 // LATELY, and how far it has come on All work; the hunt's pages (20.12.2). The mod's fixtures are held to the
@@ -541,8 +541,8 @@ describe('the investigation concluded, the unit\'s tab and All work (20.12.4, 20
     assert.deepStrictEqual([opened.kind, opened.standing], ['investigation', 'concluded']);
   });
 
-  /** The hunt brought to its conclude, both validated, and the conclude drawn with Claude's recap staged. */
-  async function concludeDrawn() {
+  /** The hunt brought to its close, both validated, and closed into its spec with Claude's recap staged. */
+  async function closed() {
     takenIn(dispatched('root-cause-validation', []).id);
     picked(await raised(FIX_CALL, made.fix), '1');
     run(['investigation-log', 'fix-direction', BUG, '--question', made.fix]);
@@ -550,50 +550,23 @@ describe('the investigation concluded, the unit\'s tab and All work (20.12.4, 20
     write('decide', ['--answers', made.keep], { ...PERSON, text: 'A session you kill never comes back.', why: 'Killing it is the person saying so.' });
     const recap = path.join(config, 'recap.json');
     fs.writeFileSync(recap, JSON.stringify({ hunt: 'Three hypotheses; killing every session emptied the save.' }));
-    output(dir, ['render', 'conclude', BUG, '--file', recap], { env: env() });
+    run(['investigation', 'stage', BUG, '--file', recap]);
     atTheHunt();
   }
 
-  it('its conclude drawn, its yes waits on the person: This session, the banner, the tab and All work each say the conclude waits, flagged first and counted, and the start menu\'s row counts it among the gates, the unit listed first (18.2.3, 20.12.5); the root cause replaced, logged and both validated again since, the recap drawn before it, it waits no longer', async () => {
-    await concludeDrawn();
+  it('19.4.23: closed into its spec with no gate, nothing of it waits on the person — This session says it is concluded and the specification next, the banner done, the unit at its specification on the tab and All work, and the start menu counting no gate', async () => {
+    await closed();
     createManifest(dir, 'tally', { work_type: 'feature' });
-    const started = /** @type {{head: string, cue: string}} */ (startMenuScreen(withEnv(env(), () => startMenuRead(dir))).rows[0].label);
+    const labels = /** @type {{head: string, tail?: string, cue?: string}[]} */ (startMenuScreen(withEnv(env(), () => startMenuRead(dir))).rows.map(({ label }) => label));
     const { view, banner } = board();
-    const standing = standingOn(board, BUG);
-    const replaced = write('replace', ['--replaces', made.rootCause, '--reason', 'was-wrong'], { ...CLAUDE, drops: ['the whole truth'], text: 'A save trusts a capture taken mid-shutdown.', why: 'E6 showed it.' }).id;
-    const body = path.join(config, 'body.md');
-    fs.writeFileSync(body, 'A capture mid-shutdown reads as no sessions.\n');
-    run(['investigation-log', 'root-cause', BUG, '--entry', replaced, '--body', body]);
-    takenIn(dispatched('root-cause-validation', []).id);
-    takenIn(dispatched('fix-validation', []).id);
-    const stale = board().view;
 
-    assert.deepStrictEqual([view.standing, view.waiting.map(({ kind, id, text }) => [kind, id, text])], ['conclude-waits', [['conclude', 'conclude', 'Conclude: the hunt\'s recap, the root cause and the fix, for your yes']]]);
-    assert.deepStrictEqual([banner.state, banner.facts.slice(2).map(({ text, needs }) => [text, needs])], ['needs', [['conclude waits on you', false], ['1 waiting on you', true]]]);
-    assert.deepStrictEqual(standing, {
-      tab: { now: 'investigation', state: 'waits', words: '3 hypotheses', waiting: ['conclude conclude'] },
-      all: { phase: 'investigation', standing: 'conclude waits on you', waiting: 1, total: 1 },
-      banner: { state: 'needs', waits: ['⚑ 1 waiting on you'] },
+    assert.deepStrictEqual([view.standing, view.waiting, banner.state, banner.facts.at(-1).text], ['concluded', [], 'done', 'concluded · the specification next']);
+    assert.deepStrictEqual(standingOn(board, BUG), {
+      tab: { now: 'specification', state: 'running', words: '', waiting: [] },
+      all: { phase: 'specification', standing: 'being written', waiting: 0, total: 0 },
+      banner: { state: 'done', waits: [] },
     });
-    assert.deepStrictEqual([stale.standing, stale.waiting], ['investigating', []]);
-    assert.deepStrictEqual([started.head, started.cue], ['Continue bugfix: Kill All', '1 gate waiting for you']);
-  });
-
-  it('20.12.5: the conclude waits from its draw to the person\'s pick — keep going ends the wait on every view, and its next draw opens it again', async () => {
-    await concludeDrawn();
-    const drawn = standingOn(board, BUG);
-    ok(dir, ['gate', 'conclude gate', '--pick', 'k'], { env: env() });
-    const kept = { this: board().view.waiting, ...standingOn(board, BUG) };
-    output(dir, ['render', 'conclude', BUG], { env: env() });
-    const again = standingOn(board, BUG);
-
-    assert.deepStrictEqual([drawn.all.standing, drawn.banner.state, again], ['conclude waits on you', 'needs', drawn]);
-    assert.deepStrictEqual(kept, {
-      this: [],
-      tab: { now: 'investigation', state: 'running', words: '3 hypotheses', waiting: [] },
-      all: { phase: 'investigation', standing: 'fix confirmed', waiting: 0, total: 0 },
-      banner: { state: 'running', waits: [] },
-    });
+    assert.deepStrictEqual(labels.find(({ head }) => head === 'Continue bugfix: Kill All'), { head: 'Continue bugfix: Kill All', tail: 'specification', cue: undefined });
   });
 
   it('a raise drawn again for its question keeps its line, named by the question it asks', async () => {

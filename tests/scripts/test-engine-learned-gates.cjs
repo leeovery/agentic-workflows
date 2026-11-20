@@ -50,7 +50,7 @@ const { recordPosition } = require(path.join(SCRIPTS, 'domain/position.cjs'));
 const { stateRoot } = require(path.join(SCRIPTS, 'kernel/state-root.cjs'));
 const { idFrom } = require(path.join(SCRIPTS, 'domain/ledger-ids.cjs'));
 const { readPersonEvents } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
-const { planScreen, concludeScreen } = require(path.join(SCRIPTS, 'domain/projections/investigation.cjs'));
+const { planScreen } = require(path.join(SCRIPTS, 'domain/projections/investigation.cjs'));
 const { waitAgents } = require(path.join(SCRIPTS, 'domain/projections/decided.cjs'));
 const { experimentSpawnGate } = require(path.join(SCRIPTS, 'domain/projections/experiment.cjs'));
 const { importReprompt } = require(path.join(SCRIPTS, 'domain/projections/transactions.cjs'));
@@ -77,7 +77,6 @@ const DRAWN = Object.freeze({
   'import reprompt': (step) => importReprompt(['/notes/sketch.png'], step),
   'wait for agents': (step) => waitAgents('fumi', 'note-window', 'Note Window', ['review'], step),
   'plan gate': (step) => planScreen({ title: 'Crash', order: [{ hypothesis: { name: 'H1', title: 'The save writes a null', state: 'suspected', by: null, body: [] }, check: 'Trace the save' }], settled: [], changed: null }, step),
-  'conclude gate': (step) => concludeScreen({ unit: 'crash', title: 'Crash', hunt: 'The save wrote a null.', symptoms: [], rootCause: 'A null nothing checks.', fix: 'Check the field.', verdict: null, areas: [] }, step),
   'experiment spawn gate': (step) => experimentSpawnGate({ phase: 'discussion', id: 'E1', unit: 'lab', topic: 'timing', workType: 'epic' }, step),
 });
 
@@ -109,10 +108,10 @@ const percent = (bound) => Number((bound * 100).toFixed(2));
 const range = (n) => Array.from({ length: n }, (_, i) => i);
 
 describe('the list (P4, 16.11.9, 16.14.7)', () => {
-  it('holds the five process gates the plan names, pooling none, and no authority gate, nor the build\'s gate after a task or its phase merge, which show only in step (3.2.3, 3.S4, 16.S58, 7.2.4)', () => {
+  it('holds the four process gates the plan names, pooling none, and no authority gate, nor the build\'s gate after a task or its phase merge, which show only in step (3.2.3, 3.S4, 16.S58, 7.2.4)', () => {
     const off = ['start this work', 'approve the map', 'decided', 'ready to build', 'finish', 'step gate — 1.1', 'phase merge — 1'];
 
-    assert.deepStrictEqual(Object.keys(LEARNED), ['import reprompt', 'wait for agents', 'plan gate', 'conclude gate', 'experiment spawn gate']);
+    assert.deepStrictEqual(Object.keys(LEARNED), ['import reprompt', 'wait for agents', 'plan gate', 'experiment spawn gate']);
     assert.deepStrictEqual(off.map(learnedGate), off.map(() => null));
     assert.strictEqual(learnedGate('plan gate — revised'), 'plan gate', 'an entry after its name is that gate, keyed by the name before it');
   });
@@ -124,14 +123,14 @@ describe('the list (P4, 16.11.9, 16.14.7)', () => {
     assert.deepStrictEqual(Object.keys(LEARNED).map((name) => [name, count(new RegExp(`MENU: ${name}(?=['\`"]| — )`, 'g')), count(new RegExp(`['"\`]${name}['"\`]`, 'g'))]), Object.keys(LEARNED).map((name) => [name, 1, 1]));
   });
 
-  it('reports only rows its menu draws to be pressed: never a typed row, a Comment or paths in the person\'s words; nor the conclude\'s keep going, which would hold the investigation open with no one to end it; nor the wait\'s wait, whose next draws the wait again while the agents run', () => {
+  it('reports only rows its menu draws to be pressed: never a typed row, a Comment or paths in the person\'s words; nor the wait\'s wait, whose next draws the wait again while the agents run', () => {
     const rows = Object.entries(DRAWN).map(([name, draw]) => {
       const { shown } = opened(() => draw(shows(name, SHOWING)));
       return [name, shown?.options.map((o) => o.key).filter((key) => Object.hasOwn(LEARNED[name], key)), shown?.typed.length];
     });
 
-    assert.deepStrictEqual(rows, [['import reprompt', ['s'], 1], ['wait for agents', ['g'], 0], ['plan gate', ['y'], 1], ['conclude gate', ['y'], 1], ['experiment spawn gate', ['y', 'l'], 0]]);
-    assert.deepStrictEqual(Object.values(LEARNED).map((reports) => Object.keys(reports)), [['s'], ['g'], ['y'], ['y'], ['y', 'l']]);
+    assert.deepStrictEqual(rows, [['import reprompt', ['s'], 1], ['wait for agents', ['g'], 0], ['plan gate', ['y'], 1], ['experiment spawn gate', ['y', 'l'], 0]]);
+    assert.deepStrictEqual(Object.values(LEARNED).map((reports) => Object.keys(reports)), [['s'], ['g'], ['y'], ['y', 'l']]);
   });
 });
 
@@ -158,8 +157,8 @@ describe('whether a learned gate shows or runs as a step (16.20.2)', () => {
       [25.01, shows('plan gate', SHOWING), 23.77, ran('plan gate', 'y')]);
   });
 
-  it('shows where its usual answer runs as no step: a Comment, the conclude\'s keep going, or the wait\'s wait', () => {
-    const usual = [['plan gate', 'comment'], ['conclude gate', 'k'], ['wait for agents', 'w']].map(([gate, row]) => [gate, stateIn(pressed(20, { gate, row }), gate)]);
+  it('shows where its usual answer runs as no step: a Comment, or the wait\'s wait', () => {
+    const usual = [['plan gate', 'comment'], ['wait for agents', 'w']].map(([gate, row]) => [gate, stateIn(pressed(20, { gate, row }), gate)]);
 
     assert.deepStrictEqual(usual.map(([gate, state]) => [state.asks, stepOf(gate, state, SHOWING)]), usual.map(([gate]) => [false, shows(gate, SHOWING)]));
   });
@@ -183,7 +182,7 @@ describe('whether a learned gate shows or runs as a step (16.20.2)', () => {
 
     assert.deepStrictEqual([one, showingOf(HUNT, null, key), stepOf('plan gate', state, one)], ['07e6bc930f720357', one, shows('plan gate', one)]);
     assert.deepStrictEqual([
-      drawnBlind('conclude gate', one),
+      drawnBlind('wait for agents', one),
       drawnBlind('plan gate', showingOf({ ...HUNT, unit: 'other' }, null, key)),
       drawnBlind('plan gate', showingOf({ ...HUNT, phase: 'discussion' }, null, key)),
       drawnBlind('plan gate', showingOf({ ...HUNT, topic: 'other' }, null, key)),
@@ -445,11 +444,10 @@ describe('the decision point\'s step on a learned gate (decision-point.cjs)', ()
     assert.deepStrictEqual(showingAnswers(), [['provide-file-paths', 's'], 2]);
   });
 
-  it('a Comment at each of the investigation\'s gates leaves its showing open, its next showing the gate again: the gate drawn again on what the Comment changed — the plan reordered, the recap staged again — shows on the showing first drawn, and its answers are one event', () => {
+  it('a Comment at the investigation\'s plan leaves its showing open, its next showing the gate again: the gate drawn again on what the Comment changed — the plan reordered — shows on the showing first drawn, and its answers are one event', () => {
     /** Each gate, the key it is first drawn from, and the key it is drawn from after the Comment. @type {Array<[string, unknown, unknown]>} */
     const gates = [
       ['plan gate', [['H1', 'H2'], null], [['H2', 'H1'], null]],
-      ['conclude gate', '2026-11-12T09:00:00.000Z', '2026-11-12T09:05:00.000Z'],
     ];
 
     const kept = gates.map(([gate, first, then]) => {
@@ -464,10 +462,10 @@ describe('the decision point\'s step on a learned gate (decision-point.cjs)', ()
       });
     });
 
-    assert.deepStrictEqual([kept, showingAnswers()], [[true, true], [['comment', 'y', 'comment', 'y'], 2]]);
+    assert.deepStrictEqual([kept, showingAnswers()], [[true], [['comment', 'y'], 1]]);
   });
 
-  it('a showing held whose subject is gone is ended at the draw, the gate drawn afresh — the reprompt over other paths, the spawn gate for another experiment, the wait once none of the agents it waited on runs — while the wait over an agent it waited on still running, and the investigation\'s gates however their keys change, show on the hold (N1)', () => {
+  it('a showing held whose subject is gone is ended at the draw, the gate drawn afresh — the reprompt over other paths, the spawn gate for another experiment, the wait once none of the agents it waited on runs — while the wait over an agent it waited on still running, and the investigation\'s plan however its key changes, show on the hold (N1)', () => {
     const LAB = Object.freeze({ unit: 'lab', phase: 'discussion', topic: 'timing' });
     /** Each gate, its place, the key its showing held was drawn from, and the key it is drawn from next. @type {Array<[string, import('../../skills/ledger-engine/scripts/domain/learned-gates.cjs').Place, unknown, unknown]>} */
     const draws = [
@@ -476,7 +474,6 @@ describe('the decision point\'s step on a learned gate (decision-point.cjs)', ()
       ['wait for agents', CARDS, ['a1', 'b1'], ['c1']],
       ['wait for agents', CARDS, ['a1', 'b1'], ['b1', 'c1']],
       ['plan gate', HUNT, [['H1', 'H2'], null], [['H2'], 'H1 is confirmed']],
-      ['conclude gate', HUNT, '2026-11-12T09:00:00.000Z', '2026-11-12T09:05:00.000Z'],
     ];
 
     const shownOn = draws.map(([gate, place, held, key], i) => {
@@ -492,7 +489,6 @@ describe('the decision point\'s step on a learned gate (decision-point.cjs)', ()
       ['wait for agents', 'afresh'],
       ['wait for agents', 'the hold'],
       ['plan gate', 'the hold'],
-      ['conclude gate', 'the hold'],
     ]);
   });
 
@@ -540,7 +536,7 @@ describe('the decision point\'s step on a learned gate (decision-point.cjs)', ()
     assert.deepStrictEqual(showingAnswers(), [['comment', 'y'], 1]);
   });
 
-  it('a showing set aside keeps its hold when another gate is drawn and answered meanwhile — the conclude\'s own verdict, say: the gate drawn again shows on it, its opening kept, and its answers are one event (S1)', () => {
+  it('a showing set aside keeps its hold when another gate is drawn and answered meanwhile — a verdict, say: the gate drawn again shows on it, its opening kept, and its answers are one event (S1)', () => {
     const dir = project('mint');
     logged(pressed(12, { start: Date.now() - DAY }));
     const at = planned(dir, ['H1', 'H2']);
@@ -620,15 +616,15 @@ describe('the decision point\'s step on a learned gate (decision-point.cjs)', ()
 
   it('a showing held is its own gate\'s: another gate drawn at the same place is drawn afresh, on its own showing (N2)', () => {
     const dir = project('mint');
-    logged(pressed(13, { gate: 'conclude gate', start: Date.now() - DAY }));
+    logged(pressed(13, { gate: 'experiment spawn gate', start: Date.now() - DAY }));
 
     const step = inConversation(dir, () => {
       drawn('plan gate', planned(dir, ['H1', 'H2']));
       answerGate(dir, 'plan gate', { typed: 'comment' });
-      return gateStep('conclude gate', { cwd: dir, place: HUNT, key: '2026-11-12T09:00:00.000Z' });
+      return gateStep('experiment spawn gate', { cwd: dir, place: HUNT, key: 'E1' });
     });
 
-    assert.deepStrictEqual(step, ran('conclude gate', 'y', showingOf(HUNT, null, '2026-11-12T09:00:00.000Z')));
+    assert.deepStrictEqual(step, ran('experiment spawn gate', 'y', showingOf(HUNT, null, 'E1')));
   });
 
   it('the wait\'s wait leaves its showing open: the wait its next draws over the agents left shows on it, never drawn, and a go there ends it as the same event — the next wait drawn afresh (N1)', () => {
@@ -655,13 +651,13 @@ describe('a learned gate\'s MENU, drawn as its step says (surfaces.cjs)', () => 
 
     assert.throws(() => section('MENU: plan gate', MENU_INSTRUCTION, body()), /^Error: plan gate: a learned gate is drawn as the decision point steps it — decision-point\.cjs gateStep$/);
     assert.throws(() => section('MENU: plan gate — revised', MENU_INSTRUCTION, body()), /a learned gate is drawn as the decision point steps it/);
-    assert.throws(() => DRAWN['plan gate'](shows('conclude gate', SHOWING)), /^Error: plan gate: a learned gate is drawn as the decision point steps it, not as conclude gate's — decision-point\.cjs gateStep$/);
-    assert.throws(() => DRAWN['conclude gate'](ran('plan gate', 'y')), /conclude gate: a learned gate is drawn as the decision point steps it, not as plan gate's/);
+    assert.throws(() => DRAWN['plan gate'](shows('experiment spawn gate', SHOWING)), /^Error: plan gate: a learned gate is drawn as the decision point steps it, not as experiment spawn gate's — decision-point\.cjs gateStep$/);
+    assert.throws(() => DRAWN['experiment spawn gate'](ran('plan gate', 'y')), /experiment spawn gate: a learned gate is drawn as the decision point steps it, not as plan gate's/);
     assert.match(section('MENU: ready to build', MENU_INSTRUCTION, body()), /^=== MENU: ready to build /);
   });
 
   it('shown, keeps the showing it was drawn on as the gate shown', () => {
-    const { shown } = opened(() => DRAWN['conclude gate'](shows('conclude gate', SHOWING)));
+    const { shown } = opened(() => DRAWN['plan gate'](shows('plan gate', SHOWING)));
 
     assert.strictEqual(shown?.showing, SHOWING);
   });
@@ -687,7 +683,6 @@ describe('a learned gate\'s MENU, drawn as its step says (surfaces.cjs)', () => 
       ['import reprompt', 's', null],
       ['wait for agents', 'g', continues],
       ['plan gate', 'y', continues],
-      ['conclude gate', 'y', { kind: 'engine', argv: ['investigation', 'conclude', 'crash'] }],
       ['experiment spawn gate', 'y', { kind: 'handoff', skill: 'ledger-experiment-process', args: ['epic', 'lab', 'timing', 'E1'] }],
       ['experiment spawn gate', 'l', continues],
     ].map(([gate, row, next]) => ({ gate, row, step: automatic(String(gate), String(row), next), menu: false, shown: null, stepped: true })));
@@ -696,6 +691,6 @@ describe('a learned gate\'s MENU, drawn as its step says (surfaces.cjs)', () => 
   it('refuses a step on a row that runs as none, drawing nothing', () => {
     openGate();
 
-    assert.throws(() => DRAWN['conclude gate'](ran('conclude gate', 'k')), /^Error: conclude gate: row k runs as no automatic step — learned-gates\.cjs reports each row that does, and its menu draws it$/);
+    assert.throws(() => DRAWN['wait for agents'](ran('wait for agents', 'w')), /^Error: wait for agents: row w runs as no automatic step — learned-gates\.cjs reports each row that does, and its menu draws it$/);
   });
 });

@@ -412,15 +412,14 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * topic's decided; a gap of its spec, or ready to build's yes; a question
  * of its build, a quick-fix's fixes' among them; finish, a quick-fix's
  * close among it; a raise its investigation asks in this conversation,
- * held with what raised it as its view holds it (HuntWait), or its
- * conclude; a question Claude raised in a quick-fix's conversation,
- * parking nothing (`raised`); a decided topic an answer it relied on,
- * replaced since, holds (`affected`, 10.2.6); or, an epic's, a verdict
- * waiting on an answer that departed from Claude's lean — by its number or
- * entry, a topic's by the topic, a gate by its name (`finish`, `close`,
- * `conclude`), its words, and the page a press on it opens, null where
- * none.
- * @typedef {{kind: 'map'|'decided'|'gap'|'ready'|'question'|'finish'|'raise'|'conclude'|'raised'|'affected'|'verdict', id: string, text: string, page: string|null}} WaitingLine
+ * held with what raised it as its view holds it (HuntWait); a question
+ * Claude raised in a quick-fix's conversation, parking nothing (`raised`);
+ * a decided topic an answer it relied on, replaced since, holds
+ * (`affected`, 10.2.6); or, an epic's, a verdict waiting on an answer that
+ * departed from Claude's lean — by its number or entry, a topic's by the
+ * topic, a gate by its name (`finish`, `close`), its words, and the page a
+ * press on it opens, null where none.
+ * @typedef {{kind: 'map'|'decided'|'gap'|'ready'|'question'|'finish'|'raise'|'raised'|'affected'|'verdict', id: string, text: string, page: string|null}} WaitingLine
  */
 /**
  * A unit's tab (20.15.1), and an epic's while discovery runs before any
@@ -469,7 +468,7 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * null on a blind question, and for the fix direction's how many options it
  * sets out and where Claude's lean stands among them: the first, marked
  * further down, or held back, a blind question's, until the person has
- * answered; every other wait, the conclude among them, with none.
+ * answered; every other wait with none.
  * @typedef {WaitingLine & {raised_by: 'root-cause'|'fix'|'fix-direction'|null, why: string|null, options: number|null, lean: 'first'|'marked'|'held'|null}} HuntWait
  */
 /**
@@ -495,7 +494,7 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * null for their own words, and the fix in its words once set.
  * @typedef {{
  *   kind: 'investigation', unit: string, title: string, type: string, project: string, started: string|null,
- *   standing: 'investigating'|'validating-root-cause'|'fix-waits'|'validating-fix'|'conclude-waits'|'concluded', waiting: HuntWait[],
+ *   standing: 'investigating'|'validating-root-cause'|'fix-waits'|'validating-fix'|'concluded', waiting: HuntWait[],
  *   decided: {id: string, text: string}[], symptoms: string[], hypotheses: {name: string, title: string, state: string}[],
  *   experiments: {name: string, title: string, showed: string}[], root_cause: {text: string, validated: boolean}|null,
  *   validations: ValidationLine[], since: {id: string, text: string}[],

@@ -4,10 +4,11 @@
 // What boot offers to set on GitHub (ledger-engine/scripts/domain/
 // github-setup.cjs): the GitHub rule, on a GitHub remote whatever the
 // landing setting, and the squash default where the project lands through
-// GitHub, naming each repository nested in it on GitHub; each drawn as its
-// gate, never made again once answered, not even
-// to a fresh clone; failing closed; and nothing offered beyond GitHub. What
-// an answer sets through gh is tests/drivers/github/test-setup.cjs's.
+// GitHub; each never made again once answered, not even to a fresh clone;
+// failing closed; and nothing offered beyond GitHub. The squash offer's
+// screen, at the first ready to build, is
+// test-engine-ready-to-build-drivers.cjs's; what an answer sets through gh,
+// tests/drivers/github/test-setup.cjs's.
 //
 // Layer: git. World: real repositories in a temp folder per test, a bare
 // repository as the remote and clones of it; boot runs from a copy of the
@@ -138,38 +139,6 @@ describe('what boot offers on GitHub (4.4.6, 4.S10, 4.S30, 7.2.18)', () => {
     const gate = announced(() => auditGate(engine.output(main, ['render', 'github-rule-gate']), 'github rule gate'));
     assert.strictEqual(gate.question, 'Add that rule on GitHub?');
     assert.deepStrictEqual(gate.options.map((o) => o.key), ['y', 'n']);
-  });
-
-  it('draws the squash default\'s offer: what it makes each task land under, merge commits allowed beside it, what yes sets and where, and what no costs — and each repository nested in the project on GitHub, by its folder', () => {
-    const main = projectInWorld({ remote: github.url });
-    boot(main);
-
-    const out = engine.output(main, ['render', 'github-squash-gate']);
-
-    assert.strictEqual(out, [
-      '=== MENU: github squash gate (emit verbatim as markdown (not a code block), then STOP for the user\'s response) ===',
-      '· · · · · · · · · · · ·',
-      'Ledger lands each task on GitHub as a pull request squashed into one commit. For that commit to carry the task\'s title and id, GitHub must build it from the pull request\'s title and description. Work of several phases lands on your default branch in one merge commit, so GitHub must allow those too. Yes sets both on Portal\'s repository.',
-      '',
-      '**`◆ Set both on GitHub?`**',
-      '',
-      '**`y/yes`** → Set both on Portal\'s repository',
-      '**`n/no`**  → Leave them as they are — *Ledger won\'t merge a phase\'s*',
-      `${'\u00a0'.repeat(8)}*pull requests until they're set*`,
-      '',
-    ].join('\n'));
-    const gate = announced(() => auditGate(engine.output(main, ['render', 'github-squash-gate']), 'github squash gate'));
-    assert.strictEqual(gate.question, 'Set both on GitHub?');
-    assert.deepStrictEqual(gate.options.map((o) => o.key), ['y', 'n']);
-
-    for (const [folder, url] of [['ext', 'git@github.com:acme/ext.git'], ['lib', 'https://github.com/acme/lib.git'], ['plain', 'https://git.example.org/acme/plain.git']]) {
-      git(harness.initRepo(path.join(main, folder)), ['remote', 'add', 'origin', url]);
-    }
-    const nested = engine.output(main, ['render', 'github-squash-gate']).split('\n');
-    assert.deepStrictEqual([nested[2], nested[6]], [
-      'Ledger lands each task on GitHub as a pull request squashed into one commit. For that commit to carry the task\'s title and id, GitHub must build it from the pull request\'s title and description. Work of several phases lands on your default branch in one merge commit, so GitHub must allow those too. Yes sets both on Portal\'s repository and each one nested in it: ext, lib.',
-      '**`y/yes`** → Set both on each of Portal\'s 3 repositories',
-    ]);
   });
 
   it('a fresh clone of a project whose offers were answered is never offered them', () => {

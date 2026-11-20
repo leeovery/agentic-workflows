@@ -20,7 +20,9 @@
 //   way on from what the person was doing there.
 // - The topics are settled once a live topic is decided and every live
 //   topic is — a cancelled or postponed topic is not live — and a bugfix's
-//   one topic once its investigation has concluded (11.2.1, 18.5.1). A
+//   one topic once its investigation has closed into its spec, its
+//   conclusion staged and standing (investigation-conclude.cjs), so its
+//   investigation entered again since unsettles it (11.2.1, 18.5.1). A
 //   feature's one topic is settled for its spec once nothing of the person's
 //   is open on it and its closing pass has run, before it is decided: its
 //   decided checklist closed and its close standing, so a message delivered
@@ -120,11 +122,11 @@ function specTopics(manifest) {
 
 /**
  * Whether a topic is settled: decided, a bugfix's once its investigation has
- * concluded, a feature's once it has closed into its spec.
+ * concluded or closed into its spec, a feature's once it has closed into it.
  * @param {Record<string, any>} manifest @param {string} topic
  */
 function settled(manifest, topic) {
-  if (manifest.work_type === 'bugfix') return itemOf(manifest, 'investigation', topic)?.status === 'completed';
+  if (manifest.work_type === 'bugfix') return itemOf(manifest, 'investigation', topic)?.status === 'completed' || closedIntoSpec(manifest);
   return computeTopicLifecycle(manifest, topic).lifecycle === 'decided' || closedIntoSpec(manifest);
 }
 
@@ -140,7 +142,7 @@ function topicsSettled(manifest) {
  */
 const OPEN_TOPIC = Object.freeze({
   feature: (unit) => `${unit}'s spec waits until its discussion closes, nothing of the person's open and its closing pass run — its discussion carries on: engine enter discussion ${unit}`,
-  bugfix: (unit) => `${unit}'s spec waits until its investigation concludes — the investigation carries on, from the start menu`,
+  bugfix: (unit) => `${unit}'s spec waits until its investigation closes, its root cause and fix validated and its recap staged — the investigation carries on, from the start menu`,
 });
 
 /**

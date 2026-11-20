@@ -21,7 +21,7 @@ Load **[framework.md](../ledger-shared/references/framework.md)** and follow its
 
 ## Done When
 
-`investigation conclude` has answered: the engine holds the investigation concluded, with the unit whose code the bug is in where one is named, and its `next` hands the work into the spec.
+`investigation stage` has answered: the engine holds the investigation closed into its spec, its recap staged for ready to build, and its `next` hands the work into the spec.
 
 ## Entering
 
@@ -138,28 +138,26 @@ Content is one JSON object on stdin; `{place}` is `{work_unit}.investigation.{wo
 - Earlier work → `knowledge query "{term}" …`.
 - Mail → `topic mailbox`, `topic answered`.
 - A shared file → `asset import`, `render import-reprompt`, `asset add`.
-- The close → `render conclude {work_unit} [--file {recap}]`, whose yes runs `investigation conclude {work_unit}`.
+- The close → `investigation stage {work_unit} --file {recap}`.
 - The work as a feature → `workunit move {work_unit} --to feature --file {payload}`, whose yes runs `start-this-work yes`.
 - The work leaving → `render cancel-gate {work_unit}`, whose `next` runs `workunit cancel`, which answers its receipt.
 - A gate's answer → `gate "{name}" --pick {key}`, or `--typed {key}` for a typed row such as a Comment.
 
 ## Closing
 
-The investigation closes once the root cause and the fix stand, both validated since, nothing of the person's open on the map and no mail waiting. It has no checklist.
+The investigation closes once the root cause and the fix stand, both validated since, nothing of the person's open on the map and no mail waiting. It has no checklist and no gate: the recap is shown at ready to build, whose yes concludes it.
 
 The recap names what the bug is in, for the bugs found after review:
 - `fixes` — the work unit whose code the bug is in, read from the code's history and the project's units; asked of the person where it isn't plain, and left out where no unit built that code.
-- `area` — where the project records a verify setup, the area of the feature map it names that the bug sits in, in the words the gate's DATA lists an area by where it is one already recorded; left out otherwise.
+- `area` — where the project records a verify setup, the area of the feature map it names that the bug sits in; left out otherwise.
 
-Write `{"hunt": "{one paragraph}", "fixes": "{unit}", "area": "{area}"}` — the hunt told short in product terms, what was suspected and what ruled each out, what proved the cause; `fixes` and `area` only where named — to `.ledger/.cache/{work_unit}/investigation/{work_unit}/recap.json`, then stage it and fetch the conclude gate:
+Write `{"hunt": "{one paragraph}", "fixes": "{unit}", "area": "{area}"}` — the hunt told short in product terms, what was suspected and what ruled each out, what proved the cause; `fixes` and `area` only where named — to `.ledger/.cache/{work_unit}/investigation/{work_unit}/recap.json`, then stage it:
 
 ```bash
-node .claude/skills/ledger-engine/scripts/engine.cjs render conclude {work_unit} --file .ledger/.cache/{work_unit}/investigation/{work_unit}/recap.json
+node .claude/skills/ledger-engine/scripts/engine.cjs investigation stage {work_unit} --file .ledger/.cache/{work_unit}/investigation/{work_unit}/recap.json
 ```
 
-Where its DATA lists the area you named under another spelling, stage the recap again with the DATA's before emitting anything. A refusal names the way on: work it, then fetch the gate again; one refusing the recap is staged again as it says.
-
-The screen asks a verdict of each call the person changed, one at a time; after each, draw `render conclude {work_unit}` again. At the conclude gate, follow the `next` of what the yes runs. A Comment that changes what the screen says is worked, and the recap staged again.
+A refusal names the way on: work it, then stage it again. Then follow its `next`.
 
 ## Backlogging
 

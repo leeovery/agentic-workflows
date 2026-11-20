@@ -221,7 +221,7 @@ describe('a blind question\'s call gone ahead, held back (16.17.2)', () => {
         rows: [{ key: '1', name: 'Two', text: 'Two words.', notice: 'the label reads plainer' }, { key: '2', name: 'One', text: 'One word.', notice: 'the label is shorter' }],
         lean: '1', why: 'It reads plainer.', sort: 'several', mechanism: 'The label\'s text.', product_wide: false,
       },
-      rows_judged: [], why_asking: 'Asked cold.', label: null, model: null, blocks_build: true, replaced_by: null, always: null, measured: null, chain: answers, blind: true,
+      rows_judged: [], why_asking: 'Asked cold.', asked_by: 'counts', label: null, model: null, blocks_build: true, replaced_by: null, always: null, measured: null, chain: answers, blind: true,
     }, []);
   }
 

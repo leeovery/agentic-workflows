@@ -183,24 +183,6 @@ FIX DIRECTION ──────────────────────
     ])
   })
 
-  test('its conclude drawn, the facts line flags it waiting and WAITING ON YOU asks for its yes in the conversation, as the unit\'s tab does', () => {
-    const conclude = { kind: 'conclude', id: 'conclude', text: "Conclude: the hunt's recap, the root cause and the fix, for your yes", page: null, raised_by: null, why: null, options: null, lean: null }
-    const waits = { ...fixture, standing: 'conclude-waits', waiting: [conclude], fix_direction: { ...fixture.fix_direction, state: 'picked', pick: '1', fix: 'Harden the reads.' } } as View
-    const tab = { ...MINT, type: 'bugfix', here: false, waiting: [conclude], phases: [phase('discovery', 'complete', 'from your inbox note'), phase('investigation', 'waits', '6 hypotheses')] } as View
-    const { text, holds } = drawn(INVESTIGATION, waits)
-
-    expect(text.slice(2, 8)).toEqual(block(`
-6 hypotheses · 3 confirmed · 10 experiments · ⚑ conclude waits
-on you
-
-WAITING ON YOU ───────────────── 1 · asked in the conversation
-⚑ Conclude: the hunt's recap, the root cause and the fix, for
-  your yes
-`))
-    expect(holds.turns).toBe(false)
-    expect(sectionOf(drawn(UNIT, tab).text, 'WAITING ON YOU')).toEqual(sectionOf(text, 'WAITING ON YOU'))
-  })
-
   test('20.15: the unit\'s tab draws a raise as the investigation does, with what raised it and why it reached the person', () => {
     const tab = { ...MINT, type: 'bugfix', here: false, waiting: VALIDATING.waiting, phases: [phase('discovery', 'complete', 'from your inbox note'), phase('investigation', 'waits', '6 hypotheses')] } as View
 

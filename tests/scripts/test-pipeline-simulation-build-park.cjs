@@ -190,7 +190,7 @@ describe('pipeline simulation: the build with two tasks side by side', () => {
   });
 
   it('16.S53, 16.17.6: blind questions mid-build — the decision point forced to draw them — on calls cheap to undo let the builder\'s calls go ahead for its task while the questions wait, naming it and parking none; the person, ready, keeps one call, the task standing as built, replaces another for the task, the task built again on their answer and what relied on the call affected, and leaves the third to Claude, its call standing as built, the builder\'s, nothing revealed', async (t) => {
-    t.mock.method(decisionPoint, 'decide', () => ({ decision: 'blind', reason: 'Asked cold.' }));
+    t.mock.method(decisionPoint, 'decide', () => ({ decision: 'blind', reason: 'Asked cold.', by: 'counts' }));
     const asks = { id: 'Should a show print the entry\'s id?', hash: 'Should a show print the entry\'s hash?', time: 'Should a show print when the entry landed?' };
     sim.env = { ...sim.env, CLAUDE_STUB_ANSWERS: JSON.stringify({ [asks.id]: labelAnswers('behaviour'), [asks.hash]: labelAnswers('look'), [asks.time]: labelAnswers('behaviour'), '': 'no-login' }) };
     sim.run(['task', 'start', WU, '1.1']);

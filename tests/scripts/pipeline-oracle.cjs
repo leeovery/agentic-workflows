@@ -287,6 +287,16 @@ function auditState(dir, label) {
       assert.ok(begun, ctx(`${wu}: a finish checklist on a ${manifest.work_type} whose ${manifest.work_type === 'quick-fix' ? 'fixes' : 'build'} has not begun`));
     }
 
+    // A bugfix's investigation closes into its spec as a mark keyed by the
+    // unit, and once ready to build's yes concludes it, its close is taken
+    // at the instant it concluded (investigation-conclude.cjs).
+    const conclusion = manifest.checklists?.conclusion;
+    if (conclusion !== undefined) {
+      assert.deepStrictEqual([manifest.work_type, Object.keys(conclusion)], ['bugfix', [wu]], ctx(`${wu}: a conclusion close on a ${manifest.work_type}, or keyed by another topic`));
+      const item = manifest.phases?.investigation?.items?.[wu];
+      if (item?.status === 'completed') assert.strictEqual(conclusion[wu].taken, item.concluded_at, ctx(`${wu}: concluded at ${item.concluded_at}, its close taken at ${conclusion[wu].taken}`));
+    }
+
     // No phase-named shadow roots beside `phases`.
     for (const key of Object.keys(manifest)) {
       assert.ok(!schema.VALID_PHASES.includes(key),

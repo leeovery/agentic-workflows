@@ -11,19 +11,17 @@
 // - the check-in (19.4.28), a display the hunt carries past, never a gate:
 //   every hypothesis and where it stands, those just resolved marked; the
 //   experiments, each with what it showed; and what is checked next;
-// - the conclude (19.4.23): THE HUNT, Claude's recap; the symptoms, in the
-//   person's words; the root cause told against them; and the fix
-//   direction. A departure still to be asked its verdict is asked first,
-//   under the verdict gate at the conclusion (16.10.11); then the conclude
-//   gate: yes concludes the investigation (investigation-conclude.cjs), keep
-//   going carries the hunt on.
-// Each gate's comment takes what the person would change. Each gate is a
-// learned one (learned-gates.cjs), drawn as the decision point steps it: run
-// as an automatic step, its report stands in its menu's place.
+// - the recap (19.4.23), drawn on ready to build's screen once the
+//   investigation has closed into its spec (investigation-conclude.cjs):
+//   THE HUNT, Claude's recap; the symptoms, in the person's words; the root
+//   cause told against them; and the fix direction.
+// The plan gate's comment takes what the person would change. It is a
+// learned gate (learned-gates.cjs), drawn as the decision point steps it:
+// run as an automatic step, its report stands in its menu's place.
 // ---------------------------------------------------------------------------
 
-const { section, dataSection, menu, cmdOption, promptOption, MENU_INSTRUCTION, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
-const { block, verdictBlock, verdictGate } = require('./closing.cjs');
+const { section, menu, cmdOption, promptOption, MENU_INSTRUCTION, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
+const { block } = require('./closing.cjs');
 const { renderTree, wrapWithPrefix } = require('../../kernel/render.cjs');
 const { TREE_WIDTH } = require('../conventions.cjs');
 const { counted } = require('./map.cjs');
@@ -48,11 +46,9 @@ const { counted } = require('./map.cjs');
  */
 
 /**
- * The conclude as it is drawn: the bugfix, the topic as screens title it,
- * Claude's recap, the symptoms in the person's words, the root cause and the
- * fix, each in its words, the verdict asked, and the areas the project's
- * bugfixes have recorded, for Claude alone.
- * @typedef {{unit: string, title: string, hunt: string, symptoms: string[], rootCause: string, fix: string, verdict: import('../ledger-verdicts.cjs').AskedVerdict|null, areas: string[]}} ConcludeView
+ * The recap as it is drawn: Claude's recap, the symptoms in the person's
+ * words, the root cause and the fix, each in its words.
+ * @typedef {{hunt: string, symptoms: string[], rootCause: string, fix: string}} RecapView
  */
 
 const INDENT = '  ';
@@ -126,24 +122,15 @@ function checkInScreen({ title, hypotheses, resolved, experiments, next }) {
 }
 
 /**
- * The conclude: the recap, the symptoms, the root cause and the fix
- * direction; then the verdict gate while a departure waits to be asked,
- * else the conclude gate, as it is stepped.
- * @param {ConcludeView} view @param {GateStep} step @returns {string}
+ * The recap's blocks: the hunt, the symptoms, the root cause and the fix
+ * direction.
+ * @param {RecapView} view @returns {string[]}
  */
-function concludeScreen({ unit, title, hunt, symptoms, rootCause, fix, verdict, areas }, step) {
-  const blocks = [header(title, 'conclude'), block('THE HUNT', indented(hunt))];
+function recapBlocks({ hunt, symptoms, rootCause, fix }) {
+  const blocks = [block('THE HUNT', indented(hunt))];
   if (symptoms.length > 0) blocks.push(block(`SYMPTOMS (${symptoms.length})`, symptoms.map(bulleted).join('\n')));
   blocks.push(block('ROOT CAUSE', indented(rootCause)), block('FIX DIRECTION', indented(fix)));
-  if (verdict !== null) blocks.push(verdictBlock(verdict));
-  const data = areas.length === 0 ? '' : dataSection(areas.map((area) => `area: ${area}`));
-  const display = data + section('DISPLAY: investigation conclude', CONTINUE_INSTRUCTION, blocks.join('\n\n'));
-  if (verdict !== null) return display + verdictGate(verdict, 'conclusion');
-  return display + section('MENU: conclude gate', MENU_INSTRUCTION, menu('', [
-    cmdOption('y', 'yes', 'Conclude it, and move on to the spec', { next: { kind: 'engine', argv: ['investigation', 'conclude', unit] } }),
-    cmdOption('k', 'keep going', 'Keep investigating — there is more to look at', GO),
-    promptOption('Comment', 'Tell me what does not match what you saw'),
-  ], { question: 'Conclude the investigation?' }), step);
+  return blocks;
 }
 
-module.exports = { planScreen, checkInScreen, concludeScreen };
+module.exports = { planScreen, checkInScreen, recapBlocks };

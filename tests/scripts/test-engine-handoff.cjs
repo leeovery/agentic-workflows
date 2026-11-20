@@ -154,10 +154,9 @@ describe('engine handoff — the composed answer for every target', () => {
       inlineAnswer('ledger-continue-epic', 'fumi', '→ Epic · fumi'));
   });
 
-  it('14.6.2, 18.4.23: the epic menu takes an epic finish completed, by its name alone — its menu the complete variant', () => {
+  it('the epic menu refuses an epic finish completed, as any unit no longer in progress', () => {
     createManifest(dir, 'done-epic', { work_type: 'epic', status: 'completed' });
-    assert.strictEqual(inline(dir, ['ledger-continue-epic', 'done-epic']),
-      inlineAnswer('ledger-continue-epic', 'done-epic', '→ Epic · done-epic'));
+    refused(dir, ['ledger-continue-epic', 'done-epic'], /^work unit "done-epic" is completed — a handoff moves into work in progress$/);
   });
 
   it('discovery into an existing epic takes the work type epic or none, and a waiting roadmap idea to join it as a topic (18.8.4)', () => {

@@ -7,7 +7,7 @@ Nothing here decides the product afresh. A gap the specification meets, a detail
 ## When it starts
 
 - **A feature** moves into its specification once its discussion closes. Its topic has no decided gate of its own: what it decided is shown at ready to build.
-- **A bugfix** moves in at its investigation's conclusion.
+- **A bugfix** moves in once its investigation closes. It has no conclude gate of its own: the recap is shown at ready to build.
 - **An epic** waits until every topic is decided, cancelled or postponed, and then the epic's menu offers `s/spec`. From the spec's first writing, the epic's map is closed: no topic is added, cancelled or reopened, and a decision that has to change is settled here, as a replacement.
 
 ## The sweep
@@ -34,16 +34,16 @@ The tasks are not written here. Each phase's tasks are written as that phase sta
 
 ## Ready to build
 
-Ready to build is the specification's gate, one screen: the spec's outline and its phase cut, which you approve together, and the build's position, which you pick. For a feature it also carries the topic's close: what it decided, the product-record lines and the candidates for the roadmap, any of which you can strike or reword.
+Ready to build is the specification's gate, one screen: the spec's outline and its phase cut, which you approve together, and the build's position, which you pick. For a feature it also carries the topic's close: what it decided, the product-record lines and the candidates for the roadmap, any of which you can strike or reword. For a bugfix it carries the investigation's: the recap of the hunt, the symptoms, the root cause and the fix direction.
 
 - **The position** is how the build runs: **auto**, where it runs on its own and only the gates that are always yours, danger and the questions that need you reach you; or **step**, where it also stops after each task for you to review and try it. Picking one is the yes. Either can be switched at any time by saying so.
-- **Verdicts** come first: for each call you changed during the specification, what Claude's answer would have cost.
+- **Verdicts** come first: for each call you changed during the specification, and a bugfix's during its investigation, what Claude's answer would have cost.
 - **The drivers** are checked. Where a tool the build needs is missing, too old or failing, the screen is a stop that says which and how to put it right, and it is drawn again once you say it is. [The build](the-build.md#the-drivers) covers the drivers, and [configuration](configuration.md) changing them.
 - **The environment setup** is asked the first time a project reaches ready to build: how the project runs and runs its tests, the steps that prepare its environment, what cannot run at once, and its linters. It is used once you confirm it, and changed afterwards from manage. [Verification](verification.md) covers it.
 
 A change you ask for at ready to build, to the outline, the cut or what you decided, is your decision, landed at the spec: the writer rewrites from it, the review reads what changed, the cut is made again, and the screen comes back.
 
-The yes concludes the specification, records the cut, and hands the work into the build in the position you picked.
+The yes concludes the specification, and a bugfix's investigation, records the cut, and hands the work into the build in the position you picked.
 
 ### The review page
 

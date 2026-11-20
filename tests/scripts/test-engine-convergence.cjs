@@ -176,9 +176,12 @@ function settling(h, n) {
 /** The person's answer `pick` on the offer last drawn: the gate's answer. @param {'y'|'n'} pick */
 const answerOffer = (pick) => ok(dir, ['gate', 'convergence offer', '--pick', pick], { env: conversation() });
 
+/** The offer drawn on the person's word, the open questions labelled so Claude would settle some. */
+const askedOffer = () => offer(['--asked'], { CLAUDE_STUB_ANSWERS: LABELS });
+
 /** The person's yes on the offer, drawn on their word: the accept's answer. */
 function accept() {
-  offer(['--asked']);
+  askedOffer();
   answerOffer('y');
   return ok(dir, ['convergence', 'accept', UNIT, TOPIC], { env: conversation() });
 }
@@ -349,29 +352,31 @@ describe('the offer (16.8.2)', () => {
     assert.deepStrictEqual(gate?.options.map(({ key, word }) => `${key}/${word}`), ['y/yes', 'n/no']);
   });
 
-  it('16.S28: on the person\'s word it is drawn whatever the run — three agreements in a row — every question coming to them while no label is given; with no word of theirs it is refused', () => {
+  it('16.S28: on the person\'s word it is drawn whatever the run — three agreements in a row; with no word of theirs it is refused', () => {
     logOf((h) => agreeing(h, 3));
 
-    const out = offer(['--asked']);
+    const out = askedOffer();
 
-    assert.deepStrictEqual(screenOf(out, 'MENU: convergence offer').slice(1, 9), [
-      'You\'ve asked me to settle the rest of Note Window.',
-      '',
-      '8 open: all 8 come to you — 8 of a kind I couldn\'t tell.',
-      '',
-      '◆ Settle the rest?',
-      '',
-      'y/yes → Settle the rest — your 8 come one at a time, then the',
-      '        decided screen',
-    ]);
+    assert.deepStrictEqual(screenOf(out, 'MENU: convergence offer').slice(1, 3), ['You\'ve asked me to settle the rest of Note Window.', '']);
     assert.strictEqual(sectionOf(out, 'DATA').split('\n')[0], 'offer: on the person\'s word');
     assert.strictEqual(notDue(), 'render convergence: no offer is due on Note Window at 3 agreements in a row; on the person\'s word, --asked');
   });
 
-  it('16.8.9: due, but with every open question coming to the person, it would settle nothing, so nothing is drawn', () => {
+  it('16.8.9: on the person\'s word, with every open question coming to them while no label is given, one line says it would settle nothing, and no offer is drawn', () => {
+    logOf((h) => agreeing(h, 3));
+
+    const out = offer(['--asked']);
+
+    assert.strictEqual(sectionOf(out, 'DISPLAY: convergence'), '8 open: all 8 come to you — 8 of a kind I couldn\'t tell. Nothing on Note Window is mine to settle.\n');
+    assert.doesNotMatch(out, /=== MENU/);
+  });
+
+  it('16.8.9: due, but with every open question coming to the person, it would settle nothing: nothing is drawn, and the run starts again, as a no starts it, so the next answer finds no offer due', () => {
     logOf((h) => agreeing(h, 8));
 
     assert.strictEqual(offer(), '');
+    logOf((h) => agreeing(h, 1), Date.now() + 1000);
+    assert.strictEqual(notDue(), 'render convergence: no offer is due on Note Window at 1 agreement in a row; on the person\'s word, --asked');
   });
 
   it('16.8.5: the forecast reads the person\'s care entries — a quiet kind under one in this project comes to them', () => {
@@ -433,7 +438,7 @@ describe('the person\'s answer (16.8.3, 16.8.4, 16.8.6)', () => {
     logOf((h) => agreeing(h, 8));
     const refused = (/** @type {string[]} */ args) => refusedPristine(dir, ['convergence', ...args], { env: conversation() }).error;
     const before = refused(['accept', UNIT, TOPIC]);
-    offer(['--asked']);
+    askedOffer();
     answerOffer('n');
 
     assert.deepStrictEqual([before, refused(['accept', UNIT, TOPIC]), refused(['decline', UNIT, SPACE]), refused(['accept', UNIT]), refused(['settle', UNIT, TOPIC])], [

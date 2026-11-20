@@ -53,7 +53,7 @@ Most moves are open whenever you want them. A few wait on something, by design, 
 
 - **An epic's specification** waits until every topic is decided, cancelled or postponed; the epic's menu offers it only then.
 - **A topic cannot close while mail waits**: a message another topic sent it is raised first.
-- **An investigation concludes** only once its root cause and its fix both stand validated.
+- **An investigation closes** only once its root cause and its fix both stand validated.
 - **A build phase** waits for every phase it relies on to merge, and the build's first phase cannot close until the product can be run and driven.
 - **Code takes turns.** A build, the review phase and a quick-fix run one at a time in the project's checkout, whichever piece of work each belongs to; entering one while another session holds the code names that session and asks before going on.
 - **A driver never changes under a build**, so manage changes one only while no build is in flight.

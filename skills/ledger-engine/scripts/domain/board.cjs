@@ -23,10 +23,9 @@
 //   from its one session (20.14.2), All work too, the banner the unit's
 //   close (D38) — while its position still names that place, and at the
 //   start menu boot hands it to, until the session records a position again
-//   (position.cjs); an epic's finish goes to its menu. While a session
-//   carries the migration on, its row at the migration's place there
-//   (presence.cjs), a session at no position is migrating, never at the
-//   start menu. The session's tasks
+//   (position.cjs). While a session carries the migration on, its row at
+//   the migration's place there (presence.cjs), a session at no position is
+//   migrating, never at the start menu. The session's tasks
 //   in flight are read into their unit's build wherever it is drawn, the
 //   place they were started at left or not.
 // - The unit's tab shows the unit `--unit` names, else the session's: an
@@ -327,13 +326,13 @@ function pageOf(tab, ref, pageUnit) {
 
 /**
  * Whether a unit was finished from its review phase, or a quick-fix closed
- * from its one session, the start menu next (the header's), at the phase
- * the session's place names.
+ * from its one session (the header's), at the phase the session's place
+ * names.
  * @param {BoardAt|null} at @param {string|null|undefined} phase
  */
 function finishedFrom(at, phase) {
   if (at === null || at.manifest.status !== 'completed') return false;
-  return phase === 'review' ? at.manifest.work_type !== 'epic' : phase === 'implementation' && quickFixBuild(at.manifest);
+  return phase === 'review' || (phase === 'implementation' && quickFixBuild(at.manifest));
 }
 
 /** A view drawn, or why it cannot be. @param {() => View} draw @returns {View} */

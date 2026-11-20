@@ -22,7 +22,7 @@
 // while the close stood — a message or an experiment's report delivered
 // (mail.cjs), a feature's discussion entered again (enter.cjs), a question
 // asked or moved onto it (ledger-write.cjs), each through derivations.cjs's
-// `voidDecidedClose` — so the manifest alone says whether a close stands;
+// `voidTopicClose` — so the manifest alone says whether a close stands;
 // and `taken?: at`, when the decided gate's yes took its close
 // (decided.cjs). What the engine checks is worked out at every call and
 // never kept (6.4.3), so it never goes stale: the person's questions open on

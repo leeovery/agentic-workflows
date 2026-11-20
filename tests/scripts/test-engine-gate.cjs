@@ -649,7 +649,7 @@ describe('the mod\'s record of a press, as `gate` reads it', () => {
   });
 
   it('every row of setup\'s gates is picked by the name the mod draws on it, or by its key, and recorded by its key, leading where it leads', () => {
-    for (const surface of ['migration-gate', 'github-rule-gate', 'github-squash-gate', 'brownfield-offer-gate']) {
+    for (const surface of ['migration-gate', 'github-rule-gate', 'brownfield-offer-gate']) {
       const [payload] = gatePayloads(render([surface], ANNOUNCED));
       const leadsTo = new Map(shown().options.map((/** @type {{key: string, next: unknown}} */ o) => [o.key, o.next]));
       for (const option of payload.options) {

@@ -391,6 +391,7 @@ const SCHEMA = {
       field('call', shaped(`a call, {${Object.keys(PARKED_CALL_FIELDS).join(', ')}}`, PARKED_CALL_FIELDS)),
       field('rows_judged', listOf(KEY)),
       field('why_asking', LINE),
+      field('asked_by', oneOf('rule', 'counts')),
       field('label', nullable(LABEL)),
       field('model', nullable(MODEL)),
       field('blocks_build', FLAG),

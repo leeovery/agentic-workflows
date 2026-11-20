@@ -192,7 +192,7 @@ const { derivedMove, movedRefusal, reverses } = require('./ledger-verdicts.cjs')
 const { heldAgainst } = require('./ledger-affected.cjs');
 const { newEvent, keepEvent, landKept } = require('./trust-log.cjs');
 const { checkUnparked } = require('./questions.cjs');
-const { voidDecidedClose, itemOf, itemArchived, bringBack } = require('./derivations.cjs');
+const { voidTopicClose, itemOf, itemArchived, bringBack } = require('./derivations.cjs');
 const { pastItsSpec } = require('./spec-standing.cjs');
 const { loadWorkUnitManifest, saveWorkUnitManifest } = require('../kernel/manifest.cjs');
 
@@ -1443,7 +1443,7 @@ function voidOnQuestion(cwd, at, write, fields) {
   const topic = opensOn(at, write, fields);
   if (topic === null || at.manifest === null) return [];
   const manifest = loadWorkUnitManifest(cwd, at.unit);
-  if (!voidDecidedClose(manifest, topic, new Date().toISOString())) return [];
+  if (!voidTopicClose(manifest, topic, new Date().toISOString())) return [];
   saveWorkUnitManifest(cwd, at.unit, manifest);
   return [`${at.unit}/manifest.json`];
 }

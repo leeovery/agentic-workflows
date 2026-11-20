@@ -214,7 +214,7 @@ describe('the draw (16.5.7, 29.19.2)', () => {
       answers: null, relies_on: [full(made.screens)],
       replaces: { entry: full(made.opens), reason: 'new-fact', cause: full(made.screens), keep: KEEP },
       call: CALL, fact: false, rows_judged: [], label: null, model: null, blocks_build: false, replaced_by: 'claude', always: null, measured: null, chain: null,
-      reason: UNLABELLED, blind: false, at: sealed.at, raised: sealed.at, answered: null, didnt_follow: 0, parks: null,
+      reason: UNLABELLED, by: 'rule', blind: false, at: sealed.at, raised: sealed.at, answered: null, didnt_follow: 0, parks: null,
     });
     const gate = /** @type {Record<string, any>} */ (auditGate(sections, 'raise --replaces'));
     assert.deepStrictEqual(gate.options.map((/** @type {Record<string, any>} */ o) => [o.word ?? o.key, o.head, o.recommended]).slice(0, 3),
@@ -613,7 +613,7 @@ describe('once (E3)', () => {
 describe('proceed (E7, 16.3.7)', () => {
   it('where the decision point answers proceed, the draw lands Claude\'s replacement through ledger replace\'s write — the lean, the other proposals what it rules out, the answer it replaces dropped, its why — logged as a call carrying the sort, drawing and sealing nothing', async (t) => {
     const reason = 'On where things open my calls hold: 2% overruled, under your 20%.';
-    t.mock.method(decisionPoint, 'decide', () => ({ decision: 'proceed', reason }));
+    t.mock.method(decisionPoint, 'decide', () => ({ decision: 'proceed', reason, by: 'counts' }));
 
     const { res, sections } = await drawn();
 

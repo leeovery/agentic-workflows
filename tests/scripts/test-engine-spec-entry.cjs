@@ -57,6 +57,7 @@ const GONE = '2147483646';
 
 /** The refusal of the feature `solo` while its topic has not closed into its spec. */
 const SOLO_WAITS = 'solo\'s spec waits until its discussion closes, nothing of the person\'s open and its closing pass run — its discussion carries on: engine enter discussion solo';
+const CRASH_WAITS = 'crash\'s spec waits until its investigation closes, its root cause and fix validated and its recap staged — the investigation carries on, from the start menu';
 
 /** A map row. @param {number} order @param {Record<string, unknown>} [marks] */
 const row = (order, marks = {}) => ({ order, summary: `Topic ${order}`, source: 'discovery', ...marks });
@@ -181,8 +182,8 @@ describe('what cannot enter the spec is refused, naming the way on, and nothing 
     assert.deepStrictEqual([refused(['unshaped']), refused(['aside'])], [none('unshaped'), none('aside')]);
   });
 
-  it('a feature whose topic has not closed, and a bugfix whose investigation has not concluded; each enters once it has', () => {
-    assert.deepStrictEqual([refused(['solo']), refused(['crash'])], [SOLO_WAITS, 'crash\'s spec waits until its investigation concludes — the investigation carries on, from the start menu']);
+  it('a feature whose topic has not closed, and a bugfix whose investigation has not closed; each enters once it has', () => {
+    assert.deepStrictEqual([refused(['solo']), refused(['crash'])], [SOLO_WAITS, CRASH_WAITS]);
     assert.deepStrictEqual([enter('tally').res.entered, enter('fixed').res.entered], [true, true]);
   });
 
@@ -193,6 +194,14 @@ describe('what cannot enter the spec is refused, naming the way on, and nothing 
     });
     assert.deepStrictEqual(states, [null, SOLO_WAITS, null]);
     assert.strictEqual(readManifest(dir, 'solo').phases.discussion.items.solo.status, 'in-progress', 'the one screen marks it decided');
+  });
+
+  it('a bugfix\'s investigation once it has closed into its spec, unconcluded: its close marked, a message delivered since voiding it until it closes again (19.4.23, 9.7.9)', () => {
+    const states = [{ closed: '2026-10-01T09:00:00.000Z' }, { closed: '2026-10-01T09:00:00.000Z', voided: '2026-10-01T10:00:00.000Z' }, { closed: '2026-10-01T11:00:00.000Z', voided: '2026-10-01T10:00:00.000Z' }].map((record) => {
+      createManifest(dir, 'crash', { ...readManifest(dir, 'crash'), checklists: { conclusion: { crash: record } } });
+      return specEntryRefusal(dir, 'crash');
+    });
+    assert.deepStrictEqual(states, [null, CRASH_WAITS, null]);
   });
 
   it('a quick-fix, which has no spec (11.1.6), and a topic named', () => {

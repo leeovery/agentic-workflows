@@ -8,11 +8,10 @@
 // - Each unit's phase is its standing's (board-standing.cjs), as its tab
 //   and its banner have it. What waits on the person in it is counted from
 //   its one list as the start menu's row counts it (start-menu.cjs, 18.2.3),
-//   its conclude among them (20.12.5), never its verdicts; the project's
-//   total sums them.
+//   never its verdicts; the project's total sums them.
 // - How far a unit has come, by the phase it is in: the gate ending it
-//   waiting on the person, by its name — finish, a quick-fix's close, or an
-//   investigation's conclude; an epic's discovery its topics on the map,
+//   waiting on the person, by its name — finish, or a quick-fix's close; an
+//   epic's discovery its topics on the map,
 //   and its discussion its topics decided of all, as its menu row says them
 //   (progress.cjs); a bug's investigation how far its hunt has come; the
 //   specification where it stands, as its banner says it; the build its
@@ -56,9 +55,6 @@ const { epicMeasure } = require('../progress.cjs');
 /** Where a unit's build or review has stopped, as its row leads with it. @param {BoardAt} at */
 const stoppedWords = (at) => (standingOf(at) === 'stopped' ? 'stopped · ' : '');
 
-/** The gates that end a phase, each waiting on the person by its name: finish, a quick-fix's close, an investigation's conclude. */
-const GATES = Object.freeze(['finish', 'conclude']);
-
 /** How far a unit has come, by the phase it is in (the header's). @type {Readonly<Record<string, (at: BoardAt) => string>>} */
 const HOW_FAR = Object.freeze({
   discovery: (at) => epicMeasure(at.cwd, at.manifest, 'discovery') ?? '',
@@ -81,7 +77,7 @@ function waitingCount(at) {
 
 /** How far a unit has come (the header's). @param {BoardAt} at @param {string} phase */
 function workStanding(at, phase) {
-  const gate = waitingOn(at).find(({ kind }) => GATES.includes(kind));
+  const gate = waitingOn(at).find(({ kind }) => kind === 'finish');
   if (gate !== undefined) return `${gate.id} waits on you`;
   return /** @type {Record<string, (at: BoardAt) => string>} */ (HOW_FAR)[phase]?.(at) ?? '';
 }

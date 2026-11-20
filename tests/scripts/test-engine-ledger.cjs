@@ -100,7 +100,7 @@ function parked(question, fields = {}) {
       rows: [{ key: '1', name: 'Cursor', text: 'On the cursor\'s screen', notice: 'it opens where you look' }, { key: '2', name: 'Main', text: 'On the main screen', notice: 'it always opens there' }],
       lean: '1', why: 'A note follows the person.', sort: 'several', mechanism: 'The pointer\'s screen.', product_wide: false,
     },
-    rows_judged: [], why_asking: 'I couldn\'t tell what kind of question this is, so it comes to you.', label: null, model: null, blocks_build: true, replaced_by: null, always: null, measured: null, chain: question, blind: false, ...fields,
+    rows_judged: [], why_asking: 'I couldn\'t tell what kind of question this is, so it comes to you.', asked_by: 'rule', label: null, model: null, blocks_build: true, replaced_by: null, always: null, measured: null, chain: question, blind: false, ...fields,
   };
 }
 
@@ -184,7 +184,7 @@ describe('the events and their schemas', () => {
       [...HEADER, 'entry', 'rules'],
       [...HEADER, ...BY, 'entry', 'reason', 'cause', 'why', 'sealed', 'given'],
       [...HEADER, 'entry', 'path', 'status', 'into'],
-      [...HEADER, 'question', 'replaces', 'reason', 'cause', 'relies_on', 'task', 'went_ahead', 'number', 'call', 'rows_judged', 'why_asking', 'label', 'model', 'blocks_build', 'replaced_by', 'always', 'measured', 'chain', 'blind'],
+      [...HEADER, 'question', 'replaces', 'reason', 'cause', 'relies_on', 'task', 'went_ahead', 'number', 'call', 'rows_judged', 'why_asking', 'asked_by', 'label', 'model', 'blocks_build', 'replaced_by', 'always', 'measured', 'chain', 'blind'],
       [...HEADER, 'task', 'parks'],
       [...HEADER, 'lines', 'files'],
     ]);

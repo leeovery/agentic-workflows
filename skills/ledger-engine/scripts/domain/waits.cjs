@@ -9,9 +9,8 @@
 // - The authority gates waiting: approve the map while a map is staged
 //   (approve-map.cjs); an epic's topic's decided once its screen draws
 //   (decided.cjs); ready to build once its screen draws, the spec's gaps all
-//   answered (ready-to-build.cjs); an investigation's conclude from its
-//   draw to the person's pick (investigation-conclude.cjs, 20.12.5); finish
-//   once its screen draws — a quick-fix's close — which it never does while a
+//   answered (ready-to-build.cjs), a bugfix's investigation's conclude among
+//   it (investigation-conclude.cjs); finish once its screen draws — a quick-fix's close — which it never does while a
 //   question of the build waits (D18, finish.cjs), and is never listed
 //   while a question of this conversation waits.
 // - The questions waiting, each read by the module that owns its rule, each
@@ -55,12 +54,11 @@ const { stagedOrNone } = require('./approve-map.cjs');
 const { decidedDraws } = require('./decided.cjs');
 const { readyDraws } = require('./ready-to-build.cjs');
 const { finishDraws } = require('./finish.cjs');
-const { concludeDraws } = require('./investigation-conclude.cjs');
 const { specUnderWay } = require('./spec-standing.cjs');
 const { phaseSkill } = require('./handoff.cjs');
 const { affectedAnsweredIn } = require('./unit-handoff.cjs');
 const {
-  buildFinished, quickFixBuild, fixesBegun, reviewAsked, tasksBegun, investigationUnderWay, itemOf, mailPhase, topicTitle,
+  buildFinished, quickFixBuild, fixesBegun, reviewAsked, tasksBegun, itemOf, mailPhase, topicTitle,
 } = require('./derivations.cjs');
 
 /** @typedef {import('./projections/surfaces.cjs').Next} Next */
@@ -68,7 +66,7 @@ const {
 /** @typedef {import('./raise.cjs').Seal} Seal */
 
 /** Every kind of wait (the header's). */
-const WAIT_KINDS = Object.freeze(/** @type {const} */ (['map', 'decided', 'ready', 'conclude', 'finish', 'gap', 'question', 'raise', 'raised', 'affected', 'verdict']));
+const WAIT_KINDS = Object.freeze(/** @type {const} */ (['map', 'decided', 'ready', 'finish', 'gap', 'question', 'raise', 'raised', 'affected', 'verdict']));
 
 /** @typedef {typeof WAIT_KINDS[number]} WaitKind */
 /**
@@ -169,12 +167,6 @@ function finishGate(cwd, manifest) {
   return [wait('finish', 'finish', quickFixBuild(manifest) ? 'Close' : 'Finish', intoPhase(manifest, buildPlace(manifest)))];
 }
 
-/** An investigation's conclude while its yes waits, its door the investigation. @param {string} cwd @param {Record<string, any>} manifest @returns {Wait[]} */
-function concludeGate(cwd, manifest) {
-  if (!investigationUnderWay(manifest) || !concludeDraws(cwd, manifest.name)) return [];
-  return [wait('conclude', 'conclude', 'Conclude', intoPhase(manifest, 'investigation'))];
-}
-
 /** A unit's spec: its gaps waiting, and ready to build once its screen draws, which it never does while one waits. @param {string} cwd @param {Record<string, any>} manifest @param {string[]} warnings @returns {Wait[]} */
 function specWaits(cwd, manifest, warnings) {
   if (!specUnderWay(cwd, manifest)) return [];
@@ -220,7 +212,6 @@ function unitWaits(cwd, root, read, manifest) {
     ...decidedGates(cwd, manifest),
     ...specWaits(cwd, manifest, read.warnings),
     ...questions,
-    ...concludeGate(cwd, manifest),
     ...(questions.length === 0 ? finishGate(cwd, manifest) : []),
     ...affectedWaits(cwd, shower, root, manifest),
     ...inUnit(shower.folded, read.queue, manifest.name).map((id) => wait('verdict', shower.short(id), String(shower.show(id).text), verdictsOf(manifest.name))),

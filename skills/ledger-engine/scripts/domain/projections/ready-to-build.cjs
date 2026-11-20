@@ -9,8 +9,12 @@
 // product-record lines and the candidates after them — beside the spec's
 // parts; its foot says the pick marks the topic decided with what it covers,
 // it strikes a candidate on `x`, `s` being the step, and its comment takes
-// a change to any of it. An epic's or a bugfix's is the feature's screen
-// without the parts that belong to the feature's decided: the title,
+// a change to any of it. A bugfix's is one screen with its investigation's
+// conclude alike: `{Title} — concluded, and ready to build`, the recap
+// (investigation.cjs) before the spec's parts, its foot saying the pick
+// concludes the investigation, and its comment taking a change to the
+// recap. An epic's is the feature's screen without the parts that belong to
+// the feature's decided: the title,
 // Claude's calls at the spec counted by kind (closing.cjs), THE OUTLINE —
 // the spec's areas — and THE PHASE CUT, each phase with its scenarios
 // counted and the sections it draws on; every checklist item skipped, with
@@ -30,12 +34,14 @@ const { renderTree } = require('../../kernel/render.cjs');
 const { TREE_WIDTH } = require('../conventions.cjs');
 const { counted } = require('./map.cjs');
 const { runs, block, series, callsBlock, decidedBlocks, recordBlocks, marksDecided, strikeRows, verdictBlock, verdictPoint } = require('./closing.cjs');
+const { recapBlocks } = require('./investigation.cjs');
 
 /**
  * Ready to build as it is drawn: the unit and its title; Claude's calls,
  * listed or counted; the spec's areas; the cut's phases; the checklists'
  * skips; the verdict asked and the point it is given at; a feature's
- * topic's close, null for any other unit; whether the session can publish
+ * topic's close, null for any other unit; a bugfix's recap, null for any
+ * other unit; whether the session can publish
  * the review page; and, while it is open, its counts by the marks last
  * stored — null while it is not — with where Claude reads its marks back
  * to.
@@ -48,6 +54,7 @@ const { runs, block, series, callsBlock, decidedBlocks, recordBlocks, marksDecid
  *   verdict: import('../ledger-verdicts.cjs').AskedVerdict|null,
  *   point: string,
  *   close: import('./closing.cjs').TopicClose|null,
+ *   recap: import('./investigation.cjs').RecapView|null,
  *   page: boolean,
  *   review: {ticked: number, claudes: number, other: number}|null,
  *   readBack: string,
@@ -70,9 +77,17 @@ function cutBlock(phases) {
   })), { width: TREE_WIDTH }));
 }
 
-/** The screen's display: each block that has something to show, a feature's topic's close around Claude's calls. @param {ReadyView} view */
-function readyDisplay({ title, calls, listed, outline, phases, skips, verdict, close }) {
-  const blocks = [close === null ? `${title} — ready to build` : `${title} — decided, and ready to build`];
+/** The screen's title, by the close it is one screen with. @param {ReadyView} view */
+function heading({ title, close, recap }) {
+  if (close !== null) return `${title} — decided, and ready to build`;
+  return recap === null ? `${title} — ready to build` : `${title} — concluded, and ready to build`;
+}
+
+/** The screen's display: each block that has something to show, a feature's topic's close around Claude's calls, a bugfix's recap first. @param {ReadyView} view */
+function readyDisplay(view) {
+  const { calls, listed, outline, phases, skips, verdict, close, recap } = view;
+  const blocks = [heading(view)];
+  if (recap !== null) blocks.push(...recapBlocks(recap));
   if (close !== null) blocks.push(...decidedBlocks(close));
   if (calls.length > 0) blocks.push(callsBlock(calls, listed));
   if (close !== null) blocks.push(...recordBlocks(close));
@@ -94,13 +109,20 @@ function recordsReview({ ticked, claudes, other }) {
 }
 
 /** What the pick does, said above the gate. @param {ReadyView} view */
-function foot({ title, close, review }) {
+function foot({ title, close, recap, review }) {
   const does = [
     ...(close === null ? [] : [marksDecided(close, title)]),
+    ...(recap === null ? [] : ['concludes the investigation']),
     'approves the outline and the phase cut',
     ...(review === null ? [] : [recordsReview(review)]),
   ];
   return `Your pick ${does.join(', ')}, and starts the build in that position.`;
+}
+
+/** What the comment takes a change to, by the close the screen is one with. @param {ReadyView} view */
+function commentLabel({ close, recap }) {
+  if (close !== null) return 'Ask for a change — to what you decided, a product-record line, the outline or the phase cut';
+  return recap === null ? 'Ask for a change to the outline or the phase cut' : 'Ask for a change — to the recap, the outline or the phase cut';
 }
 
 /**
@@ -112,7 +134,7 @@ function foot({ title, close, review }) {
  * @param {ReadyView} view
  */
 function readyGate(view) {
-  const { unit, calls, listed, page, review, readBack, close } = view;
+  const { unit, calls, listed, page, review, readBack, close, recap } = view;
   const marks = review === null ? [] : ['--marks', readBack];
   const pageFlag = page ? ['--page'] : [];
   const pick = (/** @type {string} */ position) => runs(['ready-to-build', 'yes', unit, '--position', position, ...marks]);
@@ -124,7 +146,7 @@ function readyGate(view) {
   if (page && review !== null) rows.push(cmdOption('r', 'review', 'Read the comments you\'ve left on the page', runs(['spec', 'marks', unit, '--file', readBack])));
   if (calls.length > 0 && !listed) rows.push(cmdOption('c', 'calls', `See Claude's ${counted(calls.length, 'call')}`, runs(['render', 'ready-to-build', unit, '--calls', ...pageFlag])));
   if (close !== null) rows.push(...strikeRows(close, 'x', pageFlag));
-  rows.push(promptOption('Comment', close === null ? 'Ask for a change to the outline or the phase cut' : 'Ask for a change — to what you decided, a product-record line, the outline or the phase cut'));
+  rows.push(promptOption('Comment', commentLabel(view)));
   return section('MENU: ready to build', MENU_INSTRUCTION, menu(foot(view), rows, { question: 'Build it, and in which position?' }));
 }
 

@@ -44,7 +44,8 @@
 // kind and the project alone, never text from the trust log (16.9.2,
 // 16.1.3); the check's alone is Claude's, saying what to do. A raise's face
 // says why it asks only where a rule always asks it — every reason above
-// the counts — its counts' reason kept behind its toggle (`ruleReason`).
+// the counts — its counts' reason kept behind its toggle: each answer says
+// which of the two gave it, `by`, for the raise's seal to keep.
 // ---------------------------------------------------------------------------
 
 const { kindOf, hardToUndo, checkable, danger } = require('./labeller.cjs');
@@ -59,6 +60,8 @@ const { HARD_TO_UNDO, ASK_AGAIN, buildRaised, midBuild } = require('./trust-sett
 /** @typedef {import('./ledger-events.cjs').DecidedBy} DecidedBy */
 /** @typedef {import('./event-fields.cjs').Always} Always */
 /** What the rule answers: ask the person, Claude's call proceeding, or Claude sent to check. @typedef {'ask'|'proceed'|'check'} Ruling */
+/** Which part of the rule decided: a rule that always asks or sends to check, or the counts. @typedef {'rule'|'counts'} By */
+/** The rule's answer, why, and which part of it decided. @typedef {{decision: Ruling, reason: string, by: By}} Answer */
 /** A care entry (16.5.2): a kind that always asks in one project, known by the project's id. @typedef {{project: string, kind: Kind}} CareEntry */
 /**
  * What the rule decides a call from beside its sort.
@@ -90,11 +93,14 @@ const CHECKED = 'Checking couldn\'t settle it, so it comes to you.';
 const DANGER = 'An answer here could lose data or weaken security, so it always comes to you.';
 const YOURS = 'You decided this yourself, so changing it always comes to you.';
 
-/** @param {string} reason @returns {{decision: Ruling, reason: string}} */
-const asks = (reason) => ({ decision: 'ask', reason });
+/** @param {string} reason @returns {Answer} */
+const ruled = (reason) => ({ decision: 'ask', reason, by: 'rule' });
 
-/** @param {string} reason @returns {{decision: Ruling, reason: string}} */
-const proceeds = (reason) => ({ decision: 'proceed', reason });
+/** @param {string} reason @returns {Answer} */
+const asks = (reason) => ({ decision: 'ask', reason, by: 'counts' });
+
+/** @param {string} reason @returns {Answer} */
+const proceeds = (reason) => ({ decision: 'proceed', reason, by: 'counts' });
 
 // The most places a percent is shown to: past them a bound and a line read
 // alike only where the bound is the line, to the bisection's precision.
@@ -204,32 +210,18 @@ function byKind({ counts, project }, kind, { limit, said }) {
  * once sent to check; else as the count of one-answer calls stands for a
  * call sorted `one`, and as its kind's count stands for any other.
  * @param {{sort: 'one'|'several'}} call @param {Context} context
- * @returns {{decision: Ruling, reason: string}}
+ * @returns {Answer}
  */
 function rule({ sort }, context) {
   const unread = asksUnread(context);
-  if (unread !== null) return asks(unread);
+  if (unread !== null) return ruled(unread);
   const label = /** @type {Label} */ (context.label);
   const kind = /** @type {Kind} */ (kindOf(label));
   const always = asksByLabel(context, kind);
-  if (always !== null) return asks(always);
-  if (checkable(label)) return context.checked ? asks(CHECKED) : { decision: 'check', reason: CHECK_IT };
+  if (always !== null) return ruled(always);
+  if (checkable(label)) return context.checked ? ruled(CHECKED) : { decision: 'check', reason: CHECK_IT, by: 'rule' };
   const line = lineOf(context, /** @type {boolean} */ (hardToUndo(label)));
   return sort === 'one' ? oneAnswer(context, line) : byKind(context, kind, line);
 }
 
-/**
- * The reason a rule always asks a call raised — before its label is read,
- * by its label, or once checking could not settle it — or null where the
- * counts sent it to the person (16.9.2).
- * @param {Pick<Context, 'replaced_by'|'measured'|'always'|'label'|'care'|'project'>} context
- * @returns {string|null}
- */
-function ruleReason(context) {
-  const unread = asksUnread(context);
-  if (unread !== null) return unread;
-  const label = /** @type {Label} */ (context.label);
-  return asksByLabel(context, /** @type {Kind} */ (kindOf(label))) ?? (checkable(label) ? CHECKED : null);
-}
-
-module.exports = { rule, ruleReason, percent, against };
+module.exports = { rule, percent, against };

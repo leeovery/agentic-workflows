@@ -35,9 +35,10 @@
 //   the rule lets proceed, or sends Claude to check, Claude would settle;
 //   the rest come to the person. No blind draw enters it: at settle time a
 //   point may still be drawn blind, which the offer's DATA says
-//   (projections/convergence.cjs). Drawn where it is due, an offer whose
-//   forecast has Claude settle none of them would settle nothing, so
-//   nothing is drawn (16.8.9).
+//   (projections/convergence.cjs). An offer whose forecast has Claude settle
+//   none of them would settle nothing (16.8.9): due, nothing is drawn and
+//   the run starts again, as the person's no starts it, so the next answer
+//   labels nothing afresh; on the person's word, one line says so.
 // - `convergence accept <wu> <topic>`, the person's yes: stated intent,
 //   logged in the trust log as a `convergence` event (16.8.6, 16.13.4), its
 //   id drawn from the conversation and when the offer was shown, so a rerun
@@ -69,7 +70,7 @@ const { careEntries } = require('./person.cjs');
 const { labelsAtOnce, questionText, kindOf } = require('./labeller.cjs');
 const { rule } = require('./ask-rule.cjs');
 const { answeredTo, lastShown } = require('./gate.cjs');
-const { offerScreen, OFFER_GATE } = require('./projections/convergence.cjs');
+const { offerScreen, nothingToSettle, OFFER_GATE } = require('./projections/convergence.cjs');
 
 /** @typedef {import('./event-fields.cjs').Kind} Kind */
 /** @typedef {import('./ledger-fold.cjs').IdFacts} IdFacts */
@@ -87,6 +88,13 @@ const CONVERGENCE_USAGE = [ACCEPT_USAGE, DECLINE_USAGE].join('\n');
 
 /** Where the topic's cache keeps the person's no. @param {string} cwd @param {string} unit @param {string} topic */
 const declinedFile = (cwd, unit, topic) => statePath(cwd, '.cache', unit, PHASE, topic, DECLINED);
+
+/** The run on the topic started again from `at`, as the person's no starts it. @param {string} cwd @param {string} unit @param {string} topic @param {string} at */
+function restartRun(cwd, unit, topic, at) {
+  const file = declinedFile(cwd, unit, topic);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  writeJsonAtomic(file, { declined: at });
+}
 
 /** When the person last declined the offer on the topic, null where they never did. @param {string} cwd @param {string} unit @param {string} topic */
 function declinedAt(cwd, unit, topic) {
@@ -244,8 +252,10 @@ function convergenceSurface(cwd, { dotpath, asked }) {
     throw new Error(`${said}: no offer is due on ${title} at ${standing.run} agreement${standing.run === 1 ? '' : 's'} in a row; on the person's word, --asked`);
   }
   const forecast = forecastOf(cwd, unit, topic, standing.open);
-  if (asked === undefined && !forecast.some(({ mine }) => mine)) return '';
-  return offerScreen({ title, unit, topic, run: asked === undefined ? standing.run : null, forecast, warnings });
+  if (forecast.some(({ mine }) => mine)) return offerScreen({ title, unit, topic, run: asked === undefined ? standing.run : null, forecast, warnings });
+  if (asked !== undefined) return nothingToSettle(title, forecast);
+  restartRun(cwd, unit, topic, new Date().toISOString());
+  return '';
 }
 
 /**
@@ -285,9 +295,7 @@ function accept(cwd, args) {
  */
 function decline(cwd, args) {
   const { unit, topic, answered } = answeredOffer('decline', args, DECLINE_USAGE);
-  const file = declinedFile(cwd, unit, topic);
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  writeJsonAtomic(file, { declined: answered });
+  restartRun(cwd, unit, topic, answered);
   return { convergence: 'declined', unit, topic };
 }
 

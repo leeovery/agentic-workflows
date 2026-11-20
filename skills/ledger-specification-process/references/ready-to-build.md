@@ -10,6 +10,12 @@ The spec's gate: the outline and the phase cut, the build's position, and the pe
 node .claude/skills/ledger-engine/scripts/engine.cjs decided stage {work_unit} {work_unit} --file .ledger/.cache/{work_unit}/discussion/{work_unit}/decided-payload.json
 ```
 
+A bugfix's carries its investigation's recap, and its pick concludes the investigation. Its recap is the one the investigation staged; once changed, it is staged again with:
+
+```bash
+node .claude/skills/ledger-engine/scripts/engine.cjs investigation stage {work_unit} --file .ledger/.cache/{work_unit}/investigation/{work_unit}/recap.json
+```
+
 ## The Screen
 
 Pass `--page` where this session can publish a page: the Artifact tool is among its tools. While the review page is open, its marks are read back first: load **[review-page.md](review-page.md)** and follow its instructions as written, from **Reading the Marks**, where this conversation has not loaded it already. Then draw the screen:
@@ -30,7 +36,7 @@ On a feature's screen, one keeping a struck candidate after all undoes its strik
 
 ## A Change Asked For
 
-A Comment on a feature's screen that changes a product-record line or a candidate changes the payload: change it and stage it again, then draw the screen again.
+A Comment on a feature's screen that changes a product-record line or a candidate changes the payload: change it and stage it again, then draw the screen again. One on a bugfix's screen that changes the recap changes it alike.
 
 A Comment asking for a change to the outline, the phase cut, or what the person decided is the person's decision, landed at the spec. Decide its route first:
 - **It changes a decision already made** — `ledger replace {work_unit}.specification --replaces {decision_id} --reason changed-mind` with `{"drops", "text", "why", "by": "person", "who_moved_whom": "none"}` on stdin, which stands on that decision's topic. A replacement answers no question: ask none.

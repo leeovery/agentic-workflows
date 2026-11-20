@@ -67,13 +67,14 @@ const CALL = Object.freeze({
 
 /**
  * The screen a raise of `CALL` draws, its id `id`, the mechanism shown with
- * `technical`, the reason the decision point gave: a rule's on the face, the
- * counts' beside the mechanism alone (16.9.2).
- * @param {string} id @param {{technical?: boolean, reason?: string}} [opts]
+ * `technical`, the reason the decision point gave and which part of the rule
+ * gave it: a rule's on the face, the counts' beside the mechanism alone
+ * (16.9.2).
+ * @param {string} id @param {{technical?: boolean, reason?: string, by?: 'rule'|'counts'}} [opts]
  */
-function screen(id, { technical = false, reason = UNLABELLED } = {}) {
+function screen(id, { technical = false, reason = UNLABELLED, by = 'rule' } = {}) {
   const why = ['', 'WHY I\'M ASKING', '', reason];
-  const ruled = reason === UNLABELLED;
+  const ruled = by === 'rule';
   return [
     `=== MENU: raise — ${id} (emit verbatim as markdown (not a code block), then STOP for the user's response) ===`,
     '· · · · · · · · · · · ·',
@@ -282,7 +283,7 @@ describe('the seal (P1, P6)', () => {
       always: null,
       measured: null,
       chain: full(asked.where),
-      reason: UNLABELLED,
+      reason: UNLABELLED, by: 'rule',
       blind: false,
       at: sealed.at,
       raised: sealed.at,
@@ -447,14 +448,24 @@ describe('the label at the draw (16.11, 16.S38)', () => {
 describe('the decision point (29.19.2)', () => {
   it('the response, the seal and the screen carry whatever it answers, with its reason — the counts\' behind the toggle (16.9.2)', async (t) => {
     const reason = 'On behaviour in Fumi my calls still miss more often than you allow: 21%, over your 20%.';
-    t.mock.method(decisionPoint, 'decide', () => ({ decision: 'ask', reason }));
+    t.mock.method(decisionPoint, 'decide', () => ({ decision: 'ask', reason, by: 'counts' }));
 
     const { res, sections } = await draw();
 
     assert.deepStrictEqual(res, { ok: true, decision: 'ask', reason, raise: res.raise, redrawn: false });
     assert.strictEqual(seals()[res.raise].reason, reason);
+    assert.strictEqual(sections, screen(res.raise, { reason, by: 'counts' }));
+    assert.strictEqual(show([res.raise, '--technical']).sections, screen(res.raise, { reason, by: 'counts', technical: true }));
+  });
+
+  it('the face says the reason where the seal records a rule sent it, as the seal holds it, never worked out again (16.9.2)', async (t) => {
+    const reason = 'A rule of its own asks this.';
+    t.mock.method(decisionPoint, 'decide', () => ({ decision: 'ask', reason, by: 'rule' }));
+
+    const { res, sections } = await draw();
+
+    assert.strictEqual(seals()[res.raise].by, 'rule');
     assert.strictEqual(sections, screen(res.raise, { reason }));
-    assert.strictEqual(show([res.raise, '--technical']).sections, screen(res.raise, { reason, technical: true }));
   });
 });
 

@@ -118,7 +118,7 @@ const { retireWorkUnit } = require('./domain/workunit-retire.cjs');
 const { closeDiscoverySession } = require('./domain/discovery-session.cjs');
 const { LOG_USAGE, logHeard } = require('./domain/discovery-log.cjs');
 const { HUNT_USAGE, logHunt } = require('./domain/investigation-log.cjs');
-const { CONCLUDE_USAGE, runInvestigationVerb } = require('./domain/investigation-conclude.cjs');
+const { STAGE_USAGE, runInvestigationVerb } = require('./domain/investigation-conclude.cjs');
 const { runFieldCommand, isRead } = require('./domain/fields.cjs');
 const { renderSurface, SURFACES } = require('./domain/render.cjs');
 const { resolveHandoff, topicHandoff, handoffSections, TOPIC_HANDOFF_USAGE } = require('./domain/handoff.cjs');
@@ -295,7 +295,7 @@ ${TRUST_USAGE.replace(/^/gm, '  ')}
   discovery-session close <work-unit|product> -m <message>
 ${LOG_USAGE.replace(/^/gm, '  ')}
 ${HUNT_USAGE.replace(/^/gm, '  ')}
-  ${CONCLUDE_USAGE}
+  ${STAGE_USAGE}
 ${Object.values(MAP_USAGE).map((usage) => `  ${usage}`).join('\n')}
   ${SEND_USAGE}
   ${MAILBOX_USAGE}
@@ -449,7 +449,6 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render finish <work-unit> [--alone]
   render investigation-plan <bugfix> --file <plan.json> [--revised]
   render investigation-check-in <bugfix> --file <check-in.json>
-  render conclude <bugfix> [--file <recap.json>]
   render discovery-map <work-unit>
   render migrations-applied --file <payload.json>
   render migration-gate
@@ -457,7 +456,6 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render git-floor-stop
   render repo-stop
   render github-rule-gate
-  render github-squash-gate
   render label-gate
   render knowledge-gate [--variant deviate|wizard | --variant retry (--from-system | --provider <name> --model <name> [--base-url <url>] [--dimensions <n>])]
   render knowledge-ask --provider openai|openai-compatible
@@ -912,8 +910,8 @@ function runInvestigationLog(call, argv) {
 }
 
 // ---------------------------------------------------------------------------
-// investigation — a bugfix investigation's conclude gate's yes, closing it
-// and handing the work into its spec (domain/investigation-conclude.cjs).
+// investigation — a bugfix investigation closed into its spec, its recap
+// staged (domain/investigation-conclude.cjs).
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */
@@ -921,7 +919,7 @@ function runInvestigation(call, argv) {
   try {
     const { opts, positional } = parseArgs(argv);
     const answer = runInvestigationVerb(call.cwd, positional, opts);
-    // The conclude releases the investigation's slot, as a conclusion does.
+    // The close releases the investigation's slot, as a feature's does.
     clearQuietly(call.cwd, positional[1], 'investigation', positional[1]);
     respond(call, answer);
   } catch (err) {

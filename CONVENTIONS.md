@@ -66,7 +66,7 @@ A **corridor** is a short, linear stretch whose output has a fixed shape: the ph
 ### Requests at Any Point
 
 Some requests can come wherever the phase is: put an idea or a bug aside, postpone or cancel the topic, a gap the person names during the build. Each is a section of its own, named for the request: the words that bring it, and the verb or reference that takes it. Afterwards the work carries on where it was, except where the request moves it:
-- a topic cancelled or postponed from its own session hands off to a menu: an epic's topic to the epic's menu, any other to the start menu;
+- an epic's topic cancelled or postponed from its own session hands off to the epic's menu; any other unit's cancel ends the work in the conversation, a line saying so and what waits, no menu drawn;
 - an experiment spawned now hands off to the laboratory;
 - a move up to the epic's discovery leaves the topic, in the same conversation;
 - a quick-fix that needs a decision beyond a quick call moves to a feature or a bugfix, which changes the work.

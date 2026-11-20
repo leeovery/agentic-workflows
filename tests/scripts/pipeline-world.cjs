@@ -963,23 +963,21 @@ async function hunted(sim, wu) {
 }
 
 /**
- * The conclude as the investigation closes (19.4.23): the recap staged at
- * its gate, naming what the bug is in where `bug` does, and the yes run —
- * the person's, or the gate's learned step's — handing off into the spec
- * (24.S17).
+ * The investigation closed into its spec with no gate (19.4.23, 11.2.1):
+ * the recap staged, naming what the bug is in where `bug` does, handing
+ * off into the spec (24.S17), whose ready to build concludes it.
  * @param {Sim} sim @param {string} wu @param {{fixes?: string}} [bug]
  */
 function concluded(sim, wu, bug = {}) {
   const recap = sim.write(investigationCache(wu, 'recap.json'), { hunt: 'Two hypotheses; the save wrote a null on every crash, and nothing checked it.', ...bug });
-  const shown = sim.render(['conclude', wu, '--file', recap], { expect: 'content' });
-  const { next } = sim.run(/** @type {{argv: string[]}} */ (passGate(sim, shown, 'conclude gate', 'y')).argv);
+  const { next } = sim.run(['investigation', 'stage', wu, '--file', recap]);
   const route = `/ledger-specification-process bugfix ${wu}`;
-  assert.strictEqual([`/${next.skill}`, ...next.args].join(' '), route, 'the conclude hands off into the spec');
+  assert.strictEqual([`/${next.skill}`, ...next.args].join(' '), route, 'the close hands off into the spec');
   handoff(sim, route);
 }
 
 // A bugfix started as discovery starts one and handed into its
-// investigation, worked to its conclude and handed into its spec.
+// investigation, worked to its close and handed into its spec.
 /** @param {Sim} sim @param {string} wu @param {string} description */
 async function investigated(sim, wu, description) {
   startNew(sim);
@@ -1836,7 +1834,7 @@ function finishClosed(sim, wu) {
  * @param {{question: string, lean: string, other: string}} call
  */
 async function wentAheadBlind(t, sim, wu, task, { question, lean, other }) {
-  t.mock.method(decisionPoint, 'decide', () => ({ decision: 'blind', reason: 'Asked cold.' }));
+  t.mock.method(decisionPoint, 'decide', () => ({ decision: 'blind', reason: 'Asked cold.', by: 'counts' }));
   sim.env = { ...sim.env, CLAUDE_STUB_ANSWERS: JSON.stringify({ [question]: labelAnswers('behaviour'), '': 'no-login' }) };
   const asked = sim.run(['ledger', 'ask', `${wu}.implementation`, '--task', task], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: question })).id;
   const drawn = await sim.runAsync(['raise', `${wu}.implementation`, '--answers', asked, '--parks', task], null, JSON.stringify({ ...leaningCall(lean, other), question }));

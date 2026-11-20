@@ -156,10 +156,10 @@ const { parseShownTask } = require('./task-id.cjs');
  * @typedef {{name: string, id: string, tasks: string[], line: Record<string, any>, asks: string}} WaitingOn
  */
 /**
- * A park's call as sealed: Claude's call, the rows judged, why it asks, its
- * label (labeller.cjs), the model it was decided under, and what the
+ * A park's call as sealed: Claude's call, the rows judged, why it asks and
+ * which part of the ask rule sent it (ask-rule.cjs), its label (labeller.cjs), the model it was decided under, and what the
  * decision point decided it from beyond the label (raise.cjs).
- * @typedef {{call: Record<string, any>, rows_judged: string[], why_asking: string, label: import('./labeller.cjs').Label|null, model: string|null, blind: boolean} & import('./raise.cjs').DecidedFrom} Sealed
+ * @typedef {{call: Record<string, any>, rows_judged: string[], why_asking: string, asked_by: import('./ask-rule.cjs').By, label: import('./labeller.cjs').Label|null, model: string|null, blind: boolean} & import('./raise.cjs').DecidedFrom} Sealed
  */
 /** A question asked in a quick-fix's conversation still open: its short id, the place it is at, and what it asks. @typedef {{id: string, place: string, asks: string}} AskedOpen */
 /** A seal's question: its first park's full id, its number, the tasks it parks, and the task Claude's call went ahead for, null where none did (raise.cjs). @typedef {{park: string, number: number, tasks: string[], went_ahead: string|null}} Parks */
@@ -505,8 +505,8 @@ function decidedFromIn({ blocks_build: blocks, replaced_by: replacedBy, always, 
  * @returns {Sealed}
  */
 function sealedOf(line) {
-  const { call, rows_judged: judged, why_asking: whyAsking, label, model, blind } = line;
-  return { call, rows_judged: judged, why_asking: whyAsking, label, model, blind, ...decidedFromIn(line) };
+  const { call, rows_judged: judged, why_asking: whyAsking, asked_by: askedBy, label, model, blind } = line;
+  return { call, rows_judged: judged, why_asking: whyAsking, asked_by: askedBy, label, model, blind, ...decidedFromIn(line) };
 }
 
 /**

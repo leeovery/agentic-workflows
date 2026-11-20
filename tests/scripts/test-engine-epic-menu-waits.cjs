@@ -248,8 +248,8 @@ describe('what waits, drawn first (18.4.2)', () => {
     assert.deepStrictEqual([view.units.map((/** @type {{unit: string, waiting: number}} */ { unit, waiting }) => [unit, waiting]), view.waiting], [[[FUMI, 1], [SOLO, 0]], 1]);
   });
 
-  it('20.2.4: what holds the phase the unit is in is what is asked in the conversation and holds it — the map, ready to build, the conclude, finish, a gap, an investigation\'s raise — never a build\'s question, a quick-fix\'s, a topic\'s decided, an affected topic or a verdict', () => {
-    assert.deepStrictEqual(WAIT_KINDS.filter((kind) => holds({ kind })), ['map', 'ready', 'conclude', 'finish', 'gap', 'raise']);
+  it('20.2.4: what holds the phase the unit is in is what is asked in the conversation and holds it — the map, ready to build, finish, a gap, an investigation\'s raise — never a build\'s question, a quick-fix\'s, a topic\'s decided, an affected topic or a verdict', () => {
+    assert.deepStrictEqual(WAIT_KINDS.filter((kind) => holds({ kind })), ['map', 'ready', 'finish', 'gap', 'raise']);
   });
 
   /** The phases a session can be in. */
@@ -267,7 +267,7 @@ describe('what waits, drawn first (18.4.2)', () => {
     return Object.fromEntries(PHASES.map((phase) => [phase, takes(phase)]));
   }
 
-  it('20.2.4: each phase takes its own of the unit\'s one list, as its banner draws it — discovery the map, an investigation its raises and its conclude, the specification the map its sweep staged, its gaps and ready to build, the build and the review their questions and finish — a discussion and an experiment none, an epic\'s decided topics, its affected ones and its verdicts no phase\'s, whichever phase their door hands into', () => {
+  it('20.2.4: each phase takes its own of the unit\'s one list, as its banner draws it — discovery the map, an investigation its raises, the specification the map its sweep staged, its gaps and ready to build, the build and the review their questions and finish — a discussion and an experiment none, an epic\'s decided topics, its affected ones and its verdicts no phase\'s, whichever phase their door hands into', () => {
     const intoSpec = door('ledger-specification-process', 'epic', FUMI);
     const every = WAIT_KINDS.map((kind) => wait(kind, kind, kind, ['decided', 'affected'].includes(kind) ? intoSpec : VERDICTS));
 
@@ -275,7 +275,7 @@ describe('what waits, drawn first (18.4.2)', () => {
       discovery: ['map'],
       discussion: [],
       experiment: [],
-      investigation: ['conclude', 'raise'],
+      investigation: ['raise'],
       specification: ['map', 'ready', 'gap'],
       implementation: ['finish', 'question', 'raised'],
       review: ['finish', 'question', 'raised'],

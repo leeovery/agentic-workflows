@@ -160,7 +160,7 @@ describe('a quick-fix\'s fixes on the board (20.14)', () => {
   const parkedOnTheCall = (how) => appendEntry(statePath(dir), {
     event: 'parked', unit: UNIT, topic: null, phase: 'implementation', session: SESSION,
     question: null, replaces: ledgerHelpers(() => dir).full(made.call), cause: null, relies_on: [], number: 1,
-    call: { ...CALL, question: 'What does the README say entering does?' }, rows_judged: [], why_asking: 'Asked cold.', label: null, model: null, blocks_build: true, replaced_by: null, always: null,
+    call: { ...CALL, question: 'What does the README say entering does?' }, rows_judged: [], why_asking: 'Asked cold.', asked_by: 'counts', label: null, model: null, blocks_build: true, replaced_by: null, always: null,
     measured: null, chain: ledgerHelpers(() => dir).full(made.asked), ...how,
   }, []);
 

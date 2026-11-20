@@ -26,42 +26,63 @@ function buildBegun(manifest) {
   return isObject(manifest.build);
 }
 
+/** A close a topic's work ends on, in the checklist store keyed by the topic. @typedef {'decided'|'conclusion'} TopicClose */
 /**
- * Whether the topic's decided close stands: its checklist closed, and
- * neither voided — its discussion gone on since (checklist.cjs) — nor taken
- * by a yes since.
- * @param {Record<string, any>} manifest @param {string} topic
+ * The closes a topic's work ends on: a discussion's decided close
+ * (checklist.cjs), and a bugfix's investigation closed into its spec, its
+ * conclusion (investigation-conclude.cjs), a record of its close alone.
+ * @type {readonly TopicClose[]}
  */
-function decidedCloseStands(manifest, topic) {
-  const record = isObject(manifest.checklists?.decided) ? manifest.checklists.decided[topic] : undefined;
+const TOPIC_CLOSES = Object.freeze(/** @type {TopicClose[]} */ (['decided', 'conclusion']));
+
+/**
+ * Whether the topic's close of the kind `close` stands: closed, and neither
+ * voided — its work gone on since — nor taken by a yes since.
+ * @param {Record<string, any>} manifest @param {TopicClose} close @param {string} topic
+ */
+function closeStands(manifest, close, topic) {
+  const record = isObject(manifest.checklists?.[close]) ? manifest.checklists[close][topic] : undefined;
   const closed = isObject(record) ? record.closed : undefined;
   if (typeof closed !== 'string') return false;
   return [record.voided, record.taken].every((since) => typeof since !== 'string' || since < closed);
 }
 
 /**
- * Record on the unit's manifest, as it is saved, that the topic's
- * discussion has gone on — a message delivered, an experiment's report, a
- * feature's discussion entered again, a question asked or moved onto it — so
- * its decided close, where one stands, is void (9.7.9): whether it was.
+ * Record on the unit's manifest, as it is saved, that the topic's work has
+ * gone on — a message delivered, an experiment's report, a feature's
+ * discussion or a bugfix's investigation entered again, a question asked or
+ * moved onto it — so its close, where one stands, is void (9.7.9): whether
+ * it was.
  * @param {Record<string, any>} manifest @param {string} topic @param {string} at
  */
-function voidDecidedClose(manifest, topic, at) {
-  if (!decidedCloseStands(manifest, topic)) return false;
-  manifest.checklists.decided[topic].voided = at;
-  return true;
+function voidTopicClose(manifest, topic, at) {
+  const standing = TOPIC_CLOSES.filter((close) => closeStands(manifest, close, topic));
+  for (const close of standing) manifest.checklists[close][topic].voided = at;
+  return standing.length > 0;
 }
 
 /** The day the unit started, its manifest's `created`, null where it holds none (20.15.4). @param {Record<string, any>} manifest @returns {string|null} */
 const startedOn = (manifest) => (typeof manifest.created === 'string' ? manifest.created : null);
 
+/** The close a single-topic unit's topic closes into its spec on, by its type. @type {Readonly<Record<string, TopicClose>>} */
+const INTO_SPEC = Object.freeze({ feature: 'decided', bugfix: 'conclusion' });
+
+/** The phase whose topic a unit closes into its spec, by its type. @type {Readonly<Record<string, string>>} */
+const CLOSING_PHASE = Object.freeze({ feature: 'discussion', bugfix: 'investigation' });
+
 /**
- * Whether a feature's one topic has closed into its spec, with no gate
- * (11.2.1): its decided close standing. The one screen, decided and ready to
- * build, marks it decided after (11.8.5).
+ * Whether a feature's one topic, or a bugfix's investigation, has closed
+ * into its spec, with no gate (11.2.1): its close standing. The one screen,
+ * ready to build, marks it decided or concluded after (11.8.5).
  * @param {Record<string, any>} manifest
  */
-const closedIntoSpec = (manifest) => manifest.work_type === 'feature' && decidedCloseStands(manifest, manifest.name);
+const closedIntoSpec = (manifest) => {
+  const close = INTO_SPEC[manifest.work_type];
+  return close !== undefined && closeStands(manifest, close, manifest.name);
+};
+
+/** Whether `phase` is the one the unit closed into its spec from (`closedIntoSpec`). @param {Record<string, any>} manifest @param {string} phase */
+const closedFrom = (manifest, phase) => CLOSING_PHASE[manifest.work_type] === phase && closedIntoSpec(manifest);
 
 /** The key a phase's start or close keeps its checklist under (6.4.12). @param {number} number @param {'start'|'close'} end */
 const phaseKey = (number, end) => `phase-${number}-${end}`;
@@ -898,7 +919,7 @@ function computeNextPhase(manifest, specWritten = false) {
       // experiment. Linear types only — an epic's next_phase is
       // phase-coarse, and its topic-grain experiment rows carry the route
       // instead.
-      if (ps(phase) === 'in-progress' && !(phase === 'discussion' && closedIntoSpec(manifest))) {
+      if (ps(phase) === 'in-progress' && !closedFrom(manifest, phase)) {
         const awaiting = DERIVED_PHASES.includes(phase)
           ? EXPERIMENT_SPAWN_PHASES.some((p) => waitingItems(manifest, p).length > 0)
           : isTopicPhase(phase) && EXPERIMENT_SPAWN_PHASES.includes(phase) && waitingItems(manifest, phase).length > 0;
@@ -921,7 +942,7 @@ function computeNextPhase(manifest, specWritten = false) {
   }
 
   if (wt === 'bugfix') {
-    if (ps('investigation') === 'completed') {
+    if (ps('investigation') === 'completed' || closedIntoSpec(manifest)) {
       return {
         next_phase: 'specification',
         phase_label: 'ready for specification',
@@ -1357,8 +1378,10 @@ function buildDiscoveryMap(manifest, stateDir) {
 }
 
 module.exports = {
-  voidDecidedClose,
+  closeStands,
+  voidTopicClose,
   closedIntoSpec,
+  closedFrom,
   phaseData,
   phaseItems,
   startedOn,

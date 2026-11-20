@@ -58,21 +58,16 @@ describe('finish yes (14.5.1, 24.1.2)', () => {
     assert.strictEqual(refused(['render', 'finish', UNIT]), `render finish: ${UNIT} is completed — new work starts from the start menu`);
   });
 
-  it('an epic finished draws no menu unasked: the yes carries on, one line after its JSON saying the work is done and what waits, and the epic\'s menu, asked for, is its complete variant (18.4.23)', () => {
+  it('an epic finished draws no menu: the yes carries on, one line after its JSON saying the work is done and what waits, and the epic\'s menu is closed to it', () => {
     finishReady();
     writeState(dir, layout.manifest(UNIT), JSON.stringify({ ...readManifest(dir, UNIT), work_type: 'epic' }, null, 2));
     commitAll(dir, 'pay an epic');
 
     const [json, ...said] = output(dir, ['finish', 'yes', UNIT], { env: env() }).split('\n');
 
-    const menu = output(dir, ['render', 'epic-menu', UNIT], { env: env() });
-
     assert.deepStrictEqual(JSON.parse(json).next, { kind: 'continue' });
     assert.deepStrictEqual(said.filter((line) => line !== '').slice(-1), ['Pay is done. Nothing waits on you. The menu is one `/ledger` away.']);
-    assert.deepStrictEqual([sectionOf(menu, 'TITLE'), screenOf(menu, 'MENU: epic menu').slice(3)], [
-      '# **`■ Complete — Pay`**\n',
-      ['h/help → What this menu is for, row by row', 'b/back → Back to the start menu'],
-    ]);
+    assert.strictEqual(refused(['render', 'epic-menu', UNIT]), `${UNIT} is completed — new work starts from the start menu`);
   });
 
   it('says, on the screen and in the yes, that a knowledge base set up but not reading leaves the records indexed unchecked', () => {
