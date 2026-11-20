@@ -211,6 +211,12 @@ session · started 15 Jul
     ])
   })
 
+  test('a one-line fix under way says it is read by no reviewer, as it will once done', () => {
+    const fix = { ...fixture.fixes[0], state: 'building', since: null, rounds: { sent_back: 0, reading: null, passed: null, settled: false, unreviewed: true } }
+
+    expect(sectionOf(drawn(QUICK_FIX, { ...fixture, fixes: [fix] } as View).text, 'THE FIXES ').slice(2)).toEqual(['     a one-line fix, read by no reviewer'])
+  })
+
   test('THE RECORD draws its items as prose, a list and a second paragraph keeping their shape; where several fixes are done, a record stands under its title though only one is recorded', () => {
     const record = { ...fixture.record[0], changed: 'The flag reads --colour.\n\nIts help says so.', leaves: '- the man page\n- old scripts' }
     const { text } = drawn(QUICK_FIX, { ...fixture, progress: { done: 2, total: 2, written: true }, record: [record] } as View)

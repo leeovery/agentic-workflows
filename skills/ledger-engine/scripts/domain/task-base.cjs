@@ -29,7 +29,9 @@
 //   account to prove it built, so it is built once its branch holds work of
 //   its own (`builtOneLine`): in a repository holding it, a commit the door
 //   stamped with the task, merges aside, past the branch the repository
-//   lands on. It finished as the newest commit on its branch was made
+//   lands on, made since anything added to it: naming as many additions as
+//   the task holds (commit-task.cjs, `ADDITIONS`), so a Comment at its gate
+//   takes it off its gate until its change is committed. It finished as the newest commit on its branch was made
 //   (`oneLineFinished`), the time the board says it finished.
 // ---------------------------------------------------------------------------
 
@@ -128,16 +130,23 @@ function ownCommits(cwd, ref, repo) {
  */
 const ownWork = (cwd, ref, holding) => holding.map((repo) => ({ repo, commits: ownCommits(cwd, ref, repo) })).filter(({ commits }) => commits.length > 0);
 
+/** How many additions a one-line task's commit names (the header's), none where it names none. @param {string} message */
+function additionsNamed(message) {
+  const named = new RegExp(`^${require('./commit-task.cjs').ADDITIONS}:[ \\t]*(\\d+)$`, 'm').exec(message);
+  return named === null ? 0 : Number(named[1]);
+}
+
 /**
  * Whether a one-line task is built (the header's), its detail as the
  * tracker holds it.
- * @param {string} cwd @param {TaskRef} ref @param {{type: string|null, title: string}} [task]
+ * @param {string} cwd @param {TaskRef} ref @param {{type: string|null, title: string, additions: unknown[]}} [task]
  */
 function builtOneLine(cwd, ref, task = require('./task-verbs.cjs').trackedTask(cwd, ref)) {
   const branch = workBranch(cwd, ref, task);
   const { holding } = holdingBranch(ref.unit, projectRepos(codeRoot(cwd)), branch);
   const id = taskId(ref);
-  return holding.some((repo) => stampedPast(repo.path, `refs/heads/${branch}`, landingBranch(cwd, repo, ref.unit), stampKey()).some(({ value }) => value === id));
+  const own = ({ value, message }) => value === id && additionsNamed(message) >= task.additions.length;
+  return holding.some((repo) => stampedPast(repo.path, `refs/heads/${branch}`, landingBranch(cwd, repo, ref.unit), stampKey()).some(own));
 }
 
 /**

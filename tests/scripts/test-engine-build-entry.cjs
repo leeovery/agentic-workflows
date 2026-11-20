@@ -298,7 +298,7 @@ describe('the answer: where the build stands, and what to read beside the ledger
     ]);
   });
 
-  it('13.3.4: a one-line task goes by whether it is built — the orchestrator\'s own to make in its worktree until its branch holds a commit of its own, then its landing', () => {
+  it('13.3.4: a one-line task goes by whether it is built — the orchestrator\'s own to make in its worktree until its branch holds a commit of its own made since anything added to it, then its landing', () => {
     ok(dir, ['task', 'create', UNIT, '1', '--title', 'Bold the size', '--type', 'chore']);
     ok(dir, ['task', 'start', UNIT, '1.4'], { env: env() });
     /** Task 1.4's line, the entry's. */
@@ -309,10 +309,14 @@ describe('the answer: where the build stands, and what to read beside the ledger
     git(dir, ['add', '-A']);
     git(dir, ['commit', '-q', '-m', `chore(${UNIT}): bold the size\n\nLedger-Task: ${UNIT}-1-4`]);
     git(dir, ['checkout', '-q', 'main']);
+    const built = own();
+    createFile(dir, '.ledger/pay/build/addition.md', 'Bold it in red.\n');
+    ok(dir, ['task', 'add', UNIT, '1.4', '--file', path.join(dir, '.ledger/pay/build/addition.md'), '--by', 'person'], { env: env() });
 
-    assert.deepStrictEqual([unbuilt, own()], [
-      `in flight: task 1.4, no builder dispatched here — a one-line task, your own work with no builder — lay out its worktree, engine task worktree ${UNIT} 1.4, commit it there through the door, and land it`,
+    assert.deepStrictEqual([unbuilt, built, own()], [
+      `in flight: task 1.4, no builder dispatched here — a one-line task, your own work — lay out its worktree, engine task worktree ${UNIT} 1.4, commit it there through the door, and land it`,
       `in flight: task 1.4, no builder dispatched here — a one-line task, built — show its landing, render task-landed ${UNIT} 1.4, then land it, engine land open ${UNIT} 1.4`,
+      `in flight: task 1.4, no builder dispatched here — a one-line task, your own work, what was added to it not yet committed — lay out its worktree, engine task worktree ${UNIT} 1.4, commit it there through the door, and land it`,
     ]);
   });
 

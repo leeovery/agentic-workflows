@@ -4,10 +4,10 @@
 // The pipeline simulation's review by judgment in the build (13.3.4), as the
 // task loop's prose runs it: each builder's task read by the reviewers
 // chosen for it with why before its builder is briefed, one or two, never
-// none, `task review`. A task read by one reviewer — its builder told to
-// settle a finding it rejects with no second reviewer, its round one
-// report, reviewer b refused, its landing saying its reviewer passed it;
-// and a one-line task, the orchestrator's own work — created from its
+// none, `task review`. A task read by one reviewer — its round one report,
+// reviewer b refused, its landing saying its reviewer passed it;
+// and a one-line task, the orchestrator's own work, the person's addition
+// to it unbuilt until a commit made since — created from its
 // title and type, reviewed by none by its shape, no builder briefed for it
 // and no question parking it, laid out by `task worktree` from the
 // project's checkout in the engine's own layout, committed there through
@@ -67,8 +67,7 @@ describe('pipeline simulation: review by judgment in the build', () => {
   it('13.3.4: a task read by one reviewer and a one-line task of the orchestrator\'s own, each landed and done, the phase\'s close reading every task passed', async () => {
     sim.refuses(['task', 'review', WU, '1.2', '--reviewers', '0', '--file', sim.write(`.ledger/.cache/${WU}/build/review.md`, 'Small.\n')], /0 is no count of reviewers — 1 to 2/);
     const { brief, tree } = readByOne();
-    assert.match(briefOf(sim, brief), /\n# A failed review\n[\s\S]*\nWhere you reject a finding, decide against this brief and the design/);
-    assert.doesNotMatch(briefOf(sim, brief), /two reviewers/);
+    assert.match(briefOf(sim, brief), /\n# A failed review\n[\s\S]*\nWhere your reviewers disagree, or you reject a finding, decide against this brief and the design/);
     loop.committed(tree, '1.1', { ...VERIFY_FILES, 'src/show.js': 'export const show = 1;\n' });
     loop.setUp(tree, brief, '1.S1');
     sim.refuses(['brief', 'reviewer', WU, '1.1', '--letter', 'b'], /task 1\.1 of ledgerly is read by reviewer a alone, as recorded — brief that one, never reviewer b/);
@@ -84,10 +83,13 @@ describe('pipeline simulation: review by judgment in the build', () => {
     sim.refuses(['brief', 'builder', WU, '1.3'], /task 1\.3 of ledgerly is a one-line task, the orchestrator's own work with no builder/);
     const [decision] = JSON.parse(sim.read(['ledger', 'record', WU, WU])).decisions;
     const proposal = JSON.stringify({ ...leaningCall('The title is bold.', 'The title is plain.'), question: 'Should the title be bold?' });
-    await sim.refusesAsync(['raise', `${WU}.implementation`, '--replaces', decision.id, '--reason', 'was-wrong', '--parks', '1.3'], /--parks names task 1\.3 of ledgerly, a one-line task, your own work — ask it in the conversation, parking nothing/, null, proposal);
+    await sim.refusesAsync(['raise', `${WU}.implementation`, '--replaces', decision.id, '--reason', 'was-wrong', '--parks', '1.3'], /--parks names task 1\.3 of ledgerly, a one-line task, your own work — raise it with no --parks, parking nothing/, null, proposal);
     const own = sim.run(['task', 'worktree', WU, '1.3']).worktree;
     assert.strictEqual(own, fs.realpathSync(`${sim.dir}/.claude/worktrees/ledger-${WU}-1.3`));
     loop.committed(own, '1.3', { 'src/show.css': '.title { font-weight: bold; }\n' }, `chore(${WU}): bold the entry's title`);
+    sim.run(['task', 'add', WU, '1.3', '--file', sim.write(`.ledger/.cache/${WU}/build/addition.md`, 'Bold it in red.\n'), '--by', 'person']);
+    sim.refuses(['land', 'open', WU, '1.3'], /task 1\.3 of ledgerly is not built — a one-line task goes on once its branch holds a commit of its own made through the door since anything added to it/);
+    loop.committed(own, '1.3', { 'src/show.css': '.title { font-weight: bold; color: red; }\n' }, `chore(${WU}): bold the entry's title in red`);
     const summary = sim.render(['task-landed', WU, '1.3'], { expect: 'content' });
     assert.match(summary, /\n✓ Landed — no reviewer read it: a one-line task, the\n {2}orchestrator's own work · no calls went to the ledger\n\nWHAT CHANGED\n {2}1 file changed · \+1 −0\n/);
     assert.doesNotMatch(summary, /ITS TESTS PROVE|Bold the entry's title works/);

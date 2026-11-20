@@ -49,8 +49,8 @@
 //
 // A one-line task (task-file.cjs), the orchestrator's own work, is read by
 // no reviewer and owes no account: it lands with none taken once it is
-// built (task-base.cjs, `builtOneLine`) — until then it is building, and
-// every way out of it refuses — and `task account` refuses it. `task review
+// built (task-base.cjs, `builtOneLine`) — until then every way out of it
+// refuses — and `task account` refuses it. `task review
 // <unit> <task> --reviewers <1|2> --file <why>` is the orchestrator's
 // choice of how many reviewers read a builder's task and why, at
 // `review.json` beside the reports, committed, pushed: refused once the
@@ -386,7 +386,6 @@ function reviewedTask(cwd, unit, given, said, ended) {
 function accountOwed(cwd, ref) {
   /** @type {ReturnType<typeof accountOwed>} */
   const none = { owed: null, faults: null, changed: null, waiting: null };
-  if (reviewedNone(cwd, ref) !== null) return none;
   /** @type {import('./round-report.cjs').Round[]} */
   let rounds;
   try {
@@ -516,14 +515,11 @@ function reviewTask(cwd, unit, given, count, file) {
  * How far the task stands towards landing (12.14): `building` while its
  * review is not over — no round read whole, a last round failed, or the
  * task changed under it; `owed` once it is, its account not taken over
- * every round of it; `taken` once it is; each with its last round. A
- * one-line task, owing no account, is `taken` once it is built, and
- * `building` until then (task-base.cjs, `builtOneLine`).
+ * every round of it; `taken` once it is; each with its last round.
  * @param {string} cwd @param {TaskRef} ref
  * @returns {{stage: 'building'|'owed'|'taken', last: Round|undefined}}
  */
 function landingStage(cwd, ref) {
-  if (reviewedNone(cwd, ref) !== null) return { stage: builtOneLine(cwd, ref) ? 'taken' : 'building', last: undefined };
   /** @type {Round[]} */
   let rounds;
   try {
@@ -614,7 +610,7 @@ function refuseUnaccounted(cwd, ref, said) {
 
 /** Why a one-line task goes no further yet: its branch holds no work of its own (task-base.cjs, `builtOneLine`). @param {TaskRef} ref */
 function unbuiltOneLine(ref) {
-  return `${taskName(ref)} is not built — a one-line task goes on once its branch holds a commit of its own, made through the door in its worktree, engine task worktree ${ref.unit} ${shownTask(ref)}`;
+  return `${taskName(ref)} is not built — a one-line task goes on once its branch holds a commit of its own made through the door since anything added to it, in its worktree, engine task worktree ${ref.unit} ${shownTask(ref)}`;
 }
 
 module.exports = {

@@ -397,7 +397,7 @@ describe('task review: the orchestrator\'s choice of a task\'s reviewers (13.3.4
     git(dir, ['checkout', '-q', 'main']);
 
     assert.strictEqual(taskPassed(dir, T13), false, 'no commit of its own');
-    assert.strictEqual(refusedPristine(dir, ['task', 'done', UNIT, '1.3'], { env: SESSION }).error, 'task done: task 1.3 of pay is not built — a one-line task goes on once its branch holds a commit of its own, made through the door in its worktree, engine task worktree pay 1.3');
+    assert.strictEqual(refusedPristine(dir, ['task', 'done', UNIT, '1.3'], { env: SESSION }).error, 'task done: task 1.3 of pay is not built — a one-line task goes on once its branch holds a commit of its own made through the door since anything added to it, in its worktree, engine task worktree pay 1.3');
     git(dir, ['checkout', '-q', taskBranch(T13, 'chore', 'Bold the total')]);
     git(dir, ['merge', '-q', '--no-ff', '-m', 'merge main\n\nLedger-Task: pay-1-3', CARD]);
     git(dir, ['checkout', '-q', 'main']);

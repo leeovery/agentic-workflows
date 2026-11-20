@@ -90,9 +90,6 @@
 //                  on (round-report.cjs, `readRefusal`); refused for a
 //                  one-line task, which has no builder; issued, it records
 //                  the freeing and the changes it went past
-//   rejected-finding how the builder settles a finding it rejects: in the
-//                  round's summary, and, where two reviewers read the task,
-//                  where they disagree
 //   engine         the engine the builder runs, by the absolute path of the
 //                  one filling the brief, in the checkout the orchestrator
 //                  runs in, so a builder's worktree started at the remote's
@@ -2570,12 +2567,6 @@ function drawAccountTo(filling) {
   return lines.join('\n\n');
 }
 
-/** How the builder settles a finding it rejects, by the task's reviewers, one or two (`lettersOf`). @param {Filling} filling */
-function drawRejectedFinding(filling) {
-  const { length } = lettersOf(filling.cwd, taskOf(filling).ref);
-  return `${length > 1 ? 'Where the two reviewers disagree, or you reject a finding' : 'Where you reject a finding'}, decide against this brief and the design, and say why in the round's summary. The next round reads the whole task again.`;
-}
-
 /** A brief to the task's builder issued: the freeing and the changes it went past recorded (round-report.cjs). @param {Filling} filling @param {string|null} session the conversation issuing the builder's own brief */
 function briefedPast(filling, session) {
   const { ref } = taskOf(filling);
@@ -2900,7 +2891,6 @@ const RECORDS = Object.freeze({
   reports: { of: 'task', draw: drawReports, bind: bindFix },
   'round-report-to': { of: 'task', flags: [LETTER], draw: drawRoundReportTo, bind: bindReviewer },
   'account-to': { of: 'task', draw: drawAccountTo, bind: bindBuilder },
-  'rejected-finding': { of: 'task', draw: drawRejectedFinding },
   engine: { of: null, draw: drawEngine },
   chain: { of: 'task', draw: drawChain },
   workplace: { of: 'task', draw: drawWorkplace },

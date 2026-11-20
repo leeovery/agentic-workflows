@@ -38,7 +38,7 @@ const { signpost, wrapWithPrefix, renderTree, WIDTH } = require('./kernel/render
 const { resetDisplayWidth } = require('./kernel/terminal.cjs');
 const { commitAcrossRepos, commitStateScoped, discoveryScope, PRODUCT_SCOPE, onStateBranch, STATE_BRANCH_HELD } = require('./domain/commit.cjs');
 const { commitMigrations, finishing } = require('./domain/migration-commit.cjs');
-const { inFlightTask, refuseClockBehind, onWorkBranch, checksFor, runChecks, recordWork, workMessage } = require('./domain/commit-task.cjs');
+const { inFlightTask, refuseClockBehind, onWorkBranch, checksFor, runChecks, recordWork, oneLineAdditions, workMessage } = require('./domain/commit-task.cjs');
 const { taskId } = require('./domain/task-id.cjs');
 const {
   stageableSpecs, hasStagedDeletions, deletedAtHead, onBranch, operationInProgress, addRefused, unmergedPast,
@@ -2307,7 +2307,7 @@ function commitTaskPaths(cwd, paths, message, unit, given) {
   const { repos, groups } = checkedGroups(cwd, paths, (committing) => onWorkBranch(cwd, ref, manifest, committing));
   const checks = runChecks(cwd, checksFor(cwd, manifest, ref));
   const warnings = recordWork(cwd, ref, manifest, groups.map(({ repo }) => repo));
-  const committed = commitAcrossRepos(groups, workMessage(message, ref));
+  const committed = commitAcrossRepos(groups, workMessage(message, ref, oneLineAdditions(cwd, ref)));
   return codeCommitted(repos, committed, { task: taskId(ref), checks, ...(warnings.length > 0 ? { warnings } : {}) });
 }
 

@@ -731,7 +731,8 @@ function landingOf(project, ref, { type, title, status }) {
   const branch = names.taskBranch(ref, type, title);
   const { named, holding } = lg.holdingBranch(project.unit, project.repos, branch);
   if (!named) {
-    throw new Error(`land: task ${shown} has no branch ${branch}, the name its type and title in the tracker give it — name its branch so and open it again`);
+    const way = reviewedNone(project.cwd, ref) === null ? 'name its branch so and open it again' : `a one-line task's branch is made as its worktree is laid out, engine task worktree ${project.unit} ${shown}: commit its change there, then open it again`;
+    throw new Error(`land: task ${shown} has no branch ${branch}, the name its type and title in the tracker give it — ${way}`);
   }
   if (holding.length === 0) throw new Error(`land: task ${shown}'s branch ${branch} changes nothing in the repositories holding it — commit its change there first`);
   if (holding[0].dir === '') refuseState(/** @type {LandingContext} */ (project.contexts.get('')), shown, branch, 'task\'s');

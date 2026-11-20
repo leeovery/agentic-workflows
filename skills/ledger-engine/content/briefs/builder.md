@@ -60,7 +60,7 @@ The starting point is that the work stands — the decisions are made, the spec 
 
 Weigh each finding professionally: its cause, whether it is the symptom of a deeper fault, and the right fix, which is often the simple one. Where your design and your build hold, stand by them.
 
-{{rejected-finding}}
+Where your reviewers disagree, or you reject a finding, decide against this brief and the design, and say why in the round's summary. The next round reads the whole task again.
 
 Whatever the fix's size, before it lands check the edge cases around it and whether it disturbs the design, the architecture, the data model, the plan, later phases' plans, or the considerations behind any decision.
 

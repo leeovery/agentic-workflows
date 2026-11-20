@@ -63,7 +63,10 @@
 //   the landing drivers read as the task landed (landing-names.cjs). It joins
 //   the trailers Claude's message ends in, as `git interpret-trailers` adds
 //   one, where its last paragraph, past the subject, is all `Token: value`
-//   lines; otherwise it opens a paragraph of its own.
+//   lines; otherwise it opens a paragraph of its own. A one-line task's
+//   commit names beside it how many additions the task held as it was made,
+//   `Ledger-Additions: {n}`, so a change added at its gate is built only by a
+//   commit made since (task-base.cjs, `builtOneLine`).
 // ---------------------------------------------------------------------------
 
 const { handedSession } = require('../kernel/process.cjs');
@@ -92,6 +95,9 @@ const { trackedPhase, ENDED, checkoutHold, turnEnds } = require('./task-verbs.cj
 
 /** The trailer a work commit names its task in. */
 const TRAILER = 'Ledger-Task';
+
+/** The trailer a one-line task's commit names its task's additions in, counted as it is made. */
+const ADDITIONS = 'Ledger-Additions';
 
 /** A trailer's line, as git reads one: a token of letters, digits and hyphens, a colon, and its value. */
 const TRAILER_LINE = /^[A-Za-z0-9-]+:[ \t]*\S/;
@@ -209,7 +215,7 @@ function refuseOtherBranch(cwd, ref) {
 function wayOn(root, ref) {
   const holder = taskWorktree(root, ref);
   return holder === undefined
-    ? `no worktree has it out — \`engine task worktree ${ref.unit} ${shownTask(ref)}\` lays one out, from a worktree of Claude Code's isolation`
+    ? `no worktree has it out — \`engine task worktree ${ref.unit} ${shownTask(ref)}\` lays one out${require('./round-report.cjs').reviewedNone(root, ref) === null ? ', from a worktree of Claude Code\'s isolation' : ''}`
     : `commit it from ${holder.path}, where its branch is checked out`;
 }
 
@@ -315,12 +321,22 @@ function recordWork(cwd, ref, manifest, repos) {
   return quickFixBuild(manifest) ? fixBranch().recordRepos(cwd, ref.unit, repos) : [];
 }
 
-/** A work commit's message: Claude's, and the trailer naming its task. @param {string} message @param {TaskRef} ref */
-function workMessage(message, ref) {
+/** How many additions a one-line task holds, as its commit names them; null for any other task. @param {string} cwd @param {TaskRef} ref */
+function oneLineAdditions(cwd, ref) {
+  if (require('./round-report.cjs').reviewedNone(cwd, ref) === null) return null;
+  return require('./task-verbs.cjs').trackedTask(cwd, ref).additions.length;
+}
+
+/**
+ * A work commit's message: Claude's, and the trailer naming its task — with
+ * a one-line task's additions `additions`, where given (the header's).
+ * @param {string} message @param {TaskRef} ref @param {number|null} [additions]
+ */
+function workMessage(message, ref, additions = null) {
   const text = message.trimEnd();
   const paragraphs = text.split(/\n[ \t]*\n/);
   const trailers = paragraphs.length > 1 && paragraphs[paragraphs.length - 1].split('\n').every((line) => TRAILER_LINE.test(line));
-  return `${text}${trailers ? '\n' : '\n\n'}${TRAILER}: ${taskId(ref)}`;
+  return `${text}${trailers ? '\n' : '\n\n'}${TRAILER}: ${taskId(ref)}${additions === null ? '' : `\n${ADDITIONS}: ${additions}`}`;
 }
 
-module.exports = { TRAILER, inFlightTask, refuseClockBehind, onWorkBranch, checksFor, runChecks, recordWork, workMessage };
+module.exports = { TRAILER, ADDITIONS, inFlightTask, refuseClockBehind, onWorkBranch, checksFor, runChecks, recordWork, oneLineAdditions, workMessage };

@@ -27,7 +27,7 @@ An epic or a feature whose build starts with two or more phases gets a **branch 
 
 A phase's tasks are written as it starts, against the code the phases before it left, never all at once at the specification. The task writer writes them from the phase's part of the spec, and they are recorded in the tracker, linked by what waits on what, before anything in the phase runs. A design several of the phase's tasks touch is settled as they are written, put into each task it touches and on the ledger, so no two builders settle it apart. A gap the writer meets is decided as any call is, and the tasks it held back are written once it is answered.
 
-Each task holds the same fields: a one-line title; its type (`feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `build`, `ci` or `chore`); the problem, the solution and the outcome in the product's terms; its acceptance scenarios; and the sections of the spec it draws on. A task names no mechanism the record did not decide. Once written, a task is never rewritten: what it needs later is added to it.
+Each task the task writer writes holds the same fields: a one-line title; its type (`feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `build`, `ci` or `chore`); the problem, the solution and the outcome in the product's terms; its acceptance scenarios; and the sections of the spec it draws on. A one-line task, something small Claude makes mid-build, holds its title and type alone. A task names no mechanism the record did not decide. Once written, a task is never rewritten: what it needs later is added to it.
 
 ## The task loop
 

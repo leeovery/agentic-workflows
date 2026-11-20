@@ -93,9 +93,9 @@ function endedWords({ passed, settled, sent_back, unreviewed }: Rounds): string 
   return `passed its review in round ${passed}${sent_back === 0 ? '' : `, after ${counted(sent_back, 'round')} of fixes`}`
 }
 
-/** A fix's pair's rounds, as the line beneath it says them: how its review ended once done, else those sent back and the one being read. */
+/** A fix's reviewers' rounds, as the line beneath it says them: how its review ended once done, and a one-line fix's from its start; else those sent back and the one being read. */
 function roundsWords({ state, rounds }: Fix): string {
-  if (state === 'done') return endedWords(rounds)
+  if (state === 'done' || rounds.unreviewed === true) return endedWords(rounds)
 
   return [...(rounds.sent_back === 0 ? [] : [`${roundsUpTo(rounds.sent_back)} sent back`]), ...(rounds.reading === null ? [] : [`round ${rounds.reading} being read`])].join(' · ')
 }

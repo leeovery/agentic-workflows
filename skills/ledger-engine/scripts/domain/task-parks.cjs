@@ -48,7 +48,7 @@ function checkParkable(cwd, unit, task, said) {
   const lacking = `${said}: --parks names ${taskName(ref)}, which the tracker does not hold — a question parks a task the tracker holds`;
   const { status, text } = withStateLock(stateRoot(cwd), () => trackedTask(cwd, ref, lacking));
   if (ENDED.includes(status)) throw new Error(`${said}: --parks names ${taskName(ref)}, which is ${status} — a question parks only a task not yet ended`);
-  if (isOneLine(text)) throw new Error(`${said}: --parks names ${taskName(ref)}, a one-line task, your own work — ask it in the conversation, parking nothing`);
+  if (isOneLine(text)) throw new Error(`${said}: --parks names ${taskName(ref)}, a one-line task, your own work — raise it with no --parks, parking nothing`);
 }
 
 /** The tasks of `unit` its questions waiting park, each with the numbers of those parking it. @param {string} cwd @param {string} unit */

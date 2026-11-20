@@ -109,7 +109,7 @@ describe('task close <quick-fix> <fix> (R3, R14)', () => {
     for (const letter of REVIEWER_LETTERS) writeState(dir, roundReportPath({ unit: UNIT, phase: 1, n: 3 }, 1, letter), FAILED);
 
     assert.deepStrictEqual([committed, opened, closeRefused(3)], [held(3), held(3),
-      `task close: task 1.3 of ${UNIT} holds work of its own — its pair failed it in round 1, so it lands once its review is settled, task settle ${UNIT} 1.3 --file <why.md>, then done once it is in ${UNIT}'s pull request, `
+      `task close: task 1.3 of ${UNIT} holds work of its own — its reviewers failed it in round 1, so it lands once its review is settled, task settle ${UNIT} 1.3 --file <why.md>, then done once it is in ${UNIT}'s pull request, `
       + `and its change is given up as a landed change is, by a fix of its own whose commit through the door reverts it: task create ${UNIT} 1 --file <task.md>`]);
   });
 

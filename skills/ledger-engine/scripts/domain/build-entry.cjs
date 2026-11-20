@@ -140,7 +140,7 @@ const { isoNow } = require('./dates.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { seedFiles } = require('./reads.cjs');
 const { summaryFile } = require('./knowledge/artifacts.cjs');
-const { STATUS_WORDS, ENDED, goesOn, takesTurns, turnOf, turnEnds, writePhase, trackedPhase } = require('./task-verbs.cjs');
+const { STATUS_WORDS, ENDED, goesOn, takesTurns, turnOf, turnEnds, writePhase, trackedPhase, trackedTask } = require('./task-verbs.cjs');
 const { heldCodeSessions } = require('./presence.cjs');
 const { codeGate } = require('./projections/enter.cjs');
 const { tasksInFlight } = require('./conversation.cjs');
@@ -508,13 +508,16 @@ function roundWords(cwd, session, ref) {
 /**
  * Where a one-line task goes, by whether it is built (task-base.cjs,
  * `builtOneLine`): built, to its landing; else made in its worktree, the
- * orchestrator's own work.
+ * orchestrator's own work — what was added to it since its last commit
+ * among it, where anything was.
  * @param {string} cwd @param {TaskRef} ref
  */
 function oneLineWords(cwd, ref) {
-  if (builtOneLine(cwd, ref)) return `a one-line task, built — ${landingWay(cwd, ref)}`;
+  const detail = trackedTask(cwd, ref);
+  if (builtOneLine(cwd, ref, detail)) return `a one-line task, built — ${landingWay(cwd, ref)}`;
+  const what = detail.additions.length === 0 ? 'your own work' : 'your own work, what was added to it not yet committed';
   const where = ofQuickFix(cwd, ref.unit) ? 'make it in the project\'s checkout' : `lay out its worktree, engine task worktree ${ref.unit} ${shownTask(ref)}`;
-  return `a one-line task, your own work with no builder — ${where}, commit it there through the door, and land it`;
+  return `a one-line task, ${what} — ${where}, commit it there through the door, and land it`;
 }
 
 /**
