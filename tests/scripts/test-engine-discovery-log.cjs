@@ -150,6 +150,25 @@ describe('discovery-log at the product (8.14.12)', () => {
     });
   });
 
+  it('a keep from a fresh conversation while the product\'s conversation holds the session commits its own line alone, onto the log as the branch holds it: what the product\'s conversation wrote stays in the tree, uncommitted', () => {
+    ok(dir(), ['enter', 'discovery', 'product'], { env: { CLAUDE_CODE_SESSION_ID: 'talker' } });
+    const talked = readState(dir(), LOG);
+    writeState(dir(), LOG, `${talked}${talked.endsWith('\n') ? '' : '\n'}- The person wants notes kept as furniture.\n`);
+    const before = stateGit(dir(), ['show', `HEAD:${LOG}`]);
+
+    keep(['view', 'product', '--text', 'Notes are furniture.']);
+
+    assert.deepStrictEqual({
+      committed: stateGit(dir(), ['show', `HEAD:${LOG}`]), files: stateGit(dir(), ['show', '--name-only', '--format=', 'HEAD']), tree: readState(dir(), LOG), dirt: stateGit(dir(), ['status', '--porcelain', '--', '.product']),
+    }, {
+      committed: `${before}${before === '' ? '' : '\n'}## Views of the product\n\n- Notes are furniture.\n`,
+      files: `${LOG}\n`,
+      tree: `${talked}${talked.endsWith('\n') ? '' : '\n'}- The person wants notes kept as furniture.\n\n## Views of the product\n\n- Notes are furniture.\n`,
+      dirt: ` M ${LOG}\n`,
+    });
+    assert.match(talked, /^## \d{4}-\d{2}-\d{2} · session talker$/m, 'the product\'s conversation\'s header stands in the tree, uncommitted');
+  });
+
   it('a second conversation\'s keep lands in the same open session, under the list\'s heading, holding nothing and closing nothing', () => {
     keep(['view', 'product', '--text', 'Notes are furniture.']);
     keep(['not-taken', 'product', '--direction', 'A web client', '--why', 'the Mac is the product'], 'fixing-a-bug');

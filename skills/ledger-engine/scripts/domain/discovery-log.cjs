@@ -24,8 +24,11 @@
 //   it refuses with no session open, and commits nothing: every state commit
 //   takes the log along. At the product it writes from any conversation in
 //   the project: a write where no session is open opens one, holding nothing
-//   and closing nothing, and the line is committed with the product's scope,
-//   a spike's line with the spike's folder. It refuses,
+//   and closing nothing, and the line alone is committed, put in the log as
+//   the branch holds it, with the project manifest the opening marked and a
+//   spike's line with the spike's folder: what the product's conversation
+//   wrote in the log and has not committed stays in the tree, uncommitted,
+//   never carried by the keep. It refuses,
 //   writing nothing: a unit the project lacks or that is no epic, an
 //   argument out of shape, a value missing, empty or past one line, one
 //   holding what would break its line's shape — a direction or a tool
@@ -54,7 +57,7 @@ const { manifestOf } = require('./ledger-units.cjs');
 const { activeSession, sessionLogs, sessionLogsAt, sessionOpen } = require('./discovery-session.cjs');
 const { spikesOf } = require('./asset.cjs');
 const { PRODUCT_DIR } = require('./layout.cjs');
-const { commitStateTail, noteCommitOutcome, PRODUCT_SCOPE } = require('./commit.cjs');
+const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { listedIn, beyondListsOf, withEntry, oneLine, unbroken, fitsShape } = require('./log-lists.cjs');
 const { conversationsIn } = require('./topic-log.cjs');
 
@@ -228,8 +231,9 @@ function epicSession(cwd, root, unit) {
 /**
  * `discovery-log <entry> <epic|product> …` (the header's): the entry's line
  * put in the log of the open session — the product's opened where none is —
- * and at the product committed, a spike's folder with it. Answers the log, from the state root, the heading and the
- * line, and at the product the commit.
+ * and at the product committed alone, onto the log as the branch holds it,
+ * a spike's folder with it. Answers the log, from the state root, the
+ * heading and the line, and at the product the commit.
  * @param {string} cwd @param {string|undefined} kind @param {string[]} positional @param {Record<string, string>} opts
  */
 function logHeard(cwd, kind, positional, opts) {
@@ -242,13 +246,14 @@ function logHeard(cwd, kind, positional, opts) {
   const line = entry.line(root, name, rest, opts);
   const rel = path.posix.join(sessionLogsAt(name), `session-${open ?? sessionOpen(cwd, PRODUCT)}.md`);
   const file = statePath(cwd, rel);
-  fs.writeFileSync(file, withEntry(fs.readFileSync(file, 'utf8'), HEADINGS, entry.heading, line));
+  const put = (/** @type {string|null} */ text) => withEntry(text ?? '', HEADINGS, entry.heading, line);
+  fs.writeFileSync(file, put(fs.readFileSync(file, 'utf8')));
   const said = { log: rel, heading: entry.heading, line: `- ${line}` };
   if (open !== null) return said;
   /** @type {string[]} */
   const warnings = [];
   const spike = kind === 'spike' ? [path.posix.join(PRODUCT_DIR, 'spikes', rest[0])] : [];
-  const outcome = commitStateTail(cwd, [...PRODUCT_SCOPE, ...spike], `discovery(product): ${kind} kept`, warnings);
+  const outcome = commitStateTail(cwd, [PROJECT_MANIFEST_SPEC, ...spike], `discovery(product): ${kind} kept`, warnings, { contents: { [rel]: put } });
   /** @type {Record<string, any>} */
   const result = { ...said, committed: outcome.committed, ...(warnings.length > 0 ? { warnings } : {}) };
   noteCommitOutcome(result, outcome, '--product');
