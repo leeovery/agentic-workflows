@@ -21,8 +21,12 @@
 // read from the conversation stdin names, each with its door (6.S11, 6.S22,
 // 12.S21), the engine's own landing remedies passing on every other branch;
 // a raw commit in a quick-fix's worktree, from any conversation, while the
-// quick-fix is in progress, its manifest read once; a raw commit in the
-// state worktree at any time; a command naming a file at user level the layout
+// quick-fix is in progress, its manifest read once, and every other git
+// command that makes a commit there, each with its own way through the
+// door — in a nested repository's part of the worktree too, the state found
+// beside the checkout enclosing it — and, where the text cannot say where a
+// raw commit runs, one whose text names a worktree of the engine's own; a
+// raw commit in the state worktree at any time; a command naming a file at user level the layout
 // hook refuses Claude's writes to; and a command writing, by any form a
 // shell writes with, to a file in the state only the engine writes, for the
 // layout hook's reason (2.S1). Input it cannot read passes. A pass never
@@ -91,7 +95,7 @@ const NAMED = 'a shell command naming it is refused, and the Read tool reads it'
 /** The engine's modules a pass of the shell guard loads, by their paths in the scripts folder. */
 const SHELL_GUARD_LOADS = [
   'domain/brief-names.cjs', 'domain/conversation.cjs', 'domain/landing-names.cjs', 'domain/shell-guard.cjs', 'domain/task-id.cjs', 'domain/user-files.cjs', 'engine.cjs', 'guards.cjs',
-  'kernel/call.cjs', 'kernel/file-stream.cjs', 'kernel/git-reads.cjs', 'kernel/git.cjs', 'kernel/isolated-git.cjs', 'kernel/manifest-io.cjs', 'kernel/manifest-schema.cjs',
+  'kernel/call.cjs', 'kernel/code-root.cjs', 'kernel/file-stream.cjs', 'kernel/git-reads.cjs', 'kernel/git.cjs', 'kernel/isolated-git.cjs', 'kernel/manifest-io.cjs', 'kernel/manifest-schema.cjs',
   'kernel/process.cjs', 'kernel/shell-reader.cjs', 'kernel/spawn.cjs', 'kernel/state-root.cjs', 'kernel/system-config.cjs',
 ];
 
@@ -495,6 +499,47 @@ describe('raw commits (6.3.7, 6.3.12, 12.9.8)', () => {
       }
       for (const [name] of ended) fs.rmSync(statePath(dir, name), { recursive: true, force: true });
     }
+  });
+
+  it('every other git command that makes a commit in a quick-fix\'s worktree is refused from a conversation with no task in flight, naming its own way through the door and the door — a merge but with both --no-ff and --no-commit, or --abort or --quit, its --continue; a pull; a cherry-pick or revert but with --no-commit, -n, --abort or --quit; an am or a rebase but with --abort or --quit — those making none pass, and so does each in the person\'s checkout', () => {
+    const merged = 'merge with --no-ff --no-commit, resolve what conflicts, then commit the merge through the door, which finishes it';
+    const refused = (/** @type {string} */ subcommand, /** @type {string} */ way) => FIX_COMMIT.replace('a raw git commit', `git ${subcommand}`).replace('commit door alone: ', `commit door alone: ${way}; `);
+    const cases = [
+      ['git merge main', refused('merge', merged)],
+      [`git -C ${fixTree} merge --no-commit main`, refused('merge', merged)],
+      ['git merge --continue', refused('merge', 'name each file you resolved, and commit the merge through the door, which finishes it')],
+      ['git pull', refused('pull', `fetch, then ${merged}`)],
+      ['git cherry-pick abc123', refused('cherry-pick', 'pick with --no-commit, then commit through the door')],
+      ['git revert abc123', refused('revert', 'revert with --no-commit, end the revert with --quit, which keeps its change, then commit through the door')],
+      ['git am fix.patch', refused('am', 'apply the patch with git apply, then commit through the door')],
+      ['git rebase main', refused('rebase', `rather than rebase, ${merged}`)],
+    ];
+    for (const [command, refusal] of cases) assertRefused(guard(fixTree, command, { session: IDLE }), refusal, command);
+    for (const command of ['git merge --no-ff --no-commit main', 'git merge --abort', 'git cherry-pick -n abc123', 'git revert --quit', 'git am --abort', 'git rebase --abort']) {
+      assertPassed(guard(fixTree, command, { session: IDLE }), command);
+    }
+    for (const [command] of cases.filter(([command]) => !command.includes(' -C '))) assertPassed(guard(dir, command, { session: IDLE }), `in the person's checkout: ${command}`);
+  });
+
+  it('a raw commit in a nested repository\'s part of a quick-fix\'s worktree, its clone holding no state, is refused, the state found beside the checkout enclosing it — by the shell\'s directory and by `-C`', () => {
+    const clone = initRepo(path.join(fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'shell-guard-nested-'))), 'lib'));
+    scratch.push(path.dirname(clone));
+    git(clone, ['commit', '-q', '--allow-empty', '-m', 'the lib']);
+    const nested = path.join(fixTree, 'lib');
+    git(clone, ['worktree', 'add', '-q', '-b', quickFixBranch(FIX), nested]);
+    try {
+      assertRefused(guard(nested, 'git commit -am x', { session: IDLE }), FIX_COMMIT, 'from the nested repository');
+      assertRefused(guard(dir, `git -C ${nested} commit -am x`, { session: IDLE }), FIX_COMMIT, 'from the project, into it');
+      assertPassed(guard(clone, 'git commit -am x', { session: IDLE }), 'the clone\'s own checkout, on the branch it lands on');
+    } finally {
+      git(clone, ['worktree', 'remove', '--force', nested]);
+    }
+  });
+
+  it('where the text cannot say where a raw commit runs, one whose text names a worktree of the engine\'s own is refused, naming the door; one naming none runs', () => {
+    const named = `WT=${path.join(dir, '.claude', 'worktrees', `ledger-${FIX}`)} && cd "$WT" && git commit -am x`;
+    assertRefused(guard(dir, named, { session: IDLE }), 'a raw git commit is refused here — the command names a worktree of Ledger\'s own, and its text cannot say where it runs: a quick-fix\'s work goes through the commit door alone, a fix\'s change with `engine commit --paths <file>… --task <unit> <task> -m "<message>"`, anything else from a checkout of your own', named);
+    assertPassed(guard(dir, 'cd "$WT" && git commit -am x', { session: IDLE }), 'naming none');
   });
 
   it('a raw commit with no task in flight reads one manifest, the quick-fix\'s the checkout\'s branch names, once however many commits the command holds, and none where its branch names no quick-fix', (t) => {

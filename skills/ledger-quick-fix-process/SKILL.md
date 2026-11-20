@@ -24,13 +24,13 @@ The person has said yes at the close: `finish yes` has landed the quick-fix's pu
 
 ## Entering
 
-Every engine call is `node .claude/skills/ledger-engine/scripts/engine.cjs {verb} …`, each verb under **Doors**. The first entry runs the project's steps that prepare the environment, which can take minutes: where the call is moved to the background, wait for its notification before going on, and never run it again while it runs.
+Every engine call is `node .claude/skills/ledger-engine/scripts/engine.cjs {verb} …`, each verb under **Doors**. The first entry, and the first fix's start, each run the project's steps that prepare the environment, which can take minutes: where either call is moved to the background, wait for its notification before going on, and never run it again while it runs.
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs enter implementation {work_unit}
 ```
 
-A refusal names the way on: say it in a line.
+A refusal names the way on: say it in a line. Where another session holds the quick-fix, the entry asks first; carrying on from it ends the turn.
 
 Then read what the DATA names. The rest of the DATA is where the fixes stand:
 - `tasks` lists each fix and where it stands.
@@ -57,7 +57,7 @@ A fix that is one small change you make yourself — a word bolded, a colour —
 
 ### Building the Fixes
 
-Every fix is built in the quick-fix's own worktree, which the first fix's start lays out and answers as `worktree`; the person's checkout never moves. That start runs the project's steps for each worktree, which can take minutes: where the call is moved to the background, wait for its notification before going on, and never run it again while it runs. To show the person a fix, run it from the worktree.
+Every fix is built in the quick-fix's own worktree, which the first fix's start lays out and answers as `worktree`; the person's checkout never moves while the fixes are built, and the close brings it up where it has out the branch the quick-fix lands on. To show the person a fix, run it from the worktree.
 
 The fixes are built in the same loop as every task of a build: load **[the-task-loop.md](../ledger-implementation-process/references/the-task-loop.md)** and follow its instructions as written, with place = `implementation` and N = `1`. They run with no stop between them: the close is the quick-fix's one gate.
 

@@ -8,7 +8,7 @@
 // with its task (commit-task.cjs), and the quick-fix landing as that
 // branch's one pull request in each (landing.cjs). Its tasks are built in a
 // worktree of its own, one at a time (task-verbs.cjs, `checkoutHold`), so
-// the person's checkout never moves for them.
+// the person's checkout never moves while they are built.
 //
 // - The quick-fix's worktree (`fixWorktree`) is the engine's own layout
 //   beside the builders' isolation worktrees, named for the unit alone,
@@ -24,7 +24,10 @@
 //   landing.cjs), the landing taking a branch cut from an older tip as it
 //   takes any — and the start then runs the environment setup's steps for each
 //   worktree there (task-verbs.cjs). It stays until the close, a cancel or
-//   a move takes it apart (`takeFixApart`); a park leaves it as it is.
+//   a move takes it apart (`takeFixApart`); a park leaves it as it is. The
+//   close then deletes the branch in each repository where it holds no
+//   commit past the branch it lands on — a clone the quick-fix never
+//   touched among them — and keeps it where it does (`fixClosed`).
 // - The holder's done and close are refused while the worktree holds
 //   changes not committed, a fix leaving it clean as it stops holding it
 //   (`refuseDirtyEnd`): done commits them, a close puts them back. The
@@ -507,6 +510,19 @@ function keptUnder(cwd, unit) {
 }
 
 /**
+ * The quick-fix's code as its close leaves it (the header's): its worktree
+ * taken apart, then the branch deleted in each repository where it holds
+ * no commit past the branch it lands on — one still checked out somewhere
+ * left as it is.
+ * @param {string} cwd @param {string} unit
+ */
+function fixClosed(cwd, unit) {
+  takeFixApart(cwd, unit);
+  const branch = quickFixBranch(unit);
+  for (const repo of holding(cwd, branch)) if (!branchHolds(cwd, repo, unit)) tryGit(repo.path, ['branch', '-D', branch]);
+}
+
+/**
  * Each repository's quick-fix branch set aside for its move (the header's):
  * renamed to the name it is kept under where it holds commits past the
  * branch it lands on, else deleted. Answers the names this call kept.
@@ -545,4 +561,4 @@ function cancelKept(cwd, unit) {
   return [...kept.filter((repo) => repo.dir === ''), ...kept.filter((repo) => repo.dir !== '')].map((repo) => keptName(repo, branch));
 }
 
-module.exports = { fixWorktree, layOutFix, takeFixApart, refuseDirtyEnd, refuseDirtyClose, refuseDirtyLeave, readied, remade, branchWayOn, recordedRepos, recordRepos, branchHead, keptUnder, setBranchAside, keptBranches, cancelKept };
+module.exports = { fixWorktree, layOutFix, takeFixApart, fixClosed, refuseDirtyEnd, refuseDirtyClose, refuseDirtyLeave, readied, remade, branchWayOn, recordedRepos, recordRepos, branchHead, keptUnder, setBranchAside, keptBranches, cancelKept };

@@ -1606,8 +1606,11 @@ function unitTask(unit, id) {
  * is read from; the pull request as the driver reads it (`pullOf`), the
  * host's copy of the branch among it; the commits a commit holds past that
  * tip, oldest first, merges aside, each with its time and task — the
- * branch's, none where it is gone — and whether the branch's hold the
- * quick-fix's work: a commit committed since `since`, a fix's through the
+ * branch's, none where it is gone — and those of the branch's stamped with
+ * a task, a merge the door finished among them, as a one-line task merging
+ * the branch it lands on in leaves one, a task's newest its own and every
+ * task among them one its landing names (`stamped`); whether the branch's
+ * hold the quick-fix's work: a commit committed since `since`, a fix's through the
  * door or a person's own made during the quick-fix (R19); whether the
  * host's copy is another's, holding none of the quick-fix's work past the
  * tip and no commit stamped with one of the unit's tasks since `since`
@@ -1640,6 +1643,12 @@ function repoLanding(project, driver, repo, asFetched) {
     const head = at();
     return head === undefined ? [] : commitsOn(head);
   };
+  /** @returns {QuickFixCommit[]} */
+  const stamped = () => {
+    const head = at();
+    const read = head === undefined ? [] : lg.readOnce(ctx, `quick-fix stamped ${head}`, () => lg.stampedPast(root, head, tip, key, null, { merges: true }).map(({ sha, message, committed, value }) => ({ sha, message, committed, id: unitTask(unit, value) })));
+    return read.filter(({ id }) => id !== null);
+  };
   /** @param {QuickFixCommit} commit */
   const isWork = ({ committed }) => committed >= from;
   const holdsQuickFixWork = () => commits().some(isWork);
@@ -1647,7 +1656,7 @@ function repoLanding(project, driver, repo, asFetched) {
     const { head } = pull();
     return head !== null && !commitsOn(head).some(isWork) && !lg.stampsUnit(root, head, key, unit, since);
   };
-  const landed = repoLanded(root, unit, tip, { since, own: (id) => commits().filter((commit) => commit.id === id).pop() ?? null, merged: () => pull().merged, recorded: recordsIn(project.manifest, ctx.repo) });
+  const landed = repoLanded(root, unit, tip, { since, own: (id) => stamped().filter((commit) => commit.id === id).pop() ?? null, merged: () => pull().merged, recorded: recordsIn(project.manifest, ctx.repo) });
   project.reads.push({ root, made: () => [landed] });
   const { task, landedCommit, marking, line, landings } = landed;
   /** @param {string} rev */
@@ -1662,7 +1671,7 @@ function repoLanding(project, driver, repo, asFetched) {
     const { open } = pull();
     return read.own !== null && open !== null && lg.isAncestor(root, read.own, open);
   };
-  return { repo, ctx, branch, tip, at, since, pull, foreign, commits, holdsQuickFixWork, landedCommit, holdsUnlanded, task, marking, line, landings, refuseClosed, inPull, found: () => foundIn(landed, repo) };
+  return { repo, ctx, branch, tip, at, since, pull, foreign, commits, stamped, holdsQuickFixWork, landedCommit, holdsUnlanded, task, marking, line, landings, refuseClosed, inPull, found: () => foundIn(landed, repo) };
 }
 
 /** A quick-fix's landing in one repository, as `repoLanding` reads it. @typedef {ReturnType<typeof repoLanding>} RepoLanding */
@@ -1724,7 +1733,7 @@ function quickFixTask(cwd, read, shown) {
   const { unit } = ctx;
   if (ctx.repo === '.') refuseState(ctx, shown, branch, 'quick-fix\'s');
   const manifest = loadWorkUnitManifest(cwd, unit);
-  const ids = doneOrder(manifest, [...new Set(read.commits().flatMap(({ id }) => (id === null ? [] : [id])))]);
+  const ids = doneOrder(manifest, [...new Set(read.stamped().map(({ id }) => /** @type {string} */ (id)))]);
   const held = new Map(trackedBuild(cwd, unit, buildLength(manifest)).tasks.map((tracked) => [taskId(tracked.ref), tracked]));
   const tasks = ids.flatMap((id) => {
     const tracked = held.get(id);

@@ -20,8 +20,15 @@
 // landing once the changes are out of the way; and a quick-fix named as a
 // reader's scratch is, its worktree apart from that scratch and never
 // taken apart by the sweep of its readers (project-layout.cjs,
-// `kindName`). The close over the person's changes through a host,
-// standing with their checkout left behind:
+// `kindName`); a cancel and a move made from inside the quick-fix's
+// worktree, where the door's commits leave Claude's shell, each run from
+// the project's own checkout and taking the worktree apart under it
+// (engine.cjs, `placed`); and the close refused over a conflict with the
+// branch it lands on, naming the way on — a one-line task merging that
+// branch in the worktree, the merge committed through the door — which the
+// shell guard lets through where it refuses a merge that commits, followed
+// to the close, made from the worktree, landing. The close over the person's
+// changes through a host, standing with their checkout left behind:
 // tests/drivers/github/test-landing-quick-fix-pull.cjs.
 //
 // Layer: git. World: quick-fix-world.cjs's quick-fix and a second beside
@@ -35,13 +42,14 @@ const { describe, it, afterEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
+const { spawnSync } = require('child_process');
 
 const {
-  call, ok, okSections, refuses, output, git, createFile, writeState, readManifest, layout, accountTaken, fixtureFrom, cleanupFixture,
+  call, ok, okSections, refuses, GIT_TIMEOUT_MS, output, git, createFile, writeState, readManifest, layout, accountTaken, fixtureFrom, cleanupFixture,
 } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 const {
-  UNIT, BRANCH, DESCRIPTION, SET, quickFix, fixFile, fixTree, createFix, fixChanged, fixBuilt, fixDone, fixesRecorded,
+  UNIT, BRANCH, DESCRIPTION, SET, quickFix, fixFile, fixTree, createFix, fixChanged, fixBuilt, fixDone, fixesRecorded, recordFile, checklistClosed, onMain,
 } = require('./quick-fix-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
@@ -90,14 +98,17 @@ const theirs = (at) => [branchOut(at), git(at, ['rev-parse', 'HEAD']).trim(), gi
 /** The person's changes written in their checkout at `at`. @param {string} at */
 const mineWritten = (at) => Object.entries(MINE).forEach(([file, text]) => createFile(at, file, text));
 
-/** A raw `git commit` asked of the shell guard from `cwd` in a window: its exit code and what it said. @param {string} cwd @param {{env: Record<string, string|undefined>}} as */
-function rawCommit(cwd, as) {
+/** A shell command asked of the shell guard from `cwd` in a window: its exit code and what it said. @param {string} cwd @param {string} command @param {{env: Record<string, string|undefined>}} as */
+function guarded(cwd, command, as) {
   const { code, stderr } = call(cwd, ['shell', 'guard'], {
     env: as.env,
-    stdin: JSON.stringify({ hook_event_name: 'PreToolUse', cwd, session_id: as.env.CLAUDE_CODE_SESSION_ID, tool_name: 'Bash', tool_input: { command: 'git commit -am x' } }),
+    stdin: JSON.stringify({ hook_event_name: 'PreToolUse', cwd, session_id: as.env.CLAUDE_CODE_SESSION_ID, tool_name: 'Bash', tool_input: { command } }),
   });
   return { code, said: stderr.trim() };
 }
+
+/** A raw `git commit` asked of the shell guard from `cwd` in a window. @param {string} cwd @param {{env: Record<string, string|undefined>}} as */
+const rawCommit = (cwd, as) => guarded(cwd, 'git commit -am x', as);
 
 /** The other quick-fix's fix built in window two up to its commit, through the door from its worktree. */
 function otherCommitted() {
@@ -217,6 +228,61 @@ describe('a quick-fix built beside the person\'s own work, their checkout never 
     assert.strictEqual(error, `finish yes: land: main is checked out at ${dir}, with changes not committed: ${FLAG.file}, so nothing moved — commit them, or detach your checkout from main with \`git switch --detach\`, which leaves it at ${tip.slice(0, 7)} with its edits, and land again; switching your checkout back to main is yours, when you're ready`);
     assert.deepStrictEqual(stood, [tip, 'in-progress', true, MINE[FLAG.file]]);
     assert.deepStrictEqual([git(dir, ['log', '-1', '--format=%s', 'main']).trim(), fs.readFileSync(path.join(dir, FLAG.file), 'utf8'), readManifest(dir, UNIT).status], [`fix(${UNIT}): ${DESCRIPTION}`, FLAG.text, 'completed']);
+  });
+});
+
+describe('a cancel and a move made from inside the quick-fix\'s worktree, where its door\'s commits leave Claude\'s shell — its close made there, the conflict\'s below', () => {
+  it('a cancel cancels the unit, its worktree taken apart and its branch kept', () => {
+    dir = world();
+    entered(dir, UNIT, one());
+    fixChanged(dir, 1, FLAG.title, FLAG.file, FLAG.text, one());
+    ok(fixTree(dir), ['workunit', 'cancel', UNIT], one());
+
+    assert.deepStrictEqual([readManifest(dir, UNIT).status, fs.existsSync(fixTree(dir)), git(dir, ['show', `${BRANCH}:${FLAG.file}`])], ['cancelled', false, FLAG.text]);
+  });
+
+  it('a move\'s yes moves the unit to a feature, its worktree taken apart and its fix\'s work kept on its branch', () => {
+    dir = world();
+    entered(dir, UNIT, one());
+    fixChanged(dir, 1, FLAG.title, FLAG.file, FLAG.text, one());
+    const brief = writeState(dir, layout.cache('scratch', 'brief.md'), `# ${UNIT}\n\nWhat the work showed.\n`);
+    const payload = writeState(dir, layout.cache('scratch', 'move.json'), JSON.stringify({ description: `The ${UNIT} work, as feature work.`, reason: 'It needs a decision.', brief }));
+    ok(fixTree(dir), ['workunit', 'move', UNIT, '--to', 'feature', '--file', payload], one());
+    const { next } = ok(fixTree(dir), ['gate', 'start this work', '--pick', 'y'], one());
+    ok(fixTree(dir), next.argv, one());
+
+    assert.deepStrictEqual([readManifest(dir, UNIT).work_type, fs.existsSync(fixTree(dir)), git(dir, ['show', `moved/${BRANCH}:${FLAG.file}`])], ['feature', false, FLAG.text]);
+  });
+});
+
+describe('a quick-fix whose branch conflicts at the close with the branch it lands on', () => {
+  it('the close is refused, nothing landed, naming the way on — a one-line task merging that branch in the worktree, the merge committed through the door — which the shell guard lets through where it refuses a merge that commits; followed, the close made from the worktree, where that commit left Claude\'s shell, lands the settled change and takes the worktree apart under it', () => {
+    dir = world();
+    const settled = 'const flag = \'colour\'; // settled\n';
+    entered(dir, UNIT, one());
+    fixBuilt(dir, 1, FLAG.title, FLAG.file, FLAG.text, one());
+    fixesRecorded(dir, 1, one());
+    onMain(dir, [{ file: FLAG.file, text: MINE[FLAG.file], subject: 'Spell the flag my way' }]);
+    const tip = git(dir, ['rev-parse', 'main']).trim();
+    const { error } = refuses(dir, ['finish', 'yes', UNIT], one());
+    const stood = [git(dir, ['rev-parse', 'main']).trim(), readManifest(dir, UNIT).status];
+    ok(dir, ['task', 'create', UNIT, '1', '--title', 'merge main', '--type', 'chore', '--why', 'a merge of main, its one conflict settled by hand'], one());
+    ok(dir, ['task', 'start', UNIT, '1.2'], one());
+    const merge = 'git merge --no-ff --no-commit main';
+    const asked = [guarded(fixTree(dir), 'git merge main', two()).code, guarded(fixTree(dir), merge, one()).code];
+    const merging = spawnSync('git', merge.split(' ').slice(1), { cwd: fixTree(dir), encoding: 'utf8', timeout: GIT_TIMEOUT_MS }).status;
+    createFile(fixTree(dir), FLAG.file, settled);
+    ok(fixTree(dir), ['commit', '--paths', FLAG.file, '--task', UNIT, '1.2', '-m', `chore(${UNIT}): merge main`], one());
+    ok(dir, ['land', 'open', UNIT, '1.2'], one());
+    ok(dir, ['task', 'done', UNIT, '1.2'], one());
+    ok(dir, ['quick-fix', 'record', UNIT, '1.2', '--file', recordFile(dir, 2, { changed: 'The flag as both spell it.', why: 'Main spelt it another way meanwhile.', leaves: 'Nothing.' })], one());
+    checklistClosed(dir, one());
+    ok(fixTree(dir), ['finish', 'yes', UNIT], one());
+
+    assert.strictEqual(error, `finish yes: land: ${BRANCH} conflicts with main at ${FLAG.file}, so nothing moved — start a one-line task, "merge main", run \`git merge --no-ff --no-commit main\` in ${UNIT}'s worktree, settle the conflict, commit the merge through the door, and land again`);
+    assert.deepStrictEqual([stood, asked, merging], [[tip, 'in-progress'], [2, 0], 1]);
+    assert.deepStrictEqual([git(dir, ['show', `main:${FLAG.file}`]), readManifest(dir, UNIT).status, git(dir, ['rev-parse', 'main^']).trim(), fs.existsSync(fixTree(dir))], [settled, 'completed', tip, false]);
+    assert.deepStrictEqual([branchOut(dir), git(dir, ['status', '--porcelain']).trim()], ['main', '']);
   });
 });
 

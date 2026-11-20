@@ -133,7 +133,7 @@ const walkthrough = require('./domain/walkthrough.cjs');
 const { runKnowledge, knowledgeWaits } = require('./domain/knowledge/commands.cjs');
 const { ExitSignal, messageOf, exitCodeOf, hookInput, hookProjectDir, processCall } = require('./kernel/call.cjs');
 const { stateRoot, statePath, insideState } = require('./kernel/state-root.cjs');
-const { codeRoot } = require('./kernel/code-root.cjs');
+const { codeRoot, outsideLayouts } = require('./kernel/code-root.cjs');
 const { withVerbReads } = require('./kernel/isolated-git.cjs');
 const { handedSession } = require('./kernel/process.cjs');
 
@@ -2891,6 +2891,22 @@ const CAPTURE = 'inbox capture';
 /** Whether a command marks the conversation that ran it: none boot's stamp lets through, nor a keep's door (`keep`). @param {string[]} argv @param {boolean} keep */
 const marks = (argv, keep) => ![...HOOK_TARGETS, CAPTURE].includes(argv.slice(0, 2).join(' ')) && !MOD_READS.includes(argv[0]) && !keep && !bootExempt(argv);
 
+// The commands whose work is the code in the folder they are made from — the
+// commit door, the verification runs and setup, the code reads — which a
+// quick-fix's builder makes from its worktree and a reader from its scratch.
+const IN_PLACE = ['commit', 'verify', 'code'];
+
+/**
+ * The call as its command runs it: made from inside one of the engine's own
+ * layouts, from the same folder of the project's own checkout
+ * (kernel/code-root, `outsideLayouts`), so no command carries on in a folder
+ * it takes apart — the close, a cancel or a move of a quick-fix its
+ * worktree, a one-line task's done its layout, a reader's remove its
+ * scratch — but for `IN_PLACE`'s, whose work is there.
+ * @param {Call} call @param {string[]} argv @returns {Call}
+ */
+const placed = (call, [command]) => (IN_PLACE.includes(command) ? call : { ...call, cwd: outsideLayouts(call.cwd) });
+
 /**
  * One command against a bound call, answering its exit code — later, for
  * the argv `ANSWERS_LATER` says waits. One boot's stamp does not let through
@@ -2903,10 +2919,12 @@ const marks = (argv, keep) => ![...HOOK_TARGETS, CAPTURE].includes(argv.slice(0,
  * gate the conversation was shown, where a failed one showed none. Both
  * after the command, which may take the folder both live in: boot's tidy-up
  * deletes one whose transcript is gone. Its git runners share one read of
- * the config's hooks at each cwd (kernel/isolated-git).
- * @param {Call} call @param {string[]} argv @returns {number|Promise<number>}
+ * the config's hooks at each cwd (kernel/isolated-git). The call is placed
+ * before anything runs (`placed`).
+ * @param {Call} given @param {string[]} argv @returns {number|Promise<number>}
  */
-function dispatch(call, argv) {
+function dispatch(given, argv) {
+  const call = placed(given, argv);
   return withVerbReads(() => {
     const keep = keepForm(argv, call.cwd);
     try {

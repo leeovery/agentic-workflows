@@ -14,7 +14,8 @@
 // and something can be, saying what it changes is set aside and nothing
 // deleted; keep it as it is; their own word. Put back restores exactly what
 // the snapshot proves — a path clean then to its repository's HEAD, a child
-// repository's at its own, one absent then removed — each copied first into
+// repository's at its own, one absent then removed, a HEAD that only
+// fast-forwarded to a landing the engine recorded its HEAD now — each copied first into
 // the round's set-aside folder, byte for byte, a copy that fails putting
 // nothing back; and names the rest, the gate returning with them and the
 // folder. A lost snapshot draws keep alone. Every refusal leaves the tree as
@@ -29,7 +30,7 @@ const { describe, it } = require('node:test');
 const fs = require('fs');
 const { refuses } = require('./engine-harness.cjs');
 const {
-  UNIT, useWorld, env, recorded, refusedRound, firstRoundReady, RECEIPT, commitFile, ok, statePath, git, initRepo, assert,
+  UNIT, useWorld, env, recorded, refusedRound, firstRoundReady, RECEIPT, commitFile, ok, statePath, git, initRepo, assert, quickFixLanded,
 } = require('./review-world.cjs');
 const {
   SNAPSHOT, ASIDE, flat, wrote, excluded, treeKit,
@@ -215,6 +216,19 @@ describe('render review-tree and review restore-tree: put it back, or keep it as
       'lib/fresh/stray.js — not put back here: in a repository the round did not see',
     ]) assert.ok(display.includes(line), line);
     assert.ok(!menu.includes('`p/put`'), menu);
+  });
+
+  it('a HEAD that only fast-forwarded to a landing the engine recorded, as another conversation\'s quick-fix closing leaves it, is no change: a path changed since is put back at that HEAD, the landing kept, and the round records', () => {
+    firstRoundReady();
+    quickFixLanded(dir, 'src/card.js', 'export const card = 2;\n');
+    const landed = [held('src/card.js'), status()];
+    fs.writeFileSync(at('src/card.js'), 'export const card = 999;\n');
+    const { display } = gate(['p', 'k']);
+    const res = putBack();
+
+    assert.ok(!display.includes('HEAD moved'), display);
+    assert.deepStrictEqual([res.restored, held('src/card.js'), status()], [['src/card.js'], ...landed]);
+    assert.strictEqual(recorded({ can_now: [], findings: [RECEIPT] }).round, 1);
   });
 
   it('a HEAD moved since the round began puts nothing back: it is said so, and the gate offers only to keep it', () => {

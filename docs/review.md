@@ -32,7 +32,7 @@ A round that fails again on findings its fixes already addressed is Claude's to 
 
 The review runs without you but for its reports and finish. A question that needs you goes through the [ask rule](trust.md), and one that waits parks only the fix tasks that depend on it, as in the build. Ask "what did you decide for me?" and you get the calls made along the way. You can ask for any task's account, the build's or a fix's, and for the phases and tasks, the fix phases among them.
 
-The review takes its turn in the project's checkout, a quick-fix's reading its worktree, and leaves the working tree as it found it. Where something in the working tree changed while a round ran, you are asked what becomes of it; whatever is put back is kept aside where you can find it, until you remove it.
+The review takes its turn in the project's checkout, a quick-fix's reading its worktree, and leaves the working tree as it found it. Where something in the working tree changed while a round ran, you are asked what becomes of it; whatever is put back is kept aside where you can find it, until you remove it. A quick-fix closing in another session meanwhile, which brings your checkout up to what it landed, is no change: the review reads its own work, never what landed beside it.
 
 ## Finish
 

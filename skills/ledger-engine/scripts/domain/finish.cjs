@@ -67,7 +67,8 @@
 //   request, every task's commit squashed into one, or, where a merge by
 //   hand landed it, the branch it lands on here brought up to the host's —
 //   a refusal there leaving the unit as it was, with its way on; a
-//   quick-fix's then takes its worktree apart (fix-branch.cjs); then
+//   quick-fix's then takes its worktree apart and deletes its branch where
+//   it holds nothing past the branch it lands on (fix-branch.cjs); then
 //   completes the unit (workunit-lifecycle.cjs). It answers where the work
 //   goes (24.1.2): on in the conversation, no menu drawn, the conversation
 //   leaving the unit's place and its tasks in flight (topic-leave.cjs,
@@ -109,7 +110,7 @@ const { reading } = require('./phase-checks.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { recordedFixes, pairVerdict } = require('./quick-fix-record.cjs');
 const { shownTask } = require('./task-id.cjs');
-const { refuseDirtyClose, takeFixApart } = require('./fix-branch.cjs');
+const { refuseDirtyClose, fixClosed } = require('./fix-branch.cjs');
 const { keptAside, keptWords } = require('./fix-aside.cjs');
 const { ranOf } = require('./build-screens.cjs');
 const { verifySetup } = require('./environment.cjs');
@@ -331,7 +332,7 @@ function finishLandRefusal(cwd, unit) {
 
 /**
  * Every phase still standing landed, refused as `refuseLanding` refuses,
- * and for a quick-fix its worktree then taken apart — a refusal carrying
+ * and for a quick-fix its code then left as its close leaves it — a refusal carrying
  * what finish's standing warned.
  * @param {string} cwd @param {string} unit @param {{verdict: unknown, warnings: string[], fixes: TaskDetail[]|null}} standing
  * @returns {{repos: Record<string, any>[], warnings?: string[]}}
@@ -341,7 +342,7 @@ function landStanding(cwd, unit, standing) {
   return carryingAll(warnings, () => {
     refuseLanding(cwd, unit, standing);
     const landed = finishMerge(cwd, unit, 'say yes at finish again');
-    if (fixes !== null) takeFixApart(cwd, unit);
+    if (fixes !== null) fixClosed(cwd, unit);
     return landed;
   });
 }

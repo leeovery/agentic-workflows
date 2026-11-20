@@ -28,8 +28,10 @@
 // - A one-line task, the orchestrator's own work, has no rounds and no
 //   account to prove it built, so it is built once its branch holds work of
 //   its own (`builtOneLine`): in a repository holding it, a commit the door
-//   stamped with the task, merges aside, past the branch the repository
-//   lands on, made since anything added to it: naming as many additions as
+//   stamped with the task, merges aside — but on a quick-fix's branch, where
+//   a one-line task's merge of the branch it lands on, settling their
+//   conflict, is its change — past the branch the repository lands on, made
+//   since anything added to it: naming as many additions as
 //   the task holds (commit-task.cjs, `ADDITIONS`), so a Comment at its gate
 //   takes it off its gate until its change is committed. It finished as the newest commit on its branch was made
 //   (`oneLineFinished`), the time the board says it finished.
@@ -146,7 +148,8 @@ function builtOneLine(cwd, ref, task = require('./task-verbs.cjs').trackedTask(c
   const { holding } = holdingBranch(ref.unit, projectRepos(codeRoot(cwd)), branch);
   const id = taskId(ref);
   const own = ({ value, message }) => value === id && additionsNamed(message) >= task.additions.length;
-  return holding.some((repo) => stampedPast(repo.path, `refs/heads/${branch}`, landingBranch(cwd, repo, ref.unit), stampKey()).some(own));
+  const merges = branch === quickFixBranch(ref.unit);
+  return holding.some((repo) => stampedPast(repo.path, `refs/heads/${branch}`, landingBranch(cwd, repo, ref.unit), stampKey(), null, { merges }).some(own));
 }
 
 /**

@@ -154,13 +154,13 @@ function deletedReceipt(cwd, { deleted }) {
  * waits on the person across the project; for a quick-fix, whose close
  * carries on in its conversation (24.1.5), only each branch here its
  * landing left behind what it landed, where one did.
- * @param {string} cwd @param {{unit: string, landed?: {repo: string, into: string, behind?: string}[]}} answered
+ * @param {string} cwd @param {{unit: string, landed?: {repo: string, into: string, behind?: {branch: string, why: string}}[]}} answered
  * @returns {string}
  */
 function finishedOf(cwd, { unit, landed = [] }) {
   const manifest = loadWorkUnitManifest(cwd, unit);
   if (quickFixBuild(manifest)) {
-    const behind = landed.flatMap(({ repo, into, behind: theirs }) => (theirs === undefined ? [] : [{ repo, into, behind: theirs }]));
+    const behind = landed.flatMap(({ repo, into, behind: held }) => (held === undefined ? [] : [{ repo, into, ...held }]));
     return behind.length === 0 ? '' : behindReceipt(behind);
   }
   return endedReceipt(`${itemTitle(manifest, 'review', unit)} is done.`, startMenuRead(cwd));

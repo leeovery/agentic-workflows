@@ -54,12 +54,6 @@
 // holds one staged already, a nested clone's gitlink, or a file in a nested
 // repository's folder is the door's to refuse before it commits by either
 // route (`stagedHeldOut`).
-//
-// The engine lays its own worktrees out beside Claude Code's, in
-// `.claude/worktrees/` of the main checkout, each named `ledger-…` — the
-// mutation run's, each reader's scratch (project-layout.cjs) and a
-// quick-fix's worktree (fix-branch.cjs) — which the repository's exclude
-// file keeps out of its checkouts (project-layout.cjs, `keepLayoutsOut`).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -73,12 +67,6 @@ const { readSettings } = require('./settings.cjs');
 const { stepsAt } = require('./environment.cjs');
 
 const INCLUDE = '.worktreeinclude';
-
-/** Where Claude Code lays out its isolation worktrees in the main checkout, and the engine its own beside them. */
-const LAYOUTS = '.claude/worktrees';
-
-/** How each of the engine's own layouts there is named, before its name. */
-const LAYOUT = 'ledger-';
 
 const SETTINGS = ['.claude/settings.json', '.claude/settings.local.json'];
 
@@ -329,5 +317,5 @@ function stagedHeldOut(repos, repo) {
 }
 
 module.exports = {
-  LAYOUTS, LAYOUT, prepareWorktree, runSteps, claimingSteps, prepareWorktreeSteps, preparedLinkOf, removePreparedLinks, codeChanges, linksHeldOut, stagedHeldOut,
+  prepareWorktree, runSteps, claimingSteps, prepareWorktreeSteps, preparedLinkOf, removePreparedLinks, codeChanges, linksHeldOut, stagedHeldOut,
 };

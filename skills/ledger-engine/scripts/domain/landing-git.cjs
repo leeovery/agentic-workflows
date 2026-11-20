@@ -429,16 +429,17 @@ function commitGraph(root, revs, since, key) {
  * The commits the commit `rev` holds that the revision `other` does not —
  * nor any of them, where it names several; every one, where it names none
  * — committed at or after the time `since` names where it names one,
- * oldest first, each after its parents, merges aside — each with its
- * message, the time it was committed, in milliseconds, and the value of
- * the trailer `key` it carries, null where it carries none.
- * @param {string} root @param {string} rev @param {string|string[]} other @param {string} key @param {string|null} [since]
+ * oldest first, each after its parents, merges aside but where `merges`
+ * says — each with its message, the time it was committed, in
+ * milliseconds, and the value of the trailer `key` it carries, null where
+ * it carries none.
+ * @param {string} root @param {string} rev @param {string|string[]} other @param {string} key @param {string|null} [since] @param {{merges?: boolean}} [how]
  * @returns {{sha: string, message: string, committed: number, value: string|null}[]}
  */
-function stampedPast(root, rev, other, key, since = null) {
+function stampedPast(root, rev, other, key, since = null, { merges = false } = {}) {
   const others = [other].flat().map((one) => revOf(root, one));
   const bound = since === null ? [] : [`--since=${since}`];
-  const read = git(root, ['log', '-z', '--reverse', '--topo-order', '--no-merges', `--format=%H%x1f%ct%x1f%(trailers:key=${key},valueonly)%x1f%B`, ...bound, rev, ...(others.length === 0 ? [] : ['--not', ...others]), '--']);
+  const read = git(root, ['log', '-z', '--reverse', '--topo-order', ...(merges ? [] : ['--no-merges']), `--format=%H%x1f%ct%x1f%(trailers:key=${key},valueonly)%x1f%B`, ...bound, rev, ...(others.length === 0 ? [] : ['--not', ...others]), '--']);
   return read.split('\0').filter(Boolean).map((entry) => {
     const [sha, time, values, message] = entry.split('\x1f');
     return { sha, message, committed: Number(time) * 1000, value: values.split('\n').map((value) => value.trim()).find(Boolean) ?? null };

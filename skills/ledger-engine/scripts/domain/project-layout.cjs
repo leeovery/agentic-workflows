@@ -45,8 +45,9 @@ const path = require('path');
 const { git, tryGit } = require('../kernel/git.cjs');
 const { repoOf, repoPath, checkoutTop, folderUnder } = require('../kernel/repos.cjs');
 const { repoFacts } = require('../kernel/isolated-git.cjs');
+const { LAYOUTS, LAYOUT } = require('../kernel/code-root.cjs');
 const lg = require('./landing-git.cjs');
-const { prepareWorktree, prepareWorktreeSteps, LAYOUTS, LAYOUT } = require('./worktree-prep.cjs');
+const { prepareWorktree, prepareWorktreeSteps } = require('./worktree-prep.cjs');
 
 // Where a repository lands, loaded at its call: the landing reads the
 // tracker, whose verbs lay a task out through this module.
@@ -150,7 +151,7 @@ function layOutCommits(project, repos, commits, top) {
 /** Whether `root` is its repository's main checkout, read with no git: its `.git` a folder, not a linked worktree's file. @param {string} root */
 const isMainCheckout = (root) => fs.statSync(path.join(root, '.git'), { throwIfNoEntry: false })?.isDirectory() === true;
 
-/** The folder the engine's own layouts sit in, beside the builders' isolation worktrees: the main checkout's (worktree-prep.cjs, `LAYOUTS`). @param {string} root a checkout of the project's own repository */
+/** The folder the engine's own layouts sit in, beside the builders' isolation worktrees: the main checkout's (kernel/code-root.cjs, `LAYOUTS`). @param {string} root a checkout of the project's own repository */
 const layoutsFolder = (root) => path.join(isMainCheckout(root) ? root : lg.mainCheckoutOf(root), ...LAYOUTS.split('/'));
 
 /** A layout's folder name, by its name. @param {string} name */

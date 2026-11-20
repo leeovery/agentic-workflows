@@ -6,7 +6,9 @@
 // review-phase.cjs): a call of another shape, as `inbox file`'s is
 // (inbox.cjs); a working tree changed outside `.ledger/` since the snapshot
 // — a path's status, what it holds, a HEAD moved — naming every path,
-// reverting none, and naming the person's way on (12.7.8, 14.S13); no
+// reverting none, and naming the person's way on (12.7.8, 14.S13), a HEAD
+// that only fast-forwarded to a landing the engine recorded, as another
+// conversation's quick-fix closing leaves it, no change; no
 // snapshot; a unit its entry refuses; a review over; fix tasks of the round
 // before not done, and a later round's reads not named (14.3.3); reports
 // missing or not reading; a payload of another shape, every fault named —
@@ -24,7 +26,7 @@ const { describe, it } = require('node:test');
 const fs = require('fs');
 const path = require('path');
 const {
-  UNIT, EVERY, calls, useWorld, env, enter, payload, reported, named, recorded, refusedRound, decided, reviewCall, fixBuilt, RECEIPT, FOUND, firstRoundReady,
+  UNIT, EVERY, calls, useWorld, env, enter, payload, reported, named, recorded, refusedRound, decided, reviewCall, fixBuilt, RECEIPT, FOUND, firstRoundReady, quickFixLanded,
   ok, refusedPristine, statePath, writeState, git, assert,
 } = require('./review-world.cjs');
 
@@ -76,6 +78,19 @@ describe('review round: what it refuses, writing nothing', () => {
     const after = git(dir, ['rev-parse', 'HEAD']).trim();
 
     assert.strictEqual(refusedRound({ can_now: [], findings: [RECEIPT] }), treeMoved(`the project's repository's HEAD moved, from ${before.slice(0, 7)} to ${after.slice(0, 7)}`));
+  });
+
+  it('a HEAD that only fast-forwarded to a landing the engine recorded — another conversation\'s quick-fix closing — is no change, and the round records; one moved past it by a commit no landing holds is, naming where it moved', () => {
+    firstRoundReady();
+    const before = git(dir, ['rev-parse', 'HEAD']).trim();
+    const landed = quickFixLanded(dir, 'src/card.js', 'export const card = 2;\n');
+    git(dir, ['commit', '-q', '--allow-empty', '-m', 'a stray commit']);
+    const stray = git(dir, ['rev-parse', 'HEAD']).trim();
+    const past = refusedRound({ can_now: [], findings: [RECEIPT] });
+    git(dir, ['reset', '-q', '--hard', landed]);
+
+    assert.strictEqual(past, treeMoved(`the project's repository's HEAD moved, from ${before.slice(0, 7)} to ${stray.slice(0, 7)}`));
+    assert.strictEqual(recorded({ can_now: [], findings: [RECEIPT] }).round, 1);
   });
 
   it('no snapshot of a later round\'s held, its cache lost mid-round, naming the person\'s way on — never entering again; a unit whose review phase cannot be entered; and a review phase over', () => {

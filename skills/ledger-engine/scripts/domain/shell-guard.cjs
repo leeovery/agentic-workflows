@@ -24,11 +24,17 @@
 //   `--branches` with force;
 // - a raw `git commit` in the state worktree — every state commit is the
 //   engine's (6.2.5);
-// - a raw `git commit` in a quick-fix's worktree, the quick-fix's own
-//   conversation's among them — where the checkout of its folder has out
-//   the one branch of a quick-fix of the project's not completed or
-//   cancelled (fix-branch.cjs) — naming it and the way on: the commit door,
-//   or a checkout of the caller's own;
+// - a raw `git commit` in a quick-fix's worktree, and every other git
+//   command that makes a commit (below) — the quick-fix's own
+//   conversation's among them, a task of its in flight refusing it as a
+//   build's — where the checkout of its folder, or of the folder enclosing
+//   a nested repository's checkout there, has out the one branch of a
+//   quick-fix of the project's not completed or cancelled (fix-branch.cjs),
+//   naming it and the way on: the command's own way through the commit
+//   door, where it has one, the door, or a checkout of the caller's own;
+//   and, where the text cannot say which folder it runs in, one whose text
+//   names a worktree of the engine's own, a path through
+//   `.claude/worktrees/ledger-…` (kernel/code-root);
 // - a command naming a file at user level the layout hook refuses Claude's
 //   writes to (user-files.cjs, `userLevelRefusal`) — a conversation's
 //   briefs, the brief hook's refusals, the trust log and its kin, Claude
@@ -74,9 +80,10 @@
 // for a git command that makes a commit, then, with a task in flight, the
 // manifest of its unit in the project's state, found through git's own
 // files from the folder the command runs in, and the branch its checkout
-// has out, from git's own files — for a raw commit with none in flight, to
-// read the manifest of the quick-fix it may be the branch of — and, for a write
-// into
+// has out, from git's own files — for a commit with none in flight, or one
+// off a task's branch, to read the manifest of the quick-fix it may be the
+// branch of, in the state beside its repository or, where none is, beside
+// the first checkout enclosing it that has one — and, for a write into
 // the state alone, the layout loaded and whether the state's filesystem
 // ignores case: it runs before every shell command, so it never asks git. A word that expands at run time — a
 // glob among them — an alias, a script, or a command handed to another as
@@ -91,11 +98,13 @@ const fs = require('fs');
 const path = require('path');
 const { simpleCommands } = require('../kernel/shell-reader.cjs');
 const { STATE_DIR_NAME, STATE_BRANCH, BRANCH_REF } = require('../kernel/state-root.cjs');
+const { LAYOUTS, LAYOUT } = require('../kernel/code-root.cjs');
 const { tasksInFlight } = require('./conversation.cjs');
 const { userLevelRefusal } = require('./user-files.cjs');
 
 /** @typedef {import('../kernel/shell-reader.cjs').SimpleCommand} SimpleCommand */
 /** @typedef {{unit: string, task: string}} InFlight */
+/** What a git command's refusal reads beyond the command: the tasks in flight, read when asked, and whether the shell command's text names one of the engine's own layouts. @typedef {{inFlight: () => InFlight[], layoutNamed: boolean}} Reads */
 
 /** The tools the hook stands before, as the settings' matcher names them. */
 const SHELL_HOOK_TOOLS = ['Bash'];
@@ -283,17 +292,18 @@ function pushRefusal(git) {
 }
 
 /**
- * The git directory of the checkout holding `folder`, from the `.git` folder
- * or file of the nearest folder up that has one; undefined where none has.
- * @param {string} folder @returns {string|undefined}
+ * The checkout holding `folder` — its top, the nearest folder up with a
+ * `.git` folder or file, and the git directory that names — undefined where
+ * none holds it.
+ * @param {string} folder @returns {{top: string, gitDir: string}|undefined}
  */
-function gitDirOf(folder) {
+function checkoutOf(folder) {
   for (let at = folder; ; at = path.dirname(at)) {
     const dotGit = path.join(at, '.git');
     const stat = fs.statSync(dotGit, { throwIfNoEntry: false });
-    if (stat?.isDirectory()) return dotGit;
+    if (stat?.isDirectory()) return { top: at, gitDir: dotGit };
     const named = stat?.isFile() ? /^gitdir: (.+)$/m.exec(fs.readFileSync(dotGit, 'utf8'))?.[1] : undefined;
-    if (named !== undefined) return path.resolve(at, named.trim());
+    if (named !== undefined) return { top: at, gitDir: path.resolve(at, named.trim()) };
     if (path.dirname(at) === at) return undefined;
   }
 }
@@ -314,7 +324,7 @@ function branchIn(file) {
  * @param {string} folder @returns {string|null}
  */
 function branchOut(folder) {
-  const gitDir = gitDirOf(folder);
+  const gitDir = checkoutOf(folder)?.gitDir;
   if (gitDir === undefined) return null;
   return branchIn(path.join(gitDir, 'HEAD')) ?? branchIn(path.join(gitDir, 'rebase-merge', 'head-name')) ?? branchIn(path.join(gitDir, 'rebase-apply', 'head-name'));
 }
@@ -332,45 +342,62 @@ function onTaskBranch({ folder }, tasks) {
   return branch !== null && tasks.some(({ unit }) => isWorkBranch(unit, branch));
 }
 
+/** What a commit in a quick-fix's worktree goes through instead: the door for a fix's change, a checkout of the caller's own for anything else. @param {string} unit */
+const fixDoor = (unit) => `a fix's change with \`engine commit --paths <file>… --task ${unit} <task> -m "<message>"\`, anything else from a checkout of your own`;
+
 /**
- * Why a raw commit is refused in a quick-fix's worktree (the header's): its
- * checkout has out the one branch of a quick-fix of the project's not
- * completed or cancelled — naming it and the way on; null where it has not,
- * or the text cannot say where it runs.
- * @param {GitCommand} git
+ * Why a git command making a commit is refused in a quick-fix's worktree
+ * (the header's), by what it is — `a raw git commit`, `git merge` — with
+ * the command's own way through the door before the door, where it has
+ * one: its checkout, or that of the folder enclosing its nested
+ * repository, has out the one branch of a quick-fix of the project's not
+ * completed or cancelled, naming it; where the text cannot say where it
+ * runs, the shell command's text names one of the engine's own layouts.
+ * Null otherwise.
+ * @param {GitCommand} git @param {Reads} reads @param {string} said @param {string|null} way
  */
-function fixRefusal({ folder }) {
-  const branch = folder === null ? null : branchOut(folder);
+function fixRefusal({ folder }, { layoutNamed }, said, way) {
+  const door = (/** @type {string} */ unit) => `${way === null ? '' : `${way}; `}${fixDoor(unit)}`;
+  if (folder === null) {
+    return layoutNamed ? `${said} is refused here — the command names a worktree of Ledger's own, and its text cannot say where it runs: a quick-fix's work goes through the commit door alone, ${door('<unit>')}` : null;
+  }
+  const branch = branchOut(folder);
   const unit = branch === null ? null : require('./landing-names.cjs').quickFixOfBranch(branch);
-  const manifest = unit === null ? null : unitIn(stateOf(/** @type {string} */ (folder)), unit);
-  if (manifest?.work_type !== 'quick-fix' || ENDED.includes(manifest.status)) return null;
-  return `a raw git commit is refused here — ${branch} is checked out for ${unit}, a quick-fix in progress, whose work goes through the commit door alone: a fix's change with \`engine commit --paths <file>… --task ${unit} <task> -m "<message>"\`, anything else from a checkout of your own`;
+  const manifest = unit === null ? null : unitIn(stateOf(folder), unit);
+  if (unit === null || manifest?.work_type !== 'quick-fix' || ENDED.includes(manifest.status)) return null;
+  return `${said} is refused here — ${branch} is checked out for ${unit}, a quick-fix in progress, whose work goes through the commit door alone: ${door(unit)}`;
 }
 
-/** @param {GitCommand} git @param {() => InFlight[]} inFlight */
-function commitRefusal(git, inFlight) {
+/** @param {GitCommand} git @param {Reads} reads */
+function commitRefusal(git, reads) {
   if (inStateWorktree(git)) return REFUSED.stateCommit;
-  const tasks = inFlight();
-  return tasks.length === 0 ? fixRefusal(git) : buildCommit(tasks);
+  const tasks = reads.inFlight();
+  return tasks.length === 0 ? fixRefusal(git, reads, 'a raw git commit', null) : buildCommit(tasks);
 }
 
 /** Whether the options carry `flag`, a short one or a long. @param {(string|null)[]} args @param {string} flag */
 const carriesFlag = (args, flag) => (flag.startsWith('--') ? carries(args, '', [flag]) : carries(args, flag.slice(1), []));
 
-/** The refusal of a git command of `COMMITTING`'s, by its subcommand. @param {string} subcommand */
+/**
+ * The refusal of a git command of `COMMITTING`'s, by its subcommand: a
+ * build's where it lands on a task's branch, else one in a quick-fix's
+ * worktree (`fixRefusal`).
+ * @param {string} subcommand
+ */
 function committingRefusal(subcommand) {
   const { passes, way, continued } = COMMITTING[subcommand];
-  return (/** @type {GitCommand} */ git, /** @type {() => InFlight[]} */ inFlight) => {
+  return (/** @type {GitCommand} */ git, /** @type {Reads} */ reads) => {
     const { args } = git;
     if (passes.some((flags) => flags.every((flag) => carriesFlag(args, flag)))) return null;
-    const tasks = inFlight();
-    return tasks.length === 0 || !onTaskBranch(git, tasks) ? null : buildCommitting(subcommand, continued !== undefined && carriesFlag(args, '--continue') ? continued : way, tasks);
+    const ways = continued !== undefined && carriesFlag(args, '--continue') ? continued : way;
+    const tasks = reads.inFlight();
+    return tasks.length > 0 && onTaskBranch(git, tasks) ? buildCommitting(subcommand, ways, tasks) : fixRefusal(git, reads, `git ${subcommand}`, ways);
   };
 }
 
 /**
  * Each refusal of a git command, by its subcommand.
- * @type {Readonly<Record<string, (git: GitCommand, inFlight: () => InFlight[]) => string|null>>}
+ * @type {Readonly<Record<string, (git: GitCommand, reads: Reads) => string|null>>}
  */
 const GIT_REFUSALS = Object.freeze({
   worktree: worktreeRefusal,
@@ -518,36 +545,48 @@ function writeRefusal(command) {
   return null;
 }
 
-/** @param {SimpleCommand} command @param {() => InFlight[]} inFlight */
-function gitRefusal(command, inFlight) {
+/** @param {SimpleCommand} command @param {Reads} reads */
+function gitRefusal(command, reads) {
   const git = gitCommand(command);
   if (git === null || git.sub === null || !Object.hasOwn(GIT_REFUSALS, git.sub)) return null;
-  return GIT_REFUSALS[git.sub](git, inFlight);
+  return GIT_REFUSALS[git.sub](git, reads);
 }
 
 /**
  * Why the hook refuses one simple command, or null.
- * @param {SimpleCommand} command @param {() => InFlight[]} inFlight
+ * @param {SimpleCommand} command @param {Reads} reads
  * @returns {string|null}
  */
-function commandRefusal(command, inFlight) {
-  return gitRefusal(command, inFlight) ?? removalRefusal(command) ?? namedRefusal(command) ?? writeRefusal(command);
+function commandRefusal(command, reads) {
+  return gitRefusal(command, reads) ?? removalRefusal(command) ?? namedRefusal(command) ?? writeRefusal(command);
 }
+
+/** The git directory a checkout's shares with the repository's every checkout: the main checkout's own. @param {string} gitDir */
+function commonOf(gitDir) {
+  try {
+    return path.resolve(gitDir, fs.readFileSync(path.join(gitDir, 'commondir'), 'utf8').trim());
+  } catch {
+    return gitDir;
+  }
+}
+
+/** The checkout enclosing the one whose top is `top`, undefined where none does. @param {string} top */
+const enclosing = (top) => (path.dirname(top) === top ? undefined : checkoutOf(path.dirname(top)));
 
 /**
  * The project's state the checkout holding `folder` belongs to, read from
  * git's own files: beside the main checkout, a linked worktree's by its
- * common folder; null where no checkout holds it.
+ * common folder; where none is there — a nested repository's checkout, one
+ * in a quick-fix's worktree among them — that of the checkout enclosing it,
+ * and so on up; null where none is found.
  * @param {string} folder @returns {string|null}
  */
 function stateOf(folder) {
-  const gitDir = gitDirOf(folder);
-  if (gitDir === undefined) return null;
-  let common = gitDir;
-  try {
-    common = path.resolve(gitDir, fs.readFileSync(path.join(gitDir, 'commondir'), 'utf8').trim());
-  } catch { /* the main checkout's own */ }
-  return path.join(path.dirname(common), STATE_DIR_NAME);
+  for (let held = checkoutOf(folder); held !== undefined; held = enclosing(held.top)) {
+    const state = path.join(path.dirname(commonOf(held.gitDir)), STATE_DIR_NAME);
+    if (fs.existsSync(state)) return state;
+  }
+  return null;
 }
 
 /** The statuses a unit's work ends in. */
@@ -596,6 +635,9 @@ function inFlightOf(cwd, { session_id: session }) {
   });
 }
 
+/** How a shell command's text names one of the engine's own layouts: a path through them. */
+const LAYOUT_NAMED = `${LAYOUTS}/${LAYOUT}`;
+
 /**
  * Why the hook refuses the shell command the tool call `input` describes —
  * the first refusal one of its commands meets, in the order they appear —
@@ -607,9 +649,9 @@ function shellRefusal(cwd, input) {
   const toolInput = input.tool_input;
   const command = toolInput !== null && typeof toolInput === 'object' ? /** @type {Record<string, unknown>} */ (toolInput).command : null;
   if (typeof command !== 'string') return null;
-  const inFlight = inFlightOf(cwd, input);
+  const reads = { inFlight: inFlightOf(cwd, input), layoutNamed: command.includes(LAYOUT_NAMED) };
   for (const simple of simpleCommands(command, cwd)) {
-    const reason = commandRefusal(simple, inFlight);
+    const reason = commandRefusal(simple, reads);
     if (reason !== null) return reason;
   }
   return null;

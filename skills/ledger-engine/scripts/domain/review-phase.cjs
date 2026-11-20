@@ -76,7 +76,12 @@
 //   which every later round calls before its briefs — and only where none
 //   is held, never again while one is; `review round` holds the tree to its
 //   own round's, naming every path changed since, and drops it once the
-//   round is recorded. Only the person's word takes it again (`review
+//   round is recorded. A repository whose HEAD only fast-forwarded since,
+//   to landings Ledger recorded — another conversation's quick-fix closing
+//   brings its landing into the checkout — changed nothing the round reads:
+//   the change is read off its own commits, never what landed beside it
+//   (review-change.cjs), and every reader in a scratch worktree at its tip;
+//   it is no change, and its paths are held to its HEAD now (`landedOnly`). Only the person's word takes it again (`review
 //   accept-tree`, 12.7.8, 14.1.5).
 // - The calls across the unit are every current decision made at any of its
 //   places, with whose it is and how it was given (16.17.8); those decided
@@ -97,6 +102,8 @@ const { tryGit } = require('../kernel/git.cjs');
 const { writeJsonAtomic, isObject, isStringList } = require('../kernel/manifest-io.cjs');
 const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
 const { repoName, projectRepos } = require('../kernel/repos.cjs');
+const { listWorkUnitManifests } = require('../kernel/manifest.cjs');
+const { recordsIn } = require('./landing-record.cjs');
 const { codeChanges } = require('./worktree-prep.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { readSpec, specReading } = require('./spec-sections.cjs');
@@ -492,11 +499,33 @@ const repoWords = (name) => (name === '.' ? 'the project\'s repository' : `\`${n
  */
 
 /**
+ * Whether a repository's HEAD that moved since the snapshot only
+ * fast-forwarded, to landings Ledger recorded (the header's): every commit
+ * on its first-parent line from then to now one a unit's landing record
+ * holds there (landing-record.cjs), the records read once, and only where a
+ * HEAD moved.
+ * @param {string} cwd @param {Repo[]} repos @returns {(moved: TreeChange) => boolean}
+ */
+function landedOnly(cwd, repos) {
+  /** @type {Record<string, any>[]|null} */
+  let manifests = null;
+  /** @param {string} of */
+  const recorded = (of) => new Set((manifests ??= listWorkUnitManifests(cwd)).flatMap((manifest) => [...recordsIn(manifest, of).values()].map(({ commit }) => commit)));
+  return ({ of, then, now }) => {
+    const repo = repos.find((held) => repoName(held) === of);
+    if (repo === undefined || then === null || now === null || tryGit(repo.path, ['merge-base', '--is-ancestor', then, now]) === null) return false;
+    const landed = recorded(of);
+    return (tryGit(repo.path, ['rev-list', '--first-parent', `${then}..${now}`]) ?? '').split('\n').filter(Boolean).every((commit) => landed.has(commit));
+  };
+}
+
+/**
  * What changed outside `.ledger/` since the snapshot: each repository whose
- * HEAD moved, and each path whose status or content changed, in order, with
- * each repository's HEAD, its ignored entries and each path its status
- * listed as the snapshot holds them; read once the round's snapshot is held
- * (snapshotRound).
+ * HEAD moved, but one that only fast-forwarded to landings Ledger recorded
+ * (`landedOnly`), and each path whose status or content changed, in order,
+ * with each repository's HEAD — that one's now — its ignored entries and
+ * each path its status listed as the snapshot holds them; read once the
+ * round's snapshot is held (snapshotRound).
  * @param {string} cwd @param {string} unit @param {Repo[]} repos
  * @returns {{heads: Record<string, string|null>, ignored: Record<string, string[]>, held: Record<string, string>, moved: TreeChange[], paths: TreeChange[]}}
  */
@@ -505,8 +534,15 @@ function treeDrift(cwd, unit, repos) {
   const now = treeNow(repos[0].path, repos);
   /** @param {Record<string, string|null>} was @param {Record<string, string|null>} is @returns {TreeChange[]} */
   const drift = (was, is) => [...new Set([...Object.keys(was), ...Object.keys(is)])].filter((of) => was[of] !== is[of]).map((of) => ({ of, then: was[of] ?? null, now: is[of] ?? null }));
+  const landing = landedOnly(cwd, repos);
+  const headsMoved = drift(then.heads, now.heads);
+  const landed = headsMoved.filter(landing);
   return {
-    heads: then.heads, ignored: then.ignored, held: then.paths, moved: drift(then.heads, now.heads), paths: drift(then.paths, now.paths).sort((a, b) => (a.of < b.of ? -1 : 1)),
+    heads: { ...then.heads, ...Object.fromEntries(landed.map(({ of, now: at }) => [of, at])) },
+    ignored: then.ignored,
+    held: then.paths,
+    moved: headsMoved.filter((change) => !landed.includes(change)),
+    paths: drift(then.paths, now.paths).sort((a, b) => (a.of < b.of ? -1 : 1)),
   };
 }
 

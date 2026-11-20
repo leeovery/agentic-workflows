@@ -17,7 +17,10 @@
 // commit there naming it was made after that one — named there, where the
 // repository holds no commit of its own — and in the pull
 // request where the one open holds that commit. Its own work is a commit
-// of its own through the door (commit-task.cjs), on the quick-fix's branch
+// of its own through the door (commit-task.cjs) — a merge it finished there
+// among them, as a one-line task merging the branch the quick-fix lands on
+// to settle their conflict makes one (landing-names.cjs, `quickFixMerged`)
+// — on the quick-fix's branch
 // or wherever the repository keeps it, or its change landed; it has landed
 // once it has in every repository it holds work in.
 //

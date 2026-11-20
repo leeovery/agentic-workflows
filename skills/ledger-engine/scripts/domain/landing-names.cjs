@@ -27,6 +27,10 @@
 // from its template (12.4.1): a lowercase word, as feat or fix. The merge
 // bringing the default branch into a unit's own branch is `Merge {default}
 // into feat/{unit}` (`bringUpSubject`), no conventional commit's either.
+// A quick-fix's branch that conflicts with the branch it lands on is
+// settled by a one-line task of its own, `merge {that branch}`, merging it
+// in the quick-fix's worktree and committing the merge through the door
+// (`quickFixMerged`): each landing driver's way on from the conflict.
 // ---------------------------------------------------------------------------
 
 const { KEBAB_SLUG } = require('../kernel/manifest-schema.cjs');
@@ -176,6 +180,9 @@ function unitLanding(unit, title, phases) {
  */
 const bringUpSubject = (into, branch) => `Merge ${into} into ${branch}`;
 
+/** The way on from a quick-fix's branch conflicting with `theirs`, the branch it lands on as the merge reads it (the header's). @param {string} unit @param {string} theirs */
+const quickFixMerged = (unit, theirs) => `start a one-line task, "merge ${theirs}", run \`git merge --no-ff --no-commit ${theirs}\` in ${unit}'s worktree, settle the conflict, commit the merge through the door`;
+
 /** The task a line naming one by `key` names, or null. @param {string} line @param {string} key @returns {TaskRef|null} */
 function taskOfLine(line, key) {
   const value = line.startsWith(`${key}: `) ? line.slice(key.length + 2) : '';
@@ -217,4 +224,4 @@ function landingOf(ref, message) {
   return null;
 }
 
-module.exports = { slugOf, taskBranch, phaseBranch, unitBranch, quickFixBranch, quickFixOfBranch, phaseOfBranch, taskOfBranch, isWorkBranch, isUnitBranch, landedMessage, quickFixMessage, unitLanding, bringUpSubject, landingOf, tasksOfMessage };
+module.exports = { slugOf, taskBranch, phaseBranch, unitBranch, quickFixBranch, quickFixOfBranch, phaseOfBranch, taskOfBranch, isWorkBranch, isUnitBranch, landedMessage, quickFixMessage, unitLanding, bringUpSubject, quickFixMerged, landingOf, tasksOfMessage };

@@ -211,15 +211,15 @@ function endedReceipt(opening, read) {
 
 /**
  * The line a quick-fix's close says where its landing left a branch here
- * behind what it landed, its checkout's changes in the way: for each, its
- * repository where it is nested, and the host's branch a fast-forward to
- * which brings it up.
- * @param {{repo: string, into: string, behind: string}[]} behind @returns {string}
+ * behind what it landed, its checkout in the way: for each, its repository
+ * where it is nested, what stopped it there, and the host's branch a
+ * fast-forward to which brings it up.
+ * @param {{repo: string, into: string, branch: string, why: string}[]} behind @returns {string}
  */
 function behindReceipt(behind) {
-  const lines = behind.map(({ repo, into, behind: theirs }) => {
+  const lines = behind.map(({ repo, into, branch, why }) => {
     const where = repo === '.' ? '' : ` in ${repo}`;
-    return `\`${into}\`${where} is behind what landed: its checkout holds changes the landing touches, so it was not moved. Once they are committed or set aside, \`git merge --ff-only ${theirs}\` there brings it up.`;
+    return `\`${into}\`${where} is behind what landed, not moved: ${why}. Once that is clear, \`git merge --ff-only ${branch}\` there brings it up.`;
   });
   return section('DISPLAY: ended', timedInstruction('markdown', 'after the response'), lines.join('\n'));
 }

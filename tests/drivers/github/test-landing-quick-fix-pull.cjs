@@ -12,7 +12,8 @@
 // second close closing nothing; and the close over the person's checkout
 // holding changes the landing touches, the branch it lands on out there:
 // the merge standing and the unit completing, main here left behind, the
-// close's line naming it and the call that brings it up. Merged by hand
+// close's line naming it, what stopped it there — said once, no warning
+// beside it — and the call that brings it up. Merged by hand
 // there is
 // test-landing-quick-fix.cjs's. Git layer: quick-fix-world.cjs's two fixes
 // built on a fake GitHub (world.cjs), their pull request #1, built once and
@@ -99,18 +100,19 @@ describe('a quick-fix\'s one pull request on GitHub (R14)', () => {
 });
 
 describe('a quick-fix\'s close over the person\'s checkout, the branch it lands on out there with changes the landing touches (R14)', () => {
-  it('the merge stands and the unit completes, main here left where it was with the person\'s change, the close\'s line naming it behind and the call that brings it up', () => {
+  it('the merge stands and the unit completes, main here left where it was with the person\'s change, the close\'s line naming it behind, what stopped it there and the call that brings it up, with no warning saying it again', () => {
     dir = world();
     const before = git(dir, ['rev-parse', 'main']).trim();
     const mine = 'const flag = \'mine\';\n';
     createFile(dir, SET[0].file, mine);
     fixesRecorded(dir, 2, as());
-    const { res: { landed }, sections } = okSections(dir, ['finish', 'yes', UNIT], as());
+    const { res: { landed, warnings }, sections } = okSections(dir, ['finish', 'yes', UNIT], as());
+    const why = `main is checked out at ${dir}, with changes not committed: ${SET[0].file}`;
 
-    assert.deepStrictEqual([landed.map((/** @type {any} */ { repo, into, behind }) => [repo, into, behind]), readManifest(dir, UNIT).status, pulls(dir)], [
-      [['.', 'main', 'origin/main']], 'completed', [{ number: 1, state: 'MERGED', base: 'main' }],
+    assert.deepStrictEqual([landed.map((/** @type {any} */ { repo, into, behind }) => [repo, into, behind]), warnings, readManifest(dir, UNIT).status, pulls(dir)], [
+      [['.', 'main', { branch: 'origin/main', why }]], undefined, 'completed', [{ number: 1, state: 'MERGED', base: 'main' }],
     ]);
     assert.deepStrictEqual([git(dir, ['rev-parse', 'main']).trim(), fs.readFileSync(path.join(dir, SET[0].file), 'utf8'), git(dir, ['merge-base', '--is-ancestor', before, tipOnGithub(dir, 'main')]) === ''], [before, mine, true]);
-    assert.strictEqual(sectionOf(sections, 'DISPLAY: ended').trim(), '`main` is behind what landed: its checkout holds changes the landing touches, so it was not moved. Once they are committed or set aside, `git merge --ff-only origin/main` there brings it up.');
+    assert.strictEqual(sectionOf(sections, 'DISPLAY: ended').trim(), `\`main\` is behind what landed, not moved: ${why}. Once that is clear, \`git merge --ff-only origin/main\` there brings it up.`);
   });
 });

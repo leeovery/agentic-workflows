@@ -10,8 +10,9 @@
 // (review-phase.cjs, `treeDrift`): each repository whose HEAD moved, then
 // each path whose status or what it holds changed. The engine puts a path
 // back only where the snapshot proves how the round found it: a path clean
-// then, restored to its repository's HEAD then, or removed where that HEAD
-// lacks it, the snapshot proving it absent — untracked and not ignored when
+// then, restored to its repository's HEAD then — now, where that HEAD only
+// fast-forwarded to landings Ledger recorded, no change of the round's — or
+// removed where that HEAD lacks it, the snapshot proving it absent — untracked and not ignored when
 // the round began. Each other change is named on the gate as not put back
 // here, for the person to put back by hand or keep: a path changed already
 // when the round began, whose state then the snapshot holds only by its
