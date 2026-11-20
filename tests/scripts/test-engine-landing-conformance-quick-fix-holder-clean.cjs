@@ -52,7 +52,7 @@ for (const { name } of listDrivers('landing')) {
   const committed = (at, task, files, subject) => run(at, ['commit', '--paths', ...files, '--task', UNIT, task, '-m', `fix(${UNIT}): ${subject}`]);
 
   describe(`the ${name} landing driver's quick-fix, its checkout left clean by its holder (19.5.23, R27)`, () => {
-    it('the fix holding the checkout leaves it clean: its close refused while the checkout holds what it left uncommitted, naming it, and saying a close gives it up; its done, saying to commit it through the door; then, none holding it, a fix not started is briefed to build only once started', async () => {
+    it('the fix holding the checkout leaves it clean: its close and its done refused while the checkout holds changes not committed, naming what a commit of the fix changed as its — a close giving it up, a done committing it through the door — and what none did as not its, perhaps the person\'s or another conversation\'s, never to be removed; then, none holding it, a fix not started is briefed to build only once started', async () => {
       const at = project();
       createFix(at, 1, FLAG, as());
       run(at, ['task', 'start', UNIT, '1.1']);
@@ -65,16 +65,19 @@ for (const { name } of listDrivers('landing')) {
       committed(at, '1.2', ['src/help.js'], 'spell the help --colour');
       run(at, ['land', 'open', UNIT, '1.2']);
       accountTaken(at, UNIT, '1.2');
+      createFile(at, 'src/help.js', 'const help = \'--color\';\n');
       const done = refused(at, ['task', 'done', UNIT, '1.2']);
+      git(at, ['checkout', '--', 'src/help.js']);
       fs.rmSync(path.join(at, 'src/debug.js'));
       run(at, ['task', 'done', UNIT, '1.2']);
       createFix(at, 3, 'Spell the docs --colour', as());
       const unstarted = refused(at, ['brief', 'builder', UNIT, '1.3']);
 
-      const left = (verb, way) => `task ${verb}: task 1.2 of ${UNIT} holds ${UNIT}'s one checkout, which holds changes not committed — src/debug.js — and a fix leaves it clean as it stops holding it: ${way}`;
+      const left = (verb, parted) => `task ${verb}: task 1.2 of ${UNIT} holds ${UNIT}'s one checkout, which holds changes not committed, and a fix leaves it clean as it stops holding it — ${parted} — then run it again`;
+      const notIts = `src/debug.js, which no commit of the fix's changed, so not its — perhaps the person's or another conversation's: never remove them, but ask the person, who may set them aside until ${UNIT} has closed`;
       assert.deepStrictEqual([close, done], [
-        left('close', 'a fix closed gives its work up with it, so remove them, then run it again'),
-        left('done', 'commit what is the fix\'s through the door, remove what is not, as a scenario\'s run leaves, then run it again'),
+        left('close', notIts),
+        left('done', `src/help.js, the fix's: commit them through the door; ${notIts}`),
       ]);
       assert.strictEqual(unstarted, `brief: task 1.3 of ${UNIT} holds no part of ${UNIT}'s one checkout — start it first, engine task start ${UNIT} 1.3, which puts the checkout on it`);
     });

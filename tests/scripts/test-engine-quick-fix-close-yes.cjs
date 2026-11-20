@@ -30,12 +30,15 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  ok, callAsync, okSectionsAsync, refusedPristine, git, stateGit, statePath, readManifest, cleanupFixture, keywordOnlyKnowledge, traced, layout,
+  ok, output, callAsync, okSectionsAsync, refusedPristine, git, stateGit, statePath, readManifest, cleanupFixture, keywordOnlyKnowledge, traced, layout, fixtureFrom,
 } = require('./engine-harness.cjs');
 const { datedAt } = require('./discovery-test-utils.cjs');
 const { ledgerReadHelpers } = require('./ledger-world.cjs');
-const { UNIT, PLACE, DESCRIPTION, checklistClosed } = require('./quick-fix-world.cjs');
+const { UNIT, PLACE, DESCRIPTION, checklistClosed, twoFixesBuilt } = require('./quick-fix-world.cjs');
 const { RAISED, world, closeHelpers } = require('./quick-fix-close-world.cjs');
+
+/** The close world, the person on a branch of their own as the first fix started. */
+const onOwnBranch = fixtureFrom('quick-fix-own-branch-', (at) => twoFixesBuilt(at, { ready: (project) => git(project, ['switch', '-q', '-c', 'my-branch']) }));
 
 let dir = ''; // the project
 const {
@@ -75,7 +78,7 @@ describe('finish yes <quick-fix> (19.5.15, 24.1.2)', () => {
     const checked = reading(t, ['checklist', 'show', 'finish', UNIT]);
     const { result: done, ledger, notes } = reading(t, ['finish', 'yes', UNIT]);
 
-    const stray = `${UNIT}'s tasks were built in the project's own checkout, which holds changes not committed — src/stray.js — so nothing was landed: commit them or set them aside, then close it again`;
+    const stray = `${UNIT}'s tasks were built in the project's own checkout, which holds changes not committed, so nothing was landed — src/stray.js, which no commit of the quick-fix's changed, so not its — perhaps the person's or another conversation's: never remove them, but ask the person, who may set them aside until ${UNIT} has closed — then close it again`;
     assert.deepStrictEqual([dirty, opened, kept()], [[`finish yes: ${stray}`, `land: ${stray}`, `land: ${stray}`, main], `refs/ledger/quick-fix/${UNIT}/open`, '']);
     assert.deepStrictEqual([checked.notes > 0, notes, ledger - checked.ledger], [true, checked.notes, 1]);
     assert.deepStrictEqual({ ...done, landed: done.landed.map((/** @type {any} */ { repo, into, merged }) => ({ repo, into, merged })) }, {
@@ -106,6 +109,26 @@ describe('finish yes <quick-fix> (19.5.15, 24.1.2)', () => {
     const said = `${UNIT} closes once each question asked in it is answered — ${asked} ${RAISED.question}: raise it again for the person to answer, raise ${PLACE} --answers ${asked}`;
     assert.deepStrictEqual(open, [`finish yes: ${said}`, `land: ${said}`, `land: ${said}`, main]);
     assert.deepStrictEqual([done.landed.map(({ merged }) => merged), readManifest(dir, UNIT).status], [[['1.1', '1.2']], 'completed']);
+  });
+
+  it('takes the checkout back to the branch the person had out at the first start, recorded on the manifest then, the close\'s line naming it, as a cancel does; that branch gone since, to the branch it lands on', () => {
+    dir = onOwnBranch();
+    const from = readManifest(dir, UNIT).fixes.from;
+    closeable();
+    const said = output(dir, ['finish', 'yes', UNIT], as());
+    const back = [from, JSON.parse(said.split('\n')[0]).checkout, branchOut(), said.slice(said.indexOf('=== DISPLAY: ended')).split('\n').filter((line) => line !== '')];
+    cleanupFixture(dir);
+    dir = onOwnBranch();
+    closeable();
+    git(dir, ['branch', '-q', '-D', 'my-branch']);
+    run(['finish', 'yes', UNIT]);
+    const gone = branchOut();
+    cleanupFixture(dir);
+    dir = onOwnBranch();
+    run(['workunit', 'cancel', UNIT]);
+
+    assert.deepStrictEqual([gone, branchOut()], ['main', 'my-branch']);
+    assert.deepStrictEqual(back, ['my-branch', 'my-branch', 'my-branch', ['=== DISPLAY: ended (emit verbatim as markdown (not a code block) after the response) ===', 'The checkout is back on `my-branch`.']]);
   });
 
   it('reads no ref the local driver kept of an earlier quick-fix of the same name, its opening at a commit made before this one was — never this one\'s, so never a stranger\'s branch refused: the yes lands the fixes and lets go of every ref of the name', () => {

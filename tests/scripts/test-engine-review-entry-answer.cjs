@@ -98,7 +98,7 @@ describe('the answer: the round under review, the spec\'s areas, and what the ro
 
     assert.strictEqual(waiting, data(['round: round 2', ...AREA_LINES, UNNAMED, fixPhaseLine(3, 1, 'built'), 'fix task waiting: 3.1 not started', 'fix task waiting: 3.2 not started', BASE_LINE, reportLine(1), ...readsAfter()]));
     assert.deepStrictEqual(beyond, ['fix task waiting: 3.2 not started'], 'the task beyond the findings waited on once theirs is done');
-    assert.strictEqual(unnamed, data(['round: round 2', ...AREA_LINES, UNNAMED, BASE_LINE, reportLine(1), ...readsAfter()]));
+    assert.strictEqual(unnamed, data(['round: round 2', ...AREA_LINES, UNNAMED, fixPhaseLine(4, 2, 'written'), BASE_LINE, reportLine(1), ...readsAfter()]));
     assert.strictEqual(enter().sections, data(['round: round 2', ...AREA_LINES, 'reads: 1-cards, 2-refunds', fixPhaseLine(4, 2, 'written'), BASE_LINE, reportLine(1), ...readsAfter()]));
   });
 
@@ -114,8 +114,8 @@ describe('the answer: the round under review, the spec\'s areas, and what the ro
     git(dir, ['commit', '-q', '--allow-empty', '-m', `feat(${UNIT}): landed`, '-m', `Task: ${UNIT}-3-1`]);
 
     const unnamed = `reads: not yet named — once round 1's fix tasks are done and their phase has merged, review reads ${UNIT} names them from what those changed, among them 1-cards, 2-refunds`;
-    assert.strictEqual(merging, data(['round: round 2', ...AREA_LINES, unnamed, `merge waiting: phase 3 waits at its gate: render phase-merge-gate ${UNIT} 3`, BASE_LINE, reportLine(1), ...readsAfter()]));
-    assert.strictEqual(enter().sections, data(['round: round 2', ...AREA_LINES, unnamed, BASE_LINE, reportLine(1), ...readsAfter()]));
+    assert.strictEqual(merging, data(['round: round 2', ...AREA_LINES, unnamed, fixPhaseLine(4, 2, 'written'), `merge waiting: phase 3 waits at its gate: render phase-merge-gate ${UNIT} 3`, BASE_LINE, reportLine(1), ...readsAfter()]));
+    assert.strictEqual(enter().sections, data(['round: round 2', ...AREA_LINES, unnamed, fixPhaseLine(4, 2, 'written'), BASE_LINE, reportLine(1), ...readsAfter()]));
   });
 
   it('a fix task closed waits on nothing — in step, no merge of its phase either', () => {
@@ -124,7 +124,7 @@ describe('the answer: the round under review, the spec\'s areas, and what the ro
     fixClosed(3, 1);
 
     const unnamed = `reads: not yet named — once round 1's fix tasks are done and their phase has merged, review reads ${UNIT} names them from what those changed, among them 1-cards`;
-    assert.strictEqual(enter().sections, data(['round: round 2', ...AREA_LINES, unnamed, BASE_LINE, reportLine(1), ...readsAfter()]));
+    assert.strictEqual(enter().sections, data(['round: round 2', ...AREA_LINES, unnamed, fixPhaseLine(4, 2, 'written'), BASE_LINE, reportLine(1), ...readsAfter()]));
   });
 
   it('once a round passes with no fix task, the review phase is over, finish next, and nothing is read', () => {

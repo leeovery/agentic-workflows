@@ -23,7 +23,10 @@
 //   leaves it, or one a cancel took off it — on it too, before any work
 //   set aside is put back (fix-aside.cjs). The
 //   holder's done and close are refused alike while the checkout holds
-//   any, a fix leaving it clean (`refuseDirtyEnd`).
+//   any, a fix leaving it clean (`refuseDirtyEnd`) — and the quick-fix's
+//   close too (`refuseDirtyClose`) — each naming what no commit of the
+//   work's changed as not its, perhaps the person's or another
+//   conversation's, never to be removed (`partedDirt`).
 // - A repository nested in the project gets its branch at the first commit
 //   of a task's there: the door puts it on the branch, where it lacks one
 //   cut from the branch that repository lands on as the host has it
@@ -70,9 +73,12 @@
 // - The door takes a commit of a quick-fix's task in the project's own
 //   checkout on the branch alone (commit-task.cjs), a commit on any other
 //   naming it and the start that puts the checkout there (`branchWayOn`).
-// - The close, once the quick-fix has landed, puts each checkout back on
-//   the branch its repository lands on (finish.cjs), as a move that leaves
-//   the quick-fix does (workunit-move.cjs), where it has the branch out —
+// - The first start records the branch the project's own checkout had out,
+//   the person's (`recordFrom`). The close, once the quick-fix has landed,
+//   puts each checkout back — the project's on that branch while it stands,
+//   any other on the branch its repository lands on (finish.cjs) — as a
+//   cancel that leaves the quick-fix does, and a move, every checkout on
+//   the branch it lands on (fix-leave.cjs), where it has the branch out —
 //   refused, nothing moved, while it holds changes not committed outside
 //   the state, naming each (`checkOutLanding`). The move then sets each
 //   repository's branch aside (`setBranchAside`): holding commits past the
@@ -87,14 +93,14 @@
 
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { tryGit, git } = require('../kernel/git.cjs');
-const { projectRepos, repoName, childrenFirst } = require('../kernel/repos.cjs');
+const { projectRepos, projectPath, repoName, childrenFirst } = require('../kernel/repos.cjs');
 const { withWorkUnitLock, loadWorkUnitManifest, saveWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { codeStatus } = require('./code.cjs');
 const { commitStateTail } = require('./commit.cjs');
 const { recordLandings } = require('./landing-record.cjs');
 const lg = require('./landing-git.cjs');
 const { quickFixBranch } = require('./landing-names.cjs');
-const { parseTaskId, shownTask, taskName } = require('./task-id.cjs');
+const { parseTaskId, shownTask, taskName, taskId } = require('./task-id.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 /** @typedef {import('../kernel/repos.cjs').Repo} Repo */
@@ -149,25 +155,60 @@ function offBranch(cwd, unit) {
   return childrenFirst(projectRepos(codeRoot(cwd))).filter((repo) => (repo.dir === '' || lg.branches(repo.path).has(branch)) && lg.branchOut(repo.path) !== branch);
 }
 
-/** The way on from each end of a fix that left the checkout holding changes: done commits the fix's own, a close gives them up. */
+/** The way on from each end of a fix that left the checkout holding changes of its own: done commits them, a close gives them up. */
 const LEFT = Object.freeze({
-  done: 'commit what is the fix\'s through the door, remove what is not, as a scenario\'s run leaves, then run it again',
-  close: 'a fix closed gives its work up with it, so remove them, then run it again',
+  done: 'commit them through the door',
+  close: 'a fix closed gives its work up with it, so put them back as they were',
 });
+
+/**
+ * The checkout's changes not committed, parted by whether a commit on its
+ * branch naming a task `task` matches — `^`/`$`-anchored, extended — changed
+ * them, so they are the work's, or none did: perhaps the person's or
+ * another conversation's, never taken for the work's.
+ * @param {string} cwd @param {string[]} dirty @param {string} task
+ * @returns {{own: string[], others: string[]}}
+ */
+function partedDirt(cwd, dirty, task) {
+  const { TRAILER } = require('./commit-task.cjs');
+  const changed = new Set(projectRepos(cwd).flatMap((repo) => (tryGit(repo.path, ['log', '-E', `--grep=^${TRAILER}: ${task}$`, '--format=', '--name-only', '--relative', 'HEAD', '--']) ?? '')
+    .split('\n').filter((file) => file !== '').map((file) => projectPath(repo.dir, file))));
+  return { own: dirty.filter((file) => changed.has(file)), others: dirty.filter((file) => !changed.has(file)) };
+}
+
+/**
+ * What a refusal over the checkout's changes says of each part
+ * (`partedDirt`): the work's, with `wayOn` for them; and those no commit
+ * of `whose` changed, never to be removed.
+ * @param {{own: string[], others: string[]}} parted @param {string} wayOn @param {string} whose @param {string} unit
+ */
+function dirtSaid({ own, others }, wayOn, whose, unit) {
+  return [
+    ...(own.length > 0 ? [`${own.join(', ')}, ${whose}'s: ${wayOn}`] : []),
+    ...(others.length > 0 ? [`${others.join(', ')}, which no commit of ${whose}'s changed, so not its — perhaps the person's or another conversation's: never remove them, but ask the person, who may set them aside until ${unit} has closed`] : []),
+  ].join('; ');
+}
 
 /**
  * Refuse, in the words of `said`, ending the fix that holds a quick-fix's
  * checkout by `end` while the checkout holds changes not committed: it
- * leaves the checkout clean as it stops holding it (R27).
+ * leaves the checkout clean as it stops holding it (R27). What its own
+ * commits never changed is named as not its (`partedDirt`).
  * @param {string} cwd @param {TaskRef} ref @param {'done'|'close'} end @param {string} said
  */
 function refuseDirtyEnd(cwd, ref, end, said) {
-  refuseDirt(cwd, (dirty) => `${said}: ${taskName(ref)} holds ${ref.unit}'s one checkout, which holds changes not committed — ${dirty} — and a fix leaves it clean as it stops holding it: ${LEFT[end]}`);
+  const dirty = dirtOf(cwd);
+  if (dirty.length === 0) return;
+  const parted = dirtSaid(partedDirt(cwd, dirty, taskId(ref)), LEFT[end], 'the fix', ref.unit);
+  throw new Error(`${said}: ${taskName(ref)} holds ${ref.unit}'s one checkout, which holds changes not committed, and a fix leaves it clean as it stops holding it — ${parted} — then run it again`);
 }
 
-/** Refuse a quick-fix's close while the project's checkout holds changes not committed. @param {string} cwd @param {string} unit */
+/** Refuse a quick-fix's close while the project's checkout holds changes not committed, what no fix's commit changed named as not the quick-fix's. @param {string} cwd @param {string} unit */
 function refuseDirtyClose(cwd, unit) {
-  refuseDirt(cwd, (dirty) => `${unit}'s tasks were built in the project's own checkout, which holds changes not committed — ${dirty} — so nothing was landed: commit them or set them aside, then close it again`);
+  const dirty = dirtOf(cwd);
+  if (dirty.length === 0) return;
+  const parted = dirtSaid(partedDirt(cwd, dirty, `${unit}-[0-9]+-[0-9]+`), 'commit them or set them aside', 'the quick-fix', unit);
+  throw new Error(`${unit}'s tasks were built in the project's own checkout, which holds changes not committed, so nothing was landed — ${parted} — then close it again`);
 }
 
 /**
@@ -187,6 +228,7 @@ function checkOutBranch(cwd, unit) {
   const read = landing().quickFixLanding(cwd, unit);
   const { cut, remakes, warnings } = readied(read, true);
   recordLandings(cwd, unit, read.found(), warnings);
+  warnings.push(...recordFrom(cwd, unit));
   for (const repo of holding(cwd, branch).filter((held) => lg.branchOut(held.path) !== branch)) lg.switchTo(repo.path, branch);
   const said = [...remakes, ...warnings];
   return { branch, ...(cut.length > 0 ? { cut_again: cut } : {}), ...(said.length > 0 ? { warnings: said } : {}) };
@@ -478,6 +520,28 @@ function recordRepos(cwd, unit, repos) {
   });
 }
 
+/**
+ * The branch the project's own checkout had out as the quick-fix first put
+ * it on its branch, recorded once on the unit's manifest, `fixes.from`, and
+ * committed — what its close and its cancel take the checkout back to
+ * (`checkOutLanding`). Answers the warnings its commit gave.
+ * @param {string} cwd @param {string} unit @returns {string[]}
+ */
+function recordFrom(cwd, unit) {
+  const out = lg.branchOut(codeRoot(cwd));
+  if (out === null || out === quickFixBranch(unit)) return [];
+  return withWorkUnitLock(cwd, unit, () => {
+    const manifest = loadWorkUnitManifest(cwd, unit);
+    if (manifest.fixes?.from !== undefined) return [];
+    manifest.fixes = { ...manifest.fixes, from: out };
+    saveWorkUnitManifest(cwd, unit, manifest);
+    /** @type {string[]} */
+    const warnings = [];
+    commitStateTail(cwd, [`${unit}/manifest.json`], `quick-fix(${unit}): record the branch it started from, ${out}`, warnings);
+    return warnings;
+  });
+}
+
 /** The project's repositories holding the quick-fix's branch, or `name`, children first. @param {string} cwd @param {string} name */
 const holding = (cwd, name) => childrenFirst(projectRepos(codeRoot(cwd))).filter((repo) => lg.branches(repo.path).has(name));
 
@@ -558,29 +622,41 @@ function cancelKept(cwd, unit) {
 }
 
 /**
- * Each checkout taken back to the branch its repository lands on, where it
- * has the quick-fix's branch out — refused first, nothing moved, while the
+ * The branch a checkout goes back to as the quick-fix leaves it: the
+ * project's own, the branch it had out at the first start (`recordFrom`)
+ * while it stands; else, and a nested one's, the branch its repository
+ * lands on.
+ * @param {string} cwd @param {Repo} repo @param {string} unit @param {string|undefined} from
+ */
+function backTo(cwd, repo, unit, from) {
+  return repo.dir === '' && from !== undefined && lg.branches(repo.path).has(from) ? from : lg.landingBranch(cwd, repo, unit);
+}
+
+/**
+ * Each checkout taken back (`backTo`) — by a move, every one to the branch
+ * its repository lands on, where the new type's work goes on — where it
+ * has the quick-fix's branch out: refused first, nothing moved, while the
  * project's holds changes not committed outside the state, naming each,
  * and while a nested one holds any. Answers the branch it took the
  * project's checkout to, or null where it had another out.
- * @param {string} cwd @param {string} unit
+ * @param {string} cwd @param {string} unit @param {boolean} [moving]
  * @returns {string|null}
  */
-function checkOutLanding(cwd, unit) {
+function checkOutLanding(cwd, unit, moving = false) {
   const branch = quickFixBranch(unit);
+  const from = moving ? undefined : loadWorkUnitManifest(cwd, unit).fixes?.from;
   const out = childrenFirst(projectRepos(codeRoot(cwd))).filter((repo) => lg.branchOut(repo.path) === branch);
   for (const repo of out) {
-    const lands = lg.landingBranch(cwd, repo, unit);
     const back = `${unit}'s tasks leave ${repo.dir === '' ? 'the project\'s checkout' : `${repoName(repo)}'s checkout`}, which holds changes not committed`;
-    const way = (/** @type {string} */ dirty) => `${back} — ${dirty} — so it was not taken back to ${lands}: commit them on ${branch} or set them aside, then say yes again`;
+    const way = (/** @type {string} */ dirty) => `${back} — ${dirty} — so it was not taken back to ${backTo(cwd, repo, unit, from)}: commit them on ${branch} or set them aside, then say yes again`;
     if (repo.dir === '') refuseDirt(cwd, way);
     else if (lg.changesAt(repo.path).length > 0) throw new Error(way(lg.changesAt(repo.path).map(lg.plain).join(', ')));
   }
   let own = null;
   for (const repo of out) {
-    const lands = lg.landingBranch(cwd, repo, unit);
-    lg.switchTo(repo.path, lands);
-    if (repo.dir === '') own = lands;
+    const to = backTo(cwd, repo, unit, from);
+    lg.switchTo(repo.path, to);
+    if (repo.dir === '') own = to;
   }
   return own;
 }

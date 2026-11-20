@@ -4,7 +4,7 @@
 
 ---
 
-Something the plan never held has turned up: a bug the person reports, something they ask for, a gap or a find an agent reports beyond its task, a finding a phase review leaves for later. Judge where it goes and its weight, and land it through one door. No code changes without a task, and a find never corrects the spec, which is concluded: one bearing on a decision lands on the ledger, at `{work_unit}.{place}`, the place the caller names: the build's, `implementation`, or the review phase's, `review`, while its fix tasks run. Write anything a door takes from a file to `.ledger/.cache/{work_unit}/build/`.
+Something the plan never held has turned up: a bug the person reports, something they ask for, a gap or a find an agent reports beyond its task, a finding a phase review leaves for later. Judge where it goes and its weight, and land it through one door. No code changes without a task, and a find never corrects the spec, which is concluded: one bearing on a decision lands on the ledger, at `{work_unit}.{place}`, the place the caller names: the build's, `implementation`, or the review phase's, `review`. Write anything a door takes from a file to `.ledger/.cache/{work_unit}/build/`.
 
 ## The Doors
 

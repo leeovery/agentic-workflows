@@ -67,8 +67,6 @@ Whenever hypotheses resolve, before the trace moves on, write `{"resolved": ["H{
 node .claude/skills/ledger-engine/scripts/engine.cjs render investigation-check-in {work_unit} --file .ledger/.cache/{work_unit}/investigation/{work_unit}/check-in.json
 ```
 
-Between check-ins, a line or two on what just flipped and why it matters keeps the person with the hunt, and never ends the turn.
-
 ### What Only the Person Can Say
 
 Each is a question on the map, saying what was tried and why it blocks the trace:

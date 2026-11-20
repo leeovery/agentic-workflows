@@ -55,7 +55,7 @@ Each move once the one before it holds:
    - Each `builder note` the entry names is an item of the round too, `notes#{k}`, note {k} of the `notes` file — a note a fix task's builder left — answered as a report's note is; a finding answering those alone is of the area `notes`.
 
    Each file-or-drop call out of scope, and each serious finding or bug dropped in scope, is your call on the ledger with its reason. A finding filed goes to the inbox once its call is in.
-3. **The fix tasks.** A round's fix tasks are one more phase of the build, its own: phase {N}, as the entry's `fix phase` line names it. Write the phase, then each fix as a task, findings one change fixes sharing it: its type `fix`, its acceptance scenario the finding's user scenario, its spec reference the area — a quick-fix's, `none`.
+3. **The fix tasks.** A round's fix tasks are one more phase of the build, its own: phase {N}, as the entry's `fix phase` line names it. Write the phase, where nothing raised during the round wrote it, then each fix as a task, findings one change fixes sharing it: its type `fix`, its acceptance scenario the finding's user scenario, its spec reference the area — a quick-fix's, `none`.
 4. **The record.** Write the round to `.ledger/.cache/{work_unit}/review/round.json` and record it, `review round {work_unit} --file .ledger/.cache/{work_unit}/review/round.json`. A refusal names every fault. A report missing or not reading goes back to its reader: brief it again, and never edit a reader's report. A tree changed is **The Working Tree**. Put every other fault right, and record the round again.
 5. **The report.** Draw it:
 
@@ -151,7 +151,7 @@ node .claude/skills/ledger-engine/scripts/engine.cjs render review-calls {work_u
 
 ## Something Outside the Plan
 
-While the fix tasks run, a bug the person reports, something they ask for, or a gap or a find an agent reports beyond its task. Load **[outside-the-plan.md](../ledger-implementation-process/references/outside-the-plan.md)** and follow its instructions as written, with place = `review` and N = the fix phase.
+At any point in the review, a bug the person reports, something they ask for, or a gap or a find an agent reports beyond its task. Load **[outside-the-plan.md](../ledger-implementation-process/references/outside-the-plan.md)** and follow its instructions as written, with place = `review` and N = the fix phase the entry's `fix phase` line names; a task goes into it once it is written, `task phase {work_unit} {N} --title "{title}"` where it is not.
 
 ## Ready to Discuss a Question
 

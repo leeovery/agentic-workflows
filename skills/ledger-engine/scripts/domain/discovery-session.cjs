@@ -224,6 +224,7 @@ function sessionOpen(cwd, name) {
  * @property {string} session_log  the closed log's path
  * @property {string|null} committed  short commit sha, or null when nothing was staged
  * @property {string} [note]       set when committed is null
+ * @property {true} [still_open]   the product's, left open for another live conversation still in it
  * @property {string[]} warnings   non-blocking failures (the commit, its push)
  */
 
@@ -251,7 +252,8 @@ function leaveTheProduct(cwd) {
  * left uncommitted. The product's, ended, takes the calling conversation
  * out of the product's conversation, and leaves the session open where
  * another live conversation is still in it, as start this work's yes does
- * (presence.cjs): the last one out ends it. A peer session's topic files
+ * (presence.cjs): the last one out ends it, and one before it is answered,
+ * and its commit says, that the session stays open. A peer session's topic files
  * are never swept: discovery runs beside live discussion sessions.
  * @param {string} cwd project root
  * @param {string} name a work unit, or `product`
@@ -275,9 +277,9 @@ function closeDiscoverySession(cwd, name, { message }) {
   if (name === PRODUCT) leaveTheProduct(cwd);
   /** @type {string[]} */
   const warnings = [];
-  const outcome = commitStateTail(cwd, place.scope(), message, warnings);
+  const outcome = commitStateTail(cwd, place.scope(), shared ? `${message} — the session stays open for another conversation still in it` : message, warnings);
   /** @type {DiscoverySessionCloseResult} */
-  const result = { session: session.number, session_log: session.log, committed: outcome.committed, warnings };
+  const result = { session: session.number, session_log: session.log, committed: outcome.committed, ...(shared ? { still_open: /** @type {true} */ (true) } : {}), warnings };
   noteCommitOutcome(result, outcome, place.retry);
   return result;
 }

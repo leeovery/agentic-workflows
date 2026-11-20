@@ -21,7 +21,7 @@ const { loadProjectManifest } = require('./reads.cjs');
 const { roadmapState } = require('./roadmap.cjs');
 const { liveItem, archivedOne, deletedItemTitle } = require('./inbox-set.cjs');
 const { workunitReceipt, topicReceipt, absorbReceipt, inboxArchiveReceipt, inboxRestoreReceipt, inboxDeleteReceipt } = require('./projections/transactions.cjs');
-const { endedReceipt } = require('./projections/start-menu.cjs');
+const { endedReceipt, backOnReceipt } = require('./projections/start-menu.cjs');
 const { startMenuRead } = require('./start-menu.cjs');
 
 /** @typedef {import('./projections/transactions.cjs').Stayed} Stayed */
@@ -151,14 +151,15 @@ function deletedReceipt(cwd, { deleted }) {
 
 /**
  * A unit's finish said in the start menu's place: its title done, and what
- * waits on the person across the project; nothing for a quick-fix, whose
- * close carries on in its conversation (24.1.5).
- * @param {string} cwd @param {{unit: string}} answered
+ * waits on the person across the project; for a quick-fix, whose close
+ * carries on in its conversation (24.1.5), the branch its checkout is back
+ * on, where the close moved it.
+ * @param {string} cwd @param {{unit: string, checkout?: string}} answered
  * @returns {string}
  */
-function finishedOf(cwd, { unit }) {
+function finishedOf(cwd, { unit, checkout }) {
   const manifest = loadWorkUnitManifest(cwd, unit);
-  if (quickFixBuild(manifest)) return '';
+  if (quickFixBuild(manifest)) return checkout === undefined ? '' : backOnReceipt(checkout);
   return endedReceipt(`${itemTitle(manifest, 'review', unit)} is done.`, startMenuRead(cwd));
 }
 

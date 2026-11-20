@@ -44,7 +44,11 @@
 // flight (6.3.12, conversation.cjs) — a subagent's call carries the
 // conversation's — of a unit not completed or cancelled, so a unit another
 // conversation ended holds nothing, a raw `git commit`
-// wherever it runs (6.3.7); and every
+// wherever it runs (6.3.7), and, from any other conversation, one run where
+// the checkout of its folder has out a branch a task in flight of a unit of
+// the project's commits on — a quick-fix's one branch in the project's own
+// checkout among them — naming that work and the way on: once it has
+// closed, or from a worktree of the conversation's own; and every
 // other git command that would land a commit on a task's branch past the
 // commit door, through which a build commits, and which finishes a merge in
 // progress — one run where the checkout of its folder has out a branch a
@@ -66,10 +70,12 @@
 // Each refusal is one line on stderr with the way on, and exit 2, the code
 // Claude Code blocks the call on. A pass says nothing and writes nothing.
 // The decision is the text's, with the files read — the position, and only
-// for a git command that makes a commit, then, with a task in flight, the
-// manifest of its unit in the project's state, found through git's own
-// files from the folder the command runs in, and for one but a raw commit,
-// the branch its checkout has out, from git's own files — and, for a write
+// for a git command that makes a commit, then — for a raw commit with none
+// in flight here, every other conversation's too — with a task in flight,
+// the manifest of its unit in the project's state, found through git's own
+// files from the folder the command runs in, and the branch its checkout
+// has out, from git's own files, for a raw commit only to weigh another
+// conversation's — and, for a write
 // into
 // the state alone, the layout loaded and whether the state's filesystem
 // ignores case: it runs before every shell command, so it never asks git. A word that expands at run time — a
@@ -85,11 +91,12 @@ const fs = require('fs');
 const path = require('path');
 const { simpleCommands } = require('../kernel/shell-reader.cjs');
 const { STATE_DIR_NAME, STATE_BRANCH, BRANCH_REF } = require('../kernel/state-root.cjs');
-const { tasksInFlight } = require('./conversation.cjs');
+const { tasksInFlight, conversationsRoot, safeId } = require('./conversation.cjs');
 const { userLevelRefusal } = require('./user-files.cjs');
 
 /** @typedef {import('../kernel/shell-reader.cjs').SimpleCommand} SimpleCommand */
 /** @typedef {{unit: string, task: string}} InFlight */
+/** The tasks in flight a commit is weighed against, each read once and only when asked: the conversation's own, and every other's. @typedef {{own: () => InFlight[], others: () => InFlight[]}} InFlightReads */
 
 /** The tools the hook stands before, as the settings' matcher names them. */
 const SHELL_HOOK_TOOLS = ['Bash'];
@@ -326,11 +333,26 @@ function onTaskBranch({ folder }, tasks) {
   return branch !== null && tasks.some(({ unit }) => isWorkBranch(unit, branch));
 }
 
-/** @param {GitCommand} git @param {() => InFlight[]} inFlight */
-function commitRefusal(git, inFlight) {
+/**
+ * Why a raw commit is refused where another conversation's task in flight
+ * commits on the branch its checkout has out, naming that work and the way
+ * on; null where none does, or the text cannot say where it runs.
+ * @param {GitCommand} git @param {() => InFlight[]} others
+ */
+function heldRefusal({ folder }, others) {
+  const branch = folder === null ? null : branchOut(folder);
+  const tasks = branch === null ? [] : others();
+  if (tasks.length === 0) return null;
+  const { isWorkBranch } = require('./landing-names.cjs');
+  const held = tasks.find(({ unit }) => isWorkBranch(unit, /** @type {string} */ (branch)));
+  return held === undefined ? null : `a raw git commit is refused here — ${branch} is checked out for task ${held.task} of ${held.unit}, in flight in another conversation, and a commit here would land in that work: commit once ${held.unit} has closed, or from a worktree of your own`;
+}
+
+/** @param {GitCommand} git @param {InFlightReads} reads */
+function commitRefusal(git, { own, others }) {
   if (inStateWorktree(git)) return REFUSED.stateCommit;
-  const tasks = inFlight();
-  return tasks.length === 0 ? null : buildCommit(tasks);
+  const tasks = own();
+  return tasks.length === 0 ? heldRefusal(git, others) : buildCommit(tasks);
 }
 
 /** Whether the options carry `flag`, a short one or a long. @param {(string|null)[]} args @param {string} flag */
@@ -339,17 +361,17 @@ const carriesFlag = (args, flag) => (flag.startsWith('--') ? carries(args, '', [
 /** The refusal of a git command of `COMMITTING`'s, by its subcommand. @param {string} subcommand */
 function committingRefusal(subcommand) {
   const { passes, way, continued } = COMMITTING[subcommand];
-  return (/** @type {GitCommand} */ git, /** @type {() => InFlight[]} */ inFlight) => {
+  return (/** @type {GitCommand} */ git, /** @type {InFlightReads} */ { own }) => {
     const { args } = git;
     if (passes.some((flags) => flags.every((flag) => carriesFlag(args, flag)))) return null;
-    const tasks = inFlight();
+    const tasks = own();
     return tasks.length === 0 || !onTaskBranch(git, tasks) ? null : buildCommitting(subcommand, continued !== undefined && carriesFlag(args, '--continue') ? continued : way, tasks);
   };
 }
 
 /**
  * Each refusal of a git command, by its subcommand.
- * @type {Readonly<Record<string, (git: GitCommand, inFlight: () => InFlight[]) => string|null>>}
+ * @type {Readonly<Record<string, (git: GitCommand, reads: InFlightReads) => string|null>>}
  */
 const GIT_REFUSALS = Object.freeze({
   worktree: worktreeRefusal,
@@ -497,20 +519,20 @@ function writeRefusal(command) {
   return null;
 }
 
-/** @param {SimpleCommand} command @param {() => InFlight[]} inFlight */
-function gitRefusal(command, inFlight) {
+/** @param {SimpleCommand} command @param {InFlightReads} reads */
+function gitRefusal(command, reads) {
   const git = gitCommand(command);
   if (git === null || git.sub === null || !Object.hasOwn(GIT_REFUSALS, git.sub)) return null;
-  return GIT_REFUSALS[git.sub](git, inFlight);
+  return GIT_REFUSALS[git.sub](git, reads);
 }
 
 /**
  * Why the hook refuses one simple command, or null.
- * @param {SimpleCommand} command @param {() => InFlight[]} inFlight
+ * @param {SimpleCommand} command @param {InFlightReads} reads
  * @returns {string|null}
  */
-function commandRefusal(command, inFlight) {
-  return gitRefusal(command, inFlight) ?? removalRefusal(command) ?? namedRefusal(command) ?? writeRefusal(command);
+function commandRefusal(command, reads) {
+  return gitRefusal(command, reads) ?? removalRefusal(command) ?? namedRefusal(command) ?? writeRefusal(command);
 }
 
 /**
@@ -546,20 +568,56 @@ function stillLive(state, unit) {
 }
 
 /**
- * The tasks in flight in the conversation `input` names, of units still in
- * progress (the header's), read once and only when asked.
- * @param {string} cwd @param {Record<string, unknown>} input @returns {() => InFlight[]}
+ * Whether the project's state holds the unit, its work not ended: another
+ * conversation's tasks may be another project's.
+ * @param {string|null} state @param {string} unit
  */
-function inFlightOf(cwd, { session_id: session }) {
-  /** @type {InFlight[]|null} */
+function liveHere(state, unit) {
+  try {
+    return state !== null && !ENDED.includes(JSON.parse(fs.readFileSync(path.join(state, unit, 'manifest.json'), 'utf8')).status);
+  } catch {
+    return false;
+  }
+}
+
+/** `read` once, its answer kept. @template T @param {() => T} read @returns {() => T} */
+function once(read) {
+  /** @type {{value: T}|null} */
   let known = null;
   return () => {
-    if (known === null) {
-      const tasks = typeof session === 'string' && session !== '' ? tasksInFlight(session) : [];
+    known ??= { value: read() };
+    return known.value;
+  };
+}
+
+/** Every conversation's folder name but `own`'s. @param {string} own */
+function otherConversations(own) {
+  try {
+    return fs.readdirSync(conversationsRoot(), { withFileTypes: true }).filter((e) => e.isDirectory() && e.name !== own).map((e) => e.name);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * The tasks in flight in the conversation `input` names, of units still in
+ * progress, and those of every other conversation, of the project's units
+ * still in progress (the header's), each read once and only when asked.
+ * @param {string} cwd @param {Record<string, unknown>} input @returns {InFlightReads}
+ */
+function inFlightOf(cwd, { session_id: session }) {
+  const named = typeof session === 'string' && session !== '' ? session : null;
+  return {
+    own: once(() => {
+      const tasks = named === null ? [] : tasksInFlight(named);
       const state = tasks.length === 0 ? null : stateOf(cwd);
-      known = tasks.filter(({ unit }) => stillLive(state, unit));
-    }
-    return known;
+      return tasks.filter(({ unit }) => stillLive(state, unit));
+    }),
+    others: once(() => {
+      const tasks = otherConversations(named === null ? '' : safeId(named)).flatMap(tasksInFlight);
+      const state = tasks.length === 0 ? null : stateOf(cwd);
+      return tasks.filter(({ unit }) => liveHere(state, unit));
+    }),
   };
 }
 
@@ -574,9 +632,9 @@ function shellRefusal(cwd, input) {
   const toolInput = input.tool_input;
   const command = toolInput !== null && typeof toolInput === 'object' ? /** @type {Record<string, unknown>} */ (toolInput).command : null;
   if (typeof command !== 'string') return null;
-  const inFlight = inFlightOf(cwd, input);
+  const reads = inFlightOf(cwd, input);
   for (const simple of simpleCommands(command, cwd)) {
-    const reason = commandRefusal(simple, inFlight);
+    const reason = commandRefusal(simple, reads);
     if (reason !== null) return reason;
   }
   return null;

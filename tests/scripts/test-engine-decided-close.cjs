@@ -11,7 +11,9 @@
 // killed after they landed run again (P9, 8.9.2); a message delivered or a question opened since the close voiding
 // it, and a feature's discussion entered again, an epic's keeping it, the
 // payload staged against it refused by the screen and the yes alike, and a
-// decision changed since voiding nothing; a topic decided at its gate taking
+// decision changed since voiding nothing; a feature's close voided while
+// its spec's writer is out handed into the spec again once staged afresh,
+// no spec having landed; a topic decided at its gate taking
 // no question, asked there or moved onto it, until a message sent to it
 // reopens it.
 //
@@ -24,9 +26,9 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 
-const { ok, output, refusedPristine, sectionOf, readManifest, statePath, killedAt, stateGit, layout } = require('./engine-harness.cjs');
+const { ok, output, refusedPristine, sectionOf, readManifest, statePath, killedAt, stateGit, layout, writeState } = require('./engine-harness.cjs');
 const { UNIT, SESSION, MADE, NOTE, ledgerHelpers } = require('./ledger-world.cjs');
-const { SOLO, PERSON, NO_PAYLOAD, NOTE_MAP, writeIn, markAllButTheClosingPass, useDecidedWorld, decidedHelpers } = require('./decided-world.cjs');
+const { SOLO, SOLO_AT, PERSON, NO_PAYLOAD, NOTE_MAP, writeIn, answeredIn, markAllButTheClosingPass, useDecidedWorld, decidedHelpers } = require('./decided-world.cjs');
 const { labelAnswers } = require('./labels.cjs');
 
 const dir = useDecidedWorld();
@@ -136,6 +138,27 @@ describe('a topic set back in progress (P9, 10.2.7)', () => {
     ok(dir(), ['enter', 'discussion', SOLO, SOLO, '--take'], { env: SESSION });
     assert.strictEqual(refusedPristine(dir(), ['decided', 'stage', SOLO, SOLO, '--file', payload(NO_PAYLOAD)], { env: SESSION }).error,
       'decided stage: decided.solo was closed before solo\'s discussion went on — a message delivered to it, a question opened on it, or the discussion entered again — its items are worked afresh and it is closed again');
+  });
+
+  it('a feature\'s close voided while its spec\'s writer is out — a message delivered after its brief — leaves the spec it writes unlanded until the topic closes again: the discussion is entered again and its mail answered there, and the close staged again hands off into the spec once more', () => {
+    close(SOLO, SOLO);
+    const first = ok(dir(), ['decided', 'stage', SOLO, SOLO, '--file', payload(NO_PAYLOAD)], { env: SESSION }).next;
+    ok(dir(), ['brief', 'spec-writer', SOLO], { env: SESSION });
+    const message = writeState(dir(), layout.cache('product', 'discovery', 'product', 'message-weekly.md'), 'A weekly tally\n\nThe person wants a weekly tally too.\n');
+    ok(dir(), ['topic', 'send', SOLO, SOLO, '--from', 'product', '--content', message, '--slug', 'weekly'], { env: SESSION });
+    writeState(dir(), layout.unit(SOLO, 'spec.md'), ['# Solo', '', '## 1. Counting', '', '### 1.1 The reset', '', '1.1.1 A tally resets at midnight.', ''].join('\n'));
+    const land = refusedPristine(dir(), ['spec', 'land', SOLO], { env: SESSION }).error;
+
+    ok(dir(), ['enter', 'discussion', SOLO, SOLO, '--take'], { env: SESSION });
+    const { question } = answeredIn(dir(), SOLO_AT, 'Is there a weekly tally?', { ...PERSON, text: 'Yes, weekly too.' });
+    ok(dir(), ['topic', 'answered', SOLO, SOLO, '001-weekly', '--entry', question], { env: SESSION });
+    markAllButTheClosingPass(dir(), SOLO, SOLO);
+    close(SOLO, SOLO);
+    const again = ok(dir(), ['decided', 'stage', SOLO, SOLO, '--file', payload(NO_PAYLOAD)], { env: SESSION }).next;
+
+    const handoff = { kind: 'handoff', skill: 'ledger-specification-process', args: ['feature', SOLO] };
+    assert.match(land, /^spec land: .*discussion/);
+    assert.deepStrictEqual([first, again], [handoff, handoff]);
   });
 
   it('voids the close with a question opened on the topic since — asked there, or moved to it, each stamping the void on the manifest in its own commit — and never with a decision changed', () => {

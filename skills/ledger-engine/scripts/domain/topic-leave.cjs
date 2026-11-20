@@ -11,10 +11,12 @@
 // drawn (18.4.20, 19.5.1, 24.1.5): the conversation leaves the unit's place
 // where it is there, its tasks in flight with it, so nothing holds the
 // conversation afterwards (`leftUnit`; `leaveUnit`, position.cjs), and its
-// session's own label comes back (session-label.cjs). A quick-fix never
-// leaves the product's conversation (start-this-work.cjs), so its close and
-// cancel leave its row there. Its move starts the new type as any start
-// does (workunit-move.cjs).
+// session's own label comes back (session-label.cjs). A quick-fix's start
+// keeps the conversation's row in the product's conversation
+// (start-this-work.cjs); leaving the unit drops it, so the product's
+// session is never held open by a window no longer in it — talking
+// product again brings the conversation back there (discovery-entry.cjs).
+// Its move starts the new type as any start does (workunit-move.cjs).
 //
 // A topic cancelled or postponed (`topic cancel`, `topic postpone`) takes
 // the conversation sitting in its discussion to its epic's menu. From
@@ -40,6 +42,8 @@
 
 const { handedSession } = require('../kernel/process.cjs');
 const { readPosition, leaveUnit } = require('./position.cjs');
+const { clearOwnQuietly } = require('./presence.cjs');
+const { PRODUCT } = require('../kernel/manifest-schema.cjs');
 const { repairTerminalLabel } = require('./session-label.cjs');
 const { UNIT_PHASES } = require('./derivations.cjs');
 const { roadmapState } = require('./roadmap.cjs');
@@ -67,14 +71,17 @@ function ontoMenu(workUnit, workType) {
 
 /**
  * A unit finished or cancelled (the header's): where the calling
- * conversation sat in it, its place and the unit's tasks in flight left and
- * its session's own label put back. Whether it left.
+ * conversation sat in it, its place and the unit's tasks in flight left,
+ * its own row in the product's conversation dropped, and its session's own
+ * label put back. Whether it left.
  * @param {string} cwd @param {string} workUnit @returns {boolean}
  */
 function leftUnit(cwd, workUnit) {
   const left = leaveUnit(handedSession(), workUnit);
-  if (left) repairTerminalLabel(cwd);
-  return left;
+  if (!left) return false;
+  clearOwnQuietly(cwd, PRODUCT, 'discovery', PRODUCT);
+  repairTerminalLabel(cwd);
+  return true;
 }
 
 /** Where the calling conversation sits, or null where it sits nowhere. */

@@ -30,7 +30,8 @@
 // what waits on the person — each unit's count, the verdicts, the inbox
 // where it holds anything — and that the menu is one `/ledger` away, a
 // finish's opening on the work done, a cancel's after its own receipt
-// (`endedReceipt`).
+// (`endedReceipt`). A quick-fix's close says only the branch its checkout
+// is back on (`backOnReceipt`).
 // ---------------------------------------------------------------------------
 
 const { PRODUCT } = require('../../kernel/manifest-schema.cjs');
@@ -208,4 +209,9 @@ function endedReceipt(opening, read) {
   return section('DISPLAY: ended', timedInstruction('markdown', 'after the response'), [...(opening === null ? [] : [opening]), waiting, ...inbox, 'The menu is one `/ledger` away.'].join(' '));
 }
 
-module.exports = { typeRank, listed, startMenuScreen, startMenuSurface, endedReceipt };
+/** The line a quick-fix's close says: the branch the checkout is back on. @param {string} branch @returns {string} */
+function backOnReceipt(branch) {
+  return section('DISPLAY: ended', timedInstruction('markdown', 'after the response'), `The checkout is back on \`${branch}\`.`);
+}
+
+module.exports = { typeRank, listed, startMenuScreen, startMenuSurface, endedReceipt, backOnReceipt };

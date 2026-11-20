@@ -44,8 +44,8 @@
 // take (14.3.3); each report of the round under review already in, reading
 // as a reviewer's, so a return to the round briefs only the readers whose
 // reports are not; the fix phase a failing round's fixes are under way in —
-// the last round's while its fix tasks wait, else, once the round under
-// review has its reads, its own, where its fix tasks are written (P14);
+// the last round's while its fix tasks wait, else the round under review's,
+// where its fix tasks are written and a request met before them goes (P14);
 // each task of the last round's fix phase not yet done, its findings'
 // fixes and any written there beyond them, and in step its fix phase
 // waiting at its merge's gate once they are (14.6.2); each builder's note
@@ -166,14 +166,14 @@ function readsLine(unit, { round, required, reads }, step) {
 
 /**
  * The fix phase a failing round's fixes are under way in (P14): the last
- * round's, while its fix tasks wait; else, while the round under review has
- * its reads, its own, where its fix tasks are written; none once the review
- * phase has ended.
+ * round's, while its fix tasks wait; else the round under review's, where
+ * its fix tasks are written, and where a request met before them goes;
+ * none once the review phase has ended.
  * @param {Record<string, any>} manifest @param {ReviewStanding} standing @returns {string|null}
  */
-function fixPhaseWords(manifest, { rounds, round, ended, waiting, reads }) {
+function fixPhaseWords(manifest, { rounds, round, ended, waiting }) {
   if (waiting.length > 0) return `phase ${fixPhase(manifest, rounds.length)}, where round ${rounds.length}'s fix tasks are built`;
-  if (ended || reads === null) return null;
+  if (ended) return null;
   return `phase ${fixPhase(manifest, round)}, where round ${round}'s fix tasks are written`;
 }
 

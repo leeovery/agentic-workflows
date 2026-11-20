@@ -86,8 +86,8 @@ const NAMED = 'a shell command naming it is refused, and the Read tool reads it'
 
 /** The engine's modules a pass of the shell guard loads, by their paths in the scripts folder. */
 const SHELL_GUARD_LOADS = [
-  'domain/brief-names.cjs', 'domain/conversation.cjs', 'domain/shell-guard.cjs', 'domain/user-files.cjs', 'engine.cjs', 'guards.cjs',
-  'kernel/call.cjs', 'kernel/file-stream.cjs', 'kernel/git-reads.cjs', 'kernel/git.cjs', 'kernel/isolated-git.cjs', 'kernel/manifest-io.cjs',
+  'domain/brief-names.cjs', 'domain/conversation.cjs', 'domain/landing-names.cjs', 'domain/shell-guard.cjs', 'domain/task-id.cjs', 'domain/user-files.cjs', 'engine.cjs', 'guards.cjs',
+  'kernel/call.cjs', 'kernel/file-stream.cjs', 'kernel/git-reads.cjs', 'kernel/git.cjs', 'kernel/isolated-git.cjs', 'kernel/manifest-io.cjs', 'kernel/manifest-schema.cjs',
   'kernel/process.cjs', 'kernel/shell-reader.cjs', 'kernel/spawn.cjs', 'kernel/state-root.cjs', 'kernel/system-config.cjs',
 ];
 
@@ -452,16 +452,40 @@ describe('raw commits (6.3.7, 6.3.12, 12.9.8)', () => {
   it('the task in flight is the conversation\'s stdin names — a subagent\'s call carries it — never the environment\'s', () => {
     const command = 'git commit -m x';
     assertRefused(guard(worktree, command, { session: BUILDING, env: { CLAUDE_CODE_SESSION_ID: IDLE } }), BUILD_COMMIT, 'the stdin\'s conversation builds');
-    assertPassed(guard(worktree, command, { session: IDLE, env: { CLAUDE_CODE_SESSION_ID: BUILDING } }), 'the environment\'s builds');
-    assertPassed(call(worktree, ['shell', 'guard'], { env: { CLAUDE_CODE_SESSION_ID: BUILDING }, stdin: hookInput(worktree, command, { session_id: undefined }) }), 'no session on stdin');
+    assertPassed(guard(dir, command, { session: IDLE, env: { CLAUDE_CODE_SESSION_ID: BUILDING } }), 'the environment\'s builds');
+    assertPassed(call(dir, ['shell', 'guard'], { env: { CLAUDE_CODE_SESSION_ID: BUILDING }, stdin: hookInput(dir, command, { session_id: undefined }) }), 'no session on stdin');
   });
 
-  it('out of a build a raw commit runs: no position, a position naming no task, or a task naming no unit', () => {
+  it('out of a build a raw commit runs on a branch no task commits on: no position, a position naming no task, or a task naming no unit', () => {
     fs.mkdirSync(path.dirname(positionPath(NAMELESS)), { recursive: true });
     fs.writeFileSync(positionPath(NAMELESS), JSON.stringify({ phase: 'implementation', topic: UNIT, tasks: [{ task: '1.1', builder: null, reviewers: [] }] }));
-    assertPassed(guard(worktree, 'git commit -m x', { session: IDLE }), 'no position');
-    assertPassed(guard(worktree, 'git commit -m x', { session: PLACED }), 'at a place, no task');
-    assertPassed(guard(worktree, 'git commit -m x', { session: NAMELESS }), 'a task, no unit');
+    assertPassed(guard(dir, 'git commit -m x', { session: IDLE }), 'no position');
+    assertPassed(guard(dir, 'git commit -m x', { session: PLACED }), 'at a place, no task');
+    assertPassed(guard(dir, 'git commit -m x', { session: NAMELESS }), 'a task, no unit');
+  });
+
+  it('two conversations: a raw commit from one, in a checkout with out a branch a task in flight in the other commits on — a task\'s own, or a quick-fix\'s in the project\'s checkout — is refused, naming that work and the way on; on another branch, or where the unit is not the project\'s, it runs', () => {
+    const held = (branch, task) => `a raw git commit is refused here — ${branch} is checked out for task ${task} of ${UNIT}, in flight in another conversation, and a commit here would land in that work: commit once ${UNIT} has closed, or from a worktree of your own`;
+    const branch = quickFixBranch(UNIT);
+    const tree = path.join(fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'shell-guard-held-'))), 'fix');
+    scratch.push(path.dirname(tree));
+    git(dir, ['worktree', 'add', '-q', '-b', branch, tree]);
+    const stranger = 'stranger-session';
+    fs.mkdirSync(path.dirname(positionPath(stranger)), { recursive: true });
+    fs.writeFileSync(positionPath(stranger), JSON.stringify({ name: 'elsewhere', phase: 'implementation', topic: 'elsewhere', tasks: [{ task: '1.1', builder: null, reviewers: [] }] }));
+    const elsewhere = path.join(path.dirname(tree), 'elsewhere');
+    git(dir, ['worktree', 'add', '-q', '-b', quickFixBranch('elsewhere'), elsewhere]);
+    try {
+      assertRefused(guard(worktree, 'git commit -m "docs: who it is for"', { session: IDLE }), held(TASK_BRANCH, '1.1'), 'a task\'s own branch, held by the other conversation');
+      assertRefused(guard(tree, 'git commit -am x', { session: PLACED }), held(branch, '1.1'), 'the quick-fix\'s branch out in a checkout');
+      assertPassed(guard(dir, 'git commit -m x', { session: IDLE }), 'the branch the project lands on');
+      assertPassed(guard(elsewhere, 'git commit -m x', { session: IDLE }), 'a unit of no state here');
+    } finally {
+      fs.rmSync(path.dirname(positionPath(stranger)), { recursive: true, force: true });
+      git(dir, ['worktree', 'remove', '--force', tree]);
+      git(dir, ['worktree', 'remove', '--force', elsewhere]);
+      git(dir, ['branch', '-q', '-D', branch, quickFixBranch('elsewhere')]);
+    }
   });
 
   it('in the state worktree a raw commit is refused at any time — from inside it, by `cd` or `pushd`, by `popd` back into it, by `-C` after `-C`, by `--work-tree` or `--git-dir` — and one beside it, or a subshell\'s `cd` left behind, or a `popd` out of it, is not', () => {
@@ -650,7 +674,7 @@ describe('the shell door', () => {
     }
   });
 
-  it('E5: the shell guard loads these modules of the engine\'s and no other, a commit\'s read of the position and a write outside the state among them', () => {
+  it('E5: the shell guard loads these modules of the engine\'s and no other, a commit\'s read of the position — every other conversation\'s, tasks in flight there, among it — and a write outside the state among them', () => {
     const loaded = loadedBy([ENGINE, 'shell', 'guard'], hookInput(dir, 'git status > status.txt && git commit -m x'));
     assert.deepStrictEqual(loaded.map((file) => path.relative(SCRIPTS, file)), SHELL_GUARD_LOADS);
   });
@@ -662,20 +686,20 @@ describe('the shell door', () => {
     assert.deepStrictEqual(loaded.map((file) => path.relative(SCRIPTS, file)), [...LAYOUT_GUARD_LOADS, ...drivers].sort());
   });
 
-  it('a pass never runs git — from the project, a code worktree or the state worktree, a commit\'s read of the position and a write into the state\'s layout read among them', () => {
+  it('the guard never runs git — passing from the project or the state worktree, a commit\'s read of the position and a write into the state\'s layout read among them, and refusing a commit in a code worktree another conversation\'s task holds', () => {
     const bin = path.join(out, 'bin');
     const ran = path.join(out, 'git-ran');
     fs.mkdirSync(bin);
     fs.writeFileSync(path.join(bin, 'git'), `#!/bin/sh\necho "$*" >> '${ran}'\n`, { mode: 0o755 });
     const env = { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}` };
-    const passes = [
-      [dir, 'git status && git commit -m x && git push origin card && rm -rf .ledger/pay/stray.md'],
-      [worktree, 'git commit -am x'],
-      [path.join(dir, STATE_DIR_NAME), 'git log -1 && git push origin HEAD && ls'],
+    const runs = [
+      [dir, 'git status && git commit -m x && git push origin card && rm -rf .ledger/pay/stray.md', 0],
+      [worktree, 'git commit -am x', 2],
+      [path.join(dir, STATE_DIR_NAME), 'git log -1 && git push origin HEAD && ls', 0],
     ];
-    for (const [cwd, command] of passes) {
+    for (const [cwd, command, status] of runs) {
       const res = spawnSync('node', [ENGINE, 'shell', 'guard'], { cwd, encoding: 'utf8', input: hookInput(cwd, command), env });
-      assert.deepStrictEqual([res.status, res.stdout, res.stderr], [0, '', ''], `${command} — from ${cwd}`);
+      assert.deepStrictEqual([res.status, res.stdout], [status, ''], `${command} — from ${cwd}`);
     }
     assert.ok(!fs.existsSync(ran), 'git never ran');
     spawnSync('git', ['--version'], { env });

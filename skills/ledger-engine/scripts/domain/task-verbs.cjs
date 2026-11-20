@@ -209,9 +209,9 @@ function requireUnit(cwd, unit) {
   if (!fs.existsSync(statePath(cwd, unit, 'manifest.json'))) throw new Error(`Work unit "${unit}" not found`);
 }
 
-/** @param {string} unit @param {number} phase */
-function unwritten(unit, phase) {
-  return new TaskRefusal(`${phaseName(unit, phase)} is not written`);
+/** A phase the tracker lacks, refused — naming, where a task is made in it, the way it is written first. @param {string} unit @param {number} phase @param {boolean} [creating] */
+function unwritten(unit, phase, creating = false) {
+  return new TaskRefusal(`${phaseName(unit, phase)} is not written${creating ? ` — write it first: engine task phase ${unit} ${phase} --title <title>` : ''}`);
 }
 
 /**
@@ -501,7 +501,7 @@ function createTask(cwd, unit, given, file, title, type) {
   const recorded = [];
   return withTracker(cwd, unit, `create in phase ${phase}`, (driver, root) => {
     const rows = driver.list(root, unit, phase);
-    if (rows === null) throw unwritten(unit, phase);
+    if (rows === null) throw unwritten(unit, phase, true);
     if (phaseMerged(cwd, unit, manifest, phase, rows)) throw new TaskRefusal(`${phaseName(unit, phase)}'s stack has landed — a task goes into a phase still being built, or the review's fix phase`);
     const ref = { unit, phase, n: Math.max(0, ...rows.map((row) => row.ref.n)) + 1 };
     if (driver.show(root, ref) !== null) throw new TaskRefusal(`the tracker already holds ${taskName(ref)}`);

@@ -11,8 +11,10 @@
 //   where no fix holds it or none has begun.
 // - Leaving (`leaveCheckout`): what the holder has not committed set aside
 //   as a park sets it aside, saying why — the move or the cancel
-//   (fix-aside.cjs) — then each checkout taken back to the branch its
-//   repository lands on where it has the quick-fix's branch out, refused
+//   (fix-aside.cjs) — then each checkout taken back where it has the
+//   quick-fix's branch out — by a cancel, the project's to the branch it had
+//   out at the first start, while it stands; else to the branch its
+//   repository lands on — refused
 //   first, nothing moved, while one still holds changes not committed, the
 //   person's own (fix-branch.cjs, `checkOutLanding`). Run again, it finds
 //   the work set aside already and the checkout back. Where the branch
@@ -52,7 +54,7 @@ function holderOf(cwd, manifest) {
 function leaveCheckout(cwd, manifest, said, why) {
   const holder = holderOf(cwd, manifest);
   if (holder !== null) setAside(cwd, holder, said, why);
-  return checkOutLanding(cwd, manifest.name);
+  return checkOutLanding(cwd, manifest.name, why === 'move');
 }
 
 module.exports = { holderOf, leaveCheckout };

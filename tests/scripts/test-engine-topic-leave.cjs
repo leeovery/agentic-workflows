@@ -37,12 +37,13 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { ok, output, refusedPristine, writeState, readState, layout, commitAll, stateGit, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
+const { ok, output, refusedPristine, writeState, readState, layout, commitAll, stateGit, statePath, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
 const { createManifest, withEnv } = require('./discovery-test-utils.cjs');
 const { leftUnit } = require('../../skills/ledger-engine/scripts/domain/topic-leave.cjs');
 const { readPosition, positionPath } = require('../../skills/ledger-engine/scripts/domain/conversation.cjs');
 const { leavePosition } = require('../../skills/ledger-engine/scripts/domain/position.cjs');
 const { shellRefusal } = require('../../skills/ledger-engine/scripts/domain/shell-guard.cjs');
+const { beatPresence } = require('../../skills/ledger-engine/scripts/domain/presence.cjs');
 
 const EPIC = 'fumi';
 const SOLO = 'solo';
@@ -340,6 +341,21 @@ describe('a finish leaves the unit (24.1.2, 19.5.1, 24.1.8)', () => {
   it('a unit finished while the conversation sits in other work leaves that place alone', () => {
     sitIn('licence');
     assert.deepStrictEqual([finished(QUICK_FIX), withEnv(ENV(), () => readPosition('sess-1'))?.topic], [false, 'licence']);
+  });
+
+  it('a quick-fix started from the product\'s talk, closed or cancelled there, drops the conversation\'s own row in the product\'s conversation, so the window holds the product\'s session open no longer; one finished from elsewhere leaves the row', () => {
+    const row = withEnv(ENV(), () => statePath(dir, '.cache', 'product', 'discovery', 'product', 'presence-sess-1'));
+    const inProductTalk = () => withEnv(ENV(), () => beatPresence(dir, 'product', 'discovery', 'product'));
+    inProductTalk();
+    sitIn('licence');
+    const elsewhere = [finished(QUICK_FIX), fs.existsSync(row)];
+    building();
+    const closed = [finished(QUICK_FIX), fs.existsSync(row)];
+    inProductTalk();
+    building();
+    run(['workunit', 'cancel', QUICK_FIX]);
+
+    assert.deepStrictEqual([elsewhere, closed, fs.existsSync(row)], [[false, true], [true, false], false]);
   });
 });
 
