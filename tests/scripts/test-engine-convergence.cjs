@@ -367,7 +367,7 @@ describe('the offer (16.8.2)', () => {
 
     const out = offer(['--asked']);
 
-    assert.strictEqual(sectionOf(out, 'DISPLAY: convergence'), '8 open: all 8 come to you — 8 of a kind I couldn\'t tell. Nothing on Note Window is mine to settle.\n');
+    assert.strictEqual(sectionOf(out, 'DISPLAY: convergence'), 'All 8 open questions on Note Window come to you by the rule, so nothing there is mine to settle.\n');
     assert.doesNotMatch(out, /=== MENU/);
   });
 

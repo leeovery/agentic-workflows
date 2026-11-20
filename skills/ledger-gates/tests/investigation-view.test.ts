@@ -224,6 +224,14 @@ FIX DIRECTION ──────────────────────
     expect(drawn(UNIT, tab).text.find(row => row.includes('Specification'))).toEndWith(' being written')
   })
 
+  test('closed into its spec, not yet concluded at ready to build, the facts line says it is closed and the specification next, and nothing turns', () => {
+    const closed = { ...fixture, standing: 'closed', waiting: [], fix_direction: { ...fixture.fix_direction, state: 'picked', pick: '1', fix: 'Harden the reads.' } } as View
+    const { text, holds } = drawn(INVESTIGATION, closed)
+
+    expect(text.slice(2, 4)).toEqual(['6 hypotheses · 3 confirmed · 10 experiments · ✓ closed · the', 'specification next'])
+    expect(holds.turns).toBe(false)
+  })
+
   test('each validation by where it stands: not started, lost, done with nothing found', () => {
     const view = {
       ...fixture,

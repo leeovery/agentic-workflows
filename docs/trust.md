@@ -67,7 +67,7 @@ A verdict you can't call yet can be skipped. It waits in the **verdict queue**, 
 
 ## Routine gates are learned
 
-Beyond the questions, some of Ledger's own stops are routine: what to do with a file you shared that could not be found, whether to wait for a topic's review agents at its close, an investigation's plan, whether to run an experiment now or later. Each asks until your answers show you pick the same row nearly every time; then it runs on its own with a one-line report in its place, such as "Investigation concluded [auto]. Moving to the specification." It asks again once your answers start to vary, and a blind ask still shows it now and then. No gate ships automatic, the authority gates never learn, and in the build's step position every one of them stops.
+Beyond the questions, some of Ledger's own stops are routine: what to do with a file you shared that could not be found, whether to wait for a topic's review agents at its close, an investigation's plan, whether to run an experiment now or later. Each asks until your answers show you pick the same row nearly every time; then it runs on its own with a one-line report in its place, such as "Analysis plan approved [auto]. Checking the hypotheses in this order." It asks again once your answers start to vary, and a blind ask still shows it now and then. No gate ships automatic, the authority gates never learn, and in the build's step position every one of them stops.
 
 ## The matrix
 

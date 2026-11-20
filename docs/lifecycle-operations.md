@@ -30,7 +30,7 @@ Pivot and absorb are open only while the feature is before its specification, an
 - every pull request open on its branches is closed, in every repository it touched, and every branch is kept under its own name;
 - for a quick-fix, the work its fix in hand had not committed is set aside, and the checkout is taken back off its branch.
 
-Nothing is lost. The branches and the work set aside wait for you, and the receipt says how to see each, bring it back or drop it. Cancelled from inside the work, no menu follows: a line says what waits on you, with the menu one `/ledger` away. A cancel that stops part way, with the code host out of reach, keeps a record of what it did: say yes to it again once the host answers.
+Nothing is lost. The branches and the work set aside wait for you, and the receipt says how to see each, bring it back or drop it. Cancelled from inside the work, no menu follows: but for a quick-fix, which carries on as its close does, a line says what waits on you, with the menu one `/ledger` away. A cancel that stops part way, with the code host out of reach, keeps a record of what it did: say yes to it again once the host answers.
 
 **Reactivate** brings cancelled work back from manage, in progress again where it stood. Its decisions return to the knowledge base, and each roadmap item its cancel put back is taken again where it still waits; the receipt says where one stays. An experiment the cancel ended stays abandoned. The pull requests it closed stay closed: the next landing opens again what it needs, and a quick-fix's next fix puts the checkout back on its branch and brings back the work its cancel set aside.
 

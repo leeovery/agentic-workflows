@@ -554,13 +554,13 @@ describe('the investigation concluded, the unit\'s tab and All work (20.12.4, 20
     atTheHunt();
   }
 
-  it('19.4.23: closed into its spec with no gate, nothing of it waits on the person — This session says it is concluded and the specification next, the banner done, the unit at its specification on the tab and All work, and the start menu counting no gate', async () => {
+  it('19.4.23: closed into its spec with no gate, nothing of it waits on the person — This session says it is closed and the specification next, its conclude still to come at ready to build, the banner done, the unit at its specification on the tab and All work, and the start menu counting no gate', async () => {
     await closed();
     createManifest(dir, 'tally', { work_type: 'feature' });
     const labels = /** @type {{head: string, tail?: string, cue?: string}[]} */ (startMenuScreen(withEnv(env(), () => startMenuRead(dir))).rows.map(({ label }) => label));
     const { view, banner } = board();
 
-    assert.deepStrictEqual([view.standing, view.waiting, banner.state, banner.facts.at(-1).text], ['concluded', [], 'done', 'concluded · the specification next']);
+    assert.deepStrictEqual([view.standing, view.waiting, banner.state, banner.facts.at(-1).text], ['closed', [], 'done', 'closed · the specification next']);
     assert.deepStrictEqual(standingOn(board, BUG), {
       tab: { now: 'specification', state: 'running', words: '', waiting: [] },
       all: { phase: 'specification', standing: 'being written', waiting: 0, total: 0 },

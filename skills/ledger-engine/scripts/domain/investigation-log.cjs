@@ -42,8 +42,11 @@
 //   replacing a decision that did or replaced one that did; and `--body`,
 //   one finding a line as the seal's are, where neither holds it: a body
 //   given besides is passed over, said among the warnings. Nothing is
-//   committed: every state commit takes the log along (6.3.2). It answers
-//   what the reads passed over, the log's lines among them, as warnings.
+//   committed: every state commit takes the log along (6.3.2) — but where
+//   the entry voids the investigation's close into its spec, which its work
+//   going on does (investigation-conclude.cjs, derivations.cjs
+//   `voidTopicClose`), the manifest is committed with it. It answers what
+//   the reads passed over, the log's lines among them, as warnings.
 // - It refuses, writing nothing: a kind it lacks, an argument out of its
 //   shape; a place whose investigation cannot take work — as the entry
 //   refuses one (topic-standing.cjs) — or has not started; a value missing,
@@ -84,7 +87,9 @@ const { resolveId } = require('./ledger-ids.cjs');
 const { notCurrent, factsOf, standingOf, answersOf, currentsOf } = require('./ledger-fold.cjs');
 const { claudesCall } = require('./ledger-events.cjs');
 const { withUnitEntries } = require('./unit-entries.cjs');
-const { itemOf } = require('./derivations.cjs');
+const { itemOf, voidTopicClose } = require('./derivations.cjs');
+const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock } = require('../kernel/manifest.cjs');
+const { commitStateTail } = require('./commit.cjs');
 const { unitInProgress, assertEnterable } = require('./topic-standing.cjs');
 const { topicLog } = require('./topic-log.cjs');
 const { listedIn, withEntry, oneLine, unbroken, fitsShape } = require('./log-lists.cjs');
@@ -514,6 +519,21 @@ function bodyOf(cwd, file) {
 }
 
 /**
+ * The investigation's close into its spec voided, where one stands, and
+ * committed with the log (the header's).
+ * @param {string} cwd @param {string} unit @param {string[]} warnings
+ */
+function voidClose(cwd, unit, warnings) {
+  const voided = withWorkUnitLock(cwd, unit, () => {
+    const manifest = loadWorkUnitManifest(cwd, unit);
+    if (!voidTopicClose(manifest, unit, new Date().toISOString())) return false;
+    saveWorkUnitManifest(cwd, unit, manifest);
+    return true;
+  });
+  if (voided) commitStateTail(cwd, [`${unit}/manifest.json`, huntLog(unit)], `investigation(${unit}): log`, warnings);
+}
+
+/**
  * `investigation-log <kind> <bugfix> …` (the header's): the entry's line,
  * and its body where one is given, put in the bugfix's log. Answers the
  * log, from the state root, the heading and the line, and what the
@@ -544,7 +564,8 @@ function logHunt(cwd, kind, positional, opts) {
   const log = statePath(cwd, huntLog(unit));
   fs.mkdirSync(path.dirname(log), { recursive: true });
   fs.writeFileSync(log, withEntry(text, HEADINGS, entry.heading, line, body));
+  voidClose(cwd, unit, warnings);
   return { log: huntLog(unit), heading: entry.heading, line: `- ${line}`, ...(warnings.length > 0 ? { warnings } : {}) };
 }
 
-module.exports = { HUNT_USAGE, HUNT_HEADINGS, huntIn, huntOf, huntLog, openInvestigation, assertRootCauseAt, huntEntries, rootCauseNow, logHunt };
+module.exports = { HUNT_USAGE, HUNT_HEADINGS, huntIn, huntOf, huntLog, openInvestigation, assertRootCauseAt, huntEntries, restedOn, rootCauseNow, logHunt };

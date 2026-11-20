@@ -23,14 +23,23 @@
 //   a cause its validator would have broken (`assertMovable`): one still
 //   running is what the move waits for.
 // - Claude's recap of the hunt, `{"hunt": "<one paragraph>", "fixes"?,
-//   "area"?}`, is staged in the topic's cache against the root cause and the
-//   fix as they stand, and the close is marked in the checklist store as a
-//   feature's decided close is, `checklists.conclusion.{unit}` — `closed`,
-//   `voided?` and `taken?`, voided alike as the investigation goes on, a
-//   message delivered, a question opened, or the investigation entered again
-//   (derivations.cjs, `voidTopicClose`) — and committed. Staged again, the
-//   close is marked again. It answers the handoff into the spec, or, once the
-//   spec is written, carries on there to ready to build's screen.
+//   "area"?}`, is kept with the close, marked in the checklist store as a
+//   feature's decided close is, `checklists.conclusion.{unit}`: `closed`,
+//   `voided?` and `taken?`, and the recap — the paragraph, the symptoms in
+//   the person's words from the log, the root cause and the fix each by its
+//   full id and its words, and what the bug is in — so a cancel, which
+//   purges the cache, keeps it. The close is voided as the investigation
+//   goes on: a message delivered, a question opened or an entry replaced at
+//   the investigation (ledger-write.cjs), an entry put in the log
+//   (investigation-log.cjs), or the investigation entered again
+//   (derivations.cjs, `voidTopicClose`). It is committed, and answers the
+//   handoff into the spec.
+// - Once the spec is written the investigation is frozen (spec-standing.cjs):
+//   a change to the root cause or the fix is the spec's, replacing it at the
+//   specification (11.8.5). Staged again then, the close is marked again with
+//   no check of the hunt, as a feature's decided stage does: the root cause
+//   and the fix are the current entries the recap's lead to, the symptoms as
+//   kept, and it carries on there to ready to build's screen.
 // - What the bug is in, for the bugs found after review (17.1.6, 17.1.9),
 //   is the recap's, drawn on no line of the screen (17.2.2): `fixes`, the
 //   unit whose code it fixes — a unit of the project but this one — left
@@ -40,10 +49,11 @@
 //   reading of it, one line of words, never checked against the map, and
 //   staged in the spelling the project's bugfixes first recorded it by
 //   where one has (bug-records.cjs).
-// - Ready to build stands on the close (`concludedClose`): the recap staged
-//   against the root cause and the fix as they stand; it draws THE HUNT,
-//   Claude's recap, the symptoms in the person's words from the log, the
-//   root cause told against them and the fix direction, and asks each
+// - Ready to build stands on the close (`concludedClose`): the recap as
+//   kept, refused where its root cause or its fix has been replaced since —
+//   staged again, it is drawn again; it draws THE HUNT, Claude's recap, the
+//   symptoms, the root cause told against them and the fix direction, in the
+//   words kept with the close, and asks each
 //   departure the person made in the investigation that this machine logged
 //   its verdict at the conclusion, one at a time (16.10.5, 16.10.11). Its
 //   yes, checking what the bug is in again, a refusal naming the restage,
@@ -56,16 +66,14 @@
 //   its passed or settled (14.6.3) — judged at the first conclude naming
 //   that unit, the moment the bug was found: a later conclude naming the
 //   same unit keeps it, one naming another unit judges it afresh, and one
-//   naming none drops it with `fixes`; and records the close as taken. The
-//   staged recap goes once the yes is committed.
+//   naming none drops it with `fixes`; and records the close as taken.
 // ---------------------------------------------------------------------------
 
-const fs = require('fs');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, listWorkUnitManifests } = require('../kernel/manifest.cjs');
-const { stateRoot, statePath } = require('../kernel/state-root.cjs');
+const { stateRoot } = require('../kernel/state-root.cjs');
 const { carrying } = require('./ledger.cjs');
 const { messageOf } = require('../kernel/call.cjs');
-const { mapOf } = require('./ledger-fold.cjs');
+const { mapOf, currentsOf } = require('./ledger-fold.cjs');
 const { withUnitEntries } = require('./unit-entries.cjs');
 const { mailboxDepth, itemOf, closedIntoSpec } = require('./derivations.cjs');
 const { validationFor } = require('./agent-state.cjs');
@@ -74,12 +82,12 @@ const { verifySetup } = require('./environment.cjs');
 const { recordedRounds, endsReview } = require('./review-phase.cjs');
 const { areaKey, bugRecords, areaSpellings } = require('./bug-records.cjs');
 const { workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
-const { huntOf, huntEntries } = require('./investigation-log.cjs');
+const { huntOf, huntEntries, restedOn } = require('./investigation-log.cjs');
 const { unitInProgress, assertPhaseHeld } = require('./topic-standing.cjs');
 const { specStanding } = require('./spec-standing.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { phaseSkill } = require('./handoff.cjs');
-const { filled, shaped, readPayload, stage, stagedAt, refusing } = require('./staged-payload.cjs');
+const { filled, shaped, readPayload, refusing } = require('./staged-payload.cjs');
 
 /** @typedef {import('./investigation-log.cjs').Rested} Rested */
 /** @typedef {import('./investigation-log.cjs').Hunt} Hunt */
@@ -95,14 +103,19 @@ const STAGE_USAGE = 'investigation stage <bugfix> --file <recap.json>';
  * @typedef {{fixes?: string, area?: string}} BugIn
  */
 
+/** An entry the recap was drawn on: its full id and its words. @typedef {{id: string, text: string}} Drawn */
+
 /**
- * Claude's recap as staged: the recap, what the bug is in, and the root
- * cause and the fix it was drawn against, by full id.
- * @typedef {{hunt: string, root_cause: string, fix: string} & BugIn} Staged
+ * What the recap was drawn on: the symptoms in the person's words, and the
+ * root cause and the fix.
+ * @typedef {{symptoms: string[], root_cause: Drawn, fix: Drawn}} DrawnOn
  */
 
-/** Where the recap is staged, in the topic's cache. @param {string} cwd @param {string} unit */
-const stagedFile = (cwd, unit) => statePath(cwd, '.cache', unit, PHASE, unit, 'conclude.json');
+/**
+ * The close as the checklist store keeps it (the header's): when it was
+ * marked, voided and taken, and Claude's recap with what it was drawn on.
+ * @typedef {{closed: string, voided?: string, taken?: string, hunt: string} & DrawnOn & BugIn} Close
+ */
 
 /** The stage's call for the unit. @param {string} unit */
 const stageCall = (unit) => `engine ${STAGE_USAGE.replace('<bugfix>', unit)}`;
@@ -224,20 +237,50 @@ function onHunt(cwd, unit, warnings, check) {
   });
 }
 
+/** An entry the hunt rests on as the recap keeps it. @param {Rested} entry @returns {Drawn} */
+const drawnOf = ({ id, text }) => ({ id, text });
+
 /**
- * The root cause and the fix the close rests on, refused where the
+ * What the close is drawn on before the spec, refused where the
  * investigation cannot close (the header's).
- * @param {string} cwd @param {string} unit @param {string[]} warnings
+ * @param {string} cwd @param {string} unit @param {string[]} warnings @returns {DrawnOn}
  */
 function closing(cwd, unit, warnings) {
-  assertOpen(cwd, unit);
-  return onHunt(cwd, unit, warnings, (rests, view) => {
+  return onHunt(cwd, unit, warnings, (rests, view, hunt) => {
     for (const validation of VALIDATIONS) assertValidated(cwd, unit, view, validation, rests);
     assertQuestionsClosed(unit, view);
     const waiting = mailboxDepth(stateRoot(cwd), unit, unit);
     if (waiting > 0) throw new Error(`${waiting} message(s) wait in its mailbox — raise and answer each first: engine topic mailbox ${unit} ${unit}`);
-    return rests;
+    return { symptoms: hunt.symptoms.map(({ text }) => text), root_cause: drawnOf(rests.rootCause), fix: drawnOf(rests.fix) };
   });
+}
+
+/** The close the manifest keeps for the unit, or null where none is. @param {Record<string, any>} manifest @param {string} unit @returns {Close|null} */
+const closeOf = (manifest, unit) => manifest.checklists?.conclusion?.[unit] ?? null;
+
+/**
+ * The current entry the kept `drawn` leads to, the latest where several,
+ * refused, naming `what`, where it leads to none.
+ * @param {UnitView} view @param {Drawn} drawn @param {string} what @returns {Drawn}
+ */
+function nowOf(view, drawn, what) {
+  const now = currentsOf(view.folded, drawn.id).filter((id) => view.entries.has(id)).at(-1);
+  if (now === undefined) throw new Error(`the ${what} the recap was drawn on, ${view.short(drawn.id)}, leads to no current entry — replace it at the spec: engine ledger replace <unit>.specification --replaces ${view.short(drawn.id)}`);
+  return drawnOf(restedOn(view, now));
+}
+
+/**
+ * What the close is drawn on once the spec is written (the header's): the
+ * close kept, its root cause and its fix the current entries theirs lead
+ * to, its symptoms as kept; refused where nothing closed it.
+ * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {string[]} warnings @returns {DrawnOn}
+ */
+function respelt(cwd, unit, manifest, warnings) {
+  const kept = closeOf(manifest, unit);
+  if (kept === null) throw new Error(`${unit}'s investigation never closed into its spec — its close is staged before the spec is written`);
+  return withUnitEntries(cwd, unit, warnings, (view) => ({
+    symptoms: kept.symptoms, root_cause: nowOf(view, kept.root_cause, 'root cause'), fix: nowOf(view, kept.fix, 'fix'),
+  }));
 }
 
 /** Whether a value is one line of words. @param {unknown} value @returns {value is string} */
@@ -282,35 +325,25 @@ function recapOf(cwd, unit, file) {
 }
 
 /**
- * The recap staged, refused where none is or it was staged before the root
- * cause or the fix changed.
- * @param {string} cwd @param {string} unit @param {{rootCause: Rested, fix: Rested}} rests @returns {Staged}
- */
-function stagedFor(cwd, unit, { rootCause, fix }) {
-  const staged = /** @type {Staged} */ (stagedAt(stagedFile(cwd, unit), `nothing is staged for ${unit}'s close — ${stageCall(unit)} stages Claude's recap`));
-  if (staged.root_cause !== rootCause.id || staged.fix !== fix.id) throw new Error(`the recap was staged before the root cause or the fix changed — ${stageCall(unit)} stages it again`);
-  return staged;
-}
-
-/**
  * The bugfix's close as ready to build stands on it and draws it (the
  * header's), null for any other unit and a bugfix whose investigation has
  * not closed into its spec: when it closed, the recap as drawn, and the
- * recap staged.
+ * close kept; refused where its root cause or its fix has been replaced
+ * since it was staged.
  * @param {string} cwd @param {Record<string, any>} manifest @param {string[]} warnings
- * @returns {{closed: string, recap: RecapView, staged: Staged}|null}
+ * @returns {{closed: string, recap: RecapView, staged: Close}|null}
  */
 function concludedClose(cwd, manifest, warnings) {
   if (manifest.work_type !== 'bugfix' || !closedIntoSpec(manifest)) return null;
   const unit = manifest.name;
-  return onHunt(cwd, unit, warnings, (rests, view, hunt) => {
-    const staged = stagedFor(cwd, unit, rests);
-    return {
-      closed: manifest.checklists.conclusion[unit].closed,
-      recap: { hunt: staged.hunt, symptoms: hunt.symptoms.map(({ text }) => text), rootCause: rests.rootCause.text, fix: rests.fix.text },
-      staged,
-    };
-  });
+  const close = /** @type {Close} */ (closeOf(manifest, unit));
+  const replaced = withUnitEntries(cwd, unit, warnings, ({ entries }) => [close.root_cause, close.fix].some(({ id }) => !entries.has(id)));
+  if (replaced) throw new Error(`the root cause or the fix has been replaced since the recap was staged — ${stageCall(unit)} stages it again`);
+  return {
+    closed: close.closed,
+    recap: { hunt: close.hunt, symptoms: close.symptoms, rootCause: close.root_cause.text, fix: close.fix.text },
+    staged: close,
+  };
 }
 
 /**
@@ -327,11 +360,10 @@ function kept(cwd, bug, earlier) {
 
 /**
  * Ready to build's yes over a bugfix's close (the header's), what the bug
- * is in checked before anything is written. Answers its steps: `take`,
- * under the writer lock before the manifest is saved, the investigation
- * concluded and its close recorded as taken; and `done`, once committed,
- * the staged recap gone.
- * @param {string} cwd @param {string} unit @param {Staged} staged
+ * is in checked before anything is written. Answers its step, `take`, under
+ * the writer lock before the manifest is saved: the investigation concluded
+ * and its close recorded as taken.
+ * @param {string} cwd @param {string} unit @param {Close} staged
  */
 function concludingYes(cwd, unit, staged) {
   /** @type {BugIn} */
@@ -350,14 +382,13 @@ function concludingYes(cwd, unit, staged) {
       Object.assign(item, { status: 'completed', concluded_at: at, ...record });
       manifest.checklists.conclusion[unit].taken = at;
     },
-    done: () => fs.rmSync(stagedFile(cwd, unit), { force: true }),
   };
 }
 
 /**
  * `investigation stage <bugfix> --file <recap.json>`: the investigation
- * closed into its spec (the header's) — Claude's recap staged and the close
- * marked — answering the handoff into the spec, or, staged again once the
+ * closed into its spec (the header's) — the close marked with Claude's
+ * recap — answering the handoff into the spec, or, staged again once the
  * spec is written, carrying on there to ready to build's screen.
  * @param {string} cwd @param {string} unit @param {string} file
  */
@@ -365,19 +396,19 @@ function stageClose(cwd, unit, file) {
   /** @type {string[]} */
   const warnings = [];
   try {
-    const { rootCause, fix } = closing(cwd, unit, warnings);
+    assertOpen(cwd, unit);
+    const written = specStanding(cwd, unit) !== 'none';
+    const drawn = written ? respelt(cwd, unit, loadWorkUnitManifest(cwd, unit), warnings) : closing(cwd, unit, warnings);
     const { hunt, ...bug } = recapOf(cwd, unit, file);
-    stage(stagedFile(cwd, unit), { hunt, ...bug, root_cause: rootCause.id, fix: fix.id });
     const closed = new Date().toISOString();
-    const manifest = withWorkUnitLock(cwd, unit, () => {
+    withWorkUnitLock(cwd, unit, () => {
       const fresh = loadWorkUnitManifest(cwd, unit);
-      ((fresh.checklists ??= {}).conclusion ??= {})[unit] = { closed };
+      ((fresh.checklists ??= {}).conclusion ??= {})[unit] = { closed, hunt, ...drawn, ...bug };
       saveWorkUnitManifest(cwd, unit, fresh);
-      return fresh;
     });
     const outcome = commitStateTail(cwd, `${unit}/manifest.json`, `investigation(${unit}): close`, warnings);
     /** @type {import('./projections/surfaces.cjs').Next} */
-    const next = specStanding(cwd, unit) === 'none' ? { kind: 'handoff', skill: phaseSkill('specification'), args: [manifest.work_type, unit] } : { kind: 'continue' };
+    const next = written ? { kind: 'continue' } : { kind: 'handoff', skill: phaseSkill('specification'), args: ['bugfix', unit] };
     /** @type {Record<string, unknown>} */
     const result = { unit, closed, ...bug, committed: outcome.committed, next };
     if (warnings.length > 0) result.warnings = warnings;

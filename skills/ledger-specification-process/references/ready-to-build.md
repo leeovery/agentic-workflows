@@ -36,13 +36,13 @@ On a feature's screen, one keeping a struck candidate after all undoes its strik
 
 ## A Change Asked For
 
-A Comment on a feature's screen that changes a product-record line or a candidate changes the payload: change it and stage it again, then draw the screen again. One on a bugfix's screen that changes the recap changes it alike.
+A Comment on a feature's screen that changes a product-record line or a candidate changes the payload: change it and stage it again, then draw the screen again. One on a bugfix's screen that changes the recap's paragraph or what the bug is in changes it alike; one that changes the root cause or the fix direction is the person's decision, below.
 
 A Comment asking for a change to the outline, the phase cut, or what the person decided is the person's decision, landed at the spec. Decide its route first:
-- **It changes a decision already made** — `ledger replace {work_unit}.specification --replaces {decision_id} --reason changed-mind` with `{"drops", "text", "why", "by": "person", "who_moved_whom": "none"}` on stdin, which stands on that decision's topic. A replacement answers no question: ask none.
+- **It changes a decision already made** — `ledger replace {work_unit}.specification --replaces {decision_id} --reason changed-mind` with `{"drops", "text", "why", "by": "person"}` on stdin, which stands on that decision's topic. The engine sets who moved whom; only where the decision replaced already stood over Claude's lean, add `"who_moved_whom"`: `claude-moved-person` where the change comes round to Claude's lean, else `person-moved-claude`. A replacement answers no question: ask none.
 - **It decides something afresh** — its question, `ledger ask {work_unit}.specification`, then the person's answer, `ledger decide {work_unit}.specification --answers {question_id}` with `{"text", "why", "rules_out", "by": "person", "given": "own", "who_moved_whom": "none"}` on stdin.
 
-Then the writer goes again, its brief carrying the decision, and its land goes through the review's next pass (**[writing-and-review.md](writing-and-review.md)**). The cut is made again, its brief carrying the decision too (**[phase-cut.md](phase-cut.md)**); then close the checklist again. On a feature's screen, a changed decision restages each line that widens it: the line widens the replacement in the payload, and the payload is staged again. Then draw the screen again.
+Then the writer goes again, its brief carrying the decision, and its land goes through the review's next pass (**[writing-and-review.md](writing-and-review.md)**). The cut is made again, its brief carrying the decision too (**[phase-cut.md](phase-cut.md)**); then close the checklist again. On a feature's screen, a changed decision restages each line that widens it: the line widens the replacement in the payload, and the payload is staged again. On a bugfix's, a changed root cause or fix direction stages the recap again with the call above, its paragraph telling the hunt as it now ends. Then draw the screen again.
 
 ## The Split
 

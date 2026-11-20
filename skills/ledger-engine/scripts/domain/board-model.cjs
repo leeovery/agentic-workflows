@@ -494,7 +494,7 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * null for their own words, and the fix in its words once set.
  * @typedef {{
  *   kind: 'investigation', unit: string, title: string, type: string, project: string, started: string|null,
- *   standing: 'investigating'|'validating-root-cause'|'fix-waits'|'validating-fix'|'concluded', waiting: HuntWait[],
+ *   standing: 'investigating'|'validating-root-cause'|'fix-waits'|'validating-fix'|'closed'|'concluded', waiting: HuntWait[],
  *   decided: {id: string, text: string}[], symptoms: string[], hypotheses: {name: string, title: string, state: string}[],
  *   experiments: {name: string, title: string, showed: string}[], root_cause: {text: string, validated: boolean}|null,
  *   validations: ValidationLine[], since: {id: string, text: string}[],

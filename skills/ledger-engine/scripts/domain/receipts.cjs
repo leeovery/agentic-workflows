@@ -152,7 +152,7 @@ function deletedReceipt(cwd, { deleted }) {
 /**
  * A unit's finish said in the start menu's place: its title done, and what
  * waits on the person across the project; nothing for a quick-fix, whose
- * close goes where its conversation came from (24.1.2).
+ * close carries on in its conversation (24.1.5).
  * @param {string} cwd @param {{unit: string}} answered
  * @returns {string}
  */

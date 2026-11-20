@@ -8,10 +8,13 @@
 // draws the recap — the hunt, the symptoms, the root cause and the fix
 // direction — before the outline and the cut, and asks the investigation's
 // verdicts at the conclusion before the spec's (19.4.23, 11.8.5, 16.10.5);
-// its yes concludes the investigation with the build begun: the item
-// completed and its close stamped, what the bug is in kept as staged, with
-// whether that unit's review had ended — kept from an earlier conclude naming
-// the same unit — and the close recorded as taken, the staged recap gone
+// it stands on the close and the recap its mark keeps, so a cancel and a
+// reactivate keep it; a root cause or a fix the person changes there is the
+// spec's replacement, the recap staged again over it with the investigation
+// frozen (11.8.5); its yes concludes the investigation with the build
+// begun: the item completed and its close stamped, what the bug is in kept
+// as staged, with whether that unit's review had ended — kept from an
+// earlier conclude naming the same unit — and the close recorded as taken
 // (17.1.9, 17.S4); what the bug is in no longer holding refuses it, naming
 // the restage, writing nothing.
 //
@@ -23,10 +26,9 @@ require('./hermetic-env.cjs');
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
-const fs = require('fs');
-const { ok, sectionOf, statePath, layout, readState, writeState, readManifest, commitAll, lastMessage } = require('./engine-harness.cjs');
+const { ok, sectionOf, layout, readState, writeState, readManifest, commitAll, lastMessage } = require('./engine-harness.cjs');
 const { unwrap } = require('./render-surfaces-world.cjs');
-const { BUGFIX, FIXES, SESSION, made, bugfix, stageRecap, worldConfig, useReadyWorld, readyHelpers } = require('./ready-to-build-world.cjs');
+const { BUGFIX, FIXES, SESSION, made, bugfix, stageRecap, worldConfig, useReadyWorld, readyHelpers, write, written, cut, closeReady, landReviewed } = require('./ready-to-build-world.cjs');
 
 const dir = useReadyWorld(bugfix);
 const { screen, pick, refused, yes } = readyHelpers(dir, BUGFIX);
@@ -49,6 +51,23 @@ function reviewSettled(unit) {
   writeState(dir(), `${unit}/review/round-2.json`, round('The finding was a nit at heart.'));
   commitAll(dir(), `${unit}'s review settled`);
 }
+
+/** The person's change to `decision` at the spec, in `text`: the replacement's id. @param {string} decision @param {string} text */
+const changedAtTheSpec = (decision, text) => write(dir(), 'replace', `${BUGFIX}.specification`, ['--replaces', decision, '--reason', 'changed-mind'], { drops: ['an empty capture'], text, why: 'The person said so.', by: 'person' });
+
+/** The spec written again over the replacement `cited`, cut and its checklist closed again. @param {string} cited */
+function specAgain(cited) {
+  written(dir(), [
+    '# Restore', '', '## 1. Saving', '', '### 1.1 The capture', '',
+    `1.1.1 A capture is checked before it is saved. [${cited}]`, '',
+    '## 1-S. Scenarios for §1', '', '1.S1 Given a full save, when an empty capture is taken, then the save is kept. (1.1.1)', '',
+  ].join('\n'), BUGFIX);
+  cut(dir(), [{ name: 'Saving', goal: 'A save is never emptied.', scenarios: ['1.S1'], sections: ['1'], relies_on: [] }], BUGFIX);
+  closeReady(dir(), BUGFIX);
+}
+
+/** The screen's recap, the outline and what follows it left off. */
+const recapShown = () => sectionOf(screen(), 'DISPLAY: ready to build').split('\n\nTHE OUTLINE')[0];
 
 /** The bugfix's manifest changed by `change`, and committed. @param {(manifest: Record<string, any>) => void} change @param {string} message */
 function changed(change, message) {
@@ -90,6 +109,40 @@ describe('the one screen (19.4.23, 11.8.5)', () => {
     assert.deepStrictEqual(stageRecap(dir()).next, { kind: 'continue' });
     assert.match(screen(), /— concluded, and ready to build/);
   });
+
+  it('stands on the recap its close keeps: cancelled at ready to build and reactivated, its spec landed and reviewed and its checklist closed again, as the purge of its cache asks, the screen draws it again, and the yes concludes the investigation', () => {
+    const before = recapShown();
+    ok(dir(), ['workunit', 'cancel', BUGFIX], { env: SESSION });
+    ok(dir(), ['workunit', 'reactivate', BUGFIX], { env: SESSION });
+    landReviewed(dir(), BUGFIX);
+    closeReady(dir(), BUGFIX);
+
+    const after = recapShown();
+    const { concluded } = yes(['--position', 'auto']);
+
+    assert.deepStrictEqual([after, readManifest(dir(), BUGFIX).phases.investigation.items[BUGFIX].concluded_at], [before, concluded]);
+  });
+});
+
+describe('a root cause or a fix the person changes at ready to build (11.8.5, 19.4.23)', () => {
+  for (const [what, decision, heading, text] of /** @type {const} */ ([
+    ['the fix', 'fix', 'FIX DIRECTION', 'Check a capture before saving it.'],
+    ['the root cause', 'cause', 'ROOT CAUSE', 'A save trusts a capture taken mid-shutdown.'],
+  ])) {
+    it(`${what} replaced at the spec refuses the screen until the recap is staged again, which takes the replacement with the investigation frozen — no validation asked again — and, its verdict given, the yes concludes the investigation`, () => {
+      const replacement = changedAtTheSpec(made[decision], text);
+      specAgain(replacement);
+      const stale = refused(['render', 'ready-to-build', BUGFIX]);
+      const restaged = stageRecap(dir());
+
+      assert.strictEqual(stale, `render ready-to-build: the root cause or the fix has been replaced since the recap was staged — engine investigation stage ${BUGFIX} --file <recap.json> stages it again`);
+      assert.deepStrictEqual(restaged.next, { kind: 'continue' });
+      assert.match(recapShown(), new RegExp(`^${heading}\n  ${text}$`, 'm'));
+      ok(dir(), pick('verdict', 'n').argv, { env: SESSION });
+      const answer = yes(['--position', 'auto']);
+      assert.deepStrictEqual(readManifest(dir(), BUGFIX).phases.investigation.items[BUGFIX], { status: 'completed', concluded_at: answer.concluded });
+    });
+  }
 });
 
 describe('the one screen\'s verdicts (16.10.5, 16.10.11)', () => {
@@ -107,14 +160,13 @@ describe('the one screen\'s verdicts (16.10.5, 16.10.11)', () => {
 });
 
 describe('the one screen\'s yes (17.1.9, 17.S4)', () => {
-  it('concludes the investigation with the build begun: the item completed and its close stamped, the close recorded as taken, the staged recap gone, in the yes\'s own commit', () => {
+  it('concludes the investigation with the build begun: the item completed and its close stamped, the close recorded as taken, in the yes\'s own commit', () => {
     const answer = yes(['--position', 'auto']);
 
     const manifest = readManifest(dir(), BUGFIX);
     assert.deepStrictEqual(manifest.phases.investigation.items[BUGFIX], { status: 'completed', concluded_at: answer.concluded });
     assert.deepStrictEqual([manifest.checklists.conclusion[BUGFIX].taken, manifest.build], [answer.concluded, { position: 'auto' }]);
     assert.strictEqual(lastMessage(dir()), `ready-to-build(${BUGFIX}): auto`);
-    assert.strictEqual(fs.existsSync(statePath(dir(), layout.cache(BUGFIX, 'investigation', BUGFIX, 'conclude.json'))), false, 'the staged recap goes');
   });
 
   it('keeps what the bug is in, as staged, with whether that unit\'s review had ended — judged now, or kept from an earlier conclude naming the same unit — counted only where it had', () => {

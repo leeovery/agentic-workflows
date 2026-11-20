@@ -289,7 +289,11 @@ function auditState(dir, label) {
 
     // A bugfix's investigation closes into its spec as a mark keyed by the
     // unit, and once ready to build's yes concludes it, its close is taken
-    // at the instant it concluded (investigation-conclude.cjs).
+    // at the instant it concluded (investigation-conclude.cjs): a bugfix
+    // whose build has begun has its investigation concluded.
+    if (manifest.work_type === 'bugfix' && derivations.buildBegun(manifest)) {
+      assert.strictEqual(manifest.phases?.investigation?.items?.[wu]?.status, 'completed', ctx(`${wu}: its build begun, its investigation not concluded`));
+    }
     const conclusion = manifest.checklists?.conclusion;
     if (conclusion !== undefined) {
       assert.deepStrictEqual([manifest.work_type, Object.keys(conclusion)], ['bugfix', [wu]], ctx(`${wu}: a conclusion close on a ${manifest.work_type}, or keyed by another topic`));

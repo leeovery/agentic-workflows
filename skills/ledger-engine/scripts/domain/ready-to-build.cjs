@@ -310,7 +310,6 @@ function readyToBuildYes(cwd, unit, position, marks) {
   const paths = [...new Set([`${unit}/manifest.json`, PROJECT_MANIFEST_SPEC, ...beside, ...(settled.record === null ? [] : [settled.record])])];
   const outcome = commitStateTail(cwd, paths, `ready-to-build(${unit}): ${position}`, warnings);
   yes?.done();
-  concluding?.done();
   const closing = {
     ...(yes === null ? {} : { decided: at, ...landed, candidates: yes.candidates, struck: yes.struck, parked }),
     ...(concluding === null ? {} : { concluded: at }),

@@ -53,8 +53,9 @@
 //   Claude's calls since the calls list was last drawn in the conversation,
 //   read as `ledger since` reads them, never a look (5.8.14): each but the
 //   root cause and the fix, which have sections of their own.
-// - Where it stands: concluded once its item is completed or it has closed
-//   into its spec (investigation-conclude.cjs); else validating the root
+// - Where it stands: concluded once its item is completed, at ready to
+//   build's yes; closed once it has closed into its spec
+//   (investigation-conclude.cjs); else validating the root
 //   cause while that validation runs; else validating the fix while that
 //   one does; else the fix direction waiting on the person; else
 //   investigating. How far it has come, as All work says it, is read from
@@ -243,7 +244,8 @@ const validationAt = (at, which) => validationsOf(at).find(({ validation }) => v
 
 /** Where the investigation stands (the header's). @param {BoardAt} at @returns {InvestigationView['standing']} */
 function standingOf(at) {
-  if (itemOf(at.manifest, PHASE, at.unit)?.status === 'completed' || closedIntoSpec(at.manifest)) return 'concluded';
+  if (itemOf(at.manifest, PHASE, at.unit)?.status === 'completed') return 'concluded';
+  if (closedIntoSpec(at.manifest)) return 'closed';
   if (validationAt(at, 'root-cause') === 'running') return 'validating-root-cause';
   if (validationAt(at, 'fix') === 'running') return 'validating-fix';
   if (waitingSeals(at).some((seal) => fixSeal(at, seal))) return 'fix-waits';
@@ -392,17 +394,18 @@ const BANNER_WORDS = Object.freeze({
   'validating-root-cause': 'validating the root cause',
   'fix-waits': 'fix direction',
   'validating-fix': 'validating the fix',
+  closed: 'closed · the specification next',
   concluded: 'concluded · the specification next',
 });
 
 /**
  * The banner's facts in an investigation (20.2.4): the type, the phase and
- * where it stands, done once concluded; what waits on the person is the
+ * where it stands, done once closed or concluded; what waits on the person is the
  * board's, from the unit's one list, which flags the banner (board.cjs).
  * @param {InvestigationView} view @returns {{state: 'running'|'done', facts: import('../board-model.cjs').Fact[]}}
  */
 function investigationBanner({ type, standing }) {
-  return { state: standing === 'concluded' ? 'done' : 'running', facts: [placeFact(type), placeFact(PHASE), fact(BANNER_WORDS[standing])] };
+  return { state: standing === 'closed' || standing === 'concluded' ? 'done' : 'running', facts: [placeFact(type), placeFact(PHASE), fact(BANNER_WORDS[standing])] };
 }
 
 /** A hunt's page's text: each line beneath its entry a paragraph. @param {string[]} lines */

@@ -110,15 +110,19 @@ function offerScreen({ title, unit, topic, run, forecast, warnings }) {
     + section(`MENU: ${OFFER_GATE}`, MENU_INSTRUCTION, menu([why, '', forecastLine(forecast.length, mine, yours)].join('\n'), rows, { question: 'Settle the rest?' }));
 }
 
+/** The topic's open questions as one line names them, by how many. @param {number} open */
+const openQuestions = (open) => (open === 1 ? 'The one open question' : `${open === 2 ? 'Both' : `All ${open}`} open questions`);
+
 /**
  * In the offer's place, on the person's word, where Claude would settle
- * none of the topic's open questions: the forecast, and that nothing is
- * Claude's to settle.
+ * none of the topic's open questions: that each comes to the person, so
+ * nothing is Claude's to settle.
  * @param {string} title @param {Forecast[]} forecast
  * @returns {string}
  */
 function nothingToSettle(title, forecast) {
-  return section('DISPLAY: convergence', CONTINUE_INSTRUCTION, `${forecastLine(forecast.length, 0, forecast)} Nothing on ${title} is mine to settle.`);
+  const come = forecast.length === 1 ? 'comes' : 'come';
+  return section('DISPLAY: convergence', CONTINUE_INSTRUCTION, `${openQuestions(forecast.length)} on ${title} ${come} to you by the rule, so nothing there is mine to settle.`);
 }
 
 module.exports = { OFFER_GATE, offerScreen, nothingToSettle };

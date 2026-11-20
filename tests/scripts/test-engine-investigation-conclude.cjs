@@ -146,9 +146,6 @@ describe('the close into the spec, with no gate — `investigation stage` (19.4.
   /** The stage's refusal, writing nothing. @param {string} [unit] @param {unknown} [recap] */
   const stageRefused = (unit = RIPE, recap = RECAP) => refused(['investigation', 'stage', unit, '--file', payload('recap.json', recap)]);
 
-  /** Where the recap is staged. */
-  const stagedRecap = () => at(layout.cache(RIPE, 'investigation', RIPE, 'conclude.json'));
-
   /** `ripe`'s close, as its manifest marks it. */
   const closeOf = () => readManifest(dir, RIPE).checklists?.conclusion?.[RIPE];
 
@@ -158,7 +155,7 @@ describe('the close into the spec, with no gate — `investigation stage` (19.4.
   /** A ledger write at `ripe`'s investigation: its short id. @param {string} verb @param {string[]} flags @param {Record<string, unknown>} content */
   const wrote = (verb, flags, content) => ledgerHelpers(() => dir).write(verb, RIPE_AT, flags, content, env()).id;
 
-  it('24.S17, 19.S15: stages the recap against the root cause and the fix, marks the close in the checklist store and commits it, the log riding along, releases its place and hands off into the spec — the item still in progress until ready to build concludes it — whose entry reads the investigation and whose writer\'s brief draws the root cause, the fix and each rule the fix keeps, never the spec\'s own', () => {
+  it('24.S17, 19.S15: marks the close in the checklist store with the recap and what it was drawn on — the symptoms, the root cause and the fix, each by its id and its words — and commits it, the log riding along, releases its place and hands off into the spec — the item still in progress until ready to build concludes it — whose entry reads the investigation and whose writer\'s brief draws the root cause, the fix and each rule the fix keeps, never the spec\'s own', () => {
     run(['enter', 'investigation', RIPE]);
     const held = () => run(['presence', 'scan', RIPE]).sessions.map(({ phase, topic }) => `${phase} ${topic}`);
     assert.deepStrictEqual(held(), [`investigation ${RIPE}`]);
@@ -174,8 +171,13 @@ describe('the close into the spec, with no gate — `investigation stage` (19.4.
     assert.deepStrictEqual(res, {
       ok: true, unit: RIPE, closed: FROZEN_AT, committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(), next: { kind: 'handoff', skill: 'ledger-specification-process', args: ['bugfix', RIPE] },
     });
-    assert.deepStrictEqual([closeOf(), readManifest(dir, RIPE).phases.investigation.items[RIPE].status], [{ closed: FROZEN_AT }, 'in-progress']);
-    assert.deepStrictEqual(JSON.parse(fs.readFileSync(stagedRecap(), 'utf8')), { ...RECAP, root_cause: ledgerHelpers(() => dir).full(ripe.rootCause), fix: ledgerHelpers(() => dir).full(ripe.fix) });
+    const { full } = ledgerHelpers(() => dir);
+    assert.deepStrictEqual([closeOf(), readManifest(dir, RIPE).phases.investigation.items[RIPE].status], [{
+      closed: FROZEN_AT, ...RECAP,
+      symptoms: ['I killed every session and restore brought nothing back', 'After a reboot the sessions were gone too'],
+      root_cause: { id: full(ripe.rootCause), text: 'Every save takes the session list as the whole truth, so an empty list empties the save.' },
+      fix: { id: full(ripe.fix), text: 'Never save an empty capture over a full one.' },
+    }, 'in-progress']);
     assert.strictEqual(lastMessage(dir), `investigation(${RIPE}): close`);
     assert.strictEqual(stateGit(dir, ['status', '--porcelain']).trim(), '', 'the log rode along');
     assert.deepStrictEqual(held(), [], 'the close releases the investigation\'s place');
@@ -198,7 +200,7 @@ describe('the close into the spec, with no gate — `investigation stage` (19.4.
     ].join('\n'));
   });
 
-  it('9.7.9: the close is voided as the investigation goes on — entered again, a message delivered to it, a question opened there — the spec waiting until it closes again; staged once the spec is written, it carries on there', () => {
+  it('9.7.9: the close is voided as the investigation goes on — entered again, a message delivered to it, a question opened there, an entry replaced there, a line put in its log — the spec waiting until it closes again; once the spec is written, the investigation is frozen', () => {
     const waits = `${RIPE}'s spec waits until its investigation closes, its root cause and fix validated and its recap staged — the investigation carries on, from the start menu`;
     const goesOn = [
       () => run(['enter', 'investigation', RIPE]),
@@ -206,6 +208,8 @@ describe('the close into the spec, with no gate — `investigation stage` (19.4.
         const asked = wrote('ask', [], { ...CLAUDE, text: 'Does a reboot lose sessions too?' });
         wrote('decide', ['--answers', asked], { ...PERSON, text: 'Yes, the same way.', why: 'The person saw it.' });
       },
+      () => wrote('replace', ['--replaces', ripe.ruling, '--reason', 'changed-mind'], { ...PERSON, drops: ['never comes back'], text: 'A session you kill stays gone.', why: 'Plainer.' }),
+      () => run(['investigation-log', 'symptom', RIPE, '--text', 'A crash mid-save lost the sessions too']),
       () => {
         writeState(dir, '.cache/scratch/also.md', 'Also on reboot\n\nIt happens on a reboot too.\n');
         run(['topic', 'send', RIPE, RIPE, '--from', RIPE, '--content', at('.cache/scratch/also.md'), '--slug', 'also-on-reboot']);
@@ -217,19 +221,12 @@ describe('the close into the spec, with no gate — `investigation stage` (19.4.
       return [typeof closeOf().voided, specOpen()];
     });
 
-    assert.deepStrictEqual(voided, Array(3).fill(['string', waits]));
+    assert.deepStrictEqual(voided, Array(5).fill(['string', waits]));
+    assert.strictEqual(stateGit(dir, ['status', '--porcelain']).trim(), '', 'the log\'s void committed with it');
     assert.match(stageRefused(), /^investigation stage: 1 message\(s\) wait/);
     writeState(dir, layout.unit(RIPE, 'spec.md'), '# Ripe\n');
     commitAll(dir, 'the spec written');
     assert.strictEqual(refused(['enter', 'investigation', RIPE]), `${RIPE} has its spec — a topic exists only before it, and a change is settled in the spec from here`);
-  });
-
-  it('staged again once the spec is written, the close carries on to ready to build\'s screen', () => {
-    stage();
-    writeState(dir, layout.unit(RIPE, 'spec.md'), '# Ripe\n');
-    commitAll(dir, 'the spec written');
-
-    assert.deepStrictEqual(stage().next, { kind: 'continue' });
   });
 
   it('a root cause replaced is validated again, and so is the fix checked against it, kept or replaced; one dispatched since and not yet taken in is named where it stands, never dispatched again, and one of the other kind, or closed unread, never counts (19.4.7, 26.4.10)', () => {
@@ -321,7 +318,7 @@ describe('the close into the spec, with no gate — `investigation stage` (19.4.
 
     const answers = [{ fixes: FEATURE, area: ' Session Restore ' }, { area: 'Boot' }].map((bug) => {
       const { fixes, area } = stage(RIPE, { ...RECAP, ...bug });
-      return [fixes, area, JSON.parse(fs.readFileSync(stagedRecap(), 'utf8')).area];
+      return [fixes, area, closeOf().area];
     });
 
     assert.deepStrictEqual(answers, [[FEATURE, 'session  restore', 'session  restore'], [undefined, 'Boot', 'Boot']]);
