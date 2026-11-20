@@ -775,20 +775,15 @@ function brownfieldOfferGateSurface(cwd) {
 // no surface reads it.
 // ---------------------------------------------------------------------------
 
-/**
- * ledger's one-time offer, standing before the walk. `--menu-only`
- * serves the return from a question.
- * @param {string} _cwd @param {Record<string, string|undefined>} args @returns {string}
- */
-function walkthroughOfferSurface(_cwd, args) {
-  return walkthroughOffer(Boolean(args['menu-only']));
+/** ledger's one-time offer, standing before the walk. @returns {string} */
+function walkthroughOfferSurface() {
+  return walkthroughOffer();
 }
 
 /**
  * One screen of the walk. `--from` carries the caller, which is what varies
  * the exits: a first run can skip to the start menu, a walk opened from help
- * goes back to it. `--menu-only` serves the return from a question — the
- * screen is already on the reader's terminal.
+ * goes back to it.
  * @param {string} _cwd @param {Record<string, string|undefined>} args @returns {string}
  */
 function walkthroughScreenSurface(_cwd, args) {
@@ -796,21 +791,17 @@ function walkthroughScreenSurface(_cwd, args) {
   if (origin === undefined || !WALKTHROUGH_ORIGINS.includes(origin)) {
     throw new Error(`render walkthrough-screen: --from must be one of ${WALKTHROUGH_ORIGINS.join(', ')}, got "${origin ?? ''}"`);
   }
-  return walkthroughScreen(loadScreen(args.screen), origin, Boolean(args['menu-only']));
+  return walkthroughScreen(loadScreen(args.screen), origin);
 }
 
 /**
  * One reference card, addressed by its slug, as the cards' row for it names
- * it: whole, with its menu. `--menu-only` serves the return from a question,
- * the card already on the reader's terminal; `--content-only`, a card shown
- * in an answer, mid-conversation, where it carries no gate.
+ * it: whole, with its menu; `--content-only`, a card shown in an answer,
+ * mid-conversation, where it carries no gate.
  * @param {string} _cwd @param {Record<string, string|undefined>} args @returns {string}
  */
 function walkthroughTopicSurface(_cwd, args) {
-  if (args['menu-only'] && args['content-only']) throw new Error('render walkthrough-topic: --menu-only and --content-only each draw part of the card — give one');
-  const card = loadCard(args.name);
-  if (args['menu-only']) return walkthroughTopic(card, 'menu');
-  return walkthroughTopic(card, args['content-only'] ? 'content' : 'whole');
+  return walkthroughTopic(loadCard(args.name), Boolean(args['content-only']));
 }
 
 /** The knowledge gate's variants a row draws by name; with none, the gate opens on reuse or mode. */

@@ -62,7 +62,7 @@ Past every stop, boot answers `go`. Work each of boot's `gates` in its order, as
 - `knowledge`, `knowledge-adopt`: Load **[knowledge-gate.md](references/knowledge-gate.md)** and follow its instructions as written, with gate = `{gate}`.
 - `brownfield`: Load **[brownfield-offer.md](references/brownfield-offer.md)** and follow its instructions as written.
 - `session-labels`: Load **[session-label-prompt.md](references/session-label-prompt.md)** and follow its instructions as written.
-- `walkthrough`, `github-rule`: work the screen `walkthrough-offer` or `github-rule-gate`. The walkthrough's `continue` is the walk: Load **[walk.md](references/walk.md)** with origin = `first-run`. A question at the offer puts back its menu alone, the screen's call with `--menu-only` added.
+- `walkthrough`, `github-rule`: work the screen `walkthrough-offer` or `github-rule-gate`. The walkthrough's `continue` is the walk: Load **[walk.md](references/walk.md)** with origin = `first-run`.
 
 ### A Setup Screen
 

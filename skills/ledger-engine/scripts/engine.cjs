@@ -424,9 +424,9 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render banner
   render work-pick --matches <unit>[/<topic>],…
   render brownfield-offer-gate
-  render walkthrough-offer [--menu-only]
-  render walkthrough-screen --screen <1..8> --from <first-run|help> [--menu-only]
-  render walkthrough-topic --name <slug> [--menu-only | --content-only]
+  render walkthrough-offer
+  render walkthrough-screen --screen <1..8> --from <first-run|help>
+  render walkthrough-topic --name <slug> [--content-only]
   render send-report <work-unit>.<topic> --sent <path>
   render map <work-unit>.<topic>
   render decided <work-unit>.<topic> [--file <payload.json>] [--calls] [--alone]
@@ -2545,7 +2545,7 @@ function runHandoff(call, argv) {
   }
 }
 
-const RENDER_FLAGS = ['warn', 'from-system', 'menu-only', 'content-only', 'calls', 'sweep', 'page', 'revised', 'asked', 'alone'];
+const RENDER_FLAGS = ['warn', 'from-system', 'content-only', 'calls', 'sweep', 'page', 'revised', 'asked', 'alone'];
 // The flags a surface takes more than once, each value its own, by surface:
 // every other surface takes each flag once.
 /** @type {Record<string, string[]>} */

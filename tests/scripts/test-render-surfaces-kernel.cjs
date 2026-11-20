@@ -285,7 +285,7 @@ describe('CLI boundary — engine render through the argv entry', () => {
     assert.match(run(['knowledge-gate', '--variant', 'retry', '--provider', 'openai', '--model', 'text-embedding-3-small']), /No OpenAI API key was found/);
     const missing = writePayload(dir, 'missing.json', { missing: ['notes/ghost.md'] });
     assert.ok(run(['import-reprompt', '--file', missing]).includes('• notes/ghost.md'));
-    assert.ok(run(['walkthrough-offer', '--menu-only']).startsWith('=== MENU: '), '--menu-only must survive boolean-flag registration through argv');
+    assert.ok(!run(['walkthrough-topic', '--name', 'kinds-of-work', '--content-only']).includes('=== MENU: '), '--content-only must survive boolean-flag registration through argv');
   });
 
   it('surface errors surface as failJson on stderr with exit 1', () => {

@@ -1551,7 +1551,7 @@ test('check 21 (a section\'s form is its marker\'s) — catches a form stated in
       'Read `all_decided` and `unresolved` from its DATA section; nothing from this call is emitted.',
       '',
       '```bash',
-      'engine render walkthrough-topic --name <slug> [--menu-only]  # one reference card: TITLE, then the content file\'s prose (markdown) and diagrams (fenced) in file order — no menu, so a card shown mid-conversation carries no gate',
+      'engine render walkthrough-topic --name <slug> [--content-only]  # one reference card: TITLE, then the content file\'s prose (markdown) and diagrams (fenced) in file order — no menu, so a card shown mid-conversation carries no gate',
       '```',
       '',
       '> *Output the next fenced block as markdown (not a code block):*',
