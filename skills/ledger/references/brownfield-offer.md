@@ -12,4 +12,4 @@ Where it is native, record it, settling the question for good:
 node .claude/skills/ledger-engine/scripts/engine.cjs brownfield record native
 ```
 
-Where it predates Ledger, say the marker **`▪ The Existing Code`** on a line of its own, then work the screen `brownfield-offer-gate` as the start's **A Setup Screen** says.
+Where it predates Ledger, say the marker **`▪ The Existing Code`** on a line of its own, then work the screen `brownfield-offer-gate` as the boot reference's **A Setup Screen** says.

@@ -19,15 +19,15 @@ Every call is `node .claude/skills/ledger-engine/scripts/engine.cjs {verb} …`;
   ITEM
   ```
 
-  One the person places in time goes on the roadmap instead, on the horizon they name; where they named none, ask which horizon, naming those `roadmap state` lists: `roadmap add {name} --horizon "{horizon}" --summary "{summary}" [--kind {kind:[bug|quick-fix]}] --origin park:product`.
-- **One of those dropped at their word** → `inbox archive {path}`, the path the capture answered, or `roadmap archive {name}`.
+  One the person places in time goes on the roadmap instead, on the horizon they name; where they named none, the horizon is theirs, among those `roadmap state` lists: `roadmap add {name} --horizon "{horizon}" --summary "{summary}" [--kind {kind:[bug|quick-fix]}] --origin park:product`.
+- **One of those dropped at their word** → `inbox archive {path}`, the path the capture answered, or `roadmap archive {name}` for an item with no work behind it.
 - **A view of the product said in passing** — a principle, a direction, who it is for, a constraint, a lean, as the person's → `discovery-log view product --text '{view}'`.
 - **A direction dropped**, with why → `discovery-log not-taken product --direction '{direction}' --why '{why}'`.
-- **A spike** — its files in the folder `asset spike product {slug}` answers; what it showed → `discovery-log spike product {spike} --tool '{tool}' --showed '{what it showed}' [--link {live link}]`.
+- **A spike** — its source in the folder `asset spike product {slug}` answers, its dependencies, builds and output in the cache twin it answers beside it; what it showed → `discovery-log spike product {spike} --tool '{tool}' --showed '{what it showed}' [--link {live link}]`.
 - **A fact about the code or the platform**, with how it is known — where this conversation works a piece of Ledger's work, at that work's place as its phase records one; else → `ledger find product.discovery`, `{"text", "how", "known", "by": "claude", "who_moved_whom": "none"}` on stdin, `known` one of `read` in the code, `documented` with its source, or `exploratory` with `command` and `result`.
-- **A reference** — what it shows, as a finding `"known": "documented"`, its link the `how`. A file shared → `asset import product '{path}'`, then `asset add product {path} --entry {id} --status reference`, `{id}` the finding's.
-- **The project's setup** — how it builds, tests and runs, what a worktree needs, what cannot run at once, its linters → `environment show`, then `environment set {part:[run|prepare|concurrency|linters]}`, the part whole as JSON on stdin.
-- **An instruction for working in this project** — a rule or a gotcha of its code, not of the product → a line in its `CLAUDE.md`.
+- **A reference** — what it shows, as a finding `"known": "documented"`, its link the `how`. A file shared → `asset import product '{path}'`, then `asset add product {imported} --entry {id} --status reference`, `{imported}` the path the import answered and `{id}` the finding's.
+- **The project's setup** — how it builds, tests and runs, what a worktree needs, what cannot run at once, its linters, on the person's yes → `environment show`, then `environment set {part:[run|prepare|concurrency|linters]}`, the part whole as JSON on stdin.
+- **An instruction for working in this project** — a rule or a gotcha of its code, not of the product, on the person's yes → a line in its `CLAUDE.md`.
 - **A point for a topic of work under way, before its spec**, on the person's stated intent — what was found or said, and what the topic is asked to decide — written to `.ledger/.cache/product/discovery/product/message-{slug}.md`, its first line the title → `topic send {work_unit} {topic} --from product --content .ledger/.cache/product/discovery/product/message-{slug}.md --slug {slug}`, then `render send-report {work_unit}.{topic} --sent {path}`, the path the send answered. Past its spec, the work's own conversation settles it.
 
 ## A Migration Owed

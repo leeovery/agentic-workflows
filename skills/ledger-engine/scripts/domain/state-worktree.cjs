@@ -66,7 +66,9 @@
 //   refused nor committed, and nor is an agent's staging of a file place, a
 //   `.txt` beside it waiting on its rename (layout.cjs, `stagedPlace`, the
 //   layout hook's own rule), so one agent mid-write holds up no commit. A merge's landing is no verb's commit, and is
-//   never checked.
+//   never checked. A commit made alone takes its own paths and no log: the
+//   capture line's, and every commit a keep's door makes (`committingAlone`),
+//   so a keep from outside the work never carries what another wrote.
 // - Its `.gitignore`: written whole at the orphan's first commit; the task
 //   driver's local files are added to it later, as its store is made.
 //
@@ -80,6 +82,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { AsyncLocalStorage } = require('async_hooks');
 const { isolatedGit, repoFacts, gitfileTarget, realpathOrSelf } = require('../kernel/isolated-git.cjs');
 const { GitError, literally } = require('../kernel/git.cjs');
 const { dropReads } = require('../kernel/git-reads.cjs');
@@ -958,6 +961,18 @@ function push(git, timeoutMs) {
   }
 }
 
+/** Whether the commits of the call under way take their paths alone (`committingAlone`). */
+const aloneHere = new AsyncLocalStorage();
+
+/**
+ * `fn`, every state commit it makes — until its promise settles, where it
+ * answers with one — taking its own paths alone, as `alone` takes them.
+ * @template T @param {() => T} fn @returns {T}
+ */
+function committingAlone(fn) {
+  return aloneHere.run(true, fn);
+}
+
 /**
  * Commit `paths`, as the working tree holds them, onto `ledger-state` in
  * the state worktree, with every log of the layout's changed since the last
@@ -1009,7 +1024,7 @@ function commitHere(root, paths, message, { contents = {}, kept = [], owned = []
   const landed = finishLanding(worktree, STATE_BRANCH);
   const changes = placedChanges(worktree);
   refuseOutsideLayout(root, changes);
-  const logs = alone ? [] : changes.filter(({ at }) => at?.kind === 'log').map(({ rel }) => rel);
+  const logs = alone || aloneHere.getStore() === true ? [] : changes.filter(({ at }) => at?.kind === 'log').map(({ rel }) => rel);
   const engines = changes.filter(({ rel, at }) => at?.kind === 'engine' && owned.some((scope) => (scope === null ? !rel.includes('/') : rel.startsWith(`${scope}/`))))
     .map(({ rel }) => rel);
   const keeps = [...keptSpecs, ...logLinks(root, logs)];
@@ -1087,6 +1102,7 @@ function pushState(root, { timeoutMs = PUSH_TIMEOUT_MS } = {}) {
 }
 
 module.exports = {
+  committingAlone,
   STATE_BRANCH,
   SIDECAR_NAME,
   STATE_LOCK_REASON,

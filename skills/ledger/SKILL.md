@@ -14,7 +14,7 @@ Load **[framework.md](../ledger-shared/references/framework.md)** and follow its
 
 ## Boot
 
-Load **[boot.md](references/boot.md)** and follow its instructions as written.
+Load **[boot.md](references/boot.md)** and follow its instructions as written, with words = `{words}`.
 
 ## The Opening
 
@@ -28,7 +28,7 @@ Past every stop, boot answers `go`. Work each of boot's `gates` in its order, as
 - `knowledge`: Load **[knowledge-gate.md](references/knowledge-gate.md)** and follow its instructions as written.
 - `brownfield`: Load **[brownfield-offer.md](references/brownfield-offer.md)** and follow its instructions as written.
 - `session-labels`: Load **[session-label-prompt.md](references/session-label-prompt.md)** and follow its instructions as written.
-- `walkthrough`, `github-rule`, `github-squash`: work the screen `walkthrough-offer`, `github-rule-gate` or `github-squash-gate`. The walkthrough's `continue` is the walk: Load **[walk.md](references/walk.md)** with origin = `first-run`. A question at the offer puts back its menu alone, the screen's call with `--menu-only` added.
+- `walkthrough`, `github-rule`, `github-squash`: work the screen `walkthrough-offer`, `github-rule-gate` or `github-squash-gate` as the boot reference's **A Setup Screen** says. The walkthrough's `continue` is the walk: Load **[walk.md](references/walk.md)** with origin = `first-run`. A question at the offer puts back its menu alone, the screen's call with `--menu-only` added.
 
 ## Where the Start Goes
 
@@ -36,7 +36,7 @@ Past every stop, boot answers `go`. Work each of boot's `gates` in its order, as
 - **`route`**: boot routed the words to Start's type call, or into the work they name. Invoke the skill its `route`'s `next` names, with its `args`, here in this conversation: ``Invoke `/{skill} {args}`.``
 
   This skill ends. The invoked skill will load into context and provide additional instructions. Terminal.
-- **`pick`**: the words name work among other words, several pieces of it, or a unit that has closed; or they carry on, with several units in progress. Words that talk about the product are never picked between: say in a line which work the talk touches, and invoke its `start` as `route` invokes its `next`. Otherwise fetch its `surface` with its `args` after it, in order.
+- **`pick`**: the words name work among other words, several pieces of it, or a unit that has closed; or they carry on, with several units in progress. Words that talk about the product are never picked between: invoke its `start` as `route` invokes its `next`. Otherwise fetch its `surface` with its `args` after it, in order.
 
   ```bash
   node .claude/skills/ledger-engine/scripts/engine.cjs render {surface} {args}

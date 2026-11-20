@@ -38,6 +38,7 @@
 const fs = require('fs');
 const path = require('path');
 const { git, literally, shortSha, untrack } = require('../kernel/git.cjs');
+const { isolatedGit } = require('../kernel/isolated-git.cjs');
 const { isObject } = require('../kernel/manifest-io.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
@@ -101,6 +102,23 @@ function finishJournal(cwd) {
 /** Whether the reshape waits on its commit: its finish journal is there, read or not. @param {string} cwd */
 function finishWaits(cwd) {
   return fs.existsSync(statePath(cwd, MIGRATION_JOURNALS, FINISH_JOURNAL));
+}
+
+/**
+ * Whether a migration waits on its review's yes: the migrations record on
+ * disk is not the one the state branch holds, as boot leaves it while the
+ * review's commit is to take it (boot.cjs `commitRecord`). One read and one
+ * git call; no record on disk waits on nothing.
+ * @param {string} cwd
+ */
+function reviewWaits(cwd) {
+  let record;
+  try {
+    record = fs.readFileSync(statePath(cwd, MIGRATIONS_RECORD), 'utf8');
+  } catch {
+    return false;
+  }
+  return isolatedGit(stateRoot(cwd)).tryRun(['show', `HEAD:${MIGRATIONS_RECORD}`]) !== record;
 }
 
 /**
@@ -218,4 +236,4 @@ function commitMigrations(cwd, message) {
   return { state, code };
 }
 
-module.exports = { MIGRATIONS_RECORD, MIGRATION_JOURNALS, finishWaits, finishing, finishOwed, projectInMain, codeFiles, commitMigrations };
+module.exports = { MIGRATIONS_RECORD, MIGRATION_JOURNALS, finishWaits, reviewWaits, finishing, finishOwed, projectInMain, codeFiles, commitMigrations };

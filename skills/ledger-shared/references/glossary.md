@@ -147,7 +147,7 @@ A pane the Claude Code mod draws beside the conversation, showing what is happen
 ## Verification
 
 **environment setup**:
-How the project runs for the work: how to run it and its tests, the steps that prepare its environment, what cannot run at once, and its linters. It is asked at the first ready to build, used once the person confirms it, and changed from manage's setup.
+How the project runs for the work: how to run it and its tests, the steps that prepare its environment, what cannot run at once, and its linters. It is asked at the first ready to build, used once the person confirms it, and changed from manage's setup or, on the person's yes, from any conversation.
 
 **verify setup**:
 How the project's product is run to prove the work: launch, a health check, drive, evidence and cleanup, with the feature map. It is built by a task the first time a build needs it, counts only once it has run end to end, and shows beside the environment setup in manage, changed only by the task that builds it.

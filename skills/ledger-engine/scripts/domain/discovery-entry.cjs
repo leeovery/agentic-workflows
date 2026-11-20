@@ -31,7 +31,9 @@
 //   - either, where the open log was last written by another conversation:
 //     that conversation's transcript, to catch the log up from its last write
 //     onward, or one line that the transcript is gone (8.14.9) — none where
-//     the log ends on a level move's pointer, its talk carried on elsewhere.
+//     the log ends on a level move's pointer, its talk carried on elsewhere,
+//     nor where that conversation still holds the place live, writing its
+//     own (18.4.21).
 //
 // The type call (`--type-call`, at the product alone): a piece of work
 // brought to Start — in the person's words, from the start menu, or from
@@ -64,7 +66,7 @@ const { statePath } = require('../kernel/state-root.cjs');
 const { sessionLogs, activeSession, sessionLogsAt, openSession } = require('./discovery-session.cjs');
 const { discoveryStanding } = require('./topic-standing.cjs');
 const { readPosition, placeLine } = require('./position.cjs');
-const { clearOwnQuietly } = require('./presence.cjs');
+const { clearOwnQuietly, peerHold } = require('./presence.cjs');
 const { runningTranscript } = require('./conversation.cjs');
 const { researchOwed } = require('./brownfield.cjs');
 const { productCall, mapCall, namedConversations, isHeader, appendLine, topicLog } = require('./topic-log.cjs');
@@ -191,8 +193,8 @@ function shapedBy(first) {
 /**
  * Where the open log was last written by a conversation other than this
  * one: its transcript, to catch the log up from, or the one line that it is
- * gone. Nothing for a log opened by this entry, nor for one a level move
- * left, ending on its pointer.
+ * gone. Nothing for a log opened by this entry, for one a level move left,
+ * ending on its pointer, nor for one whose last writer holds the place live.
  * @param {Entering} at @returns {Line[]}
  */
 function catchUp({ cwd, unit, started }) {
@@ -200,6 +202,7 @@ function catchUp({ cwd, unit, started }) {
   const log = statePath(cwd, logAt(unit, /** @type {string} */ (activeSession(cwd, unit))));
   const last = namedConversations(log).at(-1);
   if (last === undefined || last.session === handedSession() || endsOnPointer(log)) return [];
+  if (peerHold(cwd, unit, 'discovery', unit)?.session_id === last.session) return [];
   const transcript = last.transcript !== null && fs.existsSync(last.transcript) ? last.transcript : runningTranscript(last.session);
   return [as('catch up')(transcript === null
     ? `the transcript of session ${last.session}, which last wrote the log, is gone — say so in one line, and carry on from the log`

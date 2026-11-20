@@ -175,7 +175,7 @@ const { walkthroughState } = require('./walkthrough.cjs');
 const { launchLateCheck } = require('./ledger-late-check.cjs');
 const { commitUncommitted } = require('./ledger.cjs');
 const { MIGRATE_CJS, MIGRATIONS_RECORD, MIGRATION_JOURNALS, directiveStopped } = require('./directives.cjs');
-const { finishOwed, projectInMain } = require('./migration-commit.cjs');
+const { finishOwed, projectInMain, reviewWaits } = require('./migration-commit.cjs');
 const { entryOf, gatesDue } = require('./boot-route.cjs');
 const { migrationCarrier, beatMigrationQuietly, dropMigrationRow } = require('./presence.cjs');
 const { unmoved } = require('../../../ledger-migrate/scripts/old-layout.cjs');
@@ -493,8 +493,11 @@ function boot(cwd, { startAgain = false, words = '' } = {}) {
     warnings.push(...caught.warnings);
     if (caught.action === 'stopped') return null;
     keepStateIgnored(cwd, warnings);
+    const waited = reviewWaits(cwd);
     const ran = runMigrations(cwd, codeRoot(cwd), warnings);
-    return 'migrations' in ran ? { ...ran, migrationsCommitted: commitRecord(cwd, ran.migrations, warnings) } : ran;
+    if (!('migrations' in ran)) return ran;
+    const migrations = waited ? { ...ran.migrations, changed: true } : ran.migrations;
+    return { ...ran, migrations, migrationsCommitted: commitRecord(cwd, migrations, warnings) };
   });
   if (migrated === null) return { state: 'merge', stop: stopAt('merge'), warnings };
   if ('refused' in migrated) return guardStop(migrated.refused, warnings);
@@ -731,8 +734,11 @@ function carriedOn(cwd, stop, at) {
  * and that write has no other path to a commit: with nothing to review the
  * calling skill says "up to date" and never reaches its `commit
  * --migrations`. So boot leaves the record clean whenever no reviewed commit
- * will carry it — dirt this run recorded, and dirt an earlier boot left
- * behind the same way. When the review gate does fire, its own commit takes
+ * will carry it: dirt this run recorded. Dirt an earlier run left — the
+ * record differing from the state branch's before this one ran — is a
+ * migration another conversation ran, waiting on its review's yes: boot
+ * answers its run changed, so the review is named here too and its yes
+ * commits the record, never a later commit beside it. When the review gate does fire, its own commit takes
  * the record in with the diff the user approved and boot stays out of the
  * way. The migrations are already applied, so a commit failure is a warning.
  * @param {string} cwd @param {BootResult['migrations']} migrations @param {string[]} warnings

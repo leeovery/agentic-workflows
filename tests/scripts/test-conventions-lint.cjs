@@ -1061,26 +1061,6 @@ function checkNoResumeSections(files) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 40 — the keep skill opens no gate of its own (18.11.6): no file of
-// it answers a gate or fetches a screen, its one render the send report, a
-// receipt. A door's own gate is that door's, in the file it loads — the
-// migration's, in the start skill's references.
-// ---------------------------------------------------------------------------
-
-const KEEP_SKILL = 'ledger-keep';
-const OPENS_A_GATE = /\bgate ["'{]|engine\.cjs gate\b|\brender (?!send-report\b)[a-z{]/;
-
-function checkKeepOpensNoGate(files) {
-  const out = [];
-  for (const file of files.filter((f) => skillFolderOf(f) === KEEP_SKILL)) {
-    readLines(file).forEach((line, i) => {
-      if (OPENS_A_GATE.test(line)) out.push({ file, line: i + 1, message: 'the keep skill opens no gate of its own — it answers none and fetches no screen but the send report; a door\'s own gate is in the file it loads' });
-    });
-  }
-  return out;
-}
-
-// ---------------------------------------------------------------------------
 // Check 36 — a skill that draws a menu whose back draws the start menu loads
 // the start menu's reference, so the start menu's rows have their prose when
 // that `next` draws it in the skill's conversation. The start skill owns the
@@ -1148,7 +1128,6 @@ const CHECKS = [
   ['36: a skill drawing a menu whose back is the start menu loads start-menu.md', checkBackToStartLoads],
   ['37: the start skill\'s description opens with its trigger, and every other skill a handoff lands on says it is reached only through one', checkDescriptions],
   ['38: no skill keeps a section of its own on resuming', checkNoResumeSections],
-  ['40: the keep skill opens no gate of its own', checkKeepOpensNoGate],
 ];
 
 function report(violations) {
@@ -1908,20 +1887,6 @@ test('check 38 (no resume section) — 24.S14: catches a heading on resuming aft
       ['skills/ledger-x/SKILL.md', 7],
       ['skills/ledger-x/references/work.md', 1],
     ], `got ${report(checkNoResumeSections([skill, reference]))}`);
-  });
-});
-
-test('check 40 (the keep skill opens no gate of its own) — 18.11.6: catches a gate answered or a screen fetched in any file of the keep skill; passes the send report, a gate named in prose, and another skill opening one', () => {
-  withTemp((dir) => {
-    const call = (verb) => `\`\`\`bash\nnode .claude/skills/ledger-engine/scripts/engine.cjs ${verb}\n\`\`\`\n`;
-    const keep = write(dir, 'skills/ledger-keep/SKILL.md', ['Keep it.', '', call('render send-report {work_unit}.{topic} --sent {path}'), 'Work its `migration-review` gate alone.', '', call('gate "record proposal" --pick {key}'), '- A pick → `render horizon-pick --park {name}`.', ''].join('\n'));
-    const reference = write(dir, 'skills/ledger-keep/references/aside.md', '# Aside\n\nThen `gate {name} --pick {key}`.\n');
-    const other = write(dir, 'skills/ledger-roadmap/SKILL.md', call('render roadmap'));
-    assert.deepStrictEqual(checkKeepOpensNoGate([keep, reference, other]).map((x) => [posix(path.relative(dir, x.file)), x.line]), [
-      ['skills/ledger-keep/SKILL.md', 10],
-      ['skills/ledger-keep/SKILL.md', 13],
-      ['skills/ledger-keep/references/aside.md', 3],
-    ], `got ${report(checkKeepOpensNoGate([keep, reference, other]))}`);
   });
 });
 

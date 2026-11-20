@@ -777,6 +777,8 @@ describe('discovery: the product\'s conversation (8.2.7–8.2.10)', () => {
     const named = () => [...readState(dir, LOG).matchAll(/^## \S+ · session (\S+)/gm)].map(([, sessionId]) => sessionId);
     /** The conversation an entry is told to catch up from, by its transcript; null where none. @param {string} [sessionId] */
     const caughtUpFrom = (sessionId) => enter(['discovery', 'product'], sessionId).sections.match(/^catch up: read \S+\/(\S+)\.jsonl from/m)?.[1] ?? null;
+    /** The conversation `sessionId` ending, its presence dropped as Claude Code's SessionEnd hook drops it. @param {string} sessionId */
+    const ends = (sessionId) => ok(dir, ['presence', 'cleanup', sessionId], { env: env(sessionId) });
 
     it('writes no line of its own, so the next return catches up from the conversation that talked, never from the keep\'s', () => {
       transcript('sess-1');
@@ -785,12 +787,13 @@ describe('discovery: the product\'s conversation (8.2.7–8.2.10)', () => {
       fs.appendFileSync(at(LOG), '\nPricing tiers, leaning three.\n');
 
       keep('coder', 'Notes are furniture.');
+      ends('sess-1');
 
       assert.strictEqual(caughtUpFrom('sess-2'), 'sess-1');
       assert.deepStrictEqual(named(), ['sess-1', 'sess-2']);
     });
 
-    it('with the product\'s conversation live in another window, its talk after the keep stays its own: nothing to catch up on its next entry, and the next conversation catches up from it', () => {
+    it('with the product\'s conversation live in another window, its talk after the keep stays its own: nothing to catch up on its next entry, and once it ends the next conversation catches up from it', () => {
       transcript('sess-1');
       transcript('coder');
       enter(['discovery', 'product']);
@@ -798,8 +801,18 @@ describe('discovery: the product\'s conversation (8.2.7–8.2.10)', () => {
       fs.appendFileSync(at(LOG), '\n## Pricing\n\nOne-time.\n');
 
       assert.strictEqual(caughtUpFrom(), null);
+      ends('sess-1');
       assert.strictEqual(caughtUpFrom('sess-2'), 'sess-1');
       assert.deepStrictEqual(named(), ['sess-1', 'sess-2']);
+    });
+
+    it('with the product\'s conversation live in another window, a second entering beside it, once it takes the place, has nothing to catch up from it: that one writes its own (18.4.21)', () => {
+      runAs(dir, ['enter', 'discovery', 'product'], 'live', PEER);
+      fs.appendFileSync(at(LOG), '\n## Pricing\n\nOne-time.\n');
+      keep('coder', 'Notes are furniture.');
+
+      assert.doesNotMatch(enter(['discovery', 'product', '--take'], 'sess-2').sections, /^catch up:/m);
+      assert.deepStrictEqual(named(), ['live', 'sess-2']);
     });
 
     it('one that opened the session leaves the first entry no conversation to catch up from', () => {
