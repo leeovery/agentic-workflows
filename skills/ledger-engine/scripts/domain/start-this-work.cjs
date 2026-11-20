@@ -36,9 +36,10 @@
 //   — and no other live window is in that conversation, by its presence
 //   row there (presence.cjs) (8.14.11): a quick-fix's yes never closes it,
 //   nor a type call's. The yes removes the conversation's payload with its
-//   staged copy, and its presence row in the product's conversation, which
-//   the work leaves — its place there kept, which an epic's move departs
-//   from. A failure part-way leaves no unit. One commit takes it all.
+//   staged copy, and, for work that leaves, its presence row in the
+//   product's conversation — its place there kept, which an epic's move
+//   departs from; a window in a quick-fix stays in the conversation. A
+//   failure part-way leaves no unit. One commit takes it all.
 // - What comes next: a feature into its discussion, a bugfix into its
 //   investigation, each a handoff (24.1.2); a quick-fix into its work, its
 //   skill invoked in this same conversation, nothing cleared (19.5.1,
@@ -313,8 +314,8 @@ function startThisWorkYes(cwd) {
   if (draft !== null) fs.rmSync(draft.scratch, { force: true });
   fs.rmSync(stagedFile(cwd), { force: true });
   fs.rmSync(payloadFile(cwd), { force: true });
-  // The work leaves the product's talk: the conversation's row there goes, its place kept for an epic's move.
-  clearOwnQuietly(cwd, PRODUCT, 'discovery', PRODUCT);
+  // Work that leaves the product's talk takes the conversation's row there, its place kept for an epic's move.
+  if (type !== 'quick-fix') clearOwnQuietly(cwd, PRODUCT, 'discovery', PRODUCT);
 
   /** @type {string[]} */
   const warnings = [];

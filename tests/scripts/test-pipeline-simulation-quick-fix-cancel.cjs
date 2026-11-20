@@ -39,7 +39,7 @@ describe('pipeline simulation: quick-fix cancelled mid-fix', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('quick-fix: cancelled with a fix done and the next holding work not committed — the work set aside, the checkout taken back, the receipt naming both, and on in the conversation; reactivated, the work put back, the fix built, and the close landing both', () => {
+  it('quick-fix: cancelled with a fix done and the next holding work not committed — the work set aside, the checkout taken back, the receipt naming both, and on in the conversation; its task start refused while cancelled; reactivated, the work put back, the fix built, and the close landing both', () => {
     const wu = 'typo';
     startUnit(sim, 'quick-fix', wu, 'The --color flag is spelt --colour');
     sim.run(['enter', 'implementation', wu]);
@@ -58,6 +58,8 @@ describe('pipeline simulation: quick-fix cancelled mid-fix', () => {
     const cancelled = sim.run(answerGate(sim, 'cancel gate', '--pick', 'y').next.argv);
     assert.match(sim.sections, /marked as cancelled/);
     const left = git(sim.dir, ['branch', '--show-current']).trim();
+    sim.refuses(['task', 'start', wu, help], /^task start: typo is cancelled — reactivating it comes first$/);
+    const refusedOn = git(sim.dir, ['branch', '--show-current']).trim();
 
     sim.run(['workunit', 'reactivate', wu]);
     sim.run(['enter', 'implementation', wu]);
@@ -68,7 +70,7 @@ describe('pipeline simulation: quick-fix cancelled mid-fix', () => {
     sim.render(['finish', wu], { expect: 'content' });
     const yes = sim.run(answerGate(sim, 'finish', '--pick', 'y').next.argv);
 
-    assert.deepStrictEqual([cancelled.checkout, cancelled.next, left, started.put_back], ['main', CONTINUE, 'main', ['src/help.js']]);
+    assert.deepStrictEqual([cancelled.checkout, cancelled.next, left, refusedOn, started.put_back], ['main', CONTINUE, 'main', 'main', ['src/help.js']], 'a cancelled quick-fix\'s task start is refused, the checkout and the work set aside left as they are');
     assert.deepStrictEqual([yes.landed.map((/** @type {{merged: string[]}} */ { merged }) => merged), sim.manifest(wu).status], [[[flag, help]], 'completed']);
   });
 

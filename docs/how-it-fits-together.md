@@ -38,7 +38,7 @@ Two folders stay out of git. `.ledger/.cache/` holds the scratch each session ke
 
 ## Working in parallel
 
-You can have several sessions open on one project. For the talking phases that is a good way to work: one session discussing one topic while another talks through a second. Ledger keeps them aware of each other without locking anyone out. A session working a topic leaves a mark on it, and an epic's menu shows a topic another session holds as *in session*, with how long ago it was last active, struck through so you don't pick it by accident. You still can: entering it asks first.
+You can have several sessions open on one project. For the talking phases that is a good way to work: one session discussing one topic while another talks through a second. Ledger keeps them aware of each other without locking anyone out. A session working a topic leaves a mark on it, and an epic's menu shows a topic another session holds as *in session*, with how long ago it was last active, struck through so you don't pick it by accident. You still can: entering it asks first. The product's conversation is the exception: several sessions talk in it at once, and none is asked about the others.
 
 Code is different. The build runs its tasks side by side, each in a git worktree of its own, and merges them back. But a build, the review phase and a quick-fix take turns in the project's checkout, whichever piece of work each belongs to: entering one while another session holds the code names that session and asks before going on.
 

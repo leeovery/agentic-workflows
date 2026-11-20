@@ -46,7 +46,6 @@ const PAYLOAD = layout.cache('product', 'discovery', 'product', `start-this-work
 /** This conversation in the product's conversation, its place there, where it talks before a start. */
 const inTheProduct = () => ok(dir(), ['enter', 'discovery', 'product'], { env: SESSION });
 
-/** Another live window holding the product's conversation, as its entry beats there. */
 /** This conversation as its own live Claude process runs it. */
 const LIVE = Object.freeze({ ...SESSION, CLAUDE_PID: String(process.pid) });
 
@@ -175,37 +174,47 @@ describe('start this work, the yes (8.8.1, 8.14.3, 8.14.11)', () => {
     assert.deepStrictEqual([fix.product_session_closed, leftOpen, feature.product_session_closed, readManifest(dir(), '.').product_session], [null, '001', '001', undefined]);
   });
 
-  it('8.14.11: a feature started in the product\'s conversation leaves its session open while another live window is in that conversation, whichever entered last — this one taking it past the held question', () => {
+  it('8.14.11: a feature started in the product\'s conversation leaves its session open while another live window is in that conversation, whichever entered last', () => {
     noOneInTheProduct();
     inTheProduct();
     peerInTheProduct();
     const joinedFirst = started(oneTopic('feature', 'saved-filters')).product_session_closed;
-    ok(dir(), ['enter', 'discovery', 'product', '--take'], { env: LIVE });
+    ok(dir(), ['enter', 'discovery', 'product'], { env: LIVE });
     const joinedLast = started(oneTopic('feature', 'pinned-notes'));
     assert.deepStrictEqual([joinedFirst, joinedLast.product_session_closed, readManifest(dir(), '.').product_session, joinedLast.next.kind], [null, null, '001', 'handoff']);
   });
 
-  it('a bare start leaves the product\'s conversation, its presence row gone with its position, so a second window enters with no question asked', () => {
+  it('a bare start leaves the product\'s conversation, its presence row gone with its position', () => {
     noOneInTheProduct();
     ok(dir(), ['enter', 'discovery', 'product'], { env: LIVE });
     const before = productRows();
     ok(dir(), ['boot'], { env: LIVE });
-    const entered = ok(dir(), ['enter', 'discovery', 'product'], { env: PEER });
-    assert.deepStrictEqual([before, entered.entered], [[`presence-${SESSION.CLAUDE_CODE_SESSION_ID}`], true]);
+    assert.deepStrictEqual([before, productRows()], [[`presence-${SESSION.CLAUDE_CODE_SESSION_ID}`], []]);
   });
 
-  it('8.14.11: a conversation leaving the product\'s talk for a quick-fix takes its presence there with it, so the window still talking is alone in it: never asked about it, its feature ending the session', () => {
+  it('8.14.11: ending the product\'s session where another live window is still in it leaves it open, this conversation out of it; the last one out ends it', () => {
+    noOneInTheProduct();
+    ok(dir(), ['enter', 'discovery', 'product'], { env: LIVE });
+    ok(dir(), ['enter', 'discovery', 'product'], { env: PEER });
+    ok(dir(), ['discovery-session', 'close', 'product', '-m', 'discovery(product): talk so far'], { env: PEER });
+    const firstOut = [readManifest(dir(), '.').product_session, productRows()];
+    ok(dir(), ['discovery-session', 'close', 'product', '-m', 'discovery(product): end session 001'], { env: LIVE });
+    assert.deepStrictEqual([firstOut, readManifest(dir(), '.').product_session, productRows()], [['001', [`presence-${SESSION.CLAUDE_CODE_SESSION_ID}`]], undefined, []]);
+  });
+
+  it('8.14.11: a window in a quick-fix started from the product\'s talk stays in that conversation, through the fix and its cancel, so another window\'s feature leaves the session open', () => {
     noOneInTheProduct();
     ok(dir(), ['enter', 'discovery', 'product'], { env: PEER });
-    ok(dir(), ['enter', 'discovery', 'product', '--take'], { env: LIVE });
-    const both = productRows();
+    ok(dir(), ['enter', 'discovery', 'product'], { env: LIVE });
     const { brief: _brief, ...quick } = oneTopic('quick-fix', 'typo-fix');
     started(quick);
-    const left = productRows();
-    const again = ok(dir(), ['enter', 'discovery', 'product'], { env: PEER });
+    const fixing = productRows();
+    ok(dir(), ['workunit', 'cancel', 'typo-fix'], { env: LIVE });
+    const cancelled = productRows();
     output(dir(), ['render', 'start-this-work', '--file', payload(oneTopic('feature', 'saved-filters'))], { env: PEER });
     const feature = ok(dir(), ['start-this-work', 'yes'], { env: PEER });
-    assert.deepStrictEqual([both.length, left, again.entered, feature.product_session_closed], [2, ['presence-other-window'], true, '001']);
+    const both = ['presence-other-window', `presence-${SESSION.CLAUDE_CODE_SESSION_ID}`].sort();
+    assert.deepStrictEqual([fixing, cancelled, feature.product_session_closed, readManifest(dir(), '.').product_session], [both, both, null, '001']);
   });
 
   it('8.14.11: closes no session this conversation is not in — not one it ended, whose end dropped its place there, nor the next, which another window opened', () => {

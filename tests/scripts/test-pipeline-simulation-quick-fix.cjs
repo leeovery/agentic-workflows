@@ -112,7 +112,7 @@ describe('pipeline simulation: quick-fix', () => {
     assert.deepStrictEqual(unclosed, [], 'no handoff from the opener to the close (24.S8)');
     assert.deepStrictEqual([yes.landed.map((/** @type {{merged: string[]}} */ { merged }) => merged), sim.manifest(wu).status], [[['1.1', '1.3', '1.2']], 'completed']);
     assert.ok(!rows.some(({ next }) => next?.kind === 'engine' && next.argv.join(' ') === `handoff unit ${wu}`), 'closed, it leaves the start menu');
-    assert.deepStrictEqual([yes.next, left, allWork.kind, allWork.at_start, allWork.complete.map((/** @type {{unit: string}} */ { unit }) => unit)], [{ kind: 'continue' }, null, 'all', false, [wu]],
+    assert.deepStrictEqual([yes.next, left, allWork.kind, allWork.complete.map((/** @type {{unit: string}} */ { unit }) => unit)], [{ kind: 'continue' }, null, 'all', [wu]],
       '20.S24: closed, the cleared conversation at no place shows All work, the quick-fix under COMPLETE');
     assert.deepStrictEqual(JSON.parse(sim.read(['environment', 'show'])), { run: {}, prepare: [], concurrency: [], verify: null, linters: [], confirmed: null, ok: true },
       '22.S28: built and closed in a project with no environment setup, the quick-fix recorded none, so the project\'s first ready to build still asks it');

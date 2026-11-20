@@ -54,8 +54,9 @@
 // is recorded again, which carries them only to a place of the same unit.
 // A quick-fix closed or cancelled from inside its session is the exception:
 // the conversation carries on there, so it leaves the unit's place whole,
-// its tasks in flight with it, and no place left (`leaveUnit`,
-// topic-leave.cjs) — nothing holds a commit it makes afterwards.
+// its tasks in flight with it, the place it left kept for the board to draw
+// the close (`leaveUnit`, topic-leave.cjs) — nothing holds a commit it
+// makes afterwards.
 //
 // The engine is the file's one writer, and writes only for a conversation
 // that runs Ledger: recording a position marks the conversation first
@@ -438,6 +439,12 @@ function leaveFor(sessionId, { name, phase }) {
   writeJsonAtomic(leftPath(sessionId), { name, phase });
 }
 
+/** The place `prior` names kept as left where it names a phase, else none. @param {string} sessionId @param {Position|null} prior */
+function keepLeft(sessionId, prior) {
+  if (prior?.phase === undefined) fs.rmSync(leftPath(sessionId), { force: true });
+  else leaveFor(sessionId, prior);
+}
+
 /**
  * The conversation `sessionId` leaves its position for the start menu, the
  * place left kept where it names a phase, else none — the position kept for
@@ -448,8 +455,7 @@ function leavePosition(sessionId) {
   if (!sessionId) return;
   underPositionLock(sessionId, (file) => {
     const prior = storedPosition(sessionId);
-    if (prior?.phase === undefined) fs.rmSync(leftPath(sessionId), { force: true });
-    else leaveFor(sessionId, prior);
+    keepLeft(sessionId, prior);
     if (prior?.tasks === undefined) fs.rmSync(file, { force: true });
     return true;
   });
@@ -473,15 +479,17 @@ function dropPosition(sessionId) {
 /**
  * The conversation `sessionId` leaves the unit's place whole, where its
  * position names it: the position gone with the unit's tasks in flight,
- * and no place left (the header's). Whether it left.
+ * the place left kept where it names a phase (the header's). Whether it
+ * left.
  * @param {string|null} sessionId @param {string} workUnit @returns {boolean}
  */
 function leaveUnit(sessionId, workUnit) {
   if (!sessionId) return false;
   return underPositionLock(sessionId, (file) => {
-    if (storedPosition(sessionId)?.name !== workUnit) return false;
+    const prior = storedPosition(sessionId);
+    if (prior?.name !== workUnit) return false;
+    keepLeft(sessionId, prior);
     fs.rmSync(file, { force: true });
-    fs.rmSync(leftPath(sessionId), { force: true });
     return true;
   });
 }

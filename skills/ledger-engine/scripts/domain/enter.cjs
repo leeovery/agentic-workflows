@@ -9,7 +9,8 @@
 // and what the phase's own row refuses. Where another live session holds the
 // place, or what the row holds beyond it, it asks first (18.4.21, 12.7.8) —
 // its question the whole answer, nothing written — and `--take` enters all
-// the same. Otherwise it starts what is not yet started, writing nothing
+// the same; but the product's conversation, which several conversations
+// share, each with a presence row of its own (presence.cjs), asks no one. Otherwise it starts what is not yet started, writing nothing
 // ahead of its opening (9.3.1), and commits that start — discussion's entry
 // at a feature's topic closed into its spec voiding that close, the
 // discussion going on (9.7.9), in the same commit; records where the
@@ -601,14 +602,15 @@ function waysOn(at, carried) {
 /**
  * The question put where the place is held, or null where it is not: the
  * row's own hold first, where it has one — the build's, the checkout's code
- * — then another live session at the place itself.
+ * — then another live session at the place itself, but the product's (the
+ * header's).
  * @param {Entry} entry @param {Standing} at @param {string} place @param {Carried} carried
  * @returns {string|null}
  */
 function heldQuestion(entry, at, place, carried) {
   const ways = waysOn(at, carried);
   const own = entry.held?.(at, ways) ?? null;
-  if (own !== null) return own;
+  if (own !== null || at.unit === PRODUCT) return own;
   const hold = peerHold(at.cwd, at.unit, at.phase, place);
   if (hold === null) return null;
   return heldGate({ unit: at.unit, phase: at.phase, place, title: topicTitle(at.manifest, place), ageSeconds: hold.age_seconds, ...ways });

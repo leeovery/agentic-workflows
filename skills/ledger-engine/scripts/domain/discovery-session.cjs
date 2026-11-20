@@ -19,7 +19,8 @@
 // close clears the marker and commits the place's scope with the caller's
 // message — the unit's discovery scope, or the product's — the log with it;
 // the product's takes the calling conversation out of the product's
-// conversation, its position and its presence row there gone.
+// conversation, its position and its presence row there gone, and clears
+// the marker only where no other live conversation is still in it.
 // The knowledge base never indexes a log (8.14.7).
 //
 // The log's content is the conversation's: the engine writes no prose of its
@@ -41,7 +42,7 @@ const { commitStateTail, noteCommitOutcome, discoveryScope, PRODUCT_SCOPE } = re
 const { statePath } = require('../kernel/state-root.cjs');
 const { PRODUCT_SESSIONS } = require('./layout.cjs');
 const { handedSession } = require('../kernel/process.cjs');
-const { clearOwnQuietly } = require('./presence.cjs');
+const { clearOwnQuietly, peerHold } = require('./presence.cjs');
 
 const SESSION_LOG = /^session-(\d+)\.md$/;
 
@@ -235,8 +236,10 @@ function leaveTheProduct(cwd) {
  * Close a place's open session: clear the marker, then commit the place's
  * scope with the caller's message — one call covers whatever the session
  * left uncommitted. The product's, ended, takes the calling conversation
- * out of the product's conversation. A peer session's topic files are
- * never swept: discovery runs beside live discussion sessions.
+ * out of the product's conversation, and leaves the session open where
+ * another live conversation is still in it, as start this work's yes does
+ * (presence.cjs): the last one out ends it. A peer session's topic files
+ * are never swept: discovery runs beside live discussion sessions.
  * @param {string} cwd project root
  * @param {string} name a work unit, or `product`
  * @param {{message: string}} opts  commit message — it varies by caller, so it arrives via -m
@@ -244,14 +247,16 @@ function leaveTheProduct(cwd) {
  */
 function closeDiscoverySession(cwd, name, { message }) {
   const place = sessionPlace(cwd, name);
+  const shared = name === PRODUCT && peerHold(cwd, PRODUCT, 'discovery', PRODUCT) !== null;
   const session = place.withMarker((marker) => {
     if (marker.active === null) throw new Error(`no discovery session is open for "${name}" — nothing to close`);
     const log = statePath(cwd, place.logs, `session-${marker.active}.md`);
     if (!fs.existsSync(log)) {
       throw new Error(`session log missing on disk: ${log} — the active-session marker names a session with no log`);
     }
-    marker.set(null);
-    return { number: marker.active, log };
+    const number = marker.active;
+    if (!shared) marker.set(null);
+    return { number, log };
   });
 
   if (name === PRODUCT) leaveTheProduct(cwd);
@@ -266,5 +271,5 @@ function closeDiscoverySession(cwd, name, { message }) {
 
 module.exports = {
   openSession, closeDiscoverySession, sessionLogs, latestSessionLog, productSession,
-  activeSession, sessionLogsAt, inTheProduct, leaveTheProduct,
+  activeSession, sessionLogsAt, inTheProduct,
 };

@@ -322,6 +322,13 @@ describe('a place another live session holds (18.4.21)', () => {
     assert.deepStrictEqual(ok(dir, ['gate', 'held topic gate', '--pick', 'n'], { env: env() }).next, { kind: 'handoff', skill: 'ledger-continue-epic', args: [EPIC] });
   });
 
+  it('a move from the product\'s conversation into an epic\'s discovery another session holds stays a move past the question', () => {
+    enter(['discovery', 'product']);
+    runAs(dir, ['presence', 'beat', EPIC, 'discovery', EPIC], 'peer', PEER);
+    assert.strictEqual(enter(['discovery', EPIC, '--move']).res.entered, false);
+    assert.deepStrictEqual(ok(dir, ['gate', 'held topic gate', '--pick', 'y'], { env: env() }).next.argv, ['enter', 'discovery', EPIC, '--take', '--move']);
+  });
+
   it('a single-topic unit has no menu to go back to: leaving it carries on, to the end of the turn', () => {
     runAs(dir, ['presence', 'beat', FEATURE, 'discussion', FEATURE], 'peer', PEER);
     assert.strictEqual(enter(['discussion', FEATURE]).res.entered, false);
@@ -770,16 +777,11 @@ describe('discovery: the product\'s conversation (8.2.7–8.2.10)', () => {
       /^catch up: the transcript of session sess-gone, which last wrote the log, is gone — say so in one line, and carry on from the log$/m);
   });
 
-  it('another live session holding it is asked about first; the yes is the entry again with --take, a move kept a move, and leaving it carries on, the product having no menu (18.4.21)', () => {
+  it('another live session in it is asked about nothing: the entry joins it, each conversation with its own row there (8.14.11)', () => {
     runAs(dir, ['presence', 'beat', 'product', 'discovery', 'product'], 'peer', PEER);
     const { res, sections } = enter(['discovery', 'product']);
-    assert.deepStrictEqual([res.entered, /^=== MENU: held topic gate /.test(sections), position()], [false, true, null]);
-    assert.deepStrictEqual(ok(dir, ['gate', 'held topic gate', '--pick', 'y'], { env: env() }).next, { kind: 'engine', argv: ['enter', 'discovery', 'product', '--take'] });
-    enter(['discovery', 'product']);
-    assert.deepStrictEqual(ok(dir, ['gate', 'held topic gate', '--pick', 'n'], { env: env() }).next, { kind: 'continue' });
-    enter(['discovery', EPIC]);
-    enter(['discovery', 'product', '--move']);
-    assert.deepStrictEqual(ok(dir, ['gate', 'held topic gate', '--pick', 'y'], { env: env() }).next.argv, ['enter', 'discovery', 'product', '--take', '--move']);
+    assert.deepStrictEqual([res.entered, /=== MENU: held topic gate /.test(sections), position(), presence('product', 'product', 'discovery', 'peer')?.session_id, presence('product', 'product', 'discovery', 'sess-1')?.session_id],
+      [true, false, { name: 'product' }, 'peer', 'sess-1']);
   });
 });
 

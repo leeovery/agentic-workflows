@@ -13,9 +13,9 @@
 // conversation leaves the quick-fix's place where it is there, its tasks
 // in flight with it, so nothing holds the conversation afterwards
 // (`leaveUnit`, position.cjs), and its session's own label comes back
-// (session-label.cjs); it leaves the product's conversation too, its row
-// there dropped (presence.cjs). Its move starts the new type as any start
-// does (workunit-move.cjs).
+// (session-label.cjs). A quick-fix never leaves the product's conversation
+// (start-this-work.cjs), so its close and cancel leave its row there. Its
+// move starts the new type as any start does (workunit-move.cjs).
 //
 // A topic cancelled or postponed (`topic cancel`, `topic postpone`) takes
 // the conversation sitting in its discussion to its epic's menu; a unit
@@ -44,7 +44,6 @@
 const { handedSession } = require('../kernel/process.cjs');
 const { readPosition, leaveUnit } = require('./position.cjs');
 const { readWorkUnitManifest } = require('../kernel/manifest-io.cjs');
-const { leaveTheProduct } = require('./discovery-session.cjs');
 const { repairTerminalLabel } = require('./session-label.cjs');
 const { UNIT_PHASES } = require('./derivations.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
@@ -72,14 +71,13 @@ function ontoMenu(workUnit, workType) {
 }
 
 /**
- * A quick-fix left (the header's): the conversation carries on, out of the
- * product's conversation, and where it sat in the quick-fix, its place and
- * the unit's tasks in flight left and its session's own label put back.
+ * A quick-fix left (the header's): the conversation carries on, and where
+ * it sat in the quick-fix, its place and the unit's tasks in flight left
+ * and its session's own label put back.
  * @param {string} cwd @param {string} workUnit @returns {Next}
  */
 function leftQuickFix(cwd, workUnit) {
   if (leaveUnit(handedSession(), workUnit)) repairTerminalLabel(cwd);
-  leaveTheProduct(cwd);
   return CONTINUE;
 }
 
