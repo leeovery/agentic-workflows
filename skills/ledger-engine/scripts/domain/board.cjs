@@ -18,13 +18,15 @@
 //   discussion, the specification, an epic's discovery, an experiment, a
 //   bug's investigation, a quick-fix's one session — the unit's page at its
 //   menu and in a phase whose view comes later (29.14.2), and All work at
-//   the start menu or a project-level place — and once a unit's finish
+//   no place or a project-level place — at no place claiming no start menu,
+//   which is drawn only when asked — and once a unit's finish
 //   completes it from its review phase (20.10.4), All work too, the banner
 //   the unit's close (D38) — while its position still names that place, and
 //   at the start menu boot hands it to, until the session records a
 //   position again (position.cjs); an epic's finish goes to its menu. A
 //   quick-fix's close leaves the closing conversation at no place
-//   (topic-leave.cjs), so its All work is the project's, plain (20.14.2);
+//   (topic-leave.cjs), so its All work is the project's, at no place
+//   (20.14.2);
 //   another session still sitting in the quick-fix draws the close's banner
 //   as above. While a session
 //   carries the migration on, its row at the migration's place there
@@ -432,9 +434,8 @@ function boardRead(cwd, { session, tab, page }, opts, warnings) {
   const own = here === null || finished !== null ? null : ownRead(here, warnings);
   const read = own === null || 'failed' in own ? null : own;
   const migrating = position === null && migrationCarried(cwd);
-  const atStart = (position === null && !migrating) || finished !== null;
   const tabView = () => {
-    if (tab === 'all' || (here === null || finished !== null) && tab === 'this') return allView(cwd, at, here, atStart).view;
+    if (tab === 'all' || (here === null || finished !== null) && tab === 'this') return allView(cwd, at, here, finished !== null).view;
     if (tab === 'unit') return unitPage(/** @type {BoardAt} */ (tabAt), tabAt === here && place.phase === null).view;
     if (own !== null && 'failed' in own) throw new Error(own.failed);
     return /** @type {Read} */ (read).view;

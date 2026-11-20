@@ -190,9 +190,10 @@ const at = (rel) => statePath(dir, rel);
 /** The DATA's line naming where the conversation `session` writes start this work's payload, a file of its own. @param {string} session */
 const payloadAt = (session) => `payload: ${at(layout.cache('product', 'discovery', 'product', `start-this-work-payload-${session}.json`))}`;
 
-/** A place's presence record as it stands, or null. @param {string} unit @param {string} topic @param {string} [phase] */
-function presence(unit, topic, phase = 'discussion') {
-  try { return JSON.parse(fs.readFileSync(at(layout.cache(unit, phase, topic, 'presence')), 'utf8')); } catch { return null; }
+/** A place's presence record as it stands — at the product's, the conversation `session`'s — or null. @param {string} unit @param {string} topic @param {string} [phase] @param {string} [session] */
+function presence(unit, topic, phase = 'discussion', session = 'sess-1') {
+  const row = unit === 'product' ? `presence-${session}` : 'presence';
+  try { return JSON.parse(fs.readFileSync(at(layout.cache(unit, phase, topic, row)), 'utf8')); } catch { return null; }
 }
 
 beforeEach(() => {
@@ -686,7 +687,7 @@ describe('discovery: the product\'s conversation (8.2.7–8.2.10)', () => {
 
   it('8.2.9: a piece of work\'s type call, with another live session in the product\'s conversation, asks nothing first and opens, writes, commits and records nothing — no session, no position, no presence, the other\'s hold left as it stands — and reads the roadmap and the live inbox, and the seeds where it starts from any; refused at an epic, writing nothing', () => {
     runAs(dir, ['presence', 'beat', 'product', 'discovery', 'product'], 'peer', PEER);
-    const held = presence('product', 'product', 'discovery');
+    const held = presence('product', 'product', 'discovery', 'peer');
     const [head, manifest] = [stateGit(dir, ['rev-parse', 'HEAD']).trim(), readState(dir, layout.projectManifest)];
     const called = enter(['discovery', 'product', '--type-call']);
     const idea = '.ledger/.inbox/ideas/2026-01-03--dark-mode.md';
@@ -699,7 +700,7 @@ describe('discovery: the product\'s conversation (8.2.7–8.2.10)', () => {
     ]) });
     assert.strictEqual(seeded, data([`seed: ${at('.inbox/ideas/2026-01-03--dark-mode.md')}`, `roadmap: \`${ENGINE} roadmap state\``, `inbox: ${at('.inbox')}`, payloadAt('sess-1')]));
     assert.deepStrictEqual([stateGit(dir, ['rev-parse', 'HEAD']).trim(), readState(dir, layout.projectManifest), fs.existsSync(at(layout.productSession('003')))], [head, manifest, false]);
-    assert.deepStrictEqual([position(), presence('product', 'product', 'discovery')], [null, held]);
+    assert.deepStrictEqual([position(), presence('product', 'product', 'discovery', 'peer')], [null, held]);
     assert.strictEqual(refused(['discovery', EPIC, '--type-call']), `the type call is the product's, for work not yet started — "${EPIC}" is started: enter discovery ${EPIC}`);
   });
 

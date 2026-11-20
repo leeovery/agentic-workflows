@@ -42,7 +42,9 @@
 //   reads Claude's own write. Reading one passes;
 // and, while the conversation stdin's `session_id` names has a task in
 // flight (6.3.12, conversation.cjs) — a subagent's call carries the
-// conversation's — a raw `git commit` wherever it runs (6.3.7); and every
+// conversation's — of a unit not completed or cancelled, so a unit another
+// conversation ended holds nothing, a raw `git commit`
+// wherever it runs (6.3.7); and every
 // other git command that would land a commit on a task's branch past the
 // commit door, through which a build commits, and which finishes a merge in
 // progress — one run where the checkout of its folder has out a branch a
@@ -64,9 +66,11 @@
 // Each refusal is one line on stderr with the way on, and exit 2, the code
 // Claude Code blocks the call on. A pass says nothing and writes nothing.
 // The decision is the text's, with the files read — the position, and only
-// for a git command that makes a commit, then, with a task in flight, for
-// one but a raw commit, the branch its checkout has out, from git's own
-// files — and, for a write into
+// for a git command that makes a commit, then, with a task in flight, the
+// manifest of its unit in the project's state, found through git's own
+// files from the folder the command runs in, and for one but a raw commit,
+// the branch its checkout has out, from git's own files — and, for a write
+// into
 // the state alone, the layout loaded and whether the state's filesystem
 // ignores case: it runs before every shell command, so it never asks git. A word that expands at run time — a
 // glob among them — an alias, a script, or a command handed to another as
@@ -510,15 +514,51 @@ function commandRefusal(command, inFlight) {
 }
 
 /**
- * The tasks in flight in the conversation `input` names, read once and only
- * when asked.
- * @param {Record<string, unknown>} input @returns {() => InFlight[]}
+ * The project's state the checkout holding `folder` belongs to, read from
+ * git's own files: beside the main checkout, a linked worktree's by its
+ * common folder; null where no checkout holds it.
+ * @param {string} folder @returns {string|null}
  */
-function inFlightOf({ session_id: session }) {
+function stateOf(folder) {
+  const gitDir = gitDirOf(folder);
+  if (gitDir === undefined) return null;
+  let common = gitDir;
+  try {
+    common = path.resolve(gitDir, fs.readFileSync(path.join(gitDir, 'commondir'), 'utf8').trim());
+  } catch { /* the main checkout's own */ }
+  return path.join(path.dirname(common), STATE_DIR_NAME);
+}
+
+/** The statuses a unit's work ends in. */
+const ENDED = ['completed', 'cancelled'];
+
+/**
+ * Whether the unit's work goes on: not completed or cancelled, or its
+ * manifest unread, which the guard never takes for ended.
+ * @param {string|null} state @param {string} unit
+ */
+function stillLive(state, unit) {
+  try {
+    return state === null || !ENDED.includes(JSON.parse(fs.readFileSync(path.join(state, unit, 'manifest.json'), 'utf8')).status);
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * The tasks in flight in the conversation `input` names, of units still in
+ * progress (the header's), read once and only when asked.
+ * @param {string} cwd @param {Record<string, unknown>} input @returns {() => InFlight[]}
+ */
+function inFlightOf(cwd, { session_id: session }) {
   /** @type {InFlight[]|null} */
   let known = null;
   return () => {
-    known ??= typeof session === 'string' && session !== '' ? tasksInFlight(session) : [];
+    if (known === null) {
+      const tasks = typeof session === 'string' && session !== '' ? tasksInFlight(session) : [];
+      const state = tasks.length === 0 ? null : stateOf(cwd);
+      known = tasks.filter(({ unit }) => stillLive(state, unit));
+    }
     return known;
   };
 }
@@ -534,7 +574,7 @@ function shellRefusal(cwd, input) {
   const toolInput = input.tool_input;
   const command = toolInput !== null && typeof toolInput === 'object' ? /** @type {Record<string, unknown>} */ (toolInput).command : null;
   if (typeof command !== 'string') return null;
-  const inFlight = inFlightOf(input);
+  const inFlight = inFlightOf(cwd, input);
   for (const simple of simpleCommands(command, cwd)) {
     const reason = commandRefusal(simple, inFlight);
     if (reason !== null) return reason;

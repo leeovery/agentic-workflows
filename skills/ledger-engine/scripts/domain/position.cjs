@@ -473,12 +473,12 @@ function dropPosition(sessionId) {
 /**
  * The conversation `sessionId` leaves the unit's place whole, where its
  * position names it: the position gone with the unit's tasks in flight,
- * and no place left (the header's).
- * @param {string|null} sessionId @param {string} workUnit
+ * and no place left (the header's). Whether it left.
+ * @param {string|null} sessionId @param {string} workUnit @returns {boolean}
  */
 function leaveUnit(sessionId, workUnit) {
-  if (!sessionId) return;
-  underPositionLock(sessionId, (file) => {
+  if (!sessionId) return false;
+  return underPositionLock(sessionId, (file) => {
     if (storedPosition(sessionId)?.name !== workUnit) return false;
     fs.rmSync(file, { force: true });
     fs.rmSync(leftPath(sessionId), { force: true });

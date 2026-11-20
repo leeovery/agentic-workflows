@@ -130,7 +130,7 @@ function roadmapOf(cwd, project) {
 
 /**
  * All work (the header's).
- * @param {string} cwd @param {(unit: string) => BoardAt} at what the board reads for a unit @param {BoardAt|null} here the session's unit @param {boolean} atStart whether the session is at the start menu
+ * @param {string} cwd @param {(unit: string) => BoardAt} at what the board reads for a unit @param {BoardAt|null} here the session's unit @param {boolean} atStart whether a unit's close handed the session to the start menu (D38) — at no place, nothing says it is there
  * @returns {{view: AllView}}
  */
 function allView(cwd, at, here, atStart) {

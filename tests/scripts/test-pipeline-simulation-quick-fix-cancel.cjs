@@ -9,13 +9,13 @@
 // receipt, carrying on in the conversation, as its close does; then
 // reactivated, the held fix started again, its work put back, built and
 // done, and the close landing both. The cancel's own rules are
-// test-engine-landing-conformance-quick-fix-nested-cancel.cjs's. And three
+// test-engine-landing-conformance-quick-fix-nested-cancel.cjs's. And two
 // quick-fixes started from the product's talk in one conversation — one
-// closed, one cancelled, one moved — each leaving the product's session
-// open: the close and the cancel carry on in the conversation, whose talk
-// of the product goes on in that session, the move hands off into the
-// feature's discussion as any start does, and a return in a new window
-// reads the one log (8.14.11).
+// cancelled, one moved — each leaving the product's session open: the
+// cancel carries on in the conversation, whose talk of the product goes on
+// in that session (the close's is the by-hand sim's), the move hands off
+// into the feature's discussion as any start does, and a return in a new
+// window reads the one log (8.14.11).
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -72,7 +72,7 @@ describe('pipeline simulation: quick-fix cancelled mid-fix', () => {
     assert.deepStrictEqual([yes.landed.map((/** @type {{merged: string[]}} */ { merged }) => merged), sim.manifest(wu).status], [[[flag, help]], 'completed']);
   });
 
-  it('three quick-fixes from the product\'s talk in one conversation — closed, cancelled, moved — each leave its session open, the close and the cancel carrying on with the talk in it and the move handing off into its discussion, so the talk keeps one log, and a return in a new window reads the pricing talk', () => {
+  it('two quick-fixes from the product\'s talk in one conversation — cancelled, moved — each leave its session open, the cancel carrying on with the talk in it and the move handing off into its discussion, so the talk keeps one log, and a return in a new window reads the pricing talk', () => {
     sim.handOver();
     sim.run(['enter', 'discovery', 'product']);
     const log = /** @type {string} */ (sim.sections.match(/^log: (.*)$/m)?.[1]);
@@ -91,18 +91,9 @@ describe('pipeline simulation: quick-fix cancelled mid-fix', () => {
       return sim.run(['enter', 'discovery', 'product']).started;
     };
 
-    const closed = [fromTheTalk('typo')];
-    const [fix] = writeTasks(sim, 'typo', 1, [{ title: 'Spell the flag --colour', type: 'fix', reference: 'none', scenarios: ['1.S1 Given the flag, when it is passed, then it reads --colour.'] }]);
-    sim.run(['task', 'start', 'typo', fix]);
-    fixBuilt(sim, 'typo', fix, ['src/flag.js'], { record: 'The flag.' });
-    sim.write('.ledger/typo/build/log.md', '# The fixes\n');
-    finishClosed(sim, 'typo');
-    sim.render(['finish', 'typo'], { expect: 'content' });
-    const started = [back(sim.run(answerGate(sim, 'finish', '--pick', 'y').next.argv).next)];
-
-    closed.push(fromTheTalk('drop-me'));
+    const closed = [fromTheTalk('drop-me')];
     sim.render(['cancel-gate', 'drop-me'], { expect: 'content' });
-    started.push(back(sim.run(answerGate(sim, 'cancel gate', '--pick', 'y').next.argv).next));
+    const started = back(sim.run(answerGate(sim, 'cancel gate', '--pick', 'y').next.argv).next);
 
     closed.push(fromTheTalk('grows'));
     const brief = sim.write('.ledger/.cache/grows/build/brief.md', '# grows\n\nWhat the fix showed.\n');
@@ -117,7 +108,7 @@ describe('pipeline simulation: quick-fix cancelled mid-fix', () => {
     sim.run(['enter', 'discovery', 'product']);
     const read = [...sim.sections.matchAll(/^session log: (.*)$/gm)].map((m) => m[1]);
 
-    assert.deepStrictEqual([closed, started, moved, open, read], [[null, null, null], [false, false], { kind: 'handoff', skill: 'ledger-discussion-process', args: ['feature', 'grows'] }, '001', [log]]);
+    assert.deepStrictEqual([closed, started, moved, open, read], [[null, null], false, { kind: 'handoff', skill: 'ledger-discussion-process', args: ['feature', 'grows'] }, '001', [log]]);
     assert.match(fs.readFileSync(read[0], 'utf8'), /Three tiers, the middle one leading\./);
   });
 });

@@ -352,7 +352,7 @@ function finishYes(cwd, unit) {
   const completed = completeWorkUnit(cwd, unit, { message: `finish(${unit}): completed` });
   const said = [...warnings, ...(landed.warnings ?? []), ...completed.warnings];
   /** @type {Record<string, unknown>} */
-  const result = { unit, landed: landed.repos, ...(landed.checkout === undefined ? {} : { checkout: landed.checkout }), completed_at: completed.completed_at, committed: completed.committed, next: afterFinish(unit, manifest.work_type) };
+  const result = { unit, landed: landed.repos, ...(landed.checkout === undefined ? {} : { checkout: landed.checkout }), completed_at: completed.completed_at, committed: completed.committed, next: afterFinish(cwd, unit, manifest.work_type) };
   if (completed.note !== undefined) result.note = completed.note;
   if (said.length > 0) result.warnings = said;
   return result;

@@ -47,7 +47,22 @@ const PAYLOAD = layout.cache('product', 'discovery', 'product', `start-this-work
 const inTheProduct = () => ok(dir(), ['enter', 'discovery', 'product'], { env: SESSION });
 
 /** Another live window holding the product's conversation, as its entry beats there. */
-const peerInTheProduct = () => ok(dir(), ['presence', 'beat', 'product', 'discovery', 'product'], { env: { CLAUDE_CODE_SESSION_ID: 'other-window', CLAUDE_PID: String(process.ppid) } });
+/** This conversation as its own live Claude process runs it. */
+const LIVE = Object.freeze({ ...SESSION, CLAUDE_PID: String(process.pid) });
+
+/** Another live window, its own Claude process. */
+const PEER = Object.freeze({ CLAUDE_CODE_SESSION_ID: 'other-window', CLAUDE_PID: String(process.ppid) });
+
+/** Another live window holding the product's conversation, as its entry beats there. */
+const peerInTheProduct = () => ok(dir(), ['presence', 'beat', 'product', 'discovery', 'product'], { env: PEER });
+
+/** The product's conversation's presence rows, by the conversation each is. */
+const productRows = () => fs.readdirSync(statePath(dir(), layout.cache('product', 'discovery', 'product'))).filter((name) => name.startsWith('presence')).sort();
+
+/** The product's conversation with no window in it: the world's own entry, made in no conversation, gone. */
+const noOneInTheProduct = () => {
+  for (const name of productRows()) fs.rmSync(statePath(dir(), layout.cache('product', 'discovery', 'product', name)));
+};
 
 /** Fumi, as the spec draws its start: an epic from the product's notes. */
 const FUMI = Object.freeze({
@@ -160,11 +175,28 @@ describe('start this work, the yes (8.8.1, 8.14.3, 8.14.11)', () => {
     assert.deepStrictEqual([fix.product_session_closed, leftOpen, feature.product_session_closed, readManifest(dir(), '.').product_session], [null, '001', '001', undefined]);
   });
 
-  it('8.14.11: a feature started in the product\'s conversation leaves its session open while another live window holds that conversation', () => {
+  it('8.14.11: a feature started in the product\'s conversation leaves its session open while another live window is in that conversation, whichever entered last — this one taking it past the held question', () => {
+    noOneInTheProduct();
     inTheProduct();
     peerInTheProduct();
-    const res = started(oneTopic('feature', 'saved-filters'));
-    assert.deepStrictEqual([res.product_session_closed, readManifest(dir(), '.').product_session, res.next.kind], [null, '001', 'handoff']);
+    const joinedFirst = started(oneTopic('feature', 'saved-filters')).product_session_closed;
+    ok(dir(), ['enter', 'discovery', 'product', '--take'], { env: LIVE });
+    const joinedLast = started(oneTopic('feature', 'pinned-notes'));
+    assert.deepStrictEqual([joinedFirst, joinedLast.product_session_closed, readManifest(dir(), '.').product_session, joinedLast.next.kind], [null, null, '001', 'handoff']);
+  });
+
+  it('8.14.11: a conversation leaving the product\'s talk for a quick-fix takes its presence there with it, so the window still talking is alone in it: never asked about it, its feature ending the session', () => {
+    noOneInTheProduct();
+    ok(dir(), ['enter', 'discovery', 'product'], { env: PEER });
+    ok(dir(), ['enter', 'discovery', 'product', '--take'], { env: LIVE });
+    const both = productRows();
+    const { brief: _brief, ...quick } = oneTopic('quick-fix', 'typo-fix');
+    started(quick);
+    const left = productRows();
+    const again = ok(dir(), ['enter', 'discovery', 'product'], { env: PEER });
+    output(dir(), ['render', 'start-this-work', '--file', payload(oneTopic('feature', 'saved-filters'))], { env: PEER });
+    const feature = ok(dir(), ['start-this-work', 'yes'], { env: PEER });
+    assert.deepStrictEqual([both.length, left, again.entered, feature.product_session_closed], [2, ['presence-other-window'], true, '001']);
   });
 
   it('8.14.11: closes no session this conversation is not in — not one it ended, whose end dropped its place there, nor the next, which another window opened', () => {

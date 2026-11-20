@@ -11,7 +11,7 @@ import { positionOf, wordFor } from './position.ts'
 
 /** The engine calls that move the conversation's position. */
 const MOVES =
-  /\.claude\/skills\/ledger-engine\/scripts\/engine\.cjs"?\s+(?:boot|enter|render\s+start-menu|session\s+(?:label|repair)|task\s+(?:start|done|close))\b/
+  /\.claude\/skills\/ledger-engine\/scripts\/engine\.cjs"?\s+(?:boot|enter|render\s+start-menu|session\s+(?:label|repair)|task\s+(?:start|done|close)|finish\s+yes|workunit\s+cancel|discovery-session\s+close)\b/
 
 /** The Desktop app's spinner word while its row names no step of its own. */
 const DESKTOP_IDLE = 'Working'

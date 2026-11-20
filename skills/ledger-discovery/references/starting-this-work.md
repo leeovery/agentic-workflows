@@ -24,7 +24,7 @@ A pattern or principle for the whole project is never a type here: it is the pro
 
 For a quick-fix, search earlier work in the area it touches first, one `knowledge query`, and fold what it finds into the read.
 
-Once the signals agree and have held, and the next question would only go deeper, say the read in plain terms with the type's name folded in, and the signals that drove it, concretely enough that the person can challenge one. Re-read the log against the conversation first.
+Once the signals agree and have held, and the next question would only go deeper, say the read in plain terms with the type's name folded in, and the signals that drove it, concretely enough that the person can challenge one. Re-read the log against the conversation first, where it keeps one: a type call keeps none.
 
 Then write the payload to the DATA's `payload`, this conversation's own:
 - `type` and `name` — the name derived, never asked: the name the person offered, else a single seed's, else the description's; a lowercase slug of letters, digits and hyphens; a name taken derived again more specifically, never numbered.

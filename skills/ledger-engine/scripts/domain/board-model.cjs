@@ -449,8 +449,9 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * @typedef {{unit: string, title: string, type: string, phase: string, standing: string, waiting: number, session: 'this'|'other'|null}} WorkLine
  */
 /**
- * All work (20.16): the project; whether the session is at the start menu;
- * how many wait on the person across the units in progress; those units;
+ * All work (20.16): the project; whether a unit's close handed the session
+ * to the start menu; how many wait on the person across the units in
+ * progress; those units;
  * the roadmap's waiting items by horizon, each with the title of the epic a
  * topic was postponed from, else null; the inbox by kind; and the units
  * complete.

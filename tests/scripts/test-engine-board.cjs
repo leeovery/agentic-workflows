@@ -59,7 +59,7 @@ const { board, enterBuild, issued, project } = boardHelpers(() => dir, () => con
 const refused = (args) => refusedPristine(dir, ['board', ...args], { env: env() }).error;
 
 describe('the board at the start menu (20.3.3, 20.16)', () => {
-  it('shows All work with the project\'s units, no unit\'s tab, and a banner naming the project alone, claiming no place', () => {
+  it('shows All work with the project\'s units, no unit\'s tab, and a banner naming the project alone — at no place, neither claims the start menu', () => {
     assert.deepStrictEqual(board(), {
       version: BOARD_VERSION,
       place: { unit: null, type: null, phase: null, topic: null },
@@ -69,7 +69,7 @@ describe('the board at the start menu (20.3.3, 20.16)', () => {
       view: {
         kind: 'all',
         project: project(),
-        at_start: true,
+        at_start: false,
         waiting: 0,
         units: [{ unit: UNIT, title: 'Pay', type: 'feature', phase: 'build', standing: '0 of 4 tasks done', waiting: 0, session: null }],
         roadmap: [],

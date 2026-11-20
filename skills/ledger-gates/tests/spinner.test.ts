@@ -253,6 +253,24 @@ describe('the spinner', () => {
     })
   }
 
+  const leaving: [string, Position][] = [
+    ['finish yes typo', { name: 'typo', phase: 'implementation', topic: 'typo', tasks: inFlight('1.1') }],
+    ['workunit cancel typo', { name: 'typo', phase: 'implementation', topic: 'typo', tasks: inFlight('1.1') }],
+    ['discovery-session close product -m "discovery(product): end session 001"', { name: 'product' }],
+  ]
+  for (const [command, position] of leaving) {
+    test(`leaving its place in the conversation through \`${command}\` gives the word back to Claude Code`, async ($, on) => {
+      const { drops } = world(on, { positions: { s0: position } })
+
+      expect(textOf(await drawn($, spinnerOf('terminal')))).not.toBe('Sauteing…')
+
+      drops()
+      await $.tool.call({ tool: 'Bash', command: `${ENGINE} ${command}` })
+
+      expect(textOf(await drawn($, spinnerOf('terminal')))).toBe('Sauteing…')
+    })
+  }
+
   test('leaving for the start menu with a task still in flight gives the word back to Claude Code, the position kept for the task unread', async ($, on) => {
     const { counts, leaves } = world(on, { positions: { s0: { name: 'pay', phase: 'implementation', topic: 'pay', tasks: inFlight('3.1') } } })
 

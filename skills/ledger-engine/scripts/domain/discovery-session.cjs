@@ -18,8 +18,8 @@
 //
 // close clears the marker and commits the place's scope with the caller's
 // message — the unit's discovery scope, or the product's — the log with it;
-// the product's drops the calling conversation's position there, which
-// the session it ended held.
+// the product's takes the calling conversation out of the product's
+// conversation, its position and its presence row there gone.
 // The knowledge base never indexes a log (8.14.7).
 //
 // The log's content is the conversation's: the engine writes no prose of its
@@ -41,6 +41,7 @@ const { commitStateTail, noteCommitOutcome, discoveryScope, PRODUCT_SCOPE } = re
 const { statePath } = require('../kernel/state-root.cjs');
 const { PRODUCT_SESSIONS } = require('./layout.cjs');
 const { handedSession } = require('../kernel/process.cjs');
+const { clearOwnQuietly } = require('./presence.cjs');
 
 const SESSION_LOG = /^session-(\d+)\.md$/;
 
@@ -212,12 +213,22 @@ function openSession(cwd, name) {
  * @property {string[]} warnings   non-blocking failures (the commit, its push)
  */
 
-/** The calling conversation's position dropped where it is the product's conversation, whose session it ended. */
-function leaveTheProduct() {
-  const { readPosition, dropPosition } = require('./position.cjs');
+/** Whether the calling conversation's place is the product's conversation. */
+function inTheProduct() {
+  const { readPosition } = require('./position.cjs');
   const sessionId = handedSession();
   const at = sessionId === null ? null : readPosition(sessionId);
-  if (at !== null && at.name === PRODUCT && at.phase === undefined) dropPosition(sessionId);
+  return at !== null && at.name === PRODUCT && at.phase === undefined;
+}
+
+/**
+ * The calling conversation leaves the product's conversation: its presence
+ * row there dropped (presence.cjs), and its place where it is there.
+ * @param {string} cwd
+ */
+function leaveTheProduct(cwd) {
+  if (inTheProduct()) require('./position.cjs').dropPosition(handedSession());
+  clearOwnQuietly(cwd, PRODUCT, 'discovery', PRODUCT);
 }
 
 /**
@@ -243,7 +254,7 @@ function closeDiscoverySession(cwd, name, { message }) {
     return { number: marker.active, log };
   });
 
-  if (name === PRODUCT) leaveTheProduct();
+  if (name === PRODUCT) leaveTheProduct(cwd);
   /** @type {string[]} */
   const warnings = [];
   const outcome = commitStateTail(cwd, place.scope(), message, warnings);
@@ -255,5 +266,5 @@ function closeDiscoverySession(cwd, name, { message }) {
 
 module.exports = {
   openSession, closeDiscoverySession, sessionLogs, latestSessionLog, productSession,
-  activeSession, sessionLogsAt,
+  activeSession, sessionLogsAt, inTheProduct, leaveTheProduct,
 };
