@@ -1,16 +1,16 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: an investigation's process gates as the person sees them
+// Domain ring: an investigation's screens as the person sees them
 // (19.4.19), drawn from the hunt its log holds (investigation-log.cjs) and
-// Claude's staged payload (investigation.cjs), each a display and a gate:
+// Claude's staged payload (investigation.cjs):
 // - the plan (19.4.24): the hypotheses still open, in the order Claude will
 //   check them, each with how; those settled so far; and, where a finding
 //   brought a revised plan back, what it changed, first. Its gate is the
 //   plan gate, the revised plan's too: yes goes ahead in that order;
-// - the check-in: every hypothesis and where it stands, those just resolved
-//   marked; the experiments, each with what it showed; and what is checked
-//   next. Its gate's yes carries on;
+// - the check-in (19.4.28), a display the hunt carries past, never a gate:
+//   every hypothesis and where it stands, those just resolved marked; the
+//   experiments, each with what it showed; and what is checked next;
 // - the conclude (19.4.23): THE HUNT, Claude's recap; the symptoms, in the
 //   person's words; the root cause told against them; and the fix
 //   direction. A departure still to be asked its verdict is asked first,
@@ -108,10 +108,10 @@ function facts(hypotheses, experiments) {
 
 /**
  * The check-in: every hypothesis, those just resolved marked; the
- * experiments; what comes next; then the check-in gate, as it is stepped.
- * @param {CheckInView} view @param {GateStep} step @returns {string}
+ * experiments; and what comes next.
+ * @param {CheckInView} view @returns {string}
  */
-function checkInScreen({ title, hypotheses, resolved, experiments, next }, step) {
+function checkInScreen({ title, hypotheses, resolved, experiments, next }) {
   const rows = hypotheses.map((hypothesis) => ({
     title: rowTitle(hypothesis),
     tag: resolved.includes(hypothesis.name) ? `${STATE_WORDS[hypothesis.state]} · just now` : STATE_WORDS[hypothesis.state],
@@ -122,11 +122,7 @@ function checkInScreen({ title, hypotheses, resolved, experiments, next }, step)
     blocks.push(block(`EXPERIMENTS (${experiments.length})`, renderTree(experiments.map(({ name, title, showed }) => ({ title: `✓ ${name} ${title}`, body: [showed] })), { width: TREE_WIDTH })));
   }
   blocks.push(block('NEXT', indented(next)));
-  return section('DISPLAY: investigation check-in', CONTINUE_INSTRUCTION, blocks.join('\n\n'))
-    + section('MENU: check-in gate', MENU_INSTRUCTION, menu('', [
-      cmdOption('y', 'yes', 'Carry on with what\'s next', GO),
-      promptOption('Comment', 'Tell me what to look at instead, or what this changes'),
-    ], { question: 'Carry on?' }), step);
+  return section('DISPLAY: investigation check-in', CONTINUE_INSTRUCTION, blocks.join('\n\n'));
 }
 
 /**

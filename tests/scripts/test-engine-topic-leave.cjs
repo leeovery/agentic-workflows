@@ -94,6 +94,9 @@ const sitIn = (topic) => run(['enter', 'discussion', EPIC, topic]);
 /** This conversation sitting in `unit`'s `phase`, at `topic`, without entering it. @param {string} unit @param {string} phase @param {string} topic */
 const labelled = (unit, phase, topic) => run(['session', 'label', unit, phase, topic]);
 
+/** Whether this conversation sits anywhere. */
+const seated = () => fs.existsSync(path.join(config, 'conversations', 'sess-1', 'position.json'));
+
 const CONTINUE = { kind: 'continue' };
 const ONTO_MENU = { kind: 'handoff', skill: 'ledger-continue-epic', args: [EPIC] };
 const ONTO_START = { kind: 'handoff', skill: 'ledger', args: [] };
@@ -156,12 +159,19 @@ describe('the verbs say what follows', () => {
     assert.deepStrictEqual(run(['topic', 'cancel', EPIC, 'discovery', 'onboarding']).next, CONTINUE);
   });
 
-  it('18.S56: a feature cancelled from inside its own session goes onto the start menu', () => {
+  it('a feature cancelled from inside its own session draws no menu unasked: the conversation leaves its position and carries on, a line after the receipt saying what waits on the person, the menu one `/ledger` away', () => {
     run(['enter', 'discussion', SOLO, SOLO]);
-    assert.deepStrictEqual(run(['workunit', 'cancel', SOLO]).next, ONTO_START);
+
+    const [json, ...receipt] = output(dir, ['workunit', 'cancel', SOLO], { env: ENV() }).split('\n');
+
+    assert.deepStrictEqual([JSON.parse(json).next, seated()], [CONTINUE, false]);
+    assert.deepStrictEqual(receipt.slice(receipt.findIndex((line) => line.startsWith('=== DISPLAY: ended'))).filter((line) => line !== ''), [
+      '=== DISPLAY: ended (emit verbatim as markdown (not a code block) after the response) ===',
+      'Nothing waits on you. The menu is one `/ledger` away.',
+    ]);
   });
 
-  it('18.4.20: a unit cancelled from inside any phase of it goes onto the start menu — an epic from one of its topics, a feature from its spec or its build, a bugfix from its investigation, a quick-fix from its session', () => {
+  it('18.4.20: a unit cancelled from inside any phase of it leaves the conversation\'s position and carries on — an epic from one of its topics, a feature from its spec or its build, a bugfix from its investigation — but a quick-fix from its session, which goes onto the start menu', () => {
     /** Each unit's cancel's `next`, the conversation sitting where `sit` puts it. @type {Array<[string, () => unknown]>} */
     const sittings = [
       [EPIC, () => sitIn('licence')],
@@ -173,11 +183,12 @@ describe('the verbs say what follows', () => {
     const nexts = sittings.map(([unit, sit]) => {
       sit();
       const { next } = run(['workunit', 'cancel', unit]);
+      const left = !seated();
       run(['workunit', 'reactivate', unit]);
-      return next;
+      return [next, left];
     });
 
-    assert.deepStrictEqual(nexts, sittings.map(() => ONTO_START));
+    assert.deepStrictEqual(nexts, [[CONTINUE, true], [CONTINUE, true], [CONTINUE, true], [CONTINUE, true], [ONTO_START, false]]);
   });
 
   it('a feature cancelled from anywhere else — another unit\'s session, or none — carries on', () => {
@@ -187,7 +198,7 @@ describe('the verbs say what follows', () => {
     assert.deepStrictEqual(run(['workunit', 'cancel', SOLO]).next, CONTINUE);
   });
 
-  it('18.8.20: a cancel putting a roadmap item back on a horizon removed meanwhile leads first through the horizon pick, then where the cancel goes — the conversation sitting in the topic onto the epic\'s menu, one sitting in a unit\'s spec onto the start menu', () => {
+  it('18.8.20: a cancel putting a roadmap item back on a horizon removed meanwhile leads first through the horizon pick, then where the cancel goes — the conversation sitting in the topic onto the epic\'s menu, one sitting in a unit\'s spec carrying on, its position left', () => {
     for (const [item, into] of [['seats', EPIC], ['badges', SOLO]]) {
       run(['roadmap', 'add', item, '--horizon', 'gone', '--summary', `The ${item}`]);
       const project = JSON.parse(readState(dir, layout.projectManifest));
@@ -207,7 +218,7 @@ describe('the verbs say what follows', () => {
     labelled(SOLO, 'specification', SOLO);
     const solo = run(['workunit', 'cancel', SOLO]);
     assert.deepStrictEqual(solo.next, { kind: 'engine', argv: ['render', 'horizon-pick', '--back', 'badges', '--from', SOLO] });
-    assert.deepStrictEqual(run(answered(solo.next.argv.slice(1), 'horizon pick', ['--pick', '1']).argv).next, ONTO_START);
+    assert.deepStrictEqual(run(answered(solo.next.argv.slice(1), 'horizon pick', ['--pick', '1']).argv).next, CONTINUE);
   });
 
   /** `item` pulled forward into the epic as a topic, from a horizon removed since. @param {string} item */

@@ -89,9 +89,9 @@
 // changed since (`readyClose`): a land or a cut after it voids it (E12), and
 // so does any engine item failing now, so the checklist is worked afresh and
 // closed again before the gate shows again. A skip shows on the screen
-// of the next authority gate over its work (6.4.5): decided's, ready to
-// build's and finish's each their own, and finish's every phase start's and
-// close's too, as each record keeps them. An engine item is never marked or
+// of the authority gate that closes its work (6.4.5): decided's and ready
+// to build's each their own; finish draws none, a phase's start's and
+// finish's own kept with their reasons on the manifest alone. An engine item is never marked or
 // skipped, so a directive's check must pass (6.4.5); the directive's close
 // records the directive in the migrations record, the one way it is
 // recorded.
@@ -466,7 +466,7 @@ const POINTS = Object.freeze({
         key: 'records-indexed', text: 'the records indexed', check: ofUnit(finishChecks.recordsIndexed), way: ofUnit(finishChecks.recordsWay), applies: ofUnit(finishChecks.knowledgeSetUp),
       },
     ],
-    shows: (named, own) => [...phaseSkips(named.manifest), ...own],
+    shows: noSkips,
   },
   directive: {
     takes: ['<id>'],
@@ -508,18 +508,6 @@ function itemStates(named) {
 
 /** An item skipped, as a gate shows it. @param {string} checklist @param {{key: string, text: string}} item @param {{reason?: string, at?: string}} mark @returns {Skip} */
 const skipOf = (checklist, { key, text }, { reason, at }) => ({ checklist, item: key, text, reason: /** @type {string} */ (reason), at: /** @type {string} */ (at) });
-
-/** Every phase start's and close's skips, as their records keep them, in the cut's order. @param {Record<string, any>} manifest @returns {Skip[]} */
-function phaseSkips(manifest) {
-  return cutPhases(manifest).flatMap((_, at) => /** @type {const} */ (['start', 'close']).flatMap((end) => {
-    const checklist = phaseKey(at + 1, end);
-    const record = recordAt(manifest, [checklist]);
-    return POINTS[`phase-${end}`].items.flatMap((item) => {
-      const mark = record?.items[item.key];
-      return mark?.state === 'skipped' ? [skipOf(checklist, item, mark)] : [];
-    });
-  }));
-}
 
 const CHECKLISTS = Object.entries(POINTS).map(([point, { takes }]) => [point, ...takes].join(' ')).join(' | ');
 
@@ -765,20 +753,20 @@ function readyClose(cwd, unit) {
 }
 
 /**
- * The close finish's gate stands on (14.5.1): the record's close, and the
- * skips it shows (6.4.5) — every phase start's and close's, as their records
- * keep them, then its own marked before it. Refused while the checklist is
- * open: closed never, or an item the engine checks failing now.
+ * The close finish's gate stands on (14.5.1): the record's close, its
+ * skips kept on the manifest and drawn on no screen (6.4.5). Refused while
+ * the checklist is open: closed never, or an item the engine checks failing
+ * now.
  * @param {string} cwd @param {string} unit @param {Map<string, any>} [reads] what the call has read of the unit already
- * @returns {{closed: string, skips: Skip[], warnings: string[]}}
+ * @returns {{closed: string, warnings: string[]}}
  */
 function finishClose(cwd, unit, reads) {
   const checklist = named(cwd, 'finish', [unit], reads);
   const record = recordAt(checklist.manifest, checklist.path);
   const closedAt = record?.closed;
   if (record === undefined || closedAt === undefined) throw new Error(`finish is open — its items are worked, then it is closed: checklist close finish ${unit}`);
-  const standing = standingClose(checklist, record, closedAt);
-  return { ...standing, skips: [...phaseSkips(checklist.manifest), ...standing.skips] };
+  const { closed, warnings } = standingClose(checklist, record, closedAt);
+  return { closed, warnings };
 }
 
 /**

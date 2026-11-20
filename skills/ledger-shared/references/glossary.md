@@ -196,7 +196,7 @@ A decision brought into Ledger from a project's documents from before it, where 
 ## Gates and trust
 
 **gate**:
-A stop where Ledger shows a menu and waits. There are three kinds: the authority gates always stop — start this work, approve the map, decided, ready to build and finish; product questions go through the ask rule; and routine process gates are learned, one the person answers the same way nearly every time running on its own with a one-line report, until their answers vary. A question typed at a gate sets it aside, and it comes back when the exchange is done.
+A stop where Ledger shows a menu and waits. There are three kinds: the authority gates always stop — start this work, approve the map, decided, ready to build and finish; product questions go through the ask rule; and routine process gates are learned, one the person answers the same way nearly every time running on its own with a one-line report, until their answers vary. A gate takes a clear answer in the person's own words as its row, at any point; a question typed there sets it aside while they talk, and their answer, whenever it comes, still answers it.
 _Avoid_: checkpoint, approval step, stop (fine as a description)
 
 **menu**:

@@ -46,7 +46,7 @@ const { SHOWN } = require(path.join(SCRIPTS, 'domain/gate.cjs'));
 const { NBSP } = require(path.join(SCRIPTS, 'domain/projections/surfaces.cjs'));
 const { WAIT_KINDS } = require(path.join(SCRIPTS, 'domain/waits.cjs'));
 const { counts } = require(path.join(SCRIPTS, 'domain/start-menu.cjs'));
-const { startMenuScreen } = require(path.join(SCRIPTS, 'domain/projections/start-menu.cjs'));
+const { startMenuScreen, endedReceipt } = require(path.join(SCRIPTS, 'domain/projections/start-menu.cjs'));
 
 /** The decided world's conversation, where its raises are sealed and its screens drawn. */
 const HERE = 'session-1';
@@ -227,6 +227,23 @@ describe('the start menu (18.2.12)', () => {
       '2 topics waiting for you',
       undefined,
       'Give the 3 verdicts waiting on calls you changed',
+    ]);
+  });
+
+  it('after a finish or a cancel from inside the work, one line in the menu\'s place says what waits on the person — each unit\'s count, the verdicts, the inbox where it holds anything — and that the menu is one `/ledger` away, a finish opening on the work done', () => {
+    /** The line, `units` waiting, `verdicts` and `ideas` in the inbox, `opening` first. @param {string|null} opening @param {Array<[string, {gates: number, questions: number, topics: number}]>} units @param {number} verdicts @param {number} ideas */
+    const line = (opening, units, verdicts, ideas) => endedReceipt(opening, {
+      units: units.map(([name, waiting]) => ({ name, type: 'feature', progress: 'specification', waiting, mail: false })),
+      inbox: { ideas, bugs: 0, quickfixes: 0 }, product: { sessions: 0, last: null }, researchOwed: false, verdicts, closed: false, legacy: [], warnings: [],
+    }).split('\n')[1];
+    const none = { gates: 0, questions: 0, topics: 0 };
+
+    assert.deepStrictEqual([
+      line('Tally is done.', [['tally', { gates: 1, questions: 2, topics: 0 }], ['search', none]], 3, 2),
+      line(null, [['search', none]], 0, 0),
+    ], [
+      'Tally is done. Waiting on you: Tally — 1 gate and 2 questions; 3 verdicts. Inbox: 2 ideas. The menu is one `/ledger` away.',
+      'Nothing waits on you. The menu is one `/ledger` away.',
     ]);
   });
 

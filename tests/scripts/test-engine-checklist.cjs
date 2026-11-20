@@ -18,8 +18,8 @@
 // no phase's start before the
 // build begins (11.8.3);
 // the close refused while an item is open (6.S26), and a mark from before
-// the last close never counting toward the next; finish showing every phase
-// start's skips, read from the manifest by another conversation (6.S32); the
+// the last close never counting toward the next; finish showing no skip,
+// each kept on the manifest (6.S32); the
 // record as stored, `checklists.{point}` on the unit's manifest; each write
 // under the writer lock with its own state commit, and every refusal
 // writing nothing.
@@ -554,18 +554,15 @@ describe('skips (6.4.2, 6.4.5)', () => {
     ]);
   });
 
-  it('finish shows every phase start\'s skips, in the cut\'s order, then its own, read from the unit\'s manifest by a later conversation (6.S32)', () => {
+  it('finish shows no skip, its own or a phase start\'s, each kept on the unit\'s manifest with its reason (6.S32)', () => {
     checklist(['skip', 'phase-start', UNIT, '2', 'design-settled', '--reason', 'Nothing shared.']);
     checklist(['skip', 'finish', UNIT, 'build-log-closed', '--reason', 'Closed at the last phase.']);
     checklist(['skip', 'phase-start', UNIT, '1', 'design-settled', '--reason', 'One task alone.']);
-    const at = (/** @type {string} */ key, /** @type {string} */ item) => records()[key].items[item].at;
 
     const later = checklist(['show', 'finish', UNIT], { CLAUDE_CODE_SESSION_ID: 'session-2' });
 
-    assert.deepStrictEqual(later.skips, [
-      { checklist: 'phase-1-start', item: 'design-settled', text: 'shared design settled', reason: 'One task alone.', at: at('phase-1-start', 'design-settled') },
-      { checklist: 'phase-2-start', item: 'design-settled', text: 'shared design settled', reason: 'Nothing shared.', at: at('phase-2-start', 'design-settled') },
-      { checklist: 'finish', item: 'build-log-closed', text: 'the build log closed', reason: 'Closed at the last phase.', at: at('finish', 'build-log-closed') },
+    assert.deepStrictEqual([later.skips, [['phase-1-start', 'design-settled'], ['phase-2-start', 'design-settled'], ['finish', 'build-log-closed']].map(([key, item]) => records()[key].items[item].reason)], [
+      [], ['One task alone.', 'Nothing shared.', 'Closed at the last phase.'],
     ]);
   });
 });

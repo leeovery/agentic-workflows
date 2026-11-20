@@ -33,7 +33,7 @@ node .claude/skills/ledger-engine/scripts/engine.cjs enter discussion {work_unit
 
 A refusal names the way on: say it in a line. Where another session holds the topic, the entry asks first; carrying on from it ends the turn. Waiting mail is the conversation's first business (**Mail**).
 
-Then read what the DATA names, each in full, an `earlier` one as input never changed. Take in each `landed` report as **[reviews.md](references/reviews.md)** or **[deep-dives.md](references/deep-dives.md)** says, loading the one it needs, and close each `lost` one with `agent incorporate`. Each `affected` entry is confirmed in the conversation (`ledger hold`) or replaced; a topic the DATA says `stays decided` is entered for those alone, and once each is confirmed or replaced it leaves: bring the log up to date, then fetch `render wait-agents {work_unit}.{topic}`. Then load **[handing-off.md](../ledger-shared/references/handing-off.md)** with route = `/ledger-continue-epic {work_unit}`. Search earlier work units' entries in the topic's area with `knowledge query`.
+Then read what the DATA names, each in full, an `earlier` one as input never changed. Take in each `landed` report as **[reviews.md](references/reviews.md)** or **[deep-dives.md](references/deep-dives.md)** says, loading the one it needs, and close each `lost` one with `agent incorporate`. Each `affected` entry is confirmed in the conversation (`ledger hold`) or replaced; a topic the DATA says `stays decided` is entered for those alone, and once each is confirmed or replaced it leaves: bring the log up to date, then load **[handing-off.md](../ledger-shared/references/handing-off.md)** with route = `/ledger-continue-epic {work_unit}`. Search earlier work units' entries in the topic's area with `knowledge query`.
 
 Then open the conversation; never stop in silence once you have read. The opening names each `kept branch` and `kept work` to the person, a piece of work with the calls its line gives.
 
@@ -57,7 +57,7 @@ Ask in the conversation; each answer lands through `ledger` as it is given.
 - A changed mind is a replacement, never an edit, its cause named: the finding for a new fact, the other topic's decision, the question a message raised. The log says why.
 - A question another topic's current decision already answers merges into it; a decision is never written twice.
 - Nothing waits half-decided. A question closes by the person's decision, your call, don't care, a move to another topic (**Other Topics**), or later on the roadmap (**Backlogging**).
-- The person signing off with questions open is a pause, never a done-signal: bring the log up to date and fetch `render wait-agents {work_unit}.{topic}`. Then end the turn.
+- The person signing off with questions open is a pause, never a done-signal: bring the log up to date, then end the turn.
 
 ### Calls
 
@@ -71,7 +71,7 @@ Where a raise's answer carries `convergence`, or the person asks you to settle t
 node .claude/skills/ledger-engine/scripts/engine.cjs render convergence {work_unit}.{topic} [--asked]
 ```
 
-Once they say yes, raise each question still open on the map, one after another. Then close (**Closing**).
+Where it draws nothing, it would settle nothing: carry on. Once they say yes, raise each question still open on the map, one after another. Then close (**Closing**).
 
 ### Facts and Findings
 
@@ -122,7 +122,7 @@ Content is one JSON object on stdin; `{place}` is `{work_unit}.discussion.{topic
 - An experiment → `experiment create`, then `render experiment-spawn-gate`; one no one will run → `experiment abandon {work_unit} {topic} {id} --reason "{reason}"`.
 - Something put off for later → `render horizon-pick --park`, `roadmap add`, then for a question `ledger move --to roadmap:{item}`.
 - A topic leaving → `render postpone-gate|horizon-pick|cancel-gate`, whose `next` runs `topic postpone`, `topic cancel` or `workunit cancel`, each answering its receipt.
-- The talk moving up → `render wait-agents`, then `enter discovery {work_unit}|product --move`.
+- The talk moving up → `enter discovery {work_unit}|product --move`.
 - The close → `checklist show|done|skip|close decided {work_unit} {topic}`, `render wait-agents`, `render decided`, `decided unstrike`; a feature's → `decided stage`.
 - A gate's answer → `gate "{name}" --pick {key}`, or `--typed {key}` for a typed row such as a Comment.
 
@@ -152,7 +152,7 @@ When nothing of the person's is open, the topic closes on its `decided` checklis
 
    A line widening a decision the product record already widens is refused, naming that entry: leave the line out of the payload, stage it again, and say in a line that it is in the record already. A yes refused for a product-record line resting on a decision replaced since: where its rule still holds, stage a line widening the replacement, in the same words; where it should go, withdraw the line. Then draw the screen again.
 
-An epic's screen asks a verdict of each call the person changed, one at a time; after each, draw `render decided {work_unit}.{topic}` again. A Comment that changes a product-record line changes the payload, staged again with `--file`. One keeping a struck candidate after all undoes its strike, `decided unstrike {work_unit} {topic} {n}`, whose `next` draws the screen. A refused yes names what to fix: fix it, then draw the screen again.
+An epic's screen asks a verdict of each call the person changed, one at a time; after each, draw `render decided {work_unit}.{topic} --alone`. A Comment that changes a product-record line changes the payload, staged again with `--file`. One keeping a struck candidate after all undoes its strike, `decided unstrike {work_unit} {topic} {n}`, whose `next` draws the screen. A refused yes names what to fix: fix it, then draw the screen again.
 
 ## Backlogging
 
@@ -174,7 +174,7 @@ Work no topic owns that the person has not put off is a candidate at the close (
 
 The person pushes a topic back to the roadmap — "postpone this", "move the loyalty topic to v2" — this one or another of the epic by name, `{name}`. A single-topic unit has nothing to postpone: its topic is the unit, and its "not now" is a cancel. Say so in a line.
 
-Where the topic postponed is this one, postponing leaves it: bring the log up to date, then fetch `render wait-agents {work_unit}.{topic}`. Another topic of the epic, named, leaves this one as it is. Then, where the person named a horizon, fetch the confirm, `render postpone-gate {work_unit}.discovery.{name} --horizon "{horizon}"`; otherwise the pick over the roadmap's horizons, `render horizon-pick {work_unit}.discovery.{name}`. A horizon named in words, or a Comment changing it, leads to the confirm again with it. A refusal names what holds the topic: say it in a line.
+Where the topic postponed is this one, postponing leaves it: bring the log up to date. Another topic of the epic, named, leaves this one as it is. Then, where the person named a horizon, fetch the confirm, `render postpone-gate {work_unit}.discovery.{name} --horizon "{horizon}"`; otherwise the pick over the roadmap's horizons, `render horizon-pick {work_unit}.discovery.{name}`. A horizon named in words, or a Comment changing it, leads to the confirm again with it. A refusal names what holds the topic: say it in a line.
 
 The postpone answers `closed_agents`: stop the task behind each one you dispatched with the TaskStop tool. It answers its receipt; then follow the postpone's `next`.
 
@@ -188,7 +188,7 @@ A single-topic unit's cancel takes the unit's cache, its agents' rows with it: s
 
 ## Moving Up
 
-The talk rises past the topic: to the epic as a whole, or to the product. Suggest going there in a line; only the person's word moves it. Bring the log up to date, then fetch `render wait-agents {work_unit}.{topic}`.
+The talk rises past the topic: to the epic as a whole, or to the product. Suggest going there in a line; only the person's word moves it. Bring the log up to date.
 
 Then move, in this conversation: `{home}` is `{work_unit}` for an epic's discovery, or `product` for the product's conversation, the only place a single-topic unit's talk moves up to.
 

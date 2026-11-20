@@ -26,7 +26,7 @@ require('./hermetic-env.cjs');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const {
-  Sim, worlds, CUT_CLOSED_UNIT, builtAside, areaRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, finished, handoff, gatesAnswered,
+  Sim, worlds, CUT_CLOSED_UNIT, builtAside, areaRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, finished, gatesAnswered,
 } = require('./pipeline-world.cjs');
 const { leaningCall } = require('./ledger-world.cjs');
 
@@ -55,8 +55,7 @@ describe('pipeline simulation: a question asked in a review round', () => {
     sim.refuses(['checklist', 'close', 'finish', WU], null);
 
     answeredAtStop(sim, WU);
-    assert.deepStrictEqual(finished(sim, WU).next, { kind: 'handoff', skill: 'ledger', args: [] });
-    handoff(sim, '/ledger');
+    assert.deepStrictEqual(finished(sim, WU).next, { kind: 'continue' });
     assert.strictEqual(sim.manifest(WU).status, 'completed', 'the unit finishes once nothing waits on the person');
     assert.deepStrictEqual(gatesAnswered(sim), ['finish'], '19.S6: past the build, the person is stopped at finish, and at the question the ask rule sent');
   });

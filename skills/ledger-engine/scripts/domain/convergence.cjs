@@ -35,7 +35,9 @@
 //   the rule lets proceed, or sends Claude to check, Claude would settle;
 //   the rest come to the person. No blind draw enters it: at settle time a
 //   point may still be drawn blind, which the offer's DATA says
-//   (projections/convergence.cjs).
+//   (projections/convergence.cjs). Drawn where it is due, an offer whose
+//   forecast has Claude settle none of them would settle nothing, so
+//   nothing is drawn (16.8.9).
 // - `convergence accept <wu> <topic>`, the person's yes: stated intent,
 //   logged in the trust log as a `convergence` event (16.8.6, 16.13.4), its
 //   id drawn from the conversation and when the offer was shown, so a rerun
@@ -241,7 +243,9 @@ function convergenceSurface(cwd, { dotpath, asked }) {
   if (asked === undefined && !dueIn(standing)) {
     throw new Error(`${said}: no offer is due on ${title} at ${standing.run} agreement${standing.run === 1 ? '' : 's'} in a row; on the person's word, --asked`);
   }
-  return offerScreen({ title, unit, topic, run: asked === undefined ? standing.run : null, forecast: forecastOf(cwd, unit, topic, standing.open), warnings });
+  const forecast = forecastOf(cwd, unit, topic, standing.open);
+  if (asked === undefined && !forecast.some(({ mine }) => mine)) return '';
+  return offerScreen({ title, unit, topic, run: asked === undefined ? standing.run : null, forecast, warnings });
 }
 
 /**

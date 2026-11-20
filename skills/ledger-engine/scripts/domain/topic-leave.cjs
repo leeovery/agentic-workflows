@@ -5,13 +5,16 @@
 // session (18.4.20, 24.1.2), and the one source of every move onto a menu:
 // an epic's, `ledger-continue-epic {wu}`, and the start menu, `ledger`. A
 // unit's own menu is its epic's for an epic, and the start menu for any
-// other unit — where its laboratory left for the menu goes, and its finish
-// (24.1.2, 14.6.2), a finished epic's menu its complete variant (18.4.23).
+// other unit — where its laboratory left for the menu goes, and a
+// quick-fix's close (24.1.2).
 //
 // A topic cancelled or postponed (`topic cancel`, `topic postpone`) takes
-// the conversation sitting in its discussion to its epic's menu; a unit
+// the conversation sitting in its discussion to its epic's menu. A unit
 // cancelled (`workunit cancel`) takes the conversation sitting in any phase
-// of it to the start menu. From anywhere else — another topic of the epic,
+// of a quick-fix to the start menu; sitting in any other unit, the
+// conversation leaves its position and carries on, no menu drawn unasked,
+// what waits said in its place (`leaveCancelled`, receipts.cjs). From
+// anywhere else — another topic of the epic,
 // its menu, manage on the start menu — the calling flow carries on. Where
 // the conversation sits is its position (position.cjs).
 //
@@ -32,8 +35,8 @@
 // ---------------------------------------------------------------------------
 
 const { handedSession } = require('../kernel/process.cjs');
-const { readPosition } = require('./position.cjs');
-const { UNIT_PHASES } = require('./derivations.cjs');
+const { readPosition, leavePosition } = require('./position.cjs');
+const { UNIT_PHASES, quickFixBuild } = require('./derivations.cjs');
 const { roadmapState } = require('./roadmap.cjs');
 
 /** @typedef {import('./projections/surfaces.cjs').Next} Next */
@@ -92,6 +95,18 @@ function sittingIn(workUnit, topic) {
 function leaveNext(workUnit, topic) {
   const phase = sittingIn(workUnit, topic);
   return phase !== null && UNIT_PHASES.discovery.includes(phase) ? ontoEpic(workUnit) : CONTINUE;
+}
+
+/**
+ * The calling conversation sitting in the unit `manifest` cancelled leaves
+ * its position, but at a quick-fix, whose `next` takes it to the start
+ * menu (the header's): whether it left.
+ * @param {Record<string, any>} manifest @returns {boolean}
+ */
+function leaveCancelled(manifest) {
+  if (quickFixBuild(manifest) || seatIn(manifest.name) === null) return false;
+  leavePosition(handedSession());
+  return true;
 }
 
 /**
@@ -156,4 +171,4 @@ function putBackNext(cwd, from, names) {
     : { kind: 'engine', argv: ['render', 'horizon-pick', '--back', first, '--from', from, ...thenArgs(rest)] };
 }
 
-module.exports = { ontoEpic, ontoMenu, seatIn, sittingIn, leaveNext, putBackNext, putBackBy, stillToAsk, thenArgs };
+module.exports = { ontoEpic, ontoMenu, seatIn, sittingIn, leaveNext, leaveCancelled, putBackNext, putBackBy, stillToAsk, thenArgs };

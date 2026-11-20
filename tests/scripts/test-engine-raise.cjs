@@ -67,10 +67,13 @@ const CALL = Object.freeze({
 
 /**
  * The screen a raise of `CALL` draws, its id `id`, the mechanism shown with
- * `technical`, the reason the decision point gave.
+ * `technical`, the reason the decision point gave: a rule's on the face, the
+ * counts' beside the mechanism alone (16.9.2).
  * @param {string} id @param {{technical?: boolean, reason?: string}} [opts]
  */
 function screen(id, { technical = false, reason = UNLABELLED } = {}) {
+  const why = ['', 'WHY I\'M ASKING', '', reason];
+  const ruled = reason === UNLABELLED;
   return [
     `=== MENU: raise — ${id} (emit verbatim as markdown (not a code block), then STOP for the user's response) ===`,
     '· · · · · · · · · · · ·',
@@ -84,11 +87,8 @@ function screen(id, { technical = false, reason = UNLABELLED } = {}) {
     '',
     '- Cursor: the note opens where you are looking',
     '- Main: every note opens on the same screen',
-    '',
-    'WHY I\'M ASKING',
-    '',
-    reason,
-    ...(technical ? ['', 'THE MECHANISM', '', 'The screen under the pointer when the note is made.'] : []),
+    ...(ruled ? why : []),
+    ...(technical ? ['', 'THE MECHANISM', '', 'The screen under the pointer when the note is made.', ...(ruled ? [] : why)] : []),
     '',
     '**`◆ Which way?`**',
     '',
@@ -445,7 +445,7 @@ describe('the label at the draw (16.11, 16.S38)', () => {
 });
 
 describe('the decision point (29.19.2)', () => {
-  it('the response, the seal and the screen carry whatever it answers, with its reason', async (t) => {
+  it('the response, the seal and the screen carry whatever it answers, with its reason — the counts\' behind the toggle (16.9.2)', async (t) => {
     const reason = 'On behaviour in Fumi my calls still miss more often than you allow: 21%, over your 20%.';
     t.mock.method(decisionPoint, 'decide', () => ({ decision: 'ask', reason }));
 
@@ -454,6 +454,7 @@ describe('the decision point (29.19.2)', () => {
     assert.deepStrictEqual(res, { ok: true, decision: 'ask', reason, raise: res.raise, redrawn: false });
     assert.strictEqual(seals()[res.raise].reason, reason);
     assert.strictEqual(sections, screen(res.raise, { reason }));
+    assert.strictEqual(show([res.raise, '--technical']).sections, screen(res.raise, { reason, technical: true }));
   });
 });
 

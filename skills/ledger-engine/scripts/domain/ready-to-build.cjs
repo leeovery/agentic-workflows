@@ -17,7 +17,11 @@
 //   one, and at no later one (22.5.3, environment-verbs.cjs). Then the
 //   drivers are checked against the tools they need: where a tool is not
 //   fine, the stop is drawn in the screen's place, and the yes, checking
-//   them again, is refused with it (22.4.5–22.4.9, drivers-verbs.cjs). It refuses a unit
+//   them again, is refused with it (22.4.5–22.4.9, drivers-verbs.cjs). Where
+//   the project lands through GitHub and the squash default's offer was
+//   never answered, the offer is drawn in the screen's place, at the
+//   project's first ready to build and at no later one (4.4.6,
+//   github-setup.cjs), its answer leading back to the screen. It refuses a unit
 //   `enter specification` refuses (spec-entry.cjs) — one the project lacks,
 //   one not in progress, a quick-fix, topics not settled; and a unit whose
 //   build has begun, the gate raised once per spec
@@ -94,6 +98,9 @@ const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('.
 const { refusing, stands } = require('./staged-payload.cjs');
 const { resolveDriver } = require('./drivers.cjs');
 const { driversStop } = require('./drivers-verbs.cjs');
+const { githubSquashOffered, githubSquashNested } = require('./github-setup.cjs');
+const { githubSquashGate } = require('./projections/boot.cjs');
+const { projectName } = require('./state-checks.cjs');
 const { phaseSkill } = require('./handoff.cjs');
 const { readyToBuildScreen } = require('./projections/ready-to-build.cjs');
 
@@ -208,16 +215,18 @@ function reviewCounts(cwd, unit) {
 }
 
 /**
- * `render ready-to-build <unit> [--page] [--calls]`: the screen, the review
- * row offered with `--page`, Claude's calls listed with `--calls`.
- * @param {string} cwd @param {{dotpath?: string, page?: string, calls?: string}} args
+ * `render ready-to-build <unit> [--page] [--calls] [--alone]`: the screen,
+ * the review row offered with `--page`, Claude's calls listed with
+ * `--calls`, drawn after a verdict with `--alone`.
+ * @param {string} cwd @param {{dotpath?: string, page?: string, calls?: string, alone?: string}} args
  * @returns {string}
  */
-function readyToBuildSurface(cwd, { dotpath: unit = '', page, calls }) {
+function readyToBuildSurface(cwd, { dotpath: unit = '', page, calls, alone }) {
   return refusing('render ready-to-build', () => {
     const ready = standing(cwd, unit);
     const stop = driversStop(cwd);
     if (stop !== null) return stop.screen();
+    if (githubSquashOffered(cwd)) return githubSquashGate(projectName(cwd), githubSquashNested(cwd));
     const { headings } = specReading(ready.landed);
     const open = pageOpen(cwd, unit);
     return readyToBuildScreen({
@@ -234,6 +243,7 @@ function readyToBuildSurface(cwd, { dotpath: unit = '', page, calls }) {
       page: page !== undefined,
       review: open ? reviewCounts(cwd, unit) : null,
       readBack: readBackFile(cwd, unit),
+      alone: alone !== undefined,
     });
   });
 }

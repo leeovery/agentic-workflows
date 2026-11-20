@@ -88,7 +88,7 @@ The default task driver keeps the tasks in [Tick](https://github.com/leeovery/ti
 
 ### Landing
 
-- **On GitHub**, each task is a pull request and each phase a stack of them, each based on the one before, merged whole once the phase review passes. Every task's pull request is squashed, so the branch the work lands on gains one commit per task, under the task's own subject and id. It needs GitHub's CLI and its stack extension, at the versions ready to build names; setup offers to make squash merges the repository's default, which landing needs, and its yes also allows merge commits.
+- **On GitHub**, each task is a pull request and each phase a stack of them, each based on the one before, merged whole once the phase review passes. Every task's pull request is squashed, so the branch the work lands on gains one commit per task, under the task's own subject and id. It needs GitHub's CLI and its stack extension, at the versions ready to build names; the project's first ready to build offers to make squash merges the repository's default, which landing needs, and its yes also allows merge commits.
 - **Locally**, for a project with no remote or one on another host, the same shape lands with no pull request and no push: each phase's stack is a branch, each task squashed onto it as one commit in the order the tasks merged back, and merging the phase moves the branch the work lands on to it.
 
 The branch the work lands on is the default branch, or the work's own branch where it has one. That branch lands on the default branch at finish by one merge commit: on GitHub its own pull request, which finish refuses to merge on a repository that allows no merge commits, and locally a merge commit made in place.

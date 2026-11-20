@@ -232,7 +232,7 @@ describe('pipeline simulation: sessions', () => {
     assert.strictEqual(JSON.parse(fs.readFileSync(statePath(sim.dir, 'manifest.json'), 'utf8')).defaults.session_labels, false);
   });
 
-  it('boot: a git below the floor stops at its screen, as a folder in no repository does at its own, and a project whose reshape the guard refuses at its own; lost state stops at its screen and the gate\'s yes starts it again; a GitHub remote gets the rule\'s offer and the squash default\'s once each, and each no is recorded', () => {
+  it('boot: a git below the floor stops at its screen, as a folder in no repository does at its own, and a project whose reshape the guard refuses at its own; lost state stops at its screen and the gate\'s yes starts it again; a GitHub remote gets the rule\'s offer once, its no recorded, the squash default\'s left for the first ready to build', () => {
     // A machine whose git is older than the engine's floor stops before
     // anything runs.
     const bin = fs.mkdtempSync(path.join(sim.configDir, 'old-git-'));
@@ -265,25 +265,22 @@ describe('pipeline simulation: sessions', () => {
     assert.ok(!fs.existsSync(statePath(sim.dir)), 'the stop wrote state');
     assert.match(sim.render(['state-lost-gate'], { expect: 'content' }), /Start again with a fresh state\?/);
     const restarted = sim.run(answerGate(sim, 'state lost gate', '--pick', 'y').next.argv);
-    assert.deepStrictEqual([restarted.state, restarted.github_rule_offer, restarted.github_squash_offer], ['restarted', false, false]);
+    assert.deepStrictEqual([restarted.state, restarted.github_rule_offer], ['restarted', false]);
     assert.strictEqual(stateGit(sim.dir, ['rev-list', '--max-parents=0', 'ledger-state']).trim().split('\n').length, 1, 'the fresh state is one orphan line');
 
     // A remote on GitHub, out of reach: boot works on the state it has, and
-    // offers the rule, and the squash default its landing on GitHub needs,
-    // until each offer is answered.
+    // offers the rule until it is answered; the squash default its landing on
+    // GitHub needs waits for the first ready to build.
     git(sim.dir, ['remote', 'add', 'origin', 'git@github.com:acme/portal.git']);
     sim.env = { ...sim.env, ...githubOffline(sim.configDir), GIT_SSH_COMMAND: 'false' };
     const offered = sim.run(['boot']);
-    assert.deepStrictEqual([offered.state, offered.github_rule_offer, offered.github_squash_offer], ['ready', true, true]);
-    assert.deepStrictEqual(offered.gates.slice(-2), ['github-rule', 'github-squash'], 'the bare command\'s last setup gates, each drawn by its own render');
+    assert.deepStrictEqual([offered.state, offered.github_rule_offer], ['ready', true]);
+    assert.deepStrictEqual(offered.gates.at(-1), 'github-rule', 'the bare command\'s last setup gate, drawn by its own render');
     assert.match(sim.render(['github-rule-gate'], { expect: 'content' }), /Add that rule on GitHub\?/);
     assert.strictEqual(sim.run(['github-rule', 'no']).github_rule, 'declined');
-    assert.match(sim.render(['github-squash-gate'], { expect: 'content' }), /Set both on GitHub\?/);
-    assert.strictEqual(sim.run(['github-squash', 'no']).github_squash, 'declined');
     const answered = sim.run(['boot']);
-    assert.deepStrictEqual([answered.github_rule_offer, answered.github_squash_offer, answered.gates.filter((gate) => gate.startsWith('github-'))], [false, false, []]);
+    assert.deepStrictEqual([answered.github_rule_offer, answered.gates.filter((gate) => gate.startsWith('github-'))], [false, []]);
     sim.refuses(['github-rule', 'yes'], /an answer is recorded once/);
-    sim.refuses(['github-squash', 'no'], /only a yes is taken again/);
   });
 
 });

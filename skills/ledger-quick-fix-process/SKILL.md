@@ -112,7 +112,7 @@ Mark it as it holds, `checklist done finish {work_unit} {item}`, or skip it with
 node .claude/skills/ledger-engine/scripts/engine.cjs render finish {work_unit}
 ```
 
-A refusal names the way on: take it, then draw the close again. After each verdict the screen asks before its gate, draw the screen again. At the gate, follow the `next` of what the answer ran; a refusal of the yes names the way on: take it, then run the yes again.
+A refusal names the way on: take it, then draw the close again. After each verdict the screen asks before its gate, draw it again with `--alone` added. At the gate, follow the `next` of what the answer ran; a refusal of the yes names the way on: take it, then run the yes again.
 
 ## Something Outside the Plan
 

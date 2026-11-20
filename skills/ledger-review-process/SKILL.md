@@ -139,7 +139,7 @@ Mark it as it holds, `checklist done finish {work_unit} {item}`, or skip it with
 node .claude/skills/ledger-engine/scripts/engine.cjs render finish {work_unit}
 ```
 
-After each verdict the screen asks before its gate, draw the screen again. At the gate, follow the `next` of what the answer ran. A refusal of the yes names the way on: take it — a conflict with the default branch settled with the person, as at the entry — then run the yes again.
+After each verdict the screen asks before its gate, draw it again with `--alone` added. At the gate, follow the `next` of what the answer ran. A refusal of the yes names the way on: take it — a conflict with the default branch settled with the person, as at the entry — then run the yes again.
 
 ## The Calls
 

@@ -112,6 +112,22 @@ describe('the decided screen (9.7.3, 9.S21)', () => {
     assert.deepStrictEqual(ok(dir(), ['verdict', 'queue']).departures.map((/** @type {{id: string}} */ d) => d.id), [elsewhere, price], 'the skipped verdict waits in the queue (16.10.6), and the departure on another topic, never asked here');
   });
 
+  it('verdicts drawn once: after a verdict, `--alone` draws the next verdict with none of the screen, then the gate alone', () => {
+    close();
+    reverse(NOTE_MAP.sync.answer, 'Off until you turn it on.');
+    const price = reverse(NOTE_MAP.price.answer, 'A price line at the end.');
+    staged(NO_PAYLOAD);
+    run(answer('verdict', 'n'));
+
+    const next = screen(['--alone']);
+    run(answer('verdict', 'n'));
+    const gate = screen(['--alone']);
+
+    assert.match(sectionOf(next, 'DISPLAY: decided'), /^YOUR VERDICT \(2 of 2 calls you changed\)\n {2}└─ Is pricing mentioned\?/);
+    assert.ok(next.includes('MENU: verdict'), `the verdict on ${price} is asked`);
+    assert.deepStrictEqual([gate.includes('=== DISPLAY'), gate.includes('MENU: decided')], [false, true]);
+  });
+
   it('refuses a payload that names no decision on the map, a withdrawal of no line of the product record, a candidate the map cannot take, an epic\'s with no brief in the cache (8.S59) and a one-topic unit\'s with no horizon, and one of another shape, staging nothing', () => {
     close();
     close(SOLO, SOLO);

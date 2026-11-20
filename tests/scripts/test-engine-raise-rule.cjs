@@ -286,14 +286,14 @@ describe('the rule\'s decisions as a raise meets them', () => {
     assert.deepStrictEqual(logEvents().filter(({ type }) => type === 'call').map(({ entry, kind, sort }) => [entry, kind, sort]), [[full(one.id), 'behaviour', 'one']]);
   });
 
-  it('16.S1: a kind not gone quiet, its bound over the threshold, asks — the session given the decision and the rule\'s reason, in numbers and the names of the kind and the project, and nothing of the trust log\'s', async () => {
+  it('16.S1: a kind not gone quiet, its bound over the threshold, asks — the session given the decision and the rule\'s reason, in numbers and the names of the kind and the project, and nothing of the trust log\'s, the screen keeping the counts\' reason behind its toggle (16.9.2)', async () => {
     quietOn('behaviour', 12);
 
     const { res, sections } = await raised(NOTE, ['--answers', made.note], CALL, labelledAs(CALL, 'behaviour'));
 
     const reason = `It's behaviour, and on behaviour in ${projectName(dir)} my calls still miss more often than you allow: 21%, over your 20%.`;
     assert.deepStrictEqual(res, { ok: true, decision: 'ask', reason, raise: res.raise, redrawn: false });
-    assert.ok(sections.includes(`\nWHY I'M ASKING\n\n${reason}\n`), `the screen gives another reason:\n${sections}`);
+    assert.ok(!sections.includes('WHY I\'M ASKING'), `the counts' reason is on the face:\n${sections}`);
   });
 
   it('a question Claude could find out is sent to check — drawing, sealing, parking, landing and logging nothing, the conversation keeping the raise as sent, by the question and the task raising it — and the same raise made again asks: at a topic, and in the build, where another task\'s raise of it, whose own check has not come back, is sent to check too (16.3.1, 16.11.7)', async () => {

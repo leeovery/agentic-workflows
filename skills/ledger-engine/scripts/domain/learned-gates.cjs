@@ -80,9 +80,6 @@ const LEARNED = Object.freeze({
   'plan gate': Object.freeze({
     y: 'Analysis plan approved [auto]. Checking the hypotheses in this order.',
   }),
-  'check-in gate': Object.freeze({
-    y: 'Check-in approved [auto]. Carrying on with what\'s next.',
-  }),
   'conclude gate': Object.freeze({
     y: 'Investigation concluded [auto]. Moving to the specification.',
   }),
@@ -101,7 +98,6 @@ const BLIND_ASK = 0.05;
 const KEEPING = Object.freeze({
   'wait for agents': Object.freeze(['w']),
   'plan gate': Object.freeze(['comment']),
-  'check-in gate': Object.freeze(['comment']),
   'conclude gate': Object.freeze(['comment']),
 });
 

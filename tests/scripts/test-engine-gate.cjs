@@ -468,6 +468,26 @@ describe('gate (6.6, 6.S18)', () => {
     assert.deepStrictEqual(read, [[null, true], ['y', false]]);
   });
 
+  it('6.6.16: a gate set aside takes a row the person picks in words where it waits, never drawn again, logged as a pick after a draw again would be; anything but a row picked is refused there', () => {
+    const answered = (/** @type {() => void} */ after) => {
+      render(['migration-gate']);
+      answer(['migration gate', '--typed'], {}, WORDS);
+      after();
+      const res = answer(['migration gate', '--pick', 'y']);
+      const logged = events().slice(-2).map(({ id, picked, via, with_text: withText }) => ({ id, picked, via, withText }));
+      return { res, logged };
+    };
+    const drawnAgain = answered(() => render(['migration-gate']));
+    const inWords = answered(() => {
+      assert.strictEqual(refused(['migration gate', '--typed', 'ask']), 'gate: "migration gate" is set aside — a row picked answers it, and anything else said is talk');
+      assert.strictEqual(refused(['migration gate', '--typed'], {}, WORDS), 'gate: "migration gate" is set aside — a row picked answers it, and anything else said is talk');
+    });
+
+    assert.strictEqual(inWords.res.next?.kind, 'engine');
+    assert.deepStrictEqual(inWords.logged.map(({ id, ...rest }) => [id === inWords.logged[0].id, rest]), [[true, { picked: null, via: 'typed', withText: true }], [true, { picked: 'y', via: 'typed', withText: false }]]);
+    assert.deepStrictEqual(inWords.logged.map(({ id, ...rest }) => rest), drawnAgain.logged.map(({ id, ...rest }) => rest));
+  });
+
   it('a learned gate\'s answer logs the showing it was drawn on, so a replay draws its blind ask again; any other gate\'s logs none', () => {
     const showing = showingOf({ unit: 'pay', phase: 'investigation', topic: 'pay' }, null, ['H1']);
     inConversation(() => {

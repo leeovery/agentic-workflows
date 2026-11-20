@@ -102,6 +102,15 @@ describe('the drivers checked at ready to build (22.4.5–22.4.9)', () => {
 });
 
 describe('the yes writes both drivers\' settings (22.4.3, F7)', () => {
+  it('4.4.6: a project landing through GitHub is offered the squash default in the screen\'s place at its first ready to build, its answer leading back to the screen, and never again', () => {
+    git(dir(), ['remote', 'add', 'origin', 'git@github.com:acme/lantern.git']);
+
+    const offer = screen();
+    ok(dir(), ['github-squash', 'no'], { env: env() });
+
+    assert.deepStrictEqual([offer.includes('=== MENU: github squash gate '), offer.includes('MENU: ready to build'), screen().includes('=== MENU: ready to build ')], [true, false, true]);
+  });
+
   it('22.S10, 7.S1: a project with no remote records each kind\'s default, unasked', () => {
     assert.strictEqual(drivers(), undefined);
     yes();

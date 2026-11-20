@@ -3,9 +3,8 @@
 // ---------------------------------------------------------------------------
 // Finish's screen (ledger-engine/scripts/domain/finish.cjs, its screen
 // domain/projections/finish.cjs): `engine render finish <unit>`, standing on
-// finish's close — every checklist item skipped on the way, with its reason,
-// read from the manifest by a later conversation (6.S23, 6.S32), no measure
-// (17.S2), each call the person changed in the build and the review phase
+// finish's close — no checklist item skipped drawn, read by a later
+// conversation, no measure (17.S2), each call the person changed in the build and the review phase
 // asked its verdict before the gate (14.S9, 16.S35) and nothing added where
 // they changed none (16.10.5), questions about what was built invited, then
 // yes — saying it lands the unit's own branch on the default branch, for a
@@ -19,7 +18,7 @@
 require('./hermetic-env.cjs');
 
 const { describe, it } = require('node:test');
-const { sectionOf, keywordOnlyKnowledge, layout, commitAll, git } = require('./engine-harness.cjs');
+const { output, sectionOf, keywordOnlyKnowledge, layout, commitAll, git } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const {
   UNIT, calls, reviewCall, useWorld, env, reviewPassed, finishClosed, finishReady, readManifest, writeState, ok, assert,
@@ -37,22 +36,14 @@ const overruled = (at, entry, text) => ok(dir, ['ledger', 'replace', at, '--repl
 }).id;
 
 describe('render finish (14.5.1)', () => {
-  it('14.S9, 6.S23, 6.S32, 17.S2: draws every skip on the way with its reason, read by a later conversation, no measure, and, nothing changed by the person, no verdict — then questions invited, the yes running finish and a comment', () => {
+  it('14.S9, 17.S2: draws no skip on the way, the skips kept on the manifest alone, read by a later conversation, no measure, and, nothing changed by the person, no verdict — then questions invited, the yes running finish and a comment', () => {
     reviewPassed();
     checklist(['skip', 'phase-start', UNIT, '1', 'design-settled', '--reason', 'One task alone.']);
     checklist(['skip', 'finish', UNIT, 'build-log-closed', '--reason', 'The build kept no log.']);
     checklist(['close', 'finish', UNIT]);
     const out = screen('later-session');
 
-    assert.strictEqual(sectionOf(out, 'DISPLAY: finish'), [
-      'Pay — finish',
-      '',
-      '  ⚑ Skipped at phase 1\'s start: shared design settled — One task',
-      '    alone.',
-      '  ⚑ Skipped at finish: the build log closed — The build kept no',
-      '    log.',
-      '',
-    ].join('\n'));
+    assert.strictEqual(sectionOf(out, 'DISPLAY: finish'), 'Pay — finish\n');
     assert.strictEqual(sectionOf(out, 'MENU: finish'), [
       '· · · · · · · · · · · ·',
       'Ask me anything about what was built first — I answer it before we finish.',
@@ -95,6 +86,22 @@ describe('render finish (14.5.1)', () => {
       'finish yes: a verdict is still to ask — render finish asks each before the yes', 'land: a verdict is still to ask — render finish asks each before the yes', true, ['verdict', 'give', 'nothing', '--at', 'finish'],
     ]);
     assert.match(screen(), /=== MENU: finish /);
+  });
+
+  it('verdicts drawn once: after a verdict, `--alone` draws the next verdict with none of the screen, then the gate alone', () => {
+    finishReady();
+    const retry = overruled(`${UNIT}.implementation`, calls.retry, 'A charge is retried once.');
+    const dropped = overruled(`${UNIT}.review`, reviewCall('The expiry finding is filed.', 'It is out of the change.'), 'The expiry finding is dropped.');
+    screen();
+    ok(dir, ['verdict', 'give', retry, 'nothing', '--at', 'finish'], { env: env() });
+    const alone = () => output(dir, ['render', 'finish', UNIT, '--alone'], { env: env() });
+
+    const next = alone();
+    ok(dir, ['verdict', 'give', dropped, 'nothing', '--at', 'finish'], { env: env() });
+    const gate = alone();
+
+    assert.match(sectionOf(next, 'DISPLAY: finish'), /^YOUR VERDICT \(2 of 2 calls you changed\)\n {2}└─ Is this finding filed or dropped\?/);
+    assert.deepStrictEqual([gate.includes('=== DISPLAY'), gate.includes('MENU: finish')], [false, true]);
   });
 
   it('refuses a unit the project lacks, one not in progress, a build not begun, its review phase not over, a checklist open, and an engine item failing since its close, writing nothing — land finish refusing each as it does', () => {

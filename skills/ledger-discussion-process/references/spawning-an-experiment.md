@@ -24,7 +24,7 @@ A refused create: say why in a line. Otherwise its `id` is the experiment.
 
 ## Now or Later
 
-Working it now would leave the topic, so ready it before asking: bring the log up to date, then fetch `render wait-agents {work_unit}.{topic}`. Then fetch the gate:
+Working it now would leave the topic, so ready it before asking: bring the log up to date. Then fetch the gate:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render experiment-spawn-gate {work_unit}.discussion.{topic} --id {id}

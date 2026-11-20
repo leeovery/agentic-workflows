@@ -41,7 +41,7 @@ Questions reach the person one at a time. In a conversation each slots in at a n
 
 Where `enter`'s DATA names `person`, the record of the person, read it: its preferences shape what you pick, whether you decide or lean as you ask, and never whether you ask.
 
-A preference the person states outright, or one their answers keep showing, is proposed for the record: `person propose`, with `{"preference", "why", "examples"}` on stdin. A kind they want always to come to them in this project is proposed the same way as `{"care": "{kind}", "why", "examples"}`. Where a raise's answer carries `care_drop`, propose dropping that care entry: `person propose --drop`, with `{"care": "{kind}", "why", "examples"}`, its examples the questions answered "don't care".
+A preference the person states outright, or one their answers keep showing, is proposed for the record at the next natural pause, never cutting into the work: `person propose`, with `{"preference", "why", "examples"}` on stdin. A kind they want always to come to them in this project is proposed the same way as `{"care": "{kind}", "why", "examples"}`. Where a raise's answer carries `care_drop`, propose dropping that care entry: `person propose --drop`, with `{"care": "{kind}", "why", "examples"}`, its examples the questions answered "don't care".
 
 ## Corrections
 

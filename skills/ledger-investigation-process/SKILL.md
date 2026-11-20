@@ -61,13 +61,13 @@ Trace from where the person meets the bug back to its source: the data's path, t
 
 What the code or a run shows is a finding, saying how it is known: `read` in the code, `documented` with its source, or `exploratory` with the command and its result. A check run to test a hypothesis is the investigation's own experiment, logged with what it showed and resting on its finding (`investigation-log experiment`). A trace or a longer account goes beneath its entry as `--body`. A hypothesis's state follows the evidence — confirmed, or ruled out, a dead end kept and never deleted — and one the person says is intended behaviour is `intended`, `--by` their answer. A new suspect joins as a hypothesis of its own.
 
-Whenever hypotheses resolve, before the trace moves on, write `{"resolved": ["H{n}", …], "next": "{what is checked next}"}`, those resolved since the last gate, to `.ledger/.cache/{work_unit}/investigation/{work_unit}/check-in.json`, then fetch the check-in gate:
+Whenever hypotheses resolve, before the trace moves on, write `{"resolved": ["H{n}", …], "next": "{what is checked next}"}`, those resolved since the last check-in, to `.ledger/.cache/{work_unit}/investigation/{work_unit}/check-in.json`, then draw the check-in and carry on past it:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render investigation-check-in {work_unit} --file .ledger/.cache/{work_unit}/investigation/{work_unit}/check-in.json
 ```
 
-Between gates, a line or two on what just flipped and why it matters keeps the person with the hunt, and never ends the turn.
+Between check-ins, a line or two on what just flipped and why it matters keeps the person with the hunt, and never ends the turn.
 
 ### What Only the Person Can Say
 

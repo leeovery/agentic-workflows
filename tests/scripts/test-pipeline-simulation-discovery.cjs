@@ -30,7 +30,7 @@ const { startMenuRead } = require(path.join(ROOT, 'skills/ledger-engine/scripts/
 const { startMenuScreen } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/projections/start-menu.cjs'));
 const { stateGit } = require('./engine-harness.cjs');
 const {
-  Sim, startUnit, handoff, handoffBy, answerGate, typeAtGate, startPick, startNew, startBare, startWith, startMenu, epicPick, carryOn, mappedEpic, enterEntry, waitAgents, presenceRow, briefDraft, roadmapMenu,
+  Sim, startUnit, handoff, handoffBy, answerGate, typeAtGate, startPick, startNew, startBare, startWith, startMenu, epicPick, carryOn, mappedEpic, enterEntry, presenceRow, briefDraft, roadmapMenu,
 } = require('./pipeline-world.cjs');
 
 const PRODUCT = 'product';
@@ -258,14 +258,13 @@ describe('pipeline simulation: discovery\'s entry', () => {
     assert.deepStrictEqual(Object.keys(sim.manifest(EPIC).phases.discovery.items), ['licensing', 'pricing', 'seats', 'offline-notes']);
   });
 
-  // The discussion skill's Moving Up: the log brought up to date, the wait
-  // for the topic's agents, then the move in the same conversation.
-  it('a topic\'s talk moving up to its epic: its agents waited on, the sitting committed and the topic\'s presence gone, in the same conversation (8.S72, 24.S20)', () => {
+  // The discussion skill's Moving Up: the log brought up to date, then the
+  // move in the same conversation.
+  it('a topic\'s talk moving up to its epic: the sitting committed and the topic\'s presence gone, in the same conversation (8.S72, 24.S20)', () => {
     mappedEpic(sim, EPIC, ['licensing']);
     enterEntry(sim, EPIC, 'discussion', 'licensing');
     const conversation = sim.conversations;
     sim.write(`.ledger/${EPIC}/topics/licensing/log.md`, `${named(sim, 'log header')[0]}\n\nThis is about the whole epic.\n`);
-    waitAgents(sim, EPIC, 'licensing');
 
     const up = sim.run(['enter', 'discovery', EPIC, '--move']);
     assert.strictEqual(typeof up.committed, 'string');
@@ -309,7 +308,6 @@ describe('pipeline simulation: discovery\'s entry', () => {
     enterEntry(sim, wu, 'discussion', wu);
     const conversation = sim.conversations;
     sim.write(`.ledger/${wu}/topics/${wu}/log.md`, `${named(sim, 'log header')[0]}\n\nThis is about the product.\n`);
-    waitAgents(sim, wu, wu);
 
     sim.refuses(['enter', 'discovery', wu, '--move'], /its discovery ended at start this work/);
     sim.run(['enter', 'discovery', PRODUCT, '--move']);

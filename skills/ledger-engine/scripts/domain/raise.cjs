@@ -378,6 +378,7 @@ const { clearStop } = require('./position.cjs');
 const { withStateLock, migrationRuns } = require('./state-worktree.cjs');
 const { record, modelOf, projectId } = require('./trust-log.cjs');
 const { careEntries, dropCue } = require('./person.cjs');
+const { ruleReason } = require('./ask-rule.cjs');
 const { projectName } = require('./state-checks.cjs');
 const { RAISE_SHOWN, raiseMenu, clearGateShown, isPressed } = require('./gate.cjs');
 const { drawnRows, keepingRow, raiseScreen, revealScreen, leftScreen } = require('./projections/raise.cjs');
@@ -2257,6 +2258,20 @@ function titledTopic(root, seal) {
 }
 
 /**
+ * The seal's reason where a rule always asks the raise, as its face says it
+ * (16.9.2): a fact's, which only the person holds; else where the ask
+ * rule's, read from the seal and the person's care entries, is the one the
+ * seal holds; null where the counts sent it.
+ * @param {string} cwd @param {string|null} root @param {Seal} seal @returns {string|null}
+ */
+function ruledReason(cwd, root, seal) {
+  if (seal.fact) return seal.reason;
+  const project = { id: root === null ? '' : projectId(root), name: projectName(cwd) };
+  const ruled = ruleReason({ replaced_by: seal.replaced_by, measured: seal.measured, always: seal.always, label: seal.label, care: careEntries(), project });
+  return ruled === seal.reason ? ruled : null;
+}
+
+/**
  * The raise's screen, titled with its topic (`titledTopic`) by the name it
  * goes by, but a unit's of one topic, its own (8.8.17).
  * @param {string} cwd @param {Seal} seal @param {{technical?: boolean}} [opts]
@@ -2266,7 +2281,7 @@ function raiseScreenOf(cwd, seal, { technical = false } = {}) {
   const root = findStateRoot(cwd);
   const manifest = root === null ? null : manifestOf(root, seal.place.unit);
   const topic = titledTopic(root, seal);
-  return raiseScreen(seal, { technical, topic: topic === null || topic === seal.place.unit ? null : topicTitle(manifest ?? {}, topic) });
+  return raiseScreen(seal, { technical, topic: topic === null || topic === seal.place.unit ? null : topicTitle(manifest ?? {}, topic), ruled: ruledReason(cwd, root, seal) });
 }
 
 module.exports = { RAISE_USAGE, drawRaise, drawParked, showRaise, answerRaise, raiseWaits, unraised, raiseScreenOf, steppedBackSealed, downChain, sealsAt, sealWaits, investigationPlaces, raisePlaces };

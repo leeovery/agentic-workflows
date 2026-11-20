@@ -46,7 +46,7 @@ describe('a round that passed (20.10.1, 20.10.4)', () => {
     assert.deepStrictEqual([view.verdict, view.waiting, banner], ['passed', [], { name: 'Pay', state: 'running', facts: placed(['feature', 'review'], 'round 1 passes') }]);
   });
 
-  it('a round that passed shows what it found, what could not be proven with its scenario\'s words, and its verdict; the phase over, finish waits on the person, and the banner flags it (D18, D37); once finish completes the unit from its review phase, This session is All work at the start menu, the banner the unit\'s close, through the boot that brings the start menu, until the session goes somewhere (20.10.4, D38)', () => {
+  it('a round that passed shows what it found, what could not be proven with its scenario\'s words, and its verdict; the phase over, finish waits on the person, and the banner flags it (D18, D37); once finish completes the unit from its review phase the conversation leaves it, This session All work at the start menu, the banner the unit\'s close, at once and through a boot, until the session goes somewhere (20.10.4, D38)', () => {
     finishReady();
     const over = board();
     ok(dir, ['finish', 'yes', UNIT], { env: env() });
@@ -77,7 +77,7 @@ describe('a round that passed (20.10.1, 20.10.4)', () => {
       banner: { name: 'Pay', state: 'needs', facts: placed(['feature', 'review'], 'finish waits on you', ['1 waiting on you']) },
     });
     assert.deepStrictEqual([finished, booted, read().banner], [
-      { view: ['all', true, [UNIT]], banner: close, unit: { unit: UNIT, title: 'Pay' }, questions: [] },
+      { view: ['all', true, [UNIT]], banner: close, unit: null, questions: [] },
       { view: ['all', true, [UNIT]], banner: close, unit: null, questions: [] },
       { name: projectName(dir), state: 'idle', facts: [place('roadmap')] },
     ]);

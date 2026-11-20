@@ -4,7 +4,7 @@
 // The pipeline simulation's bugfix scenarios, each replaying the calls the
 // investigation's skill makes, in its order, from start this work: the
 // investigation entered at its one topic, the hunt logged on its entries,
-// the plan and check-in gates, the live server's permission asked at the
+// the plan gate and the check-in, the live server's permission asked at the
 // investigation's own level, both validations briefed and taken in — the
 // root cause's finding asked of the person as what the product should do,
 // the fix's raised replacing the fix, each surfaced as what it was raised
@@ -20,8 +20,8 @@
 // of its own, start this work's screen and its yes, the feature's
 // discussion reading the investigation as its earlier log at its first
 // opening. And a bugfix whose investigation's gates the person has always
-// said yes at, the decision point stepping them: the plan, the check-in and
-// the conclude each run as a learned step, logged as one, the conclude's
+// said yes at, the decision point stepping them: the plan and the conclude
+// each run as a learned step, logged as one, the conclude's
 // yes standing over a call the person changed, and ready to build, its
 // count as long, stopping before any code; then the replay of a lower
 // threshold, which would have stopped at each of those steps.
@@ -214,13 +214,13 @@ describe('pipeline simulation: bugfix', () => {
     assert.deepStrictEqual(JSON.parse(sim.read(['ledger', 'record', wu, wu])).decisions.map((d) => d.text), ['The save writes a null that nothing checks.', 'Rework saving as a feature']);
   });
 
-  it('a bugfix whose investigation\'s gates the person always says yes at (19.S17, 16.10.11, 3.S4): the plan, check-in and conclude gates each run as a learned step, nothing answered at them, each logged as a step, the conclude\'s yes standing over the fix the person changed; ready to build, as long answered alike, still stops before any code; and a lower threshold\'s replay would have stopped at each step', async (t) => {
+  it('a bugfix whose investigation\'s gates the person always says yes at (19.S17, 16.10.11, 3.S4): the plan and conclude gates each run as a learned step, nothing answered at them, each logged as a step, the conclude\'s yes standing over the fix the person changed; ready to build, as long answered alike, still stops before any code; and a lower threshold\'s replay would have stopped at each step', async (t) => {
     // Each showing told by its place and the frozen instant it was entered
     // at alone, no key: none blind here.
     const wu = 'save-null';
     const { project_id: project } = JSON.parse(fs.readFileSync(path.join(sim.dir, '.ledger/manifest.json'), 'utf8'));
     const seeded = history({ project, start: Date.now() - DAY });
-    for (const gate of ['plan gate', 'check-in gate', 'conclude gate']) for (let i = 0; i < 13; i += 1) seeded.gate(gate, { picked: 'y' });
+    for (const gate of ['plan gate', 'conclude gate']) for (let i = 0; i < 13; i += 1) seeded.gate(gate, { picked: 'y' });
     for (let i = 0; i < 13; i += 1) seeded.gate('ready to build', { picked: 's' });
     fs.writeFileSync(path.join(sim.configDir, TRUST_LOG), lines(...seeded.events));
     t.mock.method(decisionPoint, 'gateStep', (/** @type {string} */ name, /** @type {any} */ at) => gateStep(name, { ...at, key: null }));
@@ -238,8 +238,8 @@ describe('pipeline simulation: bugfix', () => {
     specToBuild(sim, wu, [wu]);
     assert.deepStrictEqual(gatesAnswered(sim).slice(seeded.events.length), ['start menu', 'start this work', 'environment setup', 'ready to build']);
     const steps = [...new Map(trustLines(sim).map((line) => JSON.parse(line)).filter(({ type }) => type === 'step').map((step) => [step.id, [step.gate, step.row]])).values()];
-    assert.deepStrictEqual(steps, [['plan gate', 'y'], ['check-in gate', 'y'], ['conclude gate', 'y']]);
+    assert.deepStrictEqual(steps, [['plan gate', 'y'], ['conclude gate', 'y']]);
     const replayed = sim.render(['matrix-replay', '--threshold', '15'], { expect: 'content' }).replace(/\s+/g, ' ');
-    assert.ok(replayed.includes('at the gates that learn from your answers, 15% would have stopped at 3 of the 3 stops I went on past.'), replayed);
+    assert.ok(replayed.includes('at the gates that learn from your answers, 15% would have stopped at 2 of the 2 stops I went on past.'), replayed);
   });
 });

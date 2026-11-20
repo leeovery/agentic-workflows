@@ -60,6 +60,7 @@ const RECEIPTED = Object.freeze({
   inbox: ['capture', 'archive', 'restore', 'delete'],
   topic: ['cancel', 'reactivate', 'postpone'],
   roadmap: ['pull-forward'],
+  finish: ['yes'],
 });
 // What a blind question's answer draws: its reveal (16.17.7).
 const REVEAL = '=== DISPLAY: blind question revealed ';
@@ -166,7 +167,7 @@ class Sim {
     return group === 'presence' || group === 'enter' || (group === 'raise' && !RAISE_ANSWERS.includes(verb)) || (group === 'topic' && (MAP_VERBS.includes(verb) || RECEIPTED.topic.includes(verb)))
       || (group === 'raise' && verb === 'answer' && blind && sections.startsWith(REVEAL))
       || (group === 'workunit' && RECEIPTED.workunit.includes(verb)) || (group === 'inbox' && RECEIPTED.inbox.includes(verb))
-      || (group === 'roadmap' && RECEIPTED.roadmap.includes(verb)) || (group === 'person' && verb === 'propose');
+      || (group === 'roadmap' && RECEIPTED.roadmap.includes(verb)) || (group === 'finish' && RECEIPTED.finish.includes(verb)) || (group === 'person' && verb === 'propose');
   }
 
   /**
@@ -636,14 +637,11 @@ function arriveAtEpicMenu(sim, wu, next) {
   return epicMenuAt(sim, wu);
 }
 
-// A discussion leaving its topic — a pause, a postpone, a cancel or a
-// spawn — fetches the wait for its agents: empty where none runs, else the
-// gate asking whether to wait for them first. Answers what it drew.
-/** @param {Sim} sim @param {string} wu @param {string} topic @param {boolean} [running] */
-function waitAgents(sim, wu, topic, running = false) {
-  const drawn = sim.render(['wait-agents', `${wu}.${topic}`], { expect: running ? 'content' : 'empty' });
-  if (running) assert.match(drawn, /^=== MENU: wait for agents /m);
-  return drawn;
+// A discussion closing its topic fetches the wait for its agents, empty
+// where none runs.
+/** @param {Sim} sim @param {string} wu @param {string} topic */
+function waitAgents(sim, wu, topic) {
+  sim.render(['wait-agents', `${wu}.${topic}`], { expect: 'empty' });
 }
 
 // A menu's pick into work hands off along the route the menu built for it, as
@@ -845,8 +843,8 @@ const investigationCache = (wu, name) => `${STATE_DIR_NAME}/.cache/${wu}/investi
  * hypotheses logged, the plan agreed at its gate, or run as its learned
  * step; where `live`, the person's permission to run the save against the
  * live server asked at the investigation's own level (19.4.20); a trace's
- * finding logged as an experiment settling both, the check-in agreed, or
- * run as its step; and the root cause decided on that finding and logged.
+ * finding logged as an experiment settling both, the check-in drawn and
+ * carried past; and the root cause decided on that finding and logged.
  * Answers the root cause's id.
  * @param {Sim} sim @param {string} wu @param {{live?: boolean}} [opts]
  */
@@ -867,8 +865,7 @@ async function rootCaused(sim, wu, { live = false } = {}) {
   log('experiment', ['--title', 'Trace the save', '--showed', 'a null on every crash', '--entry', finding]);
   log('hypothesis', ['H1', '--state', 'confirmed']);
   log('hypothesis', ['H2', '--state', 'ruled-out']);
-  const checkIn = sim.render(['investigation-check-in', wu, '--file', sim.write(investigationCache(wu, 'check-in.json'), { resolved: ['H1', 'H2'], next: 'Name the root cause' })], { expect: 'content' });
-  passGate(sim, checkIn, 'check-in gate', 'y');
+  sim.render(['investigation-check-in', wu, '--file', sim.write(investigationCache(wu, 'check-in.json'), { resolved: ['H1', 'H2'], next: 'Name the root cause' })], { expect: 'content' });
   const asked = ledger('ask', [], { ...CLAUDES, text: 'What crashes the save?' });
   const cause = ledger('decide', ['--answers', asked, '--relies-on', finding], { ...CLAUDES, text: 'The save writes a null that nothing checks.', why: 'The trace showed it.' });
   log('root-cause', ['--entry', cause]);
@@ -1870,6 +1867,6 @@ function finished(sim, wu, { closed = false } = {}) {
 
 module.exports = {
   Sim, worldFrom, worlds, readyForSim, shownRows, SPEC_TO_BUILD_UNIT, CUT_CLOSED_UNIT, sessionLog, handoffEntry, enterEntry, labEntry, specEntry, handoff, answerGate, typeAtGate, gatesAnswered, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, roadmapMenu, pullFromRoadmap, decideTopic, discussed, askedOn,
-  investigationCache, rootCaused, reported, validated, fixDirected, concluded, investigated, startMenu, startPick, continueUnit, continueInto, startRow, backToStart, startNew, startBare, startWith, arrive, send, mappedEpic, continueEpic, menuEntry, epicMenuAt, arriveAtEpicMenu, epicMenuLooked, epicRow, epicSetAside, epicPick, epicBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, triagePick, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, passTakenIn, passSurfaced, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed, handoffBy, follow,
+  investigationCache, rootCaused, reported, validated, fixDirected, concluded, investigated, startMenu, startPick, continueUnit, continueInto, startRow, backToStart, startNew, startBare, startWith, arrive, send, mappedEpic, continueEpic, menuEntry, epicMenuAt, arriveAtEpicMenu, epicMenuLooked, epicRow, epicSetAside, epicPick, epicBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, triagePick, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, passTakenIn, passSurfaced, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed, handoffBy, follow,
   DECIDED_ITEMS, specWritten, specBuilt, builders, taskBuilt, fixBuilt, builtAside, firstPhaseBuilt, cutClosed, areaRead, testsRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, reviewCall, strayRound, finishClosed, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic, wentAheadBlind, pickedRow,
 };

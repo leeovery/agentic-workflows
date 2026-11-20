@@ -21,10 +21,14 @@
 //   Claude's answer and the person's — and the verdict gate over it, each
 //   verdict given at the gate's own point (16.10.2, 16.10.11); the
 //   departure's tree and the three verdicts the verdict queue draws alike
-//   (projections/verdict-page.cjs).
+//   (projections/verdict-page.cjs);
+// - a verdict point's screen — decided, ready to build, finish and a
+//   quick-fix's close — drawn whole once, with its first verdict; drawn
+//   `alone` after a verdict, the next verdict's block and its rows, or the
+//   point's own gate, with nothing of its display (16.10.14).
 // ---------------------------------------------------------------------------
 
-const { section, menu, cmdOption, clipped, MENU_INSTRUCTION } = require('./surfaces.cjs');
+const { section, menu, cmdOption, clipped, MENU_INSTRUCTION, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
 const { renderTree, wrapWithPrefix } = require('../../kernel/render.cjs');
 const { TREE_WIDTH, titlecase } = require('../conventions.cjs');
 const { ROW_MAX, counted } = require('./map.cjs');
@@ -230,4 +234,17 @@ function verdictGate({ entry }, point) {
   ], { question: VERDICT_QUESTION }));
 }
 
-module.exports = { runs, block, series, kindCounts, callsBlock, decidedBlocks, recordBlocks, candidateWords, marksDecided, strikeRows, departureTree, verdictBlock, VERDICT_QUESTION, VERDICT_ROWS, verdictGate };
+/**
+ * A verdict point's screen (the header's): its display, `display` drawing
+ * it whole, then the verdict gate while a departure waits to be asked at
+ * `point`, else its own gate; drawn `alone`, the display gives way to the
+ * departure's block where one waits, and to nothing where none does.
+ * @param {{name: string, display: () => string, verdict: AskedVerdict|null, point: string, gate: () => string, alone: boolean}} screen
+ * @returns {string}
+ */
+function verdictPoint({ name, display, verdict, point, gate, alone }) {
+  const shown = !alone ? display() : verdict === null ? null : verdictBlock(verdict);
+  return (shown === null ? '' : section(`DISPLAY: ${name}`, CONTINUE_INSTRUCTION, shown)) + (verdict === null ? gate() : verdictGate(verdict, point));
+}
+
+module.exports = { runs, block, series, kindCounts, callsBlock, decidedBlocks, recordBlocks, candidateWords, marksDecided, strikeRows, departureTree, verdictBlock, VERDICT_QUESTION, VERDICT_ROWS, verdictGate, verdictPoint };

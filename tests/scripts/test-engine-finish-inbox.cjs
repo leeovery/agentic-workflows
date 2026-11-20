@@ -72,13 +72,8 @@ describe('the resolved inbox items closed (6.4.10, 18.6.4, 18.6.7)', () => {
       'CLOSED IN THE INBOX (2)',
       '  ├─ A Refund Names No Card    [bug]',
       '  └─ Receipts By Mail          [idea]',
-      '  ↳ Each is archived as closed by Pay. One closed wrongly comes',
-      '    back from the archived items in triage, or ask me to bring it',
-      '    back — its Resolved: line taken out of the build\'s log with',
-      '    it.',
-      '',
-      '  ⚑ Skipped at phase 1\'s start: shared design settled — One task',
-      '    alone.',
+      '  ↳ Each is archived as closed by Pay. Closed wrongly? Ask me',
+      '    to bring it back.',
       '',
     ].join('\n'));
     const { unclaimed } = ok(dir, ['inbox', 'restore', closed.closed[0]], { env: env() });

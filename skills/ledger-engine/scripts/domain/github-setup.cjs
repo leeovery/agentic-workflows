@@ -12,8 +12,9 @@
 // - The squash default (7.2.18): a squash merge's commit made from the pull
 //   request's title and description, so each task lands under its own
 //   subject and id, and merge commits allowed beside it, which a unit's own
-//   branch lands by (7.2.38); offered only where the project also lands through that
-//   driver, since landing refuses a stack merge until it is set — and made
+//   branch lands by (7.2.38); offered at the project's first ready to
+//   build, where it first matters (ready-to-build.cjs), never at boot, and
+//   only where the project also lands through that driver, since landing refuses a stack merge until it is set — and made
 //   on every repository the project lands in there: its own, and each
 //   nested in it whose own remote the driver serves, each left as it is
 //   where it is set already. A yes is taken again once the offer is
@@ -133,7 +134,7 @@ function recordedAnswer(cwd, offer) {
 }
 
 /**
- * Whether boot makes an offer: there is a code host's driver to make it,
+ * Whether setup makes an offer: there is a code host's driver to make it,
  * and it was never answered.
  * @param {string} cwd @param {Offer} offer
  * @returns {boolean}

@@ -578,13 +578,14 @@ function closeShown(manifest, topic, side, staged) {
 }
 
 /**
- * `render decided <unit>.<topic> [--file <payload.json>] [--calls]`: the
+ * `render decided <unit>.<topic> [--file <payload.json>] [--calls] [--alone]`: the
  * decided screen, Claude's payload staged from `--file` or read back as
- * staged, its calls listed with `--calls`.
- * @param {string} cwd @param {{dotpath?: string, file?: string, calls?: string}} args
+ * staged, its calls listed with `--calls`, drawn after a verdict with
+ * `--alone` (projections/closing.cjs, `verdictPoint`).
+ * @param {string} cwd @param {{dotpath?: string, file?: string, calls?: string, alone?: string}} args
  * @returns {string}
  */
-function decidedSurface(cwd, { dotpath, file, calls }) {
+function decidedSurface(cwd, { dotpath, file, calls, alone }) {
   try {
     const { unit, topic } = topicAddress(stateRoot(cwd), dotpath, 'decided');
     return onClosedTopic(cwd, unit, topic, ({ shower, manifest, closed, skips, side }) => {
@@ -596,6 +597,7 @@ function decidedSurface(cwd, { dotpath, file, calls }) {
         listed: calls !== undefined,
         skips: skips.map(({ text, reason }) => ({ text, reason })),
         verdict: side.verdict,
+        alone: alone !== undefined,
       });
     });
   } catch (err) {

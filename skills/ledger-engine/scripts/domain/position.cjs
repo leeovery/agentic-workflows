@@ -437,13 +437,16 @@ function leaveFor(sessionId, { name, phase }) {
 /**
  * The conversation `sessionId` leaves its position for the start menu, the
  * place left kept where it names a phase, else none — the position kept for
- * its tasks in flight where it holds any (conversation.cjs).
+ * its tasks in flight where it holds any (conversation.cjs). One that has
+ * left already, sitting nowhere, keeps the place it left: a finish leaves
+ * before the start menu's boot.
  * @param {string|null|undefined} sessionId
  */
 function leavePosition(sessionId) {
   if (!sessionId) return;
   underPositionLock(sessionId, (file) => {
     const prior = storedPosition(sessionId);
+    if (!fs.existsSync(file)) return false;
     if (prior?.phase === undefined) fs.rmSync(leftPath(sessionId), { force: true });
     else leaveFor(sessionId, prior);
     if (prior?.tasks === undefined) fs.rmSync(file, { force: true });

@@ -42,7 +42,9 @@
 //
 // The reason is in the person's words, from numbers and the names of the
 // kind and the project alone, never text from the trust log (16.9.2,
-// 16.1.3); the check's alone is Claude's, saying what to do.
+// 16.1.3); the check's alone is Claude's, saying what to do. A raise's face
+// says why it asks only where a rule always asks it — every reason above
+// the counts — its counts' reason kept behind its toggle (`ruleReason`).
 // ---------------------------------------------------------------------------
 
 const { kindOf, hardToUndo, checkable, danger } = require('./labeller.cjs');
@@ -133,7 +135,7 @@ function lineOf({ settings, blocks_build: blocks }, hard) {
  * Why the call asks before its label is read — replacing an entry of the
  * person's, on a question an experiment still running measures, under
  * Claude's mark, or with no label — or null.
- * @param {Context} context
+ * @param {Pick<Context, 'replaced_by'|'measured'|'always'|'label'>} context
  * @returns {string|null}
  */
 function asksUnread({ replaced_by: by, measured, always, label }) {
@@ -146,7 +148,7 @@ function asksUnread({ replaced_by: by, measured, always, label }) {
 /**
  * Why the label makes the question always ask — danger, or a care entry on
  * its kind in this project — or null.
- * @param {Context} context @param {Kind} kind
+ * @param {Pick<Context, 'label'|'care'|'project'>} context @param {Kind} kind
  * @returns {string|null}
  */
 function asksByLabel({ label, care, project }, kind) {
@@ -216,4 +218,18 @@ function rule({ sort }, context) {
   return sort === 'one' ? oneAnswer(context, line) : byKind(context, kind, line);
 }
 
-module.exports = { rule, percent, against };
+/**
+ * The reason a rule always asks a call raised — before its label is read,
+ * by its label, or once checking could not settle it — or null where the
+ * counts sent it to the person (16.9.2).
+ * @param {Pick<Context, 'replaced_by'|'measured'|'always'|'label'|'care'|'project'>} context
+ * @returns {string|null}
+ */
+function ruleReason(context) {
+  const unread = asksUnread(context);
+  if (unread !== null) return unread;
+  const label = /** @type {Label} */ (context.label);
+  return asksByLabel(context, /** @type {Kind} */ (kindOf(label))) ?? (checkable(label) ? CHECKED : null);
+}
+
+module.exports = { rule, ruleReason, percent, against };

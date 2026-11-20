@@ -8,7 +8,8 @@
 //   kind, the product-record lines and withdrawals, and the candidates — and
 //   every checklist item skipped, with its reason (6.4.5). Then the first
 //   departure on the topic still to be asked its verdict (16.10.2) — the
-//   verdict gate, one at a time — and once none is, the decided gate, an
+//   verdict gate, one at a time, the screen drawn whole once and each later
+//   verdict alone (16.10.14, closing.cjs) — and once none is, the decided gate, an
 //   authority gate that always stops (3.2.3): its yes covers the lines, the
 //   withdrawals and every candidate not struck, their counts in words;
 // - the pick of the candidate to strike, where more than one stands (P8),
@@ -19,8 +20,8 @@
 //   its go goes on.
 // ---------------------------------------------------------------------------
 
-const { section, menu, cmdOption, promptOption, callout, MENU_INSTRUCTION, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
-const { runs, callsBlock, decidedBlocks, recordBlocks, candidateWords, marksDecided, strikeRows, verdictBlock, verdictGate } = require('./closing.cjs');
+const { section, menu, cmdOption, promptOption, callout, MENU_INSTRUCTION } = require('./surfaces.cjs');
+const { runs, callsBlock, decidedBlocks, recordBlocks, candidateWords, marksDecided, strikeRows, verdictBlock, verdictPoint } = require('./closing.cjs');
 const { TREE_WIDTH, titlecase } = require('../conventions.cjs');
 const { counted } = require('./map.cjs');
 
@@ -32,6 +33,7 @@ const { counted } = require('./map.cjs');
  *   listed: boolean,
  *   skips: {text: string, reason: string}[],
  *   verdict: import('../ledger-verdicts.cjs').AskedVerdict|null,
+ *   alone: boolean,
  * }} DecidedView
  */
 
@@ -70,13 +72,12 @@ function decidedGate(view) {
 
 /**
  * The decided screen: its display, then the verdict gate while a departure
- * waits to be asked, else the decided gate.
+ * waits to be asked, else the decided gate — drawn alone after a verdict.
  * @param {DecidedView} view
  * @returns {string}
  */
 function decidedScreen(view) {
-  const display = section('DISPLAY: decided', CONTINUE_INSTRUCTION, decidedDisplay(view));
-  return display + (view.verdict === null ? decidedGate(view) : verdictGate(view.verdict, 'decided'));
+  return verdictPoint({ name: 'decided', display: () => decidedDisplay(view), verdict: view.verdict, point: 'decided', gate: () => decidedGate(view), alone: view.alone });
 }
 
 /**

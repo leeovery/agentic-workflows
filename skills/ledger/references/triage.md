@@ -20,6 +20,8 @@ Draw it:
 node .claude/skills/ledger-engine/scripts/engine.cjs render triage --file .ledger/.cache/triage.json
 ```
 
+Where their words name what to do with the items as well — "archive 2 and 3" — their words answer the pick once it is drawn, with no stop between.
+
 `c/change` asks which items to add to what's picked or take out of it, then writes the pick again, the fits named afresh, and draws it the same way.
 
 ## Working On It

@@ -32,6 +32,7 @@ const { git, githubOffline, tip, remoteTip, statePath, layout } = harness;
 const SCRIPTS = path.dirname(harness.ENGINE);
 const { STATE_BRANCH } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { hostDriver } = require(path.join(SCRIPTS, 'domain/drivers.cjs'));
+const { githubSquashOffered } = require(path.join(SCRIPTS, 'domain/github-setup.cjs'));
 
 const { createFile } = require('./discovery-test-utils.cjs');
 const { useWorld, engine, projectInWorld, cloneInWorld, boot, setUp } = require('./boot-state-world.cjs');
@@ -83,12 +84,12 @@ describe('what boot offers on GitHub (4.4.6, 4.S10, 4.S30, 7.2.18)', () => {
     }
   });
 
-  it('setup on a GitHub remote offers the rule and, landing through GitHub, the squash default — the state gone to GitHub first', () => {
+  it('setup on a GitHub remote offers the rule — the state gone to GitHub first — and, landing through GitHub, leaves the squash default\'s offer for the first ready to build', () => {
     const main = projectInWorld({ remote: github.url });
 
     const res = boot(main);
 
-    assert.deepStrictEqual([res.state, res.github_rule_offer, res.github_squash_offer], ['ready', true, true]);
+    assert.deepStrictEqual([res.state, res.github_rule_offer, res.gates.includes('github-squash'), githubSquashOffered(main)], ['ready', true, false, true]);
     assert.strictEqual(remoteTip(github.bare), tip(main, STATE_BRANCH), 'the state went to GitHub');
   });
 
@@ -101,7 +102,7 @@ describe('what boot offers on GitHub (4.4.6, 4.S10, 4.S30, 7.2.18)', () => {
 
     const res = boot(main);
 
-    assert.deepStrictEqual([res.github_rule_offer, res.github_squash_offer], [true, false]);
+    assert.deepStrictEqual([res.github_rule_offer, githubSquashOffered(main)], [true, false]);
   });
 
   it('fails closed: the remote reads as GitHub on a port ssh refuses, so a git call the stand-in misses never reaches github.com', () => {
@@ -181,7 +182,7 @@ describe('what boot offers on GitHub (4.4.6, 4.S10, 4.S30, 7.2.18)', () => {
 
     const res = boot(fresh);
 
-    assert.deepStrictEqual([res.state, res.github_rule_offer, res.github_squash_offer], ['ready', false, false]);
+    assert.deepStrictEqual([res.state, res.github_rule_offer, githubSquashOffered(fresh)], ['ready', false, false]);
   });
 });
 
@@ -191,7 +192,7 @@ describe('beyond GitHub', () => {
 
     const res = boot(main);
 
-    assert.deepStrictEqual([res.github_rule_offer, res.github_squash_offer], [false, false]);
+    assert.deepStrictEqual([res.github_rule_offer, githubSquashOffered(main)], [false, false]);
     assert.match(engine.refuses(main, ['github-rule', 'yes']).error, /the state's remote is not on GitHub — there is no repository to set the rule on/);
     assert.match(engine.refuses(main, ['github-squash', 'yes']).error, /the project does not land through GitHub — there is no repository to set the squash default on/);
   });
