@@ -27,6 +27,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
+const { labelAnswers } = require('./labels.cjs');
 
 const harness = require('./engine-harness.cjs');
 const io = require('../../skills/ledger-engine/scripts/kernel/manifest-io.cjs');
@@ -693,7 +694,8 @@ describe('engine writes take the writer lock', () => {
     t.after(() => fs.rmSync(path.join(/** @type {string} */ (process.env.LEDGER_CONFIG_DIR), 'person.md'), { force: true }));
     harness.ok(dir, ['gate', 'record proposal', '--pick', 'y'], { env });
     harness.ok(dir, ['person', 'keep'], { env });
-    harness.output(dir, ['render', 'convergence', 'payments.auth-flow', '--asked'], { env });
+    const checkable = JSON.stringify({ 'Who signs a user in?': labelAnswers('internals', { yes: ['checkable'] }), '': 'no-login' });
+    harness.output(dir, ['render', 'convergence', 'payments.auth-flow', '--asked'], { env: { ...env, CLAUDE_STUB_ANSWERS: checkable } });
     harness.ok(dir, ['gate', 'convergence offer', '--pick', 'n'], { env });
     harness.ok(dir, ['convergence', 'decline', 'payments', 'auth-flow'], { env });
     t.after(() => fs.rmSync(path.join(/** @type {string} */ (process.env.LEDGER_CONFIG_DIR), 'config.json'), { force: true }));

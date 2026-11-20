@@ -359,9 +359,9 @@ function auditState(dir, label) {
       }
     }
 
-    // An epic's menu draws over whatever state the pipeline is in, but a
-    // cancelled epic's, which it refuses.
-    if (manifest.work_type === 'epic' && manifest.status !== 'cancelled') auditMenuDrawn(dir, () => epicMenuSurface(dir, wu), `${label} — ${wu}'s epic menu`);
+    // An epic's menu draws over whatever state the pipeline is in while the
+    // epic is in progress; a cancelled or a finished epic's it refuses.
+    if (manifest.work_type === 'epic' && manifest.status === 'in-progress') auditMenuDrawn(dir, () => epicMenuSurface(dir, wu), `${label} — ${wu}'s epic menu`);
     auditMenuDrawn(dir, () => manageUnitSurface(dir, wu), `${label} — ${wu} in manage`);
   }
 
