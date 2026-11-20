@@ -147,7 +147,7 @@ function takenAccount(cwd, ref) {
 /** The account a screen needs, refused where `task account` has not taken it; none for a one-line task, which owes none, refused until it is built (task-base.cjs). @param {string} cwd @param {TaskRef} ref */
 function requiredAccount(cwd, ref) {
   if (reviewedNone(cwd, ref) !== null) {
-    if (!builtOneLine(cwd, ref)) throw new Error(unbuiltOneLine(ref));
+    if (!builtOneLine(cwd, ref)) throw new Error(unbuiltOneLine(cwd, ref));
     return null;
   }
   const account = takenAccount(cwd, ref);

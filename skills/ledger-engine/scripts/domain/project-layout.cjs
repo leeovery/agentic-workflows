@@ -36,8 +36,9 @@
 //   unit's own layout is named for the unit — a quick-fix's worktree
 //   `ledger-{unit}`, a one-line task's `ledger-{unit}-{task}` — and every
 //   other for its kind and a dot (`kindName`), `ledger-scratch.`,
-//   `ledger-unfixed.`, `ledger-mutants.`: no unit's name holds a dot, so the
-//   two never meet, and no kind's sweep takes a unit's layout apart.
+//   `ledger-unfixed.`, `ledger-mutants.` (kernel/code-root.cjs,
+//   `LAYOUT_KINDS`): no unit's name holds a dot, so the two never meet, and
+//   no kind's sweep takes a unit's layout apart.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -157,7 +158,7 @@ const layoutsFolder = (root) => path.join(isMainCheckout(root) ? root : lg.mainC
 /** A layout's folder name, by its name. @param {string} name */
 const layoutFolderName = (name) => `${LAYOUT}${name}`;
 
-/** The name of a layout of the engine's own other than a unit's, by its kind and its own name (the header's). @param {'scratch'|'unfixed'|'mutants'} kind @param {string} name */
+/** The name of a layout of the engine's own other than a unit's, by its kind and its own name (the header's). @param {import('../kernel/code-root.cjs').LayoutKind} kind @param {string} name */
 const kindName = (kind, name) => `${kind}.${name}`;
 
 /** The line of a repository's exclude file that keeps the engine's own layouts out of its checkouts. */

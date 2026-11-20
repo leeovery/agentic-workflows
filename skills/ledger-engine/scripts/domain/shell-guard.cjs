@@ -82,8 +82,9 @@
 // files from the folder the command runs in, and the branch its checkout
 // has out, from git's own files — for a commit with none in flight, or one
 // off a task's branch, to read the manifest of the quick-fix it may be the
-// branch of, in the state beside its repository or, where none is, beside
-// the first checkout enclosing it that has one — and, for a write into
+// branch of, in the state beside its repository or, where none is or it
+// holds no such quick-fix in progress, beside the next checkout enclosing
+// it that has one, and so on up — and, for a write into
 // the state alone, the layout loaded and whether the state's filesystem
 // ignores case: it runs before every shell command, so it never asks git. A word that expands at run time — a
 // glob among them — an alias, a script, or a command handed to another as
@@ -363,9 +364,23 @@ function fixRefusal({ folder }, { layoutNamed }, said, way) {
   }
   const branch = branchOut(folder);
   const unit = branch === null ? null : require('./landing-names.cjs').quickFixOfBranch(branch);
-  const manifest = unit === null ? null : unitIn(stateOf(folder), unit);
-  if (unit === null || manifest?.work_type !== 'quick-fix' || ENDED.includes(manifest.status)) return null;
+  if (unit === null || !liveQuickFix(folder, unit)) return null;
   return `${said} is refused here — ${branch} is checked out for ${unit}, a quick-fix in progress, whose work goes through the commit door alone: ${door(unit)}`;
+}
+
+/**
+ * Whether a state the checkout holding `folder` belongs to holds `unit` as
+ * a quick-fix not completed or cancelled, the nearest first, walking up
+ * past one that holds no such quick-fix — a nested repository that is a
+ * project of its own (`statesOf`).
+ * @param {string} folder @param {string} unit
+ */
+function liveQuickFix(folder, unit) {
+  for (const state of statesOf(folder)) {
+    const manifest = unitIn(state, unit);
+    if (manifest?.work_type === 'quick-fix' && !ENDED.includes(manifest.status)) return true;
+  }
+  return false;
 }
 
 /** @param {GitCommand} git @param {Reads} reads */
@@ -574,20 +589,22 @@ function commonOf(gitDir) {
 const enclosing = (top) => (path.dirname(top) === top ? undefined : checkoutOf(path.dirname(top)));
 
 /**
- * The project's state the checkout holding `folder` belongs to, read from
- * git's own files: beside the main checkout, a linked worktree's by its
- * common folder; where none is there — a nested repository's checkout, one
- * in a quick-fix's worktree among them — that of the checkout enclosing it,
- * and so on up; null where none is found.
- * @param {string} folder @returns {string|null}
+ * Each project's state the checkout holding `folder` belongs to, read from
+ * git's own files, the nearest first: beside the main checkout, a linked
+ * worktree's by its common folder; then, or where none is there — a nested
+ * repository's checkout, one in a quick-fix's worktree among them — that of
+ * the checkout enclosing it, and so on up, each read as it is asked for.
+ * @param {string} folder @returns {Generator<string>}
  */
-function stateOf(folder) {
+function* statesOf(folder) {
   for (let held = checkoutOf(folder); held !== undefined; held = enclosing(held.top)) {
     const state = path.join(path.dirname(commonOf(held.gitDir)), STATE_DIR_NAME);
-    if (fs.existsSync(state)) return state;
+    if (fs.existsSync(state)) yield state;
   }
-  return null;
 }
+
+/** The project's state the checkout holding `folder` belongs to, the nearest (`statesOf`); null where none is found. @param {string} folder @returns {string|null} */
+const stateOf = (folder) => statesOf(folder).next().value ?? null;
 
 /** The statuses a unit's work ends in. */
 const ENDED = ['completed', 'cancelled'];

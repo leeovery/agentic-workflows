@@ -27,10 +27,13 @@
 // from its template (12.4.1): a lowercase word, as feat or fix. The merge
 // bringing the default branch into a unit's own branch is `Merge {default}
 // into feat/{unit}` (`bringUpSubject`), no conventional commit's either.
-// A quick-fix's branch that conflicts with the branch it lands on is
-// settled by a one-line task of its own, `merge {that branch}`, merging it
-// in the quick-fix's worktree and committing the merge through the door
-// (`quickFixMerged`): each landing driver's way on from the conflict.
+// A quick-fix's branch that conflicts with the branch it lands on, or with
+// the host's copy of it, is settled by a merge in the quick-fix's worktree,
+// in the repository that conflicts — `git -C {its folder}` in a nested one
+// — committed through the door under a task in flight, each settled file
+// named from the worktree's top (`mergedThrough`): with none in flight, a
+// one-line task of its own, `merge {theirs}` (`quickFixMerged`), each
+// landing driver's way on from the conflict.
 // ---------------------------------------------------------------------------
 
 const { KEBAB_SLUG } = require('../kernel/manifest-schema.cjs');
@@ -180,8 +183,20 @@ function unitLanding(unit, title, phases) {
  */
 const bringUpSubject = (into, branch) => `Merge ${into} into ${branch}`;
 
-/** The way on from a quick-fix's branch conflicting with `theirs`, the branch it lands on as the merge reads it (the header's). @param {string} unit @param {string} theirs */
-const quickFixMerged = (unit, theirs) => `start a one-line task, "merge ${theirs}", run \`git merge --no-ff --no-commit ${theirs}\` in ${unit}'s worktree, settle the conflict, commit the merge through the door`;
+/**
+ * The merge of `theirs` into a quick-fix's branch in the repository at
+ * `folder` of its worktree — as the shell takes it, `.` for the project's
+ * own — settled and committed through the door under the task `task` shows
+ * (the header's).
+ * @param {string} unit @param {string} task @param {string} theirs @param {string} folder
+ */
+function mergedThrough(unit, task, theirs, folder) {
+  const [git, under] = folder === '.' ? ['git', ''] : [`git -C ${folder}`, `${folder}/`];
+  return `\`${git} merge --no-ff --no-commit ${theirs}\`, settle the conflict, then commit the merge through the door, naming each file you settled, which finishes it: \`engine commit --paths ${under}<file>… --task ${unit} ${task} -m "<message>"\``;
+}
+
+/** The way on from a quick-fix's branch conflicting with `theirs` in the repository at `folder` of its worktree, no task of the unit's in flight (the header's). @param {string} unit @param {string} theirs @param {string} folder as `mergedThrough` takes it */
+const quickFixMerged = (unit, theirs, folder) => `start a one-line task, "merge ${theirs}", and in ${unit}'s worktree run ${mergedThrough(unit, '<task>', theirs, folder)}`;
 
 /** The task a line naming one by `key` names, or null. @param {string} line @param {string} key @returns {TaskRef|null} */
 function taskOfLine(line, key) {
@@ -224,4 +239,4 @@ function landingOf(ref, message) {
   return null;
 }
 
-module.exports = { slugOf, taskBranch, phaseBranch, unitBranch, quickFixBranch, quickFixOfBranch, phaseOfBranch, taskOfBranch, isWorkBranch, isUnitBranch, landedMessage, quickFixMessage, unitLanding, bringUpSubject, quickFixMerged, landingOf, tasksOfMessage };
+module.exports = { slugOf, taskBranch, phaseBranch, unitBranch, quickFixBranch, quickFixOfBranch, phaseOfBranch, taskOfBranch, isWorkBranch, isUnitBranch, landedMessage, quickFixMessage, unitLanding, bringUpSubject, mergedThrough, quickFixMerged, landingOf, tasksOfMessage };

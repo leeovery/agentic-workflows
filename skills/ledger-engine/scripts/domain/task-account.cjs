@@ -597,7 +597,7 @@ function reviewOverWay(cwd, ref) {
 function refuseUnaccounted(cwd, ref, said) {
   refuseParked(cwd, ref, said);
   if (reviewedNone(cwd, ref) !== null) {
-    if (!builtOneLine(cwd, ref)) throw new Error(`${said}: ${unbuiltOneLine(ref)}`);
+    if (!builtOneLine(cwd, ref)) throw new Error(`${said}: ${unbuiltOneLine(cwd, ref)}`);
     return;
   }
   const rounds = refusing(said, () => taskRounds(cwd, ref));
@@ -607,9 +607,10 @@ function refuseUnaccounted(cwd, ref, said) {
   throw new Error(`${said}: ${taskName(ref)} has no account taken of its review as it stands — once its builder writes it from its brief, engine brief builder ${ref.unit} ${shownTask(ref)}, take it: engine task account ${ref.unit} ${shownTask(ref)}`);
 }
 
-/** Why a one-line task goes no further yet: its branch holds no work of its own (task-base.cjs, `builtOneLine`). @param {TaskRef} ref */
-function unbuiltOneLine(ref) {
-  return `${taskName(ref)} is not built — a one-line task goes on once its branch holds a commit of its own made through the door since anything added to it, in its worktree, engine task worktree ${ref.unit} ${shownTask(ref)}`;
+/** Why a one-line task goes no further yet: its branch holds no work of its own (task-base.cjs, `builtOneLine`), made in its worktree — a quick-fix's in the quick-fix's, as its fixes are. @param {string} cwd @param {TaskRef} ref */
+function unbuiltOneLine(cwd, ref) {
+  const where = ofQuickFix(cwd, ref.unit) ? `${ref.unit}'s worktree` : `its worktree, engine task worktree ${ref.unit} ${shownTask(ref)}`;
+  return `${taskName(ref)} is not built — a one-line task goes on once its branch holds a commit of its own made through the door since anything added to it, in ${where}`;
 }
 
 module.exports = {

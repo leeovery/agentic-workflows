@@ -459,15 +459,15 @@ function guardedGit(dir, args, as) {
 }
 
 /**
- * Commits made by hand on `main` in the repository at `repo`, in the
- * checkout that has it out, or in one of its own where none does: each of
- * `commits` its file, text and subject.
- * @param {string} repo @param {{file: string, text: string, subject: string}[]} commits
+ * Commits made by hand on the branch `into` in the repository at `repo`,
+ * `main` where none is given, in the checkout that has it out, or in one of
+ * its own where none does: each of `commits` its file, text and subject.
+ * @param {string} repo @param {{file: string, text: string, subject: string}[]} commits @param {string} [into]
  */
-function onMain(repo, commits) {
-  const held = git(repo, ['worktree', 'list', '--porcelain']).split('\n\n').find((entry) => entry.split('\n').includes('branch refs/heads/main'));
+function onMain(repo, commits, into = 'main') {
+  const held = git(repo, ['worktree', 'list', '--porcelain']).split('\n\n').find((entry) => entry.split('\n').includes(`branch refs/heads/${into}`));
   const tree = held === undefined ? fs.mkdtempSync(path.join(os.tmpdir(), 'quick-fix-main-')) : held.split('\n')[0].slice('worktree '.length);
-  if (held === undefined) git(repo, ['worktree', 'add', '-q', tree, 'main']);
+  if (held === undefined) git(repo, ['worktree', 'add', '-q', tree, into]);
   for (const { file, text, subject } of commits) {
     createFile(tree, file, text);
     git(tree, ['add', file]);

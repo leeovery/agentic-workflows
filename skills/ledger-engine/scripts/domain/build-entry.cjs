@@ -518,7 +518,7 @@ function oneLineWords(cwd, ref) {
   const detail = trackedTask(cwd, ref);
   if (builtOneLine(cwd, ref, detail)) return `a one-line task, built — ${landingWay(cwd, ref)}`;
   const what = detail.additions.length === 0 ? 'your own work' : 'your own work, what was added to it not yet committed';
-  const where = ofQuickFix(cwd, ref.unit) ? 'make it in the project\'s checkout' : `lay out its worktree, engine task worktree ${ref.unit} ${shownTask(ref)}`;
+  const where = ofQuickFix(cwd, ref.unit) ? `make it in ${ref.unit}'s worktree` : `lay out its worktree, engine task worktree ${ref.unit} ${shownTask(ref)}`;
   return `a one-line task, ${what} — ${where}, commit it there through the door, and land it`;
 }
 

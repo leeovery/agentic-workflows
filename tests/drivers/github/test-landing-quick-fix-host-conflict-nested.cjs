@@ -7,7 +7,8 @@
 // the clone's pull request conflicting with a commit in the clone here
 // refuses the opening while the fix is in flight, naming the merge the
 // shell guard passes there — `git -C lib merge --no-ff --no-commit` — and
-// the door that finishes it, which, followed, lands both as settled. In the
+// the door that finishes it, each settled file named under lib/, which,
+// followed, lands both as settled. In the
 // project's own repository, test-landing-quick-fix-host-conflict.cjs's.
 // Conformance layer: quick-fix-world.cjs's `quickFixNestedConformance` on
 // GitHub's side (world.cjs), built once and copied for each test.
@@ -47,7 +48,7 @@ describe('a quick-fix\'s branch in a nested clone conflicting with GitHub\'s cop
 
     assert.strictEqual(refusal, `land: ${BRANCH} in lib and its pull request's head, ${suggestion}, each hold commits the other lacks, conflicting at lib.txt, so nothing moved — `
       + `merge it into ${BRANCH} there with \`git -C lib merge --no-ff --no-commit ${suggestion}\`, settle the conflict, then commit the merge through the door, naming each file you settled, which finishes it: `
-      + `\`engine commit --paths <file>… --task ${UNIT} 1.1 -m "<message>"\`, and try again`);
+      + `\`engine commit --paths lib/<file>… --task ${UNIT} 1.1 -m "<message>"\`, and try again`);
     assert.strictEqual(git(bareOf(at.lib), ['show', `${NESTED.lib.into}:lib.txt`]), SETTLED);
   });
 });

@@ -27,7 +27,9 @@
 //   a move takes it apart (`takeFixApart`); a park leaves it as it is. The
 //   close then deletes the branch in each repository where it holds no
 //   commit past the branch it lands on — a clone the quick-fix never
-//   touched among them — and keeps it where it does (`fixClosed`).
+//   touched among them — or stands where it landed, at a tip the unit's
+//   landing records there hold (landing-record.cjs), and keeps it where a
+//   commit came after (`fixClosed`).
 // - The holder's done and close are refused while the worktree holds
 //   changes not committed, a fix leaving it clean as it stops holding it
 //   (`refuseDirtyEnd`): done commits them, a close puts them back. The
@@ -58,10 +60,11 @@
 //   pull request's head left after its merge by hand is never brought in —
 //   fast-forwarded to where the branch is behind it, else merged with it
 //   where it holds a change the branch
-//   lacks, refused naming the way on where the two conflict, which, while a
-//   task of the unit's is in flight in the conversation, is the merge the
-//   hook before Bash passes, finished through the door (shell-guard.cjs) —
-//   so no push drops a commit of the host's; then
+//   lacks, refused naming the way on where the two conflict: the merge the
+//   hook before Bash passes, in the repository that conflicts, finished
+//   through the door under the task of the unit's in flight in the
+//   conversation, else under a one-line task of its own (shell-guard.cjs;
+//   landing-names.cjs) — so no push drops a commit of the host's; then
 //   cut again where a person's merge of the pull request by hand, by any
 //   method, left the branch holding commits that have landed past the
 //   branch it lands on as the host has it (`quickFixLanding`): cut from that
@@ -100,10 +103,10 @@ const { projectRepos, repoName, childrenFirst, folderUnder } = require('../kerne
 const { withWorkUnitLock, loadWorkUnitManifest, saveWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { codeStatus } = require('./code.cjs');
 const { commitStateTail } = require('./commit.cjs');
-const { recordLandings } = require('./landing-record.cjs');
+const { recordLandings, recordsIn } = require('./landing-record.cjs');
 const { scratchTop, layOut, takeApart } = require('./project-layout.cjs');
 const lg = require('./landing-git.cjs');
-const { quickFixBranch } = require('./landing-names.cjs');
+const { quickFixBranch, mergedThrough, quickFixMerged } = require('./landing-names.cjs');
 const { parseTaskId, shownTask, taskName } = require('./task-id.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
@@ -297,18 +300,17 @@ function broughtIn(held, at) {
 
 /**
  * The way on for the host's head conflicting with the branch (the
- * header's): merged into the branch there, settling the conflict — while a
- * task of the unit's is in flight in the calling conversation, with the
- * merge the hook before Bash passes, finished through the door under it.
+ * header's): merged into the branch in the quick-fix's worktree, with the
+ * merge the hook before Bash passes, finished through the door — under the
+ * task of the unit's in flight in the calling conversation, else under a
+ * one-line task of its own (landing-names.cjs).
  * @param {RepoLanding} held @param {string} head
  */
 function mergeWayOn(held, head) {
   const { unit, repo } = held.ctx;
   const [task] = buildEntry().ownInFlight(unit);
-  if (task === undefined) return `merge ${lg.short(head)} into ${held.branch} there, settling the conflict`;
-  const gitIn = repo === '.' ? 'git' : `git -C ${lg.quoted(repo)}`;
-  return `merge it into ${held.branch} there with \`${gitIn} merge --no-ff --no-commit ${lg.short(head)}\`, settle the conflict, then commit the merge through the door, naming each file you settled, which finishes it: `
-    + `\`engine commit --paths <file>… --task ${unit} ${task.task} -m "<message>"\``;
+  const [theirs, folder] = [lg.short(head), lg.quoted(repo)];
+  return task === undefined ? quickFixMerged(unit, theirs, folder) : `merge it into ${held.branch} there with ${mergedThrough(unit, task.task, theirs, folder)}`;
 }
 
 /** A commit replayed, or left off, and the task it is stamped with, null for none. @typedef {import('./landing.cjs').QuickFixCommit} Commit */
@@ -512,14 +514,21 @@ function keptUnder(cwd, unit) {
 /**
  * The quick-fix's code as its close leaves it (the header's): its worktree
  * taken apart, then the branch deleted in each repository where it holds
- * no commit past the branch it lands on — one still checked out somewhere
- * left as it is.
+ * no commit past the branch it lands on, or stands at a tip the unit's
+ * landing records there hold, nothing added since it landed — one still
+ * checked out somewhere left as it is.
  * @param {string} cwd @param {string} unit
  */
 function fixClosed(cwd, unit) {
   takeFixApart(cwd, unit);
   const branch = quickFixBranch(unit);
-  for (const repo of holding(cwd, branch)) if (!branchHolds(cwd, repo, unit)) tryGit(repo.path, ['branch', '-D', branch]);
+  const manifest = loadWorkUnitManifest(cwd, unit);
+  /** @param {Repo} repo */
+  const landedAt = (repo) => {
+    const at = lg.branches(repo.path).get(branch);
+    return [...recordsIn(manifest, repoName(repo)).values()].some(({ tip }) => tip === at);
+  };
+  for (const repo of holding(cwd, branch)) if (!branchHolds(cwd, repo, unit) || landedAt(repo)) tryGit(repo.path, ['branch', '-D', branch]);
 }
 
 /**

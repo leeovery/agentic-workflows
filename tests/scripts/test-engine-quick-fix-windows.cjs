@@ -279,7 +279,8 @@ describe('a quick-fix whose branch conflicts at the close with the branch it lan
     checklistClosed(dir, one());
     ok(fixTree(dir), ['finish', 'yes', UNIT], one());
 
-    assert.strictEqual(error, `finish yes: land: ${BRANCH} conflicts with main at ${FLAG.file}, so nothing moved — start a one-line task, "merge main", run \`git merge --no-ff --no-commit main\` in ${UNIT}'s worktree, settle the conflict, commit the merge through the door, and land again`);
+    assert.strictEqual(error, `finish yes: land: ${BRANCH} conflicts with main at ${FLAG.file}, so nothing moved — start a one-line task, "merge main", and in ${UNIT}'s worktree run \`git merge --no-ff --no-commit main\`, settle the conflict, `
+      + `then commit the merge through the door, naming each file you settled, which finishes it: \`engine commit --paths <file>… --task ${UNIT} <task> -m "<message>"\`, and land again`);
     assert.deepStrictEqual([stood, asked, merging], [[tip, 'in-progress'], [2, 0], 1]);
     assert.deepStrictEqual([git(dir, ['show', `main:${FLAG.file}`]), readManifest(dir, UNIT).status, git(dir, ['rev-parse', 'main^']).trim(), fs.existsSync(fixTree(dir))], [settled, 'completed', tip, false]);
     assert.deepStrictEqual([branchOut(dir), git(dir, ['status', '--porcelain']).trim()], ['main', '']);

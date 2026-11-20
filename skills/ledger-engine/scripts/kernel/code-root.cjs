@@ -9,21 +9,37 @@
 // from anywhere inside it the answer is the main checkout the state sits in.
 //
 // The engine lays its own worktrees out beside Claude Code's isolation
-// worktrees, in `.claude/worktrees/` of the main checkout, each named
-// `ledger-…` (domain/project-layout). A call made from inside one stands for
-// the same folder of the project's own checkout (`outsideLayouts`), the
-// layout's part of its path taken out, so a verb that takes the layout apart
-// never carries on in the folder it took away (engine.cjs).
+// worktrees, in `.claude/worktrees/` of the main checkout, each by a name
+// only the engine gives (domain/project-layout): `ledger-{unit}` or
+// `ledger-{unit}-{phase}.{n}` for a unit the state holds, read with one stat
+// and no git, or `ledger-{kind}.{name}` for one of `LAYOUT_KINDS` — so a
+// worktree of the person's own by a name like it is none of the engine's
+// (`inLayout`). A call made from inside one stands for the same folder of
+// the project's own checkout, the layout's part of its path taken out, or,
+// where the checkout lacks that folder, the nearest one up it holds
+// (`outsideLayouts`), so a verb that takes the layout apart never carries on
+// in the folder it took away (engine.cjs); and a file there has its copy in
+// the checkout at the same place (`checkoutPath`), the engine's own among
+// them (kernel/call.cjs).
 // ---------------------------------------------------------------------------
 
+const fs = require('fs');
 const path = require('path');
-const { findStateRoot, insideState } = require('./state-root.cjs');
+const { STATE_DIR_NAME, findStateRoot, insideState } = require('./state-root.cjs');
 
 /** Where Claude Code lays out its isolation worktrees in the main checkout, and the engine its own beside them. */
 const LAYOUTS = '.claude/worktrees';
 
 /** How each of the engine's own layouts there is named, before its name. */
 const LAYOUT = 'ledger-';
+
+/** The kinds of the engine's own layouts but a unit's, each named for its kind and a dot (the header's). */
+const LAYOUT_KINDS = Object.freeze(/** @type {const} */ (['scratch', 'unfixed', 'mutants']));
+
+/** @typedef {typeof LAYOUT_KINDS[number]} LayoutKind */
+
+/** A one-line task's layout's name, its unit's name before `-{phase}.{n}`. */
+const ONE_LINE = /^(.+)-[1-9][0-9]*\.[1-9][0-9]*$/;
 
 /**
  * The code root for a folder: the folder itself, absolute, or the main
@@ -38,27 +54,61 @@ function codeRoot(cwd) {
 }
 
 /**
- * Where a folder's path enters one of the engine's own layouts: the index of
- * its `.claude` part, followed by `worktrees` and a `ledger-…` folder; -1
- * where it enters none.
- * @param {string[]} parts a path's parts, split on the separator
+ * Whether `name` is one the engine gives a layout of its own in the main
+ * checkout `checkout` (the header's): its kind's and a dot, else a unit's —
+ * a quick-fix's, or a one-line task's — the unit one the state holds.
+ * @param {string} checkout @param {string} name
  */
-function layoutAt(parts) {
+function engineNamed(checkout, name) {
+  const dot = name.indexOf('.');
+  if (dot > 0 && /** @type {readonly string[]} */ (LAYOUT_KINDS).includes(name.slice(0, dot))) return true;
+  const unit = ONE_LINE.exec(name)?.[1] ?? name;
+  return fs.existsSync(path.join(checkout, STATE_DIR_NAME, unit, 'manifest.json'));
+}
+
+/**
+ * Where an absolute path enters one of the engine's own layouts (the
+ * header's): the main checkout the layout sits in, and the path's parts
+ * below the layout; null where it enters none.
+ * @param {string} abs
+ * @returns {{checkout: string, below: string[]}|null}
+ */
+function inLayout(abs) {
+  const parts = abs.split(path.sep);
   const [claude, worktrees] = LAYOUTS.split('/');
-  return parts.findIndex((part, at) => part === claude && parts[at + 1] === worktrees && (parts[at + 2] ?? '').startsWith(LAYOUT));
+  const at = parts.findIndex((part, i) => part === claude && parts[i + 1] === worktrees && (parts[i + 2] ?? '').startsWith(LAYOUT));
+  if (at < 0) return null;
+  const checkout = parts.slice(0, at).join(path.sep) || path.sep;
+  return engineNamed(checkout, parts[at + 2].slice(LAYOUT.length)) ? { checkout, below: parts.slice(at + 3) } : null;
 }
 
 /**
  * The folder a call made from `cwd` stands for (the header's): inside one of
- * the engine's own layouts, the same folder of the project's own checkout;
- * else `cwd` itself, absolute.
+ * the engine's own layouts, the same folder of the project's own checkout,
+ * else the nearest one up it holds, its top at most; else `cwd` itself,
+ * absolute.
  * @param {string} cwd
  * @returns {string}
  */
 function outsideLayouts(cwd) {
-  const parts = path.resolve(cwd).split(path.sep);
-  const at = layoutAt(parts);
-  return at < 0 ? parts.join(path.sep) : path.join(parts.slice(0, at).join(path.sep) || path.sep, ...parts.slice(at + 3));
+  const from = path.resolve(cwd);
+  const layout = inLayout(from);
+  if (layout === null) return from;
+  let folder = path.join(layout.checkout, ...layout.below);
+  while (folder !== layout.checkout && !fs.existsSync(folder)) folder = path.dirname(folder);
+  return folder;
 }
 
-module.exports = { LAYOUTS, LAYOUT, codeRoot, outsideLayouts };
+/**
+ * A file inside one of the engine's own layouts at the same place in the
+ * project's own checkout (the header's), there or not; null for a file
+ * inside none.
+ * @param {string} file
+ * @returns {string|null}
+ */
+function checkoutPath(file) {
+  const layout = inLayout(path.resolve(file));
+  return layout === null ? null : path.join(layout.checkout, ...layout.below);
+}
+
+module.exports = { LAYOUTS, LAYOUT, LAYOUT_KINDS, codeRoot, outsideLayouts, checkoutPath };

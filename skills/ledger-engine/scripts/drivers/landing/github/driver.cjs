@@ -1512,7 +1512,7 @@ function mergeQuickFix(ctx, landing, opened) {
   const head = /** @type {string} */ (lg.branches(ctx.root).get(landing.branch));
   const { title, body } = titled(landing);
   const pull = { number, state: /** @type {const} */ ('OPEN'), head: landing.branch, base: ctx.into, oid: head, title, body };
-  const merging = { what: `${ctx.unit}'s pull request`, named: () => `${ctx.unit}'s pull request #${number}`, listed: () => `#${number}`, settle: (/** @type {string} */ theirs) => names.quickFixMerged(ctx.unit, theirs) };
+  const merging = { what: `${ctx.unit}'s pull request`, named: () => `${ctx.unit}'s pull request #${number}`, listed: () => `#${number}`, settle: (/** @type {string} */ theirs) => names.quickFixMerged(ctx.unit, theirs, lg.quoted(ctx.repo)) };
   awaitMergeable(ctx, host, merging, [pull], new Map([[number, head]]));
   ghAt(ctx, host, ['pr', 'merge', String(number), '--squash', '--subject', `${title} (#${number})`, '--body', body], `merge ${ctx.unit}'s pull request`);
   const { warnings, behind } = broughtUp(ctx, host, true);

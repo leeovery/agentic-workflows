@@ -521,7 +521,7 @@ describe('raw commits (6.3.7, 6.3.12, 12.9.8)', () => {
     for (const [command] of cases.filter(([command]) => !command.includes(' -C '))) assertPassed(guard(dir, command, { session: IDLE }), `in the person's checkout: ${command}`);
   });
 
-  it('a raw commit in a nested repository\'s part of a quick-fix\'s worktree, its clone holding no state, is refused, the state found beside the checkout enclosing it — by the shell\'s directory and by `-C`', () => {
+  it('a raw commit in a nested repository\'s part of a quick-fix\'s worktree is refused, the state found beside the checkout enclosing it — by the shell\'s directory and by `-C`, its clone holding no state, or a state of its own, a project in its own right, holding no such quick-fix', () => {
     const clone = initRepo(path.join(fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'shell-guard-nested-'))), 'lib'));
     scratch.push(path.dirname(clone));
     git(clone, ['commit', '-q', '--allow-empty', '-m', 'the lib']);
@@ -531,6 +531,8 @@ describe('raw commits (6.3.7, 6.3.12, 12.9.8)', () => {
       assertRefused(guard(nested, 'git commit -am x', { session: IDLE }), FIX_COMMIT, 'from the nested repository');
       assertRefused(guard(dir, `git -C ${nested} commit -am x`, { session: IDLE }), FIX_COMMIT, 'from the project, into it');
       assertPassed(guard(clone, 'git commit -am x', { session: IDLE }), 'the clone\'s own checkout, on the branch it lands on');
+      fs.mkdirSync(path.join(clone, STATE_DIR_NAME, 'other'), { recursive: true });
+      assertRefused(guard(nested, 'git commit -am x', { session: IDLE }), FIX_COMMIT, 'the clone a project of its own');
     } finally {
       git(clone, ['worktree', 'remove', '--force', nested]);
     }

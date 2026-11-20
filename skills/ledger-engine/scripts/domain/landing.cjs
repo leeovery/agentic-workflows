@@ -1607,10 +1607,11 @@ function unitTask(unit, id) {
  * host's copy of the branch among it; the commits a commit holds past that
  * tip, oldest first, merges aside, each with its time and task — the
  * branch's, none where it is gone — and those of the branch's stamped with
- * a task, a merge the door finished among them, as a one-line task merging
- * the branch it lands on in leaves one, a task's newest its own and every
- * task among them one its landing names (`stamped`); whether the branch's
- * hold the quick-fix's work: a commit committed since `since`, a fix's through the
+ * a task, a merge the door finished among them where it brings in the
+ * branch it lands on, here or as last fetched (`lg.landingTips`), as a
+ * one-line task merging that branch in leaves one, a task's newest its
+ * own and every task among them one its landing names (`stamped`);
+ * whether the branch's hold the quick-fix's work: a commit committed since `since`, a fix's through the
  * door or a person's own made during the quick-fix (R19); whether the
  * host's copy is another's, holding none of the quick-fix's work past the
  * tip and no commit stamped with one of the unit's tasks since `since`
@@ -1646,7 +1647,7 @@ function repoLanding(project, driver, repo, asFetched) {
   /** @returns {QuickFixCommit[]} */
   const stamped = () => {
     const head = at();
-    const read = head === undefined ? [] : lg.readOnce(ctx, `quick-fix stamped ${head}`, () => lg.stampedPast(root, head, tip, key, null, { merges: true }).map(({ sha, message, committed, value }) => ({ sha, message, committed, id: unitTask(unit, value) })));
+    const read = head === undefined ? [] : lg.readOnce(ctx, `quick-fix stamped ${head}`, () => lg.stampedPast(root, head, tip, key, null, { mergesOf: lg.landingTips(project.cwd, repo, unit) }).map(({ sha, message, committed, value }) => ({ sha, message, committed, id: unitTask(unit, value) })));
     return read.filter(({ id }) => id !== null);
   };
   /** @param {QuickFixCommit} commit */

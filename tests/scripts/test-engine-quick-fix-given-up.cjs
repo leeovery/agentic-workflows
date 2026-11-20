@@ -11,7 +11,11 @@
 // failed naming its settling first, `task settle`; the reversal
 // landing as a fix of its own whose commit through the door reverts the
 // change, every git command asked of the shell guard first, the change gone
-// from the branch the fixes land on once the pull request merges. Every
+// from the branch the fixes land on once the pull request merges; and a
+// one-line task whose one commit through the door merges a branch the
+// quick-fix does not land on, never built (task-base.cjs, `builtOneLine`) —
+// a merge of the branch it lands on, built, test-engine-quick-fix-windows.cjs's
+// and GitHub's host-conflict suite's. Every
 // refusal writes nothing. A fix found met is test-engine-quick-fix-end.cjs's;
 // one landed by hand, refused, the end suite's and the landing conformance
 // suites'; a recorded fix's record taken out as it closes,
@@ -98,6 +102,23 @@ describe('task close <quick-fix> <fix> (R3, R14)', () => {
       + `or make it a task of its own with \`engine task create ${UNIT} 1 --file <task.md>\`, or, something small, a one-line task with \`engine task create ${UNIT} 1 --title <line> --type <type> --why <reason>\``,
       `commit --task: task 1.2 of ${UNIT} is done, and a task ended takes no more work — make it a task of its own with \`engine task create ${UNIT} 1 --file <task.md>\`, or, something small, a one-line task with \`engine task create ${UNIT} 1 --title <line> --type <type> --why <reason>\``,
     ]);
+  });
+
+  it('a one-line task whose one commit through the door merges a branch the quick-fix does not land on is never built: the entry offers its making, in the quick-fix\'s worktree', () => {
+    dir = world();
+    const side = path.join(path.dirname(dir), `${path.basename(dir)}-side`);
+    git(dir, ['worktree', 'add', '-q', '-b', 'side', side, 'main']);
+    createFile(side, 'docs/side.md', 'side\n');
+    git(side, ['add', '-A']);
+    git(side, ['commit', '-qm', 'Side work']);
+    git(dir, ['worktree', 'remove', '--force', side]);
+    run(['task', 'create', UNIT, '1', '--title', 'Bold the flag help', '--type', 'chore', '--why', 'one word']);
+    run(['task', 'start', UNIT, '1.3']);
+    guardedGit(fixTree(dir), ['merge', '--no-ff', '--no-commit', 'side'], as());
+    ok(fixTree(dir), ['commit', '--paths', 'docs/side.md', '--task', UNIT, '1.3', '-m', `chore(${UNIT}): merge side`], as());
+    const entry = output(dir, ['enter', 'implementation', UNIT], as()).split('\n').filter((line) => line.includes('one-line task'));
+
+    assert.deepStrictEqual(entry, [`in flight: task 1.3, no builder dispatched here — a one-line task, your own work — make it in ${UNIT}'s worktree, commit it there through the door, and land it`]);
   });
 
   it('refuses a fix given up after its commit, naming the reversal — whether or not the commit is in the pull request, and one its pair failed naming its settling first — writing nothing', () => {

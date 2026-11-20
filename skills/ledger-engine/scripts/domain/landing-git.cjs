@@ -429,20 +429,26 @@ function commitGraph(root, revs, since, key) {
  * The commits the commit `rev` holds that the revision `other` does not —
  * nor any of them, where it names several; every one, where it names none
  * — committed at or after the time `since` names where it names one,
- * oldest first, each after its parents, merges aside but where `merges`
- * says — each with its message, the time it was committed, in
- * milliseconds, and the value of the trailer `key` it carries, null where
- * it carries none.
- * @param {string} root @param {string} rev @param {string|string[]} other @param {string} key @param {string|null} [since] @param {{merges?: boolean}} [how]
+ * oldest first, each after its parents, merges aside but one carrying the
+ * trailer whose every parent past its first one of `mergesOf` holds — as a
+ * door merge bringing in the branch a quick-fix lands on is read
+ * (`landingTips`), each such merge read with an ancestry check per tip
+ * until one holds it — each with its message, the time
+ * it was committed, in milliseconds, and the value of the trailer `key` it
+ * carries, null where it carries none.
+ * @param {string} root @param {string} rev @param {string|string[]} other @param {string} key @param {string|null} [since] @param {{mergesOf?: string[]}} [how]
  * @returns {{sha: string, message: string, committed: number, value: string|null}[]}
  */
-function stampedPast(root, rev, other, key, since = null, { merges = false } = {}) {
+function stampedPast(root, rev, other, key, since = null, { mergesOf = [] } = {}) {
   const others = [other].flat().map((one) => revOf(root, one));
   const bound = since === null ? [] : [`--since=${since}`];
-  const read = git(root, ['log', '-z', '--reverse', '--topo-order', ...(merges ? [] : ['--no-merges']), `--format=%H%x1f%ct%x1f%(trailers:key=${key},valueonly)%x1f%B`, ...bound, rev, ...(others.length === 0 ? [] : ['--not', ...others]), '--']);
-  return read.split('\0').filter(Boolean).map((entry) => {
-    const [sha, time, values, message] = entry.split('\x1f');
-    return { sha, message, committed: Number(time) * 1000, value: values.split('\n').map((value) => value.trim()).find(Boolean) ?? null };
+  const read = git(root, ['log', '-z', '--reverse', '--topo-order', ...(mergesOf.length === 0 ? ['--no-merges'] : []), `--format=%H%x1f%P%x1f%ct%x1f%(trailers:key=${key},valueonly)%x1f%B`, ...bound, rev, ...(others.length === 0 ? [] : ['--not', ...others]), '--']);
+  return read.split('\0').filter(Boolean).flatMap((entry) => {
+    const [sha, parents, time, values, message] = entry.split('\x1f');
+    const value = values.split('\n').map((one) => one.trim()).find(Boolean) ?? null;
+    const theirs = parents.split(' ').slice(1);
+    const counted = theirs.length === 0 || (value !== null && theirs.every((parent) => mergesOf.some((tip) => isAncestor(root, parent, tip))));
+    return counted ? [{ sha, message, committed: Number(time) * 1000, value }] : [];
   });
 }
 
@@ -1927,6 +1933,19 @@ function landingRev(cwd, repo, unit) {
   throw new Error(`land: ${branch}, where the repository lands ${unit}'s work, is neither here nor fetched from its remote`);
 }
 
+/**
+ * Where the branch a repository lands the unit's work on stands — here, and
+ * as last fetched from its remote where it has one — which a door merge
+ * onto a quick-fix's branch brings in to be a task's work (`stampedPast`).
+ * @param {string} cwd @param {Repo} repo @param {string} unit @returns {string[]}
+ */
+function landingTips(cwd, repo, unit) {
+  const branch = landingBranch(cwd, repo, unit);
+  const remote = remoteOf(cwd, repo);
+  const fetched = remote === null ? null : trackedTip(repo.path, remote, branch);
+  return [`${HEADS}${branch}`, ...(fetched === null ? [] : [fetched])];
+}
+
 /** The unit's branch a call made in a repository, which every read after it there takes (`landingBranch`). @param {Repo} repo @param {string} unit @param {string} branch */
 function landingMade(repo, unit, branch) {
   const held = UNIT_LANDS_ON.get(repo) ?? new Map();
@@ -1937,6 +1956,6 @@ function landingMade(repo, unit, branch) {
 module.exports = {
   short, readOnce, readAgain, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranches, holdingBranch, refsUnder, updateRefs, isAncestor, mergeOf, commitsIn, latestOf, mergeBase, treesOf, firstParentLine, commitAt, lineSince, commitPaths, taskLine, heldIn, commitGraph, stampedPast, committerTime, holdsChange, holdsTaskChange, holdsCopy, holdChanges, mergeTrees, heldMerges, pathsApart, belowOwn, copiesOf, standings, standingsOn, lastStamped, stampedAnywhere, committedAt, stampsUnit, tasksMarkedOn, commitsNamed, namedPast, commitWithTree, treesPast,
   changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, rebasedSince, rebasedPast, laidOn, madeAgainOn, ownLinePast, forcePushed, inRepoWords, saidIn, branchOut, remedy, moveTo, movedSinceOpened, rewrite, mergeContinued, scratchBlock, rebaseBlock, checkoutBlock, changesAt, pathsChanged, dirtBlock, moveBranch,
-  defaultBranch, repoDefault, remoteOf, recordedBranch, unitBranchIn, landingBranch, landingRev, landingMade, remoteUrlOf, pushBranch, pushBranches, gitSaid, fetchBranch, remoteHeads, trackedTip, trackedBranches, fetchedCommit, nothingPast,
+  defaultBranch, repoDefault, remoteOf, recordedBranch, unitBranchIn, landingBranch, landingRev, landingTips, landingMade, remoteUrlOf, pushBranch, pushBranches, gitSaid, fetchBranch, remoteHeads, trackedTip, trackedBranches, fetchedCommit, nothingPast,
   worktrees, taskWorktree, mainCheckoutOf, projectCheckout, holderOf, samePlace, removing, branchInPlace, addWorktree, switchTo, removeWorktree, detach, scratchRoot, mergeHeld, mergeBegun, mergeDone,
 };

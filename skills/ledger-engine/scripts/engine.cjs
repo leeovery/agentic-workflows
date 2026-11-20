@@ -25,12 +25,15 @@
 //
 // A guard — a hook Claude Code runs before every call of a tool — is
 // answered at the shell door before anything below loads, loading its own
-// module alone (guards.cjs).
+// module alone (guards.cjs). So is a call this copy of the engine runs from
+// inside one of its own layouts, handed to the project's own checkout's
+// copy where it is there (kernel/call.cjs, `handedToCheckout`).
 // ---------------------------------------------------------------------------
 
 const { GUARD_VERBS, runGuard, guardDoor } = require('./guards.cjs');
+const { ExitSignal, messageOf, exitCodeOf, hookInput, hookProjectDir, processCall, handedToCheckout } = require('./kernel/call.cjs');
 // @ts-expect-error TS1108: a return ends a CommonJS module, which tsc allows only in a function
-if (require.main === module && guardDoor(process.argv.slice(2))) return;
+if (require.main === module && (guardDoor(process.argv.slice(2)) || handedToCheckout(process.argv.slice(2)))) return;
 
 const fs = require('fs');
 const path = require('path');
@@ -131,7 +134,6 @@ const brownfield = require('./domain/brownfield.cjs');
 const { subjectSelector, codeLog, selectedDiff, uncommittedDiff, codeStatus } = require('./domain/code.cjs');
 const walkthrough = require('./domain/walkthrough.cjs');
 const { runKnowledge, knowledgeWaits } = require('./domain/knowledge/commands.cjs');
-const { ExitSignal, messageOf, exitCodeOf, hookInput, hookProjectDir, processCall } = require('./kernel/call.cjs');
 const { stateRoot, statePath, insideState } = require('./kernel/state-root.cjs');
 const { codeRoot, outsideLayouts } = require('./kernel/code-root.cjs');
 const { withVerbReads } = require('./kernel/isolated-git.cjs');

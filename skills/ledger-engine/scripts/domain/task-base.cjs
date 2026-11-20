@@ -24,14 +24,16 @@
 //   once another fix has its commits between its own (fix-aside.cjs): in
 //   each repository holding the branch, those it holds past the branch the
 //   repository lands on that the door stamped with the task
-//   (commit-task.cjs), oldest first (`ownCommits`).
+//   (commit-task.cjs), oldest first, a merge among them only where it
+//   brings in that branch, here or as last fetched — as a one-line task's
+//   merge of it, settling their conflict, is its change — and no merge of
+//   another (`ownCommits`; landing-git.cjs, `landingTips`).
 // - A one-line task, the orchestrator's own work, has no rounds and no
 //   account to prove it built, so it is built once its branch holds work of
 //   its own (`builtOneLine`): in a repository holding it, a commit the door
-//   stamped with the task, merges aside — but on a quick-fix's branch, where
-//   a one-line task's merge of the branch it lands on, settling their
-//   conflict, is its change — past the branch the repository lands on, made
-//   since anything added to it: naming as many additions as
+//   stamped with the task, merges aside — but on a quick-fix's branch, one
+//   among its own commits there — past the branch the repository lands on,
+//   made since anything added to it: naming as many additions as
 //   the task holds (commit-task.cjs, `ADDITIONS`), so a Comment at its gate
 //   takes it off its gate until its change is committed. It finished as the newest commit on its branch was made
 //   (`oneLineFinished`), the time the board says it finished.
@@ -44,7 +46,7 @@ const { quickFixBuild } = require('./derivations.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { taskId, taskName } = require('./task-id.cjs');
-const { branches, branchesHeldBy, defaultBranch, landingBranch, landingRev, isAncestor, latestOf, stampedPast, holdingBranch } = require('./landing-git.cjs');
+const { branches, branchesHeldBy, defaultBranch, landingBranch, landingRev, landingTips, isAncestor, latestOf, stampedPast, holdingBranch } = require('./landing-git.cjs');
 const { remoteName } = require('./remote.cjs');
 const { workBelow } = require('./review-change.cjs');
 const { repoLanded } = require('./task-landed.cjs');
@@ -121,8 +123,19 @@ function builtOnBases(cwd, ref, holding, branch) {
  */
 function ownCommits(cwd, ref, repo) {
   const id = taskId(ref);
-  return stampedPast(repo.path, `refs/heads/${quickFixBranch(ref.unit)}`, landingBranch(cwd, repo, ref.unit), stampKey())
+  return stampedOn(cwd, ref.unit, repo, quickFixBranch(ref.unit))
     .filter(({ value }) => value === id).map(({ sha, message }) => ({ sha, subject: message.split('\n')[0] }));
+}
+
+/**
+ * The commits a task's branch holds past the branch the repository lands
+ * the unit on, with the door's stamp each carries (the header's): merges
+ * aside, but, on a quick-fix's branch, one bringing that branch in.
+ * @param {string} cwd @param {string} unit @param {Repo} repo @param {string} branch
+ */
+function stampedOn(cwd, unit, repo, branch) {
+  const mergesOf = branch === quickFixBranch(unit) ? landingTips(cwd, repo, unit) : [];
+  return stampedPast(repo.path, `refs/heads/${branch}`, landingBranch(cwd, repo, unit), stampKey(), null, { mergesOf });
 }
 
 /**
@@ -148,8 +161,7 @@ function builtOneLine(cwd, ref, task = require('./task-verbs.cjs').trackedTask(c
   const { holding } = holdingBranch(ref.unit, projectRepos(codeRoot(cwd)), branch);
   const id = taskId(ref);
   const own = ({ value, message }) => value === id && additionsNamed(message) >= task.additions.length;
-  const merges = branch === quickFixBranch(ref.unit);
-  return holding.some((repo) => stampedPast(repo.path, `refs/heads/${branch}`, landingBranch(cwd, repo, ref.unit), stampKey(), null, { merges }).some(own));
+  return holding.some((repo) => stampedOn(cwd, ref.unit, repo, branch).some(own));
 }
 
 /**
