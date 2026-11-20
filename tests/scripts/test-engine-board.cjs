@@ -29,10 +29,10 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const {
-  ok, okSectionsAsync, refusedPristine, treeSnapshot, head, cleanupFixture, readState, readManifest, writeState, commitAll, layout,
+  ok, okSectionsAsync, refusedPristine, treeSnapshot, head, cleanupFixture, readState, readManifest, writeState, commitAll, layout, git,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
-const { UNIT, SESSION_ID, QUESTIONS, CALL, taskText, buildScreensWorld, buildScreenHelpers, boardHelpers } = require('./build-screens-world.cjs');
+const { UNIT, SESSION_ID, QUESTIONS, CALL, taskText, branchWith, buildScreensWorld, buildScreenHelpers, boardHelpers } = require('./build-screens-world.cjs');
 const { fixture, misfits, shapeOf, place } = require('./board-world.cjs');
 const { raiseHelpers } = require('./raise-world.cjs');
 
@@ -185,6 +185,18 @@ describe('the tabs (20.3)', () => {
     const figures = JSON.parse(readState(dir, layout.unit(UNIT, 'build/tasks/1.1/figures.json')));
 
     assert.deepStrictEqual(board(['--tab', 'unit']).view.lately, [{ kind: 'task-finished', at: figures.finished, topic: null, detail: '1.1' }]);
+  });
+
+  it('a one-line task done says when it finished among the unit\'s moments, as the newest commit on its branch was made', () => {
+    enterBuild();
+    ok(dir, ['task', 'done', UNIT, '1.1'], { env: env() });
+    ok(dir, ['task', 'create', UNIT, '1', '--title', 'Bold the total', '--type', 'feat'], { env: env() });
+    ok(dir, ['task', 'start', UNIT, '1.4'], { env: env() });
+    const built = branchWith(dir, 4, 'Bold the total', [['src/total.js', 'export const total = 1;\n']]);
+    ok(dir, ['task', 'done', UNIT, '1.4'], { env: env() });
+    const at = new Date(git(dir, ['log', '-1', '--format=%cI', built]).trim()).toISOString();
+
+    assert.deepStrictEqual(board(['--tab', 'unit']).view.lately.find(({ detail }) => detail === '1.4'), { kind: 'task-finished', at, topic: null, detail: '1.4' });
   });
 
   it('at the unit\'s menu, This session is the unit\'s page at its menu (20.3.3)', () => {

@@ -62,7 +62,7 @@ describe('review ask <quick-fix>: a review asked for at its close (19.5.13)', ()
 
     assert.deepStrictEqual([refused(['review', 'ask', 'other']), refused(['review', 'ask', UNIT])], [
       'review ask: other is no quick-fix built as one — a review is asked for at a quick-fix\'s close; any other unit\'s review phase follows its build',
-      `review ask: ${UNIT} closes once each of its fixes has ended — 1.3 is not started: each is done once it is committed, in ${UNIT}'s pull request and passed by its pair, or closed with its reason`,
+      `review ask: ${UNIT} closes once each of its fixes has ended — 1.3 is not started: each is done once it is committed, in ${UNIT}'s pull request and passed by its reviewers, where any read it, or closed with its reason`,
     ]);
   });
 });

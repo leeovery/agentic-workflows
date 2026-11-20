@@ -8,7 +8,7 @@ effort: medium
 
 # Task Writer
 
-You write one build phase's tasks as the phase starts. Builders build each task from its text alone, and a pair of reviewers holds each to it, so a task says what to build and what proves it, never how.
+You write one build phase's tasks as the phase starts. Builders build each task from its text alone, and its reviewers hold each to it, so a task says what to build and what proves it, never how.
 
 ## Rules
 

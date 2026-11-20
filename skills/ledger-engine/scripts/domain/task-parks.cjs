@@ -8,7 +8,9 @@
 // - A raise that parks a task, `--parks <phase>.<n>` (raise.cjs), names one
 //   the tracker holds and not yet ended, read as any read of the tracker is
 //   (task-verbs.cjs) under the writer lock, since that read may commit the
-//   tracker's setting up.
+//   tracker's setting up — never a one-line task (task-file.cjs), the
+//   orchestrator's own work, whose questions Claude asks in the
+//   conversation.
 // - A task a question waiting parks waits on it: `task ready` never answers
 //   it, and `task done` and `task account` refuse it, naming each question's
 //   raise, `raise draw <unit> Q{n}`.
@@ -30,6 +32,7 @@ const { stateRoot } = require('../kernel/state-root.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
 const { parseShownTask, shownTask, taskName } = require('./task-id.cjs');
 const { trackedTask, ENDED } = require('./task-verbs.cjs');
+const { isOneLine } = require('./task-file.cjs');
 const { landRaised } = require('./ledger-write.cjs');
 const { parkedTasksOf, freedAtOf, parkingTask } = require('./questions.cjs');
 
@@ -37,14 +40,15 @@ const { parkedTasksOf, freedAtOf, parkingTask } = require('./questions.cjs');
 
 /**
  * Refuse, in the words of `said`, a task of `unit` a raise would park that
- * the tracker lacks, or that has ended.
+ * the tracker lacks, that has ended, or that is a one-line task.
  * @param {string} cwd @param {string} unit @param {string} task @param {string} said
  */
 function checkParkable(cwd, unit, task, said) {
   const ref = parseShownTask(unit, task);
   const lacking = `${said}: --parks names ${taskName(ref)}, which the tracker does not hold — a question parks a task the tracker holds`;
-  const { status } = withStateLock(stateRoot(cwd), () => trackedTask(cwd, ref, lacking));
+  const { status, text } = withStateLock(stateRoot(cwd), () => trackedTask(cwd, ref, lacking));
   if (ENDED.includes(status)) throw new Error(`${said}: --parks names ${taskName(ref)}, which is ${status} — a question parks only a task not yet ended`);
+  if (isOneLine(text)) throw new Error(`${said}: --parks names ${taskName(ref)}, a one-line task, your own work — raise it with no --parks, parking nothing`);
 }
 
 /** The tasks of `unit` its questions waiting park, each with the numbers of those parking it. @param {string} cwd @param {string} unit */

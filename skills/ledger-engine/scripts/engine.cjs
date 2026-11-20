@@ -40,7 +40,7 @@ const { commitAcrossRepos, commitStateScoped, discoveryScope, PRODUCT_SCOPE, onS
 const { commitMigrations, finishing } = require('./domain/migration-commit.cjs');
 const { committingAlone } = require('./domain/state-worktree.cjs');
 const { readProjectManifest } = require('./kernel/manifest-io.cjs');
-const { inFlightTask, refuseClockBehind, onWorkBranch, checksFor, runChecks, recordWork, workMessage } = require('./domain/commit-task.cjs');
+const { inFlightTask, refuseClockBehind, onWorkBranch, checksFor, runChecks, recordWork, oneLineAdditions, workMessage } = require('./domain/commit-task.cjs');
 const { taskId } = require('./domain/task-id.cjs');
 const {
   stageableSpecs, hasStagedDeletions, deletedAtHead, onBranch, operationInProgress, addRefused, unmergedPast,
@@ -329,6 +329,7 @@ ${Object.values(MAP_USAGE).map((usage) => `  ${usage}`).join('\n')}
   experiment abandon <work-unit> <topic> <id> --reason <one line>
   task phase <work-unit> <N> --title <title>
   task create <work-unit> <N> --file <path>
+  task create <work-unit> <N> --title <line> --type <type>
   task add <work-unit> <task> --file <path> --by <orchestrator|person>
   task type <work-unit> <task> <type>
   task close-plan <work-unit> --parent <tracker-id>
@@ -343,6 +344,7 @@ ${Object.values(MAP_USAGE).map((usage) => `  ${usage}`).join('\n')}
   task worktree <work-unit> <task>
   task stopped <work-unit> <task>
   task account <work-unit> <task>
+  task review <work-unit> <task> --reviewers <1|2> --file <why>
   task settle <work-unit> <task> --file <why>
   task settle <work-unit> --phase <N> --file <why> [--fixes <task>,…]
   task note <work-unit> --file <note> [--phase <N>]
@@ -1267,8 +1269,8 @@ function runExperiment(call, argv) {
 // ---------------------------------------------------------------------------
 // task — the tracker's verbs through the project's task driver
 // (domain/task-verbs.cjs): phase, create, add, type, link, ready, start,
-// done, close, list and show, and beside them the build's records, account
-// and settle (domain/task-account.cjs), settle --phase, a phase review's
+// done, close, list and show, and beside them the build's records, account,
+// review and settle (domain/task-account.cjs), settle --phase, a phase review's
 // (domain/phase-settlement.cjs), and note (domain/notes.cjs), each
 // committing what it wrote to the state branch; worktree, the task's
 // worktree laid out for its builder (domain/task-worktree.cjs); and stopped,
@@ -2308,7 +2310,7 @@ function commitTaskPaths(cwd, paths, message, unit, given) {
   const { repos, groups } = checkedGroups(cwd, paths, (committing) => onWorkBranch(cwd, ref, manifest, committing));
   const checks = runChecks(cwd, checksFor(cwd, manifest, ref));
   const warnings = recordWork(cwd, ref, manifest, groups.map(({ repo }) => repo));
-  const committed = commitAcrossRepos(groups, workMessage(message, ref));
+  const committed = commitAcrossRepos(groups, workMessage(message, ref, oneLineAdditions(cwd, ref)));
   return codeCommitted(repos, committed, { task: taskId(ref), checks, ...(warnings.length > 0 ? { warnings } : {}) });
 }
 

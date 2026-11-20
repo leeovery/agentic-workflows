@@ -71,7 +71,7 @@ const {
 } = require('./derivations.cjs');
 const { trackedLists, trackedPhase } = require('./task-verbs.cjs');
 const { holdsScenario, namesScenario } = require('./task-file.cjs');
-const { taskPassed, phaseReports } = require('./round-report.cjs');
+const { taskPassed, phaseReports, reviewedNone } = require('./round-report.cjs');
 const { readSettlement, answers, settleCall, unsettledWords } = require('./phase-settlement.cjs');
 const { phaseStack, tipCommits } = require('./phase-stack.cjs');
 const { runsOf } = require('./runs.cjs');
@@ -224,8 +224,15 @@ function reliedOnDone(at, phase) {
   return cutPhases(at.manifest)[phase - 1].relies_on.every((relied) => (typeof relied === 'number' ? phaseClosed(at.manifest, relied) && phaseLanded(at, relied) : finished(relied)));
 }
 
-/** Whether a task's pair passed it; not where its rounds do not read, said as a warning. @param {Reading} at @param {import('./task-id.cjs').TaskRef} ref */
-function passed(at, ref) {
+/**
+ * Whether a task's reviewers passed it — a one-line task once it is done,
+ * which it was only once built (task-account.cjs), its own work on the
+ * default branch after the phase merges; not where its
+ * rounds do not read, said as a warning.
+ * @param {Reading} at @param {{ref: import('./task-id.cjs').TaskRef, status: string}} row
+ */
+function passed(at, { ref, status }) {
+  if (status === 'done' && reviewedNone(at.cwd, ref) !== null) return true;
   try {
     return taskPassed(at.cwd, ref);
   } catch (err) {
@@ -237,7 +244,7 @@ function passed(at, ref) {
 /** Every task of the phase not closed, one at least, passed by its pair (13.4.6), or landed before the migration. @param {Reading} at @param {number} phase */
 function tasksPassed(at, phase) {
   const rows = liveRows(at, phase);
-  return rows.length > 0 && rows.every((row) => before(at, row) || passed(at, row.ref));
+  return rows.length > 0 && rows.every((row) => before(at, row) || passed(at, row));
 }
 
 /** Whether the phase has nothing built since the migration cut the unit (derivations.cjs, `nothingBuiltSince`). @param {Reading} at @param {number} phase */

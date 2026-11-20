@@ -117,11 +117,11 @@ The agent that builds one task, writing its tests from the task's acceptance cri
 _Avoid_: implementer
 
 **task loop**:
-One task's way through the build: a builder builds it, the reviewer pair reads it whole, and every finding but a nit goes back to the same builder, the whole task read again until a round passes with nothing serious and no bug. No count of rounds stops it; Claude fixes a nit itself, and settles a task that looks stuck.
+One task's way through the build: a builder builds it, the reviewers Claude chose for it read it whole, and every finding but a nit goes back to the same builder, the whole task read again until a round passes with nothing serious and no bug. No count of rounds stops it; Claude fixes a nit itself, and settles a task that looks stuck.
 
 **reviewer pair**:
-The two independent reviewer agents, run side by side, that every review in the build is done by: each task's, each phase's, and the review phase's. Fresh to the code, never the builder that wrote it; the same pair reads again after a finding.
-_Avoid_: the reviewer (as if there were one)
+The two independent reviewer agents, run side by side, that each phase's review and the review phase's are done by, and a task's where Claude chooses two. Fresh to the code, never the builder that wrote it; the same pair reads again after a finding.
+_Avoid_: the reviewer, for a phase's review or the review phase's (as if there were one)
 
 **phase review**:
 The one independent review closing each build phase: a reviewer pair over the phase's whole change, its tasks' criteria, its coherence, and where it meets what earlier phases built. Its fixes land before the phase closes.

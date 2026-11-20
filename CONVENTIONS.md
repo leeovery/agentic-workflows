@@ -8,6 +8,8 @@ This file describes the skills as the reshape rewrites them. A skill not yet rew
 
 The engine holds what the person sees and what gets recorded, the same every time. Claude holds how the work gets done. The person holds the product, and the calls put to them. A skill is written from that split: for everything the engine holds it names the engine's door, and for the rest it gives Claude a goal, a done-condition and guidance.
 
+A skill says where things go, how they are recorded, and what is guarded. It never says how Claude talks or paces itself, unless a walk showed the model needs it: nothing keeps the person out of the work, and nothing holds a question until they say they are ready (lint check 39).
+
 Control flow lives in the engine, never in prose. A skill never branches on a status it read or on the person's answer at a gate: it does what the engine's verbs return.
 
 ## Where a Rule Goes

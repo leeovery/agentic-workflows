@@ -195,16 +195,26 @@ session · started 15 Jul
 `))
   })
 
-  test('a done fix says how its review ended, as the build does — settled by the orchestrator, or nothing where no round ended it, never the rounds sent back', () => {
+  test('a done fix says how its review ended, as the build does — settled by the orchestrator, a one-line fix read by no reviewer, or nothing where no round ended it, never the rounds sent back', () => {
     const ended = (rounds: Record<string, unknown>) => sectionOf(drawn(QUICK_FIX, { ...fixture, fixes: [{ ...fixture.fixes[0], rounds: { ...fixture.fixes[0].rounds, ...rounds } }] } as View).text, 'THE FIXES ').slice(1)
 
-    expect([ended({ settled: true }), ended({ sent_back: 2, passed: null })]).toEqual([
+    expect([ended({ settled: true }), ended({ passed: null, unreviewed: true }), ended({ sent_back: 2, passed: null })]).toEqual([
       block(`
 ✓ 1.1 Mark the highlighted session on entry               done
      settled by the orchestrator in round 2
 `),
+      block(`
+✓ 1.1 Mark the highlighted session on entry               done
+     a one-line fix, read by no reviewer
+`),
       ['✓ 1.1 Mark the highlighted session on entry               done'],
     ])
+  })
+
+  test('a one-line fix under way says it is read by no reviewer, as it will once done', () => {
+    const fix = { ...fixture.fixes[0], state: 'building', since: null, rounds: { sent_back: 0, reading: null, passed: null, settled: false, unreviewed: true } }
+
+    expect(sectionOf(drawn(QUICK_FIX, { ...fixture, fixes: [fix] } as View).text, 'THE FIXES ').slice(2)).toEqual(['     a one-line fix, read by no reviewer'])
   })
 
   test('THE RECORD draws its items as prose, a list and a second paragraph keeping their shape; where several fixes are done, a record stands under its title though only one is recorded', () => {

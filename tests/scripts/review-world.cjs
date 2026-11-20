@@ -277,9 +277,13 @@ function fixPhaseWritten(phase, tasks) {
 /** The unit switched to step. */
 const inStep = () => createManifest(dir, UNIT, { ...readManifest(dir, UNIT), build: { position: 'step' } });
 
-/** Task 2.2 written in the cut's last phase and done, its branch not landed: the phase's stack waits to merge — at its gate, in step. */
+/**
+ * Task 2.2 in the cut's last phase, as its phase was written with it, then
+ * done, its branch not landed: the phase's stack waits to merge — at its
+ * gate, in step.
+ */
 function cutUnmerged() {
-  taskMade(2, 'Refund twice', '§2.1');
+  DRIVER.createTask(statePath(dir), { unit: UNIT, phase: 2, n: 2 }, readTaskText(taskText('Refund twice', '§2.1')));
   fixBuilt(2, 2, 'Refund twice', 'main', 'src/twice.js');
 }
 

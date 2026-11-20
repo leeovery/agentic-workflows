@@ -16,7 +16,10 @@
 // takes one, a phase's too: no character that breaks a line anywhere in it,
 // the task file's own line ending aside. A verb of another kind reads a
 // task's fields, its spec reference, its acceptance scenarios and the
-// criteria they hold, from its text as the tracker holds it.
+// criteria they hold, from its text as the tracker holds it. A one-line
+// task is the orchestrator's own work, done in the conversation with no
+// builder and no reviewer: its title and type alone, no other field
+// (`oneLineText`, `isOneLine`).
 // ---------------------------------------------------------------------------
 
 const { BULLET, listItems } = require('./list-items.cjs');
@@ -110,8 +113,8 @@ function fieldOf(text, field) {
   return bodies.length === 1 && bodies[0] !== '' ? bodies[0] : null;
 }
 
-/** What a task does, as a screen says it: its Outcome as written, else its text whole. @param {string} text */
-const outcomeOf = (text) => fieldOf(text, 'Outcome') ?? text.trim();
+/** What a task does, as a screen says it: its Outcome as written, a one-line task's title, else its text whole. @param {string} text */
+const outcomeOf = (text) => fieldOf(text, 'Outcome') ?? (isOneLine(text) ? text.trim().split('\n')[0].replace(/^# +/, '') : text.trim());
 
 /**
  * The spec reference a task's text holds, as written; null where it holds
@@ -181,4 +184,13 @@ function criterionScenario(criterion) {
   return OPENING_ID.exec(criterion)?.[1] ?? null;
 }
 
-module.exports = { FIELDS, NO_SPEC, breaksLine, readTaskText, fieldOf, outcomeOf, specReferenceOf, scenariosOf, scenarioIds, criteriaTexts, criteriaOf, namesScenario, holdsScenario, criterionWords, criterionScenario };
+/** A one-line task's text: its title over its type (the header's). @param {string} title @param {string} type */
+const oneLineText = (title, type) => `# ${title}\n\n## Type\n\n${type}`;
+
+/** Whether a task's text is a one-line task's: its type the one field it holds. @param {string} text */
+function isOneLine(text) {
+  const fields = [...sectionsOf(text.trim().split('\n').slice(1)).keys()];
+  return fields.length === 1 && fields[0] === 'Type';
+}
+
+module.exports = { FIELDS, NO_SPEC, oneLineText, isOneLine, breaksLine, readTaskText, fieldOf, outcomeOf, specReferenceOf, scenariosOf, scenarioIds, criteriaTexts, criteriaOf, namesScenario, holdsScenario, criterionWords, criterionScenario };

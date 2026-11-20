@@ -341,7 +341,7 @@ describe('task phase and task create (7.1.3, 7.4.1, 12.4.1)', () => {
   });
 
   it('the tracker\'s verbs are the whole of `task`: the old plan\'s bookkeeping, its fix count and its analysis cycles answer the usage, a start by topic its own (3.S10, 13.S5)', () => {
-    const usage = 'Usage: engine task <phase|create|add|type|close-plan|link|unlink|ready|start|done|close|list|show|worktree|stopped|account|settle|note> …';
+    const usage = 'Usage: engine task <phase|create|add|type|close-plan|link|unlink|ready|start|done|close|list|show|worktree|stopped|account|review|settle|note> …';
     refusePristine([
       [['task', 'init', UNIT, UNIT], usage],
       [['task', 'fix-attempt', UNIT, UNIT], usage],

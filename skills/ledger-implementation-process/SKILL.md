@@ -7,7 +7,7 @@ allowed-tools: Bash(node .claude/skills/ledger-engine/scripts/engine.cjs *)
 
 # The Build
 
-The work unit's build: every phase of its cut, from its first phase's start to its last phase's close, then straight on into the review phase, all in this one conversation. You orchestrate and delegate: a task writer writes each phase's tasks as it starts, a builder builds each task, a pair of reviewers reviews it, and other agents consolidate a phase's notes and review the phase whole, each from a brief the engine issues and never from this conversation. You schedule the work, land what the agents find through the doors, fix the nits a review leaves, and keep the person out of it except where the engine stops for them. Nothing here decides the product afresh: the spec is concluded, and a call the build meets goes to the ledger or the person.
+The work unit's build: every phase of its cut, from its first phase's start to its last phase's close, then straight on into the review phase, all in this one conversation. You orchestrate and delegate: a task writer writes each phase's tasks as it starts, a builder builds each task, the reviewers you choose review it, and other agents consolidate a phase's notes and review the phase whole, each from a brief the engine issues and never from this conversation. You schedule the work, land what the agents find through the doors, and fix the nits a review leaves. Nothing here decides the product afresh: the spec is concluded, and a call the build meets goes to the ledger or the person.
 
 ## Arguments
 
@@ -55,7 +55,7 @@ No task ready with a phase still to start means that phase starts next.
 
 ### The Person
 
-The build runs start to finish without the person, stopping only where the engine stops it. In the build, every question for the person goes through `raise`: one asked in plain prose is a slip. A waiting question is never a gate, and the build never goes back to a menu for one.
+Every question for the person goes through `raise`: one asked in plain prose is a slip. A waiting question is never a gate, and the build never goes back to a menu for one.
 
 ### The Build Log
 
@@ -66,6 +66,7 @@ Append to the build's log, `.ledger/{work_unit}/build/log.md`, as the work goes:
 - A phase's tasks → the task writer: `brief task-writer {work_unit} {N}`, after `task phase {work_unit} {N} --title "{name}"`; the phase's start → `checklist show|done|skip|close phase-start {work_unit} {N}`.
 - What runs → `task ready {work_unit} [{N}]`, its `back` a task whose builder goes back in, `task start {work_unit} {task}`; its headline → `render build-headline {work_unit} --file {payload}`.
 - An agent → `brief builder|fix {work_unit} {task}`, `brief reviewer {work_unit} {task} --letter {letter}`, `brief consolidation {work_unit} {N}`, `brief phase-review {work_unit} {N} --letter {letter}`; then the Agent call with the agent and the pointer `brief` answers, or SendMessage of the pointer to the agent already working the task.
+- A task's reviewers, chosen before its first round → `task review {work_unit} {task} --reviewers {count:[1|2]} --file {why}`.
 - A builder's change, and your fix of a nit → `commit --paths {file}… --task {work_unit} {task} -m "{message}"`, from the task's worktree, yours run as the entry's `engine`.
 - What the task was not told → `task add {work_unit} {task} --file {addition} --by {by:[orchestrator|person]}`; a task's type → `task type`; its order → `task link {work_unit} {task} --after {task}`.
 - A note for later → `task note {work_unit} --file {note} [--phase {N}]`.
@@ -87,7 +88,7 @@ Invoke `/ledger-review-process {work_type} {work_unit}`.
 
 ## Something Outside the Plan
 
-A bug the person reports, a gap or a find an agent reports beyond its task, anything the plan never held. Load **[outside-the-plan.md](references/outside-the-plan.md)** and follow its instructions as written, with place = `implementation`.
+A bug the person reports, something they ask for, a gap or a find an agent reports beyond its task, anything the plan never held. Load **[outside-the-plan.md](references/outside-the-plan.md)** and follow its instructions as written, with place = `implementation`.
 
 ## Ready to Discuss a Question
 

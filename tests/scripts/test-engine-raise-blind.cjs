@@ -632,7 +632,7 @@ describe('mid-build (16.17.6, 12.13)', () => {
 
     const { event, by, given, answers, text, task } = entries().at(-1);
     assert.deepStrictEqual([event, by, given, answers, text, task], ['decided', 'claude', 'dont-care', ASKED.where, CURSOR.text, '2.3']);
-    assert.deepStrictEqual([res.receipt, sections, marked()], ['Q1 answered · my answer stands as the builder\'s: On the screen the cursor is on · task 2.3 builds again once its pair has read round 1 · nothing waiting on you', '', null]);
+    assert.deepStrictEqual([res.receipt, sections, marked()], ['Q1 answered · my answer stands as the builder\'s: On the screen the cursor is on · task 2.3 builds again once round 1 of its review is read · nothing waiting on you', '', null]);
     assert.deepStrictEqual(standings(), [['raise', 'no-weight', null]]);
     assert.deepStrictEqual([onTheKind(), res.care_drop], [before, { care: `${projectName(dir)}: behaviour`, kind: 'behaviour', dont_cares: 3 }]);
   });

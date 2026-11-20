@@ -11,7 +11,7 @@ export default {
   standing: 'close',
   progress: { done: 1, total: 1, written: true },
   waiting: [{ kind: 'finish', id: 'close', text: "Close: what was proven; you changed none of Claude's calls, so there is no verdict to give", page: null }],
-  fixes: [{ task: '1.1', title: 'Mark the highlighted session on entry', state: 'done', since: null, on: [], rounds: { sent_back: 1, reading: null, passed: 2, settled: false } }],
+  fixes: [{ task: '1.1', title: 'Mark the highlighted session on entry', state: 'done', since: null, on: [], rounds: { sent_back: 1, reading: null, passed: 2, settled: false, unreviewed: false } }],
   calls: [
     { id: 'Rd8kQe', text: 'The README says entering marks the highlighted row' },
     { id: 'Hn3wPz', text: 'The capture harness keeps entering with a named set, as it did' },

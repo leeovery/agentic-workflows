@@ -133,8 +133,8 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
     assert.deepStrictEqual([unrecorded, landing, refused(['render', 'finish', UNIT]), refused(['finish', 'yes', UNIT])], [
       `render finish: ${UNIT} closes once each fix done has its record — 1.1, 1.2 have none: quick-fix record ${UNIT} 1.1 --file <record.md>`,
       `land: ${UNIT} closes once each fix done has its record — 1.1, 1.2 have none: quick-fix record ${UNIT} 1.1 --file <record.md>`,
-      `render finish: ${UNIT} closes once each of its fixes has ended — 1.3 is not started: each is done once it is committed, in ${UNIT}'s pull request and passed by its pair, or closed with its reason`,
-      `finish yes: ${UNIT} closes once each of its fixes has ended — 1.3 is not started: each is done once it is committed, in ${UNIT}'s pull request and passed by its pair, or closed with its reason`,
+      `render finish: ${UNIT} closes once each of its fixes has ended — 1.3 is not started: each is done once it is committed, in ${UNIT}'s pull request and passed by its reviewers, where any read it, or closed with its reason`,
+      `finish yes: ${UNIT} closes once each of its fixes has ended — 1.3 is not started: each is done once it is committed, in ${UNIT}'s pull request and passed by its reviewers, where any read it, or closed with its reason`,
     ]);
   });
 
@@ -154,7 +154,7 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
     }, []);
     const building = refused(['render', 'finish', UNIT]);
     for (const letter of REVIEWER_LETTERS) writeState(dir, roundReportPath({ unit: UNIT, phase: 1, n: 3 }, 1, letter), '# Review\n\n## Findings\n\nNone.\n\nVerdict: pass\n');
-    const ended = `each is done once it is committed, in ${UNIT}'s pull request and passed by its pair, or closed with its reason`;
+    const ended = `each is done once it is committed, in ${UNIT}'s pull request and passed by its reviewers, where any read it, or closed with its reason`;
 
     assert.deepStrictEqual([building, refused(['render', 'finish', UNIT])], [
       `render finish: ${UNIT} closes once each of its fixes has ended — 1.3 is in progress: ${ended}`,
@@ -166,7 +166,7 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
     dir = world();
     closeable();
     for (const letter of REVIEWER_LETTERS) writeState(dir, roundReportPath({ unit: UNIT, phase: 1, n: 2 }, 2, letter), '# Review\n\n## Findings\n\n- bug: the help still says --color\n  Scenario: the help read\n\nVerdict: fail\n');
-    const said = `${UNIT} closes once its pair has passed each fix done — 1.2 has no round its pair passed: its pair reads it, engine brief reviewer ${UNIT} 1.2 --letter a, and b`;
+    const said = `${UNIT} closes once its reviewers have passed each fix done — 1.2 has no round they passed: its reviewers read it, engine brief reviewer ${UNIT} 1.2 --letter a, and b where two read it`;
 
     assert.deepStrictEqual([refused(['render', 'finish', UNIT]), refused(['land', 'finish', UNIT])], [`render finish: ${said}`, `land: ${said}`]);
   });
@@ -179,7 +179,7 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
     assert.strictEqual(sectionOf(out, 'DISPLAY: finish'), [
       'Typo — ready to close',
       '',
-      'REVIEWED BY THE PAIR',
+      'REVIEWED',
       `  ├─ ✓ 1.1 ${FLAG} · passed in round 1`,
       `  └─ ✓ 1.2 ${HELP} · passed in round 1`,
       '',
@@ -206,7 +206,7 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
     const out = closeScreen(view);
 
     assert.match(sectionOf(out, 'MENU: finish'), /\*\*`y\/yes`\*\* {4}→ Close it — mark it complete\n/);
-    assert.match(sectionOf(out, 'DISPLAY: finish'), /^Typo — ready to close\n\nREVIEWED BY THE PAIR\n {2}No fix was done\.\n\n/);
+    assert.match(sectionOf(out, 'DISPLAY: finish'), /^Typo — ready to close\n\nREVIEWED\n {2}No fix was done\.\n\n/);
   });
 
   it('19.5.13: draws each fix\'s verdict from its pair — one its pair failed, its review settled by the orchestrator, closes said as settled in its round', () => {
@@ -222,7 +222,21 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
     run(['quick-fix', 'record', UNIT, '1.3', '--file', recordFile(dir, 3, RECORDS[1])]);
     closeable();
 
-    assert.match(sectionOf(screen(), 'DISPLAY: finish'), new RegExp(`\\nREVIEWED BY THE PAIR\\n {2}├─ ✓ 1\\.1 ${FLAG} · passed in round 1\\n {2}├─ ✓ 1\\.2 ${HELP} · passed in round 1\\n {2}└─ ✓ 1\\.3 ${DOCS} · settled in round 1\\n\\n`));
+    assert.match(sectionOf(screen(), 'DISPLAY: finish'), new RegExp(`\\nREVIEWED\\n {2}├─ ✓ 1\\.1 ${FLAG} · passed in round 1\\n {2}├─ ✓ 1\\.2 ${HELP} · passed in round 1\\n {2}└─ ✓ 1\\.3 ${DOCS} · settled in round 1\\n\\n`));
+  });
+
+  it('13.3.4: a one-line fix is done with no round and no account, and the close takes it, said as not reviewed with why, under a mark of its own', () => {
+    dir = world();
+    run(['task', 'create', UNIT, '1', '--title', DOCS, '--type', 'fix']);
+    run(['task', 'start', UNIT, '1.3']);
+    createFile(dir, 'docs/flag.md', '--colour\n');
+    run(['commit', '--paths', 'docs/flag.md', '--task', UNIT, '1.3', '-m', `fix(${UNIT}): spell the docs --colour`]);
+    run(['land', 'open', UNIT, '1.3']);
+    run(['task', 'done', UNIT, '1.3']);
+    run(['quick-fix', 'record', UNIT, '1.3', '--file', recordFile(dir, 3, RECORDS[1])]);
+    closeable();
+
+    assert.match(sectionOf(screen(), 'DISPLAY: finish'), new RegExp(`\\nREVIEWED\\n {2}├─ ✓ 1\\.1 ${FLAG} · passed in round 1\\n {2}├─ ✓ 1\\.2 ${HELP} · passed in round 1\\n {2}└─ ○ 1\\.3 ${DOCS} · not reviewed: a one-line\\n {5}task, the orchestrator's own work\\n\\n`));
   });
 
   it('19.5.25: refuses while a question asked in its conversation stands open, after a /clear as before it, naming it and the raise that asks it again — its checklist\'s questions-answered held open over it, naming the same', async () => {
@@ -243,7 +257,7 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
     dir = world();
     closeable();
     assert.strictEqual(sectionOf(screen(), 'DISPLAY: finish'), [
-      'Typo — ready to close', '', 'REVIEWED BY THE PAIR', `  ├─ ✓ 1.1 ${FLAG} · passed in round 1`, `  └─ ✓ 1.2 ${HELP} · passed in round 1`, '',
+      'Typo — ready to close', '', 'REVIEWED', `  ├─ ✓ 1.1 ${FLAG} · passed in round 1`, `  └─ ✓ 1.2 ${HELP} · passed in round 1`, '',
       `Nothing was proven by running ${projectName(dir)} — the project has no way to run it`, '',
     ].join('\n'));
   });

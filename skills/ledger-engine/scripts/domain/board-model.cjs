@@ -519,9 +519,10 @@ const TABS = Object.freeze(['this', 'unit', 'all']);
  * A fix of a quick-fix (20.14.1): its line as the build draws a task, and
  * its pair's rounds reported whole — how many were sent back, the one being
  * read in this conversation, the round its review ended in, each null where
- * none is, and whether the orchestrator settled that round rather than the
- * pair passing it.
- * @typedef {TaskLine & {rounds: {sent_back: number, reading: number|null, passed: number|null, settled: boolean}}} FixLine
+ * none is, whether the orchestrator settled that round rather than the
+ * pair passing it, and whether it is a one-line fix, which no reviewer
+ * reads.
+ * @typedef {TaskLine & {rounds: {sent_back: number, reading: number|null, passed: number|null, settled: boolean, unreviewed: boolean}}} FixLine
  */
 /**
  * A quick-fix's This session (20.14.1): the unit, its title and type, the

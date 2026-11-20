@@ -25,20 +25,30 @@
 //   each repository holding the branch, those it holds past the branch the
 //   repository lands on that the door stamped with the task
 //   (commit-task.cjs), oldest first (`ownCommits`).
+// - A one-line task, the orchestrator's own work, has no rounds and no
+//   account to prove it built, so it is built once its branch holds work of
+//   its own (`builtOneLine`): in a repository holding it, a commit the door
+//   stamped with the task, merges aside, past the branch the repository
+//   lands on, made since anything added to it: naming as many additions as
+//   the task holds (commit-task.cjs, `ADDITIONS`), so a Comment at its gate
+//   takes it off its gate until its change is committed. It finished as the newest commit on its branch was made
+//   (`oneLineFinished`), the time the board says it finished.
 // ---------------------------------------------------------------------------
 
 const { laidOutOf } = require('./round-report.cjs');
+const { projectRepos } = require('../kernel/repos.cjs');
 const { taskBranch, quickFixBranch } = require('./landing-names.cjs');
 const { quickFixBuild } = require('./derivations.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { taskId, taskName } = require('./task-id.cjs');
-const { branches, branchesHeldBy, defaultBranch, landingBranch, landingRev, isAncestor, latestOf, stampedPast } = require('./landing-git.cjs');
+const { branches, branchesHeldBy, defaultBranch, landingBranch, landingRev, isAncestor, latestOf, stampedPast, holdingBranch } = require('./landing-git.cjs');
 const { remoteName } = require('./remote.cjs');
 const { workBelow } = require('./review-change.cjs');
 const { repoLanded } = require('./task-landed.cjs');
 const { dayBefore } = require('./dates.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
+const { git } = require('../kernel/git.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 /** @typedef {import('../kernel/repos.cjs').Repo} Repo */
@@ -120,4 +130,36 @@ function ownCommits(cwd, ref, repo) {
  */
 const ownWork = (cwd, ref, holding) => holding.map((repo) => ({ repo, commits: ownCommits(cwd, ref, repo) })).filter(({ commits }) => commits.length > 0);
 
-module.exports = { projectDefault, baseRev, ofQuickFix, workBranch, builtOnBases, ownWork };
+/** How many additions a one-line task's commit names (the header's), none where it names none. @param {string} message */
+function additionsNamed(message) {
+  const named = new RegExp(`^${require('./commit-task.cjs').ADDITIONS}:[ \\t]*(\\d+)$`, 'm').exec(message);
+  return named === null ? 0 : Number(named[1]);
+}
+
+/**
+ * Whether a one-line task is built (the header's), its detail as the
+ * tracker holds it.
+ * @param {string} cwd @param {TaskRef} ref @param {{type: string|null, title: string, additions: unknown[]}} [task]
+ */
+function builtOneLine(cwd, ref, task = require('./task-verbs.cjs').trackedTask(cwd, ref)) {
+  const branch = workBranch(cwd, ref, task);
+  const { holding } = holdingBranch(ref.unit, projectRepos(codeRoot(cwd)), branch);
+  const id = taskId(ref);
+  const own = ({ value, message }) => value === id && additionsNamed(message) >= task.additions.length;
+  return holding.some((repo) => stampedPast(repo.path, `refs/heads/${branch}`, landingBranch(cwd, repo, ref.unit), stampKey()).some(own));
+}
+
+/**
+ * When a one-line task finished (the header's): the newest commit on its
+ * branch in any repository holding it, as ISO time; null where none does.
+ * @param {string} cwd @param {TaskRef} ref
+ * @returns {string|null}
+ */
+function oneLineFinished(cwd, ref) {
+  const branch = workBranch(cwd, ref, require('./task-verbs.cjs').trackedTask(cwd, ref));
+  const { holding } = holdingBranch(ref.unit, projectRepos(codeRoot(cwd)), branch);
+  const times = holding.map((repo) => git(repo.path, ['log', '-1', '--format=%cI', `refs/heads/${branch}`]).trim()).sort();
+  return times.at(-1) ?? null;
+}
+
+module.exports = { projectDefault, baseRev, ofQuickFix, workBranch, builtOnBases, ownWork, builtOneLine, oneLineFinished };

@@ -76,7 +76,7 @@ Every screen is drawn by the engine from the state on disk and shown exactly as 
 
 ## The build runs on its own
 
-The spec is cut into phases at ready to build, where you pick the build's position: auto, where it runs on its own and only what needs you stops it, or step, where it also stops after each task for you to try it. Each phase's tasks are written as it starts. Builders work them side by side, each in a worktree of its own, building each task with the tests that prove it; a pair of reviewers who didn't write the code checks each task, and each phase's whole change, against the spec. On GitHub every task lands as its own pull request, each phase a stack of them. A question for you parks only the tasks that depend on it; the rest carry on. Front-load your attention on the conversation and the spec; the build handles the rest.
+The spec is cut into phases at ready to build, where you pick the build's position: auto, where it runs on its own and only what needs you stops it, or step, where it also stops after each task for you to try it. Each phase's tasks are written as it starts. Builders work them side by side, each in a worktree of its own, building each task with the tests that prove it; reviewers who didn't write the code check each task, as many as its stakes call for, and a pair checks each phase's whole change, against the spec. On GitHub every task lands as its own pull request, each phase a stack of them. A question for you parks only the tasks that depend on it; the rest carry on. Front-load your attention on the conversation and the spec; the build handles the rest.
 
 ## The ledger and the record
 

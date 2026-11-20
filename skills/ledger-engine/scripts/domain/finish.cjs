@@ -267,7 +267,7 @@ function finishSurface(cwd, { dotpath: unit = '' }) {
     if (fixes === null) return finishScreen(view);
     return closeScreen({
       ...view,
-      pair: fixes.map((fix) => ({ task: shownTask(fix.ref), title: fix.title, ...(/** @type {{round: number, settled: boolean}} */ (pairVerdict(cwd, fix.ref))) })),
+      pair: fixes.map((fix) => ({ task: shownTask(fix.ref), title: fix.title, ...(/** @type {{round: number, settled: boolean, why: string|null}} */ (pairVerdict(cwd, fix.ref))) })),
       product: projectName(cwd),
       proven: provenOf(cwd, manifest, fixes),
       fixes: fixes.length,

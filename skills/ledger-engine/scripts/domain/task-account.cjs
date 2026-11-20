@@ -47,6 +47,17 @@
 // `started`), null where it never moved; and when it finished, as the
 // account is taken.
 //
+// A one-line task (task-file.cjs), the orchestrator's own work, is read by
+// no reviewer and owes no account: it lands with none taken once it is
+// built (task-base.cjs, `builtOneLine`) — until then every way out of it
+// refuses — and `task account` refuses it. `task review
+// <unit> <task> --reviewers <1|2> --file <why>` is the orchestrator's
+// choice of how many reviewers read a builder's task and why, at
+// `review.json` beside the reports, committed, pushed: refused once the
+// task's first round is briefed or reported, for a count of none or beyond
+// the kernel's, and for a one-line task, reviewed by none by its shape, its
+// record written as it is made (task-verbs.cjs).
+//
 // An account is taken once the task's last round passed, or once the
 // orchestrator settled it. `task settle <unit> <task> --file <why>` is that
 // settlement, of a task that looks stuck (13.4.6): the file's text, why and
@@ -81,17 +92,18 @@ const { messageOf } = require('../kernel/call.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { headingLevels } = require('./spec-sections.cjs');
 const { BULLET, listItems, saysNone, saysNoneIn } = require('./list-items.cjs');
-const { criteriaOf } = require('./task-file.cjs');
+const { criteriaOf, isOneLine } = require('./task-file.cjs');
+const { REVIEWER_LETTERS } = require('../kernel/reviewers.cjs');
 const { parseShownTask, shownTask, taskId, taskName } = require('./task-id.cjs');
 const { holdingBranch, taskWorktree, mergeTree } = require('./landing-git.cjs');
 const { trackedTask, trackedStart, givenText, ENDED } = require('./task-verbs.cjs');
 const { refuseParked, parkedOf } = require('./task-parks.cjs');
-const { baseRev, ofQuickFix, workBranch, builtOnBases, ownWork } = require('./task-base.cjs');
+const { baseRev, ofQuickFix, workBranch, builtOnBases, ownWork, builtOneLine } = require('./task-base.cjs');
 const { quickFixBranch } = require('./landing-names.cjs');
 const { refusing } = require('./staged-payload.cjs');
 const { READERS, readersDone } = require('./scratch.cjs');
 const {
-  taskFolder, settlementPath, taskRounds, pairPassed, endedWords, changedUnder, changedRefusal,
+  taskFolder, settlementPath, roundReportPath, reviewedNone, recordReview, briefedOf, taskRounds, pairPassed, endedWords, changedUnder, changedRefusal,
 } = require('./round-report.cjs');
 
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
@@ -310,6 +322,18 @@ function changesOf(cwd, ref, holding, branch) {
 }
 
 /**
+ * The task's change, summed across every repository holding work on its
+ * branch, as its figures count it (the header's); null where none does.
+ * @param {string} cwd @param {TaskRef} ref @param {{type: string|null, title: string}} task @returns {Change|null}
+ */
+function changeOf(cwd, ref, task) {
+  const branch = workBranch(cwd, ref, task);
+  const { holding } = holdingBranch(ref.unit, projectRepos(codeRoot(cwd)), branch);
+  if (holding.length === 0) return null;
+  return changesOf(cwd, ref, holding, branch).reduce(summed, { files: 0, added: 0, removed: 0 });
+}
+
+/**
  * The task's figures (the header's), finished now, the account covering
  * `rounds`; refused where no repository of the project holds work on its
  * branch.
@@ -317,10 +341,8 @@ function changesOf(cwd, ref, holding, branch) {
  * @returns {Figures}
  */
 function figuresOf(cwd, ref, task, rounds, refuse) {
-  const branch = workBranch(cwd, ref, task);
-  const { holding } = holdingBranch(ref.unit, projectRepos(codeRoot(cwd)), branch);
-  if (holding.length === 0) refuse(`no repository of the project holds work on ${taskName(ref)}'s branch, ${branch}`);
-  const change = changesOf(cwd, ref, holding, branch).reduce(summed, { files: 0, added: 0, removed: 0 });
+  const change = changeOf(cwd, ref, task);
+  if (change === null) refuse(`no repository of the project holds work on ${taskName(ref)}'s branch, ${workBranch(cwd, ref, task)}`);
   return {
     rounds, ...change, criteria: criteriaOf(task.text), additions: task.additions.length, started: trackedStart(cwd, ref), finished: new Date().toISOString(),
   };
@@ -415,6 +437,8 @@ function committed(cwd, files, message, warnings, answer) {
 function takeAccount(cwd, unit, given) {
   const said = 'task account';
   const refuse = refuserFor(said);
+  const none = refusing(said, () => reviewedNone(cwd, parseShownTask(unit, given)));
+  if (none !== null) refuse(`task ${given} of ${unit} is ${none}: it lands with no account taken`);
   const { ref, task, rounds, last } = reviewedTask(cwd, unit, given, said, 'its account is taken as it lands, before task done');
   refuseParked(cwd, ref, said);
   if (!pairPassed(last)) {
@@ -466,6 +490,28 @@ function settleTask(cwd, unit, given, file) {
 }
 
 /**
+ * `task review`: the orchestrator's choice of how many reviewers read the
+ * task, and why, recorded (the header's).
+ * @param {string} cwd @param {string} unit @param {string} given @param {string} count @param {string} file
+ */
+function reviewTask(cwd, unit, given, count, file) {
+  const said = 'task review';
+  const refuse = refuserFor(said);
+  const ref = refusing(said, () => parseShownTask(unit, given));
+  const task = refusing(said, () => trackedTask(cwd, ref));
+  if (ENDED.includes(task.status)) refuse(`${taskName(ref)} is ${task.status} — its reviewers are chosen before it is reviewed`);
+  const reviewers = Number(count);
+  if (!/^[0-9]+$/.test(count) || reviewers < 1 || reviewers > REVIEWER_LETTERS.length) refuse(`${count} is no count of reviewers — 1 to ${REVIEWER_LETTERS.length}`);
+  if (isOneLine(task.text)) refuse(`${taskName(ref)} is a one-line task, reviewed by none by its shape — your own work, with no reviewer to choose`);
+  const reported = REVIEWER_LETTERS.some((letter) => fs.existsSync(statePath(cwd, roundReportPath(ref, 1, letter))));
+  if (briefedOf(cwd, ref).round > 0 || reported) refuse(`${taskName(ref)}'s first round is briefed already — its reviewers are chosen before it`);
+  const why = refusing(said, () => givenText(cwd, file, 'review by'));
+  return committed(cwd, [recordReview(cwd, ref, { reviewers, why })], `task(${unit}): review ${shownTask(ref)} by ${reviewers}`, [...(task.warnings ?? [])], {
+    task: shownTask(ref), id: taskId(ref), reviewers,
+  });
+}
+
+/**
  * How far the task stands towards landing (12.14): `building` while its
  * review is not over — no round read whole, a last round failed, or the
  * task changed under it; `owed` once it is, its account not taken over
@@ -484,6 +530,18 @@ function landingStage(cwd, ref) {
   const last = rounds.at(-1);
   if (last === undefined || !pairPassed(last) || changedUnder(cwd, ref, rounds) !== null) return { stage: 'building', last };
   return { stage: takenFigures(cwd, ref)?.rounds === rounds.length ? 'taken' : 'owed', last };
+}
+
+/**
+ * How a task ready to land lands: a quick-fix's pushed to its pull request,
+ * then done; any other's landing shown, then opened.
+ * @param {string} cwd @param {TaskRef} ref
+ */
+function landingWay(cwd, ref) {
+  const task = `${ref.unit} ${shownTask(ref)}`;
+  return ofQuickFix(cwd, ref.unit)
+    ? `push it to ${ref.unit}'s pull request, engine land open ${task}, then end it, engine task done ${task}`
+    : `show its landing, render task-landed ${task}, then land it, engine land open ${task}`;
 }
 
 /**
@@ -509,10 +567,7 @@ function reviewOverWay(cwd, ref) {
   const ended = endedWords(last);
   const passed = `round ${last.round} of its review ${ended}`;
   const quickFix = ofQuickFix(cwd, ref.unit);
-  if (stage === 'taken') {
-    const land = quickFix ? `push it to ${ref.unit}'s pull request, engine land open ${task}, then end it, engine task done ${task}` : `show its landing, render task-landed ${task}, then land it, engine land open ${task}`;
-    return { round: last.round, ended, said: `${passed}, its account taken`, way: land };
-  }
+  if (stage === 'taken') return { round: last.round, ended, said: `${passed}, its account taken`, way: landingWay(cwd, ref) };
   if (accountOwed(cwd, ref).owed === null) return { round: last.round, ended, said: `${passed}, its account written and not taken`, way: `take it, engine task account ${task}` };
   const builder = `engine brief builder ${task}`;
   const read = `read its reports, ${last.reports.map(({ file }) => `\`${statePath(cwd, file)}\``).join(' and ')}, for their notes for later and the nits the task's commits do not yet fix`;
@@ -532,7 +587,8 @@ function reviewOverWay(cwd, ref) {
 
 /**
  * Refuse, in the words of `said`, a task that lands with no account taken
- * of its review as it stands (12.14) — a quick-fix's among them, each of
+ * of its review as it stands (12.14) — but a one-line task, which owes
+ * none, refused only until it is built (`unbuiltOneLine`) — a quick-fix's among them, each of
  * its tasks passed by its pair as any task is (19.5.3, 19.5.22): one a
  * question parks, which waits on the answer and owes none yet; one changed
  * under its last round; one whose account was never taken, or was taken
@@ -541,6 +597,10 @@ function reviewOverWay(cwd, ref) {
  */
 function refuseUnaccounted(cwd, ref, said) {
   refuseParked(cwd, ref, said);
+  if (reviewedNone(cwd, ref) !== null) {
+    if (!builtOneLine(cwd, ref)) throw new Error(`${said}: ${unbuiltOneLine(ref)}`);
+    return;
+  }
   const rounds = refusing(said, () => taskRounds(cwd, ref));
   const changed = changedUnder(cwd, ref, rounds);
   if (changed !== null) throw new Error(`${said}: ${changedRefusal(cwd, ref, changed)}`);
@@ -548,6 +608,11 @@ function refuseUnaccounted(cwd, ref, said) {
   throw new Error(`${said}: ${taskName(ref)} has no account taken of its review as it stands — once its builder writes it from its brief, engine brief builder ${ref.unit} ${shownTask(ref)}, take it: engine task account ${ref.unit} ${shownTask(ref)}`);
 }
 
+/** Why a one-line task goes no further yet: its branch holds no work of its own (task-base.cjs, `builtOneLine`). @param {TaskRef} ref */
+function unbuiltOneLine(ref) {
+  return `${taskName(ref)} is not built — a one-line task goes on once its branch holds a commit of its own made through the door since anything added to it, in its worktree, engine task worktree ${ref.unit} ${shownTask(ref)}`;
+}
+
 module.exports = {
-  SECTIONS, accountPath, figuresPath, takenFigures, readAccount, accountOwed, takeAccount, settleTask, refuserFor, committed, refuseUnaccounted, landingStage, reviewOverWay,
+  SECTIONS, accountPath, figuresPath, takenFigures, readAccount, accountOwed, takeAccount, settleTask, reviewTask, refuserFor, committed, refuseUnaccounted, landingStage, reviewOverWay, landingWay, unbuiltOneLine, changeOf,
 };

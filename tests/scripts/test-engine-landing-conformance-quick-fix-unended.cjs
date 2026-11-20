@@ -44,7 +44,7 @@ for (const { name } of listDrivers('landing')) {
       ok(at, ['land', 'open', UNIT, '1.2'], as());
       const finish = refuses(at, ['land', 'finish', UNIT], as()).error;
 
-      const unended = `land: ${UNIT} closes once each of its fixes has ended — 1.2 is in progress, 1.3 is not started: each is done once it is committed, in ${UNIT}'s pull request and passed by its pair, or closed with its reason`;
+      const unended = `land: ${UNIT} closes once each of its fixes has ended — 1.2 is in progress, 1.3 is not started: each is done once it is committed, in ${UNIT}'s pull request and passed by its reviewers, where any read it, or closed with its reason`;
       assert.deepStrictEqual([phase, finish, landed(at)], [unended, unended, []]);
     });
 

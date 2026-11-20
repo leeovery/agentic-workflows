@@ -232,7 +232,7 @@ const { commitStateTail, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { remoteName, nestedRemoteName } = require('./remote.cjs');
 const { assertUnit, parsePhase, parseShownTask, parseTaskId, shownTask, taskId } = require('./task-id.cjs');
 const { trackedTask, trackedPhase, trackedBuild, phaseWritten, ENDED } = require('./task-verbs.cjs');
-const { taskRounds, pairPassed, changedUnder, changedRefusal, phaseReviewBegun } = require('./round-report.cjs');
+const { taskRounds, pairPassed, changedUnder, changedRefusal, phaseReviewBegun, reviewedNone } = require('./round-report.cjs');
 const { verifySetup } = require('./environment.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { cutLength, cutPhases, buildLength, quickFixBuild, fixesBegun, isFixPhase, builtSince, hasLanded } = require('./derivations.cjs');
@@ -731,7 +731,8 @@ function landingOf(project, ref, { type, title, status }) {
   const branch = names.taskBranch(ref, type, title);
   const { named, holding } = lg.holdingBranch(project.unit, project.repos, branch);
   if (!named) {
-    throw new Error(`land: task ${shown} has no branch ${branch}, the name its type and title in the tracker give it — name its branch so and open it again`);
+    const way = reviewedNone(project.cwd, ref) === null ? 'name its branch so and open it again' : `a one-line task's branch is made as its worktree is laid out, engine task worktree ${project.unit} ${shown}: commit its change there, then open it again`;
+    throw new Error(`land: task ${shown} has no branch ${branch}, the name its type and title in the tracker give it — ${way}`);
   }
   if (holding.length === 0) throw new Error(`land: task ${shown}'s branch ${branch} changes nothing in the repositories holding it — commit its change there first`);
   if (holding[0].dir === '') refuseState(/** @type {LandingContext} */ (project.contexts.get('')), shown, branch, 'task\'s');
@@ -1028,13 +1029,18 @@ function landOpen(cwd, unit, task) {
 }
 
 /**
- * Refuse a task its pair has not passed: no round of its review reported,
+ * Refuse a task its reviewers have not passed: no round of its review reported,
  * its last round failed and not settled (12.1.4, 13.4.6), or the task
  * changed under that round since — read off its rounds' reports alone,
- * refused as their read refuses.
+ * refused as their read refuses; a one-line task until it is built
+ * (task-account.cjs, `refuseUnaccounted`).
  * @param {string} cwd @param {TaskRef} ref
  */
 function refuseUnpassed(cwd, ref) {
+  if (reviewedNone(cwd, ref) !== null) {
+    account().refuseUnaccounted(cwd, ref, 'land');
+    return;
+  }
   const shown = shownTask(ref);
   let rounds;
   try {
@@ -1043,7 +1049,7 @@ function refuseUnpassed(cwd, ref) {
     throw new Error(`land: ${messageOf(err)}`);
   }
   const last = rounds.at(-1);
-  if (last === undefined) throw new Error(`land: task ${shown} has no review round reported — a task chains into its phase's stack once its pair has passed it`);
+  if (last === undefined) throw new Error(`land: task ${shown} has no review round reported — a task chains into its phase's stack once its reviewers have passed it`);
   if (!pairPassed(last)) {
     throw new Error(`land: round ${last.round} of task ${shown} did not pass — a task chains into its phase's stack once every reviewer of a round passes it, or once the orchestrator settles it: task settle ${ref.unit} ${shown} --file <why>`);
   }

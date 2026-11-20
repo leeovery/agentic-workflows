@@ -41,13 +41,13 @@ const { env, screen, refused, parkOn, proposeOn } = buildScreenHelpers(() => dir
 const { answered, parkedQuestion, decidedFor, written, UNANSWERED_ENDS, behind, bothParked } = stepHelpers(() => dir, () => config);
 
 describe('which task goes on first where more than one is freed (12.7.9)', () => {
-  it('reads the task in flight by when an answer freed each, not by when each parked: the questions answered newest first, the task parked last goes on first, its gate drawing and the other held behind it', async () => {
+  it('reads the task in flight by when an answer freed each, not by when each parked: the questions answered newest first, the first receipt naming the question still parking the other task, the task parked last goes on first, its gate drawing and the other held behind it', async () => {
     await bothParked();
     const first = answered('Q2');
     const second = answered('Q1');
 
     assert.deepStrictEqual([first, second], [
-      'Q2 answered · task 1.2 builds again · 1 waiting on you',
+      'Q2 answered · task 1.2 builds again · 1 waiting on you · next: Q1',
       'Q1 answered · task 1.1 builds again once task 1.2 is done · nothing waiting on you',
     ]);
     assert.match(sectionOf(screen(['step-gate', UNIT, '1.2']), 'DISPLAY: step gate'), /^▪ Show a receipt \(task 1\.2\)/);

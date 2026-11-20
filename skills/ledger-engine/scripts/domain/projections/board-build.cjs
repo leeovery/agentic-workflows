@@ -67,7 +67,8 @@ const { phaseNamed, phaseLets, buildGoesOn, takenAccount, callsOf, ranOf, taskHe
 const { fieldOf, outcomeOf, criteriaTexts, criterionWords, holdsScenario, namesScenario, FIELDS } = require('../task-file.cjs');
 const { specPath, specReading, DRAWS_ON } = require('../spec-sections.cjs');
 const { figuresPath, takenFigures } = require('../task-account.cjs');
-const { roundReportPath, wholeRounds } = require('../round-report.cjs');
+const { roundReportPath, wholeRounds, reviewedNone } = require('../round-report.cjs');
+const { oneLineFinished } = require('../task-base.cjs');
 const { messageOf } = require('../../kernel/call.cjs');
 const { REVIEWER_LETTERS } = require('../../kernel/reviewers.cjs');
 const { parseShownTask, taskName } = require('../task-id.cjs');
@@ -466,7 +467,8 @@ function roundPage(at, given, said) {
  * The build's moments for the unit's LATELY (20.15.1): each question
  * waiting raised, each task in progress started, as the tracker holds it,
  * each one failed as its builder stopped, and each task done finished, as
- * its account was taken.
+ * its account was taken — a one-line task, which owes none, as its own
+ * newest commit was made (task-base.cjs).
  * @param {BoardAt} at @returns {import('../board-model.cjs').Moment[]}
  */
 function buildMoments(at) {
@@ -479,9 +481,12 @@ function buildMoments(at) {
     ...standing.phases.flatMap(({ tasks }) => tasks).filter((task) => taskLine(at, task).state === 'failed')
       .flatMap(({ task }) => moment('task-failed', stopOf(at, task), task)),
     ...standing.phases.flatMap(({ tasks }) => tasks).filter(({ status }) => status === 'done')
-      .flatMap(({ task }) => moment('task-finished', takenFigures(at.cwd, parseShownTask(at.unit, task))?.finished, task)),
+      .flatMap(({ task }) => moment('task-finished', finishedAt(at, parseShownTask(at.unit, task)), task)),
   ];
 }
+
+/** When a task done finished: as its account was taken, or, a one-line task, as its newest commit of its own was made; undefined where neither is read. @param {BoardAt} at @param {import('../task-id.cjs').TaskRef} ref */
+const finishedAt = (at, ref) => (reviewedNone(at.cwd, ref) === null ? takenFigures(at.cwd, ref)?.finished : oneLineFinished(at.cwd, ref));
 
 /** How far the build has come while the tracker holds none of its tasks yet, as the start menu says it (progress.cjs); null once it holds one. @param {BoardAt} at */
 const untasked = (at) => buildRead(at).view.progress.untasked;

@@ -60,7 +60,7 @@ describe('finish\'s checklist (6.4.10, 2.S2)', () => {
     const { parked } = JSON.parse(raised.stdout.split('\n')[0]);
 
     assert.deepStrictEqual([items()[1], refused(['render', 'finish', UNIT]), refused(['finish', 'yes', UNIT]), refused(['land', 'finish', UNIT])], [
-      `questions-answered engine open — ${parked}, ${asks} — the unit never finishes over a question waiting on the person: stop for them, render build-stop ${UNIT}, and take each once they are ready to discuss it`,
+      `questions-answered engine open — ${parked}, ${asks} — the unit never finishes over a question waiting on the person: draw each for them, raise draw ${UNIT} <question>, and stop for their answers, render build-stop ${UNIT}`,
       'render finish: finish has items open since its close: questions-answered — they are worked, and it is closed again',
       'finish yes: finish has items open since its close: questions-answered — they are worked, and it is closed again',
       'land: finish has items open since its close: questions-answered — they are worked, and it is closed again',

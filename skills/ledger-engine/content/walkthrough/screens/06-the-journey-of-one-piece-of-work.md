@@ -7,7 +7,7 @@ A discussion argues the design through, one conversation per topic. Its map list
 ```sample discussion-map
 ```
 
-The specification turns the decisions into the contract the build works from, every statement traced to a decision, and cuts it into phases. Ready to build is one screen: you approve the outline and the cut, and choose how the build runs. The build writes each phase's tasks as the phase starts; agents build them test-first, side by side, and a pair of reviewers reads each one until both pass. A review phase then holds the whole change to the specification, and finish waits for you.
+The specification turns the decisions into the contract the build works from, every statement traced to a decision, and cuts it into phases. Ready to build is one screen: you approve the outline and the cut, and choose how the build runs. The build writes each phase's tasks as the phase starts; agents build them test-first, side by side, and the reviewers each one's stakes call for read it until they pass it. A review phase then holds the whole change to the specification, and finish waits for you.
 
 ```sample build-progress
 ```

@@ -247,7 +247,7 @@ describe('the answer: where the build stands, and what to read beside the ledger
     const { res, sections } = enter([UNIT]);
 
     assert.deepStrictEqual(res, { ok: true, phase: 'implementation', unit: UNIT, entered: true, started: false });
-    assert.strictEqual(sections, data(['position: auto', ...PHASE_LINES, 'in flight: task 1.2, no builder dispatched here — its builder and pair go afresh on its branch', ...readsAfter()]));
+    assert.strictEqual(sections, data(['position: auto', ...PHASE_LINES, 'in flight: task 1.2, no builder dispatched here — its builder and reviewers go afresh on its branch', ...readsAfter()]));
     assert.deepStrictEqual([stateGit(dir, ['rev-parse', 'HEAD']).trim(), position()], [head, { name: UNIT, phase: 'implementation', topic: UNIT, tasks: [{ task: '1.2', builder: null, reviewers: [] }] }]);
   });
 
@@ -298,6 +298,28 @@ describe('the answer: where the build stands, and what to read beside the ledger
     ]);
   });
 
+  it('13.3.4: a one-line task goes by whether it is built — the orchestrator\'s own to make in its worktree until its branch holds a commit of its own made since anything added to it, then its landing', () => {
+    ok(dir, ['task', 'create', UNIT, '1', '--title', 'Bold the size', '--type', 'chore']);
+    ok(dir, ['task', 'start', UNIT, '1.4'], { env: env() });
+    /** Task 1.4's line, the entry's. */
+    const own = () => enter([UNIT]).sections.split('\n').find((line) => line.startsWith('in flight: task 1.4'));
+    const unbuilt = own();
+    git(dir, ['checkout', '-q', '-b', taskBranch({ unit: UNIT, phase: 1, n: 4 }, 'chore', 'Bold the size')]);
+    createFile(dir, 'src/size.css', '.size { font-weight: bold; }\n');
+    git(dir, ['add', '-A']);
+    git(dir, ['commit', '-q', '-m', `chore(${UNIT}): bold the size\n\nLedger-Task: ${UNIT}-1-4`]);
+    git(dir, ['checkout', '-q', 'main']);
+    const built = own();
+    createFile(dir, '.ledger/pay/build/addition.md', 'Bold it in red.\n');
+    ok(dir, ['task', 'add', UNIT, '1.4', '--file', path.join(dir, '.ledger/pay/build/addition.md'), '--by', 'person'], { env: env() });
+
+    assert.deepStrictEqual([unbuilt, built, own()], [
+      `in flight: task 1.4, no builder dispatched here — a one-line task, your own work — lay out its worktree, engine task worktree ${UNIT} 1.4, commit it there through the door, and land it`,
+      `in flight: task 1.4, no builder dispatched here — a one-line task, built — show its landing, render task-landed ${UNIT} 1.4, then land it, engine land open ${UNIT} 1.4`,
+      `in flight: task 1.4, no builder dispatched here — a one-line task, your own work, what was added to it not yet committed — lay out its worktree, engine task worktree ${UNIT} 1.4, commit it there through the door, and land it`,
+    ]);
+  });
+
   it('a round its pair is reading here names no reviewer\'s brief; one a reviewer of is briefed again for names it', () => {
     const ref = { unit: UNIT, phase: 1, n: 2 };
     const reading = lineOf(() => ['a', 'b'].forEach((letter) => recordReviewer(dir, ref, 1, letter, 'sess-1')));
@@ -320,7 +342,7 @@ describe('the answer: where the build stands, and what to read beside the ledger
       [{ task: '1.3', builder: 'agent-own', reviewers: [] }, { task: '1.2', builder: null, reviewers: [] }],
       [{ task: '1.2', builder: 'agent-old', reviewers: [] }],
     ]);
-    assert.ok(sections.includes('in flight: task 1.3, its builder agent `agent-own`\nin flight: task 1.2, no builder dispatched here — its builder and pair go afresh on its branch\n'), sections);
+    assert.ok(sections.includes('in flight: task 1.3, its builder agent `agent-own`\nin flight: task 1.2, no builder dispatched here — its builder and reviewers go afresh on its branch\n'), sections);
   });
 
   it('takes off this conversation\'s record each task there the tracker holds ended: another conversation, a handoff\'s, took both over and finished them, so this one entering again carries none, and no line names them', () => {
@@ -418,7 +440,7 @@ describe('the answer: where the build stands, and what to read beside the ledger
 
     for (const line of [
       path.join(dir, '.claude/skills/ledger-implementation-process/SKILL.md'), `\`${ENGINE} ledger affected ${UNIT}\``, `\`${ENGINE} ledger record ${UNIT}\``,
-      statePath(dir, `${UNIT}/build/log.md`), ...PHASE_LINES, 'in flight: task 1.2, no builder dispatched here — its builder and pair go afresh on its branch',
+      statePath(dir, `${UNIT}/build/log.md`), ...PHASE_LINES, 'in flight: task 1.2, no builder dispatched here — its builder and reviewers go afresh on its branch',
     ]) {
       assert.ok(note.includes(line), `the note names ${line}\n${note}`);
     }

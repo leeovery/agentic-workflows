@@ -184,7 +184,7 @@ function refuseHeld(cwd, ref, said) {
   if (!read.held) return;
   const failed = read.landed ? undefined : taskRounds(cwd, ref).at(-1);
   const lands = read.landed ? 'it has landed, so it is done'
-    : failed !== undefined && !pairPassed(failed) ? `its pair failed it in round ${failed.round}, so it lands once its review is settled, task settle ${ref.unit} ${shownTask(ref)} --file <why.md>, then done once it is in ${ref.unit}'s pull request`
+    : failed !== undefined && !pairPassed(failed) ? `its reviewers failed it in round ${failed.round}, so it lands once its review is settled, task settle ${ref.unit} ${shownTask(ref)} --file <why.md>, then done once it is in ${ref.unit}'s pull request`
       : `it lands as it is with ${ref.unit}'s pull request, done once it is in it`;
   throw new Error(
     `${said}: ${taskName(ref)} holds work of its own — ${lands}, and its change is given up as a landed change is, `
