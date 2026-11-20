@@ -278,9 +278,9 @@ function stageMove(cwd, unit, { to, file }) {
 /**
  * The manifest re-typed in place, with its new description: a quick-fix's
  * fixes and its finish checklist — its close's, closed where a review was
- * asked — and a bugfix's investigation item dropped, so the new type starts
- * as one before its spec and works its own finish, and the new type's one
- * topic added to its first phase, unstarted.
+ * asked — and a bugfix's investigation item dropped, with its close into
+ * its spec, so the new type starts as one before its spec and works its own
+ * finish, and the new type's one topic added to its first phase, unstarted.
  * @param {Record<string, any>} manifest @param {string} to @param {string} description
  */
 function retype(manifest, to, description) {
@@ -289,6 +289,7 @@ function retype(manifest, to, description) {
   delete manifest.fixes;
   if (manifest.checklists !== undefined) {
     delete manifest.checklists.finish;
+    delete manifest.checklists.conclusion;
     if (Object.keys(manifest.checklists).length === 0) delete manifest.checklists;
   }
   const phases = ensureContainer(manifest, 'phases', 'phases');

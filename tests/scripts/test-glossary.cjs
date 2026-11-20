@@ -164,7 +164,7 @@ describe('the answering rule (23.3.5)', () => {
     assert.match(rule, /\bWhere the glossary does not cover it, say so plainly and point at the book: https:\/\/github\.com\/[\w-]+\/[\w-]+\/tree\/main\/docs\. Never invent an answer\./);
   });
 
-  it('23.S16: puts back the gate the question set aside', () => {
-    assert.match(rule, /\bWhere the person was at a gate, the question set it aside, and it comes back\b/);
+  it('23.S16: leaves the gate the question set aside waiting for the person\'s answer', () => {
+    assert.match(rule, /\bWhere the person was at a gate, the question set it aside: it waits as \[instructions\.md\]\(instructions\.md\) says, taking their answer whenever it comes\./);
   });
 });

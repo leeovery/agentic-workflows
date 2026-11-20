@@ -8,7 +8,7 @@
 //
 // - Its heading is the phase the epic has come to, where the board has it
 //   (board-standing.cjs): discovery, discussion, specification, build,
-//   review, complete (12.15.3). Beneath it the tally: its topics, then how
+//   review (12.15.3). Beneath it the tally: its topics, then how
 //   many are decided, in progress, not started, cancelled and postponed, a
 //   count none left out; then DECIDED and SET ASIDE, each a list with no
 //   key (18.4.18), a postponed topic with the horizon it waits under.
@@ -44,11 +44,9 @@
 //   foundations-first order that can be worked (18.4.7); else, while
 //   nothing but verdicts waits, the spec, the build or its review; else, in
 //   discovery, d. Rows follow it in their order, numbered as drawn.
-// - A finished epic's menu is its complete variant (18.4.23): its heading,
-//   its tally and its lists, and help and back alone.
 //
-// An epic this project lacks, a unit of another type, and a cancelled epic
-// are refused.
+// An epic this project lacks, a unit of another type, and an epic not in
+// progress — cancelled or finished — are refused.
 // ---------------------------------------------------------------------------
 
 const { renderTree } = require('../../kernel/render.cjs');
@@ -111,7 +109,7 @@ const into = (epic, phase, topic) => ({ kind: 'handoff', skill: phaseSkill(phase
 
 /**
  * The epic `unit` names, refused where this project has none, it is of
- * another type, or it is cancelled (the header's).
+ * another type, or it is not in progress (the header's).
  * @param {string} cwd @param {string|undefined} unit @returns {Record<string, any>}
  */
 function epicNamed(cwd, unit) {
@@ -119,7 +117,8 @@ function epicNamed(cwd, unit) {
   const manifest = knownUnit(cwd, unit);
   if (manifest === null) throw new Error(noUnit(unit));
   if (manifest.work_type !== 'epic') throw new Error(`${unit} is a ${manifest.work_type} — only an epic has a menu of its own`);
-  if (manifest.status === 'cancelled') throw new Error(/** @type {string} */ (unitClosure(manifest)));
+  const closure = unitClosure(manifest);
+  if (closure !== null) throw new Error(closure);
   return manifest;
 }
 
@@ -307,7 +306,6 @@ function epicMenuScreen(cwd, manifest, waits) {
   const detail = epicDetail(cwd, manifest);
   const { phase } = nowOf(unitRead(cwd, manifest));
   const title = `${titlecase(phase)} — ${titlecase(epic)}`;
-  if (phase === 'complete') return { title, shows: shown(detail, new Set()), rows: [], back: BACK };
   const waiting = new Set(waits.flatMap((wait) => (wait.kind === 'verdict' || wait.topic === null ? [] : [wait.topic])));
   const onward = onwardRows(cwd, manifest, phase, detail, waits);
   const strike = striker(cwd, epic);

@@ -13,7 +13,9 @@
 //   dropped (14.3.6); how Claude settled a failing round, where it did
 //   (14.6.3); what put back set aside, where it holds anything, kept until
 //   the person removes it (review-tree.cjs); and one line counting the calls
-//   decided for the person, by the kind each carries, the unlabelled last.
+//   decided for the person, by the kind each carries, the unlabelled last,
+//   saying they are listed when the person asks — never a command (14.4.1,
+//   14.5.3).
 //   Its detailed checks are in a file, never shown (14.4.2). `review round`
 //   writes it as `round-{N}.md`, what the round decided — its fix tasks as
 //   filed, no standing claimed, the calls as the round was recorded, and no
@@ -95,6 +97,14 @@ function fixBlocks({ fixes, phase }) {
   });
 }
 
+/**
+ * What went to the inbox, each item by its title and kind, as a round's
+ * report and a quick-fix's close list it (14.3.6, 19.5.13); nothing where
+ * nothing went.
+ * @param {{title: string, kind: string}[]} filed @returns {string[]}
+ */
+const filedBlock = (filed) => (filed.length === 0 ? [] : [block(`WENT TO THE INBOX (${filed.length})`, listed(filed.map(({ title, kind }) => `${title} (${kind})`)))]);
+
 /** A round's blocks, each that has something to show (the header's). @param {RoundView} view @returns {string[]} */
 function roundBlocks(view) {
   const proven = view.scenarios.filter(({ standing }) => standing === 'proven');
@@ -104,17 +114,17 @@ function roundBlocks(view) {
     ...(proven.length === 0 ? [] : [block(`PROVEN BY RUNNING IT (${proven.length} of ${view.scenarios.length})`, listed(proven.map(({ scenario, wording }) => `${scenario} ${wording}`)))]),
     ...(unproven.length === 0 ? [] : [block(`NOT PROVEN (${unproven.length})`, listed(unproven.map(({ scenario, wording, standing }) => `${scenario} ${wording} — ${standing}`)))]),
     ...fixBlocks(view),
-    ...(view.filed.length === 0 ? [] : [block(`WENT TO THE INBOX (${view.filed.length})`, listed(view.filed.map(({ title, kind }) => `${title} (${kind})`)))]),
+    ...filedBlock(view.filed),
     ...(view.settled === null ? [] : [block('SETTLED', listed([view.settled]))]),
   ];
 }
 
-/** The line counting the calls decided for the person, by kind, and how to see them. @param {string} unit @param {CallsCount} calls @param {boolean} share whether to say the build's share */
-function callsLine(unit, { kinds, build, recorded }, share) {
+/** The line counting the calls decided for the person, by kind, and how to see them. @param {CallsCount} calls @param {boolean} share whether to say the build's share */
+function callsLine({ kinds, build, recorded }, share) {
   const of = share ? `${counted(kinds.length, 'call')} across the work unit, ${build} of them in the build` : counted(kinds.length, 'call');
   const when = recorded === null ? '' : `, when round ${recorded} was recorded`;
   const byKind = kinds.length === 0 ? '' : `: ${kindCounts(kinds)}`;
-  return block('CALLS DECIDED FOR YOU', `  ${of}${when}${byKind} — render review-calls ${unit} lists them`);
+  return block('CALLS DECIDED FOR YOU', `  ${of}${when}${byKind} — ask me to list them`);
 }
 
 /** @typedef {import('../review-phase.cjs').SetAside} SetAside */
@@ -129,16 +139,16 @@ const asideBlock = (aside) => (aside === null ? [] : [
   block(`SET ASIDE BY PUT BACK (${aside.paths.length}) — kept there until you remove them`, [`  ${aside.folder}`, ...aside.paths.map((rel) => `    ${rel}`)].join('\n')),
 ]);
 
-/** A round's report as text (the header's). @param {string} unit @param {string} title @param {RoundView} view @param {CallsCount} calls @param {SetAside|null} aside */
-function roundReport(unit, title, view, calls, aside) {
-  return [`${title} — review, round ${view.round}: ${verdictWords(view)}`, ...roundBlocks(view), ...asideBlock(aside), callsLine(unit, calls, false)].join('\n\n');
+/** A round's report as text (the header's). @param {string} title @param {RoundView} view @param {CallsCount} calls @param {SetAside|null} aside */
+function roundReport(title, view, calls, aside) {
+  return [`${title} — review, round ${view.round}: ${verdictWords(view)}`, ...roundBlocks(view), ...asideBlock(aside), callsLine(calls, false)].join('\n\n');
 }
 
-/** The report closing the review phase as text (the header's). @param {string} unit @param {string} title @param {RoundView[]} views @param {CallsCount} calls @param {SetAside|null} aside */
-function closingReport(unit, title, views, calls, aside) {
+/** The report closing the review phase as text (the header's). @param {string} title @param {RoundView[]} views @param {CallsCount} calls @param {SetAside|null} aside */
+function closingReport(title, views, calls, aside) {
   const rounds = views.map((view) => [`ROUND ${view.round} — ${verdictWords(view)}`, ...roundBlocks(view)].join('\n\n'));
   const ended = views.at(-1)?.passed ? 'passed' : 'settled';
-  return [`${title} — review ${ended} in round ${views.length}, the certificate of the work`, ...rounds, ...asideBlock(aside), callsLine(unit, calls, true)].join('\n\n');
+  return [`${title} — review ${ended} in round ${views.length}, the certificate of the work`, ...rounds, ...asideBlock(aside), callsLine(calls, true)].join('\n\n');
 }
 
 /** A report drawn as a screen. @param {string} text */
@@ -209,5 +219,5 @@ function reviewTreeScreen(unit, title, round, {
 }
 
 module.exports = {
-  roundReport, closingReport, reportScreen, reviewCallsScreen, reviewTreeScreen, asideBlock,
+  roundReport, closingReport, reportScreen, reviewCallsScreen, reviewTreeScreen, asideBlock, filedBlock,
 };

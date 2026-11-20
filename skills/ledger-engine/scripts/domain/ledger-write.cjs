@@ -192,7 +192,7 @@ const { derivedMove, movedRefusal, reverses } = require('./ledger-verdicts.cjs')
 const { heldAgainst } = require('./ledger-affected.cjs');
 const { newEvent, keepEvent, landKept } = require('./trust-log.cjs');
 const { checkUnparked } = require('./questions.cjs');
-const { voidDecidedClose, itemOf, itemArchived, bringBack } = require('./derivations.cjs');
+const { voidTopicClose, itemOf, itemArchived, bringBack } = require('./derivations.cjs');
 const { pastItsSpec } = require('./spec-standing.cjs');
 const { loadWorkUnitManifest, saveWorkUnitManifest } = require('../kernel/manifest.cjs');
 
@@ -1423,27 +1423,29 @@ function commitEntry(cwd, { at, write }, id, warnings, paths = []) {
 }
 
 /**
- * The topic a write opens a question on — asked there, or moved onto it —
- * or null for any other write.
+ * The topic whose work a write takes on, so voiding its close — a question
+ * asked there or moved onto it, or an entry replaced at a bugfix's
+ * investigation — or null for any other write.
  * @param {Address} at @param {Write} write @param {Record<string, unknown>} fields @returns {string|null}
  */
 function opensOn(at, write, fields) {
   if (write.event === 'asked') return at.topic;
   if (write.event === 'moved' && typeof fields.to === 'string' && roadmapItemOf(fields.to) === null) return fields.to;
+  if (write.event === 'replaced' && at.phase === 'investigation') return at.topic ?? at.unit;
   return null;
 }
 
 /**
- * The decided close of the topic a write opens a question on voided, where
- * one stands, under the writer lock the caller holds: the manifest's path
- * for the commit where it was, else none.
+ * The close of the topic whose work a write takes on voided, where one
+ * stands, under the writer lock the caller holds: the manifest's path for
+ * the commit where it was, else none.
  * @param {string} cwd @param {Address} at @param {Write} write @param {Record<string, unknown>} fields @returns {string[]}
  */
 function voidOnQuestion(cwd, at, write, fields) {
   const topic = opensOn(at, write, fields);
   if (topic === null || at.manifest === null) return [];
   const manifest = loadWorkUnitManifest(cwd, at.unit);
-  if (!voidDecidedClose(manifest, topic, new Date().toISOString())) return [];
+  if (!voidTopicClose(manifest, topic, new Date().toISOString())) return [];
   saveWorkUnitManifest(cwd, at.unit, manifest);
   return [`${at.unit}/manifest.json`];
 }

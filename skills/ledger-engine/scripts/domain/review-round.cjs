@@ -643,8 +643,8 @@ function reportText(cwd, unit, manifest, rounds, statuses, warnings) {
   const view = (/** @type {number} */ round) => roundView(cwd, manifest, rounds[round - 1], round, wordings, statuses);
   const calls = { ...callsCount(cwd, unit, warnings), recorded: statuses === null ? rounds.length : null };
   const aside = statuses === null ? null : setAsideHeld(cwd, unit);
-  if (endsReview(last)) return closingReport(unit, title, rounds.map((_, at) => view(at + 1)), calls, aside);
-  return roundReport(unit, title, view(rounds.length), calls, aside);
+  if (endsReview(last)) return closingReport(title, rounds.map((_, at) => view(at + 1)), calls, aside);
+  return roundReport(title, view(rounds.length), calls, aside);
 }
 
 /**
@@ -675,5 +675,5 @@ function reviewCallsSurface(cwd, { dotpath: unit = '' }) {
 }
 
 module.exports = {
-  recordRound, answerNotes, answerCloseNotes, handBack, reviewReportSurface, reviewCallsSurface,
+  recordRound, answerNotes, answerCloseNotes, handBack, reviewReportSurface, reviewCallsSurface, filedItem,
 };

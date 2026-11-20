@@ -23,7 +23,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  Sim, sessionLog, continueUnit, startMenu, handoffEntry, enterEntry, labEntry, handoffBy, follow, answerGate, waitAgents, decideTopic, askedOn, DECIDED_ITEMS,
+  Sim, sessionLog, continueUnit, startMenu, handoffEntry, enterEntry, labEntry, handoffBy, follow, answerGate, decideTopic, askedOn, DECIDED_ITEMS,
 } = require('./pipeline-world.cjs');
 
 /**
@@ -72,7 +72,6 @@ describe('pipeline simulation: experiments, in a feature', () => {
       sim.run(['experiment', 'create', wu, wu, '--slug', slug, '--from', 'discussion', '--question', askedOn(sim, wu, wu, `What does ${slug} settle?`),
         '--problem', sim.write(`.ledger/.cache/${wu}/discussion/${wu}/problem.md`, `# Problem — ${slug}\n`)]);
     }
-    waitAgents(sim, wu, wu);
     assert.deepStrictEqual(spawnGate(sim, wu, 'E2', 'l'), { kind: 'continue' });
     // 24.S18: put off for later, the laboratory is reached by the feature's
     // Continue while a record waits unrun.
@@ -117,10 +116,8 @@ describe('pipeline simulation: experiments, in a feature', () => {
     sim.refuses(['ledger', 'decide', `${wu}.discussion.${wu}`, '--answers', budget], /is measured by experiment E1, still running/, null,
       JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: '60fps.', why: 'A guess.' }));
 
-    // 24.S18: worked now, the pause fetches the wait for its agents, then
-    // the spawn gate's yes hands off to the laboratory, which starts in a
-    // fresh context.
-    waitAgents(sim, wu, wu);
+    // 24.S18: worked now, the spawn gate's yes hands off to the
+    // laboratory, which starts in a fresh context.
     follow(sim, spawnGate(sim, wu, 'E1', 'y'));
     assert.strictEqual(labEntry(sim, wu, wu, 'E1'), 'E1');
     sim.run(['experiment', 'advance', wu, wu, 'E1']);

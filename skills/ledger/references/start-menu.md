@@ -34,11 +34,7 @@ node .claude/skills/ledger-engine/scripts/engine.cjs render help start-menu
 
 ## The Reference Cards
 
-A question asked at a reference card is answered per **[answering-how-it-works.md](../../ledger-shared/references/answering-how-it-works.md)**, and the menu it puts back is that card's alone:
-
-```bash
-node .claude/skills/ledger-engine/scripts/engine.cjs render walkthrough-topic --name {card} --menu-only
-```
+A question asked at a reference card is answered per **[answering-how-it-works.md](../../ledger-shared/references/answering-how-it-works.md)**.
 
 ## Triage
 

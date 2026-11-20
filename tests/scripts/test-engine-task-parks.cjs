@@ -242,7 +242,7 @@ describe('a blind question whose call went ahead holds its task open at its done
    * @param {string} target @param {string} configDir @param {string[]} [more]
    */
   async function wentAhead(target, configDir, more = []) {
-    const blind = mock.method(decisionPoint, 'decide', () => ({ decision: 'blind', reason: 'Asked cold.' }));
+    const blind = mock.method(decisionPoint, 'decide', () => ({ decision: 'blind', reason: 'Asked cold.', by: 'counts' }));
     try {
       const env = { CLAUDE_CODE_SESSION_ID: SESSION, LEDGER_CONFIG_DIR: configDir, ...labelling(CALL.question, 'behaviour', { hardToUndo: false }) };
       const { res } = await okSectionsAsync(target, ['raise', BUILD, '--answers', made.where, ...more, '--parks', '2.3'], { env, stdin: JSON.stringify(CALL) });

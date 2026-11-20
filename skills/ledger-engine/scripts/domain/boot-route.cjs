@@ -43,7 +43,9 @@
 //
 // The setup gates due come with it, in the order start works them: the
 // migration review, the stop at an older Claude Code and the knowledge gate
-// on every entry; the rest on the bare command alone, the one-time offers
+// on every entry — where this machine holds a valid knowledge
+// configuration, the project adopting it, `knowledge-adopt`, with no gate
+// (22.2.1); the rest on the bare command alone, the one-time offers
 // waiting for it, but the brownfield read where this boot started a lost
 // state again, which the person's yes asked for (`gatesDue`).
 // ---------------------------------------------------------------------------
@@ -92,7 +94,7 @@ const CLOSED = Object.freeze(['completed', 'cancelled']);
 
 /** Where the start goes (the header's). @typedef {{go: 'menu'} | {go: 'route', route: Route} | {go: 'pick', pick: {surface: string, args: string[], start: Next}}} Entry */
 
-/** A setup gate start works (22.2.1), by the name boot's `gates` gives it. @typedef {'migration-review'|'claude-code-floor'|'knowledge'|'mod-notice'|'effort'|'walkthrough'|'session-labels'|'brownfield'|'github-rule'|'github-squash'} Gate */
+/** A setup gate start works (22.2.1), by the name boot's `gates` gives it. @typedef {'migration-review'|'claude-code-floor'|'knowledge-adopt'|'knowledge'|'mod-notice'|'effort'|'walkthrough'|'session-labels'|'brownfield'|'github-rule'} Gate */
 
 /** Text read as words: lowercase, split at anything but a letter or a digit. @param {string} text @returns {string[]} */
 const wordsOf = (text) => text.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
@@ -270,16 +272,17 @@ function pickRows(cwd, matches) {
  * @property {string} walkthrough
  * @property {string} session_labels
  * @property {string} knowledge
+ * @property {{status: string}} [system_config] this machine's knowledge configuration, where the project has no knowledge base
  * @property {string} brownfield_offer
  * @property {boolean} github_rule_offer
- * @property {boolean} github_squash_offer
  */
 
 /**
  * The setup gates due at this start (the header's): the migration review
  * where the run changed files or handed something back, the stop where
- * Claude Code is older than the floor, and the knowledge gate while the
- * project has no knowledge base; then the mod's notice where it could run
+ * Claude Code is older than the floor, and while the project has no
+ * knowledge base, this machine's configuration adopted where it holds a
+ * valid one, else the knowledge gate; then the mod's notice where it could run
  * and is not, the effort notice where the session's effort is known — its
  * threshold the prose's (26.2.3) — and each one-time offer not yet
  * answered (O3), on the bare command, the brownfield read on any entry once
@@ -293,14 +296,14 @@ function gatesDue(facts, { bare, outdated, restarted }) {
   const gates = [
     ['migration-review', migrations.changed || migrations.verify.length > 0 || migrations.notices.length > 0, true],
     ['claude-code-floor', outdated, true],
-    ['knowledge', facts.knowledge === 'not-ready', true],
+    ['knowledge-adopt', facts.knowledge === 'not-ready' && facts.system_config?.status === 'valid', true],
+    ['knowledge', facts.knowledge === 'not-ready' && facts.system_config?.status !== 'valid', true],
     ['mod-notice', facts.mod === 'could', bare],
     ['effort', facts.effort !== null, bare],
     ['walkthrough', facts.walkthrough === 'none', bare],
     ['session-labels', facts.session_labels === 'prompt', bare],
     ['brownfield', facts.brownfield_offer === 'none', bare || restarted],
     ['github-rule', facts.github_rule_offer, bare],
-    ['github-squash', facts.github_squash_offer, bare],
   ];
   return gates.flatMap(([gate, due, shown]) => (due && shown ? [gate] : []));
 }

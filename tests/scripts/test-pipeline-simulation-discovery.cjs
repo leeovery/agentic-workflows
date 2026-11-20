@@ -36,7 +36,7 @@ const { startMenuScreen } = require(path.join(ROOT, 'skills/ledger-engine/script
 const { stateGit, statePath, commitOnState } = require('./engine-harness.cjs');
 const { highestMigration } = require(path.join(ROOT, 'skills/ledger-migrate/scripts/migration-ids.cjs'));
 const {
-  Sim, startUnit, handoff, handoffBy, answerGate, typeAtGate, startPick, startNew, startBare, startWith, startMenu, epicPick, carryOn, mappedEpic, enterEntry, waitAgents, presenceRow, briefDraft, roadmapMenu,
+  Sim, startUnit, handoff, handoffBy, answerGate, typeAtGate, startPick, startNew, startBare, startWith, startMenu, epicPick, carryOn, mappedEpic, enterEntry, presenceRow, briefDraft, roadmapMenu,
   startThisWork,
 } = require('./pipeline-world.cjs');
 
@@ -174,11 +174,10 @@ describe('pipeline simulation: discovery\'s entry', () => {
     const shared = sim.write('notes/pricing.md', '# Pricing\n');
     sim.refuses(['asset', 'import', PRODUCT, shared, 'notes/gone.png'], /notes\/gone\.png/);
     // The person asks first in their own words, which sets the prompt
-    // aside; shown again, they skip.
-    const reprompt = () => sim.render(['import-reprompt', '--file', sim.write('.ledger/.cache/product/discovery/product/import-reprompt.json', { missing: ['notes/gone.png'] })], { expect: 'content' });
-    reprompt();
+    // aside; once it is answered, their skip answers the prompt where it
+    // waits, never drawn again.
+    sim.render(['import-reprompt', '--file', sim.write('.ledger/.cache/product/discovery/product/import-reprompt.json', { missing: ['notes/gone.png'] })], { expect: 'content' });
     typeAtGate(sim, 'import reprompt', 'is the png one I need?');
-    reprompt();
     answerGate(sim, 'import reprompt', '--pick', 's');
     assert.deepStrictEqual(sim.run(['asset', 'import', PRODUCT, shared]).imports, ['.product/assets/pricing.md']);
 
@@ -285,14 +284,13 @@ describe('pipeline simulation: discovery\'s entry', () => {
     assert.deepStrictEqual(Object.keys(sim.manifest(EPIC).phases.discovery.items), ['licensing', 'pricing', 'seats', 'offline-notes']);
   });
 
-  // The discussion skill's Moving Up: the log brought up to date, the wait
-  // for the topic's agents, then the move in the same conversation.
-  it('a topic\'s talk moving up to its epic: its agents waited on, the sitting committed and the topic\'s presence gone, in the same conversation (8.S72, 24.S20)', () => {
+  // The discussion skill's Moving Up: the log brought up to date, then the
+  // move in the same conversation.
+  it('a topic\'s talk moving up to its epic: the sitting committed and the topic\'s presence gone, in the same conversation (8.S72, 24.S20)', () => {
     mappedEpic(sim, EPIC, ['licensing']);
     enterEntry(sim, EPIC, 'discussion', 'licensing');
     const conversation = sim.conversations;
     sim.write(`.ledger/${EPIC}/topics/licensing/log.md`, `${named(sim, 'log header')[0]}\n\nThis is about the whole epic.\n`);
-    waitAgents(sim, EPIC, 'licensing');
 
     const up = sim.run(['enter', 'discovery', EPIC, '--move']);
     assert.strictEqual(typeof up.committed, 'string');
@@ -336,7 +334,6 @@ describe('pipeline simulation: discovery\'s entry', () => {
     enterEntry(sim, wu, 'discussion', wu);
     const conversation = sim.conversations;
     sim.write(`.ledger/${wu}/topics/${wu}/log.md`, `${named(sim, 'log header')[0]}\n\nThis is about the product.\n`);
-    waitAgents(sim, wu, wu);
 
     sim.refuses(['enter', 'discovery', wu, '--move'], /its discovery ended at start this work/);
     sim.run(['enter', 'discovery', PRODUCT, '--move']);

@@ -150,7 +150,7 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
     appendEntry(statePath(dir), {
       event: 'parked', unit: UNIT, topic: null, phase: 'implementation', session: 'sess-1', number: 1,
       question: null, replaces: ledgerHelpers(() => dir).full(call), reason: 'asked-blind', cause: null, relies_on: [], task: null, went_ahead: '1.3',
-      call: RAISED, rows_judged: [], why_asking: 'Asked cold.', label: null, model: null, blocks_build: true, replaced_by: null, always: null, measured: null, chain: ledgerHelpers(() => dir).full(question), blind: true,
+      call: RAISED, rows_judged: [], why_asking: 'Asked cold.', asked_by: 'counts', label: null, model: null, blocks_build: true, replaced_by: null, always: null, measured: null, chain: ledgerHelpers(() => dir).full(question), blind: true,
     }, []);
     const building = refused(['render', 'finish', UNIT]);
     for (const letter of REVIEWER_LETTERS) writeState(dir, roundReportPath({ unit: UNIT, phase: 1, n: 3 }, 1, letter), '# Review\n\n## Findings\n\nNone.\n\nVerdict: pass\n');
@@ -202,11 +202,17 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
   });
 
   it('offers a yes that merges nothing, where no fix is done', () => {
-    const view = { unit: UNIT, title: 'Typo', closed: [], skips: [], verdict: null, warnings: [], aside: null, product: 'app', proven: null, fixes: 0, landing: null, pair: [], kept: [] };
+    const view = { unit: UNIT, title: 'Typo', closed: [], verdict: null, warnings: [], aside: null, product: 'app', proven: null, filed: [], fixes: 0, landing: null, pair: [], kept: [] };
     const out = closeScreen(view);
 
     assert.match(sectionOf(out, 'MENU: finish'), /\*\*`y\/yes`\*\* {4}→ Close it — mark it complete\n/);
     assert.match(sectionOf(out, 'DISPLAY: finish'), /^Typo — ready to close\n\nREVIEWED\n {2}No fix was done\.\n\n/);
+  });
+
+  it('says what its notes for later sent to the inbox, as the close answered them', () => {
+    const view = { unit: UNIT, title: 'Typo', closed: [], verdict: null, warnings: [], aside: null, product: 'app', proven: null, filed: [{ title: 'Spell --colour in the man page', kind: 'idea' }], fixes: 0, landing: null, pair: [], kept: [] };
+
+    assert.match(sectionOf(closeScreen(view), 'DISPLAY: finish'), /\n\nWENT TO THE INBOX \(1\)\n {2}└─ Spell --colour in the man page \(idea\)\n/);
   });
 
   it('19.5.13: draws each fix\'s verdict from its pair — one its pair failed, its review settled by the orchestrator, closes said as settled in its round', () => {

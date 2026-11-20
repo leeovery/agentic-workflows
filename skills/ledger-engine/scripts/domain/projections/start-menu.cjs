@@ -24,13 +24,20 @@
 //   e/verdicts, only while verdicts wait (18.2.11); v/view, once a unit
 //   has closed (18.2.18), into the closed units; and m/manage (18.3.4),
 //   each a menu of its own (projections/manage.cjs). The frame adds h/help.
+//
+// After a feature's, a bugfix's or an epic's finish, or its cancel from
+// inside it, no menu is drawn: one line says, from the menu's own read,
+// what waits on the person — each unit's count, the verdicts, the inbox
+// where it holds anything — and that the menu is one `/ledger` away, a
+// finish's opening on the work done, a cancel's after its own receipt
+// (`endedReceipt`).
 // ---------------------------------------------------------------------------
 
 const { PRODUCT } = require('../../kernel/manifest-schema.cjs');
 const { titlecase } = require('../conventions.cjs');
 const { dayMonth } = require('../dates.cjs');
 const { counted } = require('./map.cjs');
-const { dataSection, NOTE_SEPARATOR } = require('./surfaces.cjs');
+const { dataSection, section, timedInstruction, NOTE_SEPARATOR } = require('./surfaces.cjs');
 const { MENUS, drawMenu } = require('../menus.cjs');
 const { startMenuRead } = require('../start-menu.cjs');
 
@@ -71,15 +78,24 @@ function inboxLine({ ideas, bugs, quickfixes }) {
 }
 
 /**
+ * What waits in a unit, counted: "1 question", "1 gate and 2 questions";
+ * null where nothing does.
+ * @param {Waiting} waiting @returns {string|null}
+ */
+function waitsCounted({ gates, questions, topics }) {
+  const parts = [counted(gates, 'gate'), counted(questions, 'question'), counted(topics, 'topic')].filter((words) => !words.startsWith('0 '));
+  if (parts.length === 0) return null;
+  return parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}`;
+}
+
+/**
  * What waits in a unit, as its row counts it: "1 question waiting for you",
  * "1 gate and 2 questions waiting for you"; null where nothing does.
  * @param {Waiting} waiting @returns {string|null}
  */
-function waitingWords({ gates, questions, topics }) {
-  const parts = [counted(gates, 'gate'), counted(questions, 'question'), counted(topics, 'topic')].filter((words) => !words.startsWith('0 '));
-  if (parts.length === 0) return null;
-  const listed = parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}`;
-  return `${listed} waiting for you`;
+function waitingWords(waiting) {
+  const listed = waitsCounted(waiting);
+  return listed === null ? null : `${listed} waiting for you`;
 }
 
 /** A unit's row's note: what waits counted, then mail waiting; none where neither. @param {Waiting} waiting @param {boolean} mail @returns {string|undefined} */
@@ -173,4 +189,23 @@ function startMenuSurface(cwd) {
   return warned + drawMenu(cwd, MENUS['start-menu'], {}, startMenuScreen(read));
 }
 
-module.exports = { typeRank, listed, startMenuScreen, startMenuSurface };
+/**
+ * The line a finish or a cancel says in the start menu's place (the
+ * header's): `opening`, a finish's work done, then what waits on the person
+ * by the menu's `read`.
+ * @param {string|null} opening @param {StartMenuRead} read @returns {string}
+ */
+function endedReceipt(opening, read) {
+  const waits = [
+    ...listed(read.units).flatMap(({ name, waiting }) => {
+      const words = waitsCounted(waiting);
+      return words === null ? [] : [`${titlecase(name)} — ${words}`];
+    }),
+    ...(read.verdicts === 0 ? [] : [counted(read.verdicts, 'verdict')]),
+  ];
+  const inbox = read.inbox.ideas + read.inbox.bugs + read.inbox.quickfixes === 0 ? [] : [`${inboxLine(read.inbox)}.`];
+  const waiting = waits.length === 0 ? 'Nothing waits on you.' : `Waiting on you: ${waits.join('; ')}.`;
+  return section('DISPLAY: ended', timedInstruction('markdown', 'after the response'), [...(opening === null ? [] : [opening]), waiting, ...inbox, 'The menu is one `/ledger` away.'].join(' '));
+}
+
+module.exports = { typeRank, listed, startMenuScreen, startMenuSurface, endedReceipt };

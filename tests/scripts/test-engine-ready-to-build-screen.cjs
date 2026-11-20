@@ -167,6 +167,8 @@ describe('a verdict on each call the person changed among the spec\'s gap answer
     assert.deepStrictEqual([argv[2].startsWith(changed), argv.filter((_, at) => at !== 2)], [true, ['verdict', 'give', 'fix', '--at', 'ready-to-build']]);
     ok(dir(), ['verdict', 'give', changed, 'fix', '--at', 'ready-to-build'], { env: SESSION });
     assert.match(screen(), /=== MENU: ready to build /);
+    const alone = screen(['--alone']);
+    assert.deepStrictEqual([alone.includes('=== DISPLAY'), alone.includes('=== MENU: ready to build ')], [false, true], 'after a verdict, --alone draws the gate with none of the screen');
   });
 });
 

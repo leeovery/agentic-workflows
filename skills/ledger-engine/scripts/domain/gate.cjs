@@ -78,7 +78,10 @@
 //   it.
 // - `gate` refuses, logging nothing, with no session, no gate shown,
 //   another gate's name, a key the gate lacks, free text with no words, and
-//   a gate already answered; each before the words are read. It writes no
+//   a gate already answered by a pick that left it, and, at a gate set
+//   aside, anything but a row picked — which answers it where it waits,
+//   with no draw again, its event the showing's, as a pick after a draw
+//   again would log it (6.6.16); each before the words are read. It writes no
 //   state: the trust log under the trust log's lock (trust-log.cjs), and
 //   the record, marked answered, a learned gate's hold ended before it.
 //   The event's id is drawn from the gate and when its showing opened, with
@@ -325,7 +328,8 @@ function answerGate(cwd, named, answer) {
   if (!isObject(read)) throw new Error('gate: no gate has been shown in this conversation — render the gate, then answer it');
   const shown = /** @type {ShownRecord} */ (read);
   if (shown.gate !== name) throw new Error(`gate: the gate shown is "${shown.gate}", not "${name}"`);
-  if (shown.answered !== null) throw new Error(`gate: "${name}" is answered — render it again to answer it again`);
+  if (shown.answered !== null && leaves(shown, shown.answered.picked)) throw new Error(`gate: "${name}" is answered — render it again to answer it again`);
+  if (shown.answered !== null && !('pick' in answer)) throw new Error(`gate: "${name}" is set aside — a row picked answers it, and anything else said is talk`);
   const row = rowAnswered(shown, answer);
   const via = 'pick' in answer && pressedOnGate(session, shown, /** @type {ShownOption} */ (row)) ? 'pressed' : 'typed';
   const recommended = shown.options.find((o) => o.recommended)?.key ?? null;

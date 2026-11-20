@@ -13,8 +13,8 @@
 //   among it, a quick-fix's fixes and its review's alike, by the build's
 //   rule (board-build.cjs) — worked out once, which every view reads
 //   (`tasksStopped`); waiting on the person where something asked in the
-//   conversation and holding it waits — the map, an investigation's raise
-//   or its conclude, a gap, ready to build's yes, finish or a quick-fix's
+//   conversation and holding it waits — the map, an investigation's raise,
+//   a gap, ready to build's yes, finish or a quick-fix's
 //   close; else under way.
 // - What waits on the person is the list the unit's menu reads (waits.cjs;
 //   20.8.5), read in this conversation, its verdicts for an epic as the
@@ -28,7 +28,7 @@
 //   question of the build or the review opening the page of the first task
 //   it parks, one parking none its question's entry — a replacement's, the
 //   decision it would replace (questions.cjs); an investigation's raise
-//   with what raised it, and its conclude (board-investigation.cjs); a
+//   with what raised it (board-investigation.cjs); a
 //   quick-fix's question asked in its conversation; finish, a quick-fix's
 //   its close with whether a verdict is owed (board-quick-fix.cjs); and a
 //   verdict waiting, by the words of the answer it judges.
@@ -36,7 +36,7 @@
 //   banner at the unit's menu counts it (20.8.5, 20.2.4). A phase's view
 //   and its banner take the phase's own waits alone (`phaseWaiting`), as
 //   20.2.4 draws each: discovery approve the map; an investigation its
-//   raises and its conclude; the specification the map its sweep staged
+//   raises; the specification the map its sweep staged
 //   (8.10.9), its gaps and ready to build's yes; the build and the review their questions, a quick-fix's
 //   asked in its conversation among them, and finish or a quick-fix's
 //   close; a discussion and an experiment none. Any other unit's wait
@@ -57,7 +57,7 @@ const { nowOf } = require('../unit-phases.cjs');
 const { counted } = require('./map.cjs');
 const { buildRead } = require('./board-build.cjs');
 const { specLine } = require('./board-spec.cjs');
-const { raiseLine, CONCLUDE_LINE } = require('./board-investigation.cjs');
+const { raiseLine } = require('./board-investigation.cjs');
 const { closeWait } = require('./board-quick-fix.cjs');
 
 /** @typedef {import('../board.cjs').BoardAt} BoardAt */
@@ -112,7 +112,6 @@ const LINES = Object.freeze({
   map: mapLine,
   decided: (at, wait) => ({ ...topicLine(wait), text: `Decided: what ${topicTitle(at.manifest, /** @type {string} */ (wait.topic))} decided, for your yes` }),
   ready: specLine,
-  conclude: () => CONCLUDE_LINE,
   finish: (at) => (quickFixBuild(at.manifest) ? /** @type {WaitingLine} */ (closeWait(at)) : FINISH),
   gap: specLine,
   question: questionLine,
@@ -133,12 +132,12 @@ const waitsAt = (at) => at.once('waiting-on', () => readShownOnce(at.root, at.wa
 const waitingOn = (at) => waitsAt(at).map(({ line }) => line);
 
 /** The kinds of wait that hold the phase the unit is in: asked in the conversation, it goes no further until each is answered. */
-const HOLDING = Object.freeze(['map', 'gap', 'ready', 'raise', 'conclude', 'finish']);
+const HOLDING = Object.freeze(['map', 'gap', 'ready', 'raise', 'finish']);
 
 /** The kinds of wait each phase takes as its own, by the phase (the header's); a phase it names not, none. @type {Readonly<Record<string, readonly string[]>>} */
 const PHASE_OWN = Object.freeze({
   discovery: Object.freeze(['map']),
-  investigation: Object.freeze(['raise', 'conclude']),
+  investigation: Object.freeze(['raise']),
   specification: Object.freeze(['map', 'gap', 'ready']),
   implementation: Object.freeze(['question', 'raised', 'finish']),
   review: Object.freeze(['question', 'raised', 'finish']),

@@ -241,7 +241,7 @@ function parkedLine(own = {}) {
   return {
     v: 1, event: 'parked', unit: UNIT, topic: null, phase: 'implementation', session: SESSION,
     question, replaces: null, reason: null, cause: null, relies_on: [], task, went_ahead: null, number: 1,
-    call: CALL, rows_judged: [], why_asking: UNLABELLED, label: null, model: null, blocks_build: task !== null, replaced_by: null, always: null, measured: null, chain: question, blind: false, ...own,
+    call: CALL, rows_judged: [], why_asking: UNLABELLED, asked_by: 'rule', label: null, model: null, blocks_build: task !== null, replaced_by: null, always: null, measured: null, chain: question, blind: false, ...own,
   };
 }
 
@@ -256,7 +256,7 @@ function parked(number, task, own = {}) {
   const question = Object.hasOwn(own, 'question') ? own.question : made.where;
   const { id } = appendEntry(statePath(dir), {
     event: 'parked', unit: UNIT, topic: null, phase: 'implementation', session: SESSION,
-    question, replaces: null, reason: null, cause: null, relies_on: [], task, went_ahead: null, number, call: CALL, rows_judged: [], why_asking: UNLABELLED, label: null, model: null,
+    question, replaces: null, reason: null, cause: null, relies_on: [], task, went_ahead: null, number, call: CALL, rows_judged: [], why_asking: UNLABELLED, asked_by: 'rule', label: null, model: null,
     blocks_build: task !== null, replaced_by: null, always: null, measured: null, chain: question, blind: false, ...own,
   }, []);
   return /** @type {string} */ (id);
@@ -406,7 +406,7 @@ describe('a question parked in the build (12.13.2–12.13.4, 12.13.9, 12.S28, 12
   it('a task whose question comes to wait while its rows are judged joins it under the lock, its line holding the first park\'s call as sealed', async (t) => {
     t.mock.method(decisionPoint, 'decide', () => {
       parked(1, '2.3');
-      return { decision: 'ask', reason: 'Its own reason.' };
+      return { decision: 'ask', reason: 'Its own reason.', by: 'counts' };
     });
 
     const { res } = await park(made.where, '2.5', { call: { ...CALL, why: 'Its tests need the screen.' } });
@@ -433,7 +433,7 @@ describe('a question parked in the build (12.13.2–12.13.4, 12.13.9, 12.S28, 12
   });
 
   it('16.3.8: a fact only the person holds parks in the build as any question asking does, with its task or with none — never meeting the decision point, sealed as the ledger holds a fact, with no lean — listed waiting, its screen a fact\'s', async (t) => {
-    const decide = t.mock.method(decisionPoint, 'decide', () => ({ decision: 'proceed', reason: 'Your calls on this kind land.' }));
+    const decide = t.mock.method(decisionPoint, 'decide', () => ({ decision: 'proceed', reason: 'Your calls on this kind land.', by: 'counts' }));
 
     const { res, sections } = await parkFact(made.where, '2.3');
 
@@ -461,7 +461,7 @@ describe('a question parked in the build (12.13.2–12.13.4, 12.13.9, 12.S28, 12
   });
 
   it('12.S11: a call that proceeds in the build lands Claude\'s decision for its task, and one made outside any task for none, parking nothing — each call event saying whether it blocked build work, as the replay reads it', async (t) => {
-    t.mock.method(decisionPoint, 'decide', () => ({ decision: 'proceed', reason: 'Your calls on this kind land.' }));
+    t.mock.method(decisionPoint, 'decide', () => ({ decision: 'proceed', reason: 'Your calls on this kind land.', by: 'counts' }));
 
     const { res } = await park(made.where, '2.3');
     assert.deepStrictEqual([res.decision, lastEntry().event, lastEntry().task, lastEntry().by], ['proceed', 'decided', '2.3', 'claude']);
@@ -600,7 +600,7 @@ describe('raise draw (12.13.10, 12.13.18–12.13.20, 12.S33, 12.S34)', () => {
     const { at, ...sealed } = seals()?.[res.raise];
     assert.deepStrictEqual(sealed, {
       v: 1, id: res.raise, menu: `raise — ${res.raise}`, place: { unit: UNIT, phase: 'implementation', topic: null },
-      answers: made.where, relies_on: [made.frameless], replaces: null, call: CALL, fact: false, rows_judged: ['1'], label: null, model: null, blocks_build: true, replaced_by: null, always: null, measured: null, chain: made.where, reason: UNLABELLED, blind: false,
+      answers: made.where, relies_on: [made.frameless], replaces: null, call: CALL, fact: false, rows_judged: ['1'], label: null, model: null, blocks_build: true, replaced_by: null, always: null, measured: null, chain: made.where, reason: UNLABELLED, by: 'rule', blind: false,
       raised: entries().find((e) => e.id === park)?.at, answered: null, didnt_follow: 0, parks: { park, number: 1, tasks: ['2.3'], went_ahead: null },
     });
 
@@ -938,7 +938,7 @@ describe('its answer through its raise alone (12.13.5, 12.13.16, 16.4.7, 5.3.10)
     const opened = askedOnTopic();
     t.mock.method(decisionPoint, 'decide', () => {
       parked(1, '2.3', { question: opened });
-      return { decision: 'proceed', reason: 'Your calls on this kind land.' };
+      return { decision: 'proceed', reason: 'Your calls on this kind land.', by: 'counts' };
     });
     const text = ledgerText();
 

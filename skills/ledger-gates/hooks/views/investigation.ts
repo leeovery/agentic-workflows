@@ -18,7 +18,7 @@ import { pageKey } from '../pane.ts'
 import type { ViewDrawing } from './index.ts'
 import { header, section, titled } from './words.ts'
 
-type Standing = 'investigating' | 'validating-root-cause' | 'fix-waits' | 'validating-fix' | 'conclude-waits' | 'concluded'
+type Standing = 'investigating' | 'validating-root-cause' | 'fix-waits' | 'validating-fix' | 'closed' | 'concluded'
 export type RaiseWait = {
   kind: string
   id: string
@@ -55,10 +55,10 @@ function standingPart(standing: Standing, kit: Kit): Part[] {
   const turning = (words: string): Part[] => [kit.spinner(), { text: ` ${words}`, color: COLOUR.running }]
 
   switch (standing) {
+    case 'closed':
+      return [{ text: `${MARK.done} closed · the specification next`, color: COLOUR.done }]
     case 'concluded':
-      return [{ text: `${MARK.done} concluded · the specification next`, color: COLOUR.done }]
-    case 'conclude-waits':
-      return [{ text: `${MARK.needs} conclude waits on you`, color: COLOUR.needs }]
+      return [{ text: `${MARK.done} concluded`, color: COLOUR.done }]
     case 'fix-waits':
       return [{ text: `${MARK.needs} the fix direction waits on you`, color: COLOUR.needs }]
     case 'validating-root-cause':

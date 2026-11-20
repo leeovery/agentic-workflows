@@ -368,7 +368,7 @@ describe('the record\'s file (P5, 16.18.8, 4.S27)', () => {
     pick(fumi, 'care kind', keyOf(render(fumi, ['care-kind']), 'care kind', '→ words — '));
     assert.strictEqual(refusedPerson(fumi, ['keep', '--care', 'words']), refusal);
     assert.strictEqual(refusedPerson(fumi, ['propose'], SHOW_FIRST), refusal);
-    assert.deepStrictEqual(lookAt(fumi, 'Fumi'), { decision: 'ask', reason: 'It\'s look, and you\'ve asked that look always comes to you in Fumi.' });
+    assert.deepStrictEqual(lookAt(fumi, 'Fumi'), { decision: 'ask', reason: 'It\'s look, and you\'ve asked that look always comes to you in Fumi.', by: 'rule' });
     assert.strictEqual(recordText(), newer);
   });
 
@@ -435,7 +435,7 @@ describe('Claude\'s proposal and the person\'s yes (16.18.2, 16.18.3, 16.S54)', 
     assert.deepStrictEqual([careEntries(), lookAt(fumi, 'Fumi')], [[], before]);
     pick(fumi, 'record proposal', 'y');
     assert.deepStrictEqual(person(fumi, ['keep']), { ok: true, kept: 'Fumi: look' });
-    assert.deepStrictEqual(lookAt(fumi, 'Fumi'), { decision: 'ask', reason: 'It\'s look, and you\'ve asked that look always comes to you in Fumi.' });
+    assert.deepStrictEqual(lookAt(fumi, 'Fumi'), { decision: 'ask', reason: 'It\'s look, and you\'ve asked that look always comes to you in Fumi.', by: 'rule' });
   });
 
   it('nothing is written without the person\'s yes: a no, a yes given to an earlier screen or in another conversation, and a care entry no screen picked are each refused; the no lets the proposal go', () => {
@@ -724,8 +724,8 @@ describe('the care entries in the rule (16.5.2, 16.5.3, 16.S18)', () => {
     addCare(aircon, 'look');
 
     assert.deepStrictEqual([lookAt(aircon, 'Aircon'), lookAt(aircon, 'Aircon Two'), lookAt(fumi, 'Fumi').decision], [
-      { decision: 'ask', reason: 'It\'s look, and you\'ve asked that look always comes to you in Aircon.' },
-      { decision: 'ask', reason: 'It\'s look, and you\'ve asked that look always comes to you in Aircon Two.' },
+      { decision: 'ask', reason: 'It\'s look, and you\'ve asked that look always comes to you in Aircon.', by: 'rule' },
+      { decision: 'ask', reason: 'It\'s look, and you\'ve asked that look always comes to you in Aircon Two.', by: 'rule' },
       'proceed',
     ]);
   });

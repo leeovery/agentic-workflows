@@ -113,19 +113,19 @@ const { ENTER_USAGE, enter } = require('./domain/enter.cjs');
 const { createWorkUnit } = require('./domain/workunit-create.cjs');
 const { cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit } = require('./domain/workunit-lifecycle.cjs');
 const { absorbWorkUnit } = require('./domain/workunit-absorb.cjs');
-const { unitReceipt, topicReceiptOf, absorbedReceipt, archivedReceipt, restoredReceipt, deletedReceipt } = require('./domain/receipts.cjs');
+const { unitReceipt, topicReceiptOf, absorbedReceipt, archivedReceipt, restoredReceipt, deletedReceipt, finishedOf, cancelledOf } = require('./domain/receipts.cjs');
 const { stageMove } = require('./domain/workunit-move.cjs');
 const { splitWorkUnit } = require('./domain/workunit-split.cjs');
 const { retireWorkUnit } = require('./domain/workunit-retire.cjs');
 const { closeDiscoverySession } = require('./domain/discovery-session.cjs');
 const { LOG_USAGE, logHeard } = require('./domain/discovery-log.cjs');
 const { HUNT_USAGE, logHunt } = require('./domain/investigation-log.cjs');
-const { CONCLUDE_USAGE, runInvestigationVerb } = require('./domain/investigation-conclude.cjs');
+const { STAGE_USAGE, runInvestigationVerb } = require('./domain/investigation-conclude.cjs');
 const { runFieldCommand, isRead } = require('./domain/fields.cjs');
 const { renderSurface, SURFACES } = require('./domain/render.cjs');
 const { resolveHandoff, topicHandoff, handoffSections, TOPIC_HANDOFF_USAGE } = require('./domain/handoff.cjs');
 const { unitHandoff, UNIT_HANDOFF_USAGE } = require('./domain/unit-handoff.cjs');
-const { sittingIn, leaveNext, putBackNext, putBackBy, stillToAsk } = require('./domain/topic-leave.cjs');
+const { sittingIn, leaveNext, leftUnit, putBackNext, putBackBy, stillToAsk } = require('./domain/topic-leave.cjs');
 const roadmap = require('./domain/roadmap.cjs');
 const brownfield = require('./domain/brownfield.cjs');
 const { subjectSelector, codeLog, selectedDiff, uncommittedDiff, codeStatus } = require('./domain/code.cjs');
@@ -297,7 +297,7 @@ ${TRUST_USAGE.replace(/^/gm, '  ')}
   discovery-session close <work-unit|product> -m <message>
 ${LOG_USAGE.replace(/^/gm, '  ')}
 ${HUNT_USAGE.replace(/^/gm, '  ')}
-  ${CONCLUDE_USAGE}
+  ${STAGE_USAGE}
 ${Object.values(MAP_USAGE).map((usage) => `  ${usage}`).join('\n')}
   ${SEND_USAGE}
   ${MAILBOX_USAGE}
@@ -428,18 +428,18 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render banner
   render work-pick --matches <unit>[/<topic>],…
   render brownfield-offer-gate
-  render walkthrough-offer [--menu-only]
-  render walkthrough-screen --screen <1..8> --from <first-run|help> [--menu-only]
-  render walkthrough-topic --name <slug> [--menu-only | --content-only]
+  render walkthrough-offer
+  render walkthrough-screen --screen <1..8> --from <first-run|help>
+  render walkthrough-topic --name <slug> [--content-only]
   render send-report <work-unit>.<topic> --sent <path>
   render map <work-unit>.<topic>
-  render decided <work-unit>.<topic> [--file <payload.json>] [--calls]
+  render decided <work-unit>.<topic> [--file <payload.json>] [--calls] [--alone]
   render decided-strike <work-unit>.<topic> [--page]
   render wait-agents <work-unit>.<topic>   (empty when no agent of the topic is running)
   render start-this-work [--file <payload.json>]
   render approve-map <work-unit> [--file <payload.json> | --sweep]
   render approve-map-strike <work-unit>
-  render ready-to-build <work-unit> [--page] [--calls]
+  render ready-to-build <work-unit> [--page] [--calls] [--alone]
   render build-headline <work-unit> --file <payload.json>
   render task-landed <work-unit> <task>
   render task-account <work-unit> <task>
@@ -450,10 +450,9 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render review-report <work-unit> [--round <N>]
   render review-calls <work-unit>
   render review-tree <work-unit>
-  render finish <work-unit>
+  render finish <work-unit> [--alone]
   render investigation-plan <bugfix> --file <plan.json> [--revised]
   render investigation-check-in <bugfix> --file <check-in.json>
-  render conclude <bugfix> [--file <recap.json>]
   render discovery-map <work-unit>
   render migrations-applied --file <payload.json>
   render migration-gate
@@ -461,7 +460,6 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render git-floor-stop
   render repo-stop
   render github-rule-gate
-  render github-squash-gate
   render label-gate
   render knowledge-gate [--variant deviate|wizard | --variant retry (--from-system | --provider <name> --model <name> [--base-url <url>] [--dimensions <n>])]
   render knowledge-ask --provider openai|openai-compatible
@@ -705,7 +703,8 @@ function runWorkunit(call, argv) {
       }
       if (command === 'cancel') {
         const cancelled = cancelWorkUnit(call.cwd, workUnit);
-        respondWithReceipt(call, { ...cancelled, next: putBackNext(call.cwd, workUnit, homelessNames(cancelled)) }, unitReceipt(call.cwd, 'cancel', cancelled));
+        const left = leftUnit(call.cwd, workUnit);
+        respondWithReceipt(call, { ...cancelled, next: putBackNext(call.cwd, workUnit, homelessNames(cancelled)) }, cancelledOf(call.cwd, cancelled, left));
         return;
       }
       const reactivated = reactivateWorkUnit(call.cwd, workUnit);
@@ -916,8 +915,8 @@ function runInvestigationLog(call, argv) {
 }
 
 // ---------------------------------------------------------------------------
-// investigation — a bugfix investigation's conclude gate's yes, closing it
-// and handing the work into its spec (domain/investigation-conclude.cjs).
+// investigation — a bugfix investigation closed into its spec, its recap
+// staged (domain/investigation-conclude.cjs).
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */
@@ -925,7 +924,7 @@ function runInvestigation(call, argv) {
   try {
     const { opts, positional } = parseArgs(argv);
     const answer = runInvestigationVerb(call.cwd, positional, opts);
-    // The conclude releases the investigation's slot, as a conclusion does.
+    // The close releases the investigation's slot, as a feature's does.
     clearQuietly(call.cwd, positional[1], 'investigation', positional[1]);
     respond(call, answer);
   } catch (err) {
@@ -1557,14 +1556,16 @@ function runReview(call, argv) {
 
 // ---------------------------------------------------------------------------
 // finish — the person's yes at finish, landing every phase still standing
-// and completing the unit (domain/finish.cjs).
+// and completing the unit (domain/finish.cjs), then, but for a quick-fix,
+// the line said in the start menu's place (domain/receipts.cjs).
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */
 function runFinish(call, argv) {
   const { opts, positional } = parseArgs(argv);
   try {
-    respond(call, runFinishVerb(call.cwd, positional, opts));
+    const answered = runFinishVerb(call.cwd, positional, opts);
+    respondWithReceipt(call, answered, finishedOf(call.cwd, /** @type {{unit: string}} */ (answered)));
   } catch (err) {
     failJson(call, err);
   }
@@ -2549,7 +2550,7 @@ function runHandoff(call, argv) {
   }
 }
 
-const RENDER_FLAGS = ['warn', 'from-system', 'menu-only', 'content-only', 'calls', 'sweep', 'page', 'revised', 'asked'];
+const RENDER_FLAGS = ['warn', 'from-system', 'content-only', 'calls', 'sweep', 'page', 'revised', 'asked', 'alone'];
 // The flags a surface takes more than once, each value its own, by surface:
 // every other surface takes each flag once.
 /** @type {Record<string, string[]>} */

@@ -287,6 +287,24 @@ function auditState(dir, label) {
       assert.ok(begun, ctx(`${wu}: a finish checklist on a ${manifest.work_type} whose ${manifest.work_type === 'quick-fix' ? 'fixes' : 'build'} has not begun`));
     }
 
+    // A bugfix's investigation closes into its spec as a mark keyed by the
+    // unit, keeping its recap and the root cause and the fix by their ids
+    // alone, and once ready to build's yes concludes it, its close is taken
+    // at the instant it concluded (investigation-conclude.cjs): a bugfix
+    // whose build has begun has its investigation concluded.
+    if (manifest.work_type === 'bugfix' && derivations.buildBegun(manifest)) {
+      assert.strictEqual(manifest.phases?.investigation?.items?.[wu]?.status, 'completed', ctx(`${wu}: its build begun, its investigation not concluded`));
+    }
+    const conclusion = manifest.checklists?.conclusion;
+    if (conclusion !== undefined) {
+      assert.deepStrictEqual([manifest.work_type, Object.keys(conclusion)], ['bugfix', [wu]], ctx(`${wu}: a conclusion close on a ${manifest.work_type}, or keyed by another topic`));
+      const { closed, voided, taken, hunt, root_cause: rootCause, fix, fixes, area, ...more } = conclusion[wu];
+      assert.deepStrictEqual([typeof closed, typeof hunt, typeof rootCause, typeof fix, more], ['string', 'string', 'string', 'string', {}], ctx(`${wu}: a conclusion close out of its shape`));
+      assert.ok([voided, taken, fixes, area].every((field) => field === undefined || typeof field === 'string'), ctx(`${wu}: a conclusion close's optional fields out of their shape`));
+      const item = manifest.phases?.investigation?.items?.[wu];
+      if (item?.status === 'completed') assert.strictEqual(conclusion[wu].taken, item.concluded_at, ctx(`${wu}: concluded at ${item.concluded_at}, its close taken at ${conclusion[wu].taken}`));
+    }
+
     // No phase-named shadow roots beside `phases`.
     for (const key of Object.keys(manifest)) {
       assert.ok(!schema.VALID_PHASES.includes(key),
@@ -349,9 +367,9 @@ function auditState(dir, label) {
       }
     }
 
-    // An epic's menu draws over whatever state the pipeline is in, but a
-    // cancelled epic's, which it refuses.
-    if (manifest.work_type === 'epic' && manifest.status !== 'cancelled') auditMenuDrawn(dir, () => epicMenuSurface(dir, wu), `${label} — ${wu}'s epic menu`);
+    // An epic's menu draws over whatever state the pipeline is in while the
+    // epic is in progress; a cancelled or a finished epic's it refuses.
+    if (manifest.work_type === 'epic' && manifest.status === 'in-progress') auditMenuDrawn(dir, () => epicMenuSurface(dir, wu), `${label} — ${wu}'s epic menu`);
     auditMenuDrawn(dir, () => manageUnitSurface(dir, wu), `${label} — ${wu} in manage`);
   }
 

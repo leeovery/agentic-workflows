@@ -29,7 +29,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  Sim, worlds, CUT_CLOSED_UNIT, answerGate, writePhaseTasks, builders, taskBuilt, areaRead, testsRead, reviewNext, strayRound, finished, handoff,
+  Sim, worlds, CUT_CLOSED_UNIT, answerGate, writePhaseTasks, builders, taskBuilt, areaRead, testsRead, reviewNext, strayRound, finished,
 } = require('./pipeline-world.cjs');
 
 const WU = CUT_CLOSED_UNIT;
@@ -44,7 +44,7 @@ describe('pipeline simulation: finish in step', () => {
     sim.destroy();
   });
 
-  it('a stray change put back at the gate over the tree; round 1\'s fix task stopping at its gate and its fix phase merged at its own before round 2\'s reads are named; round 2 passing, finish lands nothing and hands the work to the start menu (14.S13, 14.S14, 24.1.2)', () => {
+  it('a stray change put back at the gate over the tree; round 1\'s fix task stopping at its gate and its fix phase merged at its own before round 2\'s reads are named; round 2 passing, finish lands nothing and draws no menu unasked (14.S13, 14.S14, 24.1.2)', () => {
     sim.run(['workunit', 'position', WU, 'step']);
     const { move, fixPhase: phase } = reviewNext(sim, WU);
     assert.strictEqual(move, 'round');
@@ -76,7 +76,6 @@ describe('pipeline simulation: finish in step', () => {
     assert.strictEqual(reviewNext(sim, WU).move, 'closing');
     const { landed, next } = finished(sim, WU);
     assert.deepStrictEqual(landed, [], 'every phase merged at its gate, the fix phase among them, so finish lands nothing');
-    assert.deepStrictEqual(next, { kind: 'handoff', skill: 'ledger', args: [] }, 'a feature finished is handed to the start menu');
-    handoff(sim, '/ledger');
+    assert.deepStrictEqual(next, { kind: 'continue' }, 'a feature finished draws no menu unasked');
   });
 });

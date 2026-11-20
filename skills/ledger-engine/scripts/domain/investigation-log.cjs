@@ -42,8 +42,11 @@
 //   replacing a decision that did or replaced one that did; and `--body`,
 //   one finding a line as the seal's are, where neither holds it: a body
 //   given besides is passed over, said among the warnings. Nothing is
-//   committed: every state commit takes the log along (6.3.2). It answers
-//   what the reads passed over, the log's lines among them, as warnings.
+//   committed: every state commit takes the log along (6.3.2) — but where
+//   the entry voids the investigation's close into its spec, which its work
+//   going on does (investigation-conclude.cjs, derivations.cjs
+//   `voidTopicClose`), the manifest is committed with it. It answers what
+//   the reads passed over, the log's lines among them, as warnings.
 // - It refuses, writing nothing: a kind it lacks, an argument out of its
 //   shape; a place whose investigation cannot take work — as the entry
 //   refuses one (topic-standing.cjs) — or has not started; a value missing,
@@ -67,9 +70,10 @@
 //   validations' briefs: the root cause, the current entry its line points
 //   at, and the fix, the current answer of the question the fix direction
 //   points at — each, where it rests on none, why, with the way on. The
-//   board reads the root cause as it stands (`rootCauseNow`): the current
-//   entry the logged one's chain leads to, so a replacement shows before it
-//   is logged again.
+//   board and the spec writer's brief read the root cause as it stands
+//   (`rootCauseNow`): the current entry the logged one's chain leads to, so
+//   a replacement shows before it is logged again, and one made at the spec
+//   after the log froze shows at all.
 //
 // Known edge, not built: an investigation the reshape's migration moved
 // mid-hunt holds its hunt in its old document, so its lists read empty
@@ -84,7 +88,9 @@ const { resolveId } = require('./ledger-ids.cjs');
 const { notCurrent, factsOf, standingOf, answersOf, currentsOf } = require('./ledger-fold.cjs');
 const { claudesCall } = require('./ledger-events.cjs');
 const { withUnitEntries } = require('./unit-entries.cjs');
-const { itemOf } = require('./derivations.cjs');
+const { itemOf, voidTopicClose } = require('./derivations.cjs');
+const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock } = require('../kernel/manifest.cjs');
+const { commitStateTail } = require('./commit.cjs');
 const { unitInProgress, assertEnterable } = require('./topic-standing.cjs');
 const { topicLog } = require('./topic-log.cjs');
 const { listedIn, withEntry, oneLine, unbroken, fitsShape } = require('./log-lists.cjs');
@@ -284,17 +290,23 @@ function assertRootCause(said, unit, view, hunt) {
 const restedOn = (view, id) => ({ id, short: view.short(id), text: wordsOf(view, id) });
 
 /**
- * The root cause as it stands, for the board to show between a
- * replacement and the root cause logged again: the current entry the
- * logged one's chain leads to, the latest where several; null where none is
- * logged or it leads nowhere current.
- * @param {UnitView} view @param {Hunt} hunt @returns {Rested|null}
+ * The entry `id` stands as now: the unit's current entry its chain leads
+ * to, the latest where several; null where it leads to none of the unit's.
+ * @param {UnitView} view @param {string} id @returns {Rested|null}
  */
-function rootCauseNow(view, hunt) {
-  if (hunt.rootCause === null) return null;
-  const now = currentsOf(view.folded, hunt.rootCause.entry).filter((id) => view.entries.has(id)).at(-1);
+function standsNow(view, id) {
+  const now = currentsOf(view.folded, id).filter((current) => view.entries.has(current)).at(-1);
   return now === undefined ? null : restedOn(view, now);
 }
+
+/**
+ * The root cause as it stands, for the board to show between a
+ * replacement and the root cause logged again, and for the spec's writer
+ * once the spec's own replacement changed it (`standsNow`); null where none
+ * is logged or it leads nowhere current.
+ * @param {UnitView} view @param {Hunt} hunt @returns {Rested|null}
+ */
+const rootCauseNow = (view, hunt) => (hunt.rootCause === null ? null : standsNow(view, hunt.rootCause.entry));
 
 /**
  * The root cause and the fix the hunt rests on, each one of the unit's
@@ -514,6 +526,21 @@ function bodyOf(cwd, file) {
 }
 
 /**
+ * The investigation's close into its spec voided, where one stands, and
+ * committed with the log (the header's).
+ * @param {string} cwd @param {string} unit @param {string[]} warnings
+ */
+function voidClose(cwd, unit, warnings) {
+  const voided = withWorkUnitLock(cwd, unit, () => {
+    const manifest = loadWorkUnitManifest(cwd, unit);
+    if (!voidTopicClose(manifest, unit, new Date().toISOString())) return false;
+    saveWorkUnitManifest(cwd, unit, manifest);
+    return true;
+  });
+  if (voided) commitStateTail(cwd, [`${unit}/manifest.json`, huntLog(unit)], `investigation(${unit}): log`, warnings);
+}
+
+/**
  * `investigation-log <kind> <bugfix> …` (the header's): the entry's line,
  * and its body where one is given, put in the bugfix's log. Answers the
  * log, from the state root, the heading and the line, and what the
@@ -544,7 +571,8 @@ function logHunt(cwd, kind, positional, opts) {
   const log = statePath(cwd, huntLog(unit));
   fs.mkdirSync(path.dirname(log), { recursive: true });
   fs.writeFileSync(log, withEntry(text, HEADINGS, entry.heading, line, body));
+  voidClose(cwd, unit, warnings);
   return { log: huntLog(unit), heading: entry.heading, line: `- ${line}`, ...(warnings.length > 0 ? { warnings } : {}) };
 }
 
-module.exports = { HUNT_USAGE, HUNT_HEADINGS, huntIn, huntOf, huntLog, openInvestigation, assertRootCauseAt, huntEntries, rootCauseNow, logHunt };
+module.exports = { HUNT_USAGE, HUNT_HEADINGS, huntIn, huntOf, huntLog, openInvestigation, assertRootCauseAt, huntEntries, restedOn, standsNow, rootCauseNow, logHunt };

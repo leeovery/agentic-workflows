@@ -92,7 +92,7 @@ const { statePath, stateRoot } = require('../kernel/state-root.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { liveTopics } = require('./ledger-units.cjs');
 const { seedFiles } = require('./reads.cjs');
-const { computeTopicLifecycle, itemOf, briefFile, topicTitle, topicKey, closedIntoSpec, voidDecidedClose, EARLIER, earlierFile } = require('./derivations.cjs');
+const { computeTopicLifecycle, itemOf, briefFile, topicTitle, topicKey, closedFrom, voidTopicClose, EARLIER, earlierFile } = require('./derivations.cjs');
 const { carriedTo } = require('./ledger-fold.cjs');
 const { keptBranches } = require('./fix-branch.cjs');
 const { keptAside, keptWords } = require('./fix-aside.cjs');
@@ -398,7 +398,7 @@ function topicRow(phase, reads) {
     standing: phaseStanding(phase),
     unstarted: ({ manifest, topic = '' }) => ['unstarted', undefined].includes(itemOf(manifest, phase, topic)?.status),
     start: (cwd, unit, topic = '') => { startTopic(cwd, unit, phase, topic); },
-    ...(phase === 'discussion' ? { voids: (/** @type {Standing} */ { manifest }) => closedIntoSpec(manifest) } : {}),
+    voids: (/** @type {Standing} */ { manifest }) => closedFrom(manifest, phase),
     questions: mailRaised,
     reads,
     log: ({ unit, topic = '' }) => topicLog(unit, topic),
@@ -532,13 +532,13 @@ function heldAt(cwd, phase, unit, place) {
 
 /**
  * A feature's topic's close into its spec voided as its discussion is
- * entered again (9.7.9), read and saved under the writer lock the caller
+ * entered again, a bugfix's as its investigation is (9.7.9), read and saved under the writer lock the caller
  * holds.
  * @param {string} cwd @param {string} unit @param {string} topic
  */
 function voidOnEntry(cwd, unit, topic) {
   const manifest = loadWorkUnitManifest(cwd, unit);
-  if (voidDecidedClose(manifest, topic, new Date().toISOString())) saveWorkUnitManifest(cwd, unit, manifest);
+  if (voidTopicClose(manifest, topic, new Date().toISOString())) saveWorkUnitManifest(cwd, unit, manifest);
 }
 
 /**

@@ -33,10 +33,9 @@
 //   round its pair passed it in or the orchestrator settled it
 //   (`pairVerdict`).
 // - It lists every inbox item the unit closed, read from the record
-//   `inbox close` keeps (18.6.7, inbox.cjs, `closedBy`); it shows every
-//   checklist item skipped on the way, with its reason,
-//   read from the unit's manifest (6.4.5, 6.4.12); then asks, one at a
-//   time, the verdict of each departure this machine logged in the build
+//   `inbox close` keeps (18.6.7, inbox.cjs, `closedBy`), and no checklist
+//   item skipped, those kept on the unit's manifest alone (6.4.5, 6.4.12);
+//   then asks, one at a time, the verdict of each departure this machine logged in the build
 //   and the review phase — the person's answer at `{unit}.implementation`
 //   or `{unit}.review` standing over Claude's lean — given at the verdict
 //   point `finish` (16.10.3, ledger-verdicts.cjs), a quick-fix's at its
@@ -49,7 +48,8 @@
 //   product proved of each fix done, each scenario it names from its runs
 //   at the quick-fix's branch's tip (build-screens.cjs, `ranOf`), or in one
 //   line that the project has no way to run it, no verify setup recorded
-//   (P9); each fix's work a question's park set aside and none put back,
+//   (P9); what its notes for later sent to the inbox, as the close answered
+//   them (notes.cjs, `answeredAtClose`); each fix's work a question's park set aside and none put back,
 //   kept, with the calls that show it and bring it into the checkout
 //   (fix-aside.cjs, `keptAside`, R26); then its gate, the yes — saying it merges its pull request, where
 //   a fix done is still to land — a review asked for, and questions about
@@ -70,10 +70,11 @@
 //   quick-fix's then puts the project's checkout back on the branch it
 //   lands on; then
 //   completes the unit (workunit-lifecycle.cjs). It answers where the work
-//   goes (24.1.2): an epic's menu, its complete variant (14.6.2, 18.4.23),
-//   and the start menu, `/ledger`, for a feature or a bugfix, a handoff
-//   each; a quick-fix's close carries on in the conversation it closes in,
-//   leaving its place (topic-leave.cjs, `afterFinish`).
+//   goes (24.1.2): on in the conversation, no menu drawn, the conversation
+//   leaving the unit's place and its tasks in flight (topic-leave.cjs,
+//   `leftUnit`) — for any unit but a quick-fix, the engine saying in a line
+//   that it is done and what waits on the person (receipts.cjs,
+//   `finishedOf`).
 // - What the yes stands on before it lands anything is `land finish`'s
 //   refusal too, and a quick-fix's `land phase`'s, which lands its one pull
 //   request whole (landing.cjs): one read, the screen's standing and no
@@ -100,6 +101,8 @@ const { refusing, stands } = require('./staged-payload.cjs');
 const { READERS, readersDone } = require('./scratch.cjs');
 const { finishScreen, closeScreen } = require('./projections/finish.cjs');
 const { setAsideHeld } = require('./review-phase.cjs');
+const { filedItem } = require('./review-round.cjs');
+const { answeredAtClose } = require('./notes.cjs');
 const { closedBy } = require('./inbox.cjs');
 const { reviewOverRefusal, stillOpen, notesLeft } = require('./finish-checks.cjs');
 const { reading } = require('./phase-checks.cjs');
@@ -112,7 +115,7 @@ const { ranOf } = require('./build-screens.cjs');
 const { verifySetup } = require('./environment.cjs');
 const { projectName } = require('./state-checks.cjs');
 const { criteriaTexts } = require('./task-file.cjs');
-const { afterFinish } = require('./topic-leave.cjs');
+const { leftUnit } = require('./topic-leave.cjs');
 const { recordedBranch } = require('./landing-git.cjs');
 const { landsThroughHost } = require('./unit-branch.cjs');
 const { projectDefault } = require('./task-base.cjs');
@@ -182,15 +185,15 @@ function stillToLand(cwd, unit, manifest) {
 
 /**
  * What the screen and the yes stand on, refused where finish cannot show:
- * the unit's manifest, a quick-fix's fixes done, the skips its close shows,
- * and the verdict asked of the first departure in the build still owed one.
+ * the unit's manifest, a quick-fix's fixes done, and the verdict asked of
+ * the first departure in the build still owed one.
  * @param {string} cwd @param {string} unit
  */
 function standing(cwd, unit) {
-  const { manifest, fixes, closed, skips, warnings } = finishStanding(cwd, unit);
+  const { manifest, fixes, closed, warnings } = finishStanding(cwd, unit);
   const root = stateRoot(cwd);
   const verdict = carryingAll(warnings, () => readShown(root, warnings, (shower) => verdictAsked(shower, root, closesIn(unit, closed))));
-  return { manifest, fixes, skips, warnings, verdict };
+  return { manifest, fixes, warnings, verdict };
 }
 
 /** What finish closes of a departure: the unit's work in the build's places, closed when its checklist did. @param {string} unit @param {string} closed */
@@ -247,22 +250,23 @@ function landsAt(cwd, unit) {
 }
 
 /**
- * `render finish <unit>`: the screen — a quick-fix's, its close.
- * @param {string} cwd @param {{dotpath?: string}} args
+ * `render finish <unit> [--alone]`: the screen — a quick-fix's, its close —
+ * drawn after a verdict with `--alone`.
+ * @param {string} cwd @param {{dotpath?: string, alone?: string}} args
  * @returns {string}
  */
-function finishSurface(cwd, { dotpath: unit = '' }) {
+function finishSurface(cwd, { dotpath: unit = '', alone }) {
   return refusing('render finish', () => {
-    const { manifest, fixes, skips, verdict, warnings } = standing(cwd, unit);
+    const { manifest, fixes, verdict, warnings } = standing(cwd, unit);
     const view = {
       unit,
       title: itemTitle(manifest, 'review', unit),
       lands: landsAt(cwd, unit),
       closed: closedBy(cwd, unit),
-      skips: skips.map(({ checklist, text, reason }) => ({ checklist, text, reason })),
       verdict,
       warnings,
       aside: setAsideHeld(cwd, unit),
+      alone: alone !== undefined,
     };
     if (fixes === null) return finishScreen(view);
     return closeScreen({
@@ -270,6 +274,7 @@ function finishSurface(cwd, { dotpath: unit = '' }) {
       pair: fixes.map((fix) => ({ task: shownTask(fix.ref), title: fix.title, ...(/** @type {{round: number, settled: boolean, why: string|null}} */ (pairVerdict(cwd, fix.ref))) })),
       product: projectName(cwd),
       proven: provenOf(cwd, manifest, fixes),
+      filed: answeredAtClose(cwd, unit).flatMap(({ inbox }) => (inbox === undefined ? [] : [filedItem(cwd, inbox)])),
       fixes: fixes.length,
       landing: carryingAll(warnings, () => stillToLand(cwd, unit, manifest)),
       reviewed: reviewAsked(manifest),
@@ -278,6 +283,9 @@ function finishSurface(cwd, { dotpath: unit = '' }) {
   });
 }
 
+
+/** Where a finish but a quick-fix's close goes: on in the conversation (the header's). @type {import('./projections/surfaces.cjs').Next} */
+const CONTINUE = Object.freeze({ kind: 'continue' });
 
 /** The yes's refusal while the screen still has a verdict to ask. */
 const VERDICT_OWED = 'a verdict is still to ask — render finish asks each before the yes';
@@ -351,8 +359,9 @@ function finishYes(cwd, unit) {
   readersDone(cwd, READERS.unit(unit));
   const completed = completeWorkUnit(cwd, unit, { message: `finish(${unit}): completed` });
   const said = [...warnings, ...(landed.warnings ?? []), ...completed.warnings];
+  leftUnit(cwd, unit);
   /** @type {Record<string, unknown>} */
-  const result = { unit, landed: landed.repos, ...(landed.checkout === undefined ? {} : { checkout: landed.checkout }), completed_at: completed.completed_at, committed: completed.committed, next: afterFinish(cwd, unit, manifest.work_type) };
+  const result = { unit, landed: landed.repos, ...(landed.checkout === undefined ? {} : { checkout: landed.checkout }), completed_at: completed.completed_at, committed: completed.committed, next: CONTINUE };
   if (completed.note !== undefined) result.note = completed.note;
   if (said.length > 0) result.warnings = said;
   return result;

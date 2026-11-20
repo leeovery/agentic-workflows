@@ -122,7 +122,7 @@ describe('pipeline simulation: the epic menu\'s doors', () => {
     sim.refuses(['handoff', 'topic', wu, 'alpha'], /^the topic "alpha" is decided — it reopens through a message sent to it, or through the epic menu's discovery row$/);
   });
 
-  it('18.S56: a feature cancelled inside its own session is confirmed, cancelled as manage cancels it, and the session moves to the start menu', () => {
+  it('18.S56: a feature cancelled inside its own session is confirmed, cancelled as manage cancels it, and the session carries on with no menu drawn unasked', () => {
     const wu = 'called-off';
     startUnit(sim, 'feature', wu, 'A feature called off');
     enterEntry(sim, wu, 'discussion', wu);
@@ -131,8 +131,7 @@ describe('pipeline simulation: the epic menu\'s doors', () => {
     assert.deepStrictEqual(next, { kind: 'engine', argv: ['workunit', 'cancel', wu] });
     const cancelled = sim.run(next.argv);
 
-    assert.deepStrictEqual(cancelled.next, { kind: 'handoff', skill: 'ledger', args: [] });
-    assert.strictEqual(follow(sim, cancelled.next).line, '→ Start');
+    assert.deepStrictEqual(cancelled.next, { kind: 'continue' });
     assert.ok(!startMenu(sim).some((row) => row.next?.kind === 'engine' && row.next.argv.join(' ') === `handoff unit ${wu}`), 'the unit is no longer in progress');
   });
 });

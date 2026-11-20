@@ -520,7 +520,7 @@ describe('raise commands at once in one conversation, each its own process: ever
 describe('proceed (E7, 16.3.7)', () => {
   it('where the decision point answers proceed, the draw lands Claude\'s call — the lean row\'s answer, the other rows what it rules out, its why, unchecked — logged as a call carrying the sort, drawing and sealing nothing', async (t) => {
     const reason = 'On words in Fumi my calls hold: 2% overruled, under your 20%.';
-    t.mock.method(decisionPoint, 'decide', () => ({ decision: 'proceed', reason }));
+    t.mock.method(decisionPoint, 'decide', () => ({ decision: 'proceed', reason, by: 'counts' }));
 
     const { res, sections } = await okSectionsAsync(dir, ['raise', NOTE, '--answers', asked.where], { env: conversation(), stdin: JSON.stringify(CALL) });
 
@@ -532,7 +532,7 @@ describe('proceed (E7, 16.3.7)', () => {
   });
 
   it('lands Claude\'s call with the kind and hard-to-undo mark of the label its draw gave, its call event the kind and the label', async (t) => {
-    t.mock.method(decisionPoint, 'decide', () => ({ decision: 'proceed', reason: 'Your calls on this kind land.' }));
+    t.mock.method(decisionPoint, 'decide', () => ({ decision: 'proceed', reason: 'Your calls on this kind land.', by: 'counts' }));
 
     const { res } = await okSectionsAsync(dir, ['raise', NOTE, '--answers', asked.where], { env: conversation(LABELLED), stdin: JSON.stringify(CALL) });
 

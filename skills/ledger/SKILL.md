@@ -25,10 +25,10 @@ Past every stop, boot answers `go`. Work each of boot's `gates` in its order, as
 - `migration-review`: Load **[migration-review.md](references/migration-review.md)** and follow its instructions as written.
 - `claude-code-floor`, `mod-notice`: Load **[claude-code-setup.md](references/claude-code-setup.md)** and follow its instructions as written, with gate = `{gate}`.
 - `effort`: where boot's `effort` is a level below medium, say ``This session runs at `{effort}` effort; Ledger recommends medium or above.`` once, and carry on. At medium or above, say nothing.
-- `knowledge`: Load **[knowledge-gate.md](references/knowledge-gate.md)** and follow its instructions as written.
+- `knowledge`, `knowledge-adopt`: Load **[knowledge-gate.md](references/knowledge-gate.md)** and follow its instructions as written, with gate = `{gate}`.
 - `brownfield`: Load **[brownfield-offer.md](references/brownfield-offer.md)** and follow its instructions as written.
 - `session-labels`: Load **[session-label-prompt.md](references/session-label-prompt.md)** and follow its instructions as written.
-- `walkthrough`, `github-rule`, `github-squash`: work the screen `walkthrough-offer`, `github-rule-gate` or `github-squash-gate` as the boot reference's **A Setup Screen** says. The walkthrough's `continue` is the walk: Load **[walk.md](references/walk.md)** with origin = `first-run`. A question at the offer puts back its menu alone, the screen's call with `--menu-only` added.
+- `walkthrough`, `github-rule`: work the screen `walkthrough-offer` or `github-rule-gate` as the boot reference's **A Setup Screen** says. The walkthrough's `continue` is the walk: Load **[walk.md](references/walk.md)** with origin = `first-run`.
 
 ## Where the Start Goes
 

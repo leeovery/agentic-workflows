@@ -40,7 +40,7 @@ Once a round has passed, or been settled, and its fix tasks are done, finish is 
 
 **Finish** is the gate that ends the work. It shows the finish report, asks a verdict on each call you changed during the build and the review, and names each inbox item the work resolved and archived, so nothing is silently discarded. An item closed wrongly can be asked back to the inbox.
 
-Your yes lands what is left to land, the review's fix phases last, and a work unit with a branch of its own lands it on the default branch. A refusal names the way on, such as a conflict with the default branch to settle with you first. Then the work is complete: it leaves the start menu for the list behind its `v/view` row, its decisions stay current in the [knowledge base](knowledge-base.md), and it stays finished. A later change to it is new work.
+Your yes lands what is left to land, the review's fix phases last, and a work unit with a branch of its own lands it on the default branch. A refusal names the way on, such as a conflict with the default branch to settle with you first. Then the work is complete: it leaves the start menu for the list behind its `v/view` row, its decisions stay current in the [knowledge base](knowledge-base.md), and it stays finished. A later change to it is new work. No menu follows: a line says it is done and what waits on you, with the menu one `/ledger` away.
 
 ## A quick-fix's review
 

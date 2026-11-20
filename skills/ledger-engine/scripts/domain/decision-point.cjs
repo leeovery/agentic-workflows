@@ -74,6 +74,7 @@ const { stateRoot } = require('../kernel/state-root.cjs');
 const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
 
 /** @typedef {import('./ask-rule.cjs').Ruling | 'blind'} Decision */
+/** Its answer on a call: the decision, why, and which part of the rule decided. @typedef {{decision: Decision, reason: string, by: import('./ask-rule.cjs').By}} Decided */
 /**
  * Where and when a call is decided, beside the call itself, and the id its
  * blind draw hashes: the question's, the first entry of its chain, the same
@@ -99,13 +100,13 @@ const BLIND = 'I\'m asking you this one cold, keeping my answer back until you\'
  * (person.cjs); where it lets a question's call proceed, asked blind where
  * the question's id draws so.
  * @param {import('./raise.cjs').Call} call @param {At} at
- * @returns {{decision: Decision, reason: string}}
+ * @returns {Decided}
  */
 function decide(call, { project: { root, name }, model, now, chain, ...at }) {
   const counts = countsOf(root, { model, now });
   const ruling = rule(call, { ...at, project: { id: projectId(root), name }, counts, settings: trustSettings(), care: careEntries() });
   if (ruling.decision !== 'proceed') return ruling;
-  return drawsBlind(call, /** @type {import('./labeller.cjs').Label} */ (at.label), counts, chain) ? { decision: 'blind', reason: BLIND } : ruling;
+  return drawsBlind(call, /** @type {import('./labeller.cjs').Label} */ (at.label), counts, chain) ? { decision: 'blind', reason: BLIND, by: 'counts' } : ruling;
 }
 
 /**

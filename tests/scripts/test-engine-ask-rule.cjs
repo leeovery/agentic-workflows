@@ -102,15 +102,18 @@ const UNLABELLED = 'I couldn\'t tell what kind of question this is, so it comes 
 const DANGER = 'An answer here could lose data or weaken security, so it always comes to you.';
 const MEASURED = 'Experiment E1, still running, measures this question, so it comes to you.';
 
-/** The rule asking, for `reason`. @param {string} reason */
-const asked = (reason) => ({ decision: 'ask', reason });
+/** A rule asking, for `reason`, whatever the counts. @param {string} reason */
+const asked = (reason) => ({ decision: 'ask', reason, by: 'rule' });
+
+/** The counts asking, for `reason`. @param {string} reason */
+const countsAsk = (reason) => ({ decision: 'ask', reason, by: 'counts' });
 
 describe('the order the rule decides in (16.5, 16.19.8, 16.3.1, 16.4.10)', () => {
   it('16.S24, the counts\' half: where in the cone the work is enters nowhere, the counts keyed by project and kind alone — the same counts decide alike at a topic, at a unit\'s level and in the build (16.7.2, 16.13.5)', () => {
     const places = [TOPIC, { unit: 'pay', phase: 'specification', topic: null }, { unit: 'pay', phase: 'implementation', topic: null }];
 
     assert.deepStrictEqual(places.map((place) => ruling(QUIET, { place })), places.map(() => ({
-      decision: 'proceed', reason: 'It\'s behaviour, and on behaviour in Mint my calls miss less often than you allow: 9%, under your 20%.',
+      decision: 'proceed', reason: 'It\'s behaviour, and on behaviour in Mint my calls miss less often than you allow: 9%, under your 20%.', by: 'counts',
     })));
   });
 
@@ -126,7 +129,7 @@ describe('the order the rule decides in (16.5, 16.19.8, 16.3.1, 16.4.10)', () =>
 
   it('a question Claude could find the answer to is sent to check, and raised again once sent, asks; one Claude could not find out follows the rule though sent before (16.3.1, 16.11.7)', () => {
     assert.deepStrictEqual([ruling(QUIET, { label: CHECKABLE }), ruling(QUIET, { label: CHECKABLE, checked: true }), decision(QUIET, { checked: true })], [
-      { decision: 'check', reason: 'You can find this out: check it — read the code or the record, or run something — and raise it again only if checking can\'t settle it.' },
+      { decision: 'check', reason: 'You can find this out: check it — read the code or the record, or run something — and raise it again only if checking can\'t settle it.', by: 'rule' },
       asked('Checking couldn\'t settle it, so it comes to you.'),
       'proceed',
     ]);
@@ -155,7 +158,7 @@ describe('the order the rule decides in (16.5, 16.19.8, 16.3.1, 16.4.10)', () =>
     const h = history();
     h.agree(40, 'danger');
 
-    assert.deepStrictEqual(ruling(h, { label: labelled('danger') }), { decision: 'ask', reason: 'An answer here could lose data or weaken security, so it always comes to you.' });
+    assert.deepStrictEqual(ruling(h, { label: labelled('danger') }), { decision: 'ask', reason: 'An answer here could lose data or weaken security, so it always comes to you.', by: 'rule' });
   });
 
   it('16.S62: a question about the session whose option could lose data composes as process and still asks, danger read from the label\'s ninth answer — a one-answer call too, the always-asks outranking the sort (16.3.7)', () => {
@@ -196,9 +199,9 @@ describe('the order the rule decides in (16.5, 16.19.8, 16.3.1, 16.4.10)', () =>
       ruling(QUIET, { always: 'design-problem' }), ruling(QUIET, { always: 'live-server' }, 'one'),
       ruling(QUIET, { always: 'built-otherwise', replaced_by: 'carried' }), ruling(QUIET, { always: 'built-otherwise', replaced_by: 'claude' }, 'one'),
     ], [
-      { decision: 'ask', reason: 'The root cause is a design problem, so it always comes to you.' },
-      { decision: 'ask', reason: 'It means testing against a live server, so it always comes to you.' },
-      ...Array(2).fill({ decision: 'ask', reason: 'The code was built otherwise than a decision from before Ledger, so it always comes to you.' }),
+      { decision: 'ask', reason: 'The root cause is a design problem, so it always comes to you.', by: 'rule' },
+      { decision: 'ask', reason: 'It means testing against a live server, so it always comes to you.', by: 'rule' },
+      ...Array(2).fill({ decision: 'ask', reason: 'The code was built otherwise than a decision from before Ledger, so it always comes to you.', by: 'rule' }),
     ]);
   });
 
@@ -211,9 +214,9 @@ describe('the order the rule decides in (16.5, 16.19.8, 16.3.1, 16.4.10)', () =>
     h.reverse(h.call('one'));
 
     assert.deepStrictEqual([ruling(fresh, {}, 'one'), before, ruling(h, {}, 'one'), decision(h)], [
-      { decision: 'proceed', reason: 'It has one sensible answer, and you haven\'t overruled my one-answer calls in Mint.' },
-      { decision: 'proceed', reason: 'It has one sensible answer, and you haven\'t overruled my one-answer calls in Mint.' },
-      { decision: 'ask', reason: 'It has one sensible answer, but you\'ve overruled my one-answer calls in Mint more often than you allow: 66%, over your 20%.' },
+      { decision: 'proceed', reason: 'It has one sensible answer, and you haven\'t overruled my one-answer calls in Mint.', by: 'counts' },
+      { decision: 'proceed', reason: 'It has one sensible answer, and you haven\'t overruled my one-answer calls in Mint.', by: 'counts' },
+      { decision: 'ask', reason: 'It has one sensible answer, but you\'ve overruled my one-answer calls in Mint more often than you allow: 66%, over your 20%.', by: 'counts' },
       'proceed',
     ]);
   });
@@ -231,9 +234,9 @@ describe('the order the rule decides in (16.5, 16.19.8, 16.3.1, 16.4.10)', () =>
     inherited.reverse(inherited.call('one'));
 
     assert.deepStrictEqual([ruling(under, {}, 'one'), ruling(between, {}, 'one'), ruling(inherited, {}, 'one')], [
-      { decision: 'proceed', reason: 'It has one sensible answer, and you\'ve overruled my one-answer calls in Mint less often than you allow: 7%, under your 20%.' },
-      { decision: 'proceed', reason: 'It has one sensible answer, and my one-answer calls in Mint went under your 20% and haven\'t risen over 25% since: 22%.' },
-      { decision: 'proceed', reason: 'It has one sensible answer, and your overrules of my one-answer calls in Mint weigh less than one whole overrule here, so they don\'t come to you yet: 70%, over your 20%.' },
+      { decision: 'proceed', reason: 'It has one sensible answer, and you\'ve overruled my one-answer calls in Mint less often than you allow: 7%, under your 20%.', by: 'counts' },
+      { decision: 'proceed', reason: 'It has one sensible answer, and my one-answer calls in Mint went under your 20% and haven\'t risen over 25% since: 22%.', by: 'counts' },
+      { decision: 'proceed', reason: 'It has one sensible answer, and your overrules of my one-answer calls in Mint weigh less than one whole overrule here, so they don\'t come to you yet: 70%, over your 20%.', by: 'counts' },
     ]);
   });
 
@@ -251,8 +254,8 @@ describe('the order the rule decides in (16.5, 16.19.8, 16.3.1, 16.4.10)', () =>
       ruling(overruledOnce(30), { label: HARD }, 'one'), decision(overruledOnce(30), {}, 'one'),
       ruling(overruledOnce(13), { blocks_build: true, settings: raised }, 'one'), decision(overruledOnce(13), { settings: raised }, 'one'),
     ], [
-      asked('It has one sensible answer, but you\'ve overruled my one-answer calls in Mint more often than you allow: 14%, over the 10% for what\'s hard to undo.'), 'proceed',
-      { decision: 'proceed', reason: 'It has one sensible answer, and you\'ve overruled my one-answer calls in Mint less often than you allow: 28%, under your 30% mid-build.' }, 'ask',
+      countsAsk('It has one sensible answer, but you\'ve overruled my one-answer calls in Mint more often than you allow: 14%, over the 10% for what\'s hard to undo.'), 'proceed',
+      { decision: 'proceed', reason: 'It has one sensible answer, and you\'ve overruled my one-answer calls in Mint less often than you allow: 28%, under your 30% mid-build.', by: 'counts' }, 'ask',
     ]);
   });
 
@@ -261,7 +264,7 @@ describe('the order the rule decides in (16.5, 16.19.8, 16.3.1, 16.4.10)', () =>
     const context = contextOf(h);
 
     assert.deepStrictEqual(rule({ sort: 'several' }, context), rule({ sort: 'several' }, contextOf(h)));
-    assert.deepStrictEqual(rule({ sort: 'several' }, context), { decision: 'ask', reason: 'It\'s behaviour, and on behaviour in Mint my calls still miss more often than you allow: 28%, over your 20%.' });
+    assert.deepStrictEqual(rule({ sort: 'several' }, context), { decision: 'ask', reason: 'It\'s behaviour, and on behaviour in Mint my calls still miss more often than you allow: 28%, over your 20%.', by: 'counts' });
   });
 
   it('16.S3: Claude\'s stated confidence changes nothing — a call sure of itself and one unsure, over the same counts, decide alike', () => {
@@ -275,21 +278,21 @@ describe('the order the rule decides in (16.5, 16.19.8, 16.3.1, 16.4.10)', () =>
 describe('a kind\'s count at the threshold the question takes (16.4, 16.6)', () => {
   it('16.S11: with nothing from other projects and every answer at full weight, 12 clean answers ask (20.58%) and 13 do not (19.26%); with none, it asks, saying none are answered', () => {
     assert.deepStrictEqual([ruling(history()), ruling(behaviourAfter(12)), ruling(behaviourAfter(13))], [
-      { decision: 'ask', reason: 'It\'s behaviour, and you haven\'t answered any behaviour questions in Mint yet, so it comes to you.' },
-      { decision: 'ask', reason: 'It\'s behaviour, and on behaviour in Mint my calls still miss more often than you allow: 21%, over your 20%.' },
-      { decision: 'proceed', reason: 'It\'s behaviour, and on behaviour in Mint my calls miss less often than you allow: 19%, under your 20%.' },
+      { decision: 'ask', reason: 'It\'s behaviour, and you haven\'t answered any behaviour questions in Mint yet, so it comes to you.', by: 'counts' },
+      { decision: 'ask', reason: 'It\'s behaviour, and on behaviour in Mint my calls still miss more often than you allow: 21%, over your 20%.', by: 'counts' },
+      { decision: 'proceed', reason: 'It\'s behaviour, and on behaviour in Mint my calls miss less often than you allow: 19%, under your 20%.', by: 'counts' },
     ]);
   });
 
   it('16.S12\'s figure in the person\'s words: a loss, then 19 clean answers — one loss among 20 — asks at 21% (20.67%), over the 20% default', () => {
-    assert.deepStrictEqual(ruling(behaviourAfter(0, lossThen(19))), { decision: 'ask', reason: 'It\'s behaviour, and on behaviour in Mint my calls still miss more often than you allow: 21%, over your 20%.' });
+    assert.deepStrictEqual(ruling(behaviourAfter(0, lossThen(19))), { decision: 'ask', reason: 'It\'s behaviour, and on behaviour in Mint my calls still miss more often than you allow: 21%, over your 20%.', by: 'counts' });
   });
 
   it('16.S14: a question hard to undo, its kind holding 18 clean answers (14.59%, under 15%), asks at the 20% default, its threshold halved to 10%; the same question not hard to undo proceeds (16.4.8)', () => {
     const h = behaviourAfter(18);
 
     assert.deepStrictEqual([ruling(h, { label: HARD }), decision(h)], [
-      { decision: 'ask', reason: 'It\'s behaviour, and on behaviour in Mint my calls still miss more often than you allow: 15%, over the 10% for what\'s hard to undo.' },
+      { decision: 'ask', reason: 'It\'s behaviour, and on behaviour in Mint my calls still miss more often than you allow: 15%, over the 10% for what\'s hard to undo.', by: 'counts' },
       'proceed',
     ]);
   });
@@ -304,8 +307,8 @@ describe('a kind\'s count at the threshold the question takes (16.4, 16.6)', () 
     };
 
     assert.deepStrictEqual([after(27), after(28)], [
-      { decision: 'ask', reason: 'It\'s contract, and on contract in Mint my calls still miss more often than you allow: 10.1%, over the 10% for what\'s hard to undo.' },
-      { decision: 'proceed', reason: 'It\'s contract, and on contract in Mint my calls miss less often than you allow: 9.8%, under the 10% for what\'s hard to undo.' },
+      { decision: 'ask', reason: 'It\'s contract, and on contract in Mint my calls still miss more often than you allow: 10.1%, over the 10% for what\'s hard to undo.', by: 'counts' },
+      { decision: 'proceed', reason: 'It\'s contract, and on contract in Mint my calls miss less often than you allow: 9.8%, under the 10% for what\'s hard to undo.', by: 'counts' },
     ]);
   });
 
@@ -319,8 +322,8 @@ describe('a kind\'s count at the threshold the question takes (16.4, 16.6)', () 
       ruling(eight, { blocks_build: true, settings: raised, label: HARD }),
     ], [
       ['ask', 'ask', 'proceed', 'proceed'],
-      { decision: 'proceed', reason: 'It\'s behaviour, and on behaviour in Mint my calls miss less often than you allow: 28%, under your 30% mid-build.' }, 'ask',
-      { decision: 'ask', reason: 'It\'s behaviour, and on behaviour in Mint my calls still miss more often than you allow: 28%, over the 15% for what\'s hard to undo mid-build.' },
+      { decision: 'proceed', reason: 'It\'s behaviour, and on behaviour in Mint my calls miss less often than you allow: 28%, under your 30% mid-build.', by: 'counts' }, 'ask',
+      { decision: 'ask', reason: 'It\'s behaviour, and on behaviour in Mint my calls still miss more often than you allow: 28%, over the 15% for what\'s hard to undo mid-build.', by: 'counts' },
     ]);
   });
 
@@ -329,8 +332,8 @@ describe('a kind\'s count at the threshold the question takes (16.4, 16.6)', () 
     const nine = behaviourAfter(9);
 
     assert.deepStrictEqual([ruling(nine, { blocks_build: true, settings: overtaken }), ruling(nine, { settings: overtaken })], [
-      { decision: 'proceed', reason: 'It\'s behaviour, and on behaviour in Mint my calls miss less often than you allow: 26%, under your 30%.' },
-      { decision: 'proceed', reason: 'It\'s behaviour, and on behaviour in Mint my calls miss less often than you allow: 26%, under your 30%.' },
+      { decision: 'proceed', reason: 'It\'s behaviour, and on behaviour in Mint my calls miss less often than you allow: 26%, under your 30%.', by: 'counts' },
+      { decision: 'proceed', reason: 'It\'s behaviour, and on behaviour in Mint my calls miss less often than you allow: 26%, under your 30%.', by: 'counts' },
     ]);
   });
 
@@ -339,21 +342,21 @@ describe('a kind\'s count at the threshold the question takes (16.4, 16.6)', () 
       decision(behaviourAfter(13)), decision(behaviourAfter(13, lossThen())), ruling(behaviourAfter(15, lossThen())),
       decision(behaviourAfter(13, lossThen(6))), decision(behaviourAfter(13, lossThen(7))),
     ], [
-      'proceed', 'ask', { decision: 'ask', reason: 'It\'s behaviour, and on behaviour in Mint my calls still miss more often than you allow: 25%, over your 20%.' },
+      'proceed', 'ask', { decision: 'ask', reason: 'It\'s behaviour, and on behaviour in Mint my calls still miss more often than you allow: 25%, over your 20%.', by: 'counts' },
       'ask', 'proceed',
     ]);
   });
 
   it('16.S21: quiet behaviour at 20% holding 16 clean answers stays quiet as a loss lands, its bound 23.77%, under 25%: the call proceeds, saying it has not risen over 25% since going under 20%', () => {
     assert.deepStrictEqual(ruling(behaviourAfter(16, lossThen())), {
-      decision: 'proceed', reason: 'It\'s behaviour, and on behaviour in Mint my calls went under your 20% and haven\'t risen over 25% since: 24%.',
+      decision: 'proceed', reason: 'It\'s behaviour, and on behaviour in Mint my calls went under your 20% and haven\'t risen over 25% since: 24%.', by: 'counts',
     });
   });
 
   it('16.S22: a kind gone quiet for questions hard to undo, under 10%, asks again for one as a loss lands at 34 clean answers (12.51%, over 12.5%); at 35 (12.19%) the question proceeds', () => {
     assert.deepStrictEqual([ruling(behaviourAfter(34, lossThen()), { label: HARD }), ruling(behaviourAfter(35, lossThen()), { label: HARD })], [
-      { decision: 'ask', reason: 'It\'s behaviour, and on behaviour in Mint my calls still miss more often than you allow: 13%, over the 10% for what\'s hard to undo.' },
-      { decision: 'proceed', reason: 'It\'s behaviour, and on behaviour in Mint my calls went under the 10% for what\'s hard to undo and haven\'t risen over 12.5% since: 12%.' },
+      { decision: 'ask', reason: 'It\'s behaviour, and on behaviour in Mint my calls still miss more often than you allow: 13%, over the 10% for what\'s hard to undo.', by: 'counts' },
+      { decision: 'proceed', reason: 'It\'s behaviour, and on behaviour in Mint my calls went under the 10% for what\'s hard to undo and haven\'t risen over 12.5% since: 12%.', by: 'counts' },
     ]);
   });
 
@@ -363,9 +366,9 @@ describe('a kind\'s count at the threshold the question takes (16.4, 16.6)', () 
       ruling(behaviourAfter(0, lossThen(16)), { settings: { ...DEFAULTS, threshold: 0.237658 } }),
       ruling(behaviourAfter(0, lossThen(16)), { settings: { ...DEFAULTS, threshold: 0.2376609 } }),
     ], [
-      { decision: 'proceed', reason: 'It\'s behaviour, and on behaviour in Mint my calls went under your 19.04% and haven\'t risen over 23.8% since: 23.77%.' },
-      asked('It\'s behaviour, and on behaviour in Mint my calls still miss more often than you allow: 23.7661%, over your 23.7658%.'),
-      asked('It\'s behaviour, and on behaviour in Mint my calls still miss more often than you allow: 23.766092%, over your 23.76609%.'),
+      { decision: 'proceed', reason: 'It\'s behaviour, and on behaviour in Mint my calls went under your 19.04% and haven\'t risen over 23.8% since: 23.77%.', by: 'counts' },
+      countsAsk('It\'s behaviour, and on behaviour in Mint my calls still miss more often than you allow: 23.7661%, over your 23.7658%.'),
+      countsAsk('It\'s behaviour, and on behaviour in Mint my calls still miss more often than you allow: 23.766092%, over your 23.76609%.'),
     ]);
   });
 
@@ -389,7 +392,7 @@ describe('a kind\'s count at the threshold the question takes (16.4, 16.6)', () 
     h.depart('loss', 'look');
 
     assert.deepStrictEqual([quiet, ruling(h, { label: labelled('look') })], ['proceed', {
-      decision: 'ask', reason: 'It\'s look, and on look in Mint my calls still miss more often than you allow: 28%, over your 20%.',
+      decision: 'ask', reason: 'It\'s look, and on look in Mint my calls still miss more often than you allow: 28%, over your 20%.', by: 'counts',
     }]);
   });
 });
@@ -465,7 +468,7 @@ describe('the rule as the decision point gives it (decision-point.cjs `decide`)'
     fs.writeFileSync(path.join(folder(), 'config', 'config.json'), JSON.stringify({ trust: { threshold: 0.15 } }));
 
     assert.deepStrictEqual([...decided, decide(call, at(FROZEN_MS)), decide(call, at(FROZEN_MS))], ['proceed', 'ask', 'ask', ...Array(2).fill({
-      decision: 'ask', reason: 'It\'s behaviour, and on behaviour in Mint my calls still miss more often than you allow: 19%, over your 15%.',
+      decision: 'ask', reason: 'It\'s behaviour, and on behaviour in Mint my calls still miss more often than you allow: 19%, over your 15%.', by: 'counts',
     })]);
   });
 
@@ -482,7 +485,7 @@ describe('the rule as the decision point gives it (decision-point.cjs `decide`)'
     return decide(/** @type {any} */ ({ sort }), at);
   }
 
-  const BLIND = { decision: 'blind', reason: 'I\'m asking you this one cold, keeping my answer back until you\'ve given yours, to check my calls against yours.' };
+  const BLIND = { decision: 'blind', reason: 'I\'m asking you this one cold, keeping my answer back until you\'ve given yours, to check my calls against yours.', by: 'counts' };
 
   it('16.S52, 16.S23: a call the rule lets proceed — a quiet kind\'s — is drawn blind where its question\'s id draws under the share, the same id drawing alike every time; one whose id draws over it proceeds; and a call the rule asks, or sends to check, is never drawn (16.17.3, 16.17.4, 16.6.4, 16.3.1)', () => {
     const h = history();

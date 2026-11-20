@@ -17,7 +17,7 @@ const path = require('path');
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 
-const { output, refuses } = require('./engine-harness.cjs');
+const { output, refuses, commitAll } = require('./engine-harness.cjs');
 const { setupFixture, cleanupFixture, createManifest, createFile, readManifest, writeState, layout } = require('./discovery-test-utils.cjs');
 const { auditMarkers } = require('./gate-audit.cjs');
 const { VALID_WORK_TYPES, WORK_TYPE_PIPELINES } = require('../../skills/ledger-engine/scripts/kernel/manifest-schema.cjs');
@@ -154,10 +154,9 @@ describe('engine handoff — the composed answer for every target', () => {
       inlineAnswer('ledger-continue-epic', 'fumi', '→ Epic · fumi'));
   });
 
-  it('14.6.2, 18.4.23: the epic menu takes an epic finish completed, by its name alone — its menu the complete variant', () => {
+  it('the epic menu refuses an epic finish completed, as any unit no longer in progress', () => {
     createManifest(dir, 'done-epic', { work_type: 'epic', status: 'completed' });
-    assert.strictEqual(inline(dir, ['ledger-continue-epic', 'done-epic']),
-      inlineAnswer('ledger-continue-epic', 'done-epic', '→ Epic · done-epic'));
+    refused(dir, ['ledger-continue-epic', 'done-epic'], /^work unit "done-epic" is completed — a handoff moves into work in progress$/);
   });
 
   it('discovery into an existing epic takes the work type epic or none, and a waiting roadmap idea to join it as a topic (18.8.4)', () => {
@@ -310,6 +309,7 @@ describe('engine handoff topic — a topic opened by its unit and name, as /ledg
     createManifest(dir, 'shipped', { status: 'completed' });
     createManifest(dir, 'specced');
     createFile(dir, '.ledger/specced/spec.md', '# Spec\n');
+    commitAll(dir, 'the spec landed');
     const cases = [
       [['nowhere', 'any'], 'there is no work unit "nowhere" — the start menu lists the work in progress'],
       [['retired', 'retired'], 'retired is cancelled — reactivating it comes first'],
@@ -333,6 +333,7 @@ describe('engine handoff topic — a topic opened by its unit and name, as /ledg
   it('refuses a bugfix\'s topic once its spec is written, the investigation behind it', () => {
     createManifest(dir, 'crash', { work_type: 'bugfix' });
     createFile(dir, '.ledger/crash/spec.md', '# Spec\n');
+    commitAll(dir, 'the spec landed');
     refused(dir, ['topic', 'crash', 'crash'], /^crash has its spec — a topic exists only before it/);
   });
 });
@@ -444,6 +445,7 @@ describe('engine handoff — refusals', () => {
     refused(dir, ['ledger-discovery', 'none', 'fumi', 'roadmap:white-label'], /^roadmap item "white-label" is joined to work unit "fumi" already/);
     refused(dir, ['ledger-discovery', 'none', 'fumi', 'roadmap:colour-drift'], /^roadmap item "colour-drift" is a bug — only an idea joins an epic; a bug or a quick-fix starts work of its own, through w on the roadmap$/);
     createFile(dir, '.ledger/fumi/spec.md', '# Fumi\n');
+    commitAll(dir, 'the spec landed');
     refused(dir, ['ledger-discovery', 'none', 'fumi', 'roadmap:loyalty'], /^fumi has its spec, so its map is closed — the item stays on the roadmap: pull it into an epic still before its spec, or start it as work of its own$/);
   });
 

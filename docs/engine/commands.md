@@ -55,10 +55,10 @@ The entry pipeline, run first on every entry, the person's bare command and Clau
 | `taken` | another live session carries the migration on | `at`, `active` |
 | `finish` | the migration waits on its commit, reviewed by the start skill's `Migration` reference; its gate's yes is `commit --migrations` | `migrations` |
 
-**Ready** answers `{state: "ready"|"restarted", migrations: {changed, ran, output, verify, notices}, knowledge: "ready"|"not-ready", indexed, compacted, migrations_committed, warnings, session_labels, label_repaired, session_hooks_installed, mod, effort, go, route?, pick?, gates, brownfield_offer, walkthrough, github_rule_offer, github_squash_offer}`:
+**Ready** answers `{state: "ready"|"restarted", migrations: {changed, ran, output, verify, notices}, knowledge: "ready"|"not-ready", indexed, compacted, migrations_committed, warnings, session_labels, label_repaired, session_hooks_installed, mod, effort, go, route?, pick?, gates, brownfield_offer, walkthrough, github_rule_offer}`:
 
 - `go` is where the start goes from the words: `menu` (none), `route` (`{kind: "start"|"unit", …, next}`, `next` a skill to invoke in this conversation), or `pick` (`{surface: "work-pick", args, start}`, where the words name several pieces of work, or a closed unit; `start` is Start's move, which talk about the product that names work takes instead of the pick).
-- `gates` lists the setup gates due, in order: `migration-review` (where `migrations` changed anything or carries `verify` or `notices` — `changed` too where the record already differed from the state branch's before boot ran, a migration another conversation ran waiting on its review), `claude-code-floor`, `knowledge` (where `not-ready`, with `system_config: {status, provider, model}` beside it); then, on the bare command alone, `mod-notice`, `effort`, `walkthrough`, `session-labels`, `brownfield` (with `brownfield_signal`, the project's history before Ledger arrived: when the project manifest's `arrived` says — a migrated project's old state first entering git — else at the state's first commit), `github-rule` and `github-squash`.
+- `gates` lists the setup gates due, in order: `migration-review` (where `migrations` changed anything or carries `verify` or `notices` — `changed` too where the record already differed from the state branch's before boot ran, a migration another conversation ran waiting on its review), `claude-code-floor`, then where knowledge is `not-ready`, with `system_config: {status, provider, model}` beside it, `knowledge-adopt` where that configuration is valid — the project adopts it with `knowledge setup --from-system`, asking nothing — else `knowledge`; then, on the bare command alone, `mod-notice`, `effort`, `walkthrough`, `session-labels`, `brownfield` (with `brownfield_signal`, the project's history before Ledger arrived: when the project manifest's `arrived` says — a migrated project's old state first entering git — else at the state's first commit), and `github-rule`.
 - `session_labels` is the label opt-in: `no-multiplexer`, `on`, `off`, or `prompt` (inside a multiplexer that labels a session, never asked: the `session-labels` gate).
 - `mod` is `running`, `could` (installed but not loaded: show the notice) or `cannot`.
 - `migrations.verify` are checks the calling skill makes before its migration gate, `{id, description, info, verify}`; `migrations.notices` lines for the person, `{id, description, notice}`.
@@ -90,7 +90,7 @@ The person's answer to setup's offer of a rule on `ledger-state` against deletio
 github-squash <yes|no>
 ```
 
-The person's answer to setup's offer of the squash default — a squash merge's commit made from the pull request's title and description, merge commits allowed beside it — made on yes on every repository the project lands in there. Recorded as `github_squash: {status, reason?}` and committed. Answers `{github_squash, reason?, committed, note?, warnings?}`. Refuses as `github-rule` does, but a `yes` given again is taken, setting any repository nested since.
+The person's answer to the offer of the squash default — a squash merge's commit made from the pull request's title and description, merge commits allowed beside it — drawn in ready to build's place at the project's first ready to build, made on yes on every repository the project lands in there. Recorded as `github_squash: {status, reason?}` and committed. Answers `{github_squash, reason?, committed, note?, warnings?}`. Refuses as `github-rule` does, but a `yes` given again is taken, setting any repository nested since.
 
 ### `brownfield`
 
@@ -325,7 +325,7 @@ The person's answer at a gate, logged to the trust log by the gate's name. Every
 
 `--pick <key>` answers a row, named by its key or its word — `y` or `yes` — and recorded by its key; `--typed <key>` a typed row such as a Comment; `--typed` alone free text, the person's words on stdin, read by a separate call for the row it takes, and never leading anywhere (`next` null). The name is the MENU's, up to its first ` — `, quoted or bare.
 
-Response `{gate, picked, recommended, via, next}`: `via` is `pressed` where the gate mod's press named this row, else `typed`; `next` is the row's declared next step — `{"kind": "engine", "argv"}`, `{"kind": "handoff", "skill", "args"}`, `{"kind": "continue"}` — or null; do what it says. `warnings` where the trust log could not be appended to. Refuses, logging nothing, with no session id, no gate shown, another gate's name, a key the gate lacks, free text with no words, and a gate already answered (only the gate drawn again takes another).
+Response `{gate, picked, recommended, via, next}`: `via` is `pressed` where the gate mod's press named this row, else `typed`; `next` is the row's declared next step — `{"kind": "engine", "argv"}`, `{"kind": "handoff", "skill", "args"}`, `{"kind": "continue"}` — or null; do what it says. `warnings` where the trust log could not be appended to. Refuses, logging nothing, with no session id, no gate shown, another gate's name, a key the gate lacks, free text with no words, a gate already answered by a pick that left it (only the gate drawn again takes another), and at a gate set aside — by free text, or a typed row — anything but a row picked: the row the person picks in their own words answers it where it waits, never drawn again, logged under the showing's event as a pick after a draw again is.
 
 ### `raise`
 
@@ -431,7 +431,7 @@ workunit position <work-unit> auto|step
 Work-unit lifecycle. Each verb is one transaction: its manifest writes, the knowledge base's sync (a failure a warning) and a commit of what it touched. Each answers `work_unit`, `committed` and `warnings`, but `absorb`, `position` and `move`, whose answers are their own. `cancel`, `reactivate`, `pivot` and `absorb` print their receipt after the JSON line, drawn from what the verb answered and the state it left: `DISPLAY: confirmation`, and above it `DISPLAY: kb warning` where the answer carried `warnings`. The receipt is drawn before either is printed, so one that cannot be drawn leaves the one refusal.
 
 - **`create`** — the work-type commit at start this work: writes `.ledger/{wu}/manifest.json` and the unit's row on the project manifest, moves each `--seed` (a live inbox path) into `{wu}/seeds/`, and installs the session log verbatim as `{wu}/discovery/session-001.md`. Answers `work_type`, `seeds` (`[{path, source}]`, `source` the inbox folder's tag) and `session_log`. A name a unit already holds is refused, nothing moved: derive another.
-- **`cancel`** — sets `status: cancelled`. First it leaves the unit's code: a quick-fix's uncommitted fix set aside at `refs/ledger/aside/{wu}/{task}` and its checkout taken back, every pull request open on the unit's branches closed (`closed_by_cancel`), the branches kept for a reactivate. It abandons open experiments, moves waiting mail to the inbox as ideas, returns joined roadmap items to waiting, and removes the unit's chunks and cache. Answers `status`, `pull_requests_closed`, and where they apply `checkout`, `abandoned`, `inbox`, `roadmap_reverted`, `roadmap_horizon_gone` and `next` (the horizon pick for each item put back on none, then the start menu from inside the unit, else `continue`; for a quick-fix `continue` wherever it is cancelled from, the calling conversation leaving the quick-fix's place and its tasks in flight, its session's own label back). Refused while the checkout holds the person's uncommitted changes, or the host cannot be reached: cancel again once settled.
+- **`cancel`** — sets `status: cancelled`. First it leaves the unit's code: a quick-fix's uncommitted fix set aside at `refs/ledger/aside/{wu}/{task}` and its checkout taken back, every pull request open on the unit's branches closed (`closed_by_cancel`), the branches kept for a reactivate. It abandons open experiments, moves waiting mail to the inbox as ideas, returns joined roadmap items to waiting, and removes the unit's chunks and cache. Answers `status`, `pull_requests_closed`, and where they apply `checkout`, `abandoned`, `inbox`, `roadmap_reverted`, `roadmap_horizon_gone` and `next` (the horizon pick for each item put back on none, else `continue`). The calling conversation sitting in the unit leaves its place and the unit's tasks in flight, its session's own label back, and for any unit but a quick-fix `DISPLAY: ended` below the receipt says what waits on the person, the menu one `/ledger` away. Refused while the checkout holds the person's uncommitted changes, or the host cannot be reached: cancel again once settled.
 - **`reactivate`** — a cancelled unit back to `in-progress`: rejoins the roadmap items its cancel put back where they still wait, and re-indexes the unit. Answers `previous_status`, and `roadmap_rejoined` / `roadmap_stayed` where any.
 - **`pivot`** — an in-progress feature becomes an epic: its one topic goes on the map with Claude's `--summary` and `--description`, the map approved at the pivot. Answers `work_type: "epic"`. Refuses a unit that is no feature, not in progress, or past its spec (it carries on as work of its own).
 - **`absorb`** — a feature becomes a new topic of an in-progress epic before its spec, then is deleted: its topic folder, experiments, seeds, assets and spikes move to the epic (renamed on a collision), its ledger lines carried by one `rehomed` line, its roadmap joins re-aimed; one commit. Answers `feature`, `epic`, `topic`, `discussion`, `committed`, `warnings`, `assets`, `renamed_assets`, `spikes`, `renamed_spikes`, `seeds`, and where they apply `experiment`, `mail_moved`, `roadmap_reaimed`, `roadmap_sources_rewritten`, `roadmap_sources_dropped`. Refuses a topic name the epic holds, a feature with no discussion, and an epic past its spec.
@@ -511,7 +511,7 @@ handoff unit <work-unit>
 
 Every move into work, named by one call; the engine composes the continuation and the session writes none. The answer is sections, and nothing is written: `DATA` with `handoff: mod` (the gate mod carries handoffs, `LEDGER_HANDOFF=1`) or `handoff: inline`, then `skill:` and `args:`; `DISPLAY: handoff`, the line naming where the work goes (`→ Discussion · note-window`); and, under `mod`, a `=== HANDOFF … ===` section, `{skill, args, text, line}`, which the mod takes to clear the conversation and send `text` into the new one. Under `inline`, or where the mod did not take it, the session invokes the skill in place.
 
-**`handoff <skill|/skill> [args …]`** names a skill from one table and its arguments: `ledger-discovery <work-type|start|none> <none|epic> [<seeds|none>]`; `ledger` (the start menu); `ledger-roadmap`; `ledger-continue-epic <epic>`; `ledger-quick-fix-process <quick-fix> <work-unit>`; each phase's `ledger-{phase}-process <work-type> <work-unit> [<topic>]`, the spec's, implementation's and review's at the unit alone, and the laboratory's taking after its topic a top-level experiment, `[<topic> [<record>]]`, as the spawn gate's yes names the one just spawned. Refused, before anything travels: a skill outside the table, arguments of the wrong number or shape (the error is the target's usage), a unit no longer in progress (but a completed epic to its menu), and a character the invocation could not carry.
+**`handoff <skill|/skill> [args …]`** names a skill from one table and its arguments: `ledger-discovery <work-type|start|none> <none|epic> [<seeds|none>]`; `ledger` (the start menu); `ledger-roadmap`; `ledger-continue-epic <epic>`; `ledger-quick-fix-process <quick-fix> <work-unit>`; each phase's `ledger-{phase}-process <work-type> <work-unit> [<topic>]`, the spec's, implementation's and review's at the unit alone, and the laboratory's taking after its topic a top-level experiment, `[<topic> [<record>]]`, as the spawn gate's yes names the one just spawned. Refused, before anything travels: a skill outside the table, arguments of the wrong number or shape (the error is the target's usage), a unit no longer in progress, and a character the invocation could not carry.
 
 - **`topic`** — into the phase a unit's topics are talked through, a bugfix's investigation or any other's discussion, refused as that phase's `enter` would refuse it.
 - **`unit`** — the start menu's Continue: an epic onto its menu, any other unit into the phase it has come to, or into the laboratory where an experiment is out. Refuses a closed unit (seen through the start menu, brought back through manage).
@@ -576,7 +576,7 @@ investigation-log validation <bugfix> root-cause|fix --found "<what it found>" -
 investigation-log fix-direction <bugfix> --question <question> [--body <file>]
 ```
 
-The hunt a bugfix's investigation keeps in its topic's log, `{wu}/topics/{wu}/log.md`, which the investigation's gates read. Each verb puts one line under its fixed heading and commits nothing; the log rides the next state commit. Each answers `log`, `heading`, `line` and `warnings`. `--body <file>` puts the file's lines beneath the entry for the board's pages. Claude's own prose goes under headings of its own.
+The hunt a bugfix's investigation keeps in its topic's log, `{wu}/topics/{wu}/log.md`, which the investigation's gates read. Each verb puts one line under its fixed heading and commits nothing; the log rides the next state commit — but where the investigation has closed into its spec, the line voids the close, and the manifest is committed with the log. Each answers `log`, `heading`, `line` and `warnings`. `--body <file>` puts the file's lines beneath the entry for the board's pages. Claude's own prose goes under headings of its own.
 
 - **`symptom`** — `## Symptoms`, in the person's words.
 - **`hypothesis`** — `## Hypotheses`, `H{n} · {title} · {state}`, numbered as first logged; a later call naming `H{n}` restates it as it is now. `intended` takes `--by`, the person's decision.
@@ -590,12 +590,12 @@ Each refuses, writing nothing, an investigation not started (`engine enter inves
 ### `investigation`
 
 ```text
-investigation conclude <bugfix>
+investigation stage <bugfix> --file <recap.json>
 ```
 
-A bugfix investigation's close.
+A bugfix investigation's close into its spec, with no gate: ready to build concludes it.
 
-- **`conclude`** — the conclude gate's yes (`render conclude` stages it): completes the investigation item, stamps `concluded_at`, records what the bug is in as staged (`fixes`, `area`, and `after_review` for the unit named), commits the manifest with the log, and releases the place's presence. Answers `unit`, `concluded_at`, `committed`, and `next`, the handoff into the spec (`ledger-specification-process bugfix {wu}`). Each refusal opens `investigation conclude: ` and names its way on: a root cause or fix resting on no current entry; a validation not taken in since what it validates was logged (dispatch it, wait for it, or take its report in, as the refusal says); a question open at the place; mail waiting; nothing staged, or staged before the root cause or fix changed (`render conclude {wu} --file <recap.json>` stages it again); and a verdict still to ask.
+- **`stage`** — marks the close at `checklists.conclusion.{wu}` with Claude's recap, `{hunt, fixes?, area?}` — the hunt told short, the unit whose code the bug is in, and the verify setup's area it sits in, respelt as the project's bugfixes first recorded it — and what it was drawn on, `root_cause` and `fix`, each by its full id. The mark holds `closed`; `voided` once a message reaches the investigation, a question is opened there, an entry is replaced there or put in its log, or it is entered again; `taken` by ready to build's yes. It commits the manifest and releases the place's presence. Before the spec, the recap is drawn on the root cause and the fix the log rests on; once the spec is written the investigation is frozen, and staged again the recap is drawn on the unit's current entries the kept root cause and fix lead to — a change to either being the spec's replacement — with no check of the hunt. A spec written while the close stood voided — the investigation going on while the spec's writer was out — is not yet written until it lands, which waits on the close: the investigation is entered again and closes as before the spec. Answers `{unit, closed, fixes?, area?, committed, next}`, `next` the handoff into the spec (`ledger-specification-process bugfix {wu}`) while it is not written, else `continue`. Each refusal opens `investigation stage: ` and names its way on: an investigation not started or concluded; and before the spec, a root cause or fix resting on no current entry, a validation not taken in since what it validates was logged (dispatch it, wait for it, or take its report in, as the refusal says), a question open at the place, or mail waiting; once it is written, a kept root cause or fix leading to another unit's entry alone, naming the replacement at the spec that makes it the unit's; and a recap out of its shape, a unit the project lacks or this one, or an area with no verify setup recorded.
 
 ## The gates and the spec
 
@@ -715,9 +715,9 @@ The phase cut, written onto the unit's manifest as `cut`, its one writer. The fi
 ready-to-build yes <work-unit> --position auto|step [--marks <file>]
 ```
 
-The spec's gate, raised once per spec. Its screen, `render ready-to-build <wu> [--page] [--calls]`, stands on the landed spec, ready to build's checklist closed with nothing landed or cut since, and the drivers' tools fine (where one is not, the drivers' stop is drawn instead). A feature's carries its topic's close, staged by `decided stage`. Each departure among the spec's answers is asked its verdict first; then the gate: `a/auto` (recommended), `s/step`, `r/review` (the review page, with `--page`), `c/calls`, Comment.
+The spec's gate, raised once per spec. Its screen, `render ready-to-build <wu> [--page] [--calls] [--alone]`, stands on the landed spec, ready to build's checklist closed with nothing landed or cut since, and the drivers' tools fine (where one is not, the drivers' stop is drawn instead; where the project lands through GitHub and the squash default's offer was never answered, the offer, `github-squash`). A feature's carries its topic's close, staged by `decided stage`; a bugfix's its investigation's recap as its close keeps it, `investigation stage`'s — the symptoms from its log, the root cause and the fix in their entries' words — refused where either has been replaced since. Each departure among the spec's answers, a feature's topic's and a bugfix's investigation's first, at `decided` and `conclusion`, is asked its verdict first, the screen drawn whole once and, with `--alone` after a verdict, the next verdict or the gate alone; then the gate: `a/auto` (recommended), `s/step`, `r/review` (the review page, with `--page`), `c/calls`, Comment.
 
-- **`yes`** — the person's pick of position: concludes the spec (`spec land` refuses from then on), writes `build: {position}` and any driver setting the project lacks, closes the map for good, and commits. While the review page is open it takes the page's marks (`--marks`, the read-back file) and refuses while a comment waits for Claude, listing each (Claude answers each beneath its line, then shows ready to build again); else it writes the review's record, `{wu}/spec-review.json`. A feature's yes takes its topic's close as `decided yes` does, adding `decided`, `lines`, `withdrawn`, `candidates`, `struck`, `parked`. Answers `{unit, position, record, committed, next}`, `next` the handoff into the build. Refusals open `ready-to-build yes: `: the screen's own, a driver's tool not fine, a verdict still to ask, an open page with no marks given, and marks given with no page open.
+- **`yes`** — the person's pick of position: concludes the spec (`spec land` refuses from then on), writes `build: {position}` and any driver setting the project lacks, closes the map for good, and commits. While the review page is open it takes the page's marks (`--marks`, the read-back file) and refuses while a comment waits for Claude, listing each (Claude answers each beneath its line, then shows ready to build again); else it writes the review's record, `{wu}/spec-review.json`. A feature's yes takes its topic's close as `decided yes` does, adding `decided`, `lines`, `withdrawn`, `candidates`, `struck`, `parked`. A bugfix's concludes its investigation, adding `concluded`: it completes the investigation item, stamps `concluded_at`, records what the bug is in as staged (`fixes`, `area`, and `after_review` for the unit named), and records the close taken; what the bug is in no longer holding refuses it, naming the restage. Answers `{unit, position, record, committed, next}`, `next` the handoff into the build. Refusals open `ready-to-build yes: `: the screen's own, a driver's tool not fine, a verdict still to ask, an open page with no marks given, and marks given with no page open.
 
 ### `finish`
 
@@ -725,9 +725,9 @@ The spec's gate, raised once per spec. Its screen, `render ready-to-build <wu> [
 finish yes <work-unit>
 ```
 
-The authority gate after the review phase's report, and a quick-fix's close. Its screen, `render finish <wu>`, stands on finish's checklist closed with every engine item holding, the review over where the unit has one. Each departure in the build and review is asked its verdict first; then the gate: `y/yes`, Comment, and at a quick-fix `r/review` (`review ask`) while none is asked, and Ask.
+The authority gate after the review phase's report, and a quick-fix's close. Its screen, `render finish <wu> [--alone]`, stands on finish's checklist closed with every engine item holding, the review over where the unit has one; it draws no checklist skip. Each departure in the build and review is asked its verdict first, the screen drawn whole once and, with `--alone` after a verdict, the next verdict or the gate alone; then the gate: `y/yes`, Comment, and at a quick-fix `r/review` (`review ask`) while none is asked, and Ask.
 
-- **`yes`** — lands every phase still standing as `land finish` does, the review's fix phases last, then the unit's own branch on the default branch (a quick-fix's one pull request squashed, its checkout put back on the landing branch), then completes the unit: `status: completed`, `completed_at`, its scratch layouts and cache taken apart. Answers `{unit, landed, checkout?, completed_at, committed, next}`, `next` the epic's menu for an epic and the start menu for a feature or a bugfix; a quick-fix's `continue`, the conversation leaving its place, its session's own label back. A refused landing leaves the unit in progress with what merged before it; the yes run again picks up where it stopped. Refusals open `finish yes: `: the screen's own (the review not over, the checklist open or failing since its close, a quick-fix's fix not ended or without its record, a question still open), a verdict still to ask, and a quick-fix's checkout holding uncommitted changes (commit or set them aside).
+- **`yes`** — lands every phase still standing as `land finish` does, the review's fix phases last, then the unit's own branch on the default branch (a quick-fix's one pull request squashed, its checkout put back on the landing branch), then completes the unit: `status: completed`, `completed_at`, its scratch layouts and cache taken apart. Answers `{unit, landed, checkout?, completed_at, committed, next}`, `next` `continue`: the conversation leaves the unit's place and its tasks in flight, its session's own label back, and no menu is drawn. For any unit but a quick-fix, its receipt, after the JSON, is one line saying the work is done and what waits on the person — each unit's count, the verdicts, the inbox — with the menu one `/ledger` away. A refused landing leaves the unit in progress with what merged before it; the yes run again picks up where it stopped. Refusals open `finish yes: `: the screen's own (the review not over, the checklist open or failing since its close, a quick-fix's fix not ended or without its record, a question still open), a verdict still to ask, and a quick-fix's checkout holding uncommitted changes (commit or set them aside).
 
 ## The build and the review
 
@@ -1136,18 +1136,18 @@ render horizon-pick      <wu.discovery.topic> | --park <name>[,<name>…] | --ba
 render banner
 render work-pick --matches <unit>[/<topic>],…
 render brownfield-offer-gate
-render walkthrough-offer [--menu-only]
-render walkthrough-screen --screen <1..8> --from <first-run|help> [--menu-only]
-render walkthrough-topic --name <slug> [--menu-only | --content-only]
+render walkthrough-offer
+render walkthrough-screen --screen <1..8> --from <first-run|help>
+render walkthrough-topic --name <slug> [--content-only]
 render send-report <work-unit>.<topic> --sent <path>
 render map <work-unit>.<topic>
-render decided <work-unit>.<topic> [--file <payload.json>] [--calls]
+render decided <work-unit>.<topic> [--file <payload.json>] [--calls] [--alone]
 render decided-strike <work-unit>.<topic> [--page]
 render wait-agents <work-unit>.<topic>   (empty when no agent of the topic is running)
 render start-this-work [--file <payload.json>]
 render approve-map <work-unit> [--file <payload.json> | --sweep]
 render approve-map-strike <work-unit>
-render ready-to-build <work-unit> [--page] [--calls]
+render ready-to-build <work-unit> [--page] [--calls] [--alone]
 render build-headline <work-unit> --file <payload.json>
 render task-landed <work-unit> <task>
 render task-account <work-unit> <task>
@@ -1158,10 +1158,9 @@ render build-progress <work-unit>
 render review-report <work-unit> [--round <N>]
 render review-calls <work-unit>
 render review-tree <work-unit>
-render finish <work-unit>
+render finish <work-unit> [--alone]
 render investigation-plan <bugfix> --file <plan.json> [--revised]
 render investigation-check-in <bugfix> --file <check-in.json>
-render conclude <bugfix> [--file <recap.json>]
 render discovery-map <work-unit>
 render migrations-applied --file <payload.json>
 render migration-gate
@@ -1169,7 +1168,6 @@ render state-lost-gate
 render git-floor-stop
 render repo-stop
 render github-rule-gate
-render github-squash-gate
 render label-gate
 render knowledge-gate [--variant deviate|wizard | --variant retry (--from-system | --provider <name> --model <name> [--base-url <url>] [--dimensions <n>])]
 render knowledge-ask --provider openai|openai-compatible
@@ -1208,11 +1206,11 @@ render wrap <text> [--width N] [--prefix STR]                  (dev aid)
 render tree [--width N]            (dev aid; JSON TreeNode array on stdin)
 ```
 
-The surface catalogue: named surfaces answering sections (`DISPLAY`, `MENU`, `DATA`, `TITLE`), emitted verbatim per their markers. Values come from the state; Claude's judgment arrives as a JSON payload file (`--file`), validated per field. A surface commits nothing, and writes only beside the state: `map` moves the last-looked mark; `decided`, `start-this-work`, `approve-map` and `conclude` stage Claude's `--file` payload in the cache, what their gate's yes lands; and a menu drops or records the conversation's position. Every MENU row carries its `next`, recorded with the gate shown and returned by `gate`. While `LEDGER_GATE_SURFACE=1`, a `=== GATE … ===` section, one line of JSON for the gate mod, sits above the first MENU. A refusal opens `render {surface}: `.
+The surface catalogue: named surfaces answering sections (`DISPLAY`, `MENU`, `DATA`, `TITLE`), emitted verbatim per their markers. Values come from the state; Claude's judgment arrives as a JSON payload file (`--file`), validated per field. A surface commits nothing, and writes only beside the state: `map` moves the last-looked mark; `convergence`, due but with nothing of the topic Claude's to settle, starts the run again as a no does; `decided`, `start-this-work` and `approve-map` stage Claude's `--file` payload in the cache, what their gate's yes lands; and a menu drops or records the conversation's position. Every MENU row carries its `next`, recorded with the gate shown and returned by `gate`. While `LEDGER_GATE_SURFACE=1`, a `=== GATE … ===` section, one line of JSON for the gate mod, sits above the first MENU. A refusal opens `render {surface}: `.
 
-**The menus** (`domain/menus.cjs`) share one frame: `TITLE`, what the menu shows, its `MENU` and question; the frame adds `h/help` (`render help <menu>`), a back row and a prompt row. The start menu and the project's menus reached from it drop the conversation's position; the epic menu and the roadmap record it there. **The learned process gates** — the plan, check-in and conclude gates, `wait for agents`, `experiment spawn gate` and `import reprompt` — may run their usual row as an automatic step where the person's answers have earned it: the MENU gives way to a `DATA` section (`automatic step: {gate}`, `ran: {key}`, `next: {json}`) and `DISPLAY: automatic step`, shown without stopping; do what `next` says.
+**The menus** (`domain/menus.cjs`) share one frame: `TITLE`, what the menu shows, its `MENU` and question; the frame adds `h/help` (`render help <menu>`), a back row and a prompt row. The start menu and the project's menus reached from it drop the conversation's position; the epic menu and the roadmap record it there. **The learned process gates** — the plan gate, `wait for agents`, `experiment spawn gate` and `import reprompt` — may run their usual row as an automatic step where the person's answers have earned it: the MENU gives way to a `DATA` section (`automatic step: {gate}`, `ran: {key}`, `next: {json}`) and `DISPLAY: automatic step`, shown without stopping; do what `next` says.
 
-Boot's stops and the setup gates, each the screen of the boot `stop` or setup gate it is named for: **`git-floor-stop`**, **`repo-stop`**, **`state-lost-gate`** (its yes `boot --start-again`), **`state-merge-gate`** (each row `state-merge pick`), **`ledger-stop`**, **`migration-guard-stop`**, **`migration-checks-stop`**, **`directive-arrival`**, **`directive-carry-on`**, **`migration-taken-stop`**, **`migration-leaving`** (the topics leaving a building unit), **`migrations-applied`** (the migration review's summary, from Claude's payload: `summary`, or while the reshape finishes its `parts` — `moved`, `records`, `corrections`, `checks`, `legacy`, `code`, each labelled, in that order, and no counts — closing, while its code commit is to make, on the branch it goes on, not pushed), **`migration-gate`** (its yes `commit --migrations`), **`label-gate`** (naming the multiplexer the session runs in, refused inside none; each row `session label-config`), **`knowledge-gate`** (with no variant, reuse where the system config is valid, else the provider choice; `deviate`, `wizard`, and `retry` over the setup it runs again; each row the setup it runs or the screen it draws), **`knowledge-ask`** (a provider's questions, answered in words; its DATA `the reply:` the setup they run), **`knowledge-done`** (the wizard's yes: the ready line where the checkout's knowledge base is ready, else that the wizard did not complete over the gate's opening again), **`github-rule-gate`**, **`github-squash-gate`**, **`brownfield-offer-gate`** (each row `brownfield record`), **`banner`**, and **`work-pick`** (the start's pick between the pieces of work the words name).
+Boot's stops and the setup gates, each the screen of the boot `stop` or setup gate it is named for: **`git-floor-stop`**, **`repo-stop`**, **`state-lost-gate`** (its yes `boot --start-again`), **`state-merge-gate`** (each row `state-merge pick`), **`ledger-stop`**, **`migration-guard-stop`**, **`migration-checks-stop`**, **`directive-arrival`**, **`directive-carry-on`**, **`migration-taken-stop`**, **`migration-leaving`** (the topics leaving a building unit), **`migrations-applied`** (the migration review's summary, from Claude's payload: `summary`, or while the reshape finishes its `parts` — `moved`, `records`, `corrections`, `checks`, `legacy`, `code`, each labelled, in that order, and no counts — closing, while its code commit is to make, on the branch it goes on, not pushed), **`migration-gate`** (its yes `commit --migrations`), **`label-gate`** (naming the multiplexer the session runs in, refused inside none; each row `session label-config`), **`knowledge-gate`** (with no variant, reuse where the system config is valid, else the provider choice; `deviate`, `wizard`, and `retry` over the setup it runs again; each row the setup it runs or the screen it draws), **`knowledge-ask`** (a provider's questions, answered in words; its DATA `the reply:` the setup they run), **`knowledge-done`** (the wizard's yes: the ready line where the checkout's knowledge base is ready, else that the wizard did not complete over the gate's opening again), **`github-rule-gate`**, **`brownfield-offer-gate`** (each row `brownfield record`), **`banner`**, and **`work-pick`** (the start's pick between the pieces of work the words name).
 
 Help and the walkthrough: **`walkthrough-offer`**, **`walkthrough-screen`**, **`walkthrough-topic`** (one reference card), **`help`** (a menu's help, its back drawing the menu again as it was) and **`help-topics`**.
 
@@ -1227,7 +1225,7 @@ Discovery and the topics:
 - **`roadmap-harvest`** — a product session's items for the roadmap; its yes `roadmap add-batch`.
 - **`backlog-gate`** — roadmap or inbox, where the words left it open.
 - **`wait-agents`** — the gate over a topic's agents still running as it closes; empty when none runs.
-- **`convergence`** — the offer to settle the rest of a topic.
+- **`convergence`** — the offer to settle the rest of a topic; drawn as it comes due, or with `--asked` on the person's word. Where Claude would settle none of what is open, it draws nothing as it comes due and starts the run again, as a decline does, and on the person's word a line saying so.
 
 The experiments: **`experiment-approval-gate`** (the briefing gate over a designed record: its yes `experiment approve`, its abandon `continue`), **`experiment-next-gate`** (after a top-level record ends with others live, under the series' register: its yes `enter experiment` again, its menu row the unit's menu) and **`experiment-spawn-gate`** (now or later, after a spawn). The pick among several live records is `enter experiment`'s.
 
@@ -1235,17 +1233,16 @@ The authority gates, each drawn from Claude's staged payload (`--file`), its yes
 
 - **`start-this-work`** — the work-type commit; its yes `start-this-work yes`.
 - **`approve-map`**, **`approve-map-strike`** — an epic's map, after the sweep with `--sweep`, and the pick of a candidate to strike.
-- **`decided`**, **`decided-strike`** — a topic's close, `--calls` listing Claude's calls, and the pick of a candidate to strike.
+- **`decided`**, **`decided-strike`** — a topic's close, `--calls` listing Claude's calls, `--alone` after a verdict drawing the next verdict or the gate alone, and the pick of a candidate to strike.
 - **`ready-to-build`** — the spec's gate: outline, phase cut, position; `--page` the review page's row.
 - **`finish`** — finish's gate, or a quick-fix's close.
 
 The confirms before a lifecycle verb, which prints its own receipt: **`cancel-gate`**, **`postpone-gate`**, **`absorb-target`**, **`absorb-confirm-gate`**, **`import-reprompt`** (after an import refused paths) and **`archived-delete-gate`**.
 
-The investigation, each a learned gate:
+The investigation's, the plan a learned gate:
 
 - **`investigation-plan`** — the plan gate, from `{order: [{hypothesis, check}]}`; `--revised` with `changed`.
-- **`investigation-check-in`** — the check-in gate, from `{resolved, next}`.
-- **`conclude`** — the conclude gate, from `{hunt, fixes?, area?}`, its verdicts asked first; its yes `investigation conclude`.
+- **`investigation-check-in`** — the check-in, from `{resolved, next}`: a display the hunt carries past.
 
 The build, each reading where the build stands for the calling conversation: **`build-headline`** (as tasks start, from `{tasks: [{task, changes, watch}]}`), **`task-landed`**, **`task-account`**, **`step-gate`** (in step, after a task; its yes leads to `task done`), **`phase-merge-gate`** (in step, before `land phase`), **`build-stop`** (when nothing can go on without the person) and **`build-progress`**.
 

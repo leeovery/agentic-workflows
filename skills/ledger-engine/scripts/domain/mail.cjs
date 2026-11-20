@@ -56,7 +56,7 @@ const { EXPERIMENT_ID_PATTERN, KEBAB_SLUG_PATTERN, PRODUCT, WORK_TYPE_PIPELINES,
 const { stateRoot, statePath, stateRelative, cacheScratch } = require('../kernel/state-root.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
-const { computeTopicLifecycle, mailboxDir, mailboxFiles, mailPhase, dismissedNames, topicTitle, itemTitle, topicKey, voidDecidedClose } = require('./derivations.cjs');
+const { computeTopicLifecycle, mailboxDir, mailboxFiles, mailPhase, dismissedNames, topicTitle, itemTitle, topicKey, voidTopicClose } = require('./derivations.cjs');
 const { parkMessageItem, assertLegalTopicName } = require('./transitions.cjs');
 const { liveness, manifestOf } = require('./ledger-units.cjs');
 const { ID_FACTS, foldLedger, movedToBy } = require('./ledger-fold.cjs');
@@ -311,7 +311,7 @@ function toMailbox(cwd, manifest, phase, topic, message, slug) {
     const phases = ensureContainer(manifest, 'phases', 'phases');
     const items = ensureContainer(ensureContainer(phases, phase, `phases.${phase}`), 'items', `phases.${phase}.items`);
     const park = parkMessageItem(items, phase, topic);
-    const voided = voidDecidedClose(manifest, topic, new Date().toISOString());
+    const voided = voidTopicClose(manifest, topic, new Date().toISOString());
     if (park.reopened) fields.reopened = true;
     if (park.dirty || voided) saveWorkUnitManifest(cwd, unit, manifest);
   }
