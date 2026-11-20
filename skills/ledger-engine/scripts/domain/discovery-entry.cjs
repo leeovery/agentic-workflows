@@ -66,7 +66,7 @@ const { statePath } = require('../kernel/state-root.cjs');
 const { sessionLogs, activeSession, sessionLogsAt, openSession } = require('./discovery-session.cjs');
 const { discoveryStanding } = require('./topic-standing.cjs');
 const { readPosition, placeLine } = require('./position.cjs');
-const { clearOwnQuietly, peerHold } = require('./presence.cjs');
+const { clearOwnQuietly, holdsLive } = require('./presence.cjs');
 const { runningTranscript } = require('./conversation.cjs');
 const { researchOwed } = require('./brownfield.cjs');
 const { productCall, mapCall, namedConversations, isHeader, appendLine, topicLog } = require('./topic-log.cjs');
@@ -202,7 +202,7 @@ function catchUp({ cwd, unit, started }) {
   const log = statePath(cwd, logAt(unit, /** @type {string} */ (activeSession(cwd, unit))));
   const last = namedConversations(log).at(-1);
   if (last === undefined || last.session === handedSession() || endsOnPointer(log)) return [];
-  if (peerHold(cwd, unit, 'discovery', unit)?.session_id === last.session) return [];
+  if (holdsLive(cwd, unit, 'discovery', unit, last.session)) return [];
   const transcript = last.transcript !== null && fs.existsSync(last.transcript) ? last.transcript : runningTranscript(last.session);
   return [as('catch up')(transcript === null
     ? `the transcript of session ${last.session}, which last wrote the log, is gone — say so in one line, and carry on from the log`

@@ -33,11 +33,13 @@
 //   it starts from joined to it, and the product's open session closed
 //   where the work leaves this conversation's talk there — a feature, a
 //   bugfix, an epic started where its place is the product's conversation
-//   — and no other live window holds that conversation (presence.cjs, as
-//   the entry's hold question reads it) (8.14.11): a quick-fix's yes never
-//   closes it, nor a type call's. The yes removes the conversation's
-//   payload with its staged copy. A failure part-way leaves no unit. One
-//   commit takes it all.
+//   — and no other live window is in that conversation, by its presence
+//   row there (presence.cjs) (8.14.11): a quick-fix's yes never closes it,
+//   nor a type call's. The yes removes the conversation's payload with its
+//   staged copy, and, for work that leaves, its presence row in the
+//   product's conversation — its place there kept, which an epic's move
+//   departs from; a window in a quick-fix stays in the conversation. A
+//   failure part-way leaves no unit. One commit takes it all.
 // - What comes next: a feature into its discussion, a bugfix into its
 //   investigation, each a handoff (24.1.2); a quick-fix into its work, its
 //   skill invoked in this same conversation, nothing cleared (19.5.1,
@@ -57,14 +59,13 @@ const path = require('path');
 const { readProjectManifest, writeProjectManifestAtomic, withProjectLock } = require('../kernel/manifest.cjs');
 const { PRODUCT } = require('../kernel/manifest-schema.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
-const { handedSession } = require('../kernel/process.cjs');
 const { roadmapItems, roadmapSeedRefusal, briefFile } = require('./derivations.cjs');
 const { waitingTwin, isNote } = require('./roadmap.cjs');
 const { PRODUCT_SESSIONS } = require('./layout.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
-const { productSession } = require('./discovery-session.cjs');
+const { productSession, inTheProduct } = require('./discovery-session.cjs');
 const { SHAPED_BY, conversationFile, payloadFile } = require('./discovery-entry.cjs');
-const { peerHold } = require('./presence.cjs');
+const { peerHold, clearOwnQuietly } = require('./presence.cjs');
 const { draftIn, writeBrief, twinRefusal } = require('./discovery-map.cjs');
 const {
   FIRST_LOG, assertLegalWorkUnitName, workUnitTaken, checkWorkUnit, writeWorkUnit, unwriteWorkUnit, registerWorkUnit, createdPaths, landedSeeds,
@@ -72,7 +73,6 @@ const {
 const { filled, shaped, listed, readPayload, stage, stagedAt, refusing } = require('./staged-payload.cjs');
 const { startThisWorkScreen } = require('./projections/discovery-gates.cjs');
 const { phaseSkill } = require('./handoff.cjs');
-const { readPosition } = require('./position.cjs');
 
 // The move's yes, loaded at its call: the move stages through this module.
 const move = () => require('./workunit-move.cjs');
@@ -108,13 +108,6 @@ const NOTHING_STAGED = 'nothing is staged — render start-this-work --file <pay
 
 /** Where the calling conversation's payload is staged, in the product's cache. @param {string} cwd */
 const stagedFile = (cwd) => conversationFile(cwd, 'start-this-work');
-
-/** Whether the calling conversation's place is the product's conversation. */
-function inTheProduct() {
-  const sessionId = handedSession();
-  const at = sessionId === null ? null : readPosition(sessionId);
-  return at !== null && at.name === PRODUCT && at.phase === undefined;
-}
 
 /** Refuses a type start this work does not create. @param {unknown} type @returns {string} */
 function startType(type) {
@@ -321,6 +314,8 @@ function startThisWorkYes(cwd) {
   if (draft !== null) fs.rmSync(draft.scratch, { force: true });
   fs.rmSync(stagedFile(cwd), { force: true });
   fs.rmSync(payloadFile(cwd), { force: true });
+  // Work that leaves the product's talk takes the conversation's row there, its place kept for an epic's move.
+  if (type !== 'quick-fix') clearOwnQuietly(cwd, PRODUCT, 'discovery', PRODUCT);
 
   /** @type {string[]} */
   const warnings = [];

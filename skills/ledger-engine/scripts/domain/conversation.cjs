@@ -552,4 +552,4 @@ function tidyConversations(keeps = () => false) {
   }
 }
 
-module.exports = { conversationsRoot, conversationDir, positionPath, leftPath, isAgentId, storedPosition, readPosition, readLeft, tasksInFlight, taskAt, isMarked, markConversation, endConversation, claudeProjectsDir, runningTranscript, callerModel, subagentType, tidyConversations };
+module.exports = { conversationsRoot, conversationDir, safeId, positionPath, leftPath, isAgentId, storedPosition, readPosition, readLeft, tasksInFlight, taskAt, isMarked, markConversation, endConversation, claudeProjectsDir, runningTranscript, callerModel, subagentType, tidyConversations };

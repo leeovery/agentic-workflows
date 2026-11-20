@@ -12,8 +12,10 @@
 // the conversation, with nothing drawn (19.5.1, 24.1.5), and the
 // conversation leaves the quick-fix's place where it is there, its tasks
 // in flight with it, so nothing holds the conversation afterwards
-// (`leaveUnit`, position.cjs). Its move starts the new type as any start
-// does (workunit-move.cjs).
+// (`leaveUnit`, position.cjs), and its session's own label comes back
+// (session-label.cjs). A quick-fix never leaves the product's conversation
+// (start-this-work.cjs), so its close and cancel leave its row there. Its
+// move starts the new type as any start does (workunit-move.cjs).
 //
 // A topic cancelled or postponed (`topic cancel`, `topic postpone`) takes
 // the conversation sitting in its discussion to its epic's menu; a unit
@@ -42,6 +44,7 @@
 const { handedSession } = require('../kernel/process.cjs');
 const { readPosition, leaveUnit } = require('./position.cjs');
 const { readWorkUnitManifest } = require('../kernel/manifest-io.cjs');
+const { repairTerminalLabel } = require('./session-label.cjs');
 const { UNIT_PHASES } = require('./derivations.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { roadmapState } = require('./roadmap.cjs');
@@ -68,23 +71,24 @@ function ontoMenu(workUnit, workType) {
 }
 
 /**
- * A quick-fix left from inside its session (the header's): the
- * conversation carries on, its place and the unit's tasks in flight left.
- * @param {string} workUnit @returns {Next}
+ * A quick-fix left (the header's): the conversation carries on, and where
+ * it sat in the quick-fix, its place and the unit's tasks in flight left
+ * and its session's own label put back.
+ * @param {string} cwd @param {string} workUnit @returns {Next}
  */
-function leftQuickFix(workUnit) {
-  leaveUnit(handedSession(), workUnit);
+function leftQuickFix(cwd, workUnit) {
+  if (leaveUnit(handedSession(), workUnit)) repairTerminalLabel(cwd);
   return CONTINUE;
 }
 
 /**
  * Where a unit's finish goes (the header's): a quick-fix's close on in the
  * conversation, any other unit onto its own menu.
- * @param {string} workUnit @param {string} workType
+ * @param {string} cwd @param {string} workUnit @param {string} workType
  * @returns {Next}
  */
-function afterFinish(workUnit, workType) {
-  return workType === 'quick-fix' ? leftQuickFix(workUnit) : ontoMenu(workUnit, workType);
+function afterFinish(cwd, workUnit, workType) {
+  return workType === 'quick-fix' ? leftQuickFix(cwd, workUnit) : ontoMenu(workUnit, workType);
 }
 
 /** Where the calling conversation sits, or null where it sits nowhere. */
@@ -131,7 +135,7 @@ function leaveNext(workUnit, topic) {
  * @returns {Next}
  */
 function unitLeaveNext(cwd, workUnit) {
-  if (readWorkUnitManifest(stateRoot(cwd), workUnit).work_type === 'quick-fix') return leftQuickFix(workUnit);
+  if (readWorkUnitManifest(stateRoot(cwd), workUnit).work_type === 'quick-fix') return leftQuickFix(cwd, workUnit);
   return seatIn(workUnit) === null ? CONTINUE : ONTO_START;
 }
 

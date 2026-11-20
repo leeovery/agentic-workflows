@@ -130,10 +130,10 @@ function roadmapOf(cwd, project) {
 
 /**
  * All work (the header's).
- * @param {string} cwd @param {(unit: string) => BoardAt} at what the board reads for a unit @param {BoardAt|null} here the session's unit @param {boolean} atStart whether the session is at the start menu
+ * @param {string} cwd @param {(unit: string) => BoardAt} at what the board reads for a unit @param {BoardAt|null} here the session's unit
  * @returns {{view: AllView}}
  */
-function allView(cwd, at, here, atStart) {
+function allView(cwd, at, here) {
   const others = new Set(scanProject(cwd).sessions.filter(({ held, session_id: session }) => held && session !== here?.session).map(({ work_unit: unit }) => unit));
   const inbox = discoverInbox(cwd);
   const units = loadActiveManifests(cwd).map((manifest) => workLine(at(manifest.name), here, others));
@@ -141,7 +141,6 @@ function allView(cwd, at, here, atStart) {
     view: {
       kind: 'all',
       project: projectName(cwd),
-      at_start: atStart,
       waiting: units.reduce((sum, { waiting }) => sum + waiting, 0),
       units,
       roadmap: roadmapOf(cwd, readProjectManifest(cwd)),
@@ -158,13 +157,13 @@ function allView(cwd, at, here, atStart) {
 /**
  * The banner at no unit: the project's, at the place the session is at —
  * a project-level place or the migration — and alone at no place; and, once
- * a unit's finish hands the session to the start menu, that unit's close
+ * a unit's finish or a quick-fix's close completes it, that unit's close
  * (D38).
  * @param {string} cwd @param {string|null} place where the session is, in words, null at no place @param {BoardAt|null} finished
  * @returns {import('../board-model.cjs').Banner}
  */
 function allBanner(cwd, place, finished) {
-  if (finished !== null) return { name: finished.title, state: 'done', facts: [fact(finished.manifest.work_type), fact('complete'), placeFact('at the start menu')] };
+  if (finished !== null) return { name: finished.title, state: 'done', facts: [fact(finished.manifest.work_type), fact('complete')] };
   return { name: projectName(cwd), state: 'idle', facts: place === null ? [] : [placeFact(place)] };
 }
 

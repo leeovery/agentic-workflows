@@ -159,6 +159,9 @@ function enter(args, sessionId) {
   return okSections(dir, ['enter', ...args], { env: env(sessionId) });
 }
 
+/** The conversation `sessionId` ending, its presence dropped as Claude Code's SessionEnd hook drops it. @param {string} sessionId */
+const ends = (sessionId) => ok(dir, ['presence', 'cleanup', sessionId], { env: env(sessionId) });
+
 /** An entry that must refuse, writing nothing: its error. @param {string[]} args */
 function refused(args) {
   const { error } = refusedPristine(dir, ['enter', ...args], { env: env() });
@@ -190,9 +193,10 @@ const at = (rel) => statePath(dir, rel);
 /** The DATA's line naming where the conversation `session` writes start this work's payload, a file of its own. @param {string} session */
 const payloadAt = (session) => `payload: ${at(layout.cache('product', 'discovery', 'product', `start-this-work-payload-${session}.json`))}`;
 
-/** A place's presence record as it stands, or null. @param {string} unit @param {string} topic @param {string} [phase] */
-function presence(unit, topic, phase = 'discussion') {
-  try { return JSON.parse(fs.readFileSync(at(layout.cache(unit, phase, topic, 'presence')), 'utf8')); } catch { return null; }
+/** A place's presence record as it stands — at the product's, the conversation `session`'s — or null. @param {string} unit @param {string} topic @param {string} [phase] @param {string} [session] */
+function presence(unit, topic, phase = 'discussion', session = 'sess-1') {
+  const row = unit === 'product' ? `presence-${session}` : 'presence';
+  try { return JSON.parse(fs.readFileSync(at(layout.cache(unit, phase, topic, row)), 'utf8')); } catch { return null; }
 }
 
 beforeEach(() => {
@@ -319,6 +323,13 @@ describe('a place another live session holds (18.4.21)', () => {
     runAs(dir, ['presence', 'beat', EPIC, 'discussion', 'licence'], 'peer', PEER);
     enter(['discussion', EPIC, 'licence']);
     assert.deepStrictEqual(ok(dir, ['gate', 'held topic gate', '--pick', 'n'], { env: env() }).next, { kind: 'handoff', skill: 'ledger-continue-epic', args: [EPIC] });
+  });
+
+  it('a move from the product\'s conversation into an epic\'s discovery another session holds stays a move past the question', () => {
+    enter(['discovery', 'product']);
+    runAs(dir, ['presence', 'beat', EPIC, 'discovery', EPIC], 'peer', PEER);
+    assert.strictEqual(enter(['discovery', EPIC, '--move']).res.entered, false);
+    assert.deepStrictEqual(ok(dir, ['gate', 'held topic gate', '--pick', 'y'], { env: env() }).next.argv, ['enter', 'discovery', EPIC, '--take', '--move']);
   });
 
   it('a single-topic unit has no menu to go back to: leaving it carries on, to the end of the turn', () => {
@@ -686,7 +697,7 @@ describe('discovery: the product\'s conversation (8.2.7–8.2.10)', () => {
 
   it('8.2.9: a piece of work\'s type call, with another live session in the product\'s conversation, asks nothing first and opens, writes, commits and records nothing — no session, no position, no presence, the other\'s hold left as it stands — and reads the roadmap and the live inbox, and the seeds where it starts from any; refused at an epic, writing nothing', () => {
     runAs(dir, ['presence', 'beat', 'product', 'discovery', 'product'], 'peer', PEER);
-    const held = presence('product', 'product', 'discovery');
+    const held = presence('product', 'product', 'discovery', 'peer');
     const [head, manifest] = [stateGit(dir, ['rev-parse', 'HEAD']).trim(), readState(dir, layout.projectManifest)];
     const called = enter(['discovery', 'product', '--type-call']);
     const idea = '.ledger/.inbox/ideas/2026-01-03--dark-mode.md';
@@ -699,7 +710,7 @@ describe('discovery: the product\'s conversation (8.2.7–8.2.10)', () => {
     ]) });
     assert.strictEqual(seeded, data([`seed: ${at('.inbox/ideas/2026-01-03--dark-mode.md')}`, `roadmap: \`${ENGINE} roadmap state\``, `inbox: ${at('.inbox')}`, payloadAt('sess-1')]));
     assert.deepStrictEqual([stateGit(dir, ['rev-parse', 'HEAD']).trim(), readState(dir, layout.projectManifest), fs.existsSync(at(layout.productSession('003')))], [head, manifest, false]);
-    assert.deepStrictEqual([position(), presence('product', 'product', 'discovery')], [null, held]);
+    assert.deepStrictEqual([position(), presence('product', 'product', 'discovery', 'peer')], [null, held]);
     assert.strictEqual(refused(['discovery', EPIC, '--type-call']), `the type call is the product's, for work not yet started — "${EPIC}" is started: enter discovery ${EPIC}`);
   });
 
@@ -727,6 +738,7 @@ describe('discovery: the product\'s conversation (8.2.7–8.2.10)', () => {
     const first = transcript('sess-1');
     withFrozenClock(() => enter(['discovery', 'product']));
     fs.appendFileSync(at(layout.productSession('003')), '\nPricing tiers, leaning three.\n');
+    ends('sess-1');
     const [head, manifest] = [stateGit(dir, ['rev-parse', 'HEAD']).trim(), readState(dir, layout.projectManifest)];
     const { res, sections } = withFrozenClock(() => enter(['discovery', 'product'], 'sess-2'));
     assert.deepStrictEqual(res, { ok: true, phase: 'discovery', unit: 'product', entered: true, started: false });
@@ -757,16 +769,30 @@ describe('discovery: the product\'s conversation (8.2.7–8.2.10)', () => {
     for (const [sessionId, line] of turns) {
       enter(['discovery', 'product'], sessionId);
       fs.appendFileSync(log, `\n${line}\n`);
+      ends(sessionId);
     }
-    const caughtUp = (/** @type {string} */ sessionId) => enter(['discovery', 'product'], sessionId).sections.match(/^catch up: the transcript of session (\S+),/m)?.[1];
+    const caughtUp = (/** @type {string} */ sessionId) => {
+      const sections = enter(['discovery', 'product'], sessionId).sections;
+      ends(sessionId);
+      return sections.match(/^catch up: the transcript of session (\S+),/m)?.[1];
+    };
     assert.deepStrictEqual([caughtUp('B'), caughtUp('C')], ['A', 'B']);
     assert.deepStrictEqual(readState(dir, layout.productSession('003')).match(/^## .* · session \S+/gm)?.map((line) => line.split(' ').at(-1)), ['A', 'B', 'A', 'B', 'C']);
   });
 
   it('a log left by a conversation whose transcript is gone: one line says so (8.S75)', () => {
     enter(['discovery', 'product'], 'sess-gone');
+    ends('sess-gone');
     assert.match(enter(['discovery', 'product']).sections,
       /^catch up: the transcript of session sess-gone, which last wrote the log, is gone — say so in one line, and carry on from the log$/m);
+  });
+
+  it('a conversation live there that did not last write the log holds no catch-up back: the entry catches up from the one that did, once it ended (18.4.21)', () => {
+    enter(['discovery', 'product'], 'writer');
+    fs.appendFileSync(at(layout.productSession('003')), '\nPricing tiers, leaning three.\n');
+    ends('writer');
+    runAs(dir, ['presence', 'beat', 'product', 'discovery', 'product'], 'peer', PEER);
+    assert.match(enter(['discovery', 'product']).sections, /^catch up: the transcript of session writer,/m);
   });
 
   describe('a keep from another conversation (8.14.12, 8.14.8)', () => {
@@ -777,8 +803,6 @@ describe('discovery: the product\'s conversation (8.2.7–8.2.10)', () => {
     const named = () => [...readState(dir, LOG).matchAll(/^## \S+ · session (\S+)/gm)].map(([, sessionId]) => sessionId);
     /** The conversation an entry is told to catch up from, by its transcript; null where none. @param {string} [sessionId] */
     const caughtUpFrom = (sessionId) => enter(['discovery', 'product'], sessionId).sections.match(/^catch up: read \S+\/(\S+)\.jsonl from/m)?.[1] ?? null;
-    /** The conversation `sessionId` ending, its presence dropped as Claude Code's SessionEnd hook drops it. @param {string} sessionId */
-    const ends = (sessionId) => ok(dir, ['presence', 'cleanup', sessionId], { env: env(sessionId) });
 
     it('writes no line of its own, so the next return catches up from the conversation that talked, never from the keep\'s', () => {
       transcript('sess-1');
@@ -806,12 +830,12 @@ describe('discovery: the product\'s conversation (8.2.7–8.2.10)', () => {
       assert.deepStrictEqual(named(), ['sess-1', 'sess-2']);
     });
 
-    it('with the product\'s conversation live in another window, a second entering beside it, once it takes the place, has nothing to catch up from it: that one writes its own (18.4.21)', () => {
+    it('with the product\'s conversation live in another window, a second joining it has nothing to catch up from it: that one writes its own (18.4.21)', () => {
       runAs(dir, ['enter', 'discovery', 'product'], 'live', PEER);
       fs.appendFileSync(at(LOG), '\n## Pricing\n\nOne-time.\n');
       keep('coder', 'Notes are furniture.');
 
-      assert.doesNotMatch(enter(['discovery', 'product', '--take'], 'sess-2').sections, /^catch up:/m);
+      assert.doesNotMatch(enter(['discovery', 'product'], 'sess-2').sections, /^catch up:/m);
       assert.deepStrictEqual(named(), ['live', 'sess-2']);
     });
 
@@ -824,16 +848,11 @@ describe('discovery: the product\'s conversation (8.2.7–8.2.10)', () => {
     });
   });
 
-  it('another live session holding it is asked about first; the yes is the entry again with --take, a move kept a move, and leaving it carries on, the product having no menu (18.4.21)', () => {
+  it('another live session in it is asked about nothing: the entry joins it, each conversation with its own row there (8.14.11)', () => {
     runAs(dir, ['presence', 'beat', 'product', 'discovery', 'product'], 'peer', PEER);
     const { res, sections } = enter(['discovery', 'product']);
-    assert.deepStrictEqual([res.entered, /^=== MENU: held topic gate /.test(sections), position()], [false, true, null]);
-    assert.deepStrictEqual(ok(dir, ['gate', 'held topic gate', '--pick', 'y'], { env: env() }).next, { kind: 'engine', argv: ['enter', 'discovery', 'product', '--take'] });
-    enter(['discovery', 'product']);
-    assert.deepStrictEqual(ok(dir, ['gate', 'held topic gate', '--pick', 'n'], { env: env() }).next, { kind: 'continue' });
-    enter(['discovery', EPIC]);
-    enter(['discovery', 'product', '--move']);
-    assert.deepStrictEqual(ok(dir, ['gate', 'held topic gate', '--pick', 'y'], { env: env() }).next.argv, ['enter', 'discovery', 'product', '--take', '--move']);
+    assert.deepStrictEqual([res.entered, /=== MENU: held topic gate /.test(sections), position(), presence('product', 'product', 'discovery', 'peer')?.session_id, presence('product', 'product', 'discovery', 'sess-1')?.session_id],
+      [true, false, { name: 'product' }, 'peer', 'sess-1']);
   });
 });
 
@@ -917,6 +936,7 @@ describe('discovery: a level move, in the same session (8.2.11, 8.2.12, 24.1.8)'
     enter(['discovery', 'product', '--move'], 'mover');
     assert.doesNotMatch(enter(['discovery', EPIC], 'after').sections, /^catch up:/m, 'epic to product');
     fs.appendFileSync(at(layout.productSession('003')), '\nThe mover talked on here.\n');
+    ends('mover');
     assert.match(enter(['discovery', 'product'], 'later').sections, /^catch up: the transcript of session mover,/m, 'talk written after the pointer is caught up as any is');
   });
 

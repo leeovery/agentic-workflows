@@ -75,9 +75,9 @@ describe('pipeline simulation: quick-fix merged by hand', () => {
     assert.deepStrictEqual(git(sim.api, ['log', '-1', '--format=%B', 'main']).match(/^Task: .*$/gm), [`Task: ${wu}-1-3`]);
     assert.strictEqual(sim.manifest(wu).status, 'completed');
     assert.deepStrictEqual(unclosed, [], 'no handoff from the opener to the close (24.S8)');
-    assert.deepStrictEqual([closing.kind, closing.standing, closing.progress, closing.record.map((/** @type {{title: string}} */ { title }) => title), closed.view.kind, closed.banner.state], [
-      'quick-fix', 'close', { done: 3, total: 3, written: true }, ['Spell the flag --colour', 'Spell the help --colour', 'Spell the docs --colour'], 'all', 'idle',
-    ], 'the board draws the close waiting, then follows the session to All work');
+    assert.deepStrictEqual([closing.kind, closing.standing, closing.progress, closing.record.map((/** @type {{title: string}} */ { title }) => title), closed.view.kind, closed.banner.state, closed.banner.facts.map((/** @type {{text: string}} */ { text }) => text)], [
+      'quick-fix', 'close', { done: 3, total: 3, written: true }, ['Spell the flag --colour', 'Spell the help --colour', 'Spell the docs --colour'], 'all', 'done', ['quick-fix', 'complete'],
+    ], 'the board draws the close waiting, then follows the session to All work, the banner the unit\'s close (20.14.2)');
     assert.deepStrictEqual([git(sim.dir, ['log', '--format=%s', `${base}..main`]).trim().split('\n'), git(sim.dir, ['log', '-1', '--format=%B', 'main']).match(/^Task: .*$/gm)], [
       [`fix(${wu}): The --color flag is spelt --colour`, 'Spell it the British way'], [`Task: ${wu}-1-3`],
     ]);

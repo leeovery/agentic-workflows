@@ -166,6 +166,7 @@ const { reproducingHold, reproducingClose } = require('./bug-proven.cjs');
 const { layOutTask, takeWorktreeApart } = require('./task-worktree.cjs');
 const { markChanged, briefedOf, beingRead, taskFolder } = require('./round-report.cjs');
 const { isoNow } = require('./dates.cjs');
+const { unitClosure } = require('./topic-standing.cjs');
 
 // The questions parking a task, and the landing naming a phase's mutation
 // run, loaded at their call: each reads the task through this module.
@@ -1262,11 +1263,13 @@ function recordStarted(cwd, ref) {
   writeJsonAtomic(file, { freed: parks().freedAt(cwd, ref.unit).get(shownTask(ref)) ?? 0 });
 }
 
-/** `task start`: refused before its phase has started, and in step beside the task in flight, or in a quick-fix where the task may not take its checkout; else in progress — where it is not already — and in flight on the position beside any others, a quick-fix's in its one checkout, what the checkout holds taken as the holder's own — but in a checkout it puts on the branch with another out, as a cancel leaves it — or, for a fix it makes the holder or one an answer freed since its last start, refused as the person's, then what its park set aside put back. */
+/** `task start`: refused for a unit not in progress, before its phase has started, and in step beside the task in flight, or in a quick-fix where the task may not take its checkout; else in progress — where it is not already — and in flight on the position beside any others, a quick-fix's in its one checkout, what the checkout holds taken as the holder's own — but in a checkout it puts on the branch with another out, as a cancel leaves it — or, for a fix it makes the holder or one an answer freed since its last start, refused as the person's, then what its park set aside put back. */
 const startTask = moving('start', (_cwd, driver, root, ref) => {
   if (refuseEnded(driver, root, ref, 'only a task not yet ended is started').status !== 'in-progress') driver.start(root, ref);
 }, (cwd, ref) => {
   const manifest = loadWorkUnitManifest(cwd, ref.unit);
+  const closure = unitClosure(manifest);
+  if (closure !== null) throw new Error(`task start: ${closure}`);
   refuseUnstarted(ref, manifest);
   const quickFix = quickFixBuild(manifest);
   if (quickFix) {

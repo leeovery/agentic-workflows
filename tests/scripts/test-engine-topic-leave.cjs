@@ -215,6 +215,14 @@ describe('the verbs say what follows', () => {
     assert.deepStrictEqual(withEnv(ENV(), () => readPosition('sess-1'))?.topic, 'licence', 'a cancel from elsewhere leaves the conversation where it sits');
   });
 
+  it('a quick-fix cancelled from another conversation, its fix in flight in this one, holds this one\'s raw commits no longer, its place there as it stands', () => {
+    building();
+    const refusedBefore = rawCommit();
+    ok(dir, ['workunit', 'cancel', QUICK_FIX], { env: { ...ENV(), CLAUDE_CODE_SESSION_ID: 'sess-2' } });
+    assert.match(String(refusedBefore), /a raw git commit is refused/);
+    assert.deepStrictEqual([rawCommit(), withEnv(ENV(), () => readPosition('sess-1'))?.name], [null, QUICK_FIX]);
+  });
+
   it('a feature cancelled from anywhere else — another unit\'s session, or none — carries on', () => {
     assert.deepStrictEqual(run(['workunit', 'cancel', SOLO]).next, CONTINUE);
     run(['workunit', 'reactivate', SOLO]);
@@ -293,7 +301,7 @@ describe('the verbs say what follows', () => {
 
 describe('where a finish goes (24.1.2, 19.5.1, 24.1.8)', () => {
   /** Where each unit's finish goes, from this conversation. */
-  const each = () => /** @type {const} */ ([['epic', EPIC], ['feature', SOLO], ['bugfix', BUG], ['quick-fix', QUICK_FIX]]).map(([type, unit]) => withEnv(ENV(), () => afterFinish(unit, type)));
+  const each = () => /** @type {const} */ ([['epic', EPIC], ['feature', SOLO], ['bugfix', BUG], ['quick-fix', QUICK_FIX]]).map(([type, unit]) => withEnv(ENV(), () => afterFinish(dir, unit, type)));
 
   it('an epic onto its menu, a feature or a bugfix onto the start menu; a quick-fix\'s close on in the conversation, which leaves its place and the fix in flight there, so a raw commit is no longer refused', () => {
     building();
@@ -308,12 +316,12 @@ describe('where a finish goes (24.1.2, 19.5.1, 24.1.8)', () => {
     withEnv(ENV(), () => leavePosition('sess-1'));
     const refusedBefore = rawCommit();
     assert.match(String(refusedBefore), /a raw git commit is refused/);
-    assert.deepStrictEqual([withEnv(ENV(), () => afterFinish(QUICK_FIX, 'quick-fix')), rawCommit(), ...standing()], [CONTINUE, null, null, false]);
+    assert.deepStrictEqual([withEnv(ENV(), () => afterFinish(dir, QUICK_FIX, 'quick-fix')), rawCommit(), ...standing()], [CONTINUE, null, null, false]);
   });
 
   it('a quick-fix closed while the conversation sits in other work leaves that place alone', () => {
     sitIn('licence');
-    assert.deepStrictEqual([withEnv(ENV(), () => afterFinish(QUICK_FIX, 'quick-fix')), withEnv(ENV(), () => readPosition('sess-1'))?.topic], [CONTINUE, 'licence']);
+    assert.deepStrictEqual([withEnv(ENV(), () => afterFinish(dir, QUICK_FIX, 'quick-fix')), withEnv(ENV(), () => readPosition('sess-1'))?.topic], [CONTINUE, 'licence']);
   });
 });
 

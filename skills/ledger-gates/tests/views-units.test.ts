@@ -609,8 +609,8 @@ COMPLETE ───────────────────────�
     expect(drawn(ALL, fumi).text.slice(0, 6)).toEqual(['All work · Fumi', '1 in progress · 0 complete', '', 'IN PROGRESS ──────────────────────────────────────────────── 1', '◐ Fumi', '     epic · discussion · 0 of 12 topics decided · this session'])
   })
 
-  test('at the start menu it says so; a project\'s name too long for the head gives way with "…", never where the session stands', () => {
-    expect(drawn(ALL, { ...MINT_WORK, at_start: true } as View).text[0]).toBe('All work · Mint · at the start menu')
-    expect(drawn(ALL, { ...MINT_WORK, project: 'Agentic Engineering Workflows for Claude Code', at_start: true } as View).text[0]).toBe('All work · Agentic Engineering Workflows … · at the start menu')
+  test('the head names the project alone, claiming no place; a project\'s name too long for the head gives way with "…"', () => {
+    expect(drawn(ALL, MINT_WORK).text[0]).toBe('All work · Mint')
+    expect(drawn(ALL, { ...MINT_WORK, project: 'Agentic Engineering Workflows for Claude Code, Built One Careful Phase at a Time' } as View).text[0]).toBe('All work · Agentic Engineering Workflows for Claude Code, Bui…')
   })
 })

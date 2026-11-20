@@ -35,7 +35,7 @@ Where `$0` is not `none`, the person brings a piece of work: the entry is its ty
 node .claude/skills/ledger-engine/scripts/engine.cjs enter discovery {home} [--type-call] [--seeds "{seeds}"]
 ```
 
-A refusal names the way on: say it in a line. Where another session holds the home, the entry asks first; carrying on from it ends the turn.
+A refusal names the way on: say it in a line. Where another session holds an epic's home, the entry asks first; carrying on from it ends the turn.
 
 Then read what the DATA names that this conversation does not hold already: each `session log` in full; each `older log` by the closing line it carries; each `shaped by` section of the product's sessions; the `map`, the `roadmap` and the `product` record, by running each call; the `inbox`'s items by their titles; each `seed` in full; and for each `roadmap seed`, its `note` in full and the parts of the logs its `source` lines point at — and where its row in `roadmap state` carries `earlier`, the record the topic left in the epic that postponed it: its brief, log and mail in full and its record by running the call, as input never changed. Do what `catch up` says. The `log` is this conversation's (**The Log**). Where `research owed` is `yes`, load **[researching-the-code.md](references/researching-the-code.md)** and follow its instructions as written before you open.
 

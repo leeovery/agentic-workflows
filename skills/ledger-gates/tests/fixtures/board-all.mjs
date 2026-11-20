@@ -2,7 +2,6 @@
 export default {
   kind: 'all',
   project: 'Mint',
-  at_start: false,
   waiting: 5,
   units: [
     { unit: 'token-aware-diff-sizing', title: 'Token-aware diff sizing', type: 'feature', phase: 'build', standing: '58 of 68 tasks done', waiting: 3, session: 'this' },
