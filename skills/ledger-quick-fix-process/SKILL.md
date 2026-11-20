@@ -75,7 +75,7 @@ Append to the build's log, `.ledger/{work_unit}/build/log.md`, as the work goes:
 
 ## Doors
 
-- A fix → `task create {work_unit} 1 --file {path}`, or a one-line one, your own, `--title "{line}" --type {type}` in place of the file; its reviewers → `task review {work_unit} {task} --reviewers {count:[0|1|2]} --file {why}`; its order → `task link {work_unit} {task} --after {task}`.
+- A fix → `task create {work_unit} 1 --file {path}`; its reviewers → `task review {work_unit} {task} --reviewers {count:[0|1|2]} --file {why}`; its order → `task link {work_unit} {task} --after {task}`.
 - What runs → `task ready {work_unit} 1`, `task start {work_unit} {task}`.
 - An agent → `brief builder|fix {work_unit} {task}`, `brief reviewer {work_unit} {task} --letter {letter}`; then the Agent call with the agent and the pointer `brief` answers, or SendMessage of the pointer to the agent already working the fix.
 - Your fix of a nit → `commit --paths {file}… --task {work_unit} {task} -m "{message}"`.

@@ -26,7 +26,7 @@ const os = require('os');
 const path = require('path');
 const { ok, git, writeState, readManifest, layout, cleanupFixture, sectionOf, accountTaken, withFrozenClock } = require('./engine-harness.cjs');
 const { withEnv, createManifest } = require('./discovery-test-utils.cjs');
-const { UNIT, ACCOUNT_DRAWN, taskText, reportOf, buildScreensWorld, buildScreenHelpers } = require('./build-screens-world.cjs');
+const { UNIT, ACCOUNT_DRAWN, taskText, reportOf, branchWith, buildScreensWorld, buildScreenHelpers } = require('./build-screens-world.cjs');
 const { lines, trustLogHelpers, history } = require('./trust-world.cjs');
 const { gateStep } = require('../../skills/ledger-engine/scripts/domain/decision-point.cjs');
 const { TRUST_LOG } = require('../../skills/ledger-engine/scripts/domain/trust-log.cjs');
@@ -93,8 +93,10 @@ describe('the gate after a task, in step (12.14.3, 12.12.7, 3.3.8, 13.4.7)', () 
     assert.match(refused(['step-gate', UNIT, '1.1']), /^render step-gate: pay builds in auto, where no gate follows a task — /, 'in auto no gate follows a task (3.S17)');
   });
 
-  it('13.3.4: a task recorded as reviewed by none has its gate with no account taken, its description and why no reviewer read it in the account\'s place', () => {
+  it('13.3.4: a task recorded as reviewed by none has its gate with no account taken once it is built, its description, why no reviewer read it and its change in the account\'s place', () => {
     writeState(dir, layout.unit(UNIT, 'build/tasks/1.3/review.json'), JSON.stringify({ reviewers: 0, why: 'A sentence of copy.' }));
+    assert.match(refused(['step-gate', UNIT, '1.3']), /^render step-gate: task 1\.3 of pay is not built — no reviewer reads it/);
+    branchWith(dir, 3, 'Mail the receipt', [['src/mail.js', 'export const mail = 1;\nexport const send = 2;\n']]);
 
     assert.strictEqual(sectionOf(screen(['step-gate', UNIT, '1.3']), 'DISPLAY: step gate'), [
       '▪ Mail the receipt (task 1.3)',
@@ -106,6 +108,7 @@ describe('the gate after a task, in step (12.14.3, 12.12.7, 3.3.8, 13.4.7)', () 
       '  Mail the receipt works at the till, and the customer sees it.',
       '',
       '  No reviewer read it, as recorded, and that record is its account: A sentence of copy.',
+      '  1 file changed · +2 −0',
       '',
     ].join('\n'));
   });

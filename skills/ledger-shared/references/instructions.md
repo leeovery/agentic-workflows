@@ -32,7 +32,7 @@ Stop only where a gate stops, a raise is drawn, the conversation hands the turn 
 
 One gate or raise at a time. A gate or a raise that background work brings up while another is on screen awaiting its answer is held, and shown once that one is answered — never beside it or in its place.
 
-Background work that arrives while a gate or a raise is on screen awaiting its answer — an agent's report, a notification, anything the person did not send — is handled and said in a line, and the waiting gate or raise is shown again in the same turn, fetched fresh from its call — but a question waiting in the build, which is never drawn again on an agent's report. At a gate set aside, the report is said in a line and the gate is not shown again.
+Background work that arrives while a gate or a raise is on screen awaiting its answer — an agent's report, a notification, anything the person did not send — is handled and said in a line, and the waiting gate or raise is shown again in the same turn, fetched fresh from its call; a waiting question is never drawn again on an agent's report or a notification. At a gate set aside, the report is said in a line and the gate is not shown again.
 
 ## Answering a Gate
 

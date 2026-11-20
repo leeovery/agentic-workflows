@@ -384,4 +384,4 @@ function stepHelpers(dir, config) {
   return { answered, events, parkedQuestion, decidedFor, written, UNANSWERED_ENDS, startRefused, beside, behind, bothParked };
 }
 
-module.exports = { UNIT, SESSION_ID, QUESTIONS, CALL, ACCOUNT_DRAWN, taskText, reportOf, buildScreensWorld, buildScreenHelpers, boardHelpers, stepHelpers, line };
+module.exports = { UNIT, SESSION_ID, QUESTIONS, CALL, ACCOUNT_DRAWN, taskText, reportOf, branchWith, buildScreensWorld, buildScreenHelpers, boardHelpers, stepHelpers, line };

@@ -1028,11 +1028,11 @@ function landOpen(cwd, unit, task) {
 }
 
 /**
- * Refuse a task its pair has not passed: no round of its review reported,
+ * Refuse a task its reviewers have not passed: no round of its review reported,
  * its last round failed and not settled (12.1.4, 13.4.6), or the task
  * changed under that round since — read off its rounds' reports alone,
- * refused as their read refuses; a task reviewed by none, as its account's
- * absence is refused (task-account.cjs).
+ * refused as their read refuses; a task reviewed by none until it is built
+ * (task-account.cjs, `refuseUnaccounted`).
  * @param {string} cwd @param {TaskRef} ref
  */
 function refuseUnpassed(cwd, ref) {
@@ -1048,7 +1048,7 @@ function refuseUnpassed(cwd, ref) {
     throw new Error(`land: ${messageOf(err)}`);
   }
   const last = rounds.at(-1);
-  if (last === undefined) throw new Error(`land: task ${shown} has no review round reported — a task chains into its phase's stack once its pair has passed it`);
+  if (last === undefined) throw new Error(`land: task ${shown} has no review round reported — a task chains into its phase's stack once its reviewers have passed it`);
   if (!pairPassed(last)) {
     throw new Error(`land: round ${last.round} of task ${shown} did not pass — a task chains into its phase's stack once every reviewer of a round passes it, or once the orchestrator settles it: task settle ${ref.unit} ${shown} --file <why>`);
   }

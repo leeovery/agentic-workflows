@@ -193,7 +193,7 @@ describe('a quick-fix\'s one checkout, held by one fix at a time (19.5.23)', () 
       `commit --task: task 1.2 holds ${UNIT}'s one checkout, and task 1.1 of ${UNIT} waits behind it, so a commit now would carry task 1.2's work under task 1.1 of ${UNIT}'s stamp — task 1.1 of ${UNIT}'s change is committed once it holds the checkout again, started again with \`engine task start ${UNIT} 1.1\`, once task 1.2 is done or closed, or a question parks it`,
       undefined,
     ]);
-    assert.strictEqual(line, `in flight: task 1.1, no builder dispatched here — its work, set aside when a question parked it, is not back in the checkout — start it again, engine task start ${UNIT} 1.1, which puts it back, then its builder and pair go afresh on its branch`);
+    assert.strictEqual(line, `in flight: task 1.1, no builder dispatched here — its work, set aside when a question parked it, is not back in the checkout — start it again, engine task start ${UNIT} 1.1, which puts it back, then its builder and reviewers go afresh on its branch`);
     assert.strictEqual(unstarted, `brief: task 1.1 of ${UNIT}'s work, set aside when a question parked it, is not back in the checkout — start it again first, engine task start ${UNIT} 1.1, which puts it back`);
     assert.deepStrictEqual([back, started.put_back, again.put_back, at(ASIDE)], ['1.1', ['src/alias.js', 'src/flag.js'], undefined, null]);
     assert.ok(range.includes(`- \`${own}\` fix(${UNIT}): spell the flag --colour\n- \`${last}\` fix(${UNIT}): keep --color as an alias\n`), range);

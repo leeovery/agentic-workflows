@@ -65,12 +65,13 @@ const { STATUS_WORDS } = require('../task-verbs.cjs');
 /**
  * A task's account as a screen draws it: the task, its place in its phase,
  * what it does, whether it closed, whether it landed before the migration
- * cut the unit, why no reviewer read it where none was to, and its account
+ * cut the unit, why no reviewer read it where none was to, with its change
+ * where its branch holds one, and its account
  * where one is written — its sections, its
  * differences, its rounds' summaries by their headings, how its review
  * ended and its figures.
  * @typedef {{
- *   head: TaskHead, at: number, of: number, does: string, closed: boolean, before: boolean, none: string|null,
+ *   head: TaskHead, at: number, of: number, does: string, closed: boolean, before: boolean, none: string|null, change: {files: number, added: number, removed: number}|null,
  *   account: {sections: Record<string, string>, differences: string[], reviews: {heading: string, summary: string}[], reviewed: Reviewed, figures: Figures}|null,
  * }} AccountView
  */
@@ -218,6 +219,9 @@ function accountVerdict(reviewed) {
   return `${reviewed.settled ? '✓ Settled by the orchestrator' : '✓ Passed its review'} ${roundWords(reviewed)}`;
 }
 
+/** A task's change as its figures count it. @param {{files: number, added: number, removed: number}} change */
+const changedWords = ({ files, added, removed }) => `${counted(files, 'file')} changed · +${added} −${removed}`;
+
 /** What was done, where in the code and what the tests prove, then the engine's figures. @param {NonNullable<AccountView['account']>} account */
 function doneBlock({ sections, figures }) {
   const { criteria, files, added, removed } = figures;
@@ -225,7 +229,7 @@ function doneBlock({ sections, figures }) {
     ...prose(sections['What was done'], '  '),
     ...prose(sections['Where in the code'], '  ', { dotted: true }),
     ...prose(sections['What the tests prove'], '  ', { dotted: true }),
-    `  ✓ Proves ${criteria === null ? CRITERIA_IN_TEXT : counted(criteria, 'criterion', 'criteria')} · ${counted(files, 'file')} changed · +${added} −${removed}`,
+    `  ✓ Proves ${criteria === null ? CRITERIA_IN_TEXT : counted(criteria, 'criterion', 'criteria')} · ${changedWords({ files, added, removed })}`,
   ].join('\n'));
 }
 
@@ -252,7 +256,7 @@ function absentAccount(closed, before, none) {
  * where `reviews`.
  * @param {AccountView} view @param {{reviews: boolean}} opts
  */
-function accountDisplay({ head, at, of, does, closed, before, none, account }, { reviews }) {
+function accountDisplay({ head, at, of, does, closed, before, none, change, account }, { reviews }) {
   const blocks = [
     taskMarker(head),
     ...(account === null ? [] : [accountVerdict(account.reviewed)]),
@@ -260,7 +264,7 @@ function accountDisplay({ head, at, of, does, closed, before, none, account }, {
     block('WHAT IT DOES', prose(does, '  ').join('\n')),
   ];
   if (account === null) {
-    blocks.push(`  ${absentAccount(closed, before, none)}`);
+    blocks.push([`  ${absentAccount(closed, before, none)}`, ...(change === null ? [] : [`  ${changedWords(change)}`])].join('\n'));
   } else {
     blocks.push(doneBlock(account), differsBlock(account.differences));
     if (reviews) blocks.push(reviewsBlock(account.reviews));

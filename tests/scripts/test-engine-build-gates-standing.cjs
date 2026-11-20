@@ -109,7 +109,7 @@ describe('a task reworked after its account: the person\'s Comment at its gate (
     for (const letter of ['a', 'b']) recordReviewer(dir, { unit: UNIT, phase: 1, n: 1 }, 2, letter, 'earlier');
     added('person');
 
-    const afresh = 'in flight: task 1.1, no builder dispatched here — its builder and pair go afresh on its branch';
+    const afresh = 'in flight: task 1.1, no builder dispatched here — its builder and reviewers go afresh on its branch';
     assert.deepStrictEqual(takenOver(), ['phase: phase 1 of 3, "Cards": running — tasks 1.1 in progress, 1.2 not started, 1.3 not started', afresh, afresh]);
   });
 });

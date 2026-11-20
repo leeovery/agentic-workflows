@@ -235,11 +235,12 @@ describe('the build\'s templates', () => {
     for (const role of ['reviewer', 'phase-review']) assert.ok(template(role).includes(`goes to the notes for later or through the ask rule; the orchestrator lands it.\n\n${line}\n`), role);
   });
 
-  it('13.S7: the template has the builder decide against the brief and the design where the reviewers disagree, and its ask rule keeps every question for the person off the builder', () => {
+  it('13.S7: the template has the builder decide against the brief and the design where its reviewers disagree, drawn by their count, and its ask rule keeps every question for the person off the builder', () => {
     const words = template('builder');
 
     for (const line of [
-      'Where the two reviewers disagree, or you reject a finding, decide against this brief and the design, and say why in the round\'s summary. The next round reads the whole task again.',
+      'The reviewer reviews the task as a professional would, never one small thing.',
+      '{{rejected-finding}}',
       'A feasible way the person would leave to you — how the code does what the record decided — is yours: take it, and report it as your call with why',
       'A question the person would want to answer — what the product does, or a decision the record holds that the work shows wrong — is never yours.',
       'A problem you cannot build past: stop, and report what you met and where the work stands.',
@@ -306,7 +307,7 @@ describe('the build\'s templates', () => {
   });
 
   it('12.14: the builder writes its account to the file its brief names', () => {
-    assert.ok(template('builder').includes('As the task lands, write its account to the file under "Where your account goes"'));
+    assert.ok(template('builder').includes('# Where your account goes\n\n{{account-to}}\n\nAs the task lands, write its account to the file named above'));
   });
 
   it('12.3.2–12.3.5, 12.10.3, 15.8.5: the task writer\'s principles and the consolidation\'s rules, each in the words that carry it', () => {

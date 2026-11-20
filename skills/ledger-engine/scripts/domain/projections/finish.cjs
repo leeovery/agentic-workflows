@@ -112,9 +112,10 @@ function finishScreen(view) {
 }
 
 /**
- * A fix done as the close shows its pair's verdict: its task and title, the
- * round its review ended in, and whether the orchestrator settled it.
- * @typedef {{task: string, title: string, round: number, settled: boolean}} PairVerdict
+ * A fix done as the close shows its review's verdict: its task and title,
+ * the round its review ended in, whether the orchestrator settled it, and
+ * why no reviewer read it, where none did.
+ * @typedef {{task: string, title: string, round: number, settled: boolean, why: string|null}} PairVerdict
  */
 
 /**
@@ -132,8 +133,8 @@ function finishScreen(view) {
 /** The yes's words for what it lands. @type {Readonly<Record<Lands, string>>} */
 const LANDS = Object.freeze({ 'pull request': 'merge its pull request', commits: 'land its commits' });
 
-/** A fix's line under its review's verdicts: round 0 is no reviewer's, as recorded. @param {PairVerdict} verdict */
-const pairLine = ({ task, title, round, settled }) => `✓ ${task} ${title} · ${round === 0 ? 'not reviewed, as recorded' : `${settled ? 'settled' : 'passed'} in round ${round}`}`;
+/** A fix's line under its review's verdicts: round 0 is no reviewer's, as recorded, with why. @param {PairVerdict} verdict */
+const pairLine = ({ task, title, round, settled, why }) => `✓ ${task} ${title} · ${round === 0 ? `not reviewed: ${why}` : `${settled ? 'settled' : 'passed'} in round ${round}`}`;
 
 /** Each fix done with its review's verdict (19.5.13). @param {CloseView} view */
 function pairBlock({ pair }) {

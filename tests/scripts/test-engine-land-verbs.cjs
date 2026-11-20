@@ -324,7 +324,7 @@ describe('land: what the build\'s reviews ask first (12.1.4, 7.2.4)', () => {
     const unread = refusedMoving(dir, chain);
 
     assert.deepStrictEqual([unreported, failed], [
-      'land: task 1.1 has no review round reported — a task chains into its phase\'s stack once its pair has passed it',
+      'land: task 1.1 has no review round reported — a task chains into its phase\'s stack once its reviewers have passed it',
       'land: round 1 of task 1.1 did not pass — a task chains into its phase\'s stack once every reviewer of a round passes it, or once the orchestrator settles it: task settle pay 1.1 --file <why>',
     ]);
     assert.ok(unread.startsWith(`land: ${roundReportPath(ref, 1, REVIEWER_LETTERS[1])} does not read as a reviewer's report — `), unread);

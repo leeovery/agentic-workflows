@@ -72,8 +72,9 @@ const { trackedTask, trackedLists, goingOn, phaseOpen, turnRefusal, ENDED, STATU
 const { engineItemsHold } = require('./checklist.cjs');
 const { outcomeOf, criteriaTexts, criterionWords, holdsScenario, namesScenario, scenarioIds } = require('./task-file.cjs');
 const { finishedUnits } = require('./ledger-units.cjs');
-const { accountPath, takenFigures, readAccount } = require('./task-account.cjs');
+const { accountPath, takenFigures, readAccount, changeOf, unbuiltWords } = require('./task-account.cjs');
 const { taskRounds, reviewedNone } = require('./round-report.cjs');
+const { builtUnreviewed } = require('./task-base.cjs');
 const { heldStack, tipCommits } = require('./phase-stack.cjs');
 const { branchHead } = require('./fix-branch.cjs');
 const { runsOf } = require('./runs.cjs');
@@ -142,9 +143,12 @@ function takenAccount(cwd, ref) {
   return { sections, differences, reviews: reviews.map((summary, at) => ({ heading: headings[at], summary })), reviewed: reviewedOf(rounds), figures };
 }
 
-/** The account a screen needs, refused where `task account` has not taken it; none for a task reviewed by none, which owes none. @param {string} cwd @param {TaskRef} ref */
+/** The account a screen needs, refused where `task account` has not taken it; none for a task reviewed by none, which owes none, refused until it is built (task-base.cjs). @param {string} cwd @param {TaskRef} ref */
 function requiredAccount(cwd, ref) {
-  if (reviewedNone(cwd, ref) !== null) return null;
+  if (reviewedNone(cwd, ref) !== null) {
+    if (!builtUnreviewed(cwd, ref)) throw new Error(unbuiltWords(ref));
+    return null;
+  }
   const account = takenAccount(cwd, ref);
   if (account === null) throw new Error(`${taskName(ref)} has no account taken — it lands once its account is: task account ${ref.unit} ${shownTask(ref)}`);
   return account;
@@ -152,16 +156,18 @@ function requiredAccount(cwd, ref) {
 
 /**
  * A task's account as a screen draws it, with its place among its phase's
- * tasks not closed — a closed task's own among them — and whether it landed
- * before the migration cut the unit.
+ * tasks not closed — a closed task's own among them — whether it landed
+ * before the migration cut the unit, and for one no reviewer reads, why,
+ * and its change as its figures would count it (task-account.cjs).
  * @param {string} cwd @param {Record<string, any>} manifest @param {TaskRef} ref @param {TaskDetail} task @param {AccountView['account']} account @returns {AccountView}
  */
 function accountView(cwd, manifest, ref, task, account) {
   const { phases: [rows] } = withStateLock(stateRoot(cwd), () => trackedLists(cwd, ref.unit, [ref.phase]));
   const shown = shownTask(ref);
   const tasks = (rows ?? []).filter((row) => row.status !== 'closed' || shownTask(row.ref) === shown).map((row) => shownTask(row.ref));
+  const none = reviewedNone(cwd, ref);
   return {
-    head: headOf(manifest, ref, task), at: tasks.indexOf(shown) + 1, of: tasks.length, does: outcomeOf(task.text), closed: task.status === 'closed', before: landedBefore(manifest)(ref), none: reviewedNone(cwd, ref), account,
+    head: headOf(manifest, ref, task), at: tasks.indexOf(shown) + 1, of: tasks.length, does: outcomeOf(task.text), closed: task.status === 'closed', before: landedBefore(manifest)(ref), none, change: none === null ? null : changeOf(cwd, ref, task), account,
   };
 }
 

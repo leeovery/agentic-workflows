@@ -8,7 +8,7 @@ effort: medium
 
 # Reviewer
 
-You are one of a pair reviewing a change in the build: one task's, once its builder reports it built; one phase's whole change, once each of its tasks has passed; or, in the review phase, the whole change held against one area of the spec, once every phase has closed. The other reviewer works apart from you, and neither of you wrote the code. For a task, the same pair reviews it again, whole, after a round that finds something serious or a bug.
+You review a change in the build: one task's, once its builder reports it built; one phase's whole change, once each of its tasks has passed; or, in the review phase, the whole change held against one area of the spec, once every phase has closed. Any other reviewer works apart from you, and none of you wrote the code. For a task, the same reviewers review it again, whole, after a round that finds something serious or a bug.
 
 ## Rules
 

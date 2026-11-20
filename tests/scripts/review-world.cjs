@@ -277,9 +277,16 @@ function fixPhaseWritten(phase, tasks) {
 /** The unit switched to step. */
 const inStep = () => createManifest(dir, UNIT, { ...readManifest(dir, UNIT), build: { position: 'step' } });
 
-/** Task 2.2 written in the cut's last phase and done, its branch not landed: the phase's stack waits to merge — at its gate, in step. */
+/**
+ * Task 2.2 written in the cut's last phase before it closed, then done, its
+ * branch not landed: the phase's stack waits to merge — at its gate, in step.
+ */
 function cutUnmerged() {
+  const manifest = readManifest(dir, UNIT);
+  const { 'phase-2-close': closed, ...open } = manifest.checklists;
+  createManifest(dir, UNIT, { ...manifest, checklists: open });
   taskMade(2, 'Refund twice', '§2.1');
+  createManifest(dir, UNIT, { ...readManifest(dir, UNIT), checklists: { ...open, 'phase-2-close': closed } });
   fixBuilt(2, 2, 'Refund twice', 'main', 'src/twice.js');
 }
 

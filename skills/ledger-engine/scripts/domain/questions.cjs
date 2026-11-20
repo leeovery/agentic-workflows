@@ -69,7 +69,8 @@
 //   surface showing the questions waiting reads (12.13.7).
 // - `raise aside <unit> <question> …`: each question named set aside — by
 //   its number, or a park's id — staying waiting (12.13.17): it writes
-//   nothing, and answers the receipt. Any question not waiting refuses the
+//   nothing of the state, kept as set aside in the conversation's folder
+//   alone, and answers the receipt. Any question not waiting refuses the
 //   whole call (20.6.10).
 // - The receipt (12.13.16, 20.6.9), one line Claude shows as it is: the
 //   questions and what became of them — answered, set aside, or still open,
@@ -91,10 +92,12 @@
 //   `{"discussing", "queue"}`, the question under discussion and those
 //   queued after it, by number: the first of them still waiting and not
 //   just recorded. Where the queue names none, an answer's next is the
-//   oldest question still waiting that parks a task, and a setting aside
-//   names none; a queue that cannot be read names none, and says so as a
-//   warning. An explained-again question is still under discussion, so
-//   names no next.
+//   oldest question still waiting, the phase's own among them, but one the
+//   conversation set aside — `raise aside` keeps the parks it set aside in
+//   the conversation's folder, `set-aside.json`, writing nothing of the
+//   state — and a setting aside names none; a queue that cannot be read
+//   names none, and says so as a warning. An explained-again question is
+//   still under discussion, so names no next.
 // - A task against its questions (13.4.6), what the task verbs read: the
 //   tasks each question waiting parks, so a task parked never shows as
 //   ready, is never done nor its account taken while a question parks it,
@@ -112,7 +115,7 @@
 const fs = require('fs');
 const path = require('path');
 const { messageOf } = require('../kernel/call.cjs');
-const { isObject } = require('../kernel/manifest-io.cjs');
+const { isObject, writeJsonAtomic } = require('../kernel/manifest-io.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { findStateRoot, stateRoot } = require('../kernel/state-root.cjs');
 const { conversationDir } = require('./conversation.cjs');
@@ -167,6 +170,9 @@ const { parseShownTask } = require('./task-id.cjs');
 /** A seal's question: its first park's full id, its number, the tasks it parks, and the task Claude's call went ahead for, null where none did (raise.cjs). @typedef {{park: string, number: number, tasks: string[], went_ahead: string|null}} Parks */
 
 const DISCUSSING = 'discussing.json';
+
+/** The file in a conversation's folder holding the parks of the questions it set aside. */
+const SET_ASIDE = 'set-aside.json';
 
 /**
  * Whether a question in the build blocks build work, as the ask rule and the
@@ -690,13 +696,28 @@ function nextUp(session, recorded, waiting, warnings) {
 }
 
 /**
- * The oldest question of `unit` still waiting that parks a task, by its
- * number, none of those `recorded`: an answer's next where the queue names
- * none.
- * @param {Folded} read @param {string} unit @param {string[]} recorded @returns {string|null}
+ * The oldest question of `unit` still waiting, by its number, none of
+ * those `recorded` and none the conversation set aside (`setAsideIn`): an
+ * answer's next where the queue names none.
+ * @param {Folded} read @param {string} unit @param {string[]} recorded @param {Set<string>} aside the parks set aside
+ * @returns {string|null}
  */
-function oldestParking(read, unit, recorded) {
-  return waitingOf(read, unit).map((q) => (q.tasks.length > 0 ? numbered(q.number) : null)).find((name) => name !== null && !recorded.includes(name)) ?? null;
+function oldestNotAside(read, unit, recorded, aside) {
+  const next = waitingOf(read, unit).find((q) => !recorded.includes(numbered(q.number)) && !q.parks.some((park) => aside.has(park)));
+  return next === undefined ? null : numbered(next.number);
+}
+
+/** The parks of the questions the conversation `session` set aside, by id: none with no conversation, or none set aside. @param {string|null} session @returns {Set<string>} */
+function setAsideIn(session) {
+  const file = session === null ? null : path.join(conversationDir(session), SET_ASIDE);
+  return new Set(file !== null && fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')).parks : []);
+}
+
+/** The parks of `questions` kept as set aside in the conversation `session`, beside those it set aside before. @param {string} session @param {Question[]} questions */
+function recordAside(session, questions) {
+  const file = path.join(conversationDir(session), SET_ASIDE);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  writeJsonAtomic(file, { parks: [...new Set([...setAsideIn(session), ...questions.flatMap((q) => q.parks)])] });
 }
 
 /**
@@ -735,16 +756,16 @@ const waitsWords = (waits) => (waits === null ? 'no task waited on it' : `task $
 
 /**
  * The tasks an answer freed building again — one, or each of theirs, one
- * of them `how` it builds again where given — one its pair is reading once
+ * of them `how` it builds again where given — one its reviewers are reading once
  * that round is read (round-report.cjs), and in step, one at a time
  * (12.7.9): once the task in flight is done, where it is none of them;
  * else from the one in flight, where they are several.
- * @param {string[]} freed @param {import('./task-verbs.cjs').StepTurn|null} turn @param {(task: string) => number|null} read the round its pair reads @param {string|null} [how]
+ * @param {string[]} freed @param {import('./task-verbs.cjs').StepTurn|null} turn @param {(task: string) => number|null} read the round its reviewers read @param {string|null} [how]
  */
 function freedWords(freed, turn, read, how = null) {
   const reading = freed.length === 1 ? read(freed[0]) : null;
   const behind = turn !== null && !freed.includes(turn.inFlight) ? require('./task-verbs.cjs').turnEnds(turn) : null;
-  const waits = [...(reading === null ? [] : [`its pair has read round ${reading}`]), ...(behind === null ? [] : [behind])];
+  const waits = [...(reading === null ? [] : [`round ${reading} of its review is read`]), ...(behind === null ? [] : [behind])];
   const again = `${freed.length === 1 ? `task ${freed[0]} builds` : 'their tasks build'} again${how === null ? '' : ` ${how}`}${waits.length === 0 ? '' : ` once ${waits.join(' and ')}`}`;
   return turn !== null && behind === null && freed.length > 1 ? `${again}, task ${turn.inFlight} first` : again;
 }
@@ -784,19 +805,19 @@ function aheadWords({ task, changed, held, closed }, meant, freed) {
  * the person's "don't care" left to Claude, Claude's answer, `left`, which
  * they never saw, standing as the builder's.
  * @param {string} cwd @param {string} unit @param {Parks} parks @param {string[]} before @param {string[]} warnings
- * @param {() => import('./task-verbs.cjs').StepTurn|null} turnNow @param {(task: string) => number|null} read the round a task's pair reads
+ * @param {() => import('./task-verbs.cjs').StepTurn|null} turnNow @param {(task: string) => number|null} read the round a task's reviewers read
  * @param {{ahead?: Ahead|null, left?: string|null}} [how]
  */
 function answeredReceipt(cwd, unit, parks, before, warnings, turnNow, read, { ahead = null, left = null } = {}) {
   const root = /** @type {string} */ (findStateRoot(cwd));
   const name = numbered(parks.number);
-  const { meant, waiting, parking } = readQuestions(root, warnings, (read) => ({
-    meant: answerMeans(read, unit, parks, before), waiting: waitingNumbers(read, unit), parking: oldestParking(read, unit, [name]),
+  const { meant, waiting, oldest } = readQuestions(root, warnings, (read) => ({
+    meant: answerMeans(read, unit, parks, before), waiting: waitingNumbers(read, unit), oldest: oldestNotAside(read, unit, [name], setAsideIn(handedSession())),
   }));
   const freed = (/** @type {string|null} */ how) => ('freed' in meant ? freedWords(meant.freed, turnNow(), read, meant.freed.length === 1 ? how : null) : waitsWords(meant.waits));
   const means = ahead === null ? freed(null) : aheadWords(ahead, meant, freed);
   const outcome = left === null ? 'answered' : `answered · my answer stands as the builder's: ${left}`;
-  return receiptLine([name], outcome, means, waiting.length, nextUp(handedSession(), [name], waiting, warnings) ?? parking);
+  return receiptLine([name], outcome, means, waiting.length, nextUp(handedSession(), [name], waiting, warnings) ?? oldest);
 }
 
 /**
@@ -861,7 +882,10 @@ function asideQuestions(cwd, args) {
   /** @type {string[]} */
   const warnings = [];
   const receipt = readQuestions(root, warnings, (read) => {
-    const aside = [...new Set(names.map((name) => numbered(waitingNamed(read, unit, name, 'raise aside').number)))];
+    const named = names.map((name) => waitingNamed(read, unit, name, 'raise aside'));
+    const aside = [...new Set(named.map((q) => numbered(q.number)))];
+    const session = handedSession();
+    if (session !== null) recordAside(session, named);
     const waiting = waitingNumbers(read, unit);
     return receiptLine(aside, 'set aside', 'still waiting', waiting.length, nextUp(handedSession(), aside, waiting, warnings));
   });

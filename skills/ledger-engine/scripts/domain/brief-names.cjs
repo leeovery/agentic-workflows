@@ -55,7 +55,7 @@ const BUILDING_ROLES = Object.freeze(['builder', 'fix']);
  * @type {Readonly<Record<string, {agent: string, whose: string, records: readonly string[], kind?: string, phase?: string, effort?: string}>>}
  */
 const ROLES = Object.freeze({
-  builder: { agent: 'ledger-builder', whose: 'the builder\'s', records: ['engine', 'task', 'spec-sections', 'decided-calls', 'linters', 'chain', 'account-to', 'setup-to', 'workplace'] },
+  builder: { agent: 'ledger-builder', whose: 'the builder\'s', records: ['engine', 'task', 'spec-sections', 'decided-calls', 'linters', 'chain', 'account-to', 'setup-to', 'workplace', 'rejected-finding'] },
   reviewer: { agent: 'ledger-reviewer', whose: 'the reviewer\'s', records: ['task', 'spec-sections', 'decided-calls', 'diff-range', 'scratch-layout', 'linters', 'round-report-to'] },
   fix: { agent: 'ledger-builder', whose: 'the fix round\'s', records: ['reports'] },
   'product-researcher': { agent: 'ledger-product-researcher', whose: 'the product researcher\'s', records: [] },

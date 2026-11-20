@@ -95,8 +95,8 @@ describe('task close <quick-fix> <fix> (R3, R14)', () => {
     assert.deepStrictEqual([status(3), late, last], [
       'closed',
       `commit --task: task 1.3 of ${UNIT} is closed, and a task ended takes no more work — commit it under the fix it is for — start the next with \`engine task start ${UNIT} 1.4\` — `
-      + `or make it a task of its own with \`engine task create ${UNIT} 1 --file <task.md>\``,
-      `commit --task: task 1.2 of ${UNIT} is done, and a task ended takes no more work — make it a task of its own with \`engine task create ${UNIT} 1 --file <task.md>\``,
+      + `or make it a task of its own with \`engine task create ${UNIT} 1 --file <task.md>\`, or, something small, a one-line task with \`engine task create ${UNIT} 1 --title <line> --type <type>\``,
+      `commit --task: task 1.2 of ${UNIT} is done, and a task ended takes no more work — make it a task of its own with \`engine task create ${UNIT} 1 --file <task.md>\`, or, something small, a one-line task with \`engine task create ${UNIT} 1 --title <line> --type <type>\``,
     ]);
   });
 

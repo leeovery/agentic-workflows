@@ -8,7 +8,10 @@
 //   task           the task's text whole, as the tracker holds it, each of
 //                  its headings a level down, under the template's own; then
 //                  each addition, in order, under a heading of its own saying
-//                  whether the orchestrator or the person added it (13.11.3)
+//                  whether the orchestrator or the person added it
+//                  (13.11.3); for a task no reviewer reads, beneath them,
+//                  the orchestrator's why, and that once built it is
+//                  reported built, with no account
 //   spec-sections  each section the task's spec reference cites, verbatim
 //                  from the unit's spec (spec-sections.cjs); for a
 //                  quick-fix's task, which has no spec, the line saying its
@@ -87,8 +90,14 @@
 //                  and while a question parks it, that it waits, owing no
 //                  account. Refused while a round its pair was briefed
 //                  for is not reported whole, naming each reviewer's way
-//                  on (round-report.cjs, `readRefusal`); issued, it
-//                  records the freeing and the changes it went past
+//                  on (round-report.cjs, `readRefusal`); none, its section
+//                  left out, for a task no reviewer reads, which owes no
+//                  account; issued, it records the freeing and the changes
+//                  it went past, with its branch's tips (task-base.cjs)
+//   rejected-finding how the builder settles a finding it rejects: in the
+//                  round's summary, and, where two reviewers read the task,
+//                  where they disagree; none, its section left out, for a
+//                  task no reviewer reads
 //   engine         the engine the builder runs, by the absolute path of the
 //                  one filling the brief, in the checkout the orchestrator
 //                  runs in, so a builder's worktree started at the remote's
@@ -629,7 +638,7 @@ const {
   taskFolder, taskRounds, roundReportPath, roundUnderReview, unbuiltRefusal, phaseReviewPath, reportFaults, roundStanding, readRefusal, recordReviewer, recordBuilder, pendingChange, briefedOf,
   lettersOf, reviewedNone,
 } = require('./round-report.cjs');
-const { workBranch, builtOnBases, ownWork } = require('./task-base.cjs');
+const { workBranch, builtOnBases, ownWork, branchTips } = require('./task-base.cjs');
 const { freedAt } = require('./task-parks.cjs');
 const { reviewReportFaults } = require('./review-report.cjs');
 const { REVIEWER_LETTERS } = require('../kernel/reviewers.cjs');
@@ -690,11 +699,12 @@ const { OLD_STATE, OLD_PLAN_FILE } = require('../../../ledger-migrate/scripts/ol
 
 /**
  * A record: whether it is a task's, a phase's, a topic's, a unit's or none's, the
- * flags it takes, its drawn form, what it binds once every record of the
+ * flags it takes, its drawn form — null where the brief leaves its section
+ * out (brief.cjs) — what it binds once every record of the
  * brief is drawn, and what it closes where the brief is refused; what a
  * read said on the way pushed to `warnings`.
  * @typedef {{
- *   of: 'task'|'phase'|'topic'|'unit'|null, flags?: BriefFlag[], draw: (filling: Filling, warnings: string[]) => string, bind?: (filling: Filling, warnings: string[]) => void,
+ *   of: 'task'|'phase'|'topic'|'unit'|null, flags?: BriefFlag[], draw: (filling: Filling, warnings: string[]) => string|null, bind?: (filling: Filling, warnings: string[]) => void,
  *   refused?: (filling: Filling) => void,
  * }} BriefRecord
  */
@@ -735,8 +745,10 @@ const titledText = ({ title, text }) => (/^# /.test(text) ? text : `# ${title}\n
 
 /** @param {Filling} filling */
 function drawTask(filling) {
-  const { task } = taskOf(filling);
-  return [headingsDown(titledText(task)), ...task.additions.map(({ by, text }) => `## Added by the ${by}\n\n${text}`)].join('\n\n');
+  const { ref, task } = taskOf(filling);
+  const none = reviewedNone(filling.cwd, ref);
+  const unread = none === null ? [] : [`## Its review\n\nNo reviewer reads it, as the orchestrator recorded — ${none} — so it owes no account: once it is built and committed through the door, report **built**.`];
+  return [headingsDown(titledText(task)), ...task.additions.map(({ by, text }) => `## Added by the ${by}\n\n${text}`), ...unread].join('\n\n');
 }
 
 /**
@@ -2545,8 +2557,7 @@ function drawSetupTo(filling) {
 function drawAccountTo(filling) {
   const { ref, task } = taskOf(filling);
   if (isOneLine(task.text)) throw new Error(`${taskName(ref)} is a one-line task, the orchestrator's own work with no builder — make it in the conversation and commit it through the door`);
-  const none = reviewedNone(filling.cwd, ref);
-  if (none !== null) return `None: the orchestrator recorded that no reviewer reads the task — ${none} — and that record is its account. Write no account; once the task is built, report **built**.`;
+  if (reviewedNone(filling.cwd, ref) !== null) return null;
   const standing = roundStanding(filling.cwd, ref, filling.session);
   if (standing !== null) throw new Error(readRefusal(ref, standing));
   const {
@@ -2568,10 +2579,23 @@ function drawAccountTo(filling) {
   return lines.join('\n\n');
 }
 
-/** A brief to the task's builder issued: the freeing and the changes it went past recorded (round-report.cjs). @param {Filling} filling @param {string|null} session the conversation issuing the builder's own brief */
+/** How the builder settles a finding it rejects, by the task's reviewers (`lettersOf`): none for a task no reviewer reads. @param {Filling} filling */
+function drawRejectedFinding(filling) {
+  const { length } = lettersOf(filling.cwd, taskOf(filling).ref);
+  if (length === 0) return null;
+  return `${length > 1 ? 'Where the two reviewers disagree, or you reject a finding' : 'Where you reject a finding'}, decide against this brief and the design, and say why in the round's summary. The next round reads the whole task again.`;
+}
+
+/**
+ * A brief to the task's builder issued: the freeing and the changes it went
+ * past recorded, with its branch's tips where no reviewer reads it, the one
+ * read of whether it is built (round-report.cjs, task-base.cjs).
+ * @param {Filling} filling @param {string|null} session the conversation issuing the builder's own brief
+ */
 function briefedPast(filling, session) {
-  const { ref } = taskOf(filling);
-  recordBuilder(filling.cwd, ref, freedAt(filling.cwd, ref.unit).get(shownTask(ref)) ?? 0, session);
+  const { ref, task } = taskOf(filling);
+  const tips = reviewedNone(filling.cwd, ref) === null ? {} : branchTips(filling.cwd, ref, task);
+  recordBuilder(filling.cwd, ref, freedAt(filling.cwd, ref.unit).get(shownTask(ref)) ?? 0, session, tips);
 }
 
 /** The builder's own brief issued, in the calling conversation. @param {Filling} filling */
@@ -2892,6 +2916,7 @@ const RECORDS = Object.freeze({
   reports: { of: 'task', draw: drawReports, bind: bindFix },
   'round-report-to': { of: 'task', flags: [LETTER], draw: drawRoundReportTo, bind: bindReviewer },
   'account-to': { of: 'task', draw: drawAccountTo, bind: bindBuilder },
+  'rejected-finding': { of: 'task', draw: drawRejectedFinding },
   engine: { of: null, draw: drawEngine },
   chain: { of: 'task', draw: drawChain },
   workplace: { of: 'task', draw: drawWorkplace },

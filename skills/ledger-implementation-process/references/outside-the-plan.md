@@ -8,8 +8,8 @@ Something the plan never held has turned up: a bug the person reports, something
 
 ## The Doors
 
-- **Something small the person asks for**, a word bolded or a colour changed — onto an open task it fits, as theirs (`task add … --by person`), or made by you with no agent and committed against an open task, as a nit fix is. With no task open, make it a one-line task of your own, `task create {work_unit} {N} --title "{line}" --type {type}`: recorded unreviewed, started, made in a worktree laid out with `task worktree` (a quick-fix's in its checkout), committed through the door and landed as the task loop lands one.
-- **Too big for this work** — say so in a line: "this deserves its own planning: now, or park it?". Now, it starts as its own work with `/ledger {words}` in another window, and the build carries on here; parked, the last door.
+- **Something small the person asks for**, a word bolded or a colour changed — onto an open task it fits, as theirs (`task add … --by person`), or made by you with no agent and committed against an open task, as a nit fix is. With no task open, make it a one-line task of your own, which no reviewer reads, in the phase whose stack has not merged, or the review's fix phase: `task create {work_unit} {N} --title "{line}" --type {type}`. Start it, and lay it out in a worktree of your own — `git worktree add --detach .claude/worktrees/ledger-{work_unit}-{task}` from the project's checkout, then from there the entry's `engine` running `task worktree {work_unit} {task}`; a quick-fix's is made in its checkout. Commit it from there through the door, as a nit fix is, land it as the task loop lands one, and remove the worktree once it is done.
+- **Too big for this work** — say so in a line, such as "this deserves its own planning: now, or park it?". Now, it starts as its own work with `/ledger {words}` in another window, and the build carries on here; parked, the last door.
 - **A task in this phase, or a later one already written** — write its file, then record it and link it after any unfinished task it waits on:
 
   ```bash

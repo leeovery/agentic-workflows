@@ -78,7 +78,7 @@ const SECOND = 'Spell the help --colour';
 const BRANCH = quickFixBranch(UNIT);
 const MESSAGE = 'fix(typo): spell the flag --colour';
 /** Fix 1.1 in flight with no builder of this conversation's, as the entry and the note read it. */
-const IN_FLIGHT = 'in flight: task 1.1, no builder dispatched here — its builder and pair go afresh on its branch';
+const IN_FLIGHT = 'in flight: task 1.1, no builder dispatched here — its builder and reviewers go afresh on its branch';
 // A process that runs and is not this suite's.
 const PEER = String(process.ppid);
 

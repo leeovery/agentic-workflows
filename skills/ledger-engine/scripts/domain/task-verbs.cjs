@@ -20,9 +20,11 @@
 // A unit's phases are written into the tracker as each starts, so it holds
 // only those (7.4.1); a task is made from the task template in a file, one
 // call per task (7.1.3, 12.5.3), or as a one-line task from its title and
-// type alone (task-file.cjs) — a quick-fix's referencing no spec, since it
-// has none (19.5.5), fix 1.n naming its scenarios n.S1 and on — its id the
-// engine's (task-id.cjs), numbered after the highest its phase holds. An
+// type alone (task-file.cjs), reviewed by none by its shape, its review's
+// record written with it (round-report.cjs, `reviewedNone`) — a quick-fix's
+// referencing no spec, since it has none (19.5.5), fix 1.n naming its
+// scenarios n.S1 and on — its id the engine's (task-id.cjs), numbered after
+// the highest its phase holds; never into a phase closed, its stack merged. An
 // addition goes onto a task not yet ended, marked as the orchestrator's or
 // the person's, its text from a file (13.11.3), the task marked changed after
 // the last round reported of its review, which its pair reads again
@@ -162,11 +164,11 @@ const { NO_SPEC, breaksLine, readTaskText, specReferenceOf, scenarioIds, oneLine
 const { recordTask, clearTask, clearTasks, recordStop } = require('./position.cjs');
 const { tasksInFlight } = require('./conversation.cjs');
 const {
-  phaseStarted, cutLength, quickFixBuild, specJoined, areaOfAddress, FIXES_PHASE,
+  phaseStarted, phaseClosed, cutLength, quickFixBuild, specJoined, areaOfAddress, FIXES_PHASE,
 } = require('./derivations.cjs');
 const { reproducingHold, reproducingClose } = require('./bug-proven.cjs');
 const { layOutTask, takeWorktreeApart } = require('./task-worktree.cjs');
-const { markChanged, briefedOf, beingRead, taskFolder } = require('./round-report.cjs');
+const { markChanged, briefedOf, beingRead, taskFolder, recordReview, reviewedNone } = require('./round-report.cjs');
 const { isoNow } = require('./dates.cjs');
 
 // The questions parking a task, and the landing naming a phase's mutation
@@ -462,10 +464,24 @@ function oneLineTask(title, type) {
 
 const CREATE_USAGE = '<unit> <N> --file <path> | <unit> <N> --title <line> --type <type>';
 
+/** Why no reviewer reads a one-line task, as its record says it. */
+const ONE_LINE_WHY = 'a one-line task, the orchestrator\'s own work';
+
+/**
+ * Whether the phase is closed and its stack merged (phase-checks.cjs,
+ * `phaseLanded`): no task goes into it.
+ * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest the unit's @param {number} phase
+ */
+function phaseMerged(cwd, unit, manifest, phase) {
+  const { reading, phaseLanded } = require('./phase-checks.cjs');
+  return phaseClosed(manifest, phase) && phaseLanded(reading(cwd, unit, manifest), phase);
+}
+
 /**
  * `task create`: a task of the phase from a task file, or a one-line task
- * from its title and type, numbered after its highest; refused, with the
- * usage, given both forms or neither.
+ * from its title and type, its record of no reviewer written beside it,
+ * numbered after its highest; refused, with the usage, given both forms or
+ * neither, and for a phase closed and merged.
  * @param {string} cwd @param {string} unit @param {string} given @param {string} [file] @param {string} [title] @param {string} [type]
  */
 function createTask(cwd, unit, given, file, title, type) {
@@ -474,8 +490,12 @@ function createTask(cwd, unit, given, file, title, type) {
   }
   const phase = parsePhase(given);
   requireUnit(cwd, unit);
-  const quickFix = quickFixBuild(loadWorkUnitManifest(cwd, unit));
+  const manifest = loadWorkUnitManifest(cwd, unit);
+  if (phaseMerged(cwd, unit, manifest, phase)) throw new Error(`${phaseName(unit, phase)} is closed, its stack merged — a task goes into the phase being built, or the review's fix phase`);
+  const quickFix = quickFixBuild(manifest);
   const task = file === undefined ? oneLineTask(/** @type {string} */ (title).trim(), /** @type {string} */ (type).trim()) : fileTask(cwd, unit, file, quickFix);
+  /** @type {string[]} */
+  const recorded = [];
   return withTracker(cwd, unit, `create in phase ${phase}`, (driver, root) => {
     const rows = driver.list(root, unit, phase);
     if (rows === null) throw unwritten(unit, phase);
@@ -483,8 +503,9 @@ function createTask(cwd, unit, given, file, title, type) {
     if (driver.show(root, ref) !== null) throw new TaskRefusal(`the tracker already holds ${taskName(ref)}`);
     if (quickFix && phase === FIXES_PHASE.number) refuseOthersScenarios(ref, task.text);
     driver.createTask(root, ref, task);
+    if (file === undefined) recorded.push(recordReview(cwd, ref, { reviewers: 0, why: ONE_LINE_WHY }));
     return named(ref);
-  }, { describe: ({ task: shown }) => `create ${shown}` });
+  }, { describe: ({ task: shown }) => `create ${shown}`, beside: () => recorded });
 }
 
 /** `task link`: the task held after another, unfinished, of its phase or an earlier one. @param {string} cwd @param {string} unit @param {string} given @param {string} afterGiven */
@@ -1310,6 +1331,19 @@ const startTask = moving('start', (_cwd, driver, root, ref) => {
   };
 });
 
+/**
+ * Refuse, in the words of `said`, a task no reviewer reads, but a
+ * quick-fix's, until it is chained into its phase's stack (landing.cjs,
+ * `allChained`): with no account, nothing else holds it from done.
+ * @param {string} cwd @param {TaskRef} ref @param {string} said
+ */
+function refuseUnchained(cwd, ref, said) {
+  if (reviewedNone(cwd, ref) === null || quickFixBuild(loadWorkUnitManifest(cwd, ref.unit))) return;
+  if (landing().allChained(cwd, ref.unit, [trackedTask(cwd, ref)])) return;
+  const task = `${ref.unit} ${shownTask(ref)}`;
+  throw new Error(`${said}: ${taskName(ref)} is not chained into its phase's stack — land it first: render task-landed ${task}, engine land open ${task}, then engine land chain ${task}`);
+}
+
 const DONE_RULE = 'only a task not yet ended is done';
 const CLOSE_RULE = 'only a task not yet ended is closed';
 
@@ -1318,7 +1352,9 @@ const CLOSE_RULE = 'only a task not yet ended is closed';
  * quick-fix's task as its end refuses it (fix-end.cjs) — no commit of its
  * own, or its newest not in the pull request — before its account; where
  * its account is not taken of its review as it stands (task-account.cjs) —
- * a quick-fix's as any task's; for the fix holding a quick-fix's checkout
+ * a quick-fix's as any task's — or, where no reviewer reads it, until it is
+ * built and, but a quick-fix's, chained into its phase's stack
+ * (`refuseUnchained`); for the fix holding a quick-fix's checkout
  * while the checkout holds changes not committed (R27); and for a bugfix's
  * reproducing task while its test's series on the unfixed code does not
  * prove the bug (bug-proven.cjs); else its
@@ -1333,6 +1369,7 @@ const doneTask = moving('done', (_cwd, driver, root, ref) => {
   refuseEnding(cwd, ref, DONE_RULE);
   fixEnd().refuseUndone(cwd, ref, `task ${verb}`);
   account().refuseUnaccounted(cwd, ref, `task ${verb}`);
+  refuseUnchained(cwd, ref, `task ${verb}`);
   refuseLeftDirty(cwd, ref, 'done', `task ${verb}`);
   const unproven = reproducingHold(cwd, loadWorkUnitManifest(cwd, ref.unit), ref, 'is done');
   if (unproven !== null) throw new Error(`task ${verb}: ${unproven}`);

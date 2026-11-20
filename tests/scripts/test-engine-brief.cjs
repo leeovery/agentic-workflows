@@ -282,6 +282,7 @@ function drawnForTakeACard() {
     chain: 'Your branch holds its phase\'s chain as it stands.',
     workplace: 'Before anything else, lay the task out in the worktree you were started in: from its root, run the engine\'s `task worktree pay 1.1`. It puts the worktree, and every repository nested in it, on the task\'s branch. Build, run and commit only there.',
     task, 'spec-sections': `${REFUNDS}\n\n${FORM}`, 'decided-calls': decisions, linters: '- eslint: npx eslint ., its fix npx eslint . --fix\n- tsc: npx tsc --noEmit', 'account-to': `\`${statePath(dir, 'pay/build/tasks/1.1.md')}\``, 'setup-to': `\`${statePath(dir, '.cache/pay/build/verify-setup.json')}\`\n\nNo verify setup is recorded yet.`,
+    'rejected-finding': 'Where the two reviewers disagree, or you reject a finding, decide against this brief and the design, and say why in the round\'s summary. The next round reads the whole task again.',
   };
 }
 
@@ -328,7 +329,7 @@ describe('the builder\'s brief (6.5.1–6.5.5, 6.S15)', () => {
     /** The brief's account place, drawn whole. */
     const accountTo = () => {
       const { brief } = issued(['builder', UNIT, '1.1']);
-      return brief.slice(brief.indexOf(heading) + heading.length, brief.indexOf('\n\n# Where the verify setup goes'));
+      return brief.slice(brief.indexOf(heading) + heading.length, brief.indexOf('\n\nAs the task lands, write its account to the file named above'));
     };
     const place = `\`${statePath(dir, 'pay/build/tasks/1.1.md')}\``;
     const unread = 'The account there does not read — its sections are `## What was done`, `## Where in the code`, `## What the tests prove`, `## Differs from the task`, `## Reviews`, in that order, and no other at level two; yours replaces it.';
@@ -749,7 +750,7 @@ describe('the templates and the store', () => {
   });
 
   it('a template is refused for a slot not alone on its line, one no record answers, one its role does not draw on, and a record\'s slot missing or twice', () => {
-    const builder = '{{engine}}\n{{task}}\n{{spec-sections}}\n{{decided-calls}}\n{{linters}}\n{{chain}}\n{{account-to}}\n{{setup-to}}\n{{workplace}}\n';
+    const builder = '{{engine}}\n{{task}}\n{{spec-sections}}\n{{decided-calls}}\n{{linters}}\n{{chain}}\n{{account-to}}\n{{setup-to}}\n{{workplace}}\n{{rejected-finding}}\n';
     assert.strictEqual(templateOf('builder', builder), builder);
     assert.throws(() => templateOf('builder', `${builder}See {{task}} above.\n`), /"See \{\{task\}\} above\." holds a slot that is not alone on its line; task's slot is there 2 times$/);
     assert.throws(() => templateOf('builder', `${builder}{{diff}}\n`), /the builder's template is refused — \{\{diff\}\} is no record$/);
