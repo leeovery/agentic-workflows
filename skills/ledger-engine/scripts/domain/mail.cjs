@@ -138,7 +138,7 @@ function topicSender(cwd, manifest, from) {
 }
 
 /** How the waiting mail titles the product, sending from a conversation outside the unit (10.1.9). */
-const PRODUCT_SENDER = 'The product';
+const PRODUCT_SENDER = 'the product';
 
 /** The unit's own places that send, by the phase each is, and how the waiting mail titles each. */
 const UNIT_SENDERS = Object.freeze({ discovery: 'Discovery', specification: 'Specification' });

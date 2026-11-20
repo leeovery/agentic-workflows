@@ -21,7 +21,9 @@
 //   that has closed go to the pick, `render work-pick`: a row for each
 //   piece, and one for something new. A row's next is its move; a closed
 //   unit's, the unit in manage, where it is brought back, its back the pick
-//   again.
+//   again. The pick carries Start's move beside it, `start`, which talk
+//   about the product that names work takes instead (8.2.17): it is never
+//   picked between.
 // - Words naming nothing go to Start's type call: discovery, for a piece of
 //   work of no kind yet, the words held by the conversation.
 //
@@ -88,7 +90,7 @@ const CLOSED = Object.freeze(['completed', 'cancelled']);
 
 /** Where the words send the start: Start's type call with them, or into a piece of work. @typedef {({kind: 'start', words: string} | {kind: 'unit', unit: string, topic?: string}) & {next: Next}} Route */
 
-/** Where the start goes (the header's). @typedef {{go: 'menu'} | {go: 'route', route: Route} | {go: 'pick', pick: {surface: string, args: string[]}}} Entry */
+/** Where the start goes (the header's). @typedef {{go: 'menu'} | {go: 'route', route: Route} | {go: 'pick', pick: {surface: string, args: string[], start: Next}}} Entry */
 
 /** A setup gate start works (22.2.1), by the name boot's `gates` gives it. @typedef {'migration-review'|'claude-code-floor'|'knowledge'|'mod-notice'|'effort'|'walkthrough'|'session-labels'|'brownfield'|'github-rule'|'github-squash'} Gate */
 
@@ -189,8 +191,8 @@ const startWith = (cwd, text) => ({ go: 'route', route: { kind: 'start', words: 
 /** Into a piece of work in progress. @param {Piece & {next: Next}} piece @returns {Entry} */
 const routeInto = ({ unit, topic, next }) => ({ go: 'route', route: { kind: 'unit', unit, ...(topic === undefined ? {} : { topic }), next } });
 
-/** The pick between pieces. @param {Piece[]} pieces @returns {Entry} */
-const picking = (pieces) => ({ go: 'pick', pick: { surface: PICK, args: ['--matches', pieces.map(matchOf).join(',')] } });
+/** The pick between pieces, with Start's move for talk about the product. @param {string} cwd @param {Piece[]} pieces @returns {Entry} */
+const picking = (cwd, pieces) => ({ go: 'pick', pick: { surface: PICK, args: ['--matches', pieces.map(matchOf).join(',')], start: toStart(cwd) } });
 
 /**
  * Words that carry on and name nothing (the header's): into the one unit in
@@ -202,7 +204,7 @@ function carryingOn(cwd, candidates, text) {
   const units = new Map(candidates.flatMap(({ piece }) => (piece.topic === undefined && piece.closed === undefined ? [[piece.unit, piece]] : [])));
   if (units.size === 0) return startWith(cwd, text);
   if (units.size === 1) return routeInto([...units.values()][0]);
-  return picking(listed(startMenuRead(cwd).units).flatMap(({ name }) => units.get(name) ?? []));
+  return picking(cwd, listed(startMenuRead(cwd).units).flatMap(({ name }) => units.get(name) ?? []));
 }
 
 /**
@@ -219,7 +221,7 @@ function entryOf(cwd, said) {
   if (named.length === 0) return words.length > 0 && words.every((word) => CONNECTIVE.has(word)) ? carryingOn(cwd, candidates, text) : startWith(cwd, text);
   const [{ piece, taken }] = named;
   const more = words.some((word, at) => !taken.has(at) && !CONNECTIVE.has(word));
-  return named.length > 1 || more || piece.closed !== undefined ? picking(named.map((one) => one.piece)) : routeInto(piece);
+  return named.length > 1 || more || piece.closed !== undefined ? picking(cwd, named.map((one) => one.piece)) : routeInto(piece);
 }
 
 /**

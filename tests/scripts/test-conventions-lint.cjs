@@ -906,20 +906,23 @@ function checkBuildProse(files) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 35 — the start skill follows boot's stops as data. Boot names each
-// stop's marker, screen and what follows it (`STOPS`), and one rule in the
-// start skill follows whatever it names: the skill surfaces boot's warnings
-// before it follows any stop, runs every boot again with the person's words
-// as the first, names the boot call's description — so the tool's label
-// reads `Start Ledger`, never the stdin it is given — says the marker where
-// a stop names one,
+// Check 35 — the start skill follows boot's stops as data. Boot runs from
+// the start skill's own reference, `references/boot.md`, which the start
+// skill loads and the keep skill loads to run a migration owed — so the
+// start skill loads it by that name. Boot names each stop's marker, screen
+// and what follows it (`STOPS`), and one rule in the reference follows
+// whatever it names: it surfaces boot's warnings before it follows any
+// stop, runs every boot again with the person's words as the first, names
+// the boot call's description — so the tool's label reads `Start Ledger`,
+// never the stdin it is given — says the marker where a stop names one,
 // fetches the screen boot names, carries a bullet for each kind of next a
 // stop has — none, or the next's kind — and a load for each reference a
-// stop's next names, and gives no stop a heading of its own — a stop joins
-// without a word of prose. Ahead of boot, on the bare command alone, it
-// fetches the banner, once (18.2.15). Its `$ARGUMENTS` are the request
-// itself, never the go-ahead that followed it: a bare go-ahead names no
-// work, so boot would carry it on into the one unit in progress (8.2.14).
+// stop's next names, and neither file gives a stop a heading of its own — a
+// stop joins without a word of prose. Ahead of boot, on the bare command
+// alone, it fetches the banner, once (18.2.15). The start skill's
+// `$ARGUMENTS` are the request itself, never the go-ahead that followed it:
+// a bare go-ahead names no work, so boot would carry it on into the one
+// unit in progress (8.2.14).
 // ---------------------------------------------------------------------------
 
 const START_SKILL = 'ledger';
@@ -932,6 +935,11 @@ const ARGUMENTS_REQUEST = /^- `\$ARGUMENTS` — .*the request itself, never the 
 const BANNER_BARE = /^On the bare command, with no words, fetch the banner first:$/;
 const BANNER_FETCH = /engine\.cjs render banner$/;
 const BOOT_CALL = /engine\.cjs boot\b/;
+const BOOT_REFERENCE = 'boot.md';
+const BOOT_LOAD = `Load **[${BOOT_REFERENCE}](references/${BOOT_REFERENCE})**`;
+
+/** Whether `file` is the start skill's boot reference. @param {string} file */
+const isBootReference = (file) => file.endsWith(path.join('skills', START_SKILL, 'references', BOOT_REFERENCE));
 
 /** @typedef {Record<string, {marker?: string, next: {kind: string, reference?: string}|null}>} Stops */
 
@@ -941,33 +949,51 @@ const stopLoads = (stops) => Object.values(stops).flatMap(({ next }) => (next?.k
 /** Each kind of next the stops have, as the start skill's bullet names it: `None`, or the kind in a code span. @param {Stops} stops */
 const nextKinds = (stops) => [...new Set(Object.values(stops).map(({ next }) => (next === null ? 'None' : `\`${next.kind}\``)))];
 
+/** A file's lines, and whether a line outside its fences passes `test`. @param {string} file */
+function proseOf(file) {
+  const lines = readLines(file);
+  const { inFence } = parseFences(lines);
+  return { lines, inFence, prose: (/** @type {(line: string) => boolean} */ test) => lines.some((line, i) => !inFence[i] && test(line)) };
+}
+
+/** The boot reference's rule for the stops (the header's). @param {string} file @param {Stops} stops */
+function checkBootRule(file, stops) {
+  const out = [];
+  const { lines, inFence, prose } = proseOf(file);
+  const screen = lines.findIndex((line, i) => inFence[i] && STOP_SCREEN.test(line));
+  const warned = lines.findIndex((line, i) => !inFence[i] && BOOT_WARNINGS.test(line));
+  if (screen === -1) out.push({ file, line: 1, message: 'the boot reference fetches no stop\'s screen as boot names it — `render {surface} {args}`' });
+  if (warned === -1 || (screen !== -1 && warned > screen)) out.push({ file, line: 1, message: 'the boot reference surfaces boot\'s `warnings` before it follows any stop' });
+  if (!prose((line) => BOOT_AGAIN.test(line))) out.push({ file, line: 1, message: 'the boot reference never says a boot it runs again carries the words — "Every boot the start runs again is this one, words and all."' });
+  if (!prose((line) => BOOT_DESCRIBED.test(line))) out.push({ file, line: 1, message: 'the boot reference never names the boot call\'s description — "the call described as `Start Ledger`"' });
+  const bare = lines.findIndex((line, i) => !inFence[i] && BANNER_BARE.test(line));
+  const banners = lines.flatMap((line, i) => (inFence[i] && BANNER_FETCH.test(line) ? [i] : []));
+  const boot = lines.findIndex((line, i) => inFence[i] && BOOT_CALL.test(line));
+  if (bare === -1 || banners.length !== 1 || banners[0] < bare || boot === -1 || banners[0] > boot) out.push({ file, line: 1, message: 'the boot reference fetches the banner once, ahead of boot, on the bare command alone — "On the bare command, with no words, fetch the banner first:", then `render banner`' });
+  if (Object.values(stops).some(({ marker }) => marker !== undefined) && !prose((line) => STOP_MARKER.test(line))) out.push({ file, line: 1, message: 'a stop names a marker, and the boot reference never says it — **`▪ {marker}`**' });
+  for (const kind of nextKinds(stops)) {
+    if (!prose((line) => line.startsWith(`- **${kind}** — `))) out.push({ file, line: 1, message: `a stop's next is ${kind}, and the boot reference has no bullet following it — \`- **${kind}** —\`` });
+  }
+  for (const reference of stopLoads(stops)) {
+    if (!prose((line) => line.includes(`Load **[${reference}.md](${reference}.md)**`))) out.push({ file, line: 1, message: `a stop loads \`${reference}\`, and the boot reference has no load of ${reference}.md` });
+  }
+  return out;
+}
+
 /** @param {string[]} files @param {Stops} [stops] */
 function checkBootStops(files, stops = STOPS) {
   const out = [];
   const named = new RegExp(`^#{1,6}\\s.*\`(${Object.keys(stops).join('|')})\``);
-  for (const file of files.filter((f) => skillNameOf(f) === START_SKILL && f.endsWith('SKILL.md'))) {
-    const lines = readLines(file);
-    const { inFence } = parseFences(lines);
-    const prose = (/** @type {(line: string) => boolean} */ test) => lines.some((line, i) => !inFence[i] && test(line));
-    const screen = lines.findIndex((line, i) => inFence[i] && STOP_SCREEN.test(line));
-    const warned = lines.findIndex((line, i) => !inFence[i] && BOOT_WARNINGS.test(line));
-    if (screen === -1) out.push({ file, line: 1, message: 'the start skill fetches no stop\'s screen as boot names it — `render {surface} {args}`' });
-    if (warned === -1 || (screen !== -1 && warned > screen)) out.push({ file, line: 1, message: 'the start skill surfaces boot\'s `warnings` before it follows any stop' });
-    if (!prose((line) => BOOT_AGAIN.test(line))) out.push({ file, line: 1, message: 'the start skill never says a boot it runs again carries the words — "Every boot the start runs again is this one, words and all."' });
-    if (!prose((line) => BOOT_DESCRIBED.test(line))) out.push({ file, line: 1, message: 'the start skill never names the boot call\'s description — "the call described as `Start Ledger`"' });
+  const skills = files.filter((f) => skillNameOf(f) === START_SKILL);
+  for (const file of skills) {
+    const { prose } = proseOf(file);
     if (!prose((line) => ARGUMENTS_REQUEST.test(line))) out.push({ file, line: 1, message: 'the start skill\'s `$ARGUMENTS` never says they are the request itself — "the request itself, never the go-ahead that followed it"' });
-    const bare = lines.findIndex((line, i) => !inFence[i] && BANNER_BARE.test(line));
-    const banners = lines.flatMap((line, i) => (inFence[i] && BANNER_FETCH.test(line) ? [i] : []));
-    const boot = lines.findIndex((line, i) => inFence[i] && BOOT_CALL.test(line));
-    if (bare === -1 || banners.length !== 1 || banners[0] < bare || boot === -1 || banners[0] > boot) out.push({ file, line: 1, message: 'the start skill fetches the banner once, ahead of boot, on the bare command alone — "On the bare command, with no words, fetch the banner first:", then `render banner`' });
-    if (Object.values(stops).some(({ marker }) => marker !== undefined) && !prose((line) => STOP_MARKER.test(line))) out.push({ file, line: 1, message: 'a stop names a marker, and the start skill never says it — **`▪ {marker}`**' });
-    for (const kind of nextKinds(stops)) {
-      if (!prose((line) => line.startsWith(`- **${kind}** — `))) out.push({ file, line: 1, message: `a stop's next is ${kind}, and the start skill has no bullet following it — \`- **${kind}** —\`` });
-    }
-    for (const reference of stopLoads(stops)) {
-      const load = `Load **[${reference}.md](references/${reference}.md)**`;
-      if (!prose((line) => line.includes(load))) out.push({ file, line: 1, message: `a stop loads \`${reference}\`, and the start skill has no load of references/${reference}.md` });
-    }
+    if (!prose((line) => line.includes(BOOT_LOAD))) out.push({ file, line: 1, message: `the start skill never loads its boot reference by its name — ${BOOT_LOAD}` });
+  }
+  const references = files.filter(isBootReference);
+  for (const file of references) out.push(...checkBootRule(file, stops));
+  for (const file of [...skills, ...references]) {
+    const { lines, inFence } = proseOf(file);
     lines.forEach((line, i) => {
       const heading = inFence[i] ? null : named.exec(line);
       if (heading !== null) out.push({ file, line: i + 1, message: `a heading of its own for boot's \`${heading[1]}\` stop — boot names the stop, and one rule follows it` });
@@ -980,13 +1006,14 @@ function checkBootStops(files, stops = STOPS) {
 // Check 37 — a skill's description is all Claude sees of it until it is
 // invoked (18.2.16, 18.2.17). The start skill's opens with its trigger, and
 // names both things it is reached for: any change to what the code does,
-// and talk that turns to the product itself (8.2.15, 8.2.17); every other
+// and talk that turns to the product itself at length, a remark in passing
+// the keep's (8.2.15, 8.2.17); every other
 // skill a handoff lands on (`HANDOFF_TARGETS`) says it is reached only
 // through a Ledger handoff, never invoked directly.
 // ---------------------------------------------------------------------------
 
 const TRIGGER = /^Use (?:for|when)\b/;
-const REACHED_FOR = [/\bany change to what this project's code does\b/, /\btalk that turns to the product itself\b/];
+const REACHED_FOR = [/\bany change to what this project's code does\b/, /\btalk that turns to the product itself at length\b/];
 const HANDOFF_ONLY = /Reached only through a Ledger handoff, never invoked directly\b/;
 
 /** The frontmatter's `description`, and its line; null where it has none. @param {string[]} lines */
@@ -1006,7 +1033,7 @@ function checkDescriptions(files, targets = HANDOFF_TARGETS) {
     const line = description?.line ?? 1;
     if (skillNameOf(file) === START_SKILL) {
       if (!TRIGGER.test(description?.text ?? '')) out.push({ file, line, message: 'the start skill\'s description opens with its trigger — "Use for …"' });
-      if (!REACHED_FOR.every((said) => said.test(description?.text ?? ''))) out.push({ file, line, message: 'the start skill\'s description names what it is reached for — "any change to what this project\'s code does" and "talk that turns to the product itself"' });
+      if (!REACHED_FOR.every((said) => said.test(description?.text ?? ''))) out.push({ file, line, message: 'the start skill\'s description names what it is reached for — "any change to what this project\'s code does" and "talk that turns to the product itself at length"' });
     } else if (!HANDOFF_ONLY.test(description?.text ?? '')) {
       out.push({ file, line, message: 'a skill a handoff lands on says in its description it is reached only through a Ledger handoff, never invoked directly' });
     }
@@ -1034,8 +1061,10 @@ function checkNoResumeSections(files) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 39 — the keep skill opens no gate (18.11.6): no file of it answers a
-// gate or fetches a screen, its one render the send report, a receipt.
+// Check 40 — the keep skill opens no gate of its own (18.11.6): no file of
+// it answers a gate or fetches a screen, its one render the send report, a
+// receipt. A door's own gate is that door's, in the file it loads — the
+// migration's, in the start skill's references.
 // ---------------------------------------------------------------------------
 
 const KEEP_SKILL = 'ledger-keep';
@@ -1045,7 +1074,7 @@ function checkKeepOpensNoGate(files) {
   const out = [];
   for (const file of files.filter((f) => skillFolderOf(f) === KEEP_SKILL)) {
     readLines(file).forEach((line, i) => {
-      if (OPENS_A_GATE.test(line)) out.push({ file, line: i + 1, message: 'the keep skill opens no gate — it answers none and fetches no screen but the send report' });
+      if (OPENS_A_GATE.test(line)) out.push({ file, line: i + 1, message: 'the keep skill opens no gate of its own — it answers none and fetches no screen but the send report; a door\'s own gate is in the file it loads' });
     });
   }
   return out;
@@ -1119,7 +1148,7 @@ const CHECKS = [
   ['36: a skill drawing a menu whose back is the start menu loads start-menu.md', checkBackToStartLoads],
   ['37: the start skill\'s description opens with its trigger, and every other skill a handoff lands on says it is reached only through one', checkDescriptions],
   ['38: no skill keeps a section of its own on resuming', checkNoResumeSections],
-  ['39: the keep skill opens no gate', checkKeepOpensNoGate],
+  ['40: the keep skill opens no gate of its own', checkKeepOpensNoGate],
 ];
 
 function report(violations) {
@@ -1778,63 +1807,71 @@ test('check 34 (the build\'s prose) — 12.S46: catches a personal skill, a red-
   });
 });
 
-test('check 35 (boot\'s stops as data) — catches a start skill that fetches no screen boot names, surfaces no warnings ahead of the stops or only after them, never says a boot run again carries the words, never names the boot call\'s description, never says its arguments are the request itself, never the go-ahead, fetches the banner anywhere but once, ahead of boot, on the bare command alone, never says a stop\'s marker, lacks the bullet for a kind of next a stop has or a stop\'s load, or gives a stop a heading of its own, and passes every other skill and the start skill\'s references by', () => {
+test('check 35 (boot\'s stops as data) — catches a start skill that never loads its boot reference by its name or never says its arguments are the request itself, never the go-ahead; a boot reference that fetches no screen boot names, surfaces no warnings ahead of the stops or only after them, never says a boot run again carries the words, never names the boot call\'s description, fetches the banner anywhere but once, ahead of boot, on the bare command alone, never says a stop\'s marker, or lacks the bullet for a kind of next a stop has or a stop\'s load; either giving a stop a heading of its own; and passes every other skill and the start skill\'s other references by', () => {
   withTemp((dir) => {
     const stops = {
       git: { next: null }, lost: { next: { kind: 'gate' } },
       checks: { marker: 'Migration', next: { kind: 'load', reference: 'migration-checks' } }, finish: { next: { kind: 'load', reference: 'migration-review' } },
     };
+    const BOOT_FILE = 'skills/ledger/references/boot.md';
+    const SKILL_FILE = 'skills/ledger/SKILL.md';
     const FETCH = ['```bash', 'node .claude/skills/ledger-engine/scripts/engine.cjs render {surface} {args}', '```'];
     const BANNER = ['On the bare command, with no words, fetch the banner first:', '', '```bash', 'node .claude/skills/ledger-engine/scripts/engine.cjs render banner', '```', ''];
-    const BOOT = ['```bash', 'node .claude/skills/ledger-engine/scripts/engine.cjs boot <<\'WORDS\'', '$ARGUMENTS', 'WORDS', '```', ''];
-    const ARGUMENTS = '- `$ARGUMENTS` — what they asked for — the request itself, never the go-ahead that followed it.';
-    const clean = write(dir, 'skills/ledger/SKILL.md', [
-      '## Arguments', '', ARGUMENTS, '', '## Boot', '', ...BANNER, ...BOOT, 'Run it, the call described as `Start Ledger`.', 'Every boot the start runs again is this one, words and all.', '', 'Surface the answer\'s `warnings` first, whatever else it says.', '', '## Boot\'s Stops', '',
+    const BOOT = ['```bash', 'node .claude/skills/ledger-engine/scripts/engine.cjs boot <<\'WORDS\'', '{words}', 'WORDS', '```', ''];
+    const ARGUMENTS = '- `$ARGUMENTS` — **words**: what they asked for — the request itself, never the go-ahead that followed it.';
+    const LOAD = 'Load **[boot.md](references/boot.md)** and follow its instructions as written.';
+    const skill = write(dir, SKILL_FILE, ['## Arguments', '', ARGUMENTS, '', '## Boot', '', LOAD, ''].join('\n'));
+    const clean = write(dir, BOOT_FILE, [
+      '# Boot', '', ...BANNER, ...BOOT, 'Run it, the call described as `Start Ledger`.', 'Every boot the start runs again is this one, words and all.', '', 'Surface the answer\'s `warnings` first, whatever else it says.', '', '## Boot\'s Stops', '',
       'Boot names the stop it made in `stop`. Where it names a `marker`, say it on a line of its own, **`▪ {marker}`**.', '', ...FETCH, '',
       '- **None** — the start ends there.', '- **`gate`** — the screen asks the person.', '- **`load`** — load the reference it names:',
-      '  - `migration-checks`: Load **[migration-checks.md](references/migration-checks.md)** and follow its instructions as written.',
-      '  - `migration-review`: Load **[migration-review.md](references/migration-review.md)** and follow its instructions as written.', '',
+      '  - `migration-checks`: Load **[migration-checks.md](migration-checks.md)** and follow its instructions as written.',
+      '  - `migration-review`: Load **[migration-review.md](migration-review.md)** and follow its instructions as written.', '',
     ].join('\n'));
     const cleanText = fs.readFileSync(clean, 'utf8');
     const reference = write(dir, 'skills/ledger/references/migration-review.md', '#### If `finish` answers\n');
     const other = write(dir, 'skills/ledger-roadmap/SKILL.md', '#### If `state` is `lost`\n');
-    assert.deepStrictEqual(checkBootStops([clean, reference, other], stops), [], `the rule, its bullets and loads, and headings outside the start skill are clean, got ${report(checkBootStops([clean, reference, other], stops))}`);
-    const late = write(dir, 'skills/ledger/SKILL.md', cleanText.replace('Surface the answer\'s `warnings` first, whatever else it says.\n', '') + '\nSurface the answer\'s `warnings` first.\n');
-    assert.deepStrictEqual(checkBootStops([late], stops).map((x) => x.message), ['the start skill surfaces boot\'s `warnings` before it follows any stop'], 'warnings surfaced only after the stops are followed');
-    const BANNER_RULE = 'the start skill fetches the banner once, ahead of boot, on the bare command alone — "On the bare command, with no words, fetch the banner first:", then `render banner`';
+    assert.deepStrictEqual(checkBootStops([skill, clean, reference, other], stops), [], `the load, the rule, its bullets and loads, and headings outside the start skill and its boot are clean, got ${report(checkBootStops([skill, clean, reference, other], stops))}`);
+    const late = write(dir, BOOT_FILE, cleanText.replace('Surface the answer\'s `warnings` first, whatever else it says.\n', '') + '\nSurface the answer\'s `warnings` first.\n');
+    assert.deepStrictEqual(checkBootStops([late], stops).map((x) => x.message), ['the boot reference surfaces boot\'s `warnings` before it follows any stop'], 'warnings surfaced only after the stops are followed');
+    const BANNER_RULE = 'the boot reference fetches the banner once, ahead of boot, on the bare command alone — "On the bare command, with no words, fetch the banner first:", then `render banner`';
     const misplaced = {
       'fetched after boot': cleanText.replace([...BANNER, ...BOOT].join('\n'), [...BOOT, ...BANNER].join('\n')),
       'fetched again at the opening': `${cleanText}\n${BANNER.slice(2).join('\n')}`,
       'fetched with no bare command named': cleanText.replace(BANNER[0], 'Fetch the banner first:'),
     };
     for (const [fault, text] of Object.entries(misplaced)) {
-      assert.deepStrictEqual(checkBootStops([write(dir, 'skills/ledger/SKILL.md', text)], stops).map((x) => x.message), [BANNER_RULE], `the banner ${fault}`);
+      assert.deepStrictEqual(checkBootStops([write(dir, BOOT_FILE, text)], stops).map((x) => x.message), [BANNER_RULE], `the banner ${fault}`);
     }
-    const goAhead = write(dir, 'skills/ledger/SKILL.md', cleanText.replace(ARGUMENTS, '- `$ARGUMENTS` — what they asked for.'));
+    const skillText = fs.readFileSync(skill, 'utf8');
+    const goAhead = write(dir, SKILL_FILE, skillText.replace(ARGUMENTS, '- `$ARGUMENTS` — what they asked for.'));
     assert.deepStrictEqual(checkBootStops([goAhead], stops).map((x) => x.message), ['the start skill\'s `$ARGUMENTS` never says they are the request itself — "the request itself, never the go-ahead that followed it"'], 'the arguments\' line saying nothing of the go-ahead');
-    const gateOnly = write(dir, 'skills/ledger/SKILL.md', [ARGUMENTS, ...BANNER, ...BOOT, '## Boot', '', 'Run it, the call described as `Start Ledger`.', 'Every boot the start runs again is this one, words and all.', 'Surface the answer\'s `warnings` first.', '', ...FETCH, '', '- **`gate`** — the screen asks the person.', ''].join('\n'));
+    const renamed = write(dir, SKILL_FILE, skillText.replace(LOAD, 'Load **[booting.md](references/booting.md)** and follow its instructions as written.'));
+    assert.deepStrictEqual(checkBootStops([renamed], stops).map((x) => x.message), ['the start skill never loads its boot reference by its name — Load **[boot.md](references/boot.md)**'], 'the boot reference loaded by another name');
+    const gateOnly = write(dir, BOOT_FILE, [...BANNER, ...BOOT, '## Boot', '', 'Run it, the call described as `Start Ledger`.', 'Every boot the start runs again is this one, words and all.', 'Surface the answer\'s `warnings` first.', '', ...FETCH, '', '- **`gate`** — the screen asks the person.', ''].join('\n'));
     assert.deepStrictEqual(checkBootStops([gateOnly], { lost: stops.lost }), [], 'the kinds of next come from the stops: with no marker, no load and no ending among them, neither the marker\'s line nor their bullets is asked for');
 
-    const branched = write(dir, 'skills/ledger/SKILL.md', [
-      '## Boot', '', '#### If `state` is `lost`', '', '```bash', 'node .claude/skills/ledger-engine/scripts/engine.cjs render state-lost-gate', '```', '',
-      '### At `finish`', '', 'Load **[migration-review.md](references/migration-review.md)** and follow its instructions as written.', '',
+    const branched = write(dir, BOOT_FILE, [
+      '# Boot', '', '#### If `state` is `lost`', '', '```bash', 'node .claude/skills/ledger-engine/scripts/engine.cjs render state-lost-gate', '```', '',
+      '### At `finish`', '', 'Load **[migration-review.md](migration-review.md)** and follow its instructions as written.', '',
       '```markdown', '#### If `state` is `checks`', '- **None** — the start ends there.', '**`▪ {marker}`**', '```', '', '**`gate`** — the screen asks the person.', '',
     ].join('\n'));
-    assert.deepStrictEqual(checkBootStops([branched], stops).map((x) => [x.line, x.message]), [
-      [1, 'the start skill fetches no stop\'s screen as boot names it — `render {surface} {args}`'],
-      [1, 'the start skill surfaces boot\'s `warnings` before it follows any stop'],
-      [1, 'the start skill never says a boot it runs again carries the words — "Every boot the start runs again is this one, words and all."'],
-      [1, 'the start skill never names the boot call\'s description — "the call described as `Start Ledger`"'],
-      [1, 'the start skill\'s `$ARGUMENTS` never says they are the request itself — "the request itself, never the go-ahead that followed it"'],
-      [1, 'the start skill fetches the banner once, ahead of boot, on the bare command alone — "On the bare command, with no words, fetch the banner first:", then `render banner`'],
-      [1, 'a stop names a marker, and the start skill never says it — **`▪ {marker}`**'],
-      [1, 'a stop\'s next is None, and the start skill has no bullet following it — `- **None** —`'],
-      [1, 'a stop\'s next is `gate`, and the start skill has no bullet following it — `- **`gate`** —`'],
-      [1, 'a stop\'s next is `load`, and the start skill has no bullet following it — `- **`load`** —`'],
-      [1, 'a stop loads `migration-checks`, and the start skill has no load of references/migration-checks.md'],
-      [3, 'a heading of its own for boot\'s `lost` stop — boot names the stop, and one rule follows it'],
-      [9, 'a heading of its own for boot\'s `finish` stop — boot names the stop, and one rule follows it'],
-    ], `got ${report(checkBootStops([branched], stops))}`);
+    const headed = write(dir, SKILL_FILE, [...skillText.split('\n'), '### If `state` is `git`', ''].join('\n'));
+    assert.deepStrictEqual(checkBootStops([headed, branched], stops).map((x) => [path.basename(x.file), x.line, x.message]), [
+      ['boot.md', 1, 'the boot reference fetches no stop\'s screen as boot names it — `render {surface} {args}`'],
+      ['boot.md', 1, 'the boot reference surfaces boot\'s `warnings` before it follows any stop'],
+      ['boot.md', 1, 'the boot reference never says a boot it runs again carries the words — "Every boot the start runs again is this one, words and all."'],
+      ['boot.md', 1, 'the boot reference never names the boot call\'s description — "the call described as `Start Ledger`"'],
+      ['boot.md', 1, 'the boot reference fetches the banner once, ahead of boot, on the bare command alone — "On the bare command, with no words, fetch the banner first:", then `render banner`'],
+      ['boot.md', 1, 'a stop names a marker, and the boot reference never says it — **`▪ {marker}`**'],
+      ['boot.md', 1, 'a stop\'s next is None, and the boot reference has no bullet following it — `- **None** —`'],
+      ['boot.md', 1, 'a stop\'s next is `gate`, and the boot reference has no bullet following it — `- **`gate`** —`'],
+      ['boot.md', 1, 'a stop\'s next is `load`, and the boot reference has no bullet following it — `- **`load`** —`'],
+      ['boot.md', 1, 'a stop loads `migration-checks`, and the boot reference has no load of migration-checks.md'],
+      ['SKILL.md', 9, 'a heading of its own for boot\'s `git` stop — boot names the stop, and one rule follows it'],
+      ['boot.md', 3, 'a heading of its own for boot\'s `lost` stop — boot names the stop, and one rule follows it'],
+      ['boot.md', 9, 'a heading of its own for boot\'s `finish` stop — boot names the stop, and one rule follows it'],
+    ], `got ${report(checkBootStops([headed, branched], stops))}`);
   });
 });
 
@@ -1842,7 +1879,7 @@ test('check 37 (descriptions) — 18.S73: catches a start skill whose descriptio
   withTemp((dir) => {
     const skill = (name, description) => write(dir, `skills/${name}/SKILL.md`, ['---', `name: ${name}`, ...(description === null ? [] : [`description: ${description}`]), 'user-invocable: false', '---', '', 'Body.', ''].join('\n'));
     const HANDED = 'Ledger\'s review phase. Reached only through a Ledger handoff, never invoked directly; work comes into Ledger through /ledger.';
-    const BOTH = 'any change to what this project\'s code does, and for talk that turns to the product itself.';
+    const BOTH = 'any change to what this project\'s code does, and for talk that turns to the product itself at length.';
     const targets = ['ledger', 'ledger-review-process', 'ledger-roadmap'];
     const clean = [skill('ledger', `Use for ${BOTH}`), skill('ledger-review-process', HANDED), skill('ledger-roadmap', HANDED), skill('ledger-keep', 'Use whenever something of substance comes up.')];
     assert.deepStrictEqual(checkDescriptions(clean, targets), [], `got ${report(checkDescriptions(clean, targets))}`);
@@ -1855,9 +1892,10 @@ test('check 37 (descriptions) — 18.S73: catches a start skill whose descriptio
     ], `got ${report(checkDescriptions(broken, targets))}`);
 
     const reachedFor = (description) => checkDescriptions([skill('ledger', description)], targets).map((x) => x.message);
-    const unnamed = ['the start skill\'s description names what it is reached for — "any change to what this project\'s code does" and "talk that turns to the product itself"'];
+    const unnamed = ['the start skill\'s description names what it is reached for — "any change to what this project\'s code does" and "talk that turns to the product itself at length"'];
     assert.deepStrictEqual(reachedFor('Use for any change to what this project\'s code does, however small.'), unnamed, 'talk of the product left out');
-    assert.deepStrictEqual(reachedFor('Use for talk that turns to the product itself.'), unnamed, 'a change to the code left out');
+    assert.deepStrictEqual(reachedFor('Use for talk that turns to the product itself at length.'), unnamed, 'a change to the code left out');
+    assert.deepStrictEqual(reachedFor('Use for any change to what this project\'s code does, and for talk that turns to the product itself.'), unnamed, 'a remark in passing taken for talk at length');
   });
 });
 
@@ -1873,7 +1911,7 @@ test('check 38 (no resume section) — 24.S14: catches a heading on resuming aft
   });
 });
 
-test('check 39 (the keep skill opens no gate) — 18.11.6: catches a gate answered or a screen fetched in any file of the keep skill; passes the send report, a gate named in prose, and another skill opening one', () => {
+test('check 40 (the keep skill opens no gate of its own) — 18.11.6: catches a gate answered or a screen fetched in any file of the keep skill; passes the send report, a gate named in prose, and another skill opening one', () => {
   withTemp((dir) => {
     const call = (verb) => `\`\`\`bash\nnode .claude/skills/ledger-engine/scripts/engine.cjs ${verb}\n\`\`\`\n`;
     const keep = write(dir, 'skills/ledger-keep/SKILL.md', ['Keep it.', '', call('render send-report {work_unit}.{topic} --sent {path}'), 'Work its `migration-review` gate alone.', '', call('gate "record proposal" --pick {key}'), '- A pick → `render horizon-pick --park {name}`.', ''].join('\n'));

@@ -1,6 +1,6 @@
 ---
 name: ledger-keep
-description: Use whenever something of substance comes up in this project, in any conversation, to keep it where Ledger keeps it — an idea, a bug or a fix for later, a view of the product or a direction dropped, a fact about the code or the platform, a reference or a file shared, a point for work under way.
+description: Use whenever something of substance comes up in this project, in any conversation, to keep it where Ledger keeps it — an idea, a bug or a fix for later, a view of the product said in passing or a direction dropped, a fact about the code or the platform, a reference or a file shared, the project's setup or an instruction for working in it, a point for work under way.
 user-invocable: false
 allowed-tools: Bash(node .claude/skills/ledger-engine/scripts/engine.cjs *)
 ---
@@ -19,14 +19,25 @@ Every call is `node .claude/skills/ledger-engine/scripts/engine.cjs {verb} …`;
   ITEM
   ```
 
-  One the person places in time goes on the roadmap instead, on the horizon they name; where they named none, ask which in a line, naming those `roadmap state` lists: `roadmap add {name} --horizon "{horizon}" --summary "{summary}" [--kind {kind:[bug|quick-fix]}] --origin park:product`.
-- **A view of the product** — a principle, a direction, who it is for, a constraint, a lean, as the person's → `discovery-log view product --text '{view}'`.
+  One the person places in time goes on the roadmap instead, on the horizon they name; where they named none, ask which horizon, naming those `roadmap state` lists: `roadmap add {name} --horizon "{horizon}" --summary "{summary}" [--kind {kind:[bug|quick-fix]}] --origin park:product`.
+- **One of those dropped at their word** → `inbox archive {path}`, the path the capture answered, or `roadmap archive {name}`.
+- **A view of the product said in passing** — a principle, a direction, who it is for, a constraint, a lean, as the person's → `discovery-log view product --text '{view}'`.
 - **A direction dropped**, with why → `discovery-log not-taken product --direction '{direction}' --why '{why}'`.
 - **A spike** — its files in the folder `asset spike product {slug}` answers; what it showed → `discovery-log spike product {spike} --tool '{tool}' --showed '{what it showed}' [--link {live link}]`.
-- **A fact about the code or the platform**, with how it is known → `ledger find product.discovery`, `{"text", "how", "known", "by": "claude", "who_moved_whom": "none"}` on stdin, with `command` and `result` for one measured.
+- **A fact about the code or the platform**, with how it is known — where this conversation works a piece of Ledger's work, at that work's place as its phase records one; else → `ledger find product.discovery`, `{"text", "how", "known", "by": "claude", "who_moved_whom": "none"}` on stdin, `known` one of `read` in the code, `documented` with its source, or `exploratory` with `command` and `result`.
 - **A reference** — what it shows, as a finding `"known": "documented"`, its link the `how`. A file shared → `asset import product '{path}'`, then `asset add product {path} --entry {id} --status reference`, `{id}` the finding's.
+- **The project's setup** — how it builds, tests and runs, what a worktree needs, what cannot run at once, its linters → `environment show`, then `environment set {part:[run|prepare|concurrency|linters]}`, the part whole as JSON on stdin.
+- **An instruction for working in this project** — a rule or a gotcha of its code, not of the product → a line in its `CLAUDE.md`.
 - **A point for a topic of work under way, before its spec**, on the person's stated intent — what was found or said, and what the topic is asked to decide — written to `.ledger/.cache/product/discovery/product/message-{slug}.md`, its first line the title → `topic send {work_unit} {topic} --from product --content .ledger/.cache/product/discovery/product/message-{slug}.md --slug {slug}`, then `render send-report {work_unit}.{topic} --sent {path}`, the path the send answered. Past its spec, the work's own conversation settles it.
 
 ## A Migration Owed
 
-A call refused because this checkout owes Ledger's migration: say Ledger has been updated and its migration runs first, and ask. On the person's yes, read the start skill, **[SKILL.md](../ledger/SKILL.md)**, and run boot as its **Boot** says, with no words, each stop carried out as **Boot's Stops** says; once boot answers `go`, work its `migration-review` gate alone, as **The Setup Gates** says, and nothing else of the start. Then make the call again, and carry on where the conversation was.
+A call refused because this checkout owes Ledger's migration: say Ledger has been updated and its migration runs first, and ask. On the person's yes:
+
+Load **[boot.md](../ledger/references/boot.md)** and follow its instructions as written from its `boot` call, with words = none — no banner.
+
+Once boot answers `go`, where its `gates` name `migration-review`:
+
+Load **[migration-review.md](../ledger/references/migration-review.md)** and follow its instructions as written.
+
+Nothing else of the start runs. Then make the call again, and carry on where the conversation was.

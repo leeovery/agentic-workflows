@@ -11,9 +11,10 @@
 // through, every hook boot installs among it, and a call with no session
 // id; a capture made from another project's conversation lands, and its
 // commit's retry goes through; the keep's doors go through while the
-// checkout owes no migration on this version, and refuse naming the
-// migration while it owes one (`KEEP_FORMS`, 18.11.7); a boot killed as it
-// stamps leaves the conversation refused, and the next boot stamps it.
+// checkout owes no migration on this version — one waiting on its review
+// owed too — marking no conversation, and refuse naming the migration while
+// it owes one (`KEEP_FORMS`, 18.11.7); a boot killed as it stamps leaves
+// the conversation refused, and the next boot stamps it.
 //
 // Layer: verb, with one process test, the boot killed as it stamps. World:
 // the project fixture, a git repository with its state worktree and
@@ -32,7 +33,7 @@ const fs = require('fs');
 const path = require('path');
 
 const {
-  call, callAsync, ok, refusedPristine, fixtureFrom, git, commitAll, createFile, stateGit, stampBooted, killedAt,
+  call, callAsync, ok, refusedPristine, fixtureFrom, git, commitAll, createFile, stateGit, stampBooted, killedAt, commitOnState, statePath,
   failingStateCommits, engineHook, LEDGER_HOOKS, GUARD_GROUPS, hooked,
 } = require('./engine-harness.cjs');
 const { useTempFolder, createManifest, writeState } = require('./discovery-test-utils.cjs');
@@ -250,7 +251,9 @@ describe('a capture from another project\'s conversation (22.1.8, 18.6.8)', () =
 
 describe('the keep\'s doors before boot has run (22.1.8, 18.11.7)', () => {
   /** The migrations record holding `ids`, one a line. @param {...string} ids */
-  const recorded = (...ids) => writeState(dir, '.state/migrations', ids.map((id) => `${id}\n`).join(''));
+  const record = (...ids) => ids.map((id) => `${id}\n`).join('');
+  /** The record committed holding `ids`, as boot leaves it once its migrations are through. @param {...string} ids */
+  const recorded = (...ids) => commitOnState(statePath(dir), { '.state/migrations': record(...ids) }, 'chore: record Ledger\'s migrations');
   const VIEW = Object.freeze(['discovery-log', 'view', 'product', '--text', 'Notes are furniture.']);
   const KEPT = [
     VIEW,
@@ -260,13 +263,15 @@ describe('the keep\'s doors before boot has run (22.1.8, 18.11.7)', () => {
     ['asset', 'add', 'product', '.product/assets/brand.png', '--entry', 'x'], ['asset', 'status', 'product', '.product/assets/brand.png', 'reference'],
     ['topic', 'send', 'fumi', 'licence', '--from', 'product', '--content', 'm.md', '--slug', 'm'],
     ['render', 'send-report', 'fumi.licence', '--sent', 'm.md'],
-    ['roadmap', 'state'], ['roadmap', 'add', 'sync', '--horizon', 'v2', '--summary', 'Sync', '--origin', 'park:product'],
+    ['roadmap', 'state'], ['roadmap', 'add', 'sync', '--horizon', 'v2', '--summary', 'Sync', '--origin', 'park:product'], ['roadmap', 'archive', 'sync'],
+    ['inbox', 'archive', '.ledger/.inbox/ideas/2026-01-01--sync.md'], ['environment', 'show'], ['environment', 'set', 'run'],
   ];
   const OTHERS = [
     ['discovery-log', 'view', 'fumi', '--text', 'x'], ['ledger', 'find', 'fumi.discovery'], ['ledger', 'decide', 'product.discovery'],
     ['asset', 'spike', 'fumi', 'frame'], ['asset', 'lift', 'product', 'a', '--into', 'b', '--entry', 'x'],
     ['topic', 'send', 'fumi', 'licence', '--from', 'fumi.discovery', '--content', 'm.md', '--slug', 'm'],
     ['render', 'start-menu'], ['roadmap', 'add', 'sync', '--horizon', 'v2', '--summary', 'Sync', '--origin', 'roadmap'], ['roadmap', 'move', 'sync', '--horizon', 'v3'],
+    ['inbox', 'restore', 'x'], ['inbox', 'delete', 'x'], ['environment', 'confirm'],
   ];
   let fresh = 0;
   /** Each call of `argvs` the stamp refuses, in a conversation never booted, fresh for each call. @param {string[][]} argvs */
@@ -281,16 +286,30 @@ describe('the keep\'s doors before boot has run (22.1.8, 18.11.7)', () => {
     assert.strictEqual(stamps(), null, 'no boot ran');
   });
 
-  it('refuses, writing nothing and naming the migration, while the record lacks the installed migrations\' highest id or the reshape waits on its commit; once boot has run, the door goes through', () => {
+  it('marks no conversation as one that runs Ledger, as the capture line marks none; a command past boot marks it', () => {
+    recorded('001', highestMigration());
+    const marked = () => fs.existsSync(path.join(conversation(), 'workflow'));
+
+    ok(dir, VIEW, { env, unbooted: true });
+    const kept = marked();
+    stampBooted(dir, SESSION, config);
+    assert.strictEqual(call(dir, ['render', 'start-menu'], { env, unbooted: true }).code, 0);
+
+    assert.deepStrictEqual([kept, marked()], [false, true]);
+  });
+
+  it('refuses, writing nothing and naming the migration, while the record lacks the installed migrations\' highest id, holds it uncommitted as a migration waiting on its review leaves it, or the reshape waits on its commit; once boot has run, the door goes through', () => {
     const owed = 'discovery-log: this checkout owes Ledger\'s migration on this version — on the person\'s yes, run boot\'s migration, then this again';
     const unrecorded = refusedPristine(dir, VIEW, { env, unbooted: true }).error;
     recorded('001');
     const behind = refusedPristine(dir, VIEW, { env, unbooted: true }).error;
+    writeState(dir, '.state/migrations', record('001', highestMigration()));
+    const reviewing = refusedPristine(dir, VIEW, { env, unbooted: true }).error;
     recorded('001', highestMigration());
     writeState(dir, '.cache/migrate/finish.json', '{"drops": []}\n');
     const finishing = refusedPristine(dir, VIEW, { env, unbooted: true }).error;
 
-    assert.deepStrictEqual([unrecorded, behind, finishing], [owed, owed, owed]);
+    assert.deepStrictEqual([unrecorded, behind, reviewing, finishing], [owed, owed, owed, owed]);
     stampBooted(dir, SESSION, config);
     ok(dir, VIEW, { env, unbooted: true });
   });

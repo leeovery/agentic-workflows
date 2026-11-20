@@ -70,7 +70,7 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 - **Discovery** (`ledger-discovery`) — the product's conversation, where new work starts, and an epic's discovery, where its map is shaped and changed.
 - **Navigation** (`ledger-continue-epic`) — an epic's menu; any other unit is continued from the start menu, where it stands.
 - **Phase skills** (`ledger-{phase}-process`) — one per phase after discovery, and a quick-fix's own, `ledger-quick-fix-process`, from its first fix to its close; what each holds is in CONVENTIONS.md (The Phase Skill).
-- **Keep** (`ledger-keep`) — keeps anything of substance said in any conversation where Ledger keeps it: the inbox or the roadmap, the product's views, directions not taken and spikes, findings, shared files, a message to a topic; no framework, no gates.
+- **Keep** (`ledger-keep`) — keeps anything of substance said in any conversation where Ledger keeps it: the inbox or the roadmap, the product's views, directions not taken and spikes, findings, shared files, the environment's setup, a line in CLAUDE.md, a message to a topic; no framework, no gates of its own.
 - **Project-level** — `ledger-roadmap` (the product roadmap, and starting work from it through discovery).
 - **Help** — the engine's: each menu's help beside the projection that draws it (`skills/ledger-engine/scripts/domain/projections/{menu}.help.md`), and the walkthrough and reference cards in `skills/ledger-engine/content/walkthrough/`.
 - **Shared references** (`skills/ledger-shared/references/`) — protocols several skills load; `framework.md` is loaded once per conversation (CONVENTIONS.md, The Framework Load).

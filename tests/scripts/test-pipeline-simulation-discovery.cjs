@@ -129,7 +129,7 @@ describe('pipeline simulation: discovery\'s entry', () => {
     assert.ok(!fs.existsSync(logPath(sim, PRODUCT, 2)), 'one product conversation, one log');
   });
 
-  it('work brought in conversation comes through the one entry: boot given the words sends new work to Start\'s type call in this conversation, with no menu, and words naming a unit in progress into it as the start menu\'s number does — so Claude brings the request itself, which goes to Start beside a unit in progress; the bare command draws the banner before boot, then the menu (8.S79, 18.S72, 18.2.15, 25.S10)', () => {
+  it('work brought in conversation comes through the one entry: boot given the words sends new work to Start\'s type call in this conversation, with no menu, and words naming a unit in progress into it as the start menu\'s number does — so Claude brings the request itself, which goes to Start beside a unit in progress — and talk about the product naming one into the product\'s conversation by the pick\'s Start, never its menu; the bare command draws the banner before boot, then the menu (8.S79, 18.S72, 18.2.15, 25.S10, 8.2.17)', () => {
     const conversation = sim.conversations;
     const brought = startWith(sim, 'Change what the help command prints when it has no topic');
     assert.deepStrictEqual([brought.go, brought.route], ['route', { kind: 'start', words: 'Change what the help command prints when it has no topic', next: { kind: 'invoke', skill: 'ledger-discovery', args: ['start', 'none'] } }]);
@@ -142,6 +142,10 @@ describe('pipeline simulation: discovery\'s entry', () => {
     const named = startWith(sim, 'carry on with help-topic');
     const { invoked } = handoffBy(sim, ['handoff', 'unit', 'help-topic']);
     assert.deepStrictEqual([named.go, named.route.unit, `/${named.route.next.skill} ${named.route.next.args.join(' ')}`], ['route', 'help-topic', invoked]);
+
+    const talk = startWith(sim, 'I think help-topic should never print the whole list, the product is quieter than that');
+    assert.deepStrictEqual([talk.go, talk.pick.start], ['pick', brought.route.next]);
+    assert.strictEqual(sim.run(['enter', 'discovery', PRODUCT]).entered, true, 'the talk carries the product\'s conversation on, the pick never drawn');
 
     assert.strictEqual(startBare(sim).go, 'menu', 'the bare command, in a new conversation, draws the banner before boot, then the menu');
     assert.ok(startMenu(sim).some(({ next }) => next?.kind === 'engine' && next.argv.join(' ') === 'handoff unit help-topic'), 'the menu lists the unit');
@@ -342,7 +346,7 @@ describe('pipeline simulation: discovery\'s entry', () => {
     assert.strictEqual(sim.conversations, conversation);
   });
 
-  it('a conversation outside Ledger keeps what is said of the product through the keep\'s doors, never booted: a view and a direction dropped in the product\'s log, a finding at its place with the file it rests on, a message to a topic; the topic\'s opening reads them all (8.14.12, 18.11.1, 18.11.7, 10.1.9)', () => {
+  it('a conversation outside Ledger keeps what is said of the product through the keep\'s doors, never booted: a view, a direction dropped and a spike with its files in the product\'s log, a finding at its place with the file it rests on, a message to a topic, and an idea kept then dropped, marking nothing; the topic\'s opening reads them all (8.14.12, 18.11.1, 18.11.7, 10.1.9)', () => {
     mappedEpic(sim, EPIC, ['licensing']);
     commitOnState(statePath(sim.dir), { '.state/migrations': `${highestMigration()}\n` }, 'migrations: the record, as boot left it');
     sim.open();
@@ -350,6 +354,11 @@ describe('pipeline simulation: discovery\'s entry', () => {
 
     sim.run(['discovery-log', 'view', PRODUCT, '--text', 'Notes are furniture.']);
     sim.run(['discovery-log', 'not-taken', PRODUCT, '--direction', 'A web client', '--why', 'the Mac is the product']);
+    const { spike, path: folder } = sim.run(['asset', 'spike', PRODUCT, 'menu-bar']);
+    sim.write(`.ledger/${folder}/MenuBar.swift`, 'struct MenuBar {}\n');
+    sim.run(['discovery-log', 'spike', PRODUCT, spike, '--tool', 'Xcode', '--showed', 'A menu-bar note reads at a glance']);
+    const { captured } = sim.run(['inbox', 'capture', 'idea'], null, '# Notes in the dock\n');
+    sim.run(['inbox', 'archive', captured]);
     const finding = sim.run(['ledger', 'find', `${PRODUCT}.discovery`], null,
       JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'The brand is blue.', how: 'the brand guide', known: 'documented' })).id;
     const shared = path.join(sim.configDir, 'brand-guide.pdf');
@@ -358,9 +367,10 @@ describe('pipeline simulation: discovery\'s entry', () => {
     sim.run(['asset', 'add', PRODUCT, guide, '--entry', finding, '--status', 'reference']);
     const sent = sim.run(['topic', 'send', EPIC, 'licensing', '--from', PRODUCT, '--slug', 'brand-colour',
       '--content', sim.write(`.ledger/.cache/${PRODUCT}/discovery/${PRODUCT}/message-brand-colour.md`, 'Brand colour\n\nThe brand is blue; a licence screen shows it.\n')]);
-    assert.match(fs.readFileSync(sent.message_path, 'utf8'), /^From The product · /m);
+    assert.match(fs.readFileSync(sent.message_path, 'utf8'), /^From the product · /m);
     assert.match(sim.render(['send-report', `${EPIC}.licensing`, '--sent', sent.message_path], { expect: 'content' }), /^Sent to Licensing, on Fumi$/m);
-    assert.strictEqual(stateGit(sim.dir, ['status', '--porcelain', '--', '.product', '.ledger.jsonl', EPIC]), '', 'every door committed what it kept');
+    assert.strictEqual(stateGit(sim.dir, ['status', '--porcelain', '--untracked-files=all', '--', '.product', '.inbox', '.ledger.jsonl', EPIC]), '', 'every door committed what it kept');
+    assert.strictEqual(fs.existsSync(path.join(sim.configDir, 'conversations', sim.env.CLAUDE_CODE_SESSION_ID, 'workflow')), false, 'no door marked the conversation as one that runs Ledger');
 
     sim.run(['boot']);
     enterEntry(sim, EPIC, 'discussion', 'licensing');

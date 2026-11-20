@@ -27,9 +27,12 @@
 // - The keep's doors go through without the stamp while the checkout owes
 //   no migration on this version (22.1.8, engine.cjs `KEEP_FORMS`): its
 //   migrations record holds the installed migrations' highest id — the
-//   runner records each once it completes, in order — and the reshape
-//   waits on no commit. One read of the record and a stat; a record that
-//   does not read is owed.
+//   runner records each once it completes, in order — as the state branch
+//   holds it, so a migration waiting on its review's yes, its record
+//   uncommitted (boot.cjs), is owed too, and no keep commits its edits;
+//   and the reshape waits on no commit. One read of the record, a stat and
+//   one git call, on the keep's way alone; a record that does not read is
+//   owed.
 // - Written whole under the lock beside it, so two projects booted at once
 //   in one conversation both stand; a file that does not read is written
 //   over. The gate mod copies the file across a handoff's clear, unread, so
@@ -40,6 +43,7 @@ const fs = require('fs');
 const path = require('path');
 const { LOCK_TIMEOUT_MS, isObject, withStateLockFile, writeJsonAtomic } = require('../kernel/manifest-io.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
+const { isolatedGit } = require('../kernel/isolated-git.cjs');
 const { conversationDir } = require('./conversation.cjs');
 const { BOOTED } = require('./user-files.cjs');
 const { highestMigration } = require('../../../ledger-migrate/scripts/migration-ids.cjs');
@@ -132,8 +136,9 @@ function owesMigration(cwd) {
   } catch {
     return true;
   }
-  const installed = installedMigration();
-  return (installed !== null && !record.split('\n').includes(installed)) || finishWaits(cwd);
+  const highest = installedMigration();
+  if ((highest !== null && !record.split('\n').includes(highest)) || finishWaits(cwd)) return true;
+  return isolatedGit(stateRoot(cwd)).tryRun(['show', `HEAD:${MIGRATIONS_RECORD}`]) !== record;
 }
 
 module.exports = { MIGRATION_OWED, stampBoot, unbootedRefusal, owesMigration };

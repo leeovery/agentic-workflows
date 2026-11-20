@@ -18,12 +18,14 @@
 //   entry in the log of the open session, after the last entry under the
 //   last of its heading there and the lines indented beneath it, as the
 //   first where none is, or under the heading added at the log's end where
-//   the log has none — the calling conversation's line first where the log
-//   last names another (8.14.8, topic-log.cjs). At an epic it refuses with
-//   no session open, and commits nothing: every state commit takes the log
-//   along. At the product it writes from any conversation in the project: a
-//   write where no session is open opens one, holding nothing and closing
-//   nothing, and the line is committed with the product's scope. It refuses,
+//   the log has none. It writes no conversation's line: a keep from another
+//   conversation never becomes the log's last writer, so catching up and
+//   the start menu read only the conversations that talked there. At an epic
+//   it refuses with no session open, and commits nothing: every state commit
+//   takes the log along. At the product it writes from any conversation in
+//   the project: a write where no session is open opens one, holding nothing
+//   and closing nothing, and the line is committed with the product's scope,
+//   a spike's line with the spike's folder. It refuses,
 //   writing nothing: a unit the project lacks or that is no epic, an
 //   argument out of shape, a value missing, empty or past one line, one
 //   holding what would break its line's shape — a direction or a tool
@@ -48,15 +50,13 @@ const fs = require('fs');
 const path = require('path');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { PRODUCT } = require('../kernel/manifest-schema.cjs');
-const { handedSession } = require('../kernel/process.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { activeSession, sessionLogs, sessionLogsAt, sessionOpen } = require('./discovery-session.cjs');
 const { spikesOf } = require('./asset.cjs');
 const { PRODUCT_DIR } = require('./layout.cjs');
 const { commitStateTail, noteCommitOutcome, PRODUCT_SCOPE } = require('./commit.cjs');
-const { runningTranscript } = require('./conversation.cjs');
 const { listedIn, beyondListsOf, withEntry, oneLine, unbroken, fitsShape } = require('./log-lists.cjs');
-const { conversationsIn, owedHeader, appendLine } = require('./topic-log.cjs');
+const { conversationsIn } = require('./topic-log.cjs');
 
 const SAID = 'discovery-log';
 
@@ -228,8 +228,7 @@ function epicSession(cwd, root, unit) {
 /**
  * `discovery-log <entry> <epic|product> …` (the header's): the entry's line
  * put in the log of the open session — the product's opened where none is —
- * the conversation's line first where it owes one; at the product,
- * committed. Answers the log, from the state root, the heading and the
+ * and at the product committed, a spike's folder with it. Answers the log, from the state root, the heading and the
  * line, and at the product the commit.
  * @param {string} cwd @param {string|undefined} kind @param {string[]} positional @param {Record<string, string>} opts
  */
@@ -243,15 +242,13 @@ function logHeard(cwd, kind, positional, opts) {
   const line = entry.line(root, name, rest, opts);
   const rel = path.posix.join(sessionLogsAt(name), `session-${open ?? sessionOpen(cwd, PRODUCT)}.md`);
   const file = statePath(cwd, rel);
-  const sessionId = handedSession();
-  const header = owedHeader(file, sessionId, sessionId === null ? null : runningTranscript(sessionId));
-  if (header !== null) appendLine(file, header);
   fs.writeFileSync(file, withEntry(fs.readFileSync(file, 'utf8'), HEADINGS, entry.heading, line));
   const said = { log: rel, heading: entry.heading, line: `- ${line}` };
   if (open !== null) return said;
   /** @type {string[]} */
   const warnings = [];
-  const outcome = commitStateTail(cwd, [...PRODUCT_SCOPE], `discovery(product): ${kind} kept`, warnings);
+  const spike = kind === 'spike' ? [path.posix.join(PRODUCT_DIR, 'spikes', rest[0])] : [];
+  const outcome = commitStateTail(cwd, [...PRODUCT_SCOPE, ...spike], `discovery(product): ${kind} kept`, warnings);
   /** @type {Record<string, any>} */
   const result = { ...said, committed: outcome.committed, ...(warnings.length > 0 ? { warnings } : {}) };
   noteCommitOutcome(result, outcome, '--product');

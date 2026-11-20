@@ -1003,10 +1003,14 @@ function drawOtherRecords(filling, warnings) {
   return drawn.length === 0 ? NONE : drawn.map(({ other, json }) => `## ${other}\n\n${json}`).join('\n\n');
 }
 
+/** The product's lists the openings read, which no brief carries: an agent never weighs the person's views as decisions (8.9.15). */
+const OPENINGS_ONLY = ['not_taken', 'views', 'spikes'];
+
 /** @param {Filling} filling @param {string[]} warnings */
 function drawProductRecord(filling, warnings) {
   const scope = filling.place === null ? [unitOf(filling)] : [filling.place.unit, filling.place.topic];
-  return recordJson(ledgerRead(filling.cwd, 'product', scope, warnings));
+  const read = ledgerRead(filling.cwd, 'product', scope, warnings);
+  return recordJson(Object.fromEntries(Object.entries(read).filter(([list]) => !OPENINGS_ONLY.includes(list))));
 }
 
 /** A question as a brief draws it: its short id and its text. @param {(id: string) => Record<string, unknown>} show @param {string} wording */

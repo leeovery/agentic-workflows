@@ -979,14 +979,16 @@ function push(git, timeoutMs) {
  * Of each scope in `owned` — a unit, or null for the project's own files
  * beside the units — every file only the engine writes that changed is taken
  * too: the engine's verbs commit each such file they write, so one changed
- * is a commit still to make.
+ * is a commit still to make. `alone` commits `paths` and nothing else: no
+ * log changed since, for a commit made from outside the work, as the
+ * capture line's is, which never carries what another wrote.
  * @param {string} root
  * @param {string[]} paths absolute, or from the state root
  * @param {string} message
- * @param {{contents?: Record<string, Change>, kept?: string[], owned?: (string|null)[]}} [opts] `contents` by path as `paths` gives one; `kept` as `paths` gives one
+ * @param {{contents?: Record<string, Change>, kept?: string[], owned?: (string|null)[], alone?: boolean}} [opts] `contents` by path as `paths` gives one; `kept` as `paths` gives one
  * @returns {{commit: string|null, held?: true, warnings: string[]}}
  */
-function commitHere(root, paths, message, { contents = {}, kept = [], owned = [] } = {}) {
+function commitHere(root, paths, message, { contents = {}, kept = [], owned = [], alone = false } = {}) {
   if (!fs.existsSync(root)) throw new Error(`no state worktree at ${root}`);
   const specs = paths.map((given) => fromRoot(root, given));
   const keptSpecs = kept.map((given) => fromRoot(root, given));
@@ -1007,7 +1009,7 @@ function commitHere(root, paths, message, { contents = {}, kept = [], owned = []
   const landed = finishLanding(worktree, STATE_BRANCH);
   const changes = placedChanges(worktree);
   refuseOutsideLayout(root, changes);
-  const logs = changes.filter(({ at }) => at?.kind === 'log').map(({ rel }) => rel);
+  const logs = alone ? [] : changes.filter(({ at }) => at?.kind === 'log').map(({ rel }) => rel);
   const engines = changes.filter(({ rel, at }) => at?.kind === 'engine' && owned.some((scope) => (scope === null ? !rel.includes('/') : rel.startsWith(`${scope}/`))))
     .map(({ rel }) => rel);
   const keeps = [...keptSpecs, ...logLinks(root, logs)];
@@ -1022,11 +1024,11 @@ function commitHere(root, paths, message, { contents = {}, kept = [], owned = []
  * @param {string} root
  * @param {string[]} paths absolute, or from the state root
  * @param {string} message
- * @param {{pushTimeoutMs?: number, contents?: Record<string, Change>, kept?: string[], owned?: (string|null)[]}} [opts] `contents`, `kept` and `owned` as `commitHere` takes them
+ * @param {{pushTimeoutMs?: number, contents?: Record<string, Change>, kept?: string[], owned?: (string|null)[], alone?: boolean}} [opts] `contents`, `kept`, `owned` and `alone` as `commitHere` takes them
  * @returns {CommitOutcome}
  */
-function commitState(root, paths, message, { pushTimeoutMs = PUSH_TIMEOUT_MS, contents = {}, kept = [], owned = [] } = {}) {
-  const { commit, held, warnings } = commitHere(root, paths, message, { contents, kept, owned });
+function commitState(root, paths, message, { pushTimeoutMs = PUSH_TIMEOUT_MS, contents = {}, kept = [], owned = [], alone = false } = {}) {
+  const { commit, held, warnings } = commitHere(root, paths, message, { contents, kept, owned, alone });
   if (commit === null) return { commit: null, pushed: false, ...(held ? { held } : {}), warnings };
   const pushed = push(isolatedGit(mainOf(root)), pushTimeoutMs);
   return { commit, pushed: pushed.pushed, warnings: [...warnings, ...pushed.warnings] };

@@ -189,6 +189,17 @@ describe('9.S40: the deep dive\'s brief (9.1.5)', () => {
     assert.deepStrictEqual([findings, decisions, discovery.map((/** @type {{id: string}} */ e) => e.id)], [[], [], [read, spiked]]);
   });
 
+  it('the product record drawn carries none of the lists the openings read: the person\'s views are never weighed as decisions (8.9.15)', () => {
+    write('find', 'product.discovery', [], { ...MADE, text: 'Notes are kept in Core Data.', how: 'read Store/Notes.swift', known: 'read' });
+    ok(dir, ['discovery-log', 'view', 'product', '--text', 'Notes are furniture.']);
+    ok(dir, ['discovery-log', 'not-taken', 'product', '--direction', 'A web client', '--why', 'the Mac is the product']);
+    const dive = dispatch('deep-dive');
+
+    const slot = section(issued(diveArgs(dive.id, '--kind', 'survey')).brief, 'The product record');
+
+    assert.deepStrictEqual(Object.keys(JSON.parse(slot.slice('```json\n'.length, -'\n```'.length))).filter((list) => ['not_taken', 'views', 'spikes'].includes(list)), []);
+  });
+
   it('a read names the file it reads, by its path, and no other kind names one; a kind that is none, or none given, refused', () => {
     const dive = dispatch('deep-dive');
     fs.writeFileSync(path.join(dir, 'NOTES.md'), '# Notes\n');

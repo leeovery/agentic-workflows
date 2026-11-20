@@ -2781,14 +2781,16 @@ const FINISH_EXEMPT = /** @type {Readonly<Record<string, readonly string[]>>} */
 // read from the command's argv after its name: they go through without
 // boot's stamp while the checkout owes no migration on this version, and
 // are refused naming the migration while it owes one (domain/boot-stamp.cjs,
-// `owesMigration`).
+// `owesMigration`). As the capture line, they mark no conversation.
 const KEEP_FORMS = /** @type {Readonly<Record<string, (args: ReturnType<typeof parseArgs>) => boolean>>} */ (Object.freeze({
   'discovery-log': ({ positional }) => positional[1] === PRODUCT,
   asset: ({ positional: [sub, name] }) => ['spike', 'import', 'add', 'status'].includes(sub) && name === PRODUCT,
   ledger: ({ positional: [sub, place] }) => sub === 'find' && place === `${PRODUCT}.discovery`,
   topic: ({ positional: [sub], opts }) => sub === 'send' && opts.from === PRODUCT,
   render: ({ positional: [surface] }) => surface === 'send-report',
-  roadmap: ({ positional: [sub], opts }) => sub === 'state' || (sub === 'add' && opts.origin === `park:${PRODUCT}`),
+  roadmap: ({ positional: [sub], opts }) => ['state', 'archive'].includes(sub) || (sub === 'add' && opts.origin === `park:${PRODUCT}`),
+  inbox: ({ positional: [sub] }) => sub === 'archive',
+  environment: ({ positional: [sub] }) => ['show', 'set'].includes(sub),
 }));
 
 /** Whether a command is one of the keep's doors (`KEEP_FORMS`). @param {string[]} argv @returns {boolean} */
@@ -2869,15 +2871,15 @@ const MOD_READS = ['board'];
 const CAPTURE = 'inbox capture';
 
 /** Whether a command marks the conversation that ran it. @param {string[]} argv */
-const marks = (argv) => ![...HOOK_TARGETS, CAPTURE].includes(argv.slice(0, 2).join(' ')) && !MOD_READS.includes(argv[0]);
+const marks = (argv) => ![...HOOK_TARGETS, CAPTURE].includes(argv.slice(0, 2).join(' ')) && !MOD_READS.includes(argv[0]) && !keepForm(argv);
 
 /**
  * One command against a bound call, answering its exit code — later, for
  * the argv `ANSWERS_LATER` says waits. One boot's stamp does not let through
  * is refused before anything runs, and marks nothing. Whatever the exit of
  * any other, a command the conversation ran marks it as one that runs
- * Ledger — but a hook's, the mod's or the capture line's, run for any
- * conversation; one that answered records the gate its MENU stated as the
+ * Ledger — but a hook's, the mod's, the capture line's or a keep's door,
+ * run for any conversation; one that answered records the gate its MENU stated as the
  * gate the conversation was shown, where a failed one showed none. Both
  * after the command, which may take the folder both live in: boot's tidy-up
  * deletes one whose transcript is gone. Its git runners share one read of

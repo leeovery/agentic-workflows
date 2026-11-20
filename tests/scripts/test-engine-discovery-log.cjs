@@ -7,22 +7,22 @@
 // open session — after the last entry of the last heading of its name, or
 // under the heading added at the log's end — and every refusal writing
 // nothing; at the product, from any conversation, the session opened where
-// none is, the conversation's line written first where it owes one, and
-// the line committed; and the product's lists as `ledger product` reads
+// none is, no conversation's line written, and the line committed, a
+// spike's folder with it; and the product's lists as `ledger product` reads
 // them for every opening (8.9.15). How the board reads an epic's lists is
 // test-engine-board-discovery.cjs's.
 //
 // Layer: verb. World: discovery's gate suites' epic to shape, its first
-// session open and the product's first closed (discovery-gates-world.cjs),
-// copied for each test.
+// session open (discovery-gates-world.cjs), copied for each test; the
+// product's first session closed for its own tests.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
 
-const { describe, it } = require('node:test');
+const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert');
 
-const { ok, refusedPristine, writeState, readState, layout, stateGit, lastMessage, withFrozenClock, FROZEN_AT } = require('./engine-harness.cjs');
+const { ok, refusedPristine, writeState, readState, layout, stateGit, lastMessage } = require('./engine-harness.cjs');
 const { EPIC, PRODUCT_LOG, useGatesWorld } = require('./discovery-gates-world.cjs');
 
 const dir = useGatesWorld('epic');
@@ -126,48 +126,51 @@ describe('discovery-log (20.11.1, 20.11.3)', () => {
 
 describe('discovery-log at the product (8.14.12)', () => {
   const KEEPER = Object.freeze({ CLAUDE_CODE_SESSION_ID: 'keeper' });
-  const DAY = FROZEN_AT.slice(0, 10);
   const LOG = layout.productSession('002');
   /** The product's open session, as the project manifest marks it. */
   const open = () => JSON.parse(readState(dir(), 'manifest.json')).product_session ?? null;
-  /** A call of the verb from the conversation `session`, on the frozen day. @param {string[]} args @param {string} [session] */
-  const keep = (args, session = 'keeper') => withFrozenClock(() => ok(dir(), ['discovery-log', ...args], { env: { CLAUDE_CODE_SESSION_ID: session } }));
+  /** A call of the verb from the conversation `session`. @param {string[]} args @param {string} [session] */
+  const keep = (args, session = 'keeper') => ok(dir(), ['discovery-log', ...args], { env: { CLAUDE_CODE_SESSION_ID: session } });
 
-  it('from a conversation outside it, opens the product\'s next session where none is open, writes the conversation\'s line, then the entry, and commits the product\'s scope', () => {
+  beforeEach(() => {
+    ok(dir(), ['discovery-session', 'close', 'product', '-m', 'discovery(product): the session ends']);
+  });
+
+  it('from a conversation outside it, opens the product\'s next session where none is open, writes the entry alone, and commits the product\'s scope', () => {
     assert.strictEqual(open(), null);
 
     const kept = keep(['view', 'product', '--text', 'Notes are furniture.']);
 
     assert.deepStrictEqual({ kept, log: readState(dir(), LOG), open: open(), dirt: stateGit(dir(), ['status', '--porcelain', '--', '.product', 'manifest.json']), message: lastMessage(dir()) }, {
       kept: { ok: true, log: LOG, heading: 'Views of the product', line: '- Notes are furniture.', committed: stateGit(dir(), ['rev-parse', '--short', 'HEAD']).trim() },
-      log: [`## ${DAY} · session keeper`, '', '## Views of the product', '', '- Notes are furniture.', ''].join('\n'),
+      log: ['## Views of the product', '', '- Notes are furniture.', ''].join('\n'),
       open: '002',
       dirt: '',
       message: 'discovery(product): view kept',
     });
   });
 
-  it('a second conversation\'s keep lands in the same open session under its own line, holding nothing and closing nothing', () => {
+  it('a second conversation\'s keep lands in the same open session, under the list\'s heading, holding nothing and closing nothing', () => {
     keep(['view', 'product', '--text', 'Notes are furniture.']);
     keep(['not-taken', 'product', '--direction', 'A web client', '--why', 'the Mac is the product'], 'fixing-a-bug');
     keep(['view', 'product', '--text', 'One-time pricing.'], 'fixing-a-bug');
 
     assert.deepStrictEqual({ log: readState(dir(), LOG), open: open() }, {
-      log: [
-        `## ${DAY} · session keeper`, '', '## Views of the product', '', '- Notes are furniture.', '- One-time pricing.', '',
-        `## ${DAY} · session fixing-a-bug`, '', '## Not taken', '', '- A web client — the Mac is the product', '',
-      ].join('\n'),
+      log: ['## Views of the product', '', '- Notes are furniture.', '- One-time pricing.', '', '## Not taken', '', '- A web client — the Mac is the product', ''].join('\n'),
       open: '002',
     });
   });
 
-  it('records a spike the product holds, and refuses one it lacks, writing nothing and opening no session', () => {
-    const { spike } = ok(dir(), ['asset', 'spike', 'product', 'frame']);
+  it('records a spike the product holds, committing its folder with the line, and refuses one it lacks, writing nothing and opening no session', () => {
+    const { spike, path: folder } = ok(dir(), ['asset', 'spike', 'product', 'frame']);
+    writeState(dir(), `${folder}/Frame.swift`, 'struct Frame {}\n');
 
     assert.strictEqual(refusedPristine(dir(), ['discovery-log', 'spike', 'product', '009-ghost', '--tool', 'Paper', '--showed', 'x'], { env: KEEPER }).error,
       'discovery-log: product has no spike "009-ghost" — name it as asset spike answered it, its spike');
     assert.strictEqual(open(), null);
     assert.strictEqual(keep(['spike', 'product', spike, '--tool', 'Paper', '--showed', 'Glass reads at a glance']).line, `- ${spike} · Paper — Glass reads at a glance`);
+    assert.strictEqual(stateGit(dir(), ['status', '--porcelain', '--untracked-files=all', '--', '.product']), '');
+    assert.match(stateGit(dir(), ['show', '--name-only', '--format=', 'HEAD']), new RegExp(`^${folder}/Frame\\.swift$`, 'm'));
   });
 
   it('ledger product reads the product\'s lists for every opening, every session\'s in order, an entry out of shape passed over and said (8.9.15)', () => {

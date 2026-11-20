@@ -232,7 +232,7 @@ describe('topic send (10.1, 10.2.7)', () => {
       fromLine(EPIC, 'licence', 'quick-sync.quick-sync'), fromLine(EPIC, 'commercialization', 'E1'),
       fromLine(EPIC, 'licence', 'commercialization/E1'), fromLine(EPIC, 'licence', 'onboarding'), fromLine(EPIC, 'licence', `${EPIC}.discovery`), fromLine(EPIC, 'licence', `${EPIC}.specification`),
       fromLine(EPIC, 'licence', 'product'),
-    ], ['From Commercialization · 1 Jan', 'From First Run, on Fumi · 1 Jan', 'From Quick Sync · 1 Jan', 'From Experiment E1 · 1 Jan', 'From Experiment E1, on Commercialization · 1 Jan', 'From Onboarding · 1 Jan', 'From Discovery · 1 Jan', 'From Specification · 1 Jan', 'From The product · 1 Jan']);
+    ], ['From Commercialization · 1 Jan', 'From First Run, on Fumi · 1 Jan', 'From Quick Sync · 1 Jan', 'From Experiment E1 · 1 Jan', 'From Experiment E1, on Commercialization · 1 Jan', 'From Onboarding · 1 Jan', 'From Discovery · 1 Jan', 'From Specification · 1 Jan', 'From the product · 1 Jan']);
   });
 
   it('refuses a sender that is no name it takes, writing nothing and keeping the scratch: text, a topic the unit lacks, a unit the project lacks, a topic another unit lacks, an experiment the target has not run, one another topic\'s series lacks, a topic with no series, the target\'s own by its topic, a name of three parts, another unit\'s discovery or spec', () => {

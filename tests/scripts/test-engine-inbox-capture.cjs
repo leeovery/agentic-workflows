@@ -12,9 +12,10 @@
 // (18.S23), and in another project's inbox from a session in a project of
 // its own (18.S47), naming that project, a failed commit's retry run from
 // that project's folder; it marks no conversation as running
-// Ledger. Refused, nothing written: a --project folder holding no state,
-// a kind it does not know, a text with no title, and a call of another
-// shape.
+// Ledger. Refused, nothing written: a folder holding no state — its own
+// project as owing the migration that makes it (22.1.8), a --project folder
+// named for one that has it — a kind it does not know, a text with no
+// title, and a call of another shape.
 //
 // Layer: git. World: a project with its state on a bare remote, and a
 // second project, each `codeProject`'s, in a temp folder per test.
@@ -27,7 +28,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  ok, okSections, refusedPristine, sectionOf, codeProject, git, tip, remoteTip, touched, treeSnapshot, lockAttempts, layout, withFrozenClock, FROZEN_AT, initRepo,
+  ok, okSections, refuses, refusedPristine, sectionOf, codeProject, git, tip, remoteTip, touched, treeSnapshot, lockAttempts, layout, withFrozenClock, FROZEN_AT, initRepo,
 } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 
@@ -42,18 +43,21 @@ const captured = (cwd, args, text, env) => withFrozenClock(() => okSections(cwd,
 const line = (sections) => sectionOf(sections, 'DISPLAY: confirmation');
 
 describe('inbox capture (18.6.1, 18.6.2)', () => {
-  it('18.S22: writes the text into the inbox where the state lives, named for its title and the day, commits it alone and pushes it, and draws its one line', () => {
+  it('18.S22: writes the text into the inbox where the state lives, named for its title and the day, commits it alone — never a log another conversation left changed — and pushes it, and draws its one line', () => {
     const { main, root, bare } = codeProject(world(), { remote: true, state: true });
     const aside = layout.inbox('ideas', `${TODAY}--half-written.md`);
-    fs.mkdirSync(path.dirname(path.join(root, aside)), { recursive: true });
-    fs.writeFileSync(path.join(root, aside), '# Half Written\n');
+    const log = layout.productSession('001');
+    for (const [rel, text] of [[aside, '# Half Written\n'], [log, '## Pricing\n']]) {
+      fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });
+      fs.writeFileSync(path.join(root, rel), text);
+    }
     const { res, sections } = captured(main, ['bug'], BUG);
     const rel = layout.inbox('bugs', `${TODAY}--the-login-loops.md`);
 
     assert.deepStrictEqual(res, { ok: true, captured: path.join(root, rel), committed: git(root, ['rev-parse', '--short', 'HEAD']).trim() });
     assert.strictEqual(fs.readFileSync(path.join(root, rel), 'utf8'), BUG);
     assert.deepStrictEqual([git(root, ['log', '-1', '--format=%s']).trim(), touched(root, 'HEAD'), git(root, ['status', '--porcelain', '--untracked-files=all'])],
-      ['ledger(inbox): capture the-login-loops', [`A\t${rel}`], `?? ${aside}\n`]);
+      ['ledger(inbox): capture the-login-loops', [`A\t${rel}`], `?? ${aside}\n?? ${log}\n`]);
     assert.strictEqual(remoteTip(bare), tip(root, 'HEAD'));
     assert.strictEqual(line(sections), 'Logged bug: "The Login Loops"\n');
   });
@@ -78,15 +82,16 @@ describe('inbox capture (18.6.1, 18.6.2)', () => {
     assert.match(res.warnings.join('\n'), /^ledger-state is committed here but was not pushed to origin .*no pushes today/s);
   });
 
-  it('marks no conversation as running Ledger, where a verb of the work does', () => {
+  it('marks no conversation as running Ledger, nor does the keep\'s drop of what it kept, where a verb of the work does', () => {
     const { main } = codeProject(world(), { state: true });
     const config = path.join(world(), 'config');
     const env = (/** @type {string} */ id) => ({ LEDGER_CONFIG_DIR: config, CLAUDE_CODE_SESSION_ID: id });
     const marked = (/** @type {string} */ id) => fs.existsSync(path.join(config, 'conversations', id, 'workflow'));
     const { res } = captured(main, ['bug'], BUG, env('logging'));
-    withFrozenClock(() => okSections(main, ['inbox', 'archive', res.captured], { env: env('triaging') }));
+    const { archived } = withFrozenClock(() => okSections(main, ['inbox', 'archive', res.captured], { env: env('dropping') })).res;
+    withFrozenClock(() => okSections(main, ['inbox', 'restore', ...archived], { env: env('triaging') }));
 
-    assert.deepStrictEqual([marked('logging'), marked('triaging')], [false, true]);
+    assert.deepStrictEqual([marked('logging'), marked('dropping'), marked('triaging')], [false, false, true]);
   });
 });
 
@@ -129,20 +134,24 @@ describe('inbox capture from elsewhere (18.6.3, 18.6.8)', () => {
     assert.deepStrictEqual([from, retried.committed, touched(theirs, 'HEAD')], [there, git(theirs, ['rev-parse', '--short', 'HEAD']).trim(), [`A\t${layout.inbox('bugs', `${TODAY}--the-login-loops.md`)}`]]);
   });
 
-  it('refuses, writing nothing, a --project folder holding no state, a kind it does not know, a text with no title, and a call of another shape', () => {
+  it('refuses, writing nothing, a --project folder holding no state, its own project holding none as owing the migration, a kind it does not know, a text with no title, and a call of another shape', () => {
     const { main } = codeProject(world(), { state: true });
     const bare = initRepo(path.join(world(), 'plain'));
+    const unmigrated = initRepo(path.join(world(), 'unmigrated'));
+    fs.mkdirSync(path.join(unmigrated, '.workflows'));
     const refused = (/** @type {string[]} */ args, /** @type {string} */ text = BUG) => refusedPristine(main, ['inbox', 'capture', ...args], { stdin: text }).error;
     const usage = 'Usage: engine inbox <archive|restore|delete> <path> [<path> …] | engine inbox close <work-unit|none> <path> [<path> …] | engine inbox file <work-unit> --file <item.json> | engine inbox capture <idea|bug|quick-fix> [--project <folder>]';
 
     assert.deepStrictEqual([
-      refused(['bug', '--project', bare]), refused(['task']), refused(['bug'], 'No title here.\n'), refused(['bug'], ''), refused([]), refused(['bug', 'idea']), refused(['bug', '--file', 'x.md']),
+      refused(['bug', '--project', bare]), refuses(unmigrated, ['inbox', 'capture', 'bug'], { stdin: BUG }).error, refused(['task']), refused(['bug'], 'No title here.\n'), refused(['bug'], ''), refused([]), refused(['bug', 'idea']), refused(['bug', '--file', 'x.md']),
     ], [
       `inbox capture: ${bare} holds no Ledger state — name the folder of a project that has it: --project <folder>`,
+      'inbox capture: this checkout owes Ledger\'s migration on this version — on the person\'s yes, run boot\'s migration, then this again',
       'inbox capture: its kind is one of idea, bug, quick-fix, not "task"',
       'inbox capture: its text, on stdin, holds its title, `# Title`',
       'inbox capture: its text, on stdin, holds its title, `# Title`',
       usage, usage, usage,
     ]);
+    assert.deepStrictEqual(fs.readdirSync(unmigrated).sort(), ['.git', '.workflows'], 'the refusal wrote nothing');
   });
 });

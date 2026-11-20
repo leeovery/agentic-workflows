@@ -38,7 +38,7 @@ The other rows:
 - **`m/manage`** is where work changes shape — pivot, absorb, cancel, bring back — and where the project's setup, its drivers and [the matrix](trust.md#the-matrix) are changed. [Lifecycle operations](lifecycle-operations.md) covers the reshaping; [configuration](configuration.md) the setup and drivers.
 - **`h/help`** is on every menu: what the screen is for and what each row does, then an invitation to ask about anything else. The start menu's help also leads to the walkthrough and to a card on each part of Ledger.
 
-You rarely need the menu to start. Ask Claude for a change in the middle of any conversation and it takes your words into Ledger itself, going straight into Start or into the piece of work they name; talk that turns to the product itself, what it is, who it is for and where it is going, carries the product's conversation on the same way. The start menu is drawn only when you type the bare command.
+You rarely need the menu to start. Ask Claude for a change in the middle of any conversation and it takes your words into Ledger itself, going straight into Start or into the piece of work they name; talk that turns to the product itself at length, what it is, who it is for and where it is going, carries the product's conversation on the same way, even where it names a piece of work; a remark in passing is kept where it goes, and the conversation carries on as it was. The start menu is drawn only when you type the bare command.
 
 ## The inbox
 
@@ -52,7 +52,7 @@ Claude keeps what comes up in any conversation, Ledger's or not, where Ledger ke
 
 A capture writes your thought down as you said it, never padded; the thinking happens later, if you decide the thought is worth it. A capture made from a session in another project lands in the inbox of the project it concerns.
 
-The rest has its places too. A view of the product, a direction you dropped and why, and what a spike showed go into the product's conversation's log, from whichever conversation you said them in; a fact about the code or the platform becomes a finding the knowledge base can find; a file you share is kept among the product's files, linked from what it shows; and a point for a topic already under way reaches it as a message. None of these asks you anything.
+The rest has its places too. A view of the product said in passing, a direction you dropped and why, and what a spike showed go into the product's conversation's log, from whichever conversation you said them in; a fact about the code or the platform becomes a finding the knowledge base can find, on the work it came up in or the product's; a file you share is kept among the product's files, linked from what it shows; the project's setup — how it builds, tests and runs — goes into its environment; an instruction for working in the code goes into its `CLAUDE.md`; and a point for a topic already under way reaches it as a message. None of these asks you anything. When Ledger has been updated and its migration is due, Claude says so and asks first; on your yes the migration runs, and the conversation carries on where it was.
 
 ## Triage
 

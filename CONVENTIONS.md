@@ -227,7 +227,7 @@ Every screen the engine draws keeps to the existing design system; a new screen 
 
 ## Files
 
-The keep skill (`ledger-keep`) keeps what is said, in any conversation, through the doors its map names. It runs no flow, and stays structureless: no gates, no references, no framework load.
+The keep skill (`ledger-keep`) keeps what is said, in any conversation, through the doors its map names. It runs no flow, and stays structureless: no gates or references of its own, and no framework load. A migration owed runs through the start skill's boot reference and its review, which the keep loads.
 
 ### Frontmatter
 

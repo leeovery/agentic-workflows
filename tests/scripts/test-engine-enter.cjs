@@ -769,6 +769,48 @@ describe('discovery: the product\'s conversation (8.2.7–8.2.10)', () => {
       /^catch up: the transcript of session sess-gone, which last wrote the log, is gone — say so in one line, and carry on from the log$/m);
   });
 
+  describe('a keep from another conversation (8.14.12, 8.14.8)', () => {
+    const LOG = layout.productSession('003');
+    /** A view kept from the conversation `sessionId`, outside the product's. @param {string} sessionId @param {string} view */
+    const keep = (sessionId, view) => ok(dir, ['discovery-log', 'view', 'product', '--text', view], { env: env(sessionId) });
+    /** The conversations the open log names, in order. */
+    const named = () => [...readState(dir, LOG).matchAll(/^## \S+ · session (\S+)/gm)].map(([, sessionId]) => sessionId);
+    /** The conversation an entry is told to catch up from, by its transcript; null where none. @param {string} [sessionId] */
+    const caughtUpFrom = (sessionId) => enter(['discovery', 'product'], sessionId).sections.match(/^catch up: read \S+\/(\S+)\.jsonl from/m)?.[1] ?? null;
+
+    it('writes no line of its own, so the next return catches up from the conversation that talked, never from the keep\'s', () => {
+      transcript('sess-1');
+      transcript('coder');
+      enter(['discovery', 'product']);
+      fs.appendFileSync(at(LOG), '\nPricing tiers, leaning three.\n');
+
+      keep('coder', 'Notes are furniture.');
+
+      assert.strictEqual(caughtUpFrom('sess-2'), 'sess-1');
+      assert.deepStrictEqual(named(), ['sess-1', 'sess-2']);
+    });
+
+    it('with the product\'s conversation live in another window, its talk after the keep stays its own: nothing to catch up on its next entry, and the next conversation catches up from it', () => {
+      transcript('sess-1');
+      transcript('coder');
+      enter(['discovery', 'product']);
+      keep('coder', 'Notes are furniture.');
+      fs.appendFileSync(at(LOG), '\n## Pricing\n\nOne-time.\n');
+
+      assert.strictEqual(caughtUpFrom(), null);
+      assert.strictEqual(caughtUpFrom('sess-2'), 'sess-1');
+      assert.deepStrictEqual(named(), ['sess-1', 'sess-2']);
+    });
+
+    it('one that opened the session leaves the first entry no conversation to catch up from', () => {
+      transcript('coder');
+      keep('coder', 'Notes are furniture.');
+
+      assert.strictEqual(caughtUpFrom(), null);
+      assert.deepStrictEqual(named(), ['sess-1']);
+    });
+  });
+
   it('another live session holding it is asked about first; the yes is the entry again with --take, a move kept a move, and leaving it carries on, the product having no menu (18.4.21)', () => {
     runAs(dir, ['presence', 'beat', 'product', 'discovery', 'product'], 'peer', PEER);
     const { res, sections } = enter(['discovery', 'product']);
