@@ -190,13 +190,15 @@ class Sim {
   }
 
   /**
-   * A handoff the gate mod carries: the conversation is cleared and the work
-   * starts in a fresh one, in the same Claude process, boot's stamp copied
-   * into it from the one cleared, as the mod copies it.
+   * A handoff the gate mod carries: the conversation is cleared, its rows
+   * dropped as Claude Code's SessionEnd hook drops them on a clear, and the
+   * work starts in a fresh one, in the same Claude process, boot's stamp
+   * copied into it from the one cleared, as the mod copies it.
    */
   handOver() {
     const stamp = (/** @type {string} */ id) => path.join(this.configDir, 'conversations', id, BOOTED);
     const left = stamp(this.env.CLAUDE_CODE_SESSION_ID);
+    this.run(['presence', 'cleanup', this.env.CLAUDE_CODE_SESSION_ID]);
     this.conversations += 1;
     this.env = { ...this.env, CLAUDE_CODE_SESSION_ID: `sim-session-${this.conversations}` };
     fs.mkdirSync(path.dirname(stamp(this.env.CLAUDE_CODE_SESSION_ID)), { recursive: true });

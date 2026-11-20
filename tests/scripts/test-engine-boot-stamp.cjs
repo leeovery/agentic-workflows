@@ -10,8 +10,13 @@
 // wherever in the project it is called from — but what the one table lets
 // through, every hook boot installs among it, and a call with no session
 // id; a capture made from another project's conversation lands, and its
-// commit's retry goes through; a boot killed as it stamps leaves the
-// conversation refused, and the next boot stamps it.
+// commit's retry goes through; the keep's doors go through while the
+// checkout owes no migration on this version — one waiting on its review
+// owed too, in a conversation boot stamped as in one it did not, whose boot
+// names the review again and commits nothing — marking no conversation and
+// committing their own paths alone, and refuse naming the migration while
+// it owes one (`KEEP_FORMS`, 18.11.7); a boot killed as it stamps leaves
+// the conversation refused, and the next boot stamps it.
 //
 // Layer: verb, with one process test, the boot killed as it stamps. World:
 // the project fixture, a git repository with its state worktree and
@@ -30,10 +35,10 @@ const fs = require('fs');
 const path = require('path');
 
 const {
-  call, callAsync, ok, refusedPristine, fixtureFrom, git, commitAll, createFile, stateGit, stampBooted, killedAt,
+  call, callAsync, ok, refusedPristine, fixtureFrom, git, commitAll, createFile, stateGit, stampBooted, killedAt, commitOnState, statePath,
   failingStateCommits, engineHook, LEDGER_HOOKS, GUARD_GROUPS, hooked,
 } = require('./engine-harness.cjs');
-const { useTempFolder, createManifest } = require('./discovery-test-utils.cjs');
+const { useTempFolder, createManifest, writeState, readState } = require('./discovery-test-utils.cjs');
 const { COMMANDS, BOOT_EXEMPT } = require('../../skills/ledger-engine/scripts/engine.cjs');
 const { highestMigration } = require('../../skills/ledger-migrate/scripts/migration-ids.cjs');
 
@@ -243,6 +248,105 @@ describe('a capture from another project\'s conversation (22.1.8, 18.6.8)', () =
 
     assert.ok(retried.committed, 'the retry committed the capture');
     assert.strictEqual(stateGit(other, ['status', '--porcelain', '--untracked-files=all']), '');
+  });
+});
+
+describe('the keep\'s doors before boot has run (22.1.8, 18.11.7)', () => {
+  /** The migrations record holding `ids`, one a line. @param {...string} ids */
+  const record = (...ids) => ids.map((id) => `${id}\n`).join('');
+  /** The record committed holding `ids`, as boot leaves it once its migrations are through. @param {...string} ids */
+  const recorded = (...ids) => commitOnState(statePath(dir), { '.state/migrations': record(...ids) }, 'chore: record Ledger\'s migrations');
+  const VIEW = Object.freeze(['discovery-log', 'view', 'product', '--text', 'Notes are furniture.']);
+  const KEPT = [
+    VIEW,
+    ['discovery-log', 'not-taken', 'product', '--direction', 'A web client', '--why', 'the Mac is the product'],
+    ['ledger', 'find', 'product.discovery'],
+    ['asset', 'spike', 'product', 'frame'], ['asset', 'import', 'product', 'brand.png'],
+    ['asset', 'add', 'product', '.product/assets/brand.png', '--entry', 'x'], ['asset', 'status', 'product', '.product/assets/brand.png', 'reference'],
+    ['topic', 'send', 'fumi', 'licence', '--from', 'product', '--content', 'm.md', '--slug', 'm'],
+    ['render', 'send-report', 'fumi.licence', '--sent', 'm.md'],
+    ['roadmap', 'state'], ['roadmap', 'add', 'sync', '--horizon', 'v2', '--summary', 'Sync', '--origin', 'park:product'], ['roadmap', 'archive', 'sync'],
+    ['inbox', 'archive', '.ledger/.inbox/ideas/2026-01-01--sync.md'], ['environment', 'show'], ['environment', 'set', 'run'],
+  ];
+  const OTHERS = [
+    ['discovery-log', 'view', 'fumi', '--text', 'x'], ['ledger', 'find', 'fumi.discovery'], ['ledger', 'decide', 'product.discovery'],
+    ['asset', 'spike', 'fumi', 'frame'], ['asset', 'lift', 'product', 'a', '--into', 'b', '--entry', 'x'],
+    ['topic', 'send', 'fumi', 'licence', '--from', 'fumi.discovery', '--content', 'm.md', '--slug', 'm'],
+    ['render', 'start-menu'], ['roadmap', 'add', 'sync', '--horizon', 'v2', '--summary', 'Sync', '--origin', 'roadmap'], ['roadmap', 'move', 'sync', '--horizon', 'v3'],
+    ['inbox', 'restore', 'x'], ['inbox', 'delete', 'x'], ['environment', 'confirm'], ['roadmap', 'archive', 'later'], ['roadmap', 'archive', 'ghost'],
+  ];
+  let fresh = 0;
+  /** Each call of `argvs` the stamp refuses, in a conversation never booted, fresh for each call. @param {string[][]} argvs */
+  const refusedOf = (argvs) => argvs.filter((argv) => refusedUnbooted(call(dir, argv, { env: { ...env, CLAUDE_CODE_SESSION_ID: `keeping-${fresh++}` }, stdin: '{}', unbooted: true }))).map((argv) => argv.join(' '));
+
+  it('each form the keep skill uses goes through while the checkout owes no migration on this version, and every other form of those commands is refused — the drop of a roadmap item only where no unit stands behind it', () => {
+    recorded('001', highestMigration());
+    const project = JSON.parse(readState(dir, 'manifest.json'));
+    const later = { horizon: 'v2', summary: 'Later', kind: 'idea', origin: 'postpone:fumi', postponed_from: { work_unit: 'fumi', topic: 'later' } };
+    writeState(dir, 'manifest.json', `${JSON.stringify({ ...project, roadmap: { horizons: ['v2'], items: { later } } }, null, 2)}\n`);
+
+    assert.deepStrictEqual(refusedOf(KEPT), []);
+    assert.deepStrictEqual(refusedOf(OTHERS), OTHERS.map((argv) => argv.join(' ')));
+    assert.match(ok(dir, VIEW, { env, unbooted: true }).line, /^- Notes are furniture\.$/);
+    assert.strictEqual(stamps(), null, 'no boot ran');
+  });
+
+  it('marks no conversation as one that runs Ledger, as the capture line marks none, nor does boot, which a keep\'s way into a migration runs; a real start is marked by its next verb', () => {
+    recorded('001', highestMigration());
+    const marked = () => fs.existsSync(path.join(conversation(), 'workflow'));
+
+    ok(dir, VIEW, { env, unbooted: true });
+    const kept = marked();
+    ok(dir, ['boot'], { env, unbooted: true });
+    const booted = marked();
+    assert.strictEqual(call(dir, ['render', 'start-menu'], { env, unbooted: true }).code, 0);
+
+    assert.deepStrictEqual([kept, booted, marked()], [false, false, true]);
+  });
+
+  it('refuses, writing nothing and naming the migration, while the record lacks the installed migrations\' highest id, holds it uncommitted as a migration waiting on its review leaves it, or the reshape waits on its commit — the last two in a conversation boot stamped too; once the commit is made and boot has run, the door goes through', () => {
+    const owed = 'discovery-log: this checkout owes Ledger\'s migration on this version — on the person\'s yes, run boot\'s migration, then this again';
+    const unrecorded = refusedPristine(dir, VIEW, { env, unbooted: true }).error;
+    recorded('001');
+    const behind = refusedPristine(dir, VIEW, { env, unbooted: true }).error;
+    writeState(dir, '.state/migrations', record('001', highestMigration()));
+    const reviewing = refusedPristine(dir, VIEW, { env, unbooted: true }).error;
+    recorded('001', highestMigration());
+    writeState(dir, '.cache/migrate/finish.json', '{"drops": []}\n');
+    const finishing = refusedPristine(dir, VIEW, { env, unbooted: true }).error;
+
+    stampBooted(dir, SESSION, config);
+    const stamped = refusedPristine(dir, VIEW, { env, unbooted: true }).error;
+
+    assert.deepStrictEqual([unrecorded, behind, reviewing, finishing, stamped], [owed, owed, owed, owed, owed]);
+    fs.rmSync(statePath(dir, '.cache/migrate/finish.json'));
+    ok(dir, VIEW, { env, unbooted: true });
+  });
+});
+
+describe('a migration waiting on its review, in two windows (18.11.7)', () => {
+  it('owes the migration in both: the keep refused in the window that ran it and in one never booted, the second\'s boot naming the review and committing nothing; once the review\'s yes commits it, the keep goes through, committing its own paths alone', () => {
+    ok(dir, ['boot'], { env, unbooted: true });
+    const ran = readState(dir, '.state/migrations');
+    commitOnState(statePath(dir), { '.state/migrations': ran.split('\n').filter(Boolean).slice(0, -1).map((id) => `${id}\n`).join('') }, 'chore: record Ledger\'s migrations');
+    writeState(dir, '.state/migrations', ran);
+    const PARK = ['roadmap', 'add', 'sync', '--horizon', 'v2', '--summary', 'Sync', '--origin', 'park:product'];
+    const other = { ...env, CLAUDE_CODE_SESSION_ID: 'other-window' };
+    const owed = 'roadmap: this checkout owes Ledger\'s migration on this version — on the person\'s yes, run boot\'s migration, then this again';
+
+    const refusals = [refusedPristine(dir, PARK, { env, unbooted: true }).error, refusedPristine(dir, PARK, { env: other, unbooted: true }).error];
+    const second = ok(dir, ['boot'], { env: other, unbooted: true });
+    const waiting = [second.gates.includes('migration-review'), second.migrations_committed, readState(dir, '.state/migrations') === ran, stateGit(dir, ['status', '--porcelain', '--', '.state']).trim()];
+    const after = refusedPristine(dir, PARK, { env: other, unbooted: true }).error;
+    ok(dir, ['commit', '--migrations', '-m', 'chore: apply Ledger\'s migrations'], { env: other, unbooted: true });
+    const log = writeState(dir, '.product/sessions/session-001.md', '## Pricing\n\nOne-time.\n');
+    ok(dir, PARK, { env: other, unbooted: true });
+
+    assert.deepStrictEqual(refusals, [owed, owed]);
+    assert.deepStrictEqual(waiting, [true, null, true, 'M .state/migrations']);
+    assert.strictEqual(after, owed);
+    assert.deepStrictEqual(stateGit(dir, ['show', '--name-only', '--format=', 'HEAD']).trim().split('\n'), ['manifest.json']);
+    assert.match(stateGit(dir, ['status', '--porcelain', '--untracked-files=all']), new RegExp(`^\\?\\? ${path.relative(statePath(dir), log)}$`, 'm'));
   });
 });
 

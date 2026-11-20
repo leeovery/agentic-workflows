@@ -70,8 +70,10 @@
 //   quick-fix's then puts the project's checkout back on the branch it
 //   lands on; then
 //   completes the unit (workunit-lifecycle.cjs). It answers where the work
-//   goes (24.1.2), a handoff each: an epic's menu, its complete variant
-//   (14.6.2, 18.4.23); the start menu, `/ledger`, for every other type.
+//   goes (24.1.2): an epic's menu, its complete variant (14.6.2, 18.4.23),
+//   and the start menu, `/ledger`, for a feature or a bugfix, a handoff
+//   each; a quick-fix's close carries on in the conversation it closes in,
+//   leaving its place (topic-leave.cjs, `afterFinish`).
 // - What the yes stands on before it lands anything is `land finish`'s
 //   refusal too, and a quick-fix's `land phase`'s, which lands its one pull
 //   request whole (landing.cjs): one read, the screen's standing and no
@@ -110,7 +112,7 @@ const { ranOf } = require('./build-screens.cjs');
 const { verifySetup } = require('./environment.cjs');
 const { projectName } = require('./state-checks.cjs');
 const { criteriaTexts } = require('./task-file.cjs');
-const { ontoMenu } = require('./topic-leave.cjs');
+const { afterFinish } = require('./topic-leave.cjs');
 const { recordedBranch } = require('./landing-git.cjs');
 const { landsThroughHost } = require('./unit-branch.cjs');
 const { projectDefault } = require('./task-base.cjs');
@@ -350,7 +352,7 @@ function finishYes(cwd, unit) {
   const completed = completeWorkUnit(cwd, unit, { message: `finish(${unit}): completed` });
   const said = [...warnings, ...(landed.warnings ?? []), ...completed.warnings];
   /** @type {Record<string, unknown>} */
-  const result = { unit, landed: landed.repos, ...(landed.checkout === undefined ? {} : { checkout: landed.checkout }), completed_at: completed.completed_at, committed: completed.committed, next: ontoMenu(unit, manifest.work_type) };
+  const result = { unit, landed: landed.repos, ...(landed.checkout === undefined ? {} : { checkout: landed.checkout }), completed_at: completed.completed_at, committed: completed.committed, next: afterFinish(cwd, unit, manifest.work_type) };
   if (completed.note !== undefined) result.note = completed.note;
   if (said.length > 0) result.warnings = said;
   return result;

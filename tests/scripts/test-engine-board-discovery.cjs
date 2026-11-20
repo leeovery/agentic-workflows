@@ -230,7 +230,7 @@ describe('discovery on the board (20.11)', () => {
       warnings: [
         `${first}: "Importing Stickies" under ## Not taken does not read as a direction and why, and is passed over`,
         `${first}: "003-list, a thought with no shape" under ## Spikes does not read as a spike, and is passed over`,
-        `${first}: "009-ghost · Swift — never started" under ## Spikes names no spike the epic holds, and is passed over`,
+        `${first}: "009-ghost · Swift — never started" under ## Spikes names none of its spikes, and is passed over`,
       ],
       pages: ['https://paper.design/f/1', null],
     });

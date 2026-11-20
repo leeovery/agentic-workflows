@@ -9,7 +9,7 @@
 // progress, and nothing more, go into it as the start menu's number does;
 // words that carry on and name nothing, into the work in progress; words
 // naming work among other words, several pieces of it, or a closed unit go
-// to the pick. The setup gates come with it (test-engine-boot-gates.cjs
+// to the pick, Start's move beside it for talk about the product. The setup gates come with it (test-engine-boot-gates.cjs
 // holds which are due); a few boots hold the wiring. The bare command sends
 // no words, its stdin empty, closed, or the start skill's one empty line.
 //
@@ -68,7 +68,7 @@ const INTO = {
 /** Into a unit, as the route gives it. @param {keyof typeof INTO} unit */
 const into = (unit) => ({ go: 'route', route: { kind: 'unit', unit, next: INTO[unit] } });
 /** The pick over `matches`, as boot gives it. @param {string} matches */
-const pickOf = (matches) => ({ go: 'pick', pick: { surface: 'work-pick', args: ['--matches', matches] } });
+const pickOf = (matches) => ({ go: 'pick', pick: { surface: 'work-pick', args: ['--matches', matches], start: TO_START } });
 
 /** The project's units given the status, the rest as they stand. @param {string} project @param {Record<string, string>} statuses */
 function closing(project, statuses) {

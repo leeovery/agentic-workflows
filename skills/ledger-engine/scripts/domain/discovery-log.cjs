@@ -1,35 +1,44 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: what an epic's discovery logs hold under their fixed headings
-// (20.11.1, 20.11.3) — written by `discovery-log`, read by the board. Claude
-// writes the rest of the log as the conversation goes, in sections under
-// headings of its own; these three are lists only the verb writes, an entry
-// a line, written and read as every log's fixed lists are (log-lists.cjs):
+// Domain ring: what discovery's logs hold under their fixed headings — an
+// epic's (20.11.1, 20.11.3) and the product's (8.14.12) — written by
+// `discovery-log`, read by the board and by every opening that reads the
+// product record (8.9.15). Claude writes the rest of the log as the
+// conversation goes, in sections under headings of its own; these three are
+// lists only the verb writes, an entry a line, written and read as every
+// log's fixed lists are (log-lists.cjs):
 //
 //   ## Not taken              `- {direction} — {why}`
 //   ## Views of the product   `- {view}`
 //   ## Spikes                 `- {spike} · {tool} — {what it showed}`, the
 //                             tool `[{tool}]({live link})` where it has one
 //
-// - The verb (`discovery-log not-taken|view|spike <epic> …`) puts its entry
-//   in the log of the epic's open session, after the last entry under the
+// - The verb (`discovery-log not-taken|view|spike <epic|product> …`) puts its
+//   entry in the log of the open session, after the last entry under the
 //   last of its heading there and the lines indented beneath it, as the
 //   first where none is, or under the heading added at the log's end where
-//   the log has none. It refuses, writing nothing: a unit the project
-//   lacks or that is no epic, an epic with no session open, an argument out
-//   of shape, a value missing, empty or past one line, one holding what
-//   would break its line's shape — a direction or a tool holding ` — `, a
-//   tool `[` or `]` — a live link that is no web address, and a spike the
-//   epic does not hold, named by the folder `asset spike` answered as
-//   `spike`. Nothing is committed: every state commit takes the log along.
+//   the log has none. It writes no conversation's line: a keep from another
+//   conversation never becomes the log's last writer, so catching up and
+//   the start menu read only the conversations that talked there. At an epic
+//   it refuses with no session open, and commits nothing: every state commit
+//   takes the log along. At the product it writes from any conversation in
+//   the project: a write where no session is open opens one, holding nothing
+//   and closing nothing, and the line is committed with the product's scope,
+//   a spike's line with the spike's folder. It refuses,
+//   writing nothing: a unit the project lacks or that is no epic, an
+//   argument out of shape, a value missing, empty or past one line, one
+//   holding what would break its line's shape — a direction or a tool
+//   holding ` — `, a tool `[` or `]` — a live link that is no web address,
+//   and a spike the place does not hold, named by the folder `asset spike`
+//   answered as `spike`.
 // - The reader takes every session's log in order, and in each every line
 //   under a fixed heading that is an entry, at the margin outside a fenced
 //   block, as one entry, wherever it stands; an indented line and prose
 //   are passed over, so a closing line or a move's pointer is never read
 //   into an entry. A heading written again adds to its list; a later
 //   spike's line stands over an earlier. An entry that does not read as its
-//   heading's shape, and a spike's naming none of the epic's spikes, is
+//   heading's shape, and a spike's naming none of the place's spikes, is
 //   passed over, said among the warnings.
 // - Beyond the lists (`beyondLists`) is what a log's closing line is read
 //   from (discovery-entry.cjs), an entry recorded after it never taken for
@@ -40,9 +49,12 @@
 const fs = require('fs');
 const path = require('path');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
+const { PRODUCT } = require('../kernel/manifest-schema.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
-const { activeSession, sessionLogsAt } = require('./discovery-session.cjs');
+const { activeSession, sessionLogs, sessionLogsAt, sessionOpen } = require('./discovery-session.cjs');
 const { spikesOf } = require('./asset.cjs');
+const { PRODUCT_DIR } = require('./layout.cjs');
+const { commitStateTail, noteCommitOutcome, PRODUCT_SCOPE } = require('./commit.cjs');
 const { listedIn, beyondListsOf, withEntry, oneLine, unbroken, fitsShape } = require('./log-lists.cjs');
 const { conversationsIn } = require('./topic-log.cjs');
 
@@ -103,7 +115,7 @@ const READS = Object.freeze({
   [LOG_HEADINGS.spikes]: (heard, entry, spikes) => {
     const said = spikeOf(entry);
     if (said === null) return 'does not read as a spike';
-    if (!spikes.includes(said[0])) return 'names no spike the epic holds';
+    if (!spikes.includes(said[0])) return 'names none of its spikes';
     heard.spikes.set(...said);
     return null;
   },
@@ -114,8 +126,8 @@ const HEADINGS = Object.keys(READS);
 
 /**
  * What the logs say under their fixed headings, in order, each a log's
- * text, read once, with its path from the state root, and the epic's spikes
- * (the header's); what is passed over said in `warnings`.
+ * text, read once, with its path from the state root, and the place's
+ * spikes (the header's); what is passed over said in `warnings`.
  * @param {{rel: string, text: string}[]} logs @param {string[]} spikes @param {string[]} warnings @returns {Heard}
  */
 function heardIn(logs, spikes, warnings) {
@@ -130,6 +142,24 @@ function heardIn(logs, spikes, warnings) {
   return heard;
 }
 
+/** The folder a place's spikes are in, from the state root: an epic's own, or the product's. @param {string} name */
+const spikesHome = (name) => (name === PRODUCT ? PRODUCT_DIR : name);
+
+/**
+ * What the product's logs say under their fixed headings (8.9.15), every
+ * session's in order: each list that holds an entry. What is passed over is
+ * said in `warnings`.
+ * @param {string} root @param {string[]} warnings
+ * @returns {{not_taken?: {direction: string, why: string}[], views?: string[], spikes?: ({spike: string} & SpikeSaid)[]}}
+ */
+function productHeard(root, warnings) {
+  const folder = sessionLogsAt(PRODUCT);
+  const logs = sessionLogs(path.join(root, folder)).map(({ file }) => ({ rel: path.posix.join(folder, file), text: fs.readFileSync(path.join(root, folder, file), 'utf8') }));
+  const heard = heardIn(logs, spikesOf(root, PRODUCT_DIR), warnings);
+  const lists = { not_taken: heard.notTaken, views: heard.views, spikes: [...heard.spikes].map(([spike, said]) => ({ spike, ...said })) };
+  return Object.fromEntries(Object.entries(lists).filter(([, list]) => list.length > 0));
+}
+
 /** A log's lines outside its fixed lists, their headings left out with them. @param {string[]} lines */
 function beyondLists(lines) {
   return beyondListsOf(lines, HEADINGS);
@@ -140,33 +170,33 @@ const sessionStarted = (text) => conversationsIn(text)[0]?.date ?? null;
 
 /**
  * Each entry the verb writes: its heading, its usage after `discovery-log`,
- * the positionals it takes after the epic, its flags and those it may be
+ * the positionals it takes after the place, its flags and those it may be
  * given, and its line from them, refused where one does not hold.
  * @type {Readonly<Record<string, {heading: string, usage: string, takes: number, flags: string[], may?: string[], line: (root: string, unit: string, positional: string[], opts: Record<string, string>) => string}>>}
  */
 const ENTRIES = Object.freeze({
   'not-taken': {
     heading: LOG_HEADINGS.notTaken,
-    usage: 'not-taken <epic> --direction "<direction>" --why "<why>"',
+    usage: 'not-taken <epic|product> --direction "<direction>" --why "<why>"',
     takes: 0,
     flags: ['direction', 'why'],
     line: (_root, _unit, _positional, opts) => `${unbroken(SAID, oneLine(SAID, opts.direction, 'direction'), 'direction', [DASH])}${DASH}${oneLine(SAID, opts.why, 'why')}`,
   },
   view: {
     heading: LOG_HEADINGS.views,
-    usage: 'view <epic> --text "<view>"',
+    usage: 'view <epic|product> --text "<view>"',
     takes: 0,
     flags: ['text'],
     line: (_root, _unit, _positional, opts) => oneLine(SAID, opts.text, 'text'),
   },
   spike: {
     heading: LOG_HEADINGS.spikes,
-    usage: 'spike <epic> <spike> --tool "<tool>" --showed "<what it showed>" [--link <live link>]',
+    usage: 'spike <epic|product> <spike> --tool "<tool>" --showed "<what it showed>" [--link <live link>]',
     takes: 1,
     flags: ['tool', 'showed'],
     may: ['link'],
     line: (root, unit, [spike], opts) => {
-      if (!spikesOf(root, unit).includes(spike)) throw new Error(`${SAID}: ${unit} has no spike "${spike}" — name it as asset spike answered it, its spike`);
+      if (!spikesOf(root, spikesHome(unit)).includes(spike)) throw new Error(`${SAID}: ${unit} has no spike "${spike}" — name it as asset spike answered it, its spike`);
       const tool = unbroken(SAID, oneLine(SAID, opts.tool, 'tool'), 'tool', [DASH, '[', ']']);
       if (opts.link !== undefined && !WEB_ADDRESS.test(opts.link)) throw new Error(`${SAID}: --link is the spike's live link, a web address, not "${opts.link}"`);
       return `${spike} · ${opts.link === undefined ? tool : `[${tool}](${opts.link})`}${DASH}${oneLine(SAID, opts.showed, 'showed')}`;
@@ -182,27 +212,47 @@ function checkShape(entry, positional, opts) {
 }
 
 /**
- * `discovery-log <entry> <epic> …` (the header's): the entry's line put in
- * the log of the epic's open session. Answers the log, from the state root,
- * the heading and the line.
+ * The epic's open session an entry goes in, refused where the project has
+ * no such epic, or it has no session open.
+ * @param {string} cwd @param {string} root @param {string} unit
+ */
+function epicSession(cwd, root, unit) {
+  const manifest = manifestOf(root, unit);
+  if (manifest === null) throw new Error(`${SAID}: there is no work unit "${unit}"`);
+  if (manifest.work_type !== 'epic') throw new Error(`${SAID}: ${unit} is a ${manifest.work_type} — the fixed lists are an epic's discovery's and the product's`);
+  const session = activeSession(cwd, unit);
+  if (session === null) throw new Error(`${SAID}: no discovery session is open for ${unit} — enter discovery ${unit} opens one`);
+  return session;
+}
+
+/**
+ * `discovery-log <entry> <epic|product> …` (the header's): the entry's line
+ * put in the log of the open session — the product's opened where none is —
+ * and at the product committed, a spike's folder with it. Answers the log, from the state root, the heading and the
+ * line, and at the product the commit.
  * @param {string} cwd @param {string|undefined} kind @param {string[]} positional @param {Record<string, string>} opts
  */
 function logHeard(cwd, kind, positional, opts) {
   if (kind === undefined || !Object.hasOwn(ENTRIES, kind)) throw new Error(`Usage: engine discovery-log <${Object.keys(ENTRIES).join('|')}> …\n${LOG_USAGE}`);
   const entry = ENTRIES[kind];
   checkShape(entry, positional, opts);
-  const [unit, ...rest] = positional;
+  const [name, ...rest] = positional;
   const root = stateRoot(cwd);
-  const manifest = manifestOf(root, unit);
-  if (manifest === null) throw new Error(`${SAID}: there is no work unit "${unit}"`);
-  if (manifest.work_type !== 'epic') throw new Error(`${SAID}: ${unit} is a ${manifest.work_type} — the fixed lists are an epic's discovery's`);
-  const session = activeSession(cwd, unit);
-  if (session === null) throw new Error(`${SAID}: no discovery session is open for ${unit} — enter discovery ${unit} opens one`);
-  const line = entry.line(root, unit, rest, opts);
-  const rel = path.posix.join(sessionLogsAt(unit), `session-${session}.md`);
+  const open = name === PRODUCT ? null : epicSession(cwd, root, name);
+  const line = entry.line(root, name, rest, opts);
+  const rel = path.posix.join(sessionLogsAt(name), `session-${open ?? sessionOpen(cwd, PRODUCT)}.md`);
   const file = statePath(cwd, rel);
   fs.writeFileSync(file, withEntry(fs.readFileSync(file, 'utf8'), HEADINGS, entry.heading, line));
-  return { log: rel, heading: entry.heading, line: `- ${line}` };
+  const said = { log: rel, heading: entry.heading, line: `- ${line}` };
+  if (open !== null) return said;
+  /** @type {string[]} */
+  const warnings = [];
+  const spike = kind === 'spike' ? [path.posix.join(PRODUCT_DIR, 'spikes', rest[0])] : [];
+  const outcome = commitStateTail(cwd, [...PRODUCT_SCOPE, ...spike], `discovery(product): ${kind} kept`, warnings);
+  /** @type {Record<string, any>} */
+  const result = { ...said, committed: outcome.committed, ...(warnings.length > 0 ? { warnings } : {}) };
+  noteCommitOutcome(result, outcome, '--product');
+  return result;
 }
 
-module.exports = { LOG_USAGE, heardIn, beyondLists, sessionStarted, logHeard };
+module.exports = { LOG_USAGE, heardIn, productHeard, beyondLists, sessionStarted, logHeard };

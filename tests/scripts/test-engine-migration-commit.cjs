@@ -115,7 +115,7 @@ describe('the migration waiting on its commit (21.9.1, 21.9.3)', () => {
     assert.deepStrictEqual([stateUnborn(dir), codeHead(dir)], [true, code]);
   });
 
-  it('stamps no conversation at the finish stop: in one boot has not stamped, the review, its gate and the yes go through, and so do the environment setup\'s read and write the review\'s linters check makes, which the state branch\'s first commit takes; a field write around them refuses, as does a verb that touches the work, and once the yes has made the commits, so do they', () => {
+  it('stamps no conversation at the finish stop: in one boot has not stamped, the review, its gate and the yes go through, and so do the environment setup\'s read and write the review\'s linters check makes, which the state branch\'s first commit takes; a field write around them refuses, as does a verb that touches the work, and once the yes has made the commits, they go through as the keep\'s doors, the field write still refused', () => {
     const unstamped = { env: { CLAUDE_CODE_SESSION_ID: 'never-stamped' }, unbooted: true };
     const linters = [{ name: 'eslint', command: 'npm run lint' }];
     const record = ['environment', 'set', 'linters'];
@@ -132,7 +132,8 @@ describe('the migration waiting on its commit (21.9.1, 21.9.3)', () => {
 
     assert.deepStrictEqual([stateCommits().length, onDisk('.workflows')], [1, false]);
     assert.deepStrictEqual(JSON.parse(stateGit(dir, ['show', `${STATE_BRANCH}:${layout.projectManifest}`])).environment.linters, linters);
-    for (const argv of [['environment', 'show'], record]) assert.match(engine.refuses(dir, argv, { ...unstamped, stdin: '[]' }).error, /has not booted Ledger/);
+    for (const argv of [['environment', 'show'], record]) engine.ok(dir, argv, { ...unstamped, stdin: '[]' });
+    assert.match(engine.refuses(dir, ['manifest', 'push', 'project.environment.linters', '{"name": "tsc", "command": "npx tsc"}'], unstamped).error, /has not booted Ledger/);
   });
 
   it('21.S24: boot renders the ledger\'s copies before it answers — the product record holds the entries the records marked product-wide, its file in .knowledge/', () => {
@@ -532,7 +533,7 @@ describe('a code migration after the reshape (21.10.13)', () => {
 describe('the reshape\'s real sequence through its commit (21.S18)', () => {
   const folder = useTempFolder('migration-commit-real-');
 
-  it('a project at 070, labels off, whose discussion parks a concern in its triage section stops before the move for 071\'s check, every boot until it is recorded made, stamping no conversation, its session hooks synced from that stop on, uncommitted — the guards live, each hook naming the installed engine; a second live session meeting the stop goes no further, writing nothing, and the environment setup\'s write refuses; the fix made in .workflows/, uncommitted, and recorded in a conversation boot has not stamped, the next boot carries on, marking the check made, and the move carries the fixed files (21.10.13)', () => {
+  it('a project at 070, labels off, whose discussion parks a concern in its triage section stops before the move for 071\'s check, every boot until it is recorded made, stamping no conversation, its session hooks synced from that stop on, uncommitted — the guards live, each hook naming the installed engine; a second live session meeting the stop goes no further, writing nothing, and the environment setup\'s write refuses, naming the migration owed; the fix made in .workflows/, uncommitted, and recorded in a conversation boot has not stamped, the next boot carries on, marking the check made, and the move carries the fixed files (21.10.13)', () => {
     const project = legacyProject(folder());
     const config = { WORKFLOWS_CONFIG_DIR: path.join(folder(), 'no-workflows-config') };
     const unstamped = { env: { ...config, CLAUDE_CODE_SESSION_ID: 'never-stamped', CLAUDE_PID: String(process.pid) }, unbooted: true };
@@ -550,7 +551,7 @@ describe('the reshape\'s real sequence through its commit (21.S18)', () => {
     assert.match(atWork, /^\*\*`▪ Migration · checks`\*\*\n\nLedger is bringing this project's past work into its new format\.$/m);
     assert.doesNotMatch(atWork, /⚑|stopped/, 'the migration at work is no failure');
     assert.match(real.refuses(project, ['manifest', 'get', 'payments', 'status'], unstamped).error, /has not booted Ledger/);
-    assert.match(real.refuses(project, ['environment', 'set', 'linters'], { ...unstamped, stdin: '[{"name": "eslint", "command": "npm run lint"}]' }).error, /has not booted Ledger/);
+    assert.match(real.refuses(project, ['environment', 'set', 'linters'], { ...unstamped, stdin: '[{"name": "eslint", "command": "npm run lint"}]' }).error, /owes Ledger's migration on this version/);
     assert.ok(!fs.existsSync(path.join(project, '.ledger/payments')), 'nothing moved yet');
     assert.deepStrictEqual([fs.readFileSync(path.join(project, '.claude/settings.json'), 'utf8'), git(project, ['status', '--porcelain', '--', '.claude']).trim()], [hooked(LEDGER_HOOKS), 'M .claude/settings.json']);
     assert.deepStrictEqual(sessionEndAsInstalled(project, 'ending'), [0, 0]);

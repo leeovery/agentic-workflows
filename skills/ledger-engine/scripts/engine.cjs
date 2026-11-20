@@ -38,6 +38,8 @@ const { signpost, wrapWithPrefix, renderTree, WIDTH } = require('./kernel/render
 const { resetDisplayWidth } = require('./kernel/terminal.cjs');
 const { commitAcrossRepos, commitStateScoped, discoveryScope, PRODUCT_SCOPE, onStateBranch, STATE_BRANCH_HELD } = require('./domain/commit.cjs');
 const { commitMigrations, finishing } = require('./domain/migration-commit.cjs');
+const { committingAlone } = require('./domain/state-worktree.cjs');
+const { readProjectManifest } = require('./kernel/manifest-io.cjs');
 const { inFlightTask, refuseClockBehind, onWorkBranch, checksFor, runChecks, recordWork, workMessage } = require('./domain/commit-task.cjs');
 const { taskId } = require('./domain/task-id.cjs');
 const {
@@ -46,7 +48,7 @@ const {
 const { projectRepos, repoOf, repoPath, repoName, commitGroups } = require('./kernel/repos.cjs');
 const { codeChanges, linksHeldOut, stagedHeldOut } = require('./domain/worktree-prep.cjs');
 const { quoted } = require('./domain/landing-git.cjs');
-const { TERMINAL_STATUSES } = require('./kernel/manifest-schema.cjs');
+const { TERMINAL_STATUSES, PRODUCT } = require('./kernel/manifest-schema.cjs');
 const { sequenceMap, addTopic, addTopics, editTopic, renameTopic, removeTopic, rewriteBrief } = require('./domain/discovery-map.cjs');
 const { cancelTopic, reactivateTopic, postponeTopic } = require('./domain/transitions.cjs');
 const { mailboxDir, mailPhase } = require('./domain/derivations.cjs');
@@ -60,7 +62,7 @@ const { archiveItems, closeItems, restoreItems, deleteItems, fileItem } = requir
 const { CAPTURE_USAGE, captureItem } = require('./domain/inbox-capture.cjs');
 const agentState = require('./domain/agent-state.cjs');
 const { BOOT_STOPS, boot } = require('./domain/boot.cjs');
-const { unbootedRefusal } = require('./domain/boot-stamp.cjs');
+const { MIGRATION_OWED, unbootedRefusal, owesMigration } = require('./domain/boot-stamp.cjs');
 const { stateMergeCommand } = require('./domain/state-merge.cjs');
 const { LEDGER_USAGE, WRITE_VERBS, writeLedger } = require('./domain/ledger-write.cjs');
 const { LEDGER_READ_USAGE, READ_VERBS, readLedgerVerb } = require('./domain/ledger-read.cjs');
@@ -878,8 +880,9 @@ function runDiscoverySession(call, argv) {
 
 // ---------------------------------------------------------------------------
 // discovery-log — an entry under one of the fixed headings of the log of an
-// epic's open discovery session (domain/discovery-log.cjs), never committed:
-// every state commit takes the log along.
+// epic's open discovery session, or the product's (domain/discovery-log.cjs):
+// at an epic never committed, every state commit taking the log along; at
+// the product committed with its scope.
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */
@@ -1648,7 +1651,7 @@ function runMigrate(call, argv) {
 // commit for the whole set, its receipt after its JSON (domain/receipts.cjs);
 // close, the same archive recording who closed each; file, the review
 // phase's out-of-scope finding filed with the ledger's call that filed it;
-// and capture, the capture skills' one line (domain/inbox-capture.cjs).
+// and capture, the keep skill's line into the inbox (domain/inbox-capture.cjs).
 // ---------------------------------------------------------------------------
 
 /** Each inbox move by its command: the transaction, and the receipt drawn from its answer. @type {Record<string, [(cwd: string, paths: string[]) => any, (cwd: string, answered: any) => string]>} */
@@ -2776,6 +2779,40 @@ const BOOT_EXEMPT = /** @type {Readonly<Record<string, '*'|readonly string[]>>} 
 
 const FINISH_EXEMPT = /** @type {Readonly<Record<string, readonly string[]>>} */ (Object.freeze({ environment: Object.freeze(['show', 'set']) }));
 
+// The keep's doors, in the forms the keep skill uses (22.1.8, 18.11.6), each
+// read from the command's argv after its name, before it runs — the drop of
+// a roadmap item only where no unit stands behind it, so a keep never
+// cancels an epic's row: they go through without boot's stamp while the
+// checkout owes no migration on this version, and are refused naming the
+// migration while it owes one, in a conversation boot stamped too
+// (domain/boot-stamp.cjs, `owesMigration`). As the capture line, they mark
+// no conversation, and every commit they make takes its own paths alone.
+const KEEP_FORMS = /** @type {Readonly<Record<string, (args: ReturnType<typeof parseArgs>, cwd: string) => boolean>>} */ (Object.freeze({
+  'discovery-log': ({ positional }) => positional[1] === PRODUCT,
+  asset: ({ positional: [sub, name] }) => ['spike', 'import', 'add', 'status'].includes(sub) && name === PRODUCT,
+  ledger: ({ positional: [sub, place] }) => sub === 'find' && place === `${PRODUCT}.discovery`,
+  topic: ({ positional: [sub], opts }) => sub === 'send' && opts.from === PRODUCT,
+  render: ({ positional: [surface] }) => surface === 'send-report',
+  roadmap: ({ positional: [sub, name], opts }, cwd) => sub === 'state' || (sub === 'archive' && unitless(cwd, name)) || (sub === 'add' && opts.origin === `park:${PRODUCT}`),
+  inbox: ({ positional: [sub] }) => sub === 'archive',
+  environment: ({ positional: [sub] }) => ['show', 'set'].includes(sub),
+}));
+
+/** Whether the roadmap holds `name` with no unit behind it: neither pulled into one nor postponed from one. @param {string} cwd @param {string|undefined} name */
+function unitless(cwd, name) {
+  try {
+    const item = readProjectManifest(stateRoot(cwd)).roadmap?.items?.[String(name)];
+    return item !== undefined && item !== null && item.pulled_to === undefined && item.postponed_from === undefined;
+  } catch {
+    return false;
+  }
+}
+
+/** Whether a command is one of the keep's doors (`KEEP_FORMS`). @param {string[]} argv @param {string} cwd @returns {boolean} */
+function keepForm([command, ...rest], cwd) {
+  return Object.hasOwn(KEEP_FORMS, command) && KEEP_FORMS[command](parseArgs(rest), cwd);
+}
+
 /** Whether a command goes through before boot has run (`BOOT_EXEMPT`). @param {string[]} argv @returns {boolean} */
 function bootExempt([command, ...rest]) {
   const exempt = Object.hasOwn(BOOT_EXEMPT, command) ? BOOT_EXEMPT[command] : [];
@@ -2785,15 +2822,19 @@ function bootExempt([command, ...rest]) {
 }
 
 /**
- * Refuse a command boot's stamp does not let through (`BOOT_EXEMPT`); one
- * the engine does not dispatch is runCli's to answer.
- * @param {Call} call @param {string[]} argv
+ * Refuse a command boot's stamp does not let through (`BOOT_EXEMPT`), but a
+ * keep's door (`keep`, `KEEP_FORMS`), which is refused, stamped or not,
+ * while a migration is owed; one the engine does not dispatch is runCli's
+ * to answer.
+ * @param {Call} call @param {string[]} argv @param {boolean} keep
  */
-function refuseUnbooted(call, argv) {
+function refuseUnbooted(call, argv, keep) {
   const session = handedSession();
   if (session === null || !Object.hasOwn(COMMANDS, argv[0]) || bootExempt(argv)) return;
   const refused = unbootedRefusal(call.cwd, session);
-  if (refused !== null && !finishExempt(call.cwd, argv)) failJson(call, new Error(`${argv[0]}: ${refused}`));
+  if ((refused === null && !keep) || finishExempt(call.cwd, argv)) return;
+  if (!keep) failJson(call, new Error(`${argv[0]}: ${refused}`));
+  if (owesMigration(call.cwd, refused === null)) failJson(call, new Error(`${argv[0]}: ${MIGRATION_OWED}`));
 }
 
 /** Whether a command goes through while the migration waits at its finish stop (`FINISH_EXEMPT`). @param {string} cwd @param {string[]} argv */
@@ -2841,20 +2882,22 @@ const HOOK_TARGETS = ['presence cleanup', 'session cleanup', 'session resume', '
 // that one runs Ledger or not.
 const MOD_READS = ['board'];
 
-// The capture line, which a capture skill runs from a conversation in any
-// project, one that runs Ledger or not (18.6.2).
+// The capture line, which the keep skill runs from a conversation in any
+// project, one that runs Ledger or not (18.6.8).
 const CAPTURE = 'inbox capture';
 
-/** Whether a command marks the conversation that ran it. @param {string[]} argv */
-const marks = (argv) => ![...HOOK_TARGETS, CAPTURE].includes(argv.slice(0, 2).join(' ')) && !MOD_READS.includes(argv[0]);
+/** Whether a command marks the conversation that ran it: none boot's stamp lets through, nor a keep's door (`keep`). @param {string[]} argv @param {boolean} keep */
+const marks = (argv, keep) => ![...HOOK_TARGETS, CAPTURE].includes(argv.slice(0, 2).join(' ')) && !MOD_READS.includes(argv[0]) && !keep && !bootExempt(argv);
 
 /**
  * One command against a bound call, answering its exit code — later, for
  * the argv `ANSWERS_LATER` says waits. One boot's stamp does not let through
  * is refused before anything runs, and marks nothing. Whatever the exit of
  * any other, a command the conversation ran marks it as one that runs
- * Ledger — but a hook's, the mod's or the capture line's, run for any
- * conversation; one that answered records the gate its MENU stated as the
+ * Ledger — but a hook's, the mod's, the capture line's, a keep's door, run
+ * for any conversation, or one boot's stamp lets through, which a keep's
+ * way into the migration runs: a real start is marked by its next verb; a
+ * keep's door makes each commit alone; one that answered records the gate its MENU stated as the
  * gate the conversation was shown, where a failed one showed none. Both
  * after the command, which may take the folder both live in: boot's tidy-up
  * deletes one whose transcript is gone. Its git runners share one read of
@@ -2863,20 +2906,21 @@ const marks = (argv) => ![...HOOK_TARGETS, CAPTURE].includes(argv.slice(0, 2).jo
  */
 function dispatch(call, argv) {
   return withVerbReads(() => {
+    const keep = keepForm(argv, call.cwd);
     try {
-      refuseUnbooted(call, argv);
+      refuseUnbooted(call, argv, keep);
     } catch (err) {
       return exitCodeOf(call, err);
     }
     openGate();
     const settle = (/** @type {number} */ code) => {
-      if (marks(argv)) markConversation(call.cwd);
+      if (marks(argv, keep)) markConversation(call.cwd);
       if (code === 0) recordGateShown();
       return code;
     };
     let answer;
     try {
-      answer = runCli(call, argv);
+      answer = keep ? committingAlone(() => runCli(call, argv)) : runCli(call, argv);
     } catch (err) {
       return settle(exitCodeOf(call, err));
     }

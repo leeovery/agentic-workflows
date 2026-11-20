@@ -500,6 +500,16 @@ function restoreSessionLabel(cwd, sessionId) {
  */
 function repairSessionLabels(cwd) {
   dropPosition(handedSession());
+  return repairTerminalLabel(cwd);
+}
+
+/**
+ * The multiplexer's own pass of `repairSessionLabels`, the position left as
+ * it stands: what a quick-fix left in place puts back (topic-leave.cjs).
+ * @param {string} cwd
+ * @returns {{repaired: boolean}}
+ */
+function repairTerminalLabel(cwd) {
   if (resolveEnabled(cwd) !== true) return { repaired: false };
   const found = detect();
   const ctx = found === null ? null : found.read();
@@ -508,6 +518,6 @@ function repairSessionLabels(cwd) {
 }
 
 module.exports = {
-  arriveAt, restoreSessionLabel, repairSessionLabels, resumeSessionLabel,
+  arriveAt, restoreSessionLabel, repairSessionLabels, repairTerminalLabel, resumeSessionLabel,
   resolveEnabled, labelConfigStatus, multiplexerHere, syncSessionHooks, commitSessionHooks, carriesOurHooks, recordLabelChoice,
 };

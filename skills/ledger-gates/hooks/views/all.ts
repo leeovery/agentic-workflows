@@ -16,7 +16,6 @@ type Work = { unit: string; title: string; type: string; phase: string; standing
 
 type All = {
   project: string
-  at_start: boolean
   waiting: number
   units: Work[]
   roadmap: { horizon: string; items: { title: string; from: string | null }[] }[]
@@ -105,10 +104,7 @@ function completeLines(view: All, kit: Kit): Line[] {
 }
 
 function headLine(view: All, width: number): Line {
-  const standing: Part[] = view.at_start ? [{ text: ' · at the start menu', color: COLOUR.running }] : []
-  const name = cutTo([{ text: 'All work', bold: true }, { text: ` · ${view.project}`, color: COLOUR.secondary }], width - widthOf(standing))
-
-  return { key: 'all:head', parts: [...name, ...standing] }
+  return { key: 'all:head', parts: cutTo([{ text: 'All work', bold: true }, { text: ` · ${view.project}`, color: COLOUR.secondary }], width) }
 }
 
 function allLines(view: All, kit: Kit): Line[] {

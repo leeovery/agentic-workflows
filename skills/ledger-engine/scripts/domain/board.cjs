@@ -18,15 +18,16 @@
 //   discussion, the specification, an epic's discovery, an experiment, a
 //   bug's investigation, a quick-fix's one session — the unit's page at its
 //   menu and in a phase whose view comes later (29.14.2), and All work at
-//   the start menu or a project-level place — and once a unit's finish
-//   completes it from its review phase (20.10.4), or a quick-fix's close
-//   from its one session (20.14.2), All work too, the banner the unit's
-//   close (D38) — while its position still names that place, and at the
-//   start menu boot hands it to, until the session records a position again
-//   (position.cjs); an epic's finish goes to its menu. While a session
-//   carries the migration on, its row at the migration's place there
-//   (presence.cjs), a session at no position is migrating, never at the
-//   start menu. The session's tasks
+//   no place or a project-level place — the board never claims the start
+//   menu, which is drawn only when asked and which it cannot see — and once
+//   a unit's finish completes it from its review phase (20.10.4), or a
+//   quick-fix's close from its one session (20.14.2), All work too, the
+//   banner the unit's close (D38) — while its position still names that
+//   place, or the place it left does (a quick-fix's close leaves it,
+//   position.cjs), until the session records a position again; an epic's
+//   finish goes to its menu. While a session carries the migration on, its
+//   row at the migration's place there (presence.cjs), a session at no
+//   position is migrating. The session's tasks
 //   in flight are read into their unit's build wherever it is drawn, the
 //   place they were started at left or not.
 // - The unit's tab shows the unit `--unit` names, else the session's: an
@@ -327,8 +328,8 @@ function pageOf(tab, ref, pageUnit) {
 
 /**
  * Whether a unit was finished from its review phase, or a quick-fix closed
- * from its one session, the start menu next (the header's), at the phase
- * the session's place names.
+ * from its one session (the header's), at the phase the session's place
+ * names.
  * @param {BoardAt|null} at @param {string|null|undefined} phase
  */
 function finishedFrom(at, phase) {
@@ -429,9 +430,8 @@ function boardRead(cwd, { session, tab, page }, opts, warnings) {
   const own = here === null || finished !== null ? null : ownRead(here, warnings);
   const read = own === null || 'failed' in own ? null : own;
   const migrating = position === null && migrationCarried(cwd);
-  const atStart = (position === null && !migrating) || finished !== null;
   const tabView = () => {
-    if (tab === 'all' || (here === null || finished !== null) && tab === 'this') return allView(cwd, at, here, atStart).view;
+    if (tab === 'all' || (here === null || finished !== null) && tab === 'this') return allView(cwd, at, here).view;
     if (tab === 'unit') return unitPage(/** @type {BoardAt} */ (tabAt), tabAt === here && place.phase === null).view;
     if (own !== null && 'failed' in own) throw new Error(own.failed);
     return /** @type {Read} */ (read).view;
@@ -439,7 +439,7 @@ function boardRead(cwd, { session, tab, page }, opts, warnings) {
   return {
     version: BOARD_VERSION,
     place,
-    banner: here === null || finished !== null ? allBanner(cwd, migrating ? 'migrating' : position?.name ?? 'at the start menu', finished) : { name: here.title, ...(read === null ? placeBanner(here) : withWaits(here, read.banned)) },
+    banner: here === null || finished !== null ? allBanner(cwd, migrating ? 'migrating' : position?.name ?? null, finished) : { name: here.title, ...(read === null ? placeBanner(here) : withWaits(here, read.banned)) },
     unit: tabAt === null ? null : { unit: tabAt.unit, title: tabAt.title },
     tab,
     view: page === null ? drawn(tabView) : drawn(() => {

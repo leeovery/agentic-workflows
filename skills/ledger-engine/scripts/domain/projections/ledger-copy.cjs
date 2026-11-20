@@ -177,6 +177,12 @@ function fileText(lines) {
   return `${lines.join('\n').trimEnd()}\n`;
 }
 
+/** A record copy's title: a topic's, a unit's own level's, or the findings at the product's place. @param {string} unit @param {string|null} topic */
+function recordTitle(unit, topic) {
+  if (topic !== null) return `${unit} / ${topic}`;
+  return unit === PRODUCT ? 'What was found of the product' : `${unit}, at the unit's level`;
+}
+
 /**
  * A record's copy, in markdown.
  * @param {RecordView} view
@@ -184,7 +190,7 @@ function fileText(lines) {
  */
 function recordCopy({ unit, topic, asked, findings, elsewhere }) {
   return fileText([
-    `# ${topic === null ? `${unit}, at the unit's level` : `${unit} / ${topic}`}`, '',
+    `# ${recordTitle(unit, topic)}`, '',
     ...asked.flatMap(askedSection),
     ...findings.flatMap(findingSection),
     ...elsewhere.flatMap(elsewhereSection),

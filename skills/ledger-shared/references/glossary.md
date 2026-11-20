@@ -147,7 +147,7 @@ A pane the Claude Code mod draws beside the conversation, showing what is happen
 ## Verification
 
 **environment setup**:
-How the project runs for the work: how to run it and its tests, the steps that prepare its environment, what cannot run at once, and its linters. It is asked at the first ready to build, used once the person confirms it, and changed from manage's setup.
+How the project runs for the work: how to run it and its tests, the steps that prepare its environment, what cannot run at once, and its linters. It is asked at the first ready to build, used once the person confirms it, and changed from manage's setup or, on the person's yes, from any conversation.
 
 **verify setup**:
 How the project's product is run to prove the work: launch, a health check, drive, evidence and cleanup, with the feature map. It is built by a task the first time a build needs it, counts only once it has run end to end, and shows beside the environment setup in manage, changed only by the task that builds it.
@@ -253,13 +253,16 @@ A named bucket on the roadmap, in the person's own staging words (launch, v1, so
 Choosing roadmap items or inbox items to work on now. They go into discovery together as the seeds of one piece of work, which settles its kind, while the rest wait.
 _Avoid_: promote
 
+**views of the product**:
+What the person has said of the product as a whole, in any conversation — a principle, a direction, who it is for, a constraint, a lean — kept as their input beside the directions they dropped, each with why. Every topic's opening reads them beside the product record, which speaks where both do, and a view is decided in the first topic it bears on.
+
 **backlog**:
 Putting something aside from any conversation, whichever phase it is in. It covers both homes: a line on the roadmap, saying where it belongs, when the person has decided to do it, an inbox note when they haven't yet — and they are asked where it should wait when their words leave it open. A topic already on an epic's map is postponed instead. The roadmap's backlog is whichever horizon they name for it, such as Backlog or Later.
 
 ## Everyday
 
 **inbox**:
-The place captures wait: ideas, bugs and quick-fixes put down in a line ("log that as an idea") without stopping the work in hand, waiting until they are triaged. The start menu shows it as one line, counted by kind.
+The place captures wait: ideas, bugs and quick-fixes for later, put down in a line as they come up in any conversation, without stopping the work in hand, waiting until they are triaged. The start menu shows it as one line, counted by kind.
 _Avoid_: triage (that is the act, not the place)
 
 **triage**:
@@ -277,7 +280,7 @@ _Avoid_: import, attachment
 The files a piece of work had from before Ledger that the migration found no place for — old plans, agent reports, research — set aside with the work, or with the product, until each is sorted. The start menu shows them on one row, *Sort the legacy files from the migration*, and an epic's menu shows its own. Each file or folder is kept among the work's assets, everything that names it following it, or discarded; a file brought in becomes findings on the record, citing it where it was kept.
 
 **mail**:
-The messages waiting for a discussion or investigation: from another topic of the same epic, or from a later phase that met a question only that conversation can settle. Its next session raises each one, and it cannot close while one waits; the menus show it as *mail waiting*.
+The messages waiting for a discussion or investigation: from another topic of the same epic, from a later phase that met a question only that conversation can settle, or from a conversation outside the work that found something bearing on it. Its next session raises each one, and it cannot close while one waits; the menus show it as *mail waiting*.
 _Avoid_: triage waiting, triage queue, queue
 
 **message**:

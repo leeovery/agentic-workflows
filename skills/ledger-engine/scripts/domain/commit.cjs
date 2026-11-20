@@ -94,12 +94,12 @@ const PRODUCT_SCOPE = Object.freeze([PRODUCT_SESSIONS, PROJECT_MANIFEST_SPEC]);
  * (`commitState`). While the migration runs, the commit is held (`held`).
  * @param {string} cwd @param {string|string[]} paths state-relative, or absolute
  * @param {string} message
- * @param {{contents?: Record<string, import('./state-worktree.cjs').Change>, kept?: string[], owned?: (string|null)[]}} [opts] as `commitState`'s
+ * @param {{contents?: Record<string, import('./state-worktree.cjs').Change>, kept?: string[], owned?: (string|null)[], alone?: boolean}} [opts] as `commitState`'s
  * @returns {{committed: string|null, held?: true, warnings: string[]}}
  */
-function commitStateScoped(cwd, paths, message, { contents = {}, kept = [], owned = [] } = {}) {
+function commitStateScoped(cwd, paths, message, { contents = {}, kept = [], owned = [], alone = false } = {}) {
   const root = stateRoot(cwd);
-  const { commit, held, warnings } = withStateLock(root, () => commitState(root, Array.isArray(paths) ? paths : [paths], message, { contents, kept, owned }));
+  const { commit, held, warnings } = withStateLock(root, () => commitState(root, Array.isArray(paths) ? paths : [paths], message, { contents, kept, owned, alone }));
   return { committed: commit === null ? null : shortSha(commit), ...(held ? { held } : {}), warnings };
 }
 
@@ -109,7 +109,7 @@ function commitStateScoped(cwd, paths, message, { contents = {}, kept = [], owne
  * fails the verb. A push that fails is a warning beside it.
  * @param {string} cwd @param {string|string[]} paths state-relative
  * @param {string} message @param {string[]} warnings
- * @param {{contents?: Record<string, import('./state-worktree.cjs').Change>, kept?: string[]}} [opts] as `commitStateScoped`'s
+ * @param {{contents?: Record<string, import('./state-worktree.cjs').Change>, kept?: string[], alone?: boolean}} [opts] as `commitStateScoped`'s
  * @returns {{committed: string|null, failed: boolean, held?: true}}
  */
 function commitStateTail(cwd, paths, message, warnings, opts = {}) {

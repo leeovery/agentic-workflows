@@ -96,7 +96,7 @@ Tasks live in your tracker through a driver, and land in your repository through
 
 ## The roadmap and the inbox
 
-Say "log that as an idea" mid-conversation and keep working: it lands in the inbox, for you to triage later. Above the pieces of work sits the roadmap: horizons you name in your own release language, holding what you've decided on but not started. Say "that's a v2 thing" anywhere and it's on the roadmap in one line. Pick items off it and they go into discovery together as the seeds of one piece of work.
+Mention an idea or a bug mid-conversation and keep working: it lands in the inbox, for you to triage later. Above the pieces of work sits the roadmap: horizons you name in your own release language, holding what you've decided on but not started. Say "that's a v2 thing" anywhere and it's on the roadmap in one line. Pick items off it and they go into discovery together as the seeds of one piece of work.
 
 ## When work changes shape
 

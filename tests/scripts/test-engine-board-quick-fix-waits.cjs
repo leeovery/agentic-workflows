@@ -8,7 +8,9 @@
 // the ledger, and a replacement raised there in the conversation that
 // raised it;
 // the close once its screen draws, with whether a verdict is owed; the
-// session followed to All work once it closes, its tab dated by the close;
+// session followed to All work once it closes, which leaves the
+// conversation's place, the banner the unit's close, its tab dated by the
+// close;
 // and the mod's fixture held to the engine's shape. The fixes:
 // test-engine-board-quick-fix.cjs.
 //
@@ -107,16 +109,16 @@ describe('what waits on the person in a quick-fix, and its close (20.14)', () =>
     ]);
   });
 
-  it('20.14.2: once closed, This session follows the session to All work at the start menu, the banner its close; with no review asked for, its tab dates its implementation by the close (20.15.1)', () => {
+  it('20.14.2: once closed, This session follows the session to All work, the banner the unit\'s close, its place left; with no review asked for, its tab dates its implementation by the close (20.15.1)', () => {
     dir = closable();
     atTheFixes();
     run(['finish', 'yes', UNIT]);
-    const { view, banner } = board();
+    const { view, banner, place: at } = board();
     const rows = board(['--tab', 'unit', '--unit', UNIT]).view.phases.map((/** @type {{phase: string, state: string, on: string|null}} */ { phase, state, on }) => [phase, state, on]);
 
     assert.deepStrictEqual([view.kind, view.complete.map(({ unit }) => unit)], ['all', [UNIT]]);
     assert.deepStrictEqual(rows.slice(1), [['implementation', 'complete', readManifest(dir, UNIT).completed_at]]);
-    assert.deepStrictEqual(banner, { name: 'Typo', state: 'done', facts: [{ text: 'quick-fix', needs: false }, { text: 'complete', needs: false }, place('at the start menu')] });
+    assert.deepStrictEqual([banner, at.unit], [{ name: 'Typo', state: 'done', facts: [{ text: 'quick-fix', needs: false }, { text: 'complete', needs: false }] }, null]);
   });
 
   it('the mod\'s quick-fix fixture holds the shape the engine answers, its parked and its closing states between them holding every list', async () => {

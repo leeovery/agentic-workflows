@@ -24,6 +24,16 @@
 //   one from a folder in no repository the state can sit in has no project,
 //   no work to touch and no boot that could stamp it: nothing refuses
 //   either.
+// - The keep's doors go through without the stamp while the checkout owes
+//   no migration on this version (22.1.8, engine.cjs `KEEP_FORMS`): its
+//   migrations record holds the installed migrations' highest id — the
+//   runner records each once it completes, in order — as the state branch
+//   holds it, so a migration waiting on its review's yes, its record
+//   uncommitted (boot.cjs), is owed too; and the reshape waits on no
+//   commit. A conversation boot stamped meets the migration waiting alone:
+//   its stamp vouches for the rest. Either way no keep commits a
+//   migration's edits. One read of the record, a stat and one git call, on
+//   the keep's way alone; a record that does not read is owed.
 // - Written whole under the lock beside it, so two projects booted at once
 //   in one conversation both stand; a file that does not read is written
 //   over. The gate mod copies the file across a handoff's clear, unread, so
@@ -33,10 +43,11 @@
 const fs = require('fs');
 const path = require('path');
 const { LOCK_TIMEOUT_MS, isObject, withStateLockFile, writeJsonAtomic } = require('../kernel/manifest-io.cjs');
-const { stateRoot } = require('../kernel/state-root.cjs');
+const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { conversationDir } = require('./conversation.cjs');
 const { BOOTED } = require('./user-files.cjs');
 const { highestMigration } = require('../../../ledger-migrate/scripts/migration-ids.cjs');
+const { MIGRATIONS_RECORD, finishWaits, reviewWaits } = require('./migration-commit.cjs');
 
 const STAMP_LOCK = { timeoutMs: LOCK_TIMEOUT_MS, name: 'the lock on the conversation\'s boot stamp' };
 
@@ -110,4 +121,25 @@ function unbootedRefusal(cwd, sessionId) {
   return `this conversation has not booted Ledger for ${key} on this version — invoke the start skill, /ledger, which runs engine boot before anything else`;
 }
 
-module.exports = { stampBoot, unbootedRefusal };
+/** Why a keep's door is refused while the checkout owes a migration (`owesMigration`). */
+const MIGRATION_OWED = 'this checkout owes Ledger\'s migration on this version — on the person\'s yes, run boot\'s migration, then this again';
+
+/**
+ * Whether the checkout `cwd` is in owes a migration on this version (the
+ * header's), for a conversation boot has stamped, or not.
+ * @param {string} cwd @param {boolean} stamped @returns {boolean}
+ */
+function owesMigration(cwd, stamped) {
+  if (finishWaits(cwd) || reviewWaits(cwd)) return true;
+  if (stamped) return false;
+  let record;
+  try {
+    record = fs.readFileSync(statePath(cwd, MIGRATIONS_RECORD), 'utf8');
+  } catch {
+    return true;
+  }
+  const highest = installedMigration();
+  return highest !== null && !record.split('\n').includes(highest);
+}
+
+module.exports = { MIGRATION_OWED, stampBoot, unbootedRefusal, owesMigration };

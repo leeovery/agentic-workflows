@@ -189,8 +189,9 @@ describe('the yes: a quick-fix moved (19.S24, 19.5.16)', () => {
 
   it('refuses a quick-fix holding lines where no conversation names the session the carry is made in, nothing moved', () => {
     dir = world();
-    staged(QF, 'feature');
-    const { error } = refusedPristine(dir, ['start-this-work', 'yes'], { env: { ...env(), CLAUDE_CODE_SESSION_ID: undefined } });
+    const none = { CLAUDE_CODE_SESSION_ID: undefined };
+    staged(QF, 'feature', none);
+    const { error } = refusedPristine(dir, ['start-this-work', 'yes'], { env: { ...env(), ...none } });
 
     assert.strictEqual(error, `start-this-work yes: ${QF} holds ledger entries, which the move carries to its topic in this conversation — Claude Code hands every command it runs a session id, and this one has none`);
     assert.deepStrictEqual([fixes(), branchOut()], [[{ task: '1.1', status: 'in-progress' }], BRANCH]);

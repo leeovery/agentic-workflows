@@ -5,7 +5,8 @@
 // with domain/conversation.cjs): a folder whose transcript is gone deleted,
 // every conversation's tidied whichever project marked it, the trust log's
 // events one kept waiting appended first (domain/trust-log.cjs), and the
-// boot's own marked after the tidy.
+// boot's own stamped after the tidy — its mark left to the start's next
+// verb, as a keep's way into a migration runs boot and is no start.
 //
 // Layer: verb. World: the project fixture (boot-world.cjs), a git repository
 // with its state worktree and Ledger's hooks, made once per run and
@@ -107,11 +108,11 @@ describe('engine boot: the conversation folders', () => {
     assert.ok(!fs.existsSync(folder(session)));
   });
 
-  it('the boot\'s own conversation is marked and stamped after the tidy — a folder the tidy takes comes back holding the mark and boot\'s stamp', () => {
+  it('the boot\'s own conversation is stamped after the tidy — a folder the tidy takes comes back holding boot\'s stamp and no mark, which the start\'s next verb makes', () => {
     conversation('sess-1', { workflow: '', transcript: transcriptPath('app', 'sess-1') });
 
     boot(fix.project, { CLAUDE_CODE_SESSION_ID: 'sess-1' });
 
-    assert.deepStrictEqual(fs.readdirSync(folder('sess-1')).sort(), ['booted.json', 'workflow']);
+    assert.deepStrictEqual(fs.readdirSync(folder('sess-1')).sort(), ['booted.json']);
   });
 });

@@ -66,7 +66,7 @@ A **corridor** is a short, linear stretch whose output has a fixed shape: the ph
 ### Requests at Any Point
 
 Some requests can come wherever the phase is: put an idea or a bug aside, postpone or cancel the topic, a gap the person names during the build. Each is a section of its own, named for the request: the words that bring it, and the verb or reference that takes it. Afterwards the work carries on where it was, except where the request moves it:
-- a topic cancelled or postponed from its own session hands off to a menu: an epic's topic to the epic's menu, any other to the start menu;
+- a topic cancelled or postponed from its own session hands off to a menu: an epic's topic to the epic's menu, any other to the start menu — but a quick-fix's cancel, which carries on in the conversation, as its close does;
 - an experiment spawned now hands off to the laboratory;
 - a move up to the epic's discovery leaves the topic, in the same conversation;
 - a quick-fix that needs a decision beyond a quick call moves to a feature or a bugfix, which changes the work.
@@ -227,7 +227,7 @@ Every screen the engine draws keeps to the existing design system; a new screen 
 
 ## Files
 
-The capture skills (`ledger-log-*`) write to the inbox and nothing else. They run no flow, and stay structureless: no gates, no references, no framework load, and the display rule's check passes over them.
+The keep skill (`ledger-keep`) keeps what is said, in any conversation, through the doors its map names. It runs no flow, and stays structureless: no gates or references of its own, and no framework load. A migration owed runs through the start skill's boot reference and its review, which the keep loads.
 
 ### Frontmatter
 
