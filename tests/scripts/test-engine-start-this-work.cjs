@@ -185,6 +185,15 @@ describe('start this work, the yes (8.8.1, 8.14.3, 8.14.11)', () => {
     assert.deepStrictEqual([joinedFirst, joinedLast.product_session_closed, readManifest(dir(), '.').product_session, joinedLast.next.kind], [null, null, '001', 'handoff']);
   });
 
+  it('a bare start leaves the product\'s conversation, its presence row gone with its position, so a second window enters with no question asked', () => {
+    noOneInTheProduct();
+    ok(dir(), ['enter', 'discovery', 'product'], { env: LIVE });
+    const before = productRows();
+    ok(dir(), ['boot'], { env: LIVE });
+    const entered = ok(dir(), ['enter', 'discovery', 'product'], { env: PEER });
+    assert.deepStrictEqual([before, entered.entered], [[`presence-${SESSION.CLAUDE_CODE_SESSION_ID}`], true]);
+  });
+
   it('8.14.11: a conversation leaving the product\'s talk for a quick-fix takes its presence there with it, so the window still talking is alone in it: never asked about it, its feature ending the session', () => {
     noOneInTheProduct();
     ok(dir(), ['enter', 'discovery', 'product'], { env: PEER });

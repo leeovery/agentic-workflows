@@ -139,7 +139,9 @@
 // first, before the migrations — a boot that fails leaves none — the place
 // it left kept for the board where it names a phase, and its tasks in
 // flight kept there whatever boot answers, the menu, a route or a pick, so
-// the builders still at work go on (position.cjs).
+// the builders still at work go on (position.cjs); and it leaves the
+// product's conversation, its presence row there gone with its position
+// (presence.cjs).
 //
 // Where a decision landed unchecked, never one the migration carried, and
 // no late check has judged it, boot launches the late one-decision check,
@@ -170,6 +172,7 @@ const { tidyConversations } = require('./conversation.cjs');
 const { stampBoot } = require('./boot-stamp.cjs');
 const { appendWaiting, holdsWaiting } = require('./trust-log.cjs');
 const { leavePosition } = require('./position.cjs');
+const { PRODUCT } = require('../kernel/manifest-schema.cjs');
 const { brownfieldOffer, brownfieldSignal } = require('./brownfield.cjs');
 const { walkthroughState } = require('./walkthrough.cjs');
 const { launchLateCheck } = require('./ledger-late-check.cjs');
@@ -177,7 +180,7 @@ const { commitUncommitted } = require('./ledger.cjs');
 const { MIGRATE_CJS, MIGRATIONS_RECORD, MIGRATION_JOURNALS, directiveStopped } = require('./directives.cjs');
 const { finishOwed, projectInMain } = require('./migration-commit.cjs');
 const { entryOf, gatesDue } = require('./boot-route.cjs');
-const { migrationCarrier, beatMigrationQuietly, dropMigrationRow } = require('./presence.cjs');
+const { migrationCarrier, beatMigrationQuietly, dropMigrationRow, clearOwnQuietly } = require('./presence.cjs');
 const { unmoved } = require('../../../ledger-migrate/scripts/old-layout.cjs');
 
 // The migration orchestrator prints this marker if and only if files were updated — it is the
@@ -481,6 +484,7 @@ function boot(cwd, { startAgain = false, words = '' } = {}) {
   if (gitShortfall() !== null) return { state: 'git', stop: stopAt('git'), warnings: [] };
   if (outsideRepository(cwd)) return { state: 'repo', stop: stopAt('repo'), warnings: [] };
   leavePosition(handedSession());
+  clearOwnQuietly(cwd, PRODUCT, 'discovery', PRODUCT);
   /** @type {string[]} */
   const warnings = [];
   appendWaiting(cwd, warnings);
