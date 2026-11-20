@@ -395,7 +395,7 @@ const BANNER_WORDS = Object.freeze({
   'fix-waits': 'fix direction',
   'validating-fix': 'validating the fix',
   closed: 'closed · the specification next',
-  concluded: 'concluded · the specification next',
+  concluded: 'concluded',
 });
 
 /**

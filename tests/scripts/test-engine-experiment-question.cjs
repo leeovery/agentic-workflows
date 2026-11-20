@@ -185,6 +185,7 @@ describe('the question on the map an experiment measures (9.1.11)', () => {
     personDecides(placement);
     fs.writeFileSync(statePath(dir, layout.experiment('lab', 'timing', 'E1-window-placement', 'report.md')), '# Report — E1\n\nTop left.\n');
     fs.writeFileSync(statePath(dir, layout.unit('lab', 'spec.md')), '# Lab\n');
+    commitAll(dir, 'the spec landed');
     const res = refusedPristine(dir, ['experiment', 'conclude', 'lab', 'timing', 'E1', '--verdict', 'top left wins']);
     assert.strictEqual(res.error, 'experiment E1 ("timing") owes its report to "timing" as a message, and lab has its spec — a topic exists only before it: abandon the experiment, and settle what it found in the spec');
     assert.strictEqual(readManifest(dir, 'lab').phases.experiment.items.timing.experiments.E1.status, 'running');
@@ -206,6 +207,7 @@ describe('the question on the map an experiment measures (9.1.11)', () => {
   it('refuses a spawn from a discussion past its unit\'s spec, writing nothing: a topic exists only before it (4.11.2)', () => {
     const placement = ask('Where does a new window open?');
     fs.writeFileSync(statePath(dir, layout.unit('lab', 'spec.md')), '# Lab\n');
+    commitAll(dir, 'the spec landed');
     const args = ['experiment', 'create', 'lab', 'timing', '--slug', 'window-placement', '--from', 'discussion', '--problem', problemScratch(dir, 'window-placement'), '--question', placement];
     assert.match(refusedPristine(dir, args).error, /^lab has its spec — a topic exists only before it, and a change is settled in the spec from here$/);
   });

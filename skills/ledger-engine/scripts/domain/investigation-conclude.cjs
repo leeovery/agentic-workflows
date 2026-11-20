@@ -25,21 +25,26 @@
 // - Claude's recap of the hunt, `{"hunt": "<one paragraph>", "fixes"?,
 //   "area"?}`, is kept with the close, marked in the checklist store as a
 //   feature's decided close is, `checklists.conclusion.{unit}`: `closed`,
-//   `voided?` and `taken?`, and the recap — the paragraph, the symptoms in
-//   the person's words from the log, the root cause and the fix each by its
-//   full id and its words, and what the bug is in — so a cancel, which
-//   purges the cache, keeps it. The close is voided as the investigation
-//   goes on: a message delivered, a question opened or an entry replaced at
-//   the investigation (ledger-write.cjs), an entry put in the log
-//   (investigation-log.cjs), or the investigation entered again
-//   (derivations.cjs, `voidTopicClose`). It is committed, and answers the
-//   handoff into the spec.
+//   `voided?` and `taken?`, and the recap — the paragraph, the root cause
+//   and the fix each by its full id, and what the bug is in — so a cancel,
+//   which purges the cache, keeps it. Their words are the entries', which
+//   never change, and the symptoms the log's, which nothing changes while
+//   the close stands: a log write voids it, and the spec freezes the log.
+//   The close is voided as the investigation goes on: a message delivered,
+//   a question opened or an entry replaced at the investigation
+//   (ledger-write.cjs), an entry put in the log (investigation-log.cjs), or
+//   the investigation entered again (derivations.cjs, `voidTopicClose`) —
+//   one voided while the spec's writer was out holds the spec it writes
+//   back until it closes again (spec-standing.cjs). It is committed, and
+//   answers the handoff into the spec.
 // - Once the spec is written the investigation is frozen (spec-standing.cjs):
 //   a change to the root cause or the fix is the spec's, replacing it at the
 //   specification (11.8.5). Staged again then, the close is marked again with
 //   no check of the hunt, as a feature's decided stage does: the root cause
-//   and the fix are the current entries the recap's lead to, the symptoms as
-//   kept, and it carries on there to ready to build's screen.
+//   and the fix are the unit's current entries the kept ones lead to, and it
+//   carries on there to ready to build's screen. One that leads to another
+//   unit's entry alone is refused, naming the replacement at the spec that
+//   makes it the unit's again.
 // - What the bug is in, for the bugs found after review (17.1.6, 17.1.9),
 //   is the recap's, drawn on no line of the screen (17.2.2): `fixes`, the
 //   unit whose code it fixes — a unit of the project but this one — left
@@ -52,8 +57,8 @@
 // - Ready to build stands on the close (`concludedClose`): the recap as
 //   kept, refused where its root cause or its fix has been replaced since —
 //   staged again, it is drawn again; it draws THE HUNT, Claude's recap, the
-//   symptoms, the root cause told against them and the fix direction, in the
-//   words kept with the close, and asks each
+//   symptoms from the log, and the root cause told against them and the fix
+//   direction in their entries' words, and asks each
 //   departure the person made in the investigation that this machine logged
 //   its verdict at the conclusion, one at a time (16.10.5, 16.10.11). Its
 //   yes, checking what the bug is in again, a refusal naming the restage,
@@ -82,7 +87,7 @@ const { verifySetup } = require('./environment.cjs');
 const { recordedRounds, endsReview } = require('./review-phase.cjs');
 const { areaKey, bugRecords, areaSpellings } = require('./bug-records.cjs');
 const { workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
-const { huntOf, huntEntries, restedOn } = require('./investigation-log.cjs');
+const { huntOf, huntEntries, restedOn, standsNow } = require('./investigation-log.cjs');
 const { unitInProgress, assertPhaseHeld } = require('./topic-standing.cjs');
 const { specStanding } = require('./spec-standing.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
@@ -90,7 +95,6 @@ const { phaseSkill } = require('./handoff.cjs');
 const { filled, shaped, readPayload, refusing } = require('./staged-payload.cjs');
 
 /** @typedef {import('./investigation-log.cjs').Rested} Rested */
-/** @typedef {import('./investigation-log.cjs').Hunt} Hunt */
 /** @typedef {import('./unit-entries.cjs').UnitView} UnitView */
 /** @typedef {import('./projections/investigation.cjs').RecapView} RecapView */
 
@@ -103,13 +107,7 @@ const STAGE_USAGE = 'investigation stage <bugfix> --file <recap.json>';
  * @typedef {{fixes?: string, area?: string}} BugIn
  */
 
-/** An entry the recap was drawn on: its full id and its words. @typedef {{id: string, text: string}} Drawn */
-
-/**
- * What the recap was drawn on: the symptoms in the person's words, and the
- * root cause and the fix.
- * @typedef {{symptoms: string[], root_cause: Drawn, fix: Drawn}} DrawnOn
- */
+/** What the recap was drawn on: the root cause and the fix, each by its full id. @typedef {{root_cause: string, fix: string}} DrawnOn */
 
 /**
  * The close as the checklist store keeps it (the header's): when it was
@@ -222,36 +220,20 @@ function assertOpen(cwd, unit) {
 }
 
 /**
- * `check` run on the root cause and the fix the hunt rests on, read with
- * the unit's entries, refused where either rests on none.
- * @template T
- * @param {string} cwd @param {string} unit @param {string[]} warnings
- * @param {(rests: {rootCause: Rested, fix: Rested}, view: UnitView, hunt: Hunt) => T} check
- * @returns {T}
- */
-function onHunt(cwd, unit, warnings, check) {
-  const hunt = huntOf(cwd, unit, warnings);
-  return withUnitEntries(cwd, unit, warnings, (view) => {
-    const entries = huntEntries(unit, view, hunt);
-    return check({ rootCause: rested(entries.rootCause), fix: rested(entries.fix) }, view, hunt);
-  });
-}
-
-/** An entry the hunt rests on as the recap keeps it. @param {Rested} entry @returns {Drawn} */
-const drawnOf = ({ id, text }) => ({ id, text });
-
-/**
  * What the close is drawn on before the spec, refused where the
  * investigation cannot close (the header's).
  * @param {string} cwd @param {string} unit @param {string[]} warnings @returns {DrawnOn}
  */
 function closing(cwd, unit, warnings) {
-  return onHunt(cwd, unit, warnings, (rests, view, hunt) => {
+  const hunt = huntOf(cwd, unit, warnings);
+  return withUnitEntries(cwd, unit, warnings, (view) => {
+    const entries = huntEntries(unit, view, hunt);
+    const rests = { rootCause: rested(entries.rootCause), fix: rested(entries.fix) };
     for (const validation of VALIDATIONS) assertValidated(cwd, unit, view, validation, rests);
     assertQuestionsClosed(unit, view);
     const waiting = mailboxDepth(stateRoot(cwd), unit, unit);
     if (waiting > 0) throw new Error(`${waiting} message(s) wait in its mailbox — raise and answer each first: engine topic mailbox ${unit} ${unit}`);
-    return { symptoms: hunt.symptoms.map(({ text }) => text), root_cause: drawnOf(rests.rootCause), fix: drawnOf(rests.fix) };
+    return { root_cause: rests.rootCause.id, fix: rests.fix.id };
   });
 }
 
@@ -259,28 +241,28 @@ function closing(cwd, unit, warnings) {
 const closeOf = (manifest, unit) => manifest.checklists?.conclusion?.[unit] ?? null;
 
 /**
- * The current entry the kept `drawn` leads to, the latest where several,
- * refused, naming `what`, where it leads to none.
- * @param {UnitView} view @param {Drawn} drawn @param {string} what @returns {Drawn}
+ * The unit's current entry the kept `id` leads to (`standsNow`), refused,
+ * naming `what`, where it leads to another unit's alone: replaced there at
+ * the unit's spec, it is the unit's again.
+ * @param {string} unit @param {UnitView} view @param {string} id @param {string} what @returns {string}
  */
-function nowOf(view, drawn, what) {
-  const now = currentsOf(view.folded, drawn.id).filter((id) => view.entries.has(id)).at(-1);
-  if (now === undefined) throw new Error(`the ${what} the recap was drawn on, ${view.short(drawn.id)}, leads to no current entry — replace it at the spec: engine ledger replace <unit>.specification --replaces ${view.short(drawn.id)}`);
-  return drawnOf(restedOn(view, now));
+function nowOf(unit, view, id, what) {
+  const now = standsNow(view, id);
+  if (now !== null) return now.id;
+  const elsewhere = view.short(currentsOf(view.folded, id).at(-1) ?? id);
+  throw new Error(`${unit}'s ${what}, ${view.short(id)}, now stands as ${elsewhere}, another unit's entry — make it ${unit}'s at its spec: engine ledger replace ${unit}.specification --replaces ${elsewhere}`);
 }
 
 /**
  * What the close is drawn on once the spec is written (the header's): the
- * close kept, its root cause and its fix the current entries theirs lead
- * to, its symptoms as kept; refused where nothing closed it.
+ * unit's current entries the kept root cause and fix lead to; refused where
+ * nothing closed it.
  * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {string[]} warnings @returns {DrawnOn}
  */
 function respelt(cwd, unit, manifest, warnings) {
   const kept = closeOf(manifest, unit);
   if (kept === null) throw new Error(`${unit}'s investigation never closed into its spec — its close is staged before the spec is written`);
-  return withUnitEntries(cwd, unit, warnings, (view) => ({
-    symptoms: kept.symptoms, root_cause: nowOf(view, kept.root_cause, 'root cause'), fix: nowOf(view, kept.fix, 'fix'),
-  }));
+  return withUnitEntries(cwd, unit, warnings, (view) => ({ root_cause: nowOf(unit, view, kept.root_cause, 'root cause'), fix: nowOf(unit, view, kept.fix, 'fix') }));
 }
 
 /** Whether a value is one line of words. @param {unknown} value @returns {value is string} */
@@ -337,13 +319,16 @@ function concludedClose(cwd, manifest, warnings) {
   if (manifest.work_type !== 'bugfix' || !closedIntoSpec(manifest)) return null;
   const unit = manifest.name;
   const close = /** @type {Close} */ (closeOf(manifest, unit));
-  const replaced = withUnitEntries(cwd, unit, warnings, ({ entries }) => [close.root_cause, close.fix].some(({ id }) => !entries.has(id)));
-  if (replaced) throw new Error(`the root cause or the fix has been replaced since the recap was staged — ${stageCall(unit)} stages it again`);
-  return {
-    closed: close.closed,
-    recap: { hunt: close.hunt, symptoms: close.symptoms, rootCause: close.root_cause.text, fix: close.fix.text },
-    staged: close,
-  };
+  const { symptoms } = huntOf(cwd, unit, warnings);
+  return withUnitEntries(cwd, unit, warnings, (view) => {
+    if (![close.root_cause, close.fix].every((id) => view.entries.has(id))) throw new Error(`the root cause or the fix has been replaced since the recap was staged — ${stageCall(unit)} stages it again`);
+    const words = (/** @type {string} */ id) => restedOn(view, id).text;
+    return {
+      closed: close.closed,
+      recap: { hunt: close.hunt, symptoms: symptoms.map(({ text }) => text), rootCause: words(close.root_cause), fix: words(close.fix) },
+      staged: close,
+    };
+  });
 }
 
 /**

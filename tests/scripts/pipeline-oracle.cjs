@@ -288,7 +288,8 @@ function auditState(dir, label) {
     }
 
     // A bugfix's investigation closes into its spec as a mark keyed by the
-    // unit, and once ready to build's yes concludes it, its close is taken
+    // unit, keeping its recap and the root cause and the fix by their ids
+    // alone, and once ready to build's yes concludes it, its close is taken
     // at the instant it concluded (investigation-conclude.cjs): a bugfix
     // whose build has begun has its investigation concluded.
     if (manifest.work_type === 'bugfix' && derivations.buildBegun(manifest)) {
@@ -297,6 +298,9 @@ function auditState(dir, label) {
     const conclusion = manifest.checklists?.conclusion;
     if (conclusion !== undefined) {
       assert.deepStrictEqual([manifest.work_type, Object.keys(conclusion)], ['bugfix', [wu]], ctx(`${wu}: a conclusion close on a ${manifest.work_type}, or keyed by another topic`));
+      const { closed, voided, taken, hunt, root_cause: rootCause, fix, fixes, area, ...more } = conclusion[wu];
+      assert.deepStrictEqual([typeof closed, typeof hunt, typeof rootCause, typeof fix, more], ['string', 'string', 'string', 'string', {}], ctx(`${wu}: a conclusion close out of its shape`));
+      assert.ok([voided, taken, fixes, area].every((field) => field === undefined || typeof field === 'string'), ctx(`${wu}: a conclusion close's optional fields out of their shape`));
       const item = manifest.phases?.investigation?.items?.[wu];
       if (item?.status === 'completed') assert.strictEqual(conclusion[wu].taken, item.concluded_at, ctx(`${wu}: concluded at ${item.concluded_at}, its close taken at ${conclusion[wu].taken}`));
     }

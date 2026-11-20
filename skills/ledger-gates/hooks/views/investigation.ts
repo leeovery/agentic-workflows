@@ -58,7 +58,7 @@ function standingPart(standing: Standing, kit: Kit): Part[] {
     case 'closed':
       return [{ text: `${MARK.done} closed · the specification next`, color: COLOUR.done }]
     case 'concluded':
-      return [{ text: `${MARK.done} concluded · the specification next`, color: COLOUR.done }]
+      return [{ text: `${MARK.done} concluded`, color: COLOUR.done }]
     case 'fix-waits':
       return [{ text: `${MARK.needs} the fix direction waits on you`, color: COLOUR.needs }]
     case 'validating-root-cause':

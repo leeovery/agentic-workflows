@@ -13,8 +13,11 @@
 // decided, and the investigation closed into its spec with no gate, its
 // recap staged — its close voided by a gap routed back before the spec,
 // entered again with its resume's reads and closed again, its recap naming
-// this time the unit whose code the bug is in; then the specification, into
-// the build. And a bugfix moved to a feature from its investigation, its
+// this time the unit whose code the bug is in; then the specification,
+// where a Comment at ready to build changes the fix direction — replaced at
+// the spec, the writer, its review and the cut again, the recap staged
+// again over it with the investigation frozen — its verdict asked, into the
+// build. And a bugfix moved to a feature from its investigation, its
 // cause in the design: the root cause's validation taken in, the fix
 // direction reworking the area as a feature with no validation of its own,
 // start this work's screen and its yes, the feature's discussion reading
@@ -42,7 +45,7 @@ const fs = require('fs');
 const path = require('path');
 const ROOT = path.join(__dirname, '../..');
 const {
-  Sim, startUnit, enterEntry, handoff, answerGate, gatesAnswered, continueUnit, startRow, startNew, specToBuild, specWritten, specReviewed, cutTheSpec, readyToBuild, intoTheBuild,
+  Sim, startUnit, enterEntry, handoff, answerGate, typeAtGate, gatesAnswered, continueUnit, startRow, startNew, specWritten, specLanded, specReviewed, cutTheSpec, readyClosed, readyToBuild, intoTheBuild,
   investigationCache, rootCaused, reported, validated, fixDirected, concluded,
 } = require('./pipeline-world.cjs');
 const { history, lines, DAY } = require('./trust-world.cjs');
@@ -54,6 +57,7 @@ const { gateStep } = decisionPoint;
 const { TRUST_LOG } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/trust-log.cjs'));
 
 const CLAUDES = Object.freeze({ by: 'claude', who_moved_whom: 'none' });
+const CUT = Object.freeze([{ name: 'The work', goal: 'The work holds as decided.', scenarios: ['1.S1'], sections: ['1'], relies_on: [] }]);
 
 /** A call raised to the person, a row for each key, the first its lean, sorted `sort`. @param {string} question @param {string[]} keys @param {'one'|'several'} sort */
 const callOf = (question, keys, sort) => JSON.stringify({
@@ -177,10 +181,35 @@ describe('pipeline simulation: bugfix', () => {
     concluded(sim, wu, { fixes: 'saving' });
 
     // The spec, entered at the unit — its route naming no topic — through its
-    // corridor to ready to build's pick; the spec is never indexed (11.1.2).
+    // corridor to ready to build; the spec is never indexed (11.1.2).
     assert.strictEqual(continueUnit(sim, wu).line, `→ Specification · ${wu}`);
-    specToBuild(sim, wu, [wu]);
+    specWritten(sim, wu, [wu]);
+    specReviewed(sim, wu);
+    cutTheSpec(sim, wu, CUT);
+    assert.match(readyToBuild(sim, wu), /^FIX DIRECTION\n {2}The save does atomic$/m);
     assert.doesNotMatch(await query('holds as decided'), /^\[specification \|/m);
+
+    // A Comment there changing the fix direction is the person's replacement
+    // at the spec (ready-to-build.md, A Change Asked For): the writer goes
+    // again, its land reviewed, the cut made again and the checklist closed
+    // again, and the recap is staged again over the replacement, the
+    // investigation frozen, carrying on at the spec; the screen draws the
+    // new fix and asks its verdict, and its pick begins the build.
+    assert.strictEqual(typeAtGate(sim, 'ready to build', 'Write it to a temporary file and rename it instead').next, null);
+    const atomic = JSON.parse(sim.read(['ledger', 'record', wu, wu])).decisions.find((/** @type {{text: string}} */ d) => d.text === 'The save does atomic').id;
+    const renamed = sim.run(['ledger', 'replace', `${wu}.specification`, '--replaces', atomic, '--reason', 'changed-mind'], null,
+      JSON.stringify({ drops: ['atomically'], text: 'Write the save to a temporary file, then rename it', why: 'A rename is atomic where it ships.', by: 'person' })).id;
+    specLanded(sim, wu, [wu], [renamed]);
+    specReviewed(sim, wu);
+    cutTheSpec(sim, wu, CUT);
+    readyClosed(sim, wu);
+    const recap = sim.write(investigationCache(wu, 'recap.json'), { hunt: 'Two hypotheses; the save wrote a null on every crash, and a rename keeps it whole.', fixes: 'saving' });
+    assert.deepStrictEqual(sim.run(['investigation', 'stage', wu, '--file', recap]).next, { kind: 'continue' });
+    assert.match(sim.render(['ready-to-build', wu], { expect: 'content' }), /^FIX DIRECTION\n {2}Write the save to a temporary file, then rename it$/m);
+    sim.run(answerGate(sim, 'verdict', '--pick', 'n').next.argv);
+    sim.render(['ready-to-build', wu, '--alone'], { expect: 'content' });
+    intoTheBuild(sim, wu, sim.run(answerGate(sim, 'ready to build', '--pick', 's').next.argv));
+    assert.strictEqual(sim.manifest(wu).phases.investigation.items[wu].status, 'completed');
   });
 
   it('bugfix moved to a feature from its investigation (19.S14, 19.S30, 19.4.22): the fix direction reworking the area as a feature, logged as it is picked → start this work\'s screen and its yes re-typing the unit → its discussion, at its first opening, reading the investigation\'s log and record as its earlier ones', async () => {

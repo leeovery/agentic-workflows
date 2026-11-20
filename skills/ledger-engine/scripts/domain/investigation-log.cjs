@@ -70,9 +70,10 @@
 //   validations' briefs: the root cause, the current entry its line points
 //   at, and the fix, the current answer of the question the fix direction
 //   points at — each, where it rests on none, why, with the way on. The
-//   board reads the root cause as it stands (`rootCauseNow`): the current
-//   entry the logged one's chain leads to, so a replacement shows before it
-//   is logged again.
+//   board and the spec writer's brief read the root cause as it stands
+//   (`rootCauseNow`): the current entry the logged one's chain leads to, so
+//   a replacement shows before it is logged again, and one made at the spec
+//   after the log froze shows at all.
 //
 // Known edge, not built: an investigation the reshape's migration moved
 // mid-hunt holds its hunt in its old document, so its lists read empty
@@ -289,17 +290,23 @@ function assertRootCause(said, unit, view, hunt) {
 const restedOn = (view, id) => ({ id, short: view.short(id), text: wordsOf(view, id) });
 
 /**
- * The root cause as it stands, for the board to show between a
- * replacement and the root cause logged again: the current entry the
- * logged one's chain leads to, the latest where several; null where none is
- * logged or it leads nowhere current.
- * @param {UnitView} view @param {Hunt} hunt @returns {Rested|null}
+ * The entry `id` stands as now: the unit's current entry its chain leads
+ * to, the latest where several; null where it leads to none of the unit's.
+ * @param {UnitView} view @param {string} id @returns {Rested|null}
  */
-function rootCauseNow(view, hunt) {
-  if (hunt.rootCause === null) return null;
-  const now = currentsOf(view.folded, hunt.rootCause.entry).filter((id) => view.entries.has(id)).at(-1);
+function standsNow(view, id) {
+  const now = currentsOf(view.folded, id).filter((current) => view.entries.has(current)).at(-1);
   return now === undefined ? null : restedOn(view, now);
 }
+
+/**
+ * The root cause as it stands, for the board to show between a
+ * replacement and the root cause logged again, and for the spec's writer
+ * once the spec's own replacement changed it (`standsNow`); null where none
+ * is logged or it leads nowhere current.
+ * @param {UnitView} view @param {Hunt} hunt @returns {Rested|null}
+ */
+const rootCauseNow = (view, hunt) => (hunt.rootCause === null ? null : standsNow(view, hunt.rootCause.entry));
 
 /**
  * The root cause and the fix the hunt rests on, each one of the unit's
@@ -568,4 +575,4 @@ function logHunt(cwd, kind, positional, opts) {
   return { log: huntLog(unit), heading: entry.heading, line: `- ${line}`, ...(warnings.length > 0 ? { warnings } : {}) };
 }
 
-module.exports = { HUNT_USAGE, HUNT_HEADINGS, huntIn, huntOf, huntLog, openInvestigation, assertRootCauseAt, huntEntries, restedOn, rootCauseNow, logHunt };
+module.exports = { HUNT_USAGE, HUNT_HEADINGS, huntIn, huntOf, huntLog, openInvestigation, assertRootCauseAt, huntEntries, restedOn, standsNow, rootCauseNow, logHunt };

@@ -28,7 +28,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  ok, okSections, refuses, refusedPristine, git, stateGit, statePath, layout, writeState,
+  ok, okSections, refuses, refusedPristine, git, stateGit, statePath, layout, writeState, commitAll,
   readState, readManifest, cleanupFixture, killedAt, STATE_DIR_NAME,
 } = require('./engine-harness.cjs');
 const {
@@ -166,7 +166,10 @@ describe('what the move refuses (19.5.9, 19.4.22, P7)', () => {
     assert.deepStrictEqual([
       refusedYes(QF, () => git(dir, ['branch', '-f', 'main', BRANCH])),
       refusedYes(QF, () => ok(dir, ['workunit', 'cancel', QF])),
-      refusedYes(BUG, () => writeState(dir, layout.unit(BUG, 'spec.md'), '# Spec\n')),
+      refusedYes(BUG, () => {
+        writeState(dir, layout.unit(BUG, 'spec.md'), '# Spec\n');
+        commitAll(dir, 'the spec landed');
+      }),
       refusedYes(BUG, () => ok(dir, ['manifest', 'set', `${BUG}.investigation.${BUG}`, 'status=completed'])),
     ], [
       `start-this-work yes: ${QF}'s fix 1.1 has landed — finish the quick-fix, then start the feature as work of its own`,

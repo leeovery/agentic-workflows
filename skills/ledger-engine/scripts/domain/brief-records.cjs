@@ -611,7 +611,7 @@ const {
   SPEC_FILE, readCitedSections, headingLevels, readSpec, specPath, specSections, specStatements,
 } = require('./spec-sections.cjs');
 const { withUnitEntries, unitEntries } = require('./unit-entries.cjs');
-const { huntOf, huntLog, huntEntries, openInvestigation } = require('./investigation-log.cjs');
+const { huntOf, huntLog, huntEntries, rootCauseNow, openInvestigation } = require('./investigation-log.cjs');
 const { specTopics } = require('./spec-standing.cjs');
 const { sweepPath, builderCalls, sweepTaken, sweepWait } = require('./sweep.cjs');
 const { sweepRefusal } = require('./sweep-take.cjs');
@@ -2059,11 +2059,11 @@ const drawCanonicalAssets = (filling, warnings) => listed(sourcesOf(filling, war
 
 /** @typedef {import('./investigation-log.cjs').Rested} Rested */
 
+/** A bugfix's hunt, as its log holds it: read once a fill. */
+const huntLogged = oncePerFill((filling, warnings) => huntOf(filling.cwd, unitOf(filling), warnings));
+
 /** What a bugfix's hunt rests on, as its log holds it against its entries: read once a fill. */
-const huntRead = oncePerFill((filling, warnings) => {
-  const unit = unitOf(filling);
-  return huntEntries(unit, unitView(filling, warnings), huntOf(filling.cwd, unit, warnings));
-});
+const huntRead = oncePerFill((filling, warnings) => huntEntries(unitOf(filling), unitView(filling, warnings), huntLogged(filling, warnings)));
 
 /**
  * What the hunt rests on for a validation's brief, its investigation open,
@@ -2103,11 +2103,12 @@ const drawCode = (filling) => listed(projectRepos(codeRoot(filling.cwd)).map((re
 function drawInvestigation(filling, warnings) {
   const unit = unitOf(filling);
   if (unitManifest(filling).work_type !== 'bugfix') return NONE;
-  const { rootCause, fix } = huntRead(filling, warnings);
-  const rests = [rootCause, fix].flatMap((entry) => ('fault' in entry ? [] : [entry.id]));
+  const { fix } = huntRead(filling, warnings);
+  const rootCause = rootCauseNow(unitView(filling, warnings), huntLogged(filling, warnings));
+  const rests = [rootCause?.id, 'fault' in fix ? undefined : fix.id];
   const kept = [...unitView(filling, warnings).entries].filter(([id, { kind, stands }]) => kind === 'decision' && stands.unit === unit && stands.topic === unit && !rests.includes(id));
   return listed([
-    ...('fault' in rootCause ? [] : [`- The root cause, ${restedLine(rootCause)}`]),
+    ...(rootCause === null ? [] : [`- The root cause, ${restedLine(rootCause)}`]),
     ...('fault' in fix ? [] : [`- The fix, ${restedLine(fix)}`]),
     ...kept.map(([, { short, line }]) => `- A rule it keeps, ${short}: ${indented(String(line.text))}`),
   ]);

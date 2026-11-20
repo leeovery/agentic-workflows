@@ -33,6 +33,7 @@ const {
 } = require('./engine-harness.cjs');
 const { ledgerHelpers } = require('./ledger-world.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
+const { cut, landReviewed, closeReady } = require('./ready-to-build-world.cjs');
 const {
   HUNT, RIPE, AT, CLAUDE, made, ripe, useInvestigationWorld, BUG, FEATURE, RIPE_AT, ENGINE, PERSON, GONE, validated,
 } = require('./investigation-world.cjs');
@@ -155,7 +156,16 @@ describe('the close into the spec, with no gate — `investigation stage` (19.4.
   /** A ledger write at `ripe`'s investigation: its short id. @param {string} verb @param {string[]} flags @param {Record<string, unknown>} content */
   const wrote = (verb, flags, content) => ledgerHelpers(() => dir).write(verb, RIPE_AT, flags, content, env()).id;
 
-  it('24.S17, 19.S15: marks the close in the checklist store with the recap and what it was drawn on — the symptoms, the root cause and the fix, each by its id and its words — and commits it, the log riding along, releases its place and hands off into the spec — the item still in progress until ready to build concludes it — whose entry reads the investigation and whose writer\'s brief draws the root cause, the fix and each rule the fix keeps, never the spec\'s own', () => {
+  /** A message delivered to `ripe`'s investigation. */
+  function mailed() {
+    writeState(dir, '.cache/scratch/also.md', 'Also on reboot\n\nIt happens on a reboot too.\n');
+    run(['topic', 'send', RIPE, RIPE, '--from', RIPE, '--content', at('.cache/scratch/also.md'), '--slug', 'also-on-reboot']);
+  }
+
+  /** Why `ripe`'s spec waits while its close is voided. */
+  const waits = `${RIPE}'s spec waits until its investigation closes, its root cause and fix validated and its recap staged — the investigation carries on, from the start menu`;
+
+  it('24.S17, 19.S15: marks the close in the checklist store with the recap and what it was drawn on, the root cause and the fix each by its id, and commits it, the log riding along, releases its place and hands off into the spec — the item still in progress until ready to build concludes it — whose entry reads the investigation and whose writer\'s brief draws the root cause, the fix and each rule the fix keeps, never the spec\'s own', () => {
     run(['enter', 'investigation', RIPE]);
     const held = () => run(['presence', 'scan', RIPE]).sessions.map(({ phase, topic }) => `${phase} ${topic}`);
     assert.deepStrictEqual(held(), [`investigation ${RIPE}`]);
@@ -173,10 +183,7 @@ describe('the close into the spec, with no gate — `investigation stage` (19.4.
     });
     const { full } = ledgerHelpers(() => dir);
     assert.deepStrictEqual([closeOf(), readManifest(dir, RIPE).phases.investigation.items[RIPE].status], [{
-      closed: FROZEN_AT, ...RECAP,
-      symptoms: ['I killed every session and restore brought nothing back', 'After a reboot the sessions were gone too'],
-      root_cause: { id: full(ripe.rootCause), text: 'Every save takes the session list as the whole truth, so an empty list empties the save.' },
-      fix: { id: full(ripe.fix), text: 'Never save an empty capture over a full one.' },
+      closed: FROZEN_AT, ...RECAP, root_cause: full(ripe.rootCause), fix: full(ripe.fix),
     }, 'in-progress']);
     assert.strictEqual(lastMessage(dir), `investigation(${RIPE}): close`);
     assert.strictEqual(stateGit(dir, ['status', '--porcelain']).trim(), '', 'the log rode along');
@@ -200,8 +207,7 @@ describe('the close into the spec, with no gate — `investigation stage` (19.4.
     ].join('\n'));
   });
 
-  it('9.7.9: the close is voided as the investigation goes on — entered again, a message delivered to it, a question opened there, an entry replaced there, a line put in its log — the spec waiting until it closes again; once the spec is written, the investigation is frozen', () => {
-    const waits = `${RIPE}'s spec waits until its investigation closes, its root cause and fix validated and its recap staged — the investigation carries on, from the start menu`;
+  it('9.7.9: the close is voided as the investigation goes on — entered again, a message delivered to it, a question opened there, an entry replaced there, a line put in its log — each void committed with it and the spec waiting until it closes again; once the spec is written, the investigation is frozen', () => {
     const goesOn = [
       () => run(['enter', 'investigation', RIPE]),
       () => {
@@ -210,23 +216,50 @@ describe('the close into the spec, with no gate — `investigation stage` (19.4.
       },
       () => wrote('replace', ['--replaces', ripe.ruling, '--reason', 'changed-mind'], { ...PERSON, drops: ['never comes back'], text: 'A session you kill stays gone.', why: 'Plainer.' }),
       () => run(['investigation-log', 'symptom', RIPE, '--text', 'A crash mid-save lost the sessions too']),
-      () => {
-        writeState(dir, '.cache/scratch/also.md', 'Also on reboot\n\nIt happens on a reboot too.\n');
-        run(['topic', 'send', RIPE, RIPE, '--from', RIPE, '--content', at('.cache/scratch/also.md'), '--slug', 'also-on-reboot']);
-      },
+      mailed,
     ];
     const voided = goesOn.map((goOn) => {
       stage();
       goOn();
-      return [typeof closeOf().voided, specOpen()];
+      return [typeof closeOf().voided, stateGit(dir, ['status', '--porcelain']).trim(), specOpen()];
     });
 
-    assert.deepStrictEqual(voided, Array(5).fill(['string', waits]));
-    assert.strictEqual(stateGit(dir, ['status', '--porcelain']).trim(), '', 'the log\'s void committed with it');
+    assert.deepStrictEqual(voided, Array(5).fill(['string', '', waits]));
     assert.match(stageRefused(), /^investigation stage: 1 message\(s\) wait/);
     writeState(dir, layout.unit(RIPE, 'spec.md'), '# Ripe\n');
     commitAll(dir, 'the spec written');
     assert.strictEqual(refused(['enter', 'investigation', RIPE]), `${RIPE} has its spec — a topic exists only before it, and a change is settled in the spec from here`);
+  });
+
+  it('a void while the spec\'s writer is out — a message delivered after its brief — leaves the spec it writes unlanded until the investigation closes again: the investigation is entered again and its mail answered there, the close staged again with every check and handed into the spec, and the spec landed, ready to build\'s yes concludes the investigation', () => {
+    stage();
+    run(['brief', 'spec-writer', RIPE]);
+    mailed();
+    writeState(dir, layout.unit(RIPE, 'spec.md'), [
+      '# Ripe', '', '## 1. Saving', '', '### 1.1 The capture', '',
+      `1.1.1 An empty capture is never saved over a full one. [${ripe.fix}]`, '',
+      '## 1-S. Scenarios for §1', '', '1.S1 Given a full save, when every session is killed, then the save is kept. (1.1.1)', '',
+    ].join('\n'));
+    const land = refused(['spec', 'land', RIPE]);
+
+    run(['enter', 'investigation', RIPE]);
+    const [message] = run(['topic', 'mailbox', RIPE, RIPE]).files;
+    const asked = wrote('ask', [], { ...CLAUDE, text: 'Does a reboot lose sessions the same way?' });
+    wrote('decide', ['--answers', asked], { ...CLAUDE, text: 'Yes, the same way.', why: 'The message says so.' });
+    run(['topic', 'answered', RIPE, RIPE, path.basename(message, '.md'), '--entry', asked]);
+    const { next } = stage();
+    run(['brief', 'spec-writer', RIPE]);
+    landReviewed(dir, RIPE);
+    cut(dir, [{ name: 'Saving', goal: 'A save is never emptied.', scenarios: ['1.S1'], sections: ['1'], relies_on: [] }], RIPE);
+    run(['environment', 'confirm']);
+    closeReady(dir, RIPE);
+    const { concluded } = run(['ready-to-build', 'yes', RIPE, '--position', 'auto']);
+
+    assert.deepStrictEqual([land, next, readManifest(dir, RIPE).phases.investigation.items[RIPE]], [
+      `spec land: ${waits}`,
+      { kind: 'handoff', skill: 'ledger-specification-process', args: ['bugfix', RIPE] },
+      { status: 'completed', concluded_at: concluded },
+    ]);
   });
 
   it('a root cause replaced is validated again, and so is the fix checked against it, kept or replaced; one dispatched since and not yet taken in is named where it stands, never dispatched again, and one of the other kind, or closed unread, never counts (19.4.7, 26.4.10)', () => {

@@ -11,7 +11,7 @@
 // it stands on the close and the recap its mark keeps, so a cancel and a
 // reactivate keep it; a root cause or a fix the person changes there is the
 // spec's replacement, the recap staged again over it with the investigation
-// frozen (11.8.5); its yes concludes the investigation with the build
+// frozen, and the spec's writer briefed with it (11.8.5); its yes concludes the investigation with the build
 // begun: the item completed and its close stamped, what the bug is in kept
 // as staged, with whether that unit's review had ended — kept from an
 // earlier conclude naming the same unit — and the close recorded as taken
@@ -26,9 +26,12 @@ require('./hermetic-env.cjs');
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
-const { ok, sectionOf, layout, readState, writeState, readManifest, commitAll, lastMessage } = require('./engine-harness.cjs');
+const fs = require('fs');
+const path = require('path');
+const { ok, output, sectionOf, layout, readState, writeState, readManifest, commitAll, lastMessage } = require('./engine-harness.cjs');
+const { createManifest } = require('./discovery-test-utils.cjs');
 const { unwrap } = require('./render-surfaces-world.cjs');
-const { BUGFIX, FIXES, SESSION, made, bugfix, stageRecap, worldConfig, useReadyWorld, readyHelpers, write, written, cut, closeReady, landReviewed } = require('./ready-to-build-world.cjs');
+const { BUGFIX, FIXES, RECAP, SESSION, made, bugfix, stageRecap, worldConfig, useReadyWorld, readyHelpers, write, answered, written, cut, closeReady, landReviewed } = require('./ready-to-build-world.cjs');
 
 const dir = useReadyWorld(bugfix);
 const { screen, pick, refused, yes } = readyHelpers(dir, BUGFIX);
@@ -82,7 +85,7 @@ describe('the one screen (19.4.23, 11.8.5)', () => {
     const out = screen();
 
     assert.strictEqual(sectionOf(out, 'DISPLAY: ready to build').split('\n\nTHE OUTLINE')[0], [
-      'Restore — concluded, and ready to build',
+      'Restore — ready to build',
       '',
       'THE HUNT',
       '  Two hypotheses; an empty capture saved over a full one each',
@@ -107,7 +110,7 @@ describe('the one screen (19.4.23, 11.8.5)', () => {
 
     assert.strictEqual(refused(['render', 'ready-to-build', BUGFIX]), `render ready-to-build: ${BUGFIX}'s spec waits until its investigation closes, its root cause and fix validated and its recap staged — the investigation carries on, from the start menu`);
     assert.deepStrictEqual(stageRecap(dir()).next, { kind: 'continue' });
-    assert.match(screen(), /— concluded, and ready to build/);
+    assert.match(screen(), /^Restore — ready to build$/m);
   });
 
   it('stands on the recap its close keeps: cancelled at ready to build and reactivated, its spec landed and reviewed and its checklist closed again, as the purge of its cache asks, the screen draws it again, and the yes concludes the investigation', () => {
@@ -143,6 +146,33 @@ describe('a root cause or a fix the person changes at ready to build (11.8.5, 19
       assert.deepStrictEqual(readManifest(dir(), BUGFIX).phases.investigation.items[BUGFIX], { status: 'completed', concluded_at: answer.concluded });
     });
   }
+
+  it('the fix merged into another unit\'s decision refuses the restage, naming the replacement at the spec that makes it the unit\'s again; made, the restage takes it', () => {
+    createManifest(dir(), 'other', { phases: { discussion: { items: { other: { status: 'in-progress' } } } } });
+    commitAll(dir(), 'another unit');
+    const into = answered(dir(), 'other.discussion.other', 'How is a capture saved?', { by: 'claude', who_moved_whom: 'none', text: 'Only once it is checked.' });
+    const asked = JSON.parse(output(dir(), ['ledger', 'record', BUGFIX, BUGFIX])).questions.find((/** @type {{text: string}} */ q) => q.text === 'How should restore stop losing sessions?').id;
+    write(dir(), 'merge', `${BUGFIX}.specification`, ['--question', asked, '--into', into, '--duplicate', made.fix], { by: 'claude', who_moved_whom: 'none' });
+    const recap = writeState(dir(), layout.cache('scratch', 'recap.json'), JSON.stringify(RECAP));
+    const stale = refused(['investigation', 'stage', BUGFIX, '--file', recap]);
+    specAgain(changedAtTheSpec(into, 'Check a capture before saving it.'));
+    stageRecap(dir());
+
+    assert.strictEqual(stale, `investigation stage: ${BUGFIX}'s fix, ${made.fix}, now stands as ${into}, another unit's entry — make it ${BUGFIX}'s at its spec: engine ledger replace ${BUGFIX}.specification --replaces ${into}`);
+    assert.match(recapShown(), /^FIX DIRECTION\n {2}Check a capture before saving it\.$/m);
+  });
+
+  it('the root cause replaced at the spec reaches the spec\'s writer as the root cause, never as a rule the fix keeps', () => {
+    const replacement = changedAtTheSpec(made.cause, 'A save trusts a capture taken mid-shutdown.');
+    const { id } = ok(dir(), ['brief', 'spec-writer', BUGFIX], { env: SESSION });
+
+    const brief = fs.readFileSync(path.join(/** @type {string} */ (process.env.LEDGER_CONFIG_DIR), 'conversations', SESSION.CLAUDE_CODE_SESSION_ID, 'briefs', `${id}.md`), 'utf8');
+    assert.strictEqual(brief.split('# The investigation\n\n')[1].split('\n\n# ')[0], [
+      `- The root cause, ${replacement}: A save trusts a capture taken mid-shutdown.`,
+      `- The fix, ${made.fix}: Never save an empty capture over a full one.`,
+      `- A rule it keeps, ${made.inHunt}: It names what it lost.`,
+    ].join('\n'));
+  });
 });
 
 describe('the one screen\'s verdicts (16.10.5, 16.10.11)', () => {

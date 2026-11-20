@@ -10,8 +10,9 @@
 // parts; its foot says the pick marks the topic decided with what it covers,
 // it strikes a candidate on `x`, `s` being the step, and its comment takes
 // a change to any of it. A bugfix's is one screen with its investigation's
-// conclude alike: `{Title} — concluded, and ready to build`, the recap
-// (investigation.cjs) before the spec's parts, its foot saying the pick
+// conclude alike, its title the epic's, `{Title} — ready to build`, since
+// nothing is concluded before its yes: the recap (investigation.cjs) before
+// the spec's parts, its foot saying the pick
 // concludes the investigation, and its comment taking a change to the
 // recap. An epic's is the feature's screen without the parts that belong to
 // the feature's decided: the title,
@@ -77,11 +78,8 @@ function cutBlock(phases) {
   })), { width: TREE_WIDTH }));
 }
 
-/** The screen's title, by the close it is one screen with. @param {ReadyView} view */
-function heading({ title, close, recap }) {
-  if (close !== null) return `${title} — decided, and ready to build`;
-  return recap === null ? `${title} — ready to build` : `${title} — concluded, and ready to build`;
-}
+/** The screen's title, a feature's saying its topic's decided. @param {ReadyView} view */
+const heading = ({ title, close }) => `${title} — ${close === null ? '' : 'decided, and '}ready to build`;
 
 /** The screen's display: each block that has something to show, a feature's topic's close around Claude's calls, a bugfix's recap first. @param {ReadyView} view */
 function readyDisplay(view) {

@@ -214,14 +214,14 @@ FIX DIRECTION ──────────────────────
     expect(drawn(INVESTIGATION, picked).text[2]).toBe('6 hypotheses · 3 confirmed · 10 experiments · ◐ validating the')
   })
 
-  test('20.12.1, 20.12.4: concluded, the facts line says the specification is next and nothing turns, and the unit\'s tab shows the specification being written', () => {
+  test('20.12.1, 20.12.4: concluded at ready to build\'s yes, the facts line says so and nothing turns, and the unit\'s tab shows the build under way', () => {
     const done = { ...fixture, standing: 'concluded', waiting: [], fix_direction: { ...fixture.fix_direction, state: 'picked', pick: '1', fix: 'Harden the reads.' } } as View
-    const tab = { ...MINT, type: 'bugfix', here: false, waiting: [], phases: [phase('discovery', 'complete', 'from your inbox note'), phase('investigation', 'complete', '6 hypotheses'), phase('specification', 'running', '', { doing: 'being written' })] } as View
+    const tab = { ...MINT, type: 'bugfix', here: false, waiting: [], phases: [phase('discovery', 'complete', 'from your inbox note'), phase('investigation', 'complete', '6 hypotheses'), phase('specification', 'complete', '1 phase'), phase('implementation', 'running', '0 of 1 done', { doing: 'building' })] } as View
     const { text, holds } = drawn(INVESTIGATION, done)
 
-    expect(text.slice(2, 4)).toEqual(['6 hypotheses · 3 confirmed · 10 experiments · ✓ concluded ·', 'the specification next'])
+    expect(text[2]).toBe('6 hypotheses · 3 confirmed · 10 experiments · ✓ concluded')
     expect(holds.turns).toBe(false)
-    expect(drawn(UNIT, tab).text.find(row => row.includes('Specification'))).toEndWith(' being written')
+    expect(drawn(UNIT, tab).text.find(row => row.includes('Implementation'))).toEndWith(' building')
   })
 
   test('closed into its spec, not yet concluded at ready to build, the facts line says it is closed and the specification next, and nothing turns', () => {

@@ -42,6 +42,7 @@ const { ledgerHelpers } = require('./ledger-world.cjs');
 const { fixture, misfits, emptyLists, place, standingOn } = require('./board-world.cjs');
 const { labelling } = require('./labels.cjs');
 const { undrawn } = require('./raise-world.cjs');
+const { cut, landReviewed, closeReady } = require('./ready-to-build-world.cjs');
 
 const BUG = 'kill-all';
 const EARLIER = 'empty-save';
@@ -523,22 +524,26 @@ describe('each decision where its chain stands now', () => {
 });
 
 describe('the investigation concluded, the unit\'s tab and All work (20.12.4, 20.15, 20.16)', () => {
-  it('concluded: This session says the specification is next, the banner done, a raise left unanswered no longer waiting, nor what waits on the unit since; the tab dates the investigation by its close, its row counts the hypotheses and opens the investigation, concluded, holding none of it either', async () => {
-    await raised(KEEP_CALL, made.keep);
-    const manifest = readManifest(dir, BUG);
-    manifest.phases.investigation.items[BUG] = { status: 'completed', concluded_at: '2026-08-20T15:00:00.000Z' };
-    manifest.phases.specification = { items: { [BUG]: { status: 'in-progress' } } };
-    writeState(dir, layout.manifest(BUG), JSON.stringify(manifest, null, 2));
-    wrote('ask', `${BUG}.specification`, [], { ...CLAUDE, text: 'Does a save retry once?' });
+  it('concluded at ready to build\'s yes: This session says so, the banner done, nothing of it waiting; the tab dates the investigation by its conclude, its row counts the hypotheses and opens the investigation, concluded, holding none of it either', async () => {
+    await closed();
+    run(['brief', 'spec-writer', BUG]);
+    writeState(dir, layout.unit(BUG, 'spec.md'), [
+      '# Kill All', '', '## 1. Saving', '', '### 1.1 The capture', '',
+      `1.1.1 A save never drops a session it did not see. [${made.rootCause}]`, '',
+      '## 1-S. Scenarios for §1', '', '1.S1 Given three sessions saved, when every one is killed, then the save keeps them. (1.1.1)', '',
+    ].join('\n'));
+    landReviewed(dir, BUG);
+    cut(dir, [{ name: 'Saving', goal: 'A save never drops a session.', scenarios: ['1.S1'], sections: ['1'], relies_on: [] }], BUG);
+    run(['environment', 'confirm']);
+    closeReady(dir, BUG);
+    const { concluded } = run(['ready-to-build', 'yes', BUG, '--position', 'auto']);
     atTheHunt();
     const { view, banner } = board();
     const opened = board(['--tab', 'unit', '--page', 'phase:investigation']).view;
 
-    assert.deepStrictEqual(board(['--tab', 'unit']).view.waiting.map((/** @type {{kind: string}} */ { kind }) => kind), ['gap'], 'the spec\'s gap waits on the unit');
-    assert.deepStrictEqual(opened.waiting, []);
-    assert.deepStrictEqual([view.standing, view.waiting, banner.state, banner.facts.at(-1).text], ['concluded', [], 'done', 'concluded · the specification next']);
-    assert.deepStrictEqual(tabRow(), { phase: 'investigation', state: 'complete', words: '3 hypotheses', doing: '', on: '2026-08-20T15:00:00.000Z', session: 'this', page: true });
-    assert.deepStrictEqual([opened.kind, opened.standing], ['investigation', 'concluded']);
+    assert.deepStrictEqual([view.standing, view.waiting, banner.state, banner.facts.at(-1).text], ['concluded', [], 'done', 'concluded']);
+    assert.deepStrictEqual(tabRow(), { phase: 'investigation', state: 'complete', words: '3 hypotheses', doing: '', on: concluded, session: 'this', page: true });
+    assert.deepStrictEqual([opened.kind, opened.standing, opened.waiting], ['investigation', 'concluded', []]);
   });
 
   /** The hunt brought to its close, both validated, and closed into its spec with Claude's recap staged. */
