@@ -42,7 +42,7 @@ const KEPT = `moved/${BRANCH}`;
 const SHOT = `${QF}/assets/shot.png`;
 const KEEP = 'Keep the flag short';
 const RECORD = Object.freeze({ changed: 'The flag reads --colour.', why: 'It was spelt the American way.', leaves: 'Nothing.' });
-const STAGED = layout.cache('product', 'discovery', 'product', 'start-this-work.json');
+const STAGED = layout.cache('product', 'discovery', 'product', 'start-this-work-sess-1.json');
 const INVESTIGATION_LOG = layout.unit(BUG, 'topics', BUG, 'log.md');
 const BUILD_LOG = layout.unit(QF, 'build', 'log.md');
 const EARLIER = (unit, name) => layout.unit(unit, 'topics', unit, 'earlier', name);
@@ -149,8 +149,8 @@ function moveHelpers(at) {
     }));
   }
 
-  /** The move staged and its screen drawn: the response and the sections. @param {string} unit @param {string} to */
-  const staged = (unit, to) => okSections(at(), ['workunit', 'move', unit, '--to', to, '--file', payload(unit, to)], { env: env() });
+  /** The move staged and its screen drawn: the response and the sections. @param {string} unit @param {string} to @param {Record<string, string|undefined>} [over] the conversation's env changed */
+  const staged = (unit, to, over = {}) => okSections(at(), ['workunit', 'move', unit, '--to', to, '--file', payload(unit, to)], { env: { ...env(), ...over } });
 
   /** The move staged, and the yes its screen's gate leads to run. @param {string} unit @param {string} to */
   function moved(unit, to) {

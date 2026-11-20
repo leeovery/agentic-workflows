@@ -3,14 +3,15 @@
 // ---------------------------------------------------------------------------
 // The pipeline simulation's quick-fix, opened and closed in its own skill:
 // three quick-fix items picked in triage and worked as one, through
-// discovery into one quick-fix (19.S25), the opener carrying on in place
+// discovery's type call into one quick-fix (19.S25), the opener carrying on in place
 // into the quick-fix's skill (24.1.3), its
 // fixes built by their builders and passed by their pairs (19.5.22), each
 // one's account its builder's, a builder's question parking its fix while
 // the next goes on, answered and built (19.5.25), a question Claude raised
 // in the conversation outliving a /clear and holding the close until it is
 // answered again, and the close landing the one pull request, recording no
-// environment setup for the project (22.S28). Its merge by
+// environment setup for the project (22.S28), then carrying on in the
+// conversation, the start menu a /ledger away. Its merge by
 // hand is test-pipeline-simulation-quick-fix-by-hand.cjs's, its review
 // test-pipeline-simulation-quick-fix-review.cjs's, its moves
 // test-pipeline-simulation-quick-fix-move.cjs's.
@@ -27,7 +28,7 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 const {
-  Sim, answerGate, carryOn, writeTasks, finishClosed, fixBuilt, workTheSet, startThisWork, shapedInTheProduct, startRow, startMenu, follow,
+  Sim, answerGate, carryOn, writeTasks, finishClosed, fixBuilt, workTheSet, startThisWork, startRow, startMenu,
 } = require('./pipeline-world.cjs');
 const { leaningCall } = require('./ledger-world.cjs');
 
@@ -36,7 +37,7 @@ describe('pipeline simulation: quick-fix', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('quick-fix: three items picked in triage and worked as one go through discovery into one quick-fix, on the start menu until it closes (19.S25); the opener carries on into its skill in the same conversation; each fix passed by its pair; a builder\'s question parks its fix while the next goes on, then it is built; Claude\'s own question outlives a /clear, named by the entry and holding the close\'s checklist until it is answered again; and the close landing the one pull request, no handoff from the opener to the close (24.S8), then onto the start menu in a cleared conversation, This session All work with the quick-fix under COMPLETE (20.S24)', async () => {
+  it('quick-fix: three items picked in triage and worked as one go through discovery\'s type call into one quick-fix, on the start menu until it closes (19.S25); the opener carries on into its skill in the same conversation; each fix passed by its pair; a builder\'s question parks its fix while the next goes on, then it is built; Claude\'s own question outlives a /clear, named by the entry and holding the close\'s checklist until it is answered again; and the close landing the one pull request, no handoff from the opener to the close (24.S8), then on in the conversation, its place left, and the start menu asked for in a cleared conversation, This session All work with the quick-fix under COMPLETE (20.S24)', async () => {
     const wu = 'typo';
     const place = `${wu}.implementation`;
     const items = ['flag', 'help', 'docs'].map((what) => sim.write(`.ledger/.inbox/quickfixes/2026-01-01--${what}-says-color.md`, `# The ${what} says --color\n`));
@@ -44,9 +45,10 @@ describe('pipeline simulation: quick-fix', () => {
     const route = workTheSet(sim, items).text.match(/^Invoke `\/ledger-discovery start none "(.*)"`\.$/);
     const seeds = route?.[1].split(',') ?? [];
     assert.deepStrictEqual([...seeds].sort(), items.map((rel) => path.join(sim.dir, rel)).sort(), 'all three go to discovery as one piece of work');
+    sim.handOver();
+    sim.run(['enter', 'discovery', 'product', '--type-call', '--seeds', seeds.join(',')]);
     const started = startThisWork(sim, {
-      type: 'quick-fix', name: wu, description: 'The --color flag is spelt --colour', reason: 'Three one-line fixes, each its own.',
-      shaped_by: [shapedInTheProduct(sim, wu)], seeds,
+      type: 'quick-fix', name: wu, description: 'The --color flag is spelt --colour', reason: 'Three one-line fixes, each its own.', seeds,
     });
     assert.deepStrictEqual(started.next, { kind: 'invoke', skill: 'ledger-quick-fix-process', args: ['quick-fix', wu] });
     const conversation = sim.env.CLAUDE_CODE_SESSION_ID;
@@ -97,7 +99,7 @@ describe('pipeline simulation: quick-fix', () => {
     sim.render(['finish', wu], { expect: 'content' });
     const unclosed = sim.handoffs.slice(handedOff);
     const yes = sim.run(answerGate(sim, 'finish', '--pick', 'y').next.argv);
-    follow(sim, yes.next);
+    const left = carryOn(sim).position;
     sim.handOver();
     const rows = startMenu(sim);
     const allWork = sim.board().view;
@@ -110,8 +112,8 @@ describe('pipeline simulation: quick-fix', () => {
     assert.deepStrictEqual(unclosed, [], 'no handoff from the opener to the close (24.S8)');
     assert.deepStrictEqual([yes.landed.map((/** @type {{merged: string[]}} */ { merged }) => merged), sim.manifest(wu).status], [[['1.1', '1.3', '1.2']], 'completed']);
     assert.ok(!rows.some(({ next }) => next?.kind === 'engine' && next.argv.join(' ') === `handoff unit ${wu}`), 'closed, it leaves the start menu');
-    assert.deepStrictEqual([yes.next, allWork.kind, allWork.at_start, allWork.complete.map((/** @type {{unit: string}} */ { unit }) => unit)], [{ kind: 'handoff', skill: 'ledger', args: [] }, 'all', true, [wu]],
-      '20.S24: closed, the cleared conversation at the start menu shows All work, the quick-fix under COMPLETE');
+    assert.deepStrictEqual([yes.next, left, allWork.kind, allWork.complete.map((/** @type {{unit: string}} */ { unit }) => unit)], [{ kind: 'continue' }, null, 'all', [wu]],
+      '20.S24: closed, the cleared conversation at no place shows All work, the quick-fix under COMPLETE');
     assert.deepStrictEqual(JSON.parse(sim.read(['environment', 'show'])), { run: {}, prepare: [], concurrency: [], verify: null, linters: [], confirmed: null, ok: true },
       '22.S28: built and closed in a project with no environment setup, the quick-fix recorded none, so the project\'s first ready to build still asks it');
   });

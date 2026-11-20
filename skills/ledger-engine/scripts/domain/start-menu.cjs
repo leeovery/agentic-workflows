@@ -9,7 +9,8 @@
 // own row; and
 // whether mail waits for its topic, shown beside the count and never in it
 // (10.4.3), an epic's left to its own menu, which shows it by topic; the
-// inbox's live items by kind; the product's conversation, and whether the
+// inbox's live items by kind; the product's conversation, its sessions holding
+// talk (discovery-entry.cjs), and whether the
 // brownfield research is owed (8.12.13); the verdicts waiting, the queue
 // across every unit (16.10); whether any unit has closed; and each place
 // holding legacy files, a unit of any status or the product, with how many
@@ -31,7 +32,7 @@ const { queueOf } = require('./ledger-verdicts.cjs');
 const { evidenceOf } = require('./trust-evidence.cjs');
 const { waitsOf } = require('./waits.cjs');
 const { progressOf, progressWords } = require('./progress.cjs');
-const { productConversation } = require('./discovery-session.cjs');
+const { productConversation } = require('./discovery-entry.cjs');
 const { researchOwed } = require('./brownfield.cjs');
 const { discoverInbox } = require('./start.cjs');
 const { mailPhases } = require('./derivations.cjs');

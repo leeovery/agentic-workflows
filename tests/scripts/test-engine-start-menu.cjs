@@ -277,6 +277,7 @@ describe('the start menu (18.2.12)', () => {
       writeState(dir(), `.inbox/${kind}/2026-10-01--${slug}.md`, `# ${slug}\n`);
     }
     ok(dir(), ['enter', 'discovery', 'product'], { env: { CLAUDE_CODE_SESSION_ID: HERE } });
+    fs.appendFileSync(statePath(dir(), '.product/sessions/session-001.md'), '\nWhere sync should go.\n');
     ok(dir(), ['brownfield', 'record', 'accepted']);
     createManifest(dir(), 'shipped', { work_type: 'feature', status: 'completed' });
     const full = startMenu();
@@ -326,11 +327,20 @@ describe('the start menu (18.2.12)', () => {
     assert.deepStrictEqual([owed, lettered(startMenu().menu)[0]], ['p/product → Talk about the product — research owed', 'p/product → Talk about the product']);
   });
 
-  it('18.2.13: the product\'s sessions whose logs name no conversation are counted, with no date', () => {
-    writeState(dir(), '.product/sessions/session-001.md', '# Product session 001\n');
-    writeState(dir(), '.product/sessions/session-002.md', '# Product session 002\n');
+  it('18.2.13: the product\'s sessions holding talk are counted, those whose logs name no conversation with no date; a session opened and said nothing in never, nor its conversation\'s date', () => {
+    const row = () => lettered(startMenu().menu)[0];
+    writeState(dir(), '.product/sessions/session-001.md', 'Where sync should go.\n');
+    writeState(dir(), '.product/sessions/session-002.md', 'Pricing, a first pass.\n');
+    const undated = row();
+    writeState(dir(), '.product/sessions/session-003.md', '## 2026-10-19 · session sess-9\n');
+    const opened = row();
+    writeState(dir(), '.product/sessions/session-002.md', '## 2026-10-12 · session sess-8\n\nPricing, a first pass.\n');
 
-    assert.strictEqual(lettered(startMenu().menu)[0], 'p/product → Talk about the product — 2 sessions');
+    assert.deepStrictEqual([undated, opened, row()], [
+      'p/product → Talk about the product — 2 sessions',
+      'p/product → Talk about the product — 2 sessions',
+      'p/product → Talk about the product — 2 sessions, last on 12 Oct',
+    ]);
   });
 
   it('18.2.3, 18.2.12: the rows in their order — the units with something waiting first, then features, bugfixes, quick-fixes and epics, each type in the project\'s order; then product, start, triage, roadmap, verdicts, view, manage and help', () => {

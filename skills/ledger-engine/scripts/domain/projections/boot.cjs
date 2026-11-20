@@ -367,7 +367,10 @@ function githubRuleGate(project) {
  * Setup's offer of the squash default on GitHub (7.2.18), merge commits
  * allowed beside it (4.4.6, 7.2.38), on the project's repository and each
  * nested one it covers, named by folder; acted on only on yes; each answer
- * leads to the `github-squash` verb that records it.
+ * leads to the `github-squash` verb that records it. Its no says what each
+ * setting left unset holds back: the squash default a phase's stack merge,
+ * merge commits a unit's own branch landing at finish, as the landing
+ * driver refuses each.
  * @param {string} project the project's name @param {string[]} nested
  * @returns {string}
  */
@@ -380,7 +383,7 @@ function githubSquashGate(project, nested) {
     `Ledger lands each task on GitHub as a pull request squashed into one commit. For that commit to carry the task's title and id, GitHub must build it from the pull request's title and description. Work of several phases lands on your default branch in one merge commit, so GitHub must allow those too. Yes sets both on ${where.on}.`,
     [
       cmdOption('y', 'yes', `Set both on ${where.yes}`, { next: { kind: 'engine', argv: ['github-squash', 'yes'] } }),
-      cmdOption('n', 'no', { head: 'Leave them as they are', tail: 'Ledger won\'t merge a phase\'s pull requests until they\'re set' }, { next: { kind: 'engine', argv: ['github-squash', 'no'] } }),
+      cmdOption('n', 'no', { head: 'Leave them as they are', tail: 'Ledger won\'t merge a phase\'s pull requests without the squash default, nor land work of several phases without merge commits' }, { next: { kind: 'engine', argv: ['github-squash', 'no'] } }),
     ],
     { question: 'Set both on GitHub?' },
   ));

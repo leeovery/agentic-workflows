@@ -164,13 +164,15 @@ function finishedOf(cwd, { unit }) {
 
 /**
  * A unit's cancel receipt, and where the cancel left the conversation that
- * sat in it (topic-leave.cjs, `leaveCancelled`), what waits on the person
- * said in the start menu's place.
+ * sat in it (topic-leave.cjs, `leftUnit`), what waits on the person said in
+ * the start menu's place — but at a quick-fix, whose cancel carries on as
+ * its close does (24.1.5).
  * @param {string} cwd @param {{work_unit: string, warnings?: string[], inbox?: string[]}} answered @param {boolean} left
  * @returns {string}
  */
 function cancelledOf(cwd, answered, left) {
-  return unitReceipt(cwd, 'cancel', answered) + (left ? endedReceipt(null, startMenuRead(cwd)) : '');
+  const ended = left && !quickFixBuild(loadWorkUnitManifest(cwd, answered.work_unit));
+  return unitReceipt(cwd, 'cancel', answered) + (ended ? endedReceipt(null, startMenuRead(cwd)) : '');
 }
 
 module.exports = { unitReceipt, topicReceiptOf, absorbedReceipt, archivedReceipt, restoredReceipt, deletedReceipt, finishedOf, cancelledOf };

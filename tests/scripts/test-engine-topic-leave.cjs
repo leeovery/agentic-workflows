@@ -12,14 +12,16 @@
 // row carrying on. Each
 // verb's `next` (18.4.20): the conversation sitting in the discussion of the
 // topic that left goes onto its epic's menu — sitting in its experiment, it
-// carries on; and one sitting in any phase of a unit it cancelled — any of
-// its topics, its spec, its build, a bugfix's investigation, a quick-fix's
-// session — onto the start menu; from anywhere else the flow carries on; and
-// a cancel, or a removal of a topic not yet started, leads first through the
-// horizon pick for each roadmap item it put back on a horizon removed
-// meanwhile, and for nothing else. The
-// verbs close the topic's agents still running, and their commit takes the
-// topic's log.
+// carries on; one sitting in any phase of a unit it cancelled — any of its
+// topics, its spec, its build, a bugfix's investigation, a quick-fix's
+// session — carries on, no menu drawn, a line saying what waits but at a
+// quick-fix; from anywhere else the flow carries on; and a cancel, or a
+// removal of a topic not yet started, leads first through the horizon pick
+// for each roadmap item it put back on a horizon removed meanwhile, and for
+// nothing else. The verbs close the topic's agents still running, and their
+// commit takes the topic's log. A unit's finish or cancel, from inside it,
+// leaves the conversation's place and its tasks in flight there, so the
+// hook before Bash no longer refuses a raw commit (24.1.2).
 //
 // Layer: verb. World, built once and copied: an epic, `fumi`, its discussions
 // of `licence` and `onboarding` under way, and a roadmap with two horizons;
@@ -36,7 +38,11 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { ok, output, refusedPristine, writeState, readState, layout, commitAll, stateGit, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
-const { createManifest } = require('./discovery-test-utils.cjs');
+const { createManifest, withEnv } = require('./discovery-test-utils.cjs');
+const { leftUnit } = require('../../skills/ledger-engine/scripts/domain/topic-leave.cjs');
+const { readPosition, positionPath } = require('../../skills/ledger-engine/scripts/domain/conversation.cjs');
+const { leavePosition } = require('../../skills/ledger-engine/scripts/domain/position.cjs');
+const { shellRefusal } = require('../../skills/ledger-engine/scripts/domain/shell-guard.cjs');
 
 const EPIC = 'fumi';
 const SOLO = 'solo';
@@ -99,7 +105,19 @@ const seated = () => fs.existsSync(path.join(config, 'conversations', 'sess-1', 
 
 const CONTINUE = { kind: 'continue' };
 const ONTO_MENU = { kind: 'handoff', skill: 'ledger-continue-epic', args: [EPIC] };
-const ONTO_START = { kind: 'handoff', skill: 'ledger', args: [] };
+
+/** This conversation in the build of `unit`, the quick-fix's by default, `task start` having put its first task in flight there. @param {string} [unit] */
+function building(unit = QUICK_FIX) {
+  const file = withEnv(ENV(), () => positionPath('sess-1'));
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, JSON.stringify({ name: unit, phase: 'implementation', topic: unit, tasks: [{ task: '1.1', builder: null, reviewers: [] }] }));
+}
+
+/** Why the hook before Bash refuses a raw commit in this conversation, or null where it lets it run. */
+const rawCommit = () => withEnv(ENV(), () => shellRefusal(dir, { session_id: 'sess-1', tool_input: { command: 'git commit -m "tidy"' } }));
+
+/** Where this conversation then stands: its position as read, and as stored under any place left. */
+const standing = () => withEnv(ENV(), () => [readPosition('sess-1'), fs.existsSync(positionPath('sess-1'))]);
 
 describe('the gates lead to the verbs', () => {
   it('the postpone gate\'s yes runs the postpone; no and a Comment carry on', () => {
@@ -171,14 +189,13 @@ describe('the verbs say what follows', () => {
     ]);
   });
 
-  it('18.4.20: a unit cancelled from inside any phase of it leaves the conversation\'s position and carries on — an epic from one of its topics, a feature from its spec or its build, a bugfix from its investigation — but a quick-fix from its session, which goes onto the start menu', () => {
+  it('18.4.20: a unit cancelled from inside any phase of it leaves the conversation\'s place and carries on, no menu drawn — an epic from one of its topics, a feature from its spec or its build, a bugfix from its investigation', () => {
     /** Each unit's cancel's `next`, the conversation sitting where `sit` puts it. @type {Array<[string, () => unknown]>} */
     const sittings = [
       [EPIC, () => sitIn('licence')],
       [SOLO, () => labelled(SOLO, 'specification', SOLO)],
       [SOLO, () => labelled(SOLO, 'implementation', SOLO)],
       [BUG, () => run(['enter', 'investigation', BUG])],
-      [QUICK_FIX, () => labelled(QUICK_FIX, 'implementation', QUICK_FIX)],
     ];
     const nexts = sittings.map(([unit, sit]) => {
       sit();
@@ -188,7 +205,38 @@ describe('the verbs say what follows', () => {
       return [next, left];
     });
 
-    assert.deepStrictEqual(nexts, [[CONTINUE, true], [CONTINUE, true], [CONTINUE, true], [CONTINUE, true], [ONTO_START, false]]);
+    assert.deepStrictEqual(nexts, sittings.map(() => [CONTINUE, true]));
+  });
+
+  it('a feature cancelled from inside its build, a task in flight there, leaves its place and the task, so a raw commit is no longer refused', () => {
+    building(SOLO);
+    const refusedBefore = rawCommit();
+    run(['workunit', 'cancel', SOLO]);
+
+    assert.match(String(refusedBefore), /a raw git commit is refused while task 1\.1 of /);
+    assert.deepStrictEqual([rawCommit(), ...standing()], [null, null, false]);
+  });
+
+  it('19.5.1: a quick-fix cancelled carries on in the conversation, from its session or anywhere else; from its session, a fix in flight, the conversation leaves its place and the fix, so a raw commit is no longer refused', () => {
+    building();
+    const refusedBefore = rawCommit();
+    const fromItsSession = run(['workunit', 'cancel', QUICK_FIX]).next;
+    const after = [rawCommit(), ...standing()];
+    run(['workunit', 'reactivate', QUICK_FIX]);
+    sitIn('licence');
+    const fromElsewhere = run(['workunit', 'cancel', QUICK_FIX]).next;
+
+    assert.match(String(refusedBefore), /a raw git commit is refused while task 1\.1 of typo is in flight/);
+    assert.deepStrictEqual([fromItsSession, after, fromElsewhere], [CONTINUE, [null, null, false], CONTINUE]);
+    assert.deepStrictEqual(withEnv(ENV(), () => readPosition('sess-1'))?.topic, 'licence', 'a cancel from elsewhere leaves the conversation where it sits');
+  });
+
+  it('a quick-fix cancelled from another conversation, its fix in flight in this one, holds this one\'s raw commits no longer, its place there as it stands', () => {
+    building();
+    const refusedBefore = rawCommit();
+    ok(dir, ['workunit', 'cancel', QUICK_FIX], { env: { ...ENV(), CLAUDE_CODE_SESSION_ID: 'sess-2' } });
+    assert.match(String(refusedBefore), /a raw git commit is refused/);
+    assert.deepStrictEqual([rawCommit(), withEnv(ENV(), () => readPosition('sess-1'))?.name], [null, QUICK_FIX]);
   });
 
   it('a feature cancelled from anywhere else — another unit\'s session, or none — carries on', () => {
@@ -221,6 +269,21 @@ describe('the verbs say what follows', () => {
     assert.deepStrictEqual(run(answered(solo.next.argv.slice(1), 'horizon pick', ['--pick', '1']).argv).next, CONTINUE);
   });
 
+  it('18.8.20: a quick-fix cancelled from its session, an item it took in put back on no horizon, leaves its place and its fix at the cancel itself, before the horizon pick, and carries on after it', () => {
+    run(['roadmap', 'add', 'colours', '--horizon', 'gone', '--summary', 'The colours']);
+    const project = JSON.parse(readState(dir, layout.projectManifest));
+    project.roadmap.items.colours.pulled_to = { work_unit: QUICK_FIX };
+    writeState(dir, layout.projectManifest, JSON.stringify(project, null, 2));
+    run(['roadmap', 'horizon', 'remove', 'gone']);
+    commitAll(dir, 'an item in the quick-fix, its horizon removed');
+    building();
+
+    const cancelled = run(['workunit', 'cancel', QUICK_FIX]);
+    const atThePick = [rawCommit(), ...standing()];
+    const picked = run(answered(cancelled.next.argv.slice(1), 'horizon pick', ['--pick', '1']).argv).next;
+    assert.deepStrictEqual([cancelled.next, atThePick, picked], [pickFor('colours', QUICK_FIX), [null, null, false], CONTINUE]);
+  });
+
   /** `item` pulled forward into the epic as a topic, from a horizon removed since. @param {string} item */
   function pulledFromGone(item) {
     run(['roadmap', 'add', item, '--horizon', 'gone', '--summary', `The ${item}`]);
@@ -249,6 +312,34 @@ describe('the verbs say what follows', () => {
     assert.deepStrictEqual(cancelled.next, pickFor('seats', `${EPIC}.discovery.seats`));
     assert.deepStrictEqual(run(answered(cancelled.next.argv.slice(1), 'horizon pick', ['--pick', '1']).argv).next, CONTINUE);
     assert.strictEqual(run(['roadmap', 'state']).items.find((/** @type {{name: string}} */ { name }) => name === 'tour').horizon, null, 'left for its own way on');
+  });
+});
+
+describe('a finish leaves the unit (24.1.2, 19.5.1, 24.1.8)', () => {
+  /** Whether a finish of `unit` leaves it, from this conversation. @param {string} unit */
+  const finished = (unit) => withEnv(ENV(), () => leftUnit(dir, unit));
+
+  it('any unit\'s finish — an epic\'s, a feature\'s, a bugfix\'s, a quick-fix\'s close — leaves the conversation\'s place and the task in flight there, so a raw commit is no longer refused', () => {
+    const left = [EPIC, SOLO, BUG, QUICK_FIX].map((unit) => {
+      building(unit);
+      const refusedBefore = rawCommit();
+      return [String(refusedBefore).startsWith('a raw git commit is refused'), finished(unit), rawCommit(), ...standing()];
+    });
+
+    assert.deepStrictEqual(left, [EPIC, SOLO, BUG, QUICK_FIX].map(() => [true, true, null, null, false]));
+  });
+
+  it('a unit finished after its place was left, a task still in flight, takes the task off with the position', () => {
+    building();
+    withEnv(ENV(), () => leavePosition('sess-1'));
+    const refusedBefore = rawCommit();
+    assert.match(String(refusedBefore), /a raw git commit is refused/);
+    assert.deepStrictEqual([finished(QUICK_FIX), rawCommit(), ...standing()], [true, null, null, false]);
+  });
+
+  it('a unit finished while the conversation sits in other work leaves that place alone', () => {
+    sitIn('licence');
+    assert.deepStrictEqual([finished(QUICK_FIX), withEnv(ENV(), () => readPosition('sess-1'))?.topic], [false, 'licence']);
   });
 });
 

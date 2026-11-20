@@ -428,17 +428,17 @@ describe('pipeline simulation: roadmap', () => {
     assert.strictEqual(row('cart-drops-items').state, 'waiting');
   });
 
-  it('8.S39, 19.S19: Start, triage\'s w over one item or a set, and the roadmap\'s w each go through discovery\'s opener with no type, what is picked its seeds and no unit before start this work; a quick-fix from the roadmap carries on into its skill in the same conversation (24.1.3)', () => {
+  it('8.S39, 19.S19: Start, triage\'s w over one item or a set, and the roadmap\'s w each go through discovery\'s type call with no type, what is picked its seeds and no unit before start this work; a quick-fix from the roadmap carries on into its skill in the same conversation (24.1.3)', () => {
     const typo = sim.write('.ledger/.inbox/quickfixes/2026-02-04--footer-typo.md', '# Footer Typo\n');
     const set = [['flag', '06'], ['help', '05']].map(([what, day]) => sim.write(`.ledger/.inbox/quickfixes/2026-02-${day}--${what}-says-color.md`, `# The ${what} says --color\n`));
     sim.run(['commit', '--inbox', '-m', 'inbox: capture']);
     sim.run(['roadmap', 'add', 'stale-copyright', '--horizon', 'polish', '--summary', 'the copyright year is stale', '--kind', 'quick-fix']);
     sim.run(['roadmap', 'add', 'dark-mode', '--horizon', 'polish', '--summary', 'a dark theme']);
 
-    /** Discovery's opener, at the product, as the handoff left it, entered with its seeds. @param {{text: string}} handedOff @param {string} [seeds] */
+    /** Discovery's type call, as the handoff left it, taken with its seeds. @param {{text: string}} handedOff @param {string} [seeds] */
     const opened = (handedOff, seeds) => {
       assert.strictEqual(handedOff.text, `Invoke \`/ledger-discovery start none${seeds === undefined ? '' : ` "${seeds}"`}\`.`);
-      assert.strictEqual(sim.run(['enter', 'discovery', 'product', ...(seeds === undefined ? [] : ['--seeds', seeds])]).entered, true);
+      assert.strictEqual(sim.run(['enter', 'discovery', 'product', '--type-call', ...(seeds === undefined ? [] : ['--seeds', seeds])]).entered, true);
       startMenu(sim);
     };
     opened(startNew(sim));
@@ -448,8 +448,7 @@ describe('pipeline simulation: roadmap', () => {
     assert.deepStrictEqual(sim.run(['roadmap', 'state']).items.map((i) => [i.name, i.state]), [['stale-copyright', 'waiting'], ['dark-mode', 'waiting']], 'no unit joins an item before start this work');
 
     const started = startThisWork(sim, {
-      type: 'quick-fix', name: 'footer-fixes', description: 'The copyright year is stale', reason: 'One known, mechanical change.',
-      shaped_by: [shapedInTheProduct(sim, 'footer-fixes')], roadmap: ['stale-copyright'],
+      type: 'quick-fix', name: 'footer-fixes', description: 'The copyright year is stale', reason: 'One known, mechanical change.', roadmap: ['stale-copyright'],
     });
     assert.deepStrictEqual(started.next, { kind: 'invoke', skill: 'ledger-quick-fix-process', args: ['quick-fix', 'footer-fixes'] });
     assert.strictEqual(sim.run(['enter', 'implementation', 'footer-fixes']).entered, true);

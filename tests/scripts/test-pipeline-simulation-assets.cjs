@@ -68,7 +68,7 @@ describe('pipeline simulation: assets', () => {
       { place: wu, work_type: 'epic', status: 'in-progress', in_discussion: [{ topic: 'note-window', title: 'Note Window' }], count: 3, folders: [{ path: legacy, count: 2, named: 0 }, { path: `${legacy}/research`, count: 1, named: 0 }] },
       { place: 'product', work_type: null, status: null, in_discussion: [], count: 1, folders: [{ path: '.product/assets/legacy', count: 1, named: 0 }] },
     ]);
-    assert.strictEqual(sim.run(['asset', 'keep', wu, `${legacy}/research`, 'product', productNotes]).kept, 2);
+    assert.deepStrictEqual([sim.run(['asset', 'keep', wu, `${legacy}/research`]).kept, sim.run(['asset', 'keep', 'product', productNotes]).to], [1, '.product/assets/notes.md'], 'each kept on the person\'s word, a folder whole or a file');
     continueEpic(sim, wu);
     epicMenuAt(sim, wu);
     const { key } = shownRows(sim).find(({ next }) => next?.kind === 'engine' && next.argv.join(' ') === `asset legacy ${wu}`);

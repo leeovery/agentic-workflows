@@ -70,11 +70,11 @@
 //   quick-fix's then puts the project's checkout back on the branch it
 //   lands on; then
 //   completes the unit (workunit-lifecycle.cjs). It answers where the work
-//   goes (24.1.2): a quick-fix's close onto the start menu, `/ledger`, by
-//   a handoff; any other unit's carries on in the conversation, no menu
-//   drawn unasked, the conversation's position left as the start menu
-//   leaves it (position.cjs), the engine saying in a line that it is done
-//   and what waits on the person (receipts.cjs, `finishedOf`).
+//   goes (24.1.2): on in the conversation, no menu drawn, the conversation
+//   leaving the unit's place and its tasks in flight (topic-leave.cjs,
+//   `leftUnit`) — for any unit but a quick-fix, the engine saying in a line
+//   that it is done and what waits on the person (receipts.cjs,
+//   `finishedOf`).
 // - What the yes stands on before it lands anything is `land finish`'s
 //   refusal too, and a quick-fix's `land phase`'s, which lands its one pull
 //   request whole (landing.cjs): one read, the screen's standing and no
@@ -115,9 +115,7 @@ const { ranOf } = require('./build-screens.cjs');
 const { verifySetup } = require('./environment.cjs');
 const { projectName } = require('./state-checks.cjs');
 const { criteriaTexts } = require('./task-file.cjs');
-const { ontoMenu } = require('./topic-leave.cjs');
-const { leavePosition } = require('./position.cjs');
-const { handedSession } = require('../kernel/process.cjs');
+const { leftUnit } = require('./topic-leave.cjs');
 const { recordedBranch } = require('./landing-git.cjs');
 const { landsThroughHost } = require('./unit-branch.cjs');
 const { projectDefault } = require('./task-base.cjs');
@@ -361,10 +359,9 @@ function finishYes(cwd, unit) {
   readersDone(cwd, READERS.unit(unit));
   const completed = completeWorkUnit(cwd, unit, { message: `finish(${unit}): completed` });
   const said = [...warnings, ...(landed.warnings ?? []), ...completed.warnings];
-  const next = quickFixBuild(manifest) ? ontoMenu(unit, manifest.work_type) : CONTINUE;
-  if (next === CONTINUE) leavePosition(handedSession());
+  leftUnit(cwd, unit);
   /** @type {Record<string, unknown>} */
-  const result = { unit, landed: landed.repos, ...(landed.checkout === undefined ? {} : { checkout: landed.checkout }), completed_at: completed.completed_at, committed: completed.committed, next };
+  const result = { unit, landed: landed.repos, ...(landed.checkout === undefined ? {} : { checkout: landed.checkout }), completed_at: completed.completed_at, committed: completed.committed, next: CONTINUE };
   if (completed.note !== undefined) result.note = completed.note;
   if (said.length > 0) result.warnings = said;
   return result;

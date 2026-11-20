@@ -123,7 +123,7 @@ const { runFieldCommand, isRead } = require('./domain/fields.cjs');
 const { renderSurface, SURFACES } = require('./domain/render.cjs');
 const { resolveHandoff, topicHandoff, handoffSections, TOPIC_HANDOFF_USAGE } = require('./domain/handoff.cjs');
 const { unitHandoff, UNIT_HANDOFF_USAGE } = require('./domain/unit-handoff.cjs');
-const { sittingIn, leaveNext, leaveCancelled, putBackNext, putBackBy, stillToAsk } = require('./domain/topic-leave.cjs');
+const { sittingIn, leaveNext, leftUnit, putBackNext, putBackBy, stillToAsk } = require('./domain/topic-leave.cjs');
 const roadmap = require('./domain/roadmap.cjs');
 const brownfield = require('./domain/brownfield.cjs');
 const { subjectSelector, codeLog, selectedDiff, uncommittedDiff, codeStatus } = require('./domain/code.cjs');
@@ -699,7 +699,7 @@ function runWorkunit(call, argv) {
       }
       if (command === 'cancel') {
         const cancelled = cancelWorkUnit(call.cwd, workUnit);
-        const left = leaveCancelled(loadWorkUnitManifest(call.cwd, workUnit));
+        const left = leftUnit(call.cwd, workUnit);
         respondWithReceipt(call, { ...cancelled, next: putBackNext(call.cwd, workUnit, homelessNames(cancelled)) }, cancelledOf(call.cwd, cancelled, left));
         return;
       }

@@ -33,9 +33,10 @@ const { scratch, payload } = gatesHelpers(dir);
 
 const QUICKFIX = layout.inbox('quickfixes', '2026-06-03--typo-fix.md');
 
-/** A start of `type` named `name`, staged and given its yes: the yes's answer. @param {string} type @param {string} name @param {Record<string, unknown>} [more] */
+/** A start of `type` named `name` from the product's conversation, staged and given its yes: the yes's answer. @param {string} type @param {string} name @param {Record<string, unknown>} [more] */
 function started(type, name, more = {}) {
   const brief = ['feature', 'bugfix'].includes(type) ? { brief: scratch(`# ${name}\n`) } : {};
+  ok(dir(), ['enter', 'discovery', 'product'], { env: SESSION });
   output(dir(), ['render', 'start-this-work', '--file', payload({ type, name, description: 'Payments overhaul', reason: 'One piece of work.', shaped_by: [`${PRODUCT_LOG}#notes`], ...brief, ...more })], { env: SESSION });
   return ok(dir(), ['start-this-work', 'yes'], { env: SESSION });
 }

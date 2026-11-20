@@ -6,12 +6,17 @@
 // `start-this-work yes`, which creates the unit. Its screen is drawn by
 // projections/discovery-gates.cjs.
 //
-// - Claude's payload is staged in the product's cache with `--file`, and
-//   nothing is created before the person's yes (8.S16). It names the work's
-//   type — a feature, an epic, a bugfix or a quick-fix (8.2.4, 19.1.1) —
-//   its name, its description, the one-line reason for the type,
-//   the inbox items and the roadmap items it starts from, and the places in
-//   the product's sessions that shaped it (8.14.3); a feature or a bugfix
+// - Claude's payload, written where the entry's DATA names it (discovery-
+//   entry.cjs), is staged in the product's cache with `--file`, each a file
+//   of the conversation's own, so a start one window writes or stages is
+//   never the one another window's yes lands; nothing is created before the
+//   person's yes (8.S16). It names the work's type — a feature, an epic, a
+//   bugfix or a quick-fix (8.2.4, 19.1.1) — its name, its description, the one-line
+//   reason for the type, the inbox items and the roadmap items it starts
+//   from, and the places in the product's sessions that shaped it (8.14.3),
+//   at least one where the conversation's place is the product's
+//   conversation, which a type call's (discovery-entry.cjs) never is; a
+//   feature or a bugfix
 //   also its one topic's brief (8.7.7), the topic being the unit, which is
 //   refused beside a waiting roadmap item of its name it does not start from
 //   (8.1.6). The screen draws from the staged payload again without `--file`.
@@ -26,19 +31,27 @@
 //   each place that shaped it — its one topic's brief, and then, in one
 //   write of the project manifest, the unit's registration, each roadmap item
 //   it starts from joined to it, and the product's open session closed
-//   (8.14.11). A failure part-way leaves no unit. One commit takes it all.
+//   where the work leaves this conversation's talk there — a feature, a
+//   bugfix, an epic started where its place is the product's conversation
+//   — and no other live window is in that conversation, by its presence
+//   row there (presence.cjs) (8.14.11): a quick-fix's yes never closes it,
+//   nor a type call's. The yes removes the conversation's payload with its
+//   staged copy, and, for work that leaves, its presence row in the
+//   product's conversation — its place there kept, which an epic's move
+//   departs from; a window in a quick-fix stays in the conversation. A
+//   failure part-way leaves no unit. One commit takes it all.
 // - What comes next: a feature into its discussion, a bugfix into its
 //   investigation, each a handoff (24.1.2); a quick-fix into its work, its
 //   skill invoked in this same conversation, nothing cleared (19.5.1,
 //   24.1.5); an epic carries the conversation on into its own discovery,
-//   with no handoff, to shape its topics (8.8.13, 24.S15).
+//   with no handoff, to shape its topics (8.8.13, 24.S15) — moving from the
+//   product's conversation, or entering it from a type call, which holds no
+//   place to move from.
 // - A unit moved to a feature or a bugfix meets the same gate (19.4.22,
 //   19.5.9): `workunit move` stages its payload where a start's is staged
 //   and draws the same screen, and the yes moves the unit rather than
 //   creating one (workunit-move.cjs), handing off as a start of its new type
-//   does. Known edge: what is staged last is what the yes lands, so a
-//   start staged in the product's conversation between a move's screen and
-//   its yes is the one landed.
+//   does.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -50,8 +63,9 @@ const { roadmapItems, roadmapSeedRefusal, briefFile } = require('./derivations.c
 const { waitingTwin, isNote } = require('./roadmap.cjs');
 const { PRODUCT_SESSIONS } = require('./layout.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
-const { productSession } = require('./discovery-session.cjs');
-const { SHAPED_BY } = require('./discovery-entry.cjs');
+const { productSession, inTheProduct } = require('./discovery-session.cjs');
+const { SHAPED_BY, conversationFile, payloadFile } = require('./discovery-entry.cjs');
+const { peerHold, clearOwnQuietly } = require('./presence.cjs');
 const { draftIn, writeBrief, twinRefusal } = require('./discovery-map.cjs');
 const {
   FIRST_LOG, assertLegalWorkUnitName, workUnitTaken, checkWorkUnit, writeWorkUnit, unwriteWorkUnit, registerWorkUnit, createdPaths, landedSeeds,
@@ -92,10 +106,8 @@ const NUMBERED = /^(.+)-\d+$/;
 
 const NOTHING_STAGED = 'nothing is staged — render start-this-work --file <payload.json> stages the work';
 
-/** Where the payload is staged, in the product's cache. @param {string} cwd */
-function stagedFile(cwd) {
-  return statePath(cwd, '.cache', PRODUCT, 'discovery', PRODUCT, 'start-this-work.json');
-}
+/** Where the calling conversation's payload is staged, in the product's cache. @param {string} cwd */
+const stagedFile = (cwd) => conversationFile(cwd, 'start-this-work');
 
 /** Refuses a type start this work does not create. @param {unknown} type @returns {string} */
 function startType(type) {
@@ -118,13 +130,14 @@ function freeName(cwd, given) {
 }
 
 /**
- * The places in the product's sessions that shaped the work: at least one,
- * each a log there, a section of it named by an anchor, on disk.
+ * The places in the product's sessions that shaped the work, each a log
+ * there, a section of it named by an anchor, on disk: at least one where
+ * the conversation's place is the product's conversation.
  * @param {string} cwd @param {unknown} given @returns {string[]}
  */
 function shapingPlaces(cwd, given) {
   const places = listed(given, 'shaped_by');
-  if (places.length === 0) throw new Error(`shaped_by names at least one place in ${PRODUCT_SESSIONS}/ — the talk that shaped the work`);
+  if (places.length === 0 && inTheProduct()) throw new Error(`shaped_by names at least one place in ${PRODUCT_SESSIONS}/ — the talk in the product's conversation that shaped the work`);
   return places.map((place) => {
     if (typeof place !== 'string' || !SHAPING.test(place)) throw new Error(`shaped_by: ${JSON.stringify(place)} is no place in the product's sessions — ${PRODUCT_SESSIONS}/session-NNN.md, a section of it named by #anchor`);
     if (!fs.existsSync(statePath(cwd, place.split('#')[0]))) throw new Error(`shaped_by: ${place} names no log on disk`);
@@ -177,7 +190,7 @@ function briefDraft(cwd, type, brief) {
  * @returns {{staged: Staged, seedItems: import('./inbox.cjs').InboxItem[]}}
  */
 function checked(cwd, given) {
-  const fields = shaped(given, 'the payload', ['type', 'name', 'description', 'reason', 'shaped_by'], ['seeds', 'roadmap', 'brief']);
+  const fields = shaped(given, 'the payload', ['type', 'name', 'description', 'reason'], ['shaped_by', 'seeds', 'roadmap', 'brief']);
   const type = startType(fields.type);
   const name = freeName(cwd, fields.name);
   if (!filled(fields.description) || !filled(fields.reason)) throw new Error('the description and the reason are each a non-empty string');
@@ -194,7 +207,7 @@ function checked(cwd, given) {
     reason: fields.reason,
     seeds: /** @type {string[]} */ (seeds),
     roadmap,
-    shaped_by: shapingPlaces(cwd, fields.shaped_by),
+    shaped_by: shapingPlaces(cwd, fields.shaped_by ?? []),
   };
   const brief = briefDraft(cwd, type, fields.brief);
   return { staged: brief === undefined ? staged : { ...staged, brief }, seedItems };
@@ -226,13 +239,13 @@ function noteSeedsOf(cwd, roadmap) {
 }
 
 /**
- * What comes after the yes: an epic's own discovery; a quick-fix's skill,
- * invoked in this conversation (19.5.1); any other type's first phase, by a
- * handoff.
- * @param {string} type @param {string} unit @returns {Next}
+ * What comes after the yes: an epic's own discovery, moved to from the
+ * product's conversation where `moving`; a quick-fix's skill, invoked in
+ * this conversation (19.5.1); any other type's first phase, by a handoff.
+ * @param {string} type @param {string} unit @param {boolean} [moving] @returns {Next}
  */
-function nextAfter(type, unit) {
-  if (type === 'epic') return { kind: 'engine', argv: ['enter', 'discovery', unit, '--move'] };
+function nextAfter(type, unit, moving = false) {
+  if (type === 'epic') return { kind: 'engine', argv: ['enter', 'discovery', unit, ...(moving ? ['--move'] : [])] };
   const skill = phaseSkill(OPENS_IN[type], type);
   return { kind: type === 'quick-fix' ? 'invoke' : 'handoff', skill, args: [type, unit] };
 }
@@ -256,16 +269,18 @@ function startThisWorkSurface(cwd, { dotpath, file }) {
 /**
  * The project manifest's half of the yes, in one write: the unit
  * registered, each roadmap item it starts from joined to it, and the
- * product's open session closed. Answers the session closed, or null.
- * @param {string} cwd @param {Staged} staged @returns {string|null}
+ * product's open session closed where `closing`. Answers the session
+ * closed, or null.
+ * @param {string} cwd @param {Staged} staged @param {boolean} closing
+ * @returns {string|null}
  */
-function writeProject(cwd, { type, name, roadmap }) {
+function writeProject(cwd, { type, name, roadmap }, closing) {
   return withProjectLock(cwd, () => {
     const project = readProjectManifest(cwd);
     registerWorkUnit(project, name, type);
     for (const item of roadmap) roadmapItems(project)[item].pulled_to = { work_unit: name };
-    const closed = productSession(project);
-    delete project.product_session;
+    const closed = closing ? productSession(project) : null;
+    if (closed !== null) delete project.product_session;
     writeProjectManifestAtomic(cwd, project);
     return closed;
   });
@@ -281,6 +296,8 @@ function startThisWorkYes(cwd) {
   if (move().isMove(given)) return move().moveYes(cwd, given);
   const { staged, seedItems } = checked(cwd, given);
   const { type, name } = staged;
+  const inProduct = inTheProduct();
+  const closing = type !== 'quick-fix' && inProduct && peerHold(cwd, PRODUCT, 'discovery', PRODUCT) === null;
   const draft = staged.brief === undefined ? null : draftIn(cwd, staged.brief, 'the brief');
   const landed = writeWorkUnit(cwd, name, type, {
     description: staged.description, firstLog: firstLogOf(name, staged.shaped_by), seedItems, noteSeeds: noteSeedsOf(cwd, staged.roadmap),
@@ -289,13 +306,16 @@ function startThisWorkYes(cwd) {
   let closed;
   try {
     if (draft !== null) writeBrief(cwd, name, name, draft.content);
-    closed = writeProject(cwd, staged);
+    closed = writeProject(cwd, staged, closing);
   } catch (err) {
     unwriteWorkUnit(cwd, name, landed.seeds);
     throw err;
   }
   if (draft !== null) fs.rmSync(draft.scratch, { force: true });
   fs.rmSync(stagedFile(cwd), { force: true });
+  fs.rmSync(payloadFile(cwd), { force: true });
+  // Work that leaves the product's talk takes the conversation's row there, its place kept for an epic's move.
+  if (type !== 'quick-fix') clearOwnQuietly(cwd, PRODUCT, 'discovery', PRODUCT);
 
   /** @type {string[]} */
   const warnings = [];
@@ -311,7 +331,7 @@ function startThisWorkYes(cwd) {
     ...(draft === null ? {} : { brief: statePath(cwd, briefFile(name, name)) }),
     product_session_closed: closed,
     committed: outcome.committed,
-    next: nextAfter(type, name),
+    next: nextAfter(type, name, inProduct),
   };
   if (warnings.length > 0) result.warnings = warnings;
   noteCommitOutcome(result, outcome);

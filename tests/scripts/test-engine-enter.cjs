@@ -72,7 +72,7 @@ const EPIC = 'fumi';
 const ATLAS = 'atlas';
 const FEATURE = 'quick-sync';
 const ENGINE = 'node .claude/skills/ledger-engine/scripts/engine.cjs';
-const USAGE = 'Usage: engine enter <discussion|discovery|specification|implementation|review|investigation|experiment> <work-unit|product> [<topic>] [--take] [--move] [--seeds <seeds>] [--record <record>]';
+const USAGE = 'Usage: engine enter <discussion|discovery|specification|implementation|review|investigation|experiment> <work-unit|product> [<topic>] [--take] [--move] [--type-call] [--seeds <seeds>] [--record <record>]';
 const TODAY = FROZEN_AT.slice(0, 10);
 
 // A process that no longer runs, and one that does that is not this suite's.
@@ -187,9 +187,13 @@ function data(lines) {
 /** A path in the state, absolute. @param {string} rel */
 const at = (rel) => statePath(dir, rel);
 
-/** A place's presence record as it stands, or null. @param {string} unit @param {string} topic @param {string} [phase] */
-function presence(unit, topic, phase = 'discussion') {
-  try { return JSON.parse(fs.readFileSync(at(layout.cache(unit, phase, topic, 'presence')), 'utf8')); } catch { return null; }
+/** The DATA's line naming where the conversation `session` writes start this work's payload, a file of its own. @param {string} session */
+const payloadAt = (session) => `payload: ${at(layout.cache('product', 'discovery', 'product', `start-this-work-payload-${session}.json`))}`;
+
+/** A place's presence record as it stands — at the product's, the conversation `session`'s — or null. @param {string} unit @param {string} topic @param {string} [phase] @param {string} [session] */
+function presence(unit, topic, phase = 'discussion', session = 'sess-1') {
+  const row = unit === 'product' ? `presence-${session}` : 'presence';
+  try { return JSON.parse(fs.readFileSync(at(layout.cache(unit, phase, topic, row)), 'utf8')); } catch { return null; }
 }
 
 beforeEach(() => {
@@ -204,10 +208,11 @@ afterEach(() => {
 });
 
 describe('what cannot be entered is refused, naming the way on, and nothing is written', () => {
-  it('a call that is no entry: a phase not entered through it, a missing unit, an empty topic, a flag it lacks, an extra argument, a move or seeds into a row that takes none, a flag twice, seeds missing or given twice', () => {
+  it('a call that is no entry: a phase not entered through it, a missing unit, an empty topic, a flag it lacks, an extra argument, a move, a type call or seeds into a row that takes none, a type call beside a move or a take, a flag twice, seeds missing or given twice', () => {
     for (const args of [
       ['research', EPIC, 'onboarding'], ['discussion'], ['discussion', EPIC, ''], ['discussion', EPIC, '--force'], ['discussion', EPIC, 'onboarding', 'more'],
       ['discussion', EPIC, 'onboarding', '--move'], ['discovery', 'product', '--take', '--take'],
+      ['discussion', EPIC, 'onboarding', '--type-call'], ['discovery', 'product', '--type-call', '--move'], ['discovery', 'product', '--type-call', '--take'],
       ['discussion', EPIC, 'onboarding', '--seeds', 'roadmap:loyalty'], ['discovery', 'product', '--seeds'], ['discovery', 'product', '--seeds', '--take'],
       ['discovery', 'product', '--seeds', 'roadmap:a', '--seeds', 'roadmap:b'],
     ]) {
@@ -315,6 +320,13 @@ describe('a place another live session holds (18.4.21)', () => {
     runAs(dir, ['presence', 'beat', EPIC, 'discussion', 'licence'], 'peer', PEER);
     enter(['discussion', EPIC, 'licence']);
     assert.deepStrictEqual(ok(dir, ['gate', 'held topic gate', '--pick', 'n'], { env: env() }).next, { kind: 'handoff', skill: 'ledger-continue-epic', args: [EPIC] });
+  });
+
+  it('a move from the product\'s conversation into an epic\'s discovery another session holds stays a move past the question', () => {
+    enter(['discovery', 'product']);
+    runAs(dir, ['presence', 'beat', EPIC, 'discovery', EPIC], 'peer', PEER);
+    assert.strictEqual(enter(['discovery', EPIC, '--move']).res.entered, false);
+    assert.deepStrictEqual(ok(dir, ['gate', 'held topic gate', '--pick', 'y'], { env: env() }).next.argv, ['enter', 'discovery', EPIC, '--take', '--move']);
   });
 
   it('a single-topic unit has no menu to go back to: leaving it carries on, to the end of the turn', () => {
@@ -647,13 +659,14 @@ describe('discovery: the product\'s conversation (8.2.7–8.2.10)', () => {
       `roadmap: \`${ENGINE} roadmap state\``,
       `product: \`${ENGINE} ledger product\``,
       'research owed: no',
+      payloadAt('sess-1'),
       `log: ${at(layout.productSession('003'))}`,
     ]));
     assert.deepStrictEqual([position(), presence('product', 'product', 'discovery')?.session_id], [{ name: 'product' }, 'sess-1']);
     assert.ok(!fs.existsSync(at('product')), 'the product has no unit');
   });
 
-  it('18.S60: a start from seeds reads the seeds and only those — each inbox item, each roadmap item\'s note and the logs its other sources point at — and no session log; a return with none reads the two latest (8.2.10, 18.8.15)', () => {
+  it('18.S60: a start from seeds reads the seeds and only those — each inbox item, each roadmap item\'s note and the logs its other sources point at — and no session log; a return with none reads the two latest holding talk, a log opened and said nothing in never pushing the talk out (8.2.10, 18.8.15)', () => {
     const idea = '.ledger/.inbox/ideas/2026-01-03--dark-mode.md';
     writeState(dir, '.inbox/ideas/2026-01-03--dark-mode.md', '# Dark mode\n');
     writeState(dir, '.product/notes/2026-01-02--pinned.md', '# Pinned above every window\n');
@@ -669,9 +682,33 @@ describe('discovery: the product\'s conversation (8.2.7–8.2.10)', () => {
       `roadmap: \`${ENGINE} roadmap state\``,
       `product: \`${ENGINE} ledger product\``,
       'research owed: no',
+      payloadAt('sess-1'),
       `log: ${at(layout.productSession('003'))}`,
     ]));
-    assert.deepStrictEqual(enter(['discovery', 'product']).sections.match(/^session log: .*$/gm), [layout.productSession('002'), layout.productSession('003')].map((log) => `session log: ${at(log)}`));
+    const read = () => enter(['discovery', 'product']).sections.match(/^session log: .*$/gm);
+    const logs = (/** @type {string[]} */ ...numbers) => numbers.map((n) => `session log: ${at(layout.productSession(n))}`);
+    const opened = read();
+    fs.appendFileSync(at(layout.productSession('003')), '\nDark mode first.\n');
+    assert.deepStrictEqual([opened, read()], [logs('001', '002'), logs('002', '003')]);
+  });
+
+  it('8.2.9: a piece of work\'s type call, with another live session in the product\'s conversation, asks nothing first and opens, writes, commits and records nothing — no session, no position, no presence, the other\'s hold left as it stands — and reads the roadmap and the live inbox, and the seeds where it starts from any; refused at an epic, writing nothing', () => {
+    runAs(dir, ['presence', 'beat', 'product', 'discovery', 'product'], 'peer', PEER);
+    const held = presence('product', 'product', 'discovery', 'peer');
+    const [head, manifest] = [stateGit(dir, ['rev-parse', 'HEAD']).trim(), readState(dir, layout.projectManifest)];
+    const called = enter(['discovery', 'product', '--type-call']);
+    const idea = '.ledger/.inbox/ideas/2026-01-03--dark-mode.md';
+    writeState(dir, '.inbox/ideas/2026-01-03--dark-mode.md', '# Dark mode\n');
+    const seeded = enter(['discovery', 'product', '--type-call', '--seeds', idea]).sections;
+    assert.deepStrictEqual(called, { res: { ok: true, phase: 'discovery', unit: 'product', entered: true, started: false }, sections: data([
+      `roadmap: \`${ENGINE} roadmap state\``,
+      `inbox: ${at('.inbox')}`,
+      payloadAt('sess-1'),
+    ]) });
+    assert.strictEqual(seeded, data([`seed: ${at('.inbox/ideas/2026-01-03--dark-mode.md')}`, `roadmap: \`${ENGINE} roadmap state\``, `inbox: ${at('.inbox')}`, payloadAt('sess-1')]));
+    assert.deepStrictEqual([stateGit(dir, ['rev-parse', 'HEAD']).trim(), readState(dir, layout.projectManifest), fs.existsSync(at(layout.productSession('003')))], [head, manifest, false]);
+    assert.deepStrictEqual([position(), presence('product', 'product', 'discovery', 'peer')], [null, held]);
+    assert.strictEqual(refused(['discovery', EPIC, '--type-call']), `the type call is the product's, for work not yet started — "${EPIC}" is started: enter discovery ${EPIC}`);
   });
 
   it('seeds an epic\'s discovery takes in are named to take in (18.8.4); seeds are refused, writing nothing, as the handoff refuses them', () => {
@@ -709,6 +746,7 @@ describe('discovery: the product\'s conversation (8.2.7–8.2.10)', () => {
       `roadmap: \`${ENGINE} roadmap state\``,
       `product: \`${ENGINE} ledger product\``,
       'research owed: no',
+      payloadAt('sess-2'),
       `catch up: read ${first} from the log's last write onward, and add to the log what it is missing`,
       `log: ${at(layout.productSession('003'))}`,
     ]));
@@ -739,16 +777,11 @@ describe('discovery: the product\'s conversation (8.2.7–8.2.10)', () => {
       /^catch up: the transcript of session sess-gone, which last wrote the log, is gone — say so in one line, and carry on from the log$/m);
   });
 
-  it('another live session holding it is asked about first; the yes is the entry again with --take, a move kept a move, and leaving it carries on, the product having no menu (18.4.21)', () => {
+  it('another live session in it is asked about nothing: the entry joins it, each conversation with its own row there (8.14.11)', () => {
     runAs(dir, ['presence', 'beat', 'product', 'discovery', 'product'], 'peer', PEER);
     const { res, sections } = enter(['discovery', 'product']);
-    assert.deepStrictEqual([res.entered, /^=== MENU: held topic gate /.test(sections), position()], [false, true, null]);
-    assert.deepStrictEqual(ok(dir, ['gate', 'held topic gate', '--pick', 'y'], { env: env() }).next, { kind: 'engine', argv: ['enter', 'discovery', 'product', '--take'] });
-    enter(['discovery', 'product']);
-    assert.deepStrictEqual(ok(dir, ['gate', 'held topic gate', '--pick', 'n'], { env: env() }).next, { kind: 'continue' });
-    enter(['discovery', EPIC]);
-    enter(['discovery', 'product', '--move']);
-    assert.deepStrictEqual(ok(dir, ['gate', 'held topic gate', '--pick', 'y'], { env: env() }).next.argv, ['enter', 'discovery', 'product', '--take', '--move']);
+    assert.deepStrictEqual([res.entered, /=== MENU: held topic gate /.test(sections), position(), presence('product', 'product', 'discovery', 'peer')?.session_id, presence('product', 'product', 'discovery', 'sess-1')?.session_id],
+      [true, false, { name: 'product' }, 'peer', 'sess-1']);
   });
 });
 
