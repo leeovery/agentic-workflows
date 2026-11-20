@@ -110,7 +110,7 @@ A feature that outgrows its scope pivots into an epic. A feature that belongs in
 - **Full audit trail.** Every decision, every review finding and every verification run lands in git through engine-owned commits.
 - **Durable by construction.** State changes are transactions: checked first, refused cleanly, committed whole. A crash mid-anything leaves nothing half-written.
 - **Nothing falls on the floor.** A point raised in the wrong topic is sent as mail to the topic it belongs to, and waits there until read.
-- **Many sessions, one checkout.** Talk through as many topics in parallel as you like; a commit takes what its own action wrote and the conversation logs written since, never another session's half-made change. A build, the review phase and a quick-fix take turns in the checkout.
+- **Many sessions, one checkout.** Talk through as many topics in parallel as you like; a commit takes what its own action wrote and the conversation logs written since, never another session's half-made change. A build and the review phase take turns in the checkout; a quick-fix is built in a worktree of its own.
 - **Recovers from anything.** After a compaction, a crash or a new session, the work re-reads its record and carries on where it was, with no recap.
 - **Session labels.** Opt in per project and your terminal session's label shows where you're working — `myproject · payments · discussion · auth-flow` — the original put back on exit, in the terminal multiplexers [configuration](docs/configuration.md#session-labels) lists.
 - **Zero-maintenance upgrades.** Updates migrate existing projects in place on the next run, including a project from before Ledger.

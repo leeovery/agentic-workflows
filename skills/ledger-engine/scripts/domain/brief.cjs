@@ -47,7 +47,7 @@
 // where its role takes the unit alone, a phase or a topic, a task done or
 // closed, in step a task behind another in flight, until that one is done
 // (task-verbs.cjs), a quick-fix's builder's or fix round's brief for any
-// fix but the one holding its checkout, or for that one before its start
+// fix but the one holding its worktree, or for that one before its start
 // puts back what its park set aside (R27, `holdRefusal`; its pair's never),
 // a topic set aside (5.8.17), a phase for a unit whose
 // build has not begun or one its cut lacks, and a record it cannot read.
@@ -310,10 +310,10 @@ function unendedTask(cwd, ref, role, warnings) {
 
 /**
  * Why a quick-fix's task's brief for `role` waits, or null (R27): a
- * building role's goes to the fix holding the checkout alone, once its
+ * building role's goes to the fix holding the worktree alone, once its
  * start has put back what its park set aside — never one a question parks,
  * one behind the holder, or one not started; its pair reads commits, not
- * the checkout, and waits on neither.
+ * the worktree, and waits on neither.
  * @param {string} cwd @param {TaskRef} ref @param {Record<string, any>} manifest the unit's @param {string} role
  * @returns {string|null}
  */
@@ -323,7 +323,7 @@ function holdRefusal(cwd, ref, manifest, role) {
   if (parkedOn.length > 0) return parkedWords(ref, parkedOn);
   if (holds) return asideRefusal(cwd, ref);
   if (turn !== null) return turnWords(ref, turn);
-  return `${taskName(ref)} holds no part of ${ref.unit}'s one checkout — start it first, engine task start ${ref.unit} ${shownTask(ref)}, which puts the checkout on it`;
+  return `${taskName(ref)} does not hold ${ref.unit}'s worktree — start it first, engine task start ${ref.unit} ${shownTask(ref)}, which lays the worktree out for it`;
 }
 
 /**

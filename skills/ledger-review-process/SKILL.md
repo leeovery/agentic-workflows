@@ -71,7 +71,7 @@ A round that fails on findings its fix tasks already addressed is yours to settl
 
 ### The Working Tree
 
-The review takes its turn in the checkout and leaves the working tree as it found it. A round refused for the tree names its gate:
+The review takes its turn in the checkout and leaves the working tree as it found it; a quick-fix's reads the quick-fix's worktree. A round refused for the tree names its gate:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs render review-tree {work_unit}

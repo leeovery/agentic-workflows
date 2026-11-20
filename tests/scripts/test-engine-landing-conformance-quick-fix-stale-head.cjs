@@ -21,12 +21,9 @@ require('./hermetic-env.cjs');
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
 
-const { ok, git, createFile } = require('./engine-harness.cjs');
-const { UNIT, DESCRIPTION, BRANCH, SET, fixDone, quickFixConformance } = require('./quick-fix-world.cjs');
+const { ok, git } = require('./engine-harness.cjs');
+const { UNIT, DESCRIPTION, BRANCH, SET, fixDone, onMain, quickFixConformance } = require('./quick-fix-world.cjs');
 const { HELP, steps } = require('./quick-fix-by-hand.cjs');
 const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
 
@@ -42,11 +39,7 @@ for (const { name } of listDrivers('landing')) {
       built(at, 1);
       const head = git(at, ['rev-parse', BRANCH]).trim();
       merge(at, BRANCH);
-      const tree = fs.mkdtempSync(path.join(os.tmpdir(), 'quick-fix-elsewhere-'));
-      git(side.on(at), ['worktree', 'add', '-q', tree, 'main']);
-      createFile(tree, SET[0].file, 'const flag = \'colour\'; // and more\n');
-      git(tree, ['commit', '-q', '-am', 'Say more of the flag']);
-      git(side.on(at), ['worktree', 'remove', '--force', tree]);
+      onMain(side.on(at), [{ file: SET[0].file, text: 'const flag = \'colour\'; // and more\n', subject: 'Say more of the flag' }]);
       started(at);
       committed(at, HELP.text);
       ok(at, ['land', 'open', UNIT, '1.2'], as());

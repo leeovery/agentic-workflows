@@ -27,7 +27,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
 const { ok, refuses, git, output, sectionOf, readManifest } = require('./engine-harness.cjs');
-const { UNIT, BRANCH, SET, createFix, fixDone, guardedGit, checklistClosed, quickFixConformance } = require('./quick-fix-world.cjs');
+const { UNIT, BRANCH, SET, createFix, fixDone, fixTree, guardedGit, checklistClosed, quickFixConformance } = require('./quick-fix-world.cjs');
 const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
 
 const BACK = 'Put the flag back';
@@ -53,9 +53,9 @@ for (const { name } of listDrivers('landing')) {
       const first = git(at, ['rev-parse', BRANCH]).trim();
       createFix(at, 2, BACK, as());
       ok(at, ['task', 'start', UNIT, '1.2'], as());
-      guardedGit(at, ['revert', '--no-commit', first], as());
-      guardedGit(at, ['revert', '--quit'], as());
-      ok(at, ['commit', '--paths', SET[0].file, '--task', UNIT, '1.2', '-m', `fix(${UNIT}): put the flag back`], as());
+      guardedGit(fixTree(at), ['revert', '--no-commit', first], as());
+      guardedGit(fixTree(at), ['revert', '--quit'], as());
+      ok(fixTree(at), ['commit', '--paths', SET[0].file, '--task', UNIT, '1.2', '-m', `fix(${UNIT}): put the flag back`], as());
       ok(at, ['land', 'open', UNIT, '1.2'], as());
       fixDone(at, '1.2', as());
       record(at, 1);

@@ -46,7 +46,7 @@ One coherent thing to build. It runs the full journey from discussion to review 
 Something that used to work and now doesn't. An investigation finds the cause in place of a discussion, then comes the specification; the build's first task proves the bug with a failing test before it is fixed, and review follows.
 
 **quick-fix**:
-Settled work of any size, a tweak or an update needing no decision beyond a quick call. It goes from discovery straight to its fixes, each built and reviewed like a task, from the first fix to its close in one session, and has a review phase only if the person asks for one at the close. One that turns out to need a real decision moves to a feature or a bugfix.
+Settled work of any size, a tweak or an update needing no decision beyond a quick call. It goes from discovery straight to its fixes, each built and reviewed like a task, from the first fix to its close in one session; they are built in a worktree of the quick-fix's own, so the person's checkout never moves. It has a review phase only if the person asks for one at the close. One that turns out to need a real decision moves to a feature or a bugfix.
 _Avoid_: a small mechanical change
 
 **topic**:
@@ -313,7 +313,7 @@ Bringing a postponed topic back from the roadmap, through an epic's discovery ro
 Opening an epic's decided topic again, from its discovery row until the spec is first written. A finished piece of work, of any type, is never reopened: it stays finished, and a later change to it is new work.
 
 **in session**:
-The cue on a topic another conversation is working right now, with how long ago it was last active; its row is struck through, and entering it asks first. Awareness only: it never locks anyone out. Code phases are different: a build, the review phase and a quick-fix run one at a time in the project's checkout, and entering one while another session is building there names that session and asks before going on.
+The cue on a topic another conversation is working right now, with how long ago it was last active; its row is struck through, and entering it asks first. Awareness only: it never locks anyone out. Code phases are different: a build and the review phase run one at a time in the project's checkout, and entering one while another session is building there names that session and asks before going on. A quick-fix is built in a worktree of its own and waits on neither.
 _Avoid_: code session
 
 **nested repo**:

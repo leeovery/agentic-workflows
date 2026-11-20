@@ -11,7 +11,7 @@
 // whole (`trackedPhase`), and the tasks the build goes on with: those in
 // progress in every phase written, and those ready in a phase the caller
 // lets go on (`goingOn`) — in step, and in a quick-fix, whose tasks share
-// its one checkout (19.5.23), the one in flight first and any other going
+// its worktree (19.5.23), the one in flight first and any other going
 // on held behind it, its briefs and gate refused until that one is done —
 // for a quick-fix, done or closed, or a question parks it (`stepTurn`,
 // `turnRefusal`); and the board reads the whole unit from
@@ -69,29 +69,26 @@
 // refused for a phase the cut holds before its start checklist has closed
 // (6.4.8, 12.S7) — a quick-fix's fixes, held by no cut, have none — and in
 // step, or in a quick-fix, whose fixes and its review's fix tasks are all
-// built in the project's one checkout on its one branch (19.5.23), for any
+// built in its worktree on its one branch (19.5.23), for any
 // task but the one in flight — in progress in any phase written, the
 // review's fixes past the cut among them, here or in another conversation,
 // no question parking it, and ahead of any other going on (12.7.9) — puts
 // the task in flight on the conversation's position, beside any others in
 // flight there — a task already in flight kept as it stands, its builder
-// and reviewers with it; a quick-fix's task, built in the project's own
-// checkout, puts that checkout on the quick-fix's one branch
-// (fix-branch.cjs) and puts back what its park set aside (fix-aside.cjs).
-// A quick-fix's checkout has one holder (R27, `checkoutHold`, one read of
+// and reviewers with it; a quick-fix's task lays the quick-fix's worktree
+// out where it is not, on its one branch (fix-branch.cjs), and puts back
+// what its park set aside there (fix-aside.cjs) — the start held under the
+// writer lock, then the steps that prepare a worktree run there with the
+// lock let go, as `task worktree` runs them, once a worktree.
+// A quick-fix's worktree has one holder (R27, `checkoutHold`, one read of
 // the turn shared by start, the building briefs, the commit door, done and
 // close, ready naming the next by the same turn, `stepTurn`): the fix in
 // flight whose turn it is, never one a
 // question parks. Start refuses a parked fix, as done does, and any fix
-// but the holder while one holds it; the holder's start takes what the
-// checkout holds as its own — but what a checkout it puts on the branch
-// with another out holds, as a cancel taking each off it leaves them, the
-// person's (fix-branch.cjs, `refuseDirtyOff`) — and a start that makes a
-// fix the holder, or one of a fix an answer freed since its last start
-// (`freedSinceStart`), refuses what it holds, the person's. The holder leaves the checkout
-// clean as it stops holding it — a park sets its work aside, and done and
-// close refuse while the checkout holds changes not committed — so any
-// change there is the holder's. Done and close take a task off the
+// but the holder while one holds it. The holder leaves the worktree clean
+// as it stops holding it — a park sets its work aside, and done and close
+// refuse while the worktree holds changes not committed — so any change
+// there is the holder's. Done and close take a task off the
 // position, each first taking off it every task of the unit the tracker
 // holds ended — one another conversation ended, or its own verb killed
 // once the tracker moved, so the verb run again finishes — before it
@@ -157,7 +154,7 @@ const { loadWorkUnitManifest } = require('../kernel/manifest.cjs');
 const { workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { resolveDriver, chosenDriver, settingOf, needsRefusal } = require('./drivers.cjs');
-const { ignoreInState, withIgnored, migrationRuns } = require('./state-worktree.cjs');
+const { ignoreInState, withIgnored, migrationRuns, withStateLock } = require('./state-worktree.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { TASK_TYPES, taskId, sameTask, shownTask, parseShownTask, parsePhase, taskName, phaseName } = require('./task-id.cjs');
 const { NO_SPEC, breaksLine, readTaskText, specReferenceOf, scenarioIds, oneLineText } = require('./task-file.cjs');
@@ -168,7 +165,9 @@ const {
 } = require('./derivations.cjs');
 const { reproducingHold, reproducingClose } = require('./bug-proven.cjs');
 const { layOutTask, takeWorktreeApart } = require('./task-worktree.cjs');
-const { markChanged, briefedOf, beingRead, taskFolder, recordReview } = require('./round-report.cjs');
+const { markChanged, briefedOf, beingRead, recordReview } = require('./round-report.cjs');
+const { prepareWorktreeSteps } = require('./worktree-prep.cjs');
+const { refusing } = require('./staged-payload.cjs');
 const { isoNow } = require('./dates.cjs');
 const { unitClosure } = require('./topic-standing.cjs');
 
@@ -186,7 +185,7 @@ const fixEnd = () => require('./fix-end.cjs');
 /** @typedef {import('./drivers.cjs').TaskRow} TaskRow */
 /** @typedef {import('./task-id.cjs').TaskRef} TaskRef */
 
-/** In step or in a quick-fix's one checkout (`checkout`), the task in flight, and those going on behind it. @typedef {{inFlight: string, behind: string[], checkout: boolean}} StepTurn */
+/** In step or in a quick-fix's worktree (`checkout`), the task in flight, and those going on behind it. @typedef {{inFlight: string, behind: string[], checkout: boolean}} StepTurn */
 
 /** Where a task stands once it has ended, done or not. */
 const ENDED = Object.freeze(['done', 'closed']);
@@ -1107,14 +1106,14 @@ function copiedTasks(cwd, unit, phases) {
   return withStoreCopy(cwd, (driver, root) => phases.map((phase) => driver.tasks(root, unit, phase) ?? []));
 }
 
-/** Whether the unit's tasks take turns: in step (12.7.9), and in a quick-fix, whose tasks share its one checkout (19.5.23). @param {Record<string, any>} manifest */
+/** Whether the unit's tasks take turns: in step (12.7.9), and in a quick-fix, whose tasks share its worktree (19.5.23). @param {Record<string, any>} manifest */
 const takesTurns = (manifest) => manifest.build?.position === 'step' || quickFixBuild(manifest);
 
 /**
  * In step or in a quick-fix (`takesTurns`), the task in flight among those
  * the build goes on with (`goingOn`), and those behind it, which go on once
  * it is done (12.7.9) — a quick-fix's once it is done or closed, or a
- * question parks it, and the checkout is free (19.5.23): the one that went
+ * question parks it, and the worktree is free (19.5.23): the one that went
  * back in flight first — one never parked before any, then by when an
  * answer last freed each (task-parks.cjs), the tracker's order between
  * those alike, as two left running in auto are. Null in auto, and where
@@ -1131,7 +1130,7 @@ function stepTurn(cwd, unit, manifest) {
  * Of the tasks the build goes on with, in the tracker's order, the one in
  * flight and those behind it (`stepTurn`'s), when an answer last freed each
  * read only where two go on; `checkout` where they take turns in a
- * quick-fix's one checkout.
+ * quick-fix's worktree.
  * @param {string[]} tasks @param {() => Map<string, number>} freedAt @param {boolean} checkout @returns {StepTurn|null}
  */
 function turnOf(tasks, freedAt, checkout) {
@@ -1157,7 +1156,7 @@ function turnRefusal(cwd, ref, manifest) {
 }
 
 /** Why the task goes no further while another holds the turn, as a refusal says it. @param {TaskRef} ref @param {StepTurn} turn */
-const turnWords = (ref, turn) => `${ref.unit} builds ${turn.checkout ? 'in its one checkout' : 'in step'}, one task at a time — task ${turn.inFlight} is in flight, and task ${shownTask(ref)} goes on once ${turn.checkout ? turnEnds(turn) : 'it is done'}`;
+const turnWords = (ref, turn) => `${ref.unit} builds ${turn.checkout ? 'in its worktree' : 'in step'}, one task at a time — task ${turn.inFlight} is in flight, and task ${shownTask(ref)} goes on once ${turn.checkout ? turnEnds(turn) : 'it is done'}`;
 
 /** `task show`: the task whole, what was added to it among it. @param {string} cwd @param {string} unit @param {string} given */
 function showTask(cwd, unit, given) {
@@ -1247,8 +1246,8 @@ function refuseSecondInStep(cwd, ref, manifest) {
 }
 
 /**
- * A quick-fix's task against its one checkout (R27), from one read of the
- * turn: the turn, its task in flight the fix holding the checkout, never
+ * A quick-fix's task against its worktree (R27), from one read of the
+ * turn: the turn, its task in flight the fix holding the worktree, never
  * one a question parks (`stepTurn`), null where none holds it; whether
  * `ref` is that fix; and the questions parking `ref`, none where none
  * does.
@@ -1265,8 +1264,8 @@ function checkoutHold(cwd, ref, manifest) {
 
 /**
  * Refuse, in the words of `said`, ending the fix that holds a quick-fix's
- * checkout by `end` while the checkout holds changes not committed (R27):
- * it leaves the checkout clean as it stops holding it.
+ * worktree by `end` while the worktree holds changes not committed (R27):
+ * it leaves the worktree clean as it stops holding it.
  * @param {string} cwd @param {TaskRef} ref @param {'done'|'close'} end @param {string} said
  */
 function refuseLeftDirty(cwd, ref, end, said) {
@@ -1276,41 +1275,18 @@ function refuseLeftDirty(cwd, ref, end, said) {
 
 /**
  * Refuse, in the words of `said`, a quick-fix's task that may not take the
- * checkout (R27): one a question parks, and any but the holder while one
+ * worktree (R27): one a question parks, and any but the holder while one
  * holds it.
  * @param {TaskRef} ref @param {Hold} hold @param {string} said
  */
 function refuseNotHolding(ref, { turn, holds, parkedOn }, said) {
   if (parkedOn.length > 0) throw new Error(`${said}: ${parks().parkedWords(ref, parkedOn)}`);
   if (turn === null || holds) return;
-  throw new Error(`${said}: ${ref.unit} builds one task at a time, in the project's one checkout on its one branch — task ${turn.inFlight} is in flight, and task ${shownTask(ref)} starts once it is done or closed, or a question parks it`);
+  throw new Error(`${said}: ${ref.unit} builds one task at a time, in its worktree on its one branch — task ${turn.inFlight} is in flight, and task ${shownTask(ref)} starts once it is done or closed, or a question parks it`);
 }
 
-/** Where a quick-fix's start records the freeing it was made past, in the cache, state-relative. @param {TaskRef} ref */
-const startedPath = (ref) => `.cache/${taskFolder(ref)}/started.json`;
-
-/**
- * Whether an answer freed a quick-fix's fix since its last start (the
- * ledger's line `parks().freedAt` reads, past the one its start recorded):
- * what the checkout holds then is the person's, made while the fix held
- * none of it.
- * @param {string} cwd @param {TaskRef} ref
- */
-function freedSinceStart(cwd, ref) {
-  const file = statePath(cwd, startedPath(ref));
-  const past = fs.existsSync(file) ? Number(JSON.parse(fs.readFileSync(file, 'utf8')).freed ?? 0) : 0;
-  return (parks().freedAt(cwd, ref.unit).get(shownTask(ref)) ?? 0) > past;
-}
-
-/** A quick-fix's start recorded past the last freeing of its fix. @param {string} cwd @param {TaskRef} ref */
-function recordStarted(cwd, ref) {
-  const file = statePath(cwd, startedPath(ref));
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  writeJsonAtomic(file, { freed: parks().freedAt(cwd, ref.unit).get(shownTask(ref)) ?? 0 });
-}
-
-/** `task start`: refused for a unit not in progress, before its phase has started, and in step beside the task in flight, or in a quick-fix where the task may not take its checkout; else in progress — where it is not already — and in flight on the position beside any others, a quick-fix's in its one checkout, what the checkout holds taken as the holder's own — but in a checkout it puts on the branch with another out, as a cancel leaves it — or, for a fix it makes the holder or one an answer freed since its last start, refused as the person's, then what its park set aside put back. */
-const startTask = moving('start', (_cwd, driver, root, ref) => {
+/** The start under the writer lock (`startTask`): refused for a unit not in progress, before its phase has started, and in step beside the task in flight, or in a quick-fix where the task may not take its worktree; else in progress — where it is not already — and in flight on the position beside any others, a quick-fix's worktree laid out where it is not, then what its park set aside put back there. */
+const startHeld = moving('start', (_cwd, driver, root, ref) => {
   if (refuseEnded(driver, root, ref, 'only a task not yet ended is started').status !== 'in-progress') driver.start(root, ref);
 }, (cwd, ref) => {
   const manifest = loadWorkUnitManifest(cwd, ref.unit);
@@ -1318,23 +1294,31 @@ const startTask = moving('start', (_cwd, driver, root, ref) => {
   if (closure !== null) throw new Error(`task start: ${closure}`);
   refuseUnstarted(ref, manifest);
   const quickFix = quickFixBuild(manifest);
-  if (quickFix) {
-    const hold = checkoutHold(cwd, ref, manifest);
-    refuseNotHolding(ref, hold, 'task start');
-    if (!hold.holds || freedSinceStart(cwd, ref)) fixBranch().refuseDirty(cwd, ref);
-    else fixBranch().refuseDirtyOff(cwd, ref);
-  } else {
-    refuseSecondInStep(cwd, ref, manifest);
-  }
+  if (quickFix) refuseNotHolding(ref, checkoutHold(cwd, ref, manifest), 'task start');
+  else refuseSecondInStep(cwd, ref, manifest);
   return () => {
     recordTask(cwd, ref.unit, taskId(ref));
     if (!quickFix) return {};
-    const out = fixBranch().checkOutBranch(cwd, ref.unit);
-    const back = fixAside().putBack(cwd, ref, 'task start');
-    recordStarted(cwd, ref);
+    const out = fixBranch().layOutFix(cwd, ref.unit);
+    const back = fixAside().putBack(out.worktree, ref, 'task start');
     return { ...out, ...(back.length === 0 ? {} : { put_back: back }) };
   };
 });
+
+/**
+ * `task start`: the start under the writer lock (`startHeld`), then, for a
+ * quick-fix's task, the steps that prepare its worktree run with the lock
+ * let go, as `task worktree` runs them: its answer, and the steps run,
+ * where any ran.
+ * @param {string} cwd @param {string} unit @param {string} given
+ */
+function startTask(cwd, unit, given) {
+  const out = /** @type {Record<string, any>} */ (withStateLock(stateRoot(cwd), () => startHeld(cwd, unit, given)));
+  if (out.worktree === undefined) return out;
+  const { top } = fixBranch().fixWorktree(cwd, unit);
+  const prepared = refusing('task start', () => prepareWorktreeSteps(cwd, out.worktree, top, `${unit}'s worktree is not ready to build in`));
+  return prepared.length === 0 ? out : { ...out, prepared };
+}
 
 const DONE_RULE = 'only a task not yet ended is done';
 const CLOSE_RULE = 'only a task not yet ended is closed';
@@ -1345,8 +1329,8 @@ const CLOSE_RULE = 'only a task not yet ended is closed';
  * own, or its newest not in the pull request — before its account; where
  * its account is not taken of its review as it stands (task-account.cjs) —
  * a quick-fix's as any task's — or, a one-line task, until it is built;
- * for the fix holding a quick-fix's checkout
- * while the checkout holds changes not committed (R27); and for a bugfix's
+ * for the fix holding a quick-fix's worktree
+ * while the worktree holds changes not committed (R27); and for a bugfix's
  * reproducing task while its test's series on the unfixed code does not
  * prove the bug (bug-proven.cjs); else its
  * worktree taken apart, then done, and off the position — the last of
@@ -1391,7 +1375,7 @@ const closing = (refuseHeld, then = () => ({})) => moving('close', (cwd, driver,
 /**
  * `task close`: refused for a bugfix's reproducing task (bug-proven.cjs),
  * for a quick-fix's task as its end refuses it (fix-end.cjs), and for the
- * fix holding its checkout while the checkout holds changes not committed
+ * fix holding its worktree while the worktree holds changes not committed
  * (R27); where a
  * question parks it, refused with no session before anything moves; its
  * worktree taken apart, then off every question parking it, then closed
@@ -1402,7 +1386,7 @@ const closing = (refuseHeld, then = () => ({})) => moving('close', (cwd, driver,
  * what held a quick-fix's ended review open handing back to its close
  * (review-round.cjs, `handBack`); a quick-fix's fix's work its park set
  * aside kept, never dropped, and named with the calls that show it and
- * bring it into the checkout (fix-aside.cjs, `keptAside`, R26).
+ * bring it into a checkout (fix-aside.cjs, `keptAside`, R26).
  */
 const closeTask = closing((cwd, ref, said) => {
   fixEnd().refuseHeld(cwd, ref, said);

@@ -105,6 +105,7 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 - `.ledger/.inbox/{ideas,bugs,quickfixes}/` — undecided captures; `.archived/` the declined ones
 - `.ledger/.product/` — the product's conversation: `sessions/session-NNN.md` its logs, `notes/{YYYY-MM-DD}--{slug}.md` the roadmap items' notes, `assets/` the files shared and, as `assets/{unit}/`, each retired unit's folder kept whole as reference, `assets/legacy/` the files from before Ledger of no unit's the migration had no other place for, each at its path from `.workflows/`, and in `assets/legacy/{unit}/` a retired unit's legacy files, `spikes/{NNN}-{slug}/` its spikes
 - `.ledger/.knowledge/` — the checkout-local knowledge store and config, gitignored
+- `.claude/worktrees/ledger-{work_unit}` — in the main checkout, a quick-fix's worktree on `fix/{work_unit}`, where its fixes are built: laid out at its first fix's start, taken apart at its close, cancel or move
 - `refs/ledger/aside/{work_unit}/{task_id}` — in each code repository, the work a quick-fix's fix had not committed, set aside when a question parked it or the quick-fix moved
 - `~/.config/ledger/` (or `LEDGER_CONFIG_DIR`) — system config, credentials, `trust.jsonl` the trust log, `person.md` the record of the person, `decision-checks.jsonl` the one-decision check's log, and `conversations/{session-id}/`, per-conversation state: `booted.json` boot's stamp, which the verbs that touch work refuse without, `briefs/` the briefs the conversation issued, and `set-aside.json` the parks of the questions it set aside
 

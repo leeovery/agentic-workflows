@@ -21,12 +21,9 @@ require('./hermetic-env.cjs');
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
 
 const { ok, refuses, git, createFile } = require('./engine-harness.cjs');
-const { UNIT, DESCRIPTION, BRANCH, guardedGit, fixDone, quickFixConformance } = require('./quick-fix-world.cjs');
+const { UNIT, DESCRIPTION, BRANCH, guardedGit, fixDone, fixTree, onMain, quickFixConformance } = require('./quick-fix-world.cjs');
 const { HELP, steps } = require('./quick-fix-by-hand.cjs');
 const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
 
@@ -44,23 +41,18 @@ for (const { name } of listDrivers('landing')) {
       built(at, 1);
       started(at);
       merge(at, BRANCH);
-      const tree = fs.mkdtempSync(path.join(os.tmpdir(), 'quick-fix-elsewhere-'));
-      git(side.on(at), ['worktree', 'add', '-q', tree, 'main']);
-      createFile(tree, HELP.file, OTHER);
-      git(tree, ['add', HELP.file]);
-      git(tree, ['commit', '-q', '-m', 'Spell the help the American way']);
-      git(side.on(at), ['worktree', 'remove', '--force', tree]);
+      onMain(side.on(at), [{ file: HELP.file, text: OTHER, subject: 'Spell the help the American way' }]);
       committed(at, HELP.text);
       const own = git(at, ['rev-parse', '--short', BRANCH]).trim();
       const opening = refuses(at, ['land', 'open', UNIT, '1.2'], as()).error;
       const done = refuses(at, ['task', 'done', UNIT, '1.2'], as()).error;
       const picked = ['cherry-pick', '--no-commit', own];
       try {
-        guardedGit(at, picked, as());
+        guardedGit(fixTree(at), picked, as());
       } catch { /* the conflict the refusal names, settled below */ }
-      createFile(at, HELP.file, HELP.text);
-      guardedGit(at, ['cherry-pick', '--quit'], as());
-      ok(at, ['commit', '--paths', HELP.file, '--task', UNIT, '1.2', '-m', `fix(${UNIT}): spell the help --colour again`], as());
+      createFile(fixTree(at), HELP.file, HELP.text);
+      guardedGit(fixTree(at), ['cherry-pick', '--quit'], as());
+      ok(fixTree(at), ['commit', '--paths', HELP.file, '--task', UNIT, '1.2', '-m', `fix(${UNIT}): spell the help --colour again`], as());
       ok(at, ['land', 'open', UNIT, '1.2'], as());
       fixDone(at, '1.2', as());
       closed(at);

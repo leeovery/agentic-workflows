@@ -19,9 +19,10 @@
 // pull, a cherry-pick, a revert, an am or a rebase but with the flags that
 // make no commit — the tasks in flight
 // read from the conversation stdin names, each with its door (6.S11, 6.S22,
-// 12.S21), the engine's own landing remedies passing on every other branch,
-// and a raw commit in the state
-// worktree at any time; a command naming a file at user level the layout
+// 12.S21), the engine's own landing remedies passing on every other branch;
+// a raw commit in a quick-fix's worktree, from any conversation, while the
+// quick-fix is in progress, its manifest read once; a raw commit in the
+// state worktree at any time; a command naming a file at user level the layout
 // hook refuses Claude's writes to; and a command writing, by any form a
 // shell writes with, to a file in the state only the engine writes, for the
 // layout hook's reason (2.S1). Input it cannot read passes. A pass never
@@ -32,8 +33,9 @@
 //
 // Layer: verb, and process for the shell door. World: a project with a unit
 // and two tasks, one started in one conversation and both in another, a
-// code worktree beside it on task 1.1's branch; a project with a bare remote and one without,
-// for the state's refusals.
+// code worktree beside it on task 1.1's branch, and a quick-fix in
+// progress with its worktree on its one branch; a project with a bare
+// remote and one without, for the state's refusals.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -60,6 +62,7 @@ const { quickFixBranch } = require(path.join(SCRIPTS, 'domain', 'landing-names.c
 const IGNORES_CASE = ignoresCase(fs.realpathSync(os.tmpdir()));
 
 const UNIT = 'pay';
+const FIX = 'typo';
 const BUILDING = 'building-session';
 const PARALLEL = 'parallel-session';
 const IDLE = 'idle-session';
@@ -81,6 +84,7 @@ const REFUSED = Object.freeze({
   force: 'force-pushing ledger-state is refused — the engine pushes it after every commit, and a force would drop what another clone pushed; push your own branches by name',
   stateCommit: 'a raw git commit in the state worktree (.ledger) is refused — every state commit is the engine\'s, made by the verb that changes the state',
 });
+const FIX_COMMIT = `a raw git commit is refused here — ${quickFixBranch(FIX)} is checked out for ${FIX}, a quick-fix in progress, whose work goes through the commit door alone: a fix's change with \`engine commit --paths <file>… --task ${FIX} <task> -m "<message>"\`, anything else from a checkout of your own`;
 const BUILD_COMMIT = `a raw git commit is refused while task 1.1 of ${UNIT} is in flight — the build commits through the commit door: \`engine commit --paths <file>… --task ${UNIT} 1.1 -m "<message>"\``;
 const NAMED = 'a shell command naming it is refused, and the Read tool reads it';
 
@@ -112,6 +116,7 @@ const inState = (rel) => `${STATE_DIR_NAME}/${rel}`;
 /** The unit, its first task written, the project's code committed. */
 const unitWorld = fixtureFrom('shell-guard-', (dir) => {
   createManifest(dir, UNIT, {});
+  createManifest(dir, FIX, { work_type: 'quick-fix' });
   commitAll(dir, 'init');
   ok(dir, ['task', 'phase', UNIT, '1', '--title', 'Cards']);
   const file = path.join(templateFolder('shell-guard-files-'), 'task.md');
@@ -125,6 +130,7 @@ const TASK_BRANCH = 'feat/pay-1.1-take-a-card';
 
 /** @type {string} */ let dir;
 /** @type {string} */ let worktree;
+/** @type {string} */ let fixTree;
 /** @type {string[]} */ const scratch = [];
 
 before(() => {
@@ -132,6 +138,8 @@ before(() => {
   worktree = path.join(fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'shell-guard-worktree-'))), 'card');
   scratch.push(dir, path.dirname(worktree));
   git(dir, ['worktree', 'add', '-q', '-b', TASK_BRANCH, worktree]);
+  fixTree = path.join(path.dirname(worktree), FIX);
+  git(dir, ['worktree', 'add', '-q', '-b', quickFixBranch(FIX), fixTree]);
   ok(dir, ['task', 'start', UNIT, '1.1'], { env: { CLAUDE_CODE_SESSION_ID: BUILDING } });
   for (const task of ['1.1', '1.2']) ok(dir, ['task', 'start', UNIT, task], { env: { CLAUDE_CODE_SESSION_ID: PARALLEL } });
   ok(dir, ['session', 'label', UNIT], { env: { CLAUDE_CODE_SESSION_ID: PLACED } });
@@ -464,28 +472,39 @@ describe('raw commits (6.3.7, 6.3.12, 12.9.8)', () => {
     assertPassed(guard(dir, 'git commit -m x', { session: NAMELESS }), 'a task, no unit');
   });
 
-  it('two conversations: a raw commit from one, in a checkout with out a branch a task in flight in the other commits on — a task\'s own, or a quick-fix\'s in the project\'s checkout — is refused, naming that work and the way on; on another branch, or where the unit is not the project\'s, it runs', () => {
-    const held = (branch, task) => `a raw git commit is refused here — ${branch} is checked out for task ${task} of ${UNIT}, in flight in another conversation, and a commit here would land in that work: commit once ${UNIT} has closed, or from a worktree of your own`;
-    const branch = quickFixBranch(UNIT);
-    const tree = path.join(fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'shell-guard-held-'))), 'fix');
-    scratch.push(path.dirname(tree));
-    git(dir, ['worktree', 'add', '-q', '-b', branch, tree]);
-    const stranger = 'stranger-session';
-    fs.mkdirSync(path.dirname(positionPath(stranger)), { recursive: true });
-    fs.writeFileSync(positionPath(stranger), JSON.stringify({ name: 'elsewhere', phase: 'implementation', topic: 'elsewhere', tasks: [{ task: '1.1', builder: null, reviewers: [] }] }));
-    const elsewhere = path.join(path.dirname(tree), 'elsewhere');
-    git(dir, ['worktree', 'add', '-q', '-b', quickFixBranch('elsewhere'), elsewhere]);
+  it('a raw commit where the checkout has out the one branch of a quick-fix of the project\'s in progress is refused from any conversation, naming it and the way on — the build\'s own refusal first where the conversation has a task in flight; a quick-fix completed or cancelled, a unit of another type, or one of no state here, lets it run', () => {
+    const base = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'shell-guard-fix-')));
+    scratch.push(base);
+    const ended = [['landed', 'completed'], ['dropped', 'cancelled']];
+    for (const [name, status] of ended) createManifest(dir, name, { work_type: 'quick-fix', status });
+    const trees = [...ended.map(([name]) => name), UNIT, 'elsewhere'].map((name) => {
+      const at = path.join(base, name);
+      git(dir, ['worktree', 'add', '-q', '-b', quickFixBranch(name), at]);
+      return [name, at];
+    });
     try {
-      assertRefused(guard(worktree, 'git commit -m "docs: who it is for"', { session: IDLE }), held(TASK_BRANCH, '1.1'), 'a task\'s own branch, held by the other conversation');
-      assertRefused(guard(tree, 'git commit -am x', { session: PLACED }), held(branch, '1.1'), 'the quick-fix\'s branch out in a checkout');
+      assertRefused(guard(fixTree, 'git commit -m x', { session: IDLE }), FIX_COMMIT, 'a conversation with no task in flight, the quick-fix\'s own between fixes among them');
+      assertRefused(guard(dir, `git -C ${fixTree} commit -am x`, { session: PLACED }), FIX_COMMIT, 'from the project, into the worktree');
+      assertRefused(guard(fixTree, 'git commit -m x', { session: BUILDING }), BUILD_COMMIT, 'a task in flight in the conversation');
+      for (const [name, at] of trees) assertPassed(guard(at, 'git commit -m x', { session: IDLE }), name);
       assertPassed(guard(dir, 'git commit -m x', { session: IDLE }), 'the branch the project lands on');
-      assertPassed(guard(elsewhere, 'git commit -m x', { session: IDLE }), 'a unit of no state here');
     } finally {
-      fs.rmSync(path.dirname(positionPath(stranger)), { recursive: true, force: true });
-      git(dir, ['worktree', 'remove', '--force', tree]);
-      git(dir, ['worktree', 'remove', '--force', elsewhere]);
-      git(dir, ['branch', '-q', '-D', branch, quickFixBranch('elsewhere')]);
+      for (const [name, at] of trees) {
+        git(dir, ['worktree', 'remove', '--force', at]);
+        git(dir, ['branch', '-q', '-D', quickFixBranch(name)]);
+      }
+      for (const [name] of ended) fs.rmSync(statePath(dir, name), { recursive: true, force: true });
     }
+  });
+
+  it('a raw commit with no task in flight reads one manifest, the quick-fix\'s the checkout\'s branch names, once however many commits the command holds, and none where its branch names no quick-fix', (t) => {
+    const reads = t.mock.method(fs, 'readFileSync');
+    const manifestReads = (/** @type {string} */ cwd) => {
+      reads.mock.resetCalls();
+      guard(cwd, 'git commit -m a; git commit --amend --no-edit', { session: IDLE });
+      return reads.mock.calls.filter(({ arguments: [file] }) => String(file).endsWith('manifest.json')).map(({ arguments: [file] }) => path.relative(statePath(dir), String(file)));
+    };
+    assert.deepStrictEqual([manifestReads(fixTree), manifestReads(dir), manifestReads(worktree)], [[layout.manifest(FIX)], [], []]);
   });
 
   it('in the state worktree a raw commit is refused at any time — from inside it, by `cd` or `pushd`, by `popd` back into it, by `-C` after `-C`, by `--work-tree` or `--git-dir` — and one beside it, or a subshell\'s `cd` left behind, or a `popd` out of it, is not', () => {
@@ -674,7 +693,7 @@ describe('the shell door', () => {
     }
   });
 
-  it('E5: the shell guard loads these modules of the engine\'s and no other, a commit\'s read of the position — every other conversation\'s, tasks in flight there, among it — and a write outside the state among them', () => {
+  it('E5: the shell guard loads these modules of the engine\'s and no other, a commit\'s read of the position and of a quick-fix\'s manifest, and a write outside the state among them', () => {
     const loaded = loadedBy([ENGINE, 'shell', 'guard'], hookInput(dir, 'git status > status.txt && git commit -m x'));
     assert.deepStrictEqual(loaded.map((file) => path.relative(SCRIPTS, file)), SHELL_GUARD_LOADS);
   });
@@ -686,7 +705,7 @@ describe('the shell door', () => {
     assert.deepStrictEqual(loaded.map((file) => path.relative(SCRIPTS, file)), [...LAYOUT_GUARD_LOADS, ...drivers].sort());
   });
 
-  it('the guard never runs git — passing from the project or the state worktree, a commit\'s read of the position and a write into the state\'s layout read among them, and refusing a commit in a code worktree another conversation\'s task holds', () => {
+  it('the guard never runs git — passing from the project or the state worktree, a commit\'s read of the position and a write into the state\'s layout read among them, and refusing a commit in a quick-fix\'s worktree', () => {
     const bin = path.join(out, 'bin');
     const ran = path.join(out, 'git-ran');
     fs.mkdirSync(bin);
@@ -694,7 +713,7 @@ describe('the shell door', () => {
     const env = { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}` };
     const runs = [
       [dir, 'git status && git commit -m x && git push origin card && rm -rf .ledger/pay/stray.md', 0],
-      [worktree, 'git commit -am x', 2],
+      [fixTree, 'git commit -am x', 2],
       [path.join(dir, STATE_DIR_NAME), 'git log -1 && git push origin HEAD && ls', 0],
     ];
     for (const [cwd, command, status] of runs) {

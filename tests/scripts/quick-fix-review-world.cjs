@@ -20,7 +20,7 @@ const fs = require('fs');
 const path = require('path');
 const { ok, okSections, output, refusedPristine, sectionOf, writeState, createFile, layout, fixtureFrom } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
-const { UNIT, twoFixesBuilt, fixesRecorded, fixDone, fixFile, asGone } = require('./quick-fix-world.cjs');
+const { UNIT, twoFixesBuilt, fixesRecorded, fixDone, fixFile, fixTree, asGone } = require('./quick-fix-world.cjs');
 const { reportText } = require('./review-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
@@ -48,8 +48,8 @@ const closeReached = fixtureFrom('quick-fix-review-', (dir) => {
  * the docs, its fix task 2.1 written in the review's first fix phase —
  * asked for and entered first (`firstRoundFailed`), or once entered
  * (`firstRoundRecorded`); fix task 2.1 started, then done as a fix is
- * built, its change committed through the door, pushed to the quick-fix's
- * pull request and passed by its pair; round 2 entered, its reads named,
+ * built, its change committed through the door from the quick-fix's
+ * worktree, pushed to the quick-fix's pull request and passed by its pair; round 2 entered, its reads named,
  * every report passing, and recorded; and round 2 passing with a nit
  * instead, its fix task 3.1 written, then built and done.
  * @param {() => string} dir @param {() => Record<string, any>} as
@@ -87,8 +87,8 @@ function reviewSteps(dir, as) {
 
   /** Its answer. */
   function fixTaskDone() {
-    createFile(dir(), 'docs/flag.md', '--colour\n');
-    run(['commit', '--paths', 'docs/flag.md', '--task', UNIT, '2.1', '-m', `fix(${UNIT}): name the flag in the docs`]);
+    createFile(fixTree(dir()), 'docs/flag.md', '--colour\n');
+    ok(fixTree(dir()), ['commit', '--paths', 'docs/flag.md', '--task', UNIT, '2.1', '-m', `fix(${UNIT}): name the flag in the docs`], as());
     run(['land', 'open', UNIT, '2.1']);
     return fixDone(dir(), '2.1', as());
   }
@@ -121,8 +121,8 @@ function reviewSteps(dir, as) {
   /** The nit's fix task 3.1 built as a fix is, and done: its answer. */
   function nitTaskBuilt() {
     run(['task', 'start', UNIT, '3.1']);
-    createFile(dir(), 'src/help.js', 'const help = \'--colour, --colour\';\n');
-    run(['commit', '--paths', 'src/help.js', '--task', UNIT, '3.1', '-m', `fix(${UNIT}): name the flag twice`]);
+    createFile(fixTree(dir()), 'src/help.js', 'const help = \'--colour, --colour\';\n');
+    ok(fixTree(dir()), ['commit', '--paths', 'src/help.js', '--task', UNIT, '3.1', '-m', `fix(${UNIT}): name the flag twice`], as());
     run(['land', 'open', UNIT, '3.1']);
     return fixDone(dir(), '3.1', as());
   }

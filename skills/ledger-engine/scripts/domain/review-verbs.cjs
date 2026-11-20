@@ -46,11 +46,11 @@ const { refuserFor, committed } = require('./task-account.cjs');
 const { unitInProgress } = require('./topic-standing.cjs');
 const { phaseSkill } = require('./handoff.cjs');
 const { reviewHeld } = require('./review-entry.cjs');
-const { reading, reposOf } = require('./phase-checks.cjs');
+const { reading } = require('./phase-checks.cjs');
 const { recordRound, answerNotes } = require('./review-round.cjs');
 const { restoreTree } = require('./review-tree.cjs');
 const {
-  TESTS, openRefusal, everyRead, readsWords, roundReadsPath, takeSnapshot, openSnapshot,
+  TESTS, openRefusal, everyRead, readsWords, roundReadsPath, takeSnapshot, openSnapshot, treeRepos,
 } = require('./review-phase.cjs');
 
 const REVIEW_USAGE = [
@@ -69,7 +69,7 @@ const REVIEW_USAGE = [
  */
 function roundOpen(cwd, unit, said) {
   const at = reading(cwd, unit, refusing(said, () => unitInProgress(cwd, unit)));
-  return { refuse: refuserFor(said), standing: refusing(said, () => reviewHeld(at, openRefusal)), repos: reposOf(at) };
+  return { refuse: refuserFor(said), standing: refusing(said, () => reviewHeld(at, openRefusal)), repos: treeRepos(at) };
 }
 
 /**

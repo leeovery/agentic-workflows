@@ -20,7 +20,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { ok, call, git, createFile } = require('../../scripts/engine-harness.cjs');
-const { UNIT, SET, createFix, fixDone, quickFixNestedConformance, recordFile, checklistClosed } = require('../../scripts/quick-fix-world.cjs');
+const { UNIT, SET, createFix, fixDone, fixTree, quickFixNestedConformance, recordFile, checklistClosed } = require('../../scripts/quick-fix-world.cjs');
 const { github, calls } = require('./world.cjs');
 
 const { as, project, landed } = quickFixNestedConformance('github', 'github-landing-quick-fix-untouched-');
@@ -47,8 +47,8 @@ describe('a nested clone a quick-fix never touches, its host refusing every read
     const { options, log } = unreadable(at.lib, path.dirname(at.dir));
     createFix(at.dir, 1, SET[0].title, options);
     ok(at.dir, ['task', 'start', UNIT, '1.1'], options);
-    createFile(at.dir, SET[0].file, SET[0].text);
-    ok(at.dir, ['commit', '--paths', SET[0].file, '--task', UNIT, '1.1', '-m', `fix(${UNIT}): ${SET[0].title.toLowerCase()}`], options);
+    createFile(fixTree(at.dir), SET[0].file, SET[0].text);
+    ok(fixTree(at.dir), ['commit', '--paths', SET[0].file, '--task', UNIT, '1.1', '-m', `fix(${UNIT}): ${SET[0].title.toLowerCase()}`], options);
     ok(at.dir, ['land', 'open', UNIT, '1.1'], options);
     fixDone(at.dir, '1.1', options);
     ok(at.dir, ['quick-fix', 'record', UNIT, '1.1', '--file', recordFile(at.dir, 1, { changed: 'The flag.', why: 'It was spelt the American way.', leaves: 'Nothing.' })], options);

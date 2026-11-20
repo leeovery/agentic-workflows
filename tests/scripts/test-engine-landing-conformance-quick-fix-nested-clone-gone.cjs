@@ -34,7 +34,7 @@ for (const { name } of listDrivers('landing')) {
     it('lands there at the close from its host\'s copy, the project holding none of it', () => {
       const at = project();
       built(at, 1, { 'lib/lib.txt': 'lib --colour\n' });
-      gone(at.lib, NESTED.lib.into);
+      gone(at, 'lib');
       const close = closed(at);
 
       assert.deepStrictEqual([close.landed.map((/** @type {any} */ { repo, merged }) => [repo, merged]), landed(at), readManifest(at.dir, UNIT).status], [

@@ -3,15 +3,16 @@
 // ---------------------------------------------------------------------------
 // The world the workunit move suites share (test-engine-workunit-move and
 // -move-after): one project built once through the verbs and copied — the
-// quick-fix typo, entered, its fix 1.1 started, committed on its branch and
-// recorded, the project's checkout left there, a finding discovery made for
-// it, a question asked at its place linking an asset, its build's log, and
-// a call for 1.1 citing it; the quick-fix shipped, its pull request opened;
-// the quick-fix begun, its fix 1.1 closed before its commit and 1.2 started
-// with none; the bugfix hunt in its investigation, its log written and a
-// finding citing it; and beside them an epic, a feature, and bugfixes past
-// their spec, concluded and not begun. The knowledge base is keyword-only. And the calls a test makes in
-// its conversation, whose records it keeps in a config folder of its own.
+// quick-fix typo, entered, its fix 1.1 started, committed on its branch in
+// its worktree and recorded, a finding discovery made for it, a question
+// asked at its place linking an asset, its build's log, and a call for 1.1
+// citing it; the quick-fix shipped, its pull request opened; the quick-fix
+// begun, its fix 1.1 closed before its commit and 1.2 started with none;
+// the bugfix hunt in its investigation, its log written and a finding
+// citing it; and beside them an epic, a feature, and bugfixes past their
+// spec, concluded and not begun. The knowledge base is keyword-only. And
+// the calls a test makes in its conversation, whose records it keeps in a
+// config folder of its own.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -58,9 +59,9 @@ const made = { discovered: '', asked: '', settled: '', call: '', found: '' };
 
 /**
  * A quick-fix made from `seed`, entered by a conversation gone since, its
- * fix 1.1 created and started there — putting the checkout on its branch —
- * and its change to `file` committed through the door, where one is named;
- * then `then`, run as that conversation.
+ * fix 1.1 created and started there — laying out its worktree — and its
+ * change to `file` committed through the door from there, where one is
+ * named; then `then`, run as that conversation.
  * @param {string} dir @param {string} unit @param {string} title @param {string|null} file
  * @param {(as: {env: Record<string, string|undefined>}) => void} [then]
  */
@@ -75,8 +76,9 @@ function startedFix(dir, unit, title, file, then = () => {}) {
     ok(dir, ['task', 'create', unit, '1', '--file', writeState(dir, layout.cache(`${unit}-fix.md`), fixFile(1, title))]);
     ok(dir, ['task', 'start', unit, '1.1'], as);
     if (file !== null) {
-      createFile(dir, file, `// ${title}\n`);
-      ok(dir, ['commit', '--paths', file, '--task', unit, '1.1', '-m', `fix(${unit}): ${title.toLowerCase()}`], as);
+      const tree = path.join(dir, '.claude', 'worktrees', `ledger-${unit}`);
+      createFile(tree, file, `// ${title}\n`);
+      ok(tree, ['commit', '--paths', file, '--task', unit, '1.1', '-m', `fix(${unit}): ${title.toLowerCase()}`], as);
     }
     then(as);
   } finally {

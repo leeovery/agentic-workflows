@@ -26,7 +26,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
 const { git, readManifest } = require('./engine-harness.cjs');
-const { UNIT, BRANCH, SET, quickFixNestedConformance } = require('./quick-fix-world.cjs');
+const { UNIT, BRANCH, SET, treeGone, quickFixNestedConformance } = require('./quick-fix-world.cjs');
 const { NESTED } = require('./landing-world.cjs');
 const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
 
@@ -40,8 +40,9 @@ for (const { name } of listDrivers('landing')) {
       const at = project();
       built(at, 1, { 'lib/lib.txt': 'lib --colour\n' });
       merge(at.lib, BRANCH, into);
+      for (const dir of [at.ext, at.lib, at.dir]) treeGone(dir);
       side.deleted(at.lib, BRANCH, into);
-      secondClone(at.lib, into);
+      secondClone(at, 'lib');
       built(at, 2, { [SET[1].file]: SET[1].text });
       const close = closed(at);
 

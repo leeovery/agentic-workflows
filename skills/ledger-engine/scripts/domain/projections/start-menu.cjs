@@ -30,8 +30,8 @@
 // what waits on the person — each unit's count, the verdicts, the inbox
 // where it holds anything — and that the menu is one `/ledger` away, a
 // finish's opening on the work done, a cancel's after its own receipt
-// (`endedReceipt`). A quick-fix's close says only the branch its checkout
-// is back on (`backOnReceipt`).
+// (`endedReceipt`). A quick-fix's close says only where a branch here
+// stands behind what it landed, and how to bring it up (`behindReceipt`).
 // ---------------------------------------------------------------------------
 
 const { PRODUCT } = require('../../kernel/manifest-schema.cjs');
@@ -209,9 +209,19 @@ function endedReceipt(opening, read) {
   return section('DISPLAY: ended', timedInstruction('markdown', 'after the response'), [...(opening === null ? [] : [opening]), waiting, ...inbox, 'The menu is one `/ledger` away.'].join(' '));
 }
 
-/** The line a quick-fix's close says: the branch the checkout is back on. @param {string} branch @returns {string} */
-function backOnReceipt(branch) {
-  return section('DISPLAY: ended', timedInstruction('markdown', 'after the response'), `The checkout is back on \`${branch}\`.`);
+/**
+ * The line a quick-fix's close says where its landing left a branch here
+ * behind what it landed, its checkout's changes in the way: for each, its
+ * repository where it is nested, and the host's branch a fast-forward to
+ * which brings it up.
+ * @param {{repo: string, into: string, behind: string}[]} behind @returns {string}
+ */
+function behindReceipt(behind) {
+  const lines = behind.map(({ repo, into, behind: theirs }) => {
+    const where = repo === '.' ? '' : ` in ${repo}`;
+    return `\`${into}\`${where} is behind what landed: its checkout holds changes the landing touches, so it was not moved. Once they are committed or set aside, \`git merge --ff-only ${theirs}\` there brings it up.`;
+  });
+  return section('DISPLAY: ended', timedInstruction('markdown', 'after the response'), lines.join('\n'));
 }
 
-module.exports = { typeRank, listed, startMenuScreen, startMenuSurface, endedReceipt, backOnReceipt };
+module.exports = { typeRank, listed, startMenuScreen, startMenuSurface, endedReceipt, behindReceipt };

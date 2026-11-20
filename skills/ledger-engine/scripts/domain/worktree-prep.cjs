@@ -57,7 +57,8 @@
 //
 // The engine lays its own worktrees out beside Claude Code's, in
 // `.claude/worktrees/` of the main checkout, each named `ledger-…` — the
-// mutation run's and each reader's scratch (project-layout.cjs). Where the
+// mutation run's, each reader's scratch (project-layout.cjs) and a
+// quick-fix's worktree (fix-branch.cjs). Where the
 // project does not ignore that folder, git names each untracked in the
 // project's own checkout; none is ever the person's change, so every read
 // of what the checkout holds passes over them (`codeChanges`).

@@ -4,10 +4,11 @@
 // Domain ring: work-unit lifecycle transitions — complete (finish's, run in
 // process), cancel, reactivate, and pivot, each a single transaction from the
 // caller's perspective: manifest write, knowledge-base sync, scoped commit.
-// A cancel leaves the unit's code first (18.3.9): a quick-fix's checkout
-// taken back as its move takes it (fix-leave.cjs), and every pull request
-// open on the unit's branches closed, the branches kept under their own
-// names, so a reactivate finds them there (landing.cjs, `cancelClose`).
+// A cancel leaves the unit's code first (18.3.9): a quick-fix's worktree
+// taken apart as its move takes it apart (fix-leave.cjs), and every pull
+// request open on the unit's branches closed, the branches kept under
+// their own names, so a reactivate finds them there (landing.cjs,
+// `cancelClose`).
 // A completed unit, of any type, is never reopened: it stays finished, and
 // a later change to it is new work (`finishedRefusal`) — reactivate takes a
 // cancelled unit alone, and cancel and pivot refuse a completed one.
@@ -44,7 +45,7 @@ const { unitOpenRecords, quickFixBuild, fixesBegun } = require('./derivations.cj
 const { assertBeforeSpec } = require('./spec-standing.cjs');
 const { abandonExperiments } = require('./transitions.cjs');
 const { cancelClose } = require('./landing.cjs');
-const { leaveCheckout } = require('./fix-leave.cjs');
+const { leaveWorktree } = require('./fix-leave.cjs');
 
 const { recordClosed, nextCancel } = require('./cancel-closed.cjs');
 
@@ -77,7 +78,6 @@ function assertLegalStatus(status) {
  * @property {string[]} [inbox] cancel: each waiting message's idea in the inbox, absolute
  * @property {{topic: string, ids: string[]}[]} [abandoned] cancel: each topic's experiment records it ended abandoned
  * @property {boolean} [pull_requests_closed] cancel: whether it closed any pull request open on the unit's branches
- * @property {string} [checkout] cancel: the branch it took a quick-fix's checkout back to, where it had the quick-fix's out
  * @property {string[]} [roadmap_rejoined] reactivate: the roadmap items its cancel put back, taken back
  * @property {string[]} [roadmap_stayed] reactivate: those other work took meanwhile, or archived, left where they are
  */
@@ -134,8 +134,8 @@ function abandonUnitExperiments(manifest) {
 
 /**
  * The unit's code left as its cancel leaves it (18.3.9): a quick-fix's
- * checkout left as its move leaves it, the holder's work not committed set
- * aside and each checkout taken back (fix-leave.cjs); then every pull
+ * worktree left as its move leaves it, the holder's work not committed set
+ * aside and the worktree taken apart (fix-leave.cjs); then every pull
  * request open on the unit's branches closed, in each repository it
  * touched, the branches kept under their own names (`cancelClose`,
  * landing.cjs), each the host names recorded on the loaded manifest as it
@@ -145,11 +145,10 @@ function abandonUnitExperiments(manifest) {
  * @param {string} cwd @param {Record<string, any>} manifest
  */
 function leaveCode(cwd, manifest) {
-  const checkout = quickFixBuild(manifest) && fixesBegun(manifest) ? leaveCheckout(cwd, manifest, 'workunit cancel', 'cancel') : null;
+  if (quickFixBuild(manifest) && fixesBegun(manifest)) leaveWorktree(cwd, manifest, 'workunit cancel', 'cancel');
   let told = 0;
   try {
     return {
-      checkout,
       ...cancelClose(cwd, manifest.name, (repo, name) => {
         recordClosed(manifest, repo, name);
         told += 1;
@@ -168,8 +167,8 @@ function keepClosed(cwd, manifest) {
 }
 
 /**
- * Cancel a work unit: its code left first — a quick-fix's checkout taken
- * back, the holder's work set aside, and every pull request open on its
+ * Cancel a work unit: its code left first — a quick-fix's worktree taken
+ * apart, the holder's work set aside, and every pull request open on its
  * branches closed, the branches kept, those the host names recorded
  * (`leaveCode`, 18.3.9) — then `status: cancelled`, its open experiments
  * ended abandoned, every roadmap item joined to it put back with the joins
@@ -214,7 +213,6 @@ function cancelWorkUnit(cwd, workUnit) {
   const outcome = commitStateTail(cwd, specs, `ledger(${workUnit}): mark as cancelled`, warnings);
   /** @type {WorkUnitLifecycleResult} */
   const result = { work_unit: workUnit, status: 'cancelled', inbox: mail.map(({ idea }) => statePath(cwd, idea)), pull_requests_closed: left.closed, committed: outcome.committed, warnings };
-  if (left.checkout !== null) result.checkout = left.checkout;
   if (reverted.length > 0) result.roadmap_reverted = reverted;
   if (gone.length > 0) result.roadmap_horizon_gone = gone;
   if (abandoned.length > 0) result.abandoned = abandoned;

@@ -34,6 +34,7 @@ const { startMenuRead } = require(path.join(ROOT, 'skills/ledger-engine/scripts/
 const { skillAt } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/position.cjs'));
 const { HANDOFF_TARGETS } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/handoff.cjs'));
 const { SHOWN, RAISE_SHOWN } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/gate.cjs'));
+const { layoutsFolder, layoutFolderName } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/project-layout.cjs'));
 const { initRepo, fixtureFrom, cleanupFixture, git, stateGit, withEnv, screenOf, stampBooted } = require('./engine-harness.cjs');
 const { BOOTED } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/user-files.cjs'));
 const { briefPath } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/brief-names.cjs'));
@@ -1514,9 +1515,14 @@ function taskBuilt(sim, wu, task, tree, files, setup, { gated = false, note, acc
   return banked;
 }
 
+// A quick-fix's worktree, where its fixes are built, laid out by its first
+// fix's start (fix-branch.cjs).
+/** @param {Sim} sim @param {string} wu */
+const fixTree = (sim, wu) => path.join(layoutsFolder(sim.dir), layoutFolderName(wu));
+
 // A quick-fix's task, started, as its skill builds it through the task loop
 // (19.5.4, 19.5.20, 19.5.22): its builder briefed, `files` committed through
-// the door in the project's own checkout and pushed to the quick-fix's one
+// the door in the quick-fix's worktree and pushed to the quick-fix's one
 // pull request, its pair passing it, its short record written where `record`
 // says what changed, its account written once its builder's brief again says
 // it landed, and taken, pushed again and done. Answers the done.
@@ -1527,8 +1533,9 @@ function taskBuilt(sim, wu, task, tree, files, setup, { gated = false, note, acc
  */
 function fixBuilt(sim, wu, task, files, { record } = {}) {
   sim.run(['brief', 'builder', wu, task]);
-  for (const file of files) sim.write(file, '--colour\n');
-  sim.run(['commit', '--paths', ...files, '--task', wu, task, '-m', `fix(${wu}): task ${task}`]);
+  const tree = fixTree(sim, wu);
+  for (const file of files) sim.write(path.join(tree, file), '--colour\n');
+  sim.runIn(tree, ['commit', '--paths', ...files, '--task', wu, task, '-m', `fix(${wu}): task ${task}`]);
   sim.run(['land', 'open', wu, task]);
   for (const letter of ['a', 'b']) landed(placeIn(sim, sim.run(['brief', 'reviewer', wu, task, '--letter', letter]), 'Where your report goes'), PASSED_REPORT);
   if (record !== undefined) {
@@ -1879,5 +1886,5 @@ function finished(sim, wu, { closed = false } = {}) {
 module.exports = {
   Sim, worldFrom, worlds, readyForSim, shownRows, SPEC_TO_BUILD_UNIT, CUT_CLOSED_UNIT, sessionLog, handoffEntry, enterEntry, labEntry, specEntry, handoff, answerGate, typeAtGate, gatesAnswered, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, roadmapMenu, pullFromRoadmap, decideTopic, discussed, askedOn,
   investigationCache, rootCaused, reported, validated, fixDirected, concluded, investigated, startMenu, startPick, continueUnit, continueInto, startRow, backToStart, startNew, startBare, startWith, arrive, send, mappedEpic, continueEpic, menuEntry, epicMenuAt, arriveAtEpicMenu, epicMenuLooked, epicRow, epicSetAside, epicPick, epicBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, triagePick, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, passTakenIn, passSurfaced, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed, handoffBy, follow,
-  DECIDED_ITEMS, specWritten, specLanded, specBuilt, readyClosed, builders, taskBuilt, fixBuilt, builtAside, firstPhaseBuilt, cutClosed, areaRead, testsRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, reviewCall, strayRound, finishClosed, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic, wentAheadBlind, pickedRow,
+  DECIDED_ITEMS, specWritten, specLanded, specBuilt, readyClosed, builders, taskBuilt, fixTree, fixBuilt, builtAside, firstPhaseBuilt, cutClosed, areaRead, testsRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, reviewCall, strayRound, finishClosed, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic, wentAheadBlind, pickedRow,
 };

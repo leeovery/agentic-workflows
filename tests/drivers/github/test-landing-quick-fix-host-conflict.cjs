@@ -22,7 +22,7 @@ const assert = require('node:assert');
 
 const harness = require('../../scripts/engine-harness.cjs');
 const { useTempFolder } = require('../../scripts/discovery-test-utils.cjs');
-const { UNIT, BRANCH, SET, fixChanged, fixDone, twoFixesBuilt, fixesRecorded, guardedGit } = require('../../scripts/quick-fix-world.cjs');
+const { UNIT, BRANCH, SET, fixChanged, fixDone, twoFixesBuilt, fixesRecorded, guardedGit, fixTree } = require('../../scripts/quick-fix-world.cjs');
 const side = require('./landing.cjs');
 const { GH_ENV, bareOf, madeOnGithub } = require('./world.cjs');
 const lg = require('../../../skills/ledger-engine/scripts/domain/landing-git.cjs');
@@ -48,14 +48,14 @@ describe('a quick-fix\'s branch conflicting with GitHub\'s copy (R15, N1)', () =
     dir = world();
     fixChanged(dir, 3, SET[2].title, SET[2].file, SET[2].text, as());
     const suggestion = lg.short(madeOnGithub(dir, BRANCH, { [SET[0].file]: SUGGESTED }, `Update ${SET[0].file}`));
-    createFile(dir, SET[0].file, 'const flag = \'colour\'; // reworked\n');
-    ok(dir, ['commit', '--paths', SET[0].file, '--task', UNIT, '1.3', '-m', `fix(${UNIT}): rework the flag`], as());
+    createFile(fixTree(dir), SET[0].file, 'const flag = \'colour\'; // reworked\n');
+    ok(fixTree(dir), ['commit', '--paths', SET[0].file, '--task', UNIT, '1.3', '-m', `fix(${UNIT}): rework the flag`], as());
     const refusal = refuses(dir, ['land', 'open', UNIT, '1.3'], as()).error;
     try {
-      guardedGit(dir, ['merge', '--no-ff', '--no-commit', suggestion], as());
+      guardedGit(fixTree(dir), ['merge', '--no-ff', '--no-commit', suggestion], as());
     } catch { /* the conflict the refusal names, settled below */ }
-    createFile(dir, SET[0].file, SETTLED);
-    ok(dir, ['commit', '--paths', SET[0].file, '--task', UNIT, '1.3', '-m', `fix(${UNIT}): take the suggestion`], as());
+    createFile(fixTree(dir), SET[0].file, SETTLED);
+    ok(fixTree(dir), ['commit', '--paths', SET[0].file, '--task', UNIT, '1.3', '-m', `fix(${UNIT}): take the suggestion`], as());
     ok(dir, ['land', 'open', UNIT, '1.3'], as());
     fixDone(dir, '1.3', as());
     fixesRecorded(dir, 3, as());

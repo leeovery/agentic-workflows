@@ -10,11 +10,13 @@
 // A quick-fix is built by its own arm of the row (below), wherever
 // `quickFixBuild` says it is one (derivations.cjs). The entry refuses,
 // before anything else, a unit whose build has not begun, ready to build's
-// yes beginning it (11.8.3). Another
-// session holding the checkout's code stops it with the code gate alone,
-// nothing written, and `--take` enters all the same (12.7.8) — the refusals
-// and the gate the review phase's entry makes too (review-entry.cjs). It starts
-// nothing and names no log of the conversation's: the build's log is
+// yes beginning it (11.8.3). Another session holding the checkout's code
+// stops it with the code gate alone, nothing written, and `--take` enters
+// all the same (12.7.8) — but a quick-fix's, built in a worktree of its own
+// (fix-branch.cjs), which neither stops at the gate nor holds the
+// checkout's code (presence.cjs) — the refusals and the gate the review
+// phase's entry makes too (review-entry.cjs). It starts nothing and names
+// no log of the conversation's: the build's log is
 // Claude's to append as it goes (12.2.1), a log of the layout's, which
 // every state commit carries. As the conversation arrives — here, or at the
 // review phase's entry, whose fix tasks the same loop builds (14.3.2) —
@@ -105,10 +107,10 @@
 // first (7.2.4), so the review phase is next only once none waits there
 // (`mergeWaiting`, phase-checks.cjs).
 //
-// A quick-fix's arm (19.5.1–19.5.5, E2, E4) is entered as the row is, the
-// code gate first (12.7.8, 19.5.18), with no cut, no ready to build and no
-// position: its build is its one phase, the fixes, each fix its own task,
-// which the arm starts — the phase written into the tracker where it is
+// A quick-fix's arm (19.5.1–19.5.5, E2, E4) is entered as the row is, with
+// no code gate, no cut, no ready to build and no position: its build is its
+// one phase, the fixes, each fix its own task, which the arm starts — the
+// phase written into the tracker where it is
 // missing, the tracker's verb committing it, and the fixes' beginning
 // recorded on the manifest (`fixesBegun`), which the entry commits and the
 // phase's status reads — and the review's fixes, asked for at its close,
@@ -472,7 +474,7 @@ function afreshWords(cwd, session, unit, task) {
   const goes = roundWords(cwd, session, ref);
   const held = ofQuickFix(cwd, unit) ? heldAside(cwd, ref) : [];
   if (held.length === 0) return goes;
-  return `its work, set aside ${held[0].why}, is not back in the checkout — start it again, engine task start ${unit} ${task}, which puts it back, then ${goes}`;
+  return `its work, set aside ${held[0].why}, is not back in its worktree — start it again, engine task start ${unit} ${task}, which puts it back, then ${goes}`;
 }
 
 /**
@@ -762,9 +764,11 @@ function beginFixes(cwd, unit) {
 /**
  * The code gate, where another session holds the checkout's code (12.7.8):
  * back to the epic's menu, or carrying on; the entry again with `--take`.
+ * None for a quick-fix, built in a worktree of its own (the header's).
  * @param {Standing} at @param {HeldWays} ways @returns {string|null}
  */
-function codeHeld({ cwd }, { take, menu }) {
+function codeHeld({ cwd, manifest }, { take, menu }) {
+  if (quickFixBuild(manifest)) return null;
   const holders = heldCodeSessions(cwd);
   if (holders.length === 0) return null;
   return codeGate(holders, {
@@ -777,7 +781,6 @@ function codeHeld({ cwd }, { take, menu }) {
 const QUICK_FIX = Object.freeze({
   level: /** @type {const} */ ('unit'),
   standing: () => null,
-  held: codeHeld,
   unstarted: ({ manifest }) => !fixesBegun(manifest),
   start: beginFixes,
   readies: firstSteps,

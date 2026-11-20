@@ -34,7 +34,7 @@ for (const { name } of listDrivers('landing')) {
     it('lands both shares at the close, the clone\'s branch readied from its host\'s copy, children first', () => {
       const at = project();
       built(at, 1, { [SET[0].file]: SET[0].text, 'lib/lib.txt': 'lib --colour\n' });
-      gone(at.lib, NESTED.lib.into);
+      gone(at, 'lib');
       const close = closed(at);
 
       assert.deepStrictEqual([close.landed.map((/** @type {any} */ { repo, merged }) => [repo, merged]), landed(at)], [

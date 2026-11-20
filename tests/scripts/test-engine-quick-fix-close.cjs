@@ -42,7 +42,7 @@ const {
 } = require('./engine-harness.cjs');
 const { ledgerReadHelpers, ledgerHelpers } = require('./ledger-world.cjs');
 const {
-  UNIT, PLACE, FLAG, HELP, RECORDS, quickFix, createFix, fixBuilt, fixDone, recordFile, checklistClosed, asGone, entered,
+  UNIT, PLACE, FLAG, HELP, RECORDS, quickFix, createFix, fixBuilt, fixDone, fixTree, recordFile, checklistClosed, asGone, entered,
 } = require('./quick-fix-world.cjs');
 const { RAISED, world, closeHelpers } = require('./quick-fix-close-world.cjs');
 
@@ -69,16 +69,16 @@ const provenWorld = fixtureFrom('quick-fix-close-proven-', (dir) => {
     entered(dir, as);
     createFix(dir, 1, FLAG, as);
     ok(dir, ['task', 'start', UNIT, '1.1'], as);
-    createFile(dir, 'src/flag.js', 'const flag = \'colour\';\n');
-    createFile(dir, 'verify/features.md', '# Features\n');
-    createFile(dir, 'verify/drive.sh', '#!/bin/sh\nprintf "pass\\n" > "$LEDGER_RUN/verdict"\n');
-    fs.chmodSync(path.join(dir, 'verify', 'drive.sh'), 0o755);
-    ok(dir, ['commit', '--paths', 'src/flag.js', 'verify/features.md', 'verify/drive.sh', '--task', UNIT, '1.1', '-m', `fix(${UNIT}): ${FLAG}`], as);
+    createFile(fixTree(dir), 'src/flag.js', 'const flag = \'colour\';\n');
+    createFile(fixTree(dir), 'verify/features.md', '# Features\n');
+    createFile(fixTree(dir), 'verify/drive.sh', '#!/bin/sh\nprintf "pass\\n" > "$LEDGER_RUN/verdict"\n');
+    fs.chmodSync(path.join(fixTree(dir), 'verify', 'drive.sh'), 0o755);
+    ok(fixTree(dir), ['commit', '--paths', 'src/flag.js', 'verify/features.md', 'verify/drive.sh', '--task', UNIT, '1.1', '-m', `fix(${UNIT}): ${FLAG}`], as);
     const setup = writeState(dir, layout.cache('verify-setup.json'), JSON.stringify({
       place: 'verify', feature_map: 'verify/features.md', launch: 'true', health: 'true', drive: 'verify/drive.sh', evidence: 'true', cleanup: 'true',
     }));
-    ok(dir, ['verify', 'setup', UNIT, '--file', setup, '--scenario', '1.S1'], as);
-    ok(dir, ['verify', 'run', UNIT, '1.S1'], as);
+    ok(fixTree(dir), ['verify', 'setup', UNIT, '--file', setup, '--scenario', '1.S1'], as);
+    ok(fixTree(dir), ['verify', 'run', UNIT, '1.S1'], as);
     ok(dir, ['land', 'open', UNIT, '1.1'], as);
     fixDone(dir, '1.1', as);
     fixBuilt(dir, 2, HELP, 'src/help.js', 'const help = \'--colour\';\n', as);
@@ -219,8 +219,8 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
     dir = world();
     createFix(dir, 3, DOCS, as());
     run(['task', 'start', UNIT, '1.3']);
-    createFile(dir, 'docs/flag.md', '--colour\n');
-    run(['commit', '--paths', 'docs/flag.md', '--task', UNIT, '1.3', '-m', `fix(${UNIT}): spell the docs --colour`]);
+    createFile(fixTree(dir), 'docs/flag.md', '--colour\n');
+    ok(fixTree(dir), ['commit', '--paths', 'docs/flag.md', '--task', UNIT, '1.3', '-m', `fix(${UNIT}): spell the docs --colour`], as());
     run(['land', 'open', UNIT, '1.3']);
     for (const letter of REVIEWER_LETTERS) writeState(dir, roundReportPath({ unit: UNIT, phase: 1, n: 3 }, 1, letter), FAILED);
     run(['task', 'settle', UNIT, '1.3', '--file', writeState(dir, layout.cache('why.md'), 'The docs are generated: the finding is the generator\'s.\n')]);
@@ -235,8 +235,8 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
     dir = world();
     run(['task', 'create', UNIT, '1', '--title', DOCS, '--type', 'fix', '--why', 'one word, nothing for a reviewer to read']);
     run(['task', 'start', UNIT, '1.3']);
-    createFile(dir, 'docs/flag.md', '--colour\n');
-    run(['commit', '--paths', 'docs/flag.md', '--task', UNIT, '1.3', '-m', `fix(${UNIT}): spell the docs --colour`]);
+    createFile(fixTree(dir), 'docs/flag.md', '--colour\n');
+    ok(fixTree(dir), ['commit', '--paths', 'docs/flag.md', '--task', UNIT, '1.3', '-m', `fix(${UNIT}): spell the docs --colour`], as());
     run(['land', 'open', UNIT, '1.3']);
     run(['task', 'done', UNIT, '1.3']);
     run(['quick-fix', 'record', UNIT, '1.3', '--file', recordFile(dir, 3, RECORDS[1])]);

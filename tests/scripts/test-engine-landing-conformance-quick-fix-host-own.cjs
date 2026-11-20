@@ -22,7 +22,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
 const { ok, git } = require('./engine-harness.cjs');
-const { UNIT, DESCRIPTION, BRANCH, createFix, fixDone, ownCommit, quickFixConformance } = require('./quick-fix-world.cjs');
+const { UNIT, DESCRIPTION, BRANCH, createFix, fixDone, fixTree, ownCommit, quickFixConformance } = require('./quick-fix-world.cjs');
 const { HELP, steps } = require('./quick-fix-by-hand.cjs');
 const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
 
@@ -39,7 +39,7 @@ for (const { name } of listDrivers('landing')) {
       const at = project();
       built(at, 1);
       merge(at, BRANCH);
-      ownCommit(at, MINE);
+      ownCommit(fixTree(at), MINE);
       const before = git(at, ['rev-parse', '--short', BRANCH]).trim();
       createFix(at, 2, HELP.title, as());
       const start = ok(at, ['task', 'start', UNIT, '1.2'], as());

@@ -127,10 +127,8 @@ describe('19.S23: the review asked for runs over the quick-fix\'s record and its
 
   it('a merge by hand of the fixes before the review\'s fix task lands leaves the close\'s yes merging its pull request, the fix task still to land', () => {
     dir = world();
-    git(dir, ['switch', '-q', 'main']);
     git(dir, ['merge', '-q', '--squash', BRANCH]);
     git(dir, ['commit', '-q', '-m', 'Spell it the British way']);
-    git(dir, ['switch', '-q', BRANCH]);
     firstRoundFailed();
     fixTaskBuilt();
     secondRoundPassed();

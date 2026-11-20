@@ -85,7 +85,7 @@
 // branch, made where the task is built on or checked out as it stands, and
 // each prepared as Claude Code prepares an isolation worktree; laid out
 // already, it is answered so; refused for a quick-fix's, made in the
-// project's checkout as its fixes are. As the task ends, that layout is
+// quick-fix's worktree as its fixes are. As the task ends, that layout is
 // taken apart whole, refused first where it holds changes not committed.
 //
 // A task started again — after a `/clear`, in a new conversation and a new
@@ -448,7 +448,7 @@ const oneLineTop = (own, ref) => scratchTop(own, `${ref.unit}-${shownTask(ref)}`
  * @param {string} cwd @param {TaskRef} ref @param {() => TaskDetail & {committed?: string|null, warnings?: string[]}} read @param {string} session
  */
 function laidOutOneLine(cwd, ref, read, session) {
-  if (require('./task-base.cjs').ofQuickFix(cwd, ref.unit)) throw refusal(`${taskName(ref)} is a quick-fix's one-line fix — make it in the project's checkout, on the quick-fix's one branch, as its fixes are`);
+  if (require('./task-base.cjs').ofQuickFix(cwd, ref.unit)) throw refusal(`${taskName(ref)} is a quick-fix's one-line fix — make it in the quick-fix's worktree, ${require('./fix-branch.cjs').fixWorktree(cwd, ref.unit).root}, as its fixes are`);
   const { committed, warnings, type, title } = read();
   const branch = taskBranch(ref, /** @type {string} */ (type), title);
   const project = lg.projectCheckout(fs.realpathSync(codeRoot(cwd)));

@@ -28,11 +28,11 @@ Pivot and absorb are open only while the feature is before its specification, an
 - a message waiting for one of its topics goes to the inbox, as an idea;
 - each roadmap item it was started from goes back to waiting;
 - every pull request open on its branches is closed, in every repository it touched, and every branch is kept under its own name;
-- for a quick-fix, the work its fix in hand had not committed is set aside, and the checkout is taken back off its branch.
+- for a quick-fix, the work its fix in hand had not committed is set aside, and its worktree is taken apart.
 
 Nothing is lost. The branches and the work set aside wait for you, and the receipt says how to see each, bring it back or drop it. Cancelled from inside the work, no menu follows: but for a quick-fix, which carries on as its close does, a line says what waits on you, with the menu one `/ledger` away. A cancel that stops part way, with the code host out of reach, keeps a record of what it did: say yes to it again once the host answers.
 
-**Reactivate** brings cancelled work back from manage, in progress again where it stood. Its decisions return to the knowledge base, and each roadmap item its cancel put back is taken again where it still waits; the receipt says where one stays. An experiment the cancel ended stays abandoned. The pull requests it closed stay closed: the next landing opens again what it needs, and a quick-fix's next fix puts the checkout back on its branch and brings back the work its cancel set aside.
+**Reactivate** brings cancelled work back from manage, in progress again where it stood. Its decisions return to the knowledge base, and each roadmap item its cancel put back is taken again where it still waits; the receipt says where one stays. An experiment the cancel ended stays abandoned. The pull requests it closed stay closed: the next landing opens again what it needs, and a quick-fix's next fix lays its worktree out again and brings back the work its cancel set aside.
 
 ## An epic's topics
 
@@ -55,7 +55,7 @@ Most moves are open whenever you want them. A few wait on something, by design, 
 - **A topic cannot close while mail waits**: a message another topic sent it is raised first.
 - **An investigation closes** only once its root cause and its fix both stand validated.
 - **A build phase** waits for every phase it relies on to merge, and the build's first phase cannot close until the product can be run and driven.
-- **Code takes turns.** A build, the review phase and a quick-fix run one at a time in the project's checkout, whichever piece of work each belongs to; entering one while another session holds the code names that session and asks before going on.
+- **Code takes turns.** A build and the review phase run one at a time in the project's checkout, whichever piece of work each belongs to; entering one while another session holds the code names that session and asks before going on. A quick-fix, built in a worktree of its own, waits on neither.
 - **A driver never changes under a build**, so manage changes one only while no build is in flight.
 
 A refusal always says what holds the move and the way on.

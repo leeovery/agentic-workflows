@@ -106,9 +106,8 @@
 //                  it was started in, laid out by `task worktree` for the
 //                  task — with scratch-layout's words on the steps where
 //                  the project has steps for each worktree, a step failing
-//                  stopping the builder — a quick-fix's task, the project's
-//                  own checkout, on the quick-fix's one branch
-//                  (fix-branch.cjs)
+//                  stopping the builder — a quick-fix's task, the
+//                  quick-fix's worktree, on its one branch (fix-branch.cjs)
 //   setup-to       where the builder writes the verify setup its task
 //                  builds or changes, for `verify setup --file`: the
 //                  unit's `.cache/{unit}/build/verify-setup.json`, outside
@@ -657,6 +656,7 @@ const { reviewHeld } = require('./review-entry.cjs');
 const { reading, reposOf } = require('./phase-checks.cjs');
 const { changeOf, changeTips, workBelow } = require('./review-change.cjs');
 const { fixAcceptance, fixScenarios, fixNamed } = require('./fix-acceptance.cjs');
+const { fixWorktree } = require('./fix-branch.cjs');
 const { summaryFile } = require('./knowledge/artifacts.cjs');
 const { CARRY_VERB, DRY_RUN, topicPlace, placePath, recordName, composedPath, findingsPath, rulingsPath, handbackPath, handedBack, checkedPath, noteVerifying, briefedOn, lastVerdicts, uncheckedRound, lastRound, keepRound, keepRecordRound, besideFindings, refusedPath, roundsPath, settledPath } = require('./ledger-carry.cjs');
 const { entryHashes, entriesHeld, pastOf, markedSheet, pieceChanges, pieceVerified, notePiece } = require('./later-rounds.cjs');
@@ -2602,19 +2602,19 @@ function taskLetterOf(filling) {
 /**
  * Where the builder builds the task, runs it and commits it: a worktree of
  * its own, laid out on the task's branch by `task worktree`; a quick-fix's
- * task, the project's own checkout, which the task's start put on the
- * quick-fix's one branch (fix-branch.cjs, 19.5.15).
+ * task, the quick-fix's worktree, which the task's start laid out on its
+ * one branch (fix-branch.cjs, 19.5.15).
  * @param {Filling} filling
  */
 function drawWorkplace(filling) {
   const { ref } = taskOf(filling);
   if (ofQuickFixTask(filling)) {
-    return `Build in the project's own checkout, \`${codeRoot(filling.cwd)}\`, which the task's start put on ${ref.unit}'s one branch, \`${quickFixBranch(ref.unit)}\` — never in a worktree of your own, and run every command from there. Build, run and commit only there.`;
+    return `Build in ${ref.unit}'s worktree, \`${fixWorktree(filling.cwd, ref.unit).root}\`, which the task's start laid out on its one branch, \`${quickFixBranch(ref.unit)}\` — never in a worktree of your own, and run every command from there. Build, run and commit only there.`;
   }
   return `Before anything else, lay the task out in the worktree you were started in: from its root, run the engine's \`task worktree ${ref.unit} ${shownTask(ref)}\`. It puts the worktree, and every repository nested in it, on the task's branch.${stepsRunning(filling.cwd, 'the person\'s: stop and report it, status `stopped`')} Build, run and commit only there.`;
 }
 
-/** Whether the task's brief is a quick-fix's, its task built on the quick-fix's one branch in the project's own checkout. @param {Filling} filling */
+/** Whether the task's brief is a quick-fix's, its task built on the quick-fix's one branch in its worktree. @param {Filling} filling */
 const ofQuickFixTask = (filling) => quickFixBuild(/** @type {Record<string, any>} */ (manifestOf(stateRoot(filling.cwd), taskOf(filling).ref.unit)));
 
 /** @returns {string} */

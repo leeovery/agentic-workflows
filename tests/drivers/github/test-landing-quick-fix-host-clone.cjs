@@ -21,7 +21,7 @@ const assert = require('node:assert');
 
 const harness = require('../../scripts/engine-harness.cjs');
 const { useTempFolder } = require('../../scripts/discovery-test-utils.cjs');
-const { UNIT, BRANCH, SET, fixChanged, fixDone, twoFixesBuilt, fixesRecorded } = require('../../scripts/quick-fix-world.cjs');
+const { UNIT, BRANCH, SET, fixChanged, fixDone, twoFixesBuilt, fixesRecorded, treeGone } = require('../../scripts/quick-fix-world.cjs');
 const side = require('./landing.cjs');
 const { GH_ENV, bareOf, tipOnGithub, madeOnGithub } = require('./world.cjs');
 const lg = require('../../../skills/ledger-engine/scripts/domain/landing-git.cjs');
@@ -53,10 +53,10 @@ function closedWithThird() {
 }
 
 describe('a quick-fix\'s branch as GitHub has it, where this checkout lacks it or it moves after the read (R15)', () => {
-  it('a second clone, which never had the branch, takes GitHub\'s as it stands at its first start, main there moved on since, so the close lands every fix in the pull request', () => {
+  it('a second clone, which never had the branch nor the worktree, takes GitHub\'s as it stands at its first start, main there moved on since, so the close lands every fix in the pull request', () => {
     dir = world();
     madeOnGithub(dir, 'main', { 'src/other.js': 'const other = 1;\n' }, 'Another change');
-    git(dir, ['switch', '-q', 'main']);
+    treeGone(dir);
     git(dir, ['branch', '-q', '-D', BRANCH]);
     git(dir, ['update-ref', '-d', `refs/remotes/origin/${BRANCH}`]);
     const host = tipOnGithub(dir, BRANCH);

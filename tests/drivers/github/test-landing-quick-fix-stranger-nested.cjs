@@ -21,7 +21,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
 const { ok, refuses, createFile } = require('../../scripts/engine-harness.cjs');
-const { UNIT, BRANCH, SET, createFix, quickFixNestedConformance } = require('../../scripts/quick-fix-world.cjs');
+const { UNIT, BRANCH, SET, createFix, fixTree, quickFixNestedConformance } = require('../../scripts/quick-fix-world.cjs');
 const { NESTED } = require('../../scripts/landing-world.cjs');
 const { github, strangerPull, branchDeleted } = require('./world.cjs');
 
@@ -49,8 +49,8 @@ describe('what on GitHub is a quick-fix\'s, in a nested clone it touches (R18)',
     const number = strangerPull(at.lib, { ...OLD, message: `Fix an old typo\n\nLedger-Task: ${ID}` });
     createFix(at.dir, 1, SET[0].title, as());
     ok(at.dir, ['task', 'start', UNIT, '1.1'], as());
-    createFile(at.dir, 'lib/lib.txt', LIB['lib/lib.txt']);
-    ok(at.dir, ['commit', '--paths', 'lib/lib.txt', '--task', UNIT, '1.1', '-m', `fix(${UNIT}): ${SET[0].title.toLowerCase()}`], as());
+    createFile(fixTree(at.dir), 'lib/lib.txt', LIB['lib/lib.txt']);
+    ok(fixTree(at.dir), ['commit', '--paths', 'lib/lib.txt', '--task', UNIT, '1.1', '-m', `fix(${UNIT}): ${SET[0].title.toLowerCase()}`], as());
     const refusal = refuses(at.dir, ['land', 'open', UNIT, '1.1'], as()).error;
     branchDeleted(at.lib, number);
     ok(at.dir, ['land', 'open', UNIT, '1.1'], as());

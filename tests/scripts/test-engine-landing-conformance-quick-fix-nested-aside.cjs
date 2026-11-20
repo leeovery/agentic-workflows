@@ -31,7 +31,7 @@ const {
   ok, okSections, git, createFile, commitCode, withEnv,
 } = require('./engine-harness.cjs');
 const {
-  UNIT, HELP, BRANCH, createFix, fixDone, accountFigures, parkedOn, quickFixNestedConformance,
+  UNIT, HELP, BRANCH, createFix, fixDone, fixTree, accountFigures, parkedOn, quickFixNestedConformance,
 } = require('./quick-fix-world.cjs');
 const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
 
@@ -53,17 +53,17 @@ for (const { name } of listDrivers('landing')) {
   /** A call that must succeed. @param {import('./quick-fix-world.cjs').NestedQuickFix} at @param {string[]} args */
   const run = (at, args) => ok(at.dir, args, as());
 
-  /** `files` committed through the door for `task`, from the project. @param {import('./quick-fix-world.cjs').NestedQuickFix} at @param {string} task @param {string[]} files @param {string} subject */
-  const committed = (at, task, files, subject) => run(at, ['commit', '--paths', ...files, '--task', UNIT, task, '-m', `fix(${UNIT}): ${subject}`]);
+  /** `files` committed through the door for `task`, from the project's folder in the quick-fix's worktree. @param {import('./quick-fix-world.cjs').NestedQuickFix} at @param {string} task @param {string[]} files @param {string} subject */
+  const committed = (at, task, files, subject) => ok(fixTree(at.dir), ['commit', '--paths', ...files, '--task', UNIT, task, '-m', `fix(${UNIT}): ${subject}`], as());
 
   /** Fix 1.1's work not committed written, one file in each repository, then parked on a question: the raise's answer. @param {import('./quick-fix-world.cjs').NestedQuickFix} at */
   async function parked(at) {
-    for (const [file, text] of Object.entries(UNCOMMITTED)) createFile(at.dir, file, text);
+    for (const [file, text] of Object.entries(UNCOMMITTED)) createFile(fixTree(at.dir), file, text);
     return parkedOn(at.dir, '1.1', as());
   }
 
-  /** What each repository's checkout holds not committed, as git lists it. @param {import('./quick-fix-world.cjs').NestedQuickFix} at */
-  const statuses = (at) => [at.dir, at.ext, at.lib].map((dir) => git(dir, ['status', '--porcelain', '--untracked-files=all']).trim());
+  /** What each repository holds not committed in the quick-fix's worktree, as git lists it. @param {import('./quick-fix-world.cjs').NestedQuickFix} at */
+  const statuses = (at) => ['', 'ext', 'lib'].map((dir) => git(path.join(fixTree(at.dir), dir), ['status', '--porcelain', '--untracked-files=all']).trim());
 
   describe(`the ${name} landing driver's quick-fix whose fix a question parks, in nested repositories (19.5.23, R20)`, () => {
     it('a park sets aside the fix\'s work not committed in each repository holding any, the next fix built between, and its next start puts each back; its pair reads its own commits in each repository and its figures count their net change, the other fix\'s left out', async () => {
@@ -73,25 +73,25 @@ for (const { name } of listDrivers('landing')) {
       if (side.on(at.dir) !== at.dir) git(at.dir, ['push', '-q', side.on(at.dir), 'main']);
       createFix(at.dir, 1, 'Spell the flags --colour', as());
       run(at, ['task', 'start', UNIT, '1.1']);
-      fs.renameSync(path.join(at.dir, 'docs/flags.md'), path.join(at.dir, 'docs/options.md'));
-      createFile(at.dir, 'lib/lib.txt', 'lib --color\n');
+      fs.renameSync(path.join(fixTree(at.dir), 'docs/flags.md'), path.join(fixTree(at.dir), 'docs/options.md'));
+      createFile(fixTree(at.dir), 'lib/lib.txt', 'lib --color\n');
       committed(at, '1.1', ['docs/flags.md', 'docs/options.md', 'lib/lib.txt'], 'name the flags page options');
-      createFile(at.dir, 'docs/options.md', FLAGS.replace('--color picks', '--colour picks'));
-      createFile(at.dir, 'lib/lib.txt', 'lib --colour\n');
+      createFile(fixTree(at.dir), 'docs/options.md', FLAGS.replace('--color picks', '--colour picks'));
+      createFile(fixTree(at.dir), 'lib/lib.txt', 'lib --colour\n');
       committed(at, '1.1', ['docs/options.md', 'lib/lib.txt'], 'spell the flags --colour');
       run(at, ['land', 'open', UNIT, '1.1']);
       const raised = await parked(at);
       const clean = statuses(at);
       createFix(at.dir, 2, HELP, as());
       run(at, ['task', 'start', UNIT, '1.2']);
-      createFile(at.dir, 'lib/help.txt', 'help --colour\n');
+      createFile(fixTree(at.dir), 'lib/help.txt', 'help --colour\n');
       committed(at, '1.2', ['lib/help.txt'], 'spell the help --colour');
       run(at, ['land', 'open', UNIT, '1.2']);
       fixDone(at.dir, '1.2', as());
       const { raise } = okSections(at.dir, ['raise', 'draw', UNIT, 'Q1'], as()).res;
       ok(at.dir, ['raise', 'answer', raise, '--pick', '1'], { ...as(), stdin: JSON.stringify({ why: 'Old scripts pass it.' }) });
       const started = run(at, ['task', 'start', UNIT, '1.1']);
-      const back = Object.keys(UNCOMMITTED).map((file) => fs.readFileSync(path.join(at.dir, file), 'utf8'));
+      const back = Object.keys(UNCOMMITTED).map((file) => fs.readFileSync(path.join(fixTree(at.dir), file), 'utf8'));
       const { id } = run(at, ['brief', 'reviewer', UNIT, '1.1', '--letter', 'a']);
       const brief = withEnv({ LEDGER_CONFIG_DIR: as().env.LEDGER_CONFIG_DIR }, () => fs.readFileSync(briefPath('sess-1', id), 'utf8'));
 

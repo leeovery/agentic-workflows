@@ -4,12 +4,14 @@
 // A quick-fix's close's yes (ledger-engine/scripts/domain/finish.cjs):
 // `engine finish yes <qf>` — refused while a question Claude raised in its
 // conversation stands open in its ledger, after a /clear as before it
-// (19.5.25), and while the checkout holds changes not committed, landing
-// nothing — landing the pull request through the local landing driver as one
-// commit, its fixes in the order they were done (19.5.17), reading no ref the
-// local driver kept of an earlier quick-fix of its name, putting the checkout
-// back on the branch it lands on, letting go of every ref the local driver
-// kept of it — its opening and the head it merged — completing the unit and
+// (19.5.25), and while its worktree holds changes not committed, landing
+// nothing, the person's own in their checkout never refusing it — landing
+// the pull request through the local landing driver as one commit, its
+// fixes in the order they were done (19.5.17), reading no ref the local
+// driver kept of an earlier quick-fix of its name, the person's checkout,
+// which has the branch it lands on out, brought up to it, its worktree taken
+// apart, letting go of every ref the local driver kept of it — its opening
+// and the head it merged — completing the unit and
 // carrying on in the conversation, its folder then holding `build/` and `summary.md`
 // alone of the work (4.S23), its record found once it is closed (22.S22), its
 // questions and notes read once, as its checklist alone reads them. Its
@@ -30,15 +32,12 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  ok, output, callAsync, okSectionsAsync, refusedPristine, git, stateGit, statePath, readManifest, cleanupFixture, keywordOnlyKnowledge, traced, layout, fixtureFrom,
+  ok, callAsync, okSectionsAsync, refusedPristine, git, stateGit, statePath, readManifest, cleanupFixture, keywordOnlyKnowledge, traced, layout,
 } = require('./engine-harness.cjs');
 const { datedAt } = require('./discovery-test-utils.cjs');
 const { ledgerReadHelpers } = require('./ledger-world.cjs');
-const { UNIT, PLACE, DESCRIPTION, checklistClosed, twoFixesBuilt } = require('./quick-fix-world.cjs');
+const { UNIT, PLACE, DESCRIPTION, checklistClosed, fixTree } = require('./quick-fix-world.cjs');
 const { RAISED, world, closeHelpers } = require('./quick-fix-close-world.cjs');
-
-/** The close world, the person on a branch of their own as the first fix started. */
-const onOwnBranch = fixtureFrom('quick-fix-own-branch-', (at) => twoFixesBuilt(at, { ready: (project) => git(project, ['switch', '-q', '-c', 'my-branch']) }));
 
 let dir = ''; // the project
 const {
@@ -66,27 +65,28 @@ function reading(t, args) {
 }
 
 describe('finish yes <quick-fix> (19.5.15, 24.1.2)', () => {
-  it('refuses while the checkout holds changes not committed, landing nothing — land finish and land phase as it does; then lands the fixes, puts the checkout back on the branch it lands on, lets go of every ref the local driver kept of it, completes the unit and carries on in the conversation — its folder holding build/ and summary.md, no topics/ and no spec.md (4.S23) — reading its questions and notes once, as its checklist alone does, the ledger once more, after the landing has written', (t) => {
+  it('refuses while its worktree holds changes not committed, landing nothing — land finish and land phase as it does — the person\'s own in their checkout never refusing it; then lands the fixes, brings the person\'s checkout up to them, takes the worktree apart, lets go of every ref the local driver kept of it, completes the unit and carries on in the conversation — its folder holding build/ and summary.md, no topics/ and no spec.md (4.S23) — reading its questions and notes once, as its checklist alone does, the ledger once more, after the landing has written', (t) => {
     dir = world();
     closeable();
-    fs.writeFileSync(path.join(dir, 'src', 'stray.js'), 'stray\n');
+    fs.writeFileSync(path.join(fixTree(dir), 'src', 'stray.js'), 'stray\n');
+    fs.writeFileSync(path.join(dir, 'src', 'mine.js'), 'mine\n');
     const main = git(dir, ['rev-parse', 'main']).trim();
     const dirty = [refused(['finish', 'yes', UNIT]), refused(['land', 'finish', UNIT]), refused(['land', 'phase', UNIT, '1']), git(dir, ['rev-parse', 'main']).trim()];
-    fs.rmSync(path.join(dir, 'src', 'stray.js'));
+    fs.rmSync(path.join(fixTree(dir), 'src', 'stray.js'));
     const kept = () => git(dir, ['for-each-ref', '--format=%(refname)', 'refs/ledger/']).trim();
     const opened = kept();
     const checked = reading(t, ['checklist', 'show', 'finish', UNIT]);
     const { result: done, ledger, notes } = reading(t, ['finish', 'yes', UNIT]);
 
-    const stray = `${UNIT}'s tasks were built in the project's own checkout, which holds changes not committed, so nothing was landed — src/stray.js, which no commit of the quick-fix's changed, so not its — perhaps the person's or another conversation's: never remove them, but ask the person, who may set them aside until ${UNIT} has closed — then close it again`;
+    const stray = `${UNIT}'s worktree holds changes not committed — src/stray.js — so nothing was landed: what is ${UNIT}'s goes in a fix of its own, and the rest is put back as it was; then close it again`;
     assert.deepStrictEqual([dirty, opened, kept()], [[`finish yes: ${stray}`, `land: ${stray}`, `land: ${stray}`, main], `refs/ledger/quick-fix/${UNIT}/open`, '']);
     assert.deepStrictEqual([checked.notes > 0, notes, ledger - checked.ledger], [true, checked.notes, 1]);
     assert.deepStrictEqual({ ...done, landed: done.landed.map((/** @type {any} */ { repo, into, merged }) => ({ repo, into, merged })) }, {
-      ok: true, unit: UNIT, landed: [{ repo: '.', into: 'main', merged: ['1.1', '1.2'] }], checkout: 'main', completed_at: readManifest(dir, UNIT).completed_at,
+      ok: true, unit: UNIT, landed: [{ repo: '.', into: 'main', merged: ['1.1', '1.2'] }], completed_at: readManifest(dir, UNIT).completed_at,
       committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim(), next: { kind: 'continue' },
     });
-    assert.deepStrictEqual([branchOut(), git(dir, ['log', '--format=%s', `${main}..main`]).trim(), fs.readFileSync(path.join(dir, 'src', 'help.js'), 'utf8')], [
-      'main', `fix(${UNIT}): ${DESCRIPTION}`, 'const help = \'--colour\';\n',
+    assert.deepStrictEqual([branchOut(), git(dir, ['log', '--format=%s', `${main}..main`]).trim(), fs.readFileSync(path.join(dir, 'src', 'help.js'), 'utf8'), git(dir, ['status', '--porcelain']).trim(), fs.existsSync(fixTree(dir))], [
+      'main', `fix(${UNIT}): ${DESCRIPTION}`, 'const help = \'--colour\';\n', '?? src/mine.js', false,
     ]);
     assert.deepStrictEqual([readManifest(dir, UNIT).status, fs.readdirSync(statePath(dir, UNIT)).sort()], ['completed', ['build', 'discovery', 'manifest.json', 'seeds', 'summary.md']]);
   });
@@ -109,26 +109,6 @@ describe('finish yes <quick-fix> (19.5.15, 24.1.2)', () => {
     const said = `${UNIT} closes once each question asked in it is answered — ${asked} ${RAISED.question}: raise it again for the person to answer, raise ${PLACE} --answers ${asked}`;
     assert.deepStrictEqual(open, [`finish yes: ${said}`, `land: ${said}`, `land: ${said}`, main]);
     assert.deepStrictEqual([done.landed.map(({ merged }) => merged), readManifest(dir, UNIT).status], [[['1.1', '1.2']], 'completed']);
-  });
-
-  it('takes the checkout back to the branch the person had out at the first start, recorded on the manifest then, the close\'s line naming it, as a cancel does; that branch gone since, to the branch it lands on', () => {
-    dir = onOwnBranch();
-    const from = readManifest(dir, UNIT).fixes.from;
-    closeable();
-    const said = output(dir, ['finish', 'yes', UNIT], as());
-    const back = [from, JSON.parse(said.split('\n')[0]).checkout, branchOut(), said.slice(said.indexOf('=== DISPLAY: ended')).split('\n').filter((line) => line !== '')];
-    cleanupFixture(dir);
-    dir = onOwnBranch();
-    closeable();
-    git(dir, ['branch', '-q', '-D', 'my-branch']);
-    run(['finish', 'yes', UNIT]);
-    const gone = branchOut();
-    cleanupFixture(dir);
-    dir = onOwnBranch();
-    run(['workunit', 'cancel', UNIT]);
-
-    assert.deepStrictEqual([gone, branchOut()], ['main', 'my-branch']);
-    assert.deepStrictEqual(back, ['my-branch', 'my-branch', 'my-branch', ['=== DISPLAY: ended (emit verbatim as markdown (not a code block) after the response) ===', 'The checkout is back on `my-branch`.']]);
   });
 
   it('reads no ref the local driver kept of an earlier quick-fix of the same name, its opening at a commit made before this one was — never this one\'s, so never a stranger\'s branch refused: the yes lands the fixes and lets go of every ref of the name', () => {

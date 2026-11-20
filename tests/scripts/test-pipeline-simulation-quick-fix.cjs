@@ -5,7 +5,9 @@
 // three quick-fix items picked in triage and worked as one, through
 // discovery's type call into one quick-fix (19.S25), the opener carrying on in place
 // into the quick-fix's skill (24.1.3), its
-// fixes built by their builders and passed by their pairs (19.5.22), each
+// fixes built in its worktree — laid out at the first fix's start, taken
+// apart at the close, the person's checkout never moving — by their
+// builders and passed by their pairs (19.5.22), each
 // one's account its builder's, a builder's question parking its fix while
 // the next goes on, answered and built (19.5.25), a question Claude raised
 // in the conversation outliving a /clear and holding the close until it is
@@ -26,9 +28,11 @@ require('./hermetic-env.cjs');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
+const fs = require('fs');
 const path = require('path');
+const { git } = require('./engine-harness.cjs');
 const {
-  Sim, answerGate, carryOn, writeTasks, finishClosed, fixBuilt, workTheSet, startThisWork, startRow, startMenu,
+  Sim, answerGate, carryOn, writeTasks, finishClosed, fixTree, fixBuilt, workTheSet, startThisWork, startRow, startMenu,
 } = require('./pipeline-world.cjs');
 const { leaningCall } = require('./ledger-world.cjs');
 
@@ -37,7 +41,7 @@ describe('pipeline simulation: quick-fix', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('quick-fix: three items picked in triage and worked as one go through discovery\'s type call into one quick-fix, on the start menu until it closes (19.S25); the opener carries on into its skill in the same conversation; each fix passed by its pair; a builder\'s question parks its fix while the next goes on, then it is built; Claude\'s own question outlives a /clear, named by the entry and holding the close\'s checklist until it is answered again; and the close landing the one pull request, no handoff from the opener to the close (24.S8), then on in the conversation, its place left, and the start menu asked for in a cleared conversation, This session All work with the quick-fix under COMPLETE (20.S24)', async () => {
+  it('quick-fix: three items picked in triage and worked as one go through discovery\'s type call into one quick-fix, on the start menu until it closes (19.S25); the opener carries on into its skill in the same conversation; each fix built in its worktree, the person\'s checkout never moving, and passed by its pair; a builder\'s question parks its fix while the next goes on, then it is built; Claude\'s own question outlives a /clear, named by the entry and holding the close\'s checklist until it is answered again; and the close landing the one pull request and taking the worktree apart, no handoff from the opener to the close (24.S8), then on in the conversation, its place left, and the start menu asked for in a cleared conversation, This session All work with the quick-fix under COMPLETE (20.S24)', async () => {
     const wu = 'typo';
     const place = `${wu}.implementation`;
     const items = ['flag', 'help', 'docs'].map((what) => sim.write(`.ledger/.inbox/quickfixes/2026-01-01--${what}-says-color.md`, `# The ${what} says --color\n`));
@@ -69,6 +73,8 @@ describe('pipeline simulation: quick-fix', () => {
       return fix;
     };
     const first = fixBuilt(sim, wu, begun(1, 'Spell the flag --colour'), ['src/flag.js'], { record: 'The flag.' });
+    const branchOut = (/** @type {string} */ at) => git(at, ['symbolic-ref', '--short', 'HEAD']).trim();
+    const laidOut = [branchOut(fixTree(sim, wu)), branchOut(sim.dir), git(sim.dir, ['status', '--porcelain', '--', 'src']).trim()];
     const account = sim.render(['task-account', wu, first.task], { expect: 'content' });
 
     // The second fix's builder asks: its fix parks on the question, and the
@@ -100,10 +106,12 @@ describe('pipeline simulation: quick-fix', () => {
     const unclosed = sim.handoffs.slice(handedOff);
     const yes = sim.run(answerGate(sim, 'finish', '--pick', 'y').next.argv);
     const left = carryOn(sim).position;
+    const takenApart = [fs.existsSync(fixTree(sim, wu)), branchOut(sim.dir), fs.readFileSync(path.join(sim.dir, 'src', 'flag.js'), 'utf8')];
     sim.handOver();
     const rows = startMenu(sim);
     const allWork = sim.board().view;
 
+    assert.deepStrictEqual([laidOut, takenApart], [[`fix/${wu}`, 'main', ''], [false, 'main', '--colour\n']], 'the fixes built in the quick-fix\'s worktree, the person\'s checkout left on main and brought up to the landing');
     assert.deepStrictEqual([first.task, parked.parked, parked.task, receipt], ['1.1', 'Q1', '1.2', 'Q1 answered · task 1.2 builds again · nothing waiting on you']);
     assert.notStrictEqual(sim.env.CLAUDE_CODE_SESSION_ID, conversation);
     assert.match(account, /▪ Spell the flag --colour \(task 1\.1\)\n\n✓ Passed its review in round 1\n\n- Phase: 1 — the fixes\n[\s\S]*WHAT WAS DONE\n  Built\.\n  · src\/flag\.js\n/, 'a fix\'s account, asked for, is its builder\'s');

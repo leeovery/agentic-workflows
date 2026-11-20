@@ -20,7 +20,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
 const { ok, git, createFile, readManifest, datedAt } = require('./engine-harness.cjs');
-const { UNIT, BRANCH, SET, quickFixConformance, fixChanged, fixDone } = require('./quick-fix-world.cjs');
+const { UNIT, BRANCH, SET, quickFixConformance, fixChanged, fixDone, fixTree } = require('./quick-fix-world.cjs');
 const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
 
 const [FLAG, HELP] = SET;
@@ -33,9 +33,9 @@ for (const { name } of listDrivers('landing')) {
     it('the fix not landed, its copy carrying the stamp: the next fix\'s start keeps its second commit on the branch, and the close lands it, main holding the whole fix', () => {
       const at = project();
       fixChanged(at, 1, FLAG.title, FLAG.file, FLAG.text, as());
-      const first = git(at, ['rev-parse', 'HEAD']).trim();
-      createFile(at, EXTRA, 'const extra = 1;\n');
-      ok(at, ['commit', '--paths', EXTRA, '--task', UNIT, '1.1', '-m', `fix(${UNIT}): add the extra`], as());
+      const first = git(at, ['rev-parse', BRANCH]).trim();
+      createFile(fixTree(at), EXTRA, 'const extra = 1;\n');
+      ok(fixTree(at), ['commit', '--paths', EXTRA, '--task', UNIT, '1.1', '-m', `fix(${UNIT}): add the extra`], as());
       ok(at, ['land', 'open', UNIT, '1.1'], as());
       fixDone(at, '1.1', as());
       datedAt(new Date(Date.now() + 60_000).toISOString(), () => side.picked(at, first));

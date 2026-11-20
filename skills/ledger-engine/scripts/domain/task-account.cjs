@@ -99,7 +99,7 @@ const { holdingBranch, taskWorktree, mergeTree } = require('./landing-git.cjs');
 const { trackedTask, trackedStart, givenText, ENDED } = require('./task-verbs.cjs');
 const { refuseParked, parkedOf } = require('./task-parks.cjs');
 const { baseRev, ofQuickFix, workBranch, builtOnBases, ownWork, builtOneLine } = require('./task-base.cjs');
-const { quickFixBranch } = require('./landing-names.cjs');
+const { fixWorktree } = require('./fix-branch.cjs');
 const { refusing } = require('./staged-payload.cjs');
 const { READERS, readersDone } = require('./scratch.cjs');
 const {
@@ -554,8 +554,7 @@ function landingWay(cwd, ref) {
  * for their notes for later and the nits the task's commits do not yet
  * fix, fixed in the worktree that has its branch checked out — or, where
  * none has, in the one its builder lays out from that brief; a quick-fix's,
- * in the project's checkout on its one branch, where its builder lays out
- * none. Null where its review is not over, or a question parks it. Answers
+ * in its worktree, where its builder lays out none. Null where its review is not over, or a question parks it. Answers
  * the round and how it ended, `passed` or `was settled`, beside the way.
  * @param {string} cwd @param {TaskRef} ref
  * @returns {{round: number, ended: string, said: string, way: string}|null}
@@ -572,7 +571,7 @@ function reviewOverWay(cwd, ref) {
   const builder = `engine brief builder ${task}`;
   const read = `read its reports, ${last.reports.map(({ file }) => `\`${statePath(cwd, file)}\``).join(' and ')}, for their notes for later and the nits the task's commits do not yet fix`;
   if (quickFix) {
-    return { round: last.round, ended, said: `${passed}, its account not taken`, way: `${read}, and fix those in the project's checkout, on ${quickFixBranch(ref.unit)}, through the door; then send its builder its brief for its account, ${builder}` };
+    return { round: last.round, ended, said: `${passed}, its account not taken`, way: `${read}, and fix those in ${ref.unit}'s worktree, ${fixWorktree(cwd, ref.unit).root}, through the door; then send its builder its brief for its account, ${builder}` };
   }
   const tree = taskWorktree(codeRoot(cwd), ref);
   return {

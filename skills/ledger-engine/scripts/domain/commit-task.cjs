@@ -18,9 +18,9 @@
 //   tasks in flight, each named; from a worktree `task worktree` laid out
 //   for another task in flight (task-worktree.cjs, conversation.cjs's
 //   `taskAt`), any task but that one, naming it; a quick-fix's task that
-//   does not hold its one checkout — parked on a question, or freed and
+//   does not hold its worktree — parked on a question, or freed and
 //   waiting behind the fix that holds it — so no commit carries another
-//   fix's work under its stamp, naming the fix holding the checkout and the
+//   fix's work under its stamp, naming the fix holding the worktree and the
 //   start that takes it back (`refuseOutOfTurn`, task-verbs.cjs's
 //   `checkoutHold`, 19.5.23, R27); a task with a worktree
 //   laid out for it from anywhere else, naming the worktree; from a
@@ -30,20 +30,18 @@
 //   its unit was made, as a clock behind dates it, which no landing would
 //   read as the unit's work (landing.cjs), naming the clock and the commit
 //   made again (`refuseClockBehind`). A task with none recorded commits
-//   from where its branch is out — a quick-fix's task from the project's
-//   own checkout, on the quick-fix's one branch, a commit on any other
-//   naming that branch and the start that puts the checkout there
-//   (fix-branch.cjs). A quick-fix's
+//   from where its branch is out — a quick-fix's task from the quick-fix's
+//   worktree, on its one branch, a commit on any other naming the worktree
+//   and the start that lays it out (fix-branch.cjs). A quick-fix's
 //   task done whose work is neither landed nor on the quick-fix's branch, as
 //   a branch cut again leaves a commit that did not apply there, takes its
 //   change made again though it has ended and is in flight nowhere
-//   (fix-end.cjs, `remakesDone`), from the project's own checkout on the
+//   (fix-end.cjs, `remakesDone`), from the quick-fix's worktree on the
 //   branch alone. Each repository nested in the project that a quick-fix's
-//   task commits in is put on the quick-fix's branch there first, made
-//   where it lacks one (`onWorkBranch`, fix-branch.cjs), so its share of the
-//   fix lands with the quick-fix's pull request there (7.2.24), and, once
-//   the checks pass, recorded in the unit's state before the commit
-//   (`recordWork`), its state commit's warnings the answer's.
+//   task commits in, once the checks pass, is recorded in the unit's state
+//   before the commit (`recordWork`), so its share of the fix lands with
+//   the quick-fix's pull request there (7.2.24), its state commit's
+//   warnings the answer's.
 // - The project's checks run before the commit (15.8.3): its tests,
 //   `environment.run.tests`, then each of its linters, `environment.linters`
 //   (environment.cjs), in that order, each by `sh -c` in the code root of the
@@ -138,20 +136,20 @@ function inFlightTask(cwd, unit, given) {
 }
 
 /**
- * Refuse a commit under a quick-fix's task that does not hold its one
- * checkout (the header's, R27): one a question parks, whether or not
+ * Refuse a commit under a quick-fix's task that does not hold its
+ * worktree (the header's, R27): one a question parks, whether or not
  * another holds it, and one in progress behind the holder.
  * @param {string} cwd @param {TaskRef} ref @param {Record<string, any>} manifest the unit's
  */
 function refuseOutOfTurn(cwd, ref, manifest) {
   const { turn, holds, parkedOn } = checkoutHold(cwd, ref, manifest);
   if (holds) return;
-  const back = `${taskName(ref)}'s change is committed once it holds the checkout again, started again with ${startCall(ref.unit, shownTask(ref))}`;
+  const back = `${taskName(ref)}'s change is committed once it holds the worktree again, started again with ${startCall(ref.unit, shownTask(ref))}`;
   if (parkedOn.length === 0 && turn !== null) {
-    throw new Error(`commit --task: task ${turn.inFlight} holds ${ref.unit}'s one checkout, and ${taskName(ref)} waits behind it, so a commit now would carry task ${turn.inFlight}'s work under ${taskName(ref)}'s stamp — ${back}, once ${turnEnds(turn)}`);
+    throw new Error(`commit --task: task ${turn.inFlight} holds ${ref.unit}'s worktree, and ${taskName(ref)} waits behind it, so a commit now would carry task ${turn.inFlight}'s work under ${taskName(ref)}'s stamp — ${back}, once ${turnEnds(turn)}`);
   }
   const holder = turn === null ? 'no fix holds it now' : `task ${turn.inFlight} holds it, and a commit now would carry its work under ${taskName(ref)}'s stamp`;
-  throw new Error(`commit --task: a question parks ${taskName(ref)}, so it holds no part of ${ref.unit}'s one checkout — ${holder}; ${back}, once the answer frees it`);
+  throw new Error(`commit --task: a question parks ${taskName(ref)}, so it does not hold ${ref.unit}'s worktree — ${holder}; ${back}, once the answer frees it`);
 }
 
 /**
@@ -195,8 +193,8 @@ function fromItsWorktree(session, cwd, ref, worktree) {
  * Refuse a commit of the task from a checkout on a branch other than the
  * task's, naming the worktree that has the task's branch out — or, where
  * none has, the verb that lays one out; a quick-fix's task, built in the
- * project's own checkout on the quick-fix's one branch, naming that branch
- * and the start that puts the checkout there (fix-branch.cjs). A detached
+ * quick-fix's worktree on its one branch, naming the worktree and the start
+ * that lays it out (fix-branch.cjs). A detached
  * HEAD and the state branch are the door's own to refuse (engine.cjs).
  * @param {string} cwd @param {TaskRef} ref
  */
@@ -208,7 +206,7 @@ function refuseOtherBranch(cwd, ref) {
   const own = taskOfBranch(ref.unit, branch);
   if (quickFix ? branch === quickFixBranch(ref.unit) : own !== null && sameTask(own, ref)) return;
   const whose = quickFix ? `${ref.unit}'s branch` : `${taskName(ref)}'s branch`;
-  throw new Error(`commit --task: this checkout has ${branch} out, not ${whose}, so its commit would land on another branch — ${quickFix ? fixBranch().branchWayOn(ref) : wayOn(root, ref)}`);
+  throw new Error(`commit --task: this checkout has ${branch} out, not ${whose}, so its commit would land on another branch — ${quickFix ? fixBranch().branchWayOn(cwd, ref) : wayOn(root, ref)}`);
 }
 
 /** Where the task's commit is made instead (`refuseOtherBranch`). @param {string} root @param {TaskRef} ref */
@@ -287,16 +285,6 @@ function runChecks(cwd, checks) {
 }
 
 /**
- * Each nested repository a quick-fix's task commits in put on the
- * quick-fix's branch (`putOnBranch`, fix-branch.cjs); nothing for a task of
- * any other unit.
- * @param {string} cwd @param {TaskRef} ref @param {Record<string, any>} manifest the unit's @param {import('../kernel/repos.cjs').Repo[]} repos those the commit commits in
- */
-function onWorkBranch(cwd, ref, manifest, repos) {
-  if (quickFixBuild(manifest)) fixBranch().putOnBranch(cwd, ref.unit, repos);
-}
-
-/**
  * Refuse a quick-fix's commit, nothing moved, where git would date it
  * before the unit's work is read from (`workFrom`, landing.cjs), as a clock
  * behind dates it, so no landing would read it as the unit's work, naming
@@ -339,4 +327,4 @@ function workMessage(message, ref, additions = null) {
   return `${text}${trailers ? '\n' : '\n\n'}${TRAILER}: ${taskId(ref)}${additions === null ? '' : `\n${ADDITIONS}: ${additions}`}`;
 }
 
-module.exports = { TRAILER, ADDITIONS, inFlightTask, refuseClockBehind, onWorkBranch, checksFor, runChecks, recordWork, oneLineAdditions, workMessage };
+module.exports = { TRAILER, ADDITIONS, inFlightTask, refuseClockBehind, checksFor, runChecks, recordWork, oneLineAdditions, workMessage };

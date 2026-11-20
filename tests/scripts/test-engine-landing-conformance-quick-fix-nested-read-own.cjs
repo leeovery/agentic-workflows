@@ -21,9 +21,11 @@ require('./hermetic-env.cjs');
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
+const path = require('path');
 
 const { ok, readManifest } = require('./engine-harness.cjs');
-const { UNIT, SET, ownBranchCommit, quickFixNestedConformance } = require('./quick-fix-world.cjs');
+const { UNIT, SET, ownCommit, fixTree, quickFixNestedConformance } = require('./quick-fix-world.cjs');
+const { NESTED } = require('./landing-world.cjs');
 const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
 
 for (const { name } of listDrivers('landing')) {
@@ -33,7 +35,7 @@ for (const { name } of listDrivers('landing')) {
     it('the person\'s own commit alone on the clone\'s branch, made during the quick-fix, is its work: opened there and landed with the close', () => {
       const at = project();
       opened(at, 1, { [SET[0].file]: SET[0].text });
-      ownBranchCommit(at.lib, 'My own change');
+      ownCommit(path.join(fixTree(at.dir), NESTED.lib.folder), 'My own change');
       const reopened = ok(at.dir, ['land', 'open', UNIT, '1.1'], as());
       ended(at, 1);
       closed(at);

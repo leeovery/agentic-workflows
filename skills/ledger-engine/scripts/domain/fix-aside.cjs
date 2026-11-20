@@ -1,26 +1,26 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: a quick-fix's one checkout, held by one fix at a time
-// (19.5.23) — what a fix had not committed when a question parked it set
-// aside, so the next fix starts on a clean checkout, and put back when it
-// starts again.
+// Domain ring: a quick-fix's worktree, held by one fix at a time (19.5.23)
+// — what a fix had not committed when a question parked it set aside, so
+// the next fix starts on a clean worktree, and put back when it starts
+// again.
 //
-// - A raise that parks a fix holding the checkout — in progress, no question
-//   waiting parking it yet (raise.cjs) — first sets aside what the checkout
+// - A raise that parks a fix holding the worktree — in progress, no question
+//   waiting parking it yet (raise.cjs) — first sets aside what the worktree
 //   holds not committed outside the state (worktree-prep.cjs,
 //   `codeChanges`), in each of the project's repositories holding any: a
-//   commit of it, its untracked files among it, on the tip the checkout has
+//   commit of it, its untracked files among it, on the tip the worktree has
 //   out, at a ref of the unit's own, `refs/ledger/aside/{unit}/{task id}` —
 //   never on the stash list, which every checkout shares — then each of its
-//   paths back as that tip holds it, so the checkout is left clean at the
+//   paths back as that tip holds it, so the worktree is left clean at the
 //   branch's tip for the next fix to start on. Its paths are read from each
 //   checkout's top, a project that is a folder of a larger repository among
 //   them. All or nothing: a step that fails undoes every part — each path
-//   back in the checkout as it was, not staged, each ref it wrote dropped —
+//   back in the worktree as it was, not staged, each ref it wrote dropped —
 //   and the park is refused, saying so.
-// - The fix's next start (task-verbs.cjs), once the checkout is on the
-//   branch, puts it back onto the tip as it then stands — git's own merge
+// - The fix's next start (task-verbs.cjs), once the worktree is laid out on
+//   the branch, puts it back onto the tip as it then stands — git's own merge
 //   of it from the tip it was set aside on, its change left uncommitted as
 //   it was, nothing else of the index touched, and its ref dropped —
 //   answering its paths as the set-aside did, a rename's both — refused,
@@ -28,19 +28,19 @@
 //   repository it conflicts with what the tip now holds, naming each path,
 //   the ref and the way on, in the order that works: the work seen, its
 //   refs dropped, the task started, its change made again and committed.
-// - A builder's or fix round's brief for the fix holding the checkout whose
+// - A builder's or fix round's brief for the fix holding the worktree whose
 //   work is set aside is refused, naming the start that puts it back
 //   (brief.cjs, R27). Nothing set aside is lost: a fix closed keeps it,
 //   naming it in its answer (task-verbs.cjs); a move keeps it, as it keeps
 //   the fixes' commits under moved/, and a cancel keeps it too, each piece
-//   named with the calls that show it, bring it into the checkout where it
+//   named with the calls that show it, bring it into a checkout where it
 //   stands and drop it, kept until the person drops it — on start this
 //   work's screen before the move's yes, in its answer, at the topic's
 //   first opening (enter.cjs), on the cancel's receipt and on the close's
 //   screen (`keptAside`, `keptWords`, R26, 19.5.29).
-// - A move's yes and a cancel set aside what the fix holding the checkout
-//   had not committed as a park does, at the same ref, so the checkout is
-//   taken back clean (fix-leave.cjs); start this work's screen names it
+// - A move's yes and a cancel set aside what the fix holding the worktree
+//   had not committed as a park does, at the same ref, so the worktree is
+//   taken apart clean (fix-leave.cjs); start this work's screen names it
 //   before the move's yes (`asideWords`). Each piece's commit says why it
 //   was set aside — a park, a move or a cancel — which `keptAside` and
 //   every refusal naming it read back (`heldAside`).
@@ -99,7 +99,7 @@ function heldAside(cwd, ref) {
 }
 
 /**
- * What the project's checkout holds not committed, a part for each
+ * What the project holds not committed in a checkout, a part for each
  * repository holding any: its checkout's top, and each path as that top
  * names it — a project that is a folder of a larger repository reads its
  * paths from there — and as the project names it.
@@ -171,9 +171,9 @@ function undone({ top, paths, sha }, ref) {
 }
 
 /**
- * What the checkout holds not committed set aside for the fix parked, or
- * holding it as the quick-fix moves or is cancelled (the header's), and the checkout left
- * clean at its tip: answers each path set aside, from the project, in
+ * What the quick-fix's worktree, `cwd` in it, holds not committed set aside
+ * for the fix parked, or holding it as the quick-fix moves or is cancelled
+ * (the header's), and the worktree left clean at its tip: answers each path set aside, from the project, in
  * order, none where it held nothing. All or nothing: where any step fails,
  * every part is undone (`undone`) and the set-aside refused in the words of
  * `said`, saying so.
@@ -190,14 +190,14 @@ function setAside(cwd, ref, said, why = 'park') {
     dirt.forEach(cleaned);
   } catch (err) {
     for (const held of dirt) undone(held, ref);
-    throw new Error(`${said}: ${taskName(ref)}'s work could not be set aside, so nothing was: the checkout holds it as before, none of it staged, and ${WHY[why].none} — ${messageOf(err)}`);
+    throw new Error(`${said}: ${taskName(ref)}'s work could not be set aside, so nothing was: the worktree holds it as before, none of it staged, and ${WHY[why].none} — ${messageOf(err)}`);
   }
   return dirt.flatMap(({ shown }) => shown).sort();
 }
 
 /**
- * The fix's work set aside put back onto the branch's tip as it stands
- * (the header's), its ref dropped: answers each path put back, from the
+ * The fix's work set aside put back onto the branch's tip as it stands in
+ * the quick-fix's worktree, `cwd` in it (the header's), its ref dropped: answers each path put back, from the
  * project — refused in the words of `said`, nothing moved, where it
  * conflicts in any repository, its way on in the order that works: the
  * work seen, its refs dropped, the task started, its change made again.
@@ -229,7 +229,7 @@ function putBack(cwd, ref, said) {
 function asideRefusal(cwd, ref) {
   const held = heldAside(cwd, ref);
   if (held.length === 0) return null;
-  return `${taskName(ref)}'s work, set aside ${held[0].why}, is not back in the checkout — start it again first, ${startCall(ref)}, which puts it back`;
+  return `${taskName(ref)}'s work, set aside ${held[0].why}, is not back in ${ref.unit}'s worktree — start it again first, ${startCall(ref)}, which puts it back`;
 }
 
 /**
@@ -263,10 +263,10 @@ const keptIn = (repo) => (repo === '.' ? 'in the project\'s repository' : `in ${
 const keptWords = ({ task, repo, ref, why, see, recover, drop }) => `Task ${task}'s work, set aside ${why}, is kept ${keptIn(repo)} at ${ref} — see it with ${see}; bring it into the checkout with ${recover}, settling any conflict; drop it with ${drop}`;
 
 /**
- * What the checkout holds not committed for the fix holding it, which a
- * move's yes sets aside (the header's), as start this work's screen names it
- * before the yes: a line for each repository holding any, none where it
- * holds nothing.
+ * What the quick-fix's worktree, `cwd` in it, holds not committed for the
+ * fix holding it, which a move's yes sets aside (the header's), as start
+ * this work's screen names it before the yes: a line for each repository
+ * holding any, none where it holds nothing.
  * @param {string} cwd @param {TaskRef} ref @returns {string[]}
  */
 function asideWords(cwd, ref) {

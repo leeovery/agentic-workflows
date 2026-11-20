@@ -65,8 +65,9 @@
 //   removes it: the person does. While it holds anything, the screen of
 //   the round's report, the entry and finish's screen name it
 //   (`setAsideHeld`), the report's file never, a folder of this machine's.
-// - The working tree outside `.ledger/` is snapshotted for a round in the
-//   unit's cache, `review/tree.json`: the round's number, each repository's
+// - The working tree outside `.ledger/` — the calling checkout's, a
+//   quick-fix's its worktree's (`treeRepos`, fix-branch.cjs) — is
+//   snapshotted for a round in the unit's cache, `review/tree.json`: the round's number, each repository's
 //   HEAD, each path its status lists with the fingerprint of what it holds
 //   (kernel/repos.cjs, `projectDirtyEntries`), a rename as its two paths,
 //   and each repository's ignored entries, a folder ignored whole as one, so
@@ -92,11 +93,10 @@ const fs = require('fs');
 const path = require('path');
 const { statePath } = require('../kernel/state-root.cjs');
 const { fingerprint } = require('../kernel/fingerprint.cjs');
-const { codeRoot } = require('../kernel/code-root.cjs');
 const { tryGit } = require('../kernel/git.cjs');
 const { writeJsonAtomic, isObject, isStringList } = require('../kernel/manifest-io.cjs');
 const { BUILD_PHASES } = require('../kernel/manifest-schema.cjs');
-const { repoName } = require('../kernel/repos.cjs');
+const { repoName, projectRepos } = require('../kernel/repos.cjs');
 const { codeChanges } = require('./worktree-prep.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { readSpec, specReading } = require('./spec-sections.cjs');
@@ -107,7 +107,8 @@ const { isCurrent, factsOf, decidedNow } = require('./ledger-fold.cjs');
 const { resolveId } = require('./ledger-ids.cjs');
 const { handedTag } = require('./topic-map.cjs');
 const { heldBackIn } = require('./questions.cjs');
-const { phaseLists, mergeWaiting } = require('./phase-checks.cjs');
+const { phaseLists, mergeWaiting, reposOf } = require('./phase-checks.cjs');
+const { fixWorktree } = require('./fix-branch.cjs');
 const { shownTask } = require('./task-id.cjs');
 const { buildLength, quickFixBuild, specJoined } = require('./derivations.cjs');
 const { STATUS_WORDS } = require('./task-verbs.cjs');
@@ -432,7 +433,7 @@ function heldPrint(file) {
 /** The fingerprint of an empty file's content. */
 const EMPTY_PRINT = fingerprint(Buffer.alloc(0));
 
-/** The working tree outside `.ledger/` (the header's), its ignored entries aside. @param {string} root the code root @param {Repo[]} repos @returns {{heads: Record<string, string|null>, paths: Record<string, string>}} */
+/** The working tree outside `.ledger/` (the header's), its ignored entries aside. @param {string} root the project's folder there @param {Repo[]} repos @returns {{heads: Record<string, string|null>, paths: Record<string, string>}} */
 function treeNow(root, repos) {
   const heads = Object.fromEntries(repos.map((repo) => [repoName(repo), tryGit(repo.path, ['rev-parse', '-q', '--verify', 'HEAD'])?.trim() ?? null]));
   const paths = Object.fromEntries(codeChanges(repos, { renames: false }).map(({ path: at, status }) => [at, `${status} ${heldPrint(path.join(root, at)) ?? '-'}`]));
@@ -446,11 +447,23 @@ function ignoredNow(repos) {
   ]));
 }
 
+/**
+ * The project's repos whose working tree a round is held to (the header's):
+ * a quick-fix's in its worktree, where it is laid out, else the calling
+ * checkout's.
+ * @param {Reading} at @returns {Repo[]}
+ */
+function treeRepos(at) {
+  if (!quickFixBuild(at.manifest)) return reposOf(at);
+  const { root } = fixWorktree(at.cwd, at.unit);
+  return fs.existsSync(root) ? projectRepos(root) : reposOf(at);
+}
+
 /** The working tree outside `.ledger/` snapshotted for a round, over any held: on the person's word alone. @param {string} cwd @param {string} unit @param {number} round @param {Repo[]} repos */
 function takeSnapshot(cwd, unit, round, repos) {
   const file = snapshotPath(cwd, unit);
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  writeJsonAtomic(file, { round, ...treeNow(codeRoot(cwd), repos), ignored: ignoredNow(repos) });
+  writeJsonAtomic(file, { round, ...treeNow(repos[0].path, repos), ignored: ignoredNow(repos) });
 }
 
 /** The working tree snapshotted as a round opens, where none is held; one held kept as it stands. @param {string} cwd @param {string} unit @param {number} round @param {Repo[]} repos */
@@ -489,7 +502,7 @@ const repoWords = (name) => (name === '.' ? 'the project\'s repository' : `\`${n
  */
 function treeDrift(cwd, unit, repos) {
   const then = JSON.parse(fs.readFileSync(snapshotPath(cwd, unit), 'utf8'));
-  const now = treeNow(codeRoot(cwd), repos);
+  const now = treeNow(repos[0].path, repos);
   /** @param {Record<string, string|null>} was @param {Record<string, string|null>} is @returns {TreeChange[]} */
   const drift = (was, is) => [...new Set([...Object.keys(was), ...Object.keys(is)])].filter((of) => was[of] !== is[of]).map((of) => ({ of, then: was[of] ?? null, now: is[of] ?? null }));
   return {
@@ -593,5 +606,5 @@ module.exports = {
   TESTS, TESTS_LETTER, NOTES, isBuilderNote, setAsideFolder, setAsideHeld, filesUnder, EMPTY_PRINT, reportNames, recordedRounds, fixesOf, endsReview, fixPhase, notesStanding, reviewStanding, reportsIn, reviewGoesOn, everyRead,
   endedWords, endedRefusal, openRefusal, roundRefusal, readsWords, mergingWords,
   roundRecordPath, roundReportFile, roundChecksFile, roundReadsPath, roundFolder, areaReportPath,
-  takeSnapshot, openSnapshot, snapshotRound, dropSnapshot, treeDrift, movedWords, treeChanges, unitCalls, callsForThePerson, reviewCallFault, inTheBuild,
+  treeRepos, takeSnapshot, openSnapshot, snapshotRound, dropSnapshot, treeDrift, movedWords, treeChanges, unitCalls, callsForThePerson, reviewCallFault, inTheBuild,
 };

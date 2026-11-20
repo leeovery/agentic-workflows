@@ -34,7 +34,7 @@ describe('pipeline simulation: quick-fix merged by hand', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('quick-fix: three fixes built in the project\'s checkout on its one branch, each passed by its pair, recorded, pushed to its one pull request and done; the pull request merged by hand mid-set, the fix after it on the branch cut again, its share in the nested clone recorded; and the close landing what is left in one commit naming the fix it holds in each, no handoff before it (24.S8), then carrying on in the conversation, whose talk of the product goes on in the session the quick-fix was opened from', () => {
+  it('quick-fix: three fixes built in the quick-fix\'s worktree on its one branch, each passed by its pair, recorded, pushed to its one pull request and done; the pull request merged by hand mid-set, the fix after it on the branch cut again, its share in the nested clone recorded; and the close landing what is left in one commit naming the fix it holds in each, no handoff before it (24.S8), then carrying on in the conversation, whose talk of the product goes on in the session the quick-fix was opened from', () => {
     const wu = 'typo';
     const branch = `fix/${wu}`;
     startUnit(sim, 'quick-fix', wu, 'The --color flag is spelt --colour');
@@ -50,11 +50,10 @@ describe('pipeline simulation: quick-fix merged by hand', () => {
     };
     const first = built(1, 'Spell the flag --colour', ['src/flag.js']);
     built(2, 'Spell the help --colour', ['src/help.js']);
-    // The person merges the pull request by hand mid-set, a squash on main.
-    git(sim.dir, ['switch', '-q', 'main']);
+    // The person merges the pull request by hand mid-set, a squash on main,
+    // which their checkout has out.
     git(sim.dir, ['merge', '-q', '--squash', branch]);
     git(sim.dir, ['commit', '-q', '-m', 'Spell it the British way']);
-    git(sim.dir, ['switch', '-q', branch]);
     const third = built(3, 'Spell the docs --colour', ['docs/flags.md', 'api/flags.md']);
     const recorded = sim.manifest(wu).fixes.repos;
     sim.write(`.ledger/${wu}/build/log.md`, '# The fixes\n');

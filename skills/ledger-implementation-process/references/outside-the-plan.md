@@ -8,7 +8,7 @@ Something the plan never held has turned up: a bug the person reports, something
 
 ## The Doors
 
-- **Something small the person asks for** — onto an open task it fits, as theirs (`task add … --by person`), or made by you and committed against an open task, as a nit fix is. With no task open, it is a one-line task of your own, which no reviewer reads: `task create {work_unit} {N} --title "{line}" --type {type} --why "{why no reviewer need read it}"`; start it, lay out its worktree, `task worktree {work_unit} {task}` (a quick-fix's is its checkout), commit it there through the door, and land it as the task loop lands one.
+- **Something small the person asks for** — onto an open task it fits, as theirs (`task add … --by person`), or made by you and committed against an open task, as a nit fix is. With no task open, it is a one-line task of your own, which no reviewer reads: `task create {work_unit} {N} --title "{line}" --type {type} --why "{why no reviewer need read it}"`; start it, lay out its worktree, `task worktree {work_unit} {task}` (a quick-fix's is the quick-fix's worktree, which its start lays out), commit it there through the door, and land it as the task loop lands one.
 - **Too big for this work** — say so in a line, such as "this deserves its own planning: now, or park it?". Now, it starts as its own work with `/ledger {words}` in another window, and the build carries on here; parked, the last door.
 - **A task in this phase, or a later one already written** — write its file, then record it and link it after any unfinished task it waits on:
 

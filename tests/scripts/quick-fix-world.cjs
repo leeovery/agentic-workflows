@@ -8,9 +8,9 @@
 // it (`quickFix`); its one branch (`BRANCH`), which every fix of it commits
 // on; a fix's task file, fix `n` naming its one scenario `{n}.S1`
 // (`fixFile`), and its creation through the tracker's verb (`createFix`); a
-// fix's change made as its builder makes one — started, putting the
-// checkout on the quick-fix's branch, its change committed through the
-// door (`fixChanged`) — and the fix built, the quick-fix's pull request
+// fix's change made as its builder makes one — started, laying out the
+// quick-fix's worktree (`fixTree`), its change committed through the door
+// from there (`fixChanged`) — and the fix built, the quick-fix's pull request
 // then opened, or its commit pushed to it, its pair's pass and its account
 // taken, and the fix done (`fixBuilt`), or any task of it so ended
 // (`fixDone`); fix 1.1 built in two commits, the second rewriting the
@@ -26,9 +26,10 @@
 // nested repositories (`quickFixNestedConformance`); the knowledge base's
 // chunks of `summary.md` (`summaryChunks`); a git command run as
 // Claude runs one in the conversation, the shell guard asked first
-// (`guardedGit`); a commit of the person's own (`ownCommit`), on a branch
-// of the quick-fix's name they made (`ownBranchCommit`); finish's checklist
-// worked and closed (`checklistClosed`), the fixes recorded before it
+// (`guardedGit`); a commit of the person's own (`ownCommit`), or made by
+// hand on the branch it lands on (`onMain`); the
+// quick-fix's worktree taken apart in a repository (`treeGone`); finish's
+// checklist worked and closed (`checklistClosed`), the fixes recorded before it
 // (`fixesRecorded`), and the close's yes as its menu words it (`closeYes`);
 // and a world built by a conversation gone since, its records in a config
 // folder of its own, removed once the world is built (`asGone`).
@@ -96,20 +97,23 @@ function quickFix(dir, { seeded = true } = {}) {
   ok(dir, ['workunit', 'create', UNIT, 'quick-fix', '--description', DESCRIPTION, '--session-log-file', log, ...(seeded ? ['--seed', `.ledger/${NOTE}`] : [])]);
 }
 
+/** The quick-fix's worktree, where its fixes are built, by the project's folder. @param {string} dir */
+const fixTree = (dir) => path.join(dir, '.claude', 'worktrees', `ledger-${UNIT}`);
+
 /** Fix `n` made through the tracker's verb. @param {string} dir @param {number} n @param {string} title @param {As} [as] */
 const createFix = (dir, n, title, as) => ok(dir, ['task', 'create', UNIT, '1', '--file', writeState(dir, layout.cache(`fix-${n}.md`), fixFile(n, title))], as);
 
 /**
  * Fix `n`'s change made in the conversation `as` names: the fix made,
- * started — the checkout put on the quick-fix's branch — and `file` written
- * with `text` and committed through the door.
+ * started — the quick-fix's worktree laid out — and `file` written there
+ * with `text` and committed through the door from there.
  * @param {string} dir @param {number} n @param {string} title @param {string} file @param {string} text @param {As} as
  */
 function fixChanged(dir, n, title, file, text, as) {
   createFix(dir, n, title, as);
   ok(dir, ['task', 'start', UNIT, `1.${n}`], as);
-  createFile(dir, file, text);
-  ok(dir, ['commit', '--paths', file, '--task', UNIT, `1.${n}`, '-m', `fix(${UNIT}): ${title.toLowerCase()}`], as);
+  createFile(fixTree(dir), file, text);
+  ok(fixTree(dir), ['commit', '--paths', file, '--task', UNIT, `1.${n}`, '-m', `fix(${UNIT}): ${title.toLowerCase()}`], as);
 }
 
 /**
@@ -183,8 +187,8 @@ const FIRST_GO = 'const flag = \'colr\';\n';
 function fixRewritten(dir, as) {
   const [flag] = SET;
   fixChanged(dir, 1, flag.title, flag.file, FIRST_GO, as);
-  createFile(dir, flag.file, flag.text);
-  ok(dir, ['commit', '--paths', flag.file, '--task', UNIT, '1.1', '-m', `fix(${UNIT}): spell the flag again`], as);
+  createFile(fixTree(dir), flag.file, flag.text);
+  ok(fixTree(dir), ['commit', '--paths', flag.file, '--task', UNIT, '1.1', '-m', `fix(${UNIT}): spell the flag again`], as);
   ok(dir, ['land', 'open', UNIT, '1.1'], as);
   fixDone(dir, '1.1', as);
 }
@@ -319,9 +323,10 @@ const nestedQuickFix = folderFrom('quick-fix-nested-', (folder) => {
  * recorded; and built, both, the opening's answer; the close made, its
  * answer; what each repository's default branch gained, each landing by
  * its task and the paths it changed; and a nested repository's branch gone
- * here — its checkout put on the branch it lands on, the branch and its
- * remote's copy here deleted — or, as a second clone of it has it, with
- * no commit of the branch's left in a reflog either.
+ * here, as a clone that never held the quick-fix's worktree has it — the
+ * worktree taken apart, the branch and its remote's copy here deleted — or,
+ * as a second clone of it has it, with no commit of the branch's left in a
+ * reflog either.
  * @param {string} name the driver's @param {string} prefix the copies' temp-directory prefix
  */
 function quickFixNestedConformance(name, prefix) {
@@ -373,10 +378,10 @@ function quickFixNestedConformance(name, prefix) {
     landed: (at) => Object.fromEntries([['.', at.dir, 'main'], ['ext', at.ext, NESTED.ext.into], ['lib', at.lib, NESTED.lib.into]]
       .map(([repo, dir, into]) => [repo, side.landed(dir, into).map(({ task, paths }) => [task, paths])])),
     gone,
-    /** The nested repository at `dir` as a second clone of it has it: its branch gone here, and in every reflog. @param {string} dir @param {string} into */
-    secondClone: (dir, into) => {
-      gone(dir, into);
-      git(dir, ['reflog', 'expire', '--expire=now', '--all']);
+    /** The nested repository `repo` as a second clone of it has it: its branch gone here (`gone`), and in every reflog. @param {NestedQuickFix} at @param {'ext'|'lib'} repo */
+    secondClone: (at, repo) => {
+      gone(at, repo);
+      git(at[repo], ['reflog', 'expire', '--expire=now', '--all']);
     },
   };
 
@@ -387,8 +392,8 @@ function quickFixNestedConformance(name, prefix) {
   function opened(at, n, files) {
     createFix(at.dir, n, SET[n - 1].title, as());
     ok(at.dir, ['task', 'start', UNIT, `1.${n}`], as());
-    for (const [file, text] of Object.entries(files)) createFile(at.dir, file, text);
-    ok(at.dir, ['commit', '--paths', ...Object.keys(files), '--task', UNIT, `1.${n}`, '-m', `fix(${UNIT}): ${SET[n - 1].title.toLowerCase()}`], as());
+    for (const [file, text] of Object.entries(files)) createFile(fixTree(at.dir), file, text);
+    ok(fixTree(at.dir), ['commit', '--paths', ...Object.keys(files), '--task', UNIT, `1.${n}`, '-m', `fix(${UNIT}): ${SET[n - 1].title.toLowerCase()}`], as());
     return ok(at.dir, ['land', 'open', UNIT, `1.${n}`], as());
   }
 
@@ -398,12 +403,25 @@ function quickFixNestedConformance(name, prefix) {
     ok(at.dir, ['quick-fix', 'record', UNIT, `1.${n}`, '--file', recordFile(at.dir, n, { changed: `${SET[n - 1].title}.`, why: 'It was spelt the American way.', leaves: 'Nothing.' })], as());
   }
 
-  /** The nested repository at `dir`'s branch gone here: its checkout put on `into`, the branch, where it is here, and its remote's copy here deleted. @param {string} dir @param {string} into */
-  function gone(dir, into) {
-    git(dir, ['switch', '-q', into]);
+  /**
+   * The nested repository `repo`'s branch gone here, as a clone that never
+   * held the quick-fix's worktree has it: the worktree taken apart in every
+   * repository, the branch, where it is here, and its remote's copy here
+   * deleted.
+   * @param {NestedQuickFix} at @param {'ext'|'lib'} repo
+   */
+  function gone(at, repo) {
+    for (const dir of [at.ext, at.lib, at.dir]) treeGone(dir);
+    const dir = at[repo];
     if (git(dir, ['branch', '--list', BRANCH]).trim() !== '') git(dir, ['branch', '-q', '-D', BRANCH]);
     git(dir, ['update-ref', '-d', `refs/remotes/origin/${BRANCH}`]);
   }
+}
+
+/** The linked worktree of the repository at `dir` with the quick-fix's branch out removed, where it has one. @param {string} dir */
+function treeGone(dir) {
+  const held = git(dir, ['worktree', 'list', '--porcelain']).split('\n\n').find((entry) => entry.split('\n').includes(`branch refs/heads/${BRANCH}`));
+  if (held !== undefined) git(dir, ['worktree', 'remove', '--force', '--force', held.split('\n')[0].slice('worktree '.length)]);
 }
 
 /** The knowledge base's chunks of the unit's `summary.md`, each by the heading it sits under. @param {string} dir */
@@ -440,17 +458,29 @@ function guardedGit(dir, args, as) {
   return ran.stdout;
 }
 
+/**
+ * Commits made by hand on `main` in the repository at `repo`, in the
+ * checkout that has it out, or in one of its own where none does: each of
+ * `commits` its file, text and subject.
+ * @param {string} repo @param {{file: string, text: string, subject: string}[]} commits
+ */
+function onMain(repo, commits) {
+  const held = git(repo, ['worktree', 'list', '--porcelain']).split('\n\n').find((entry) => entry.split('\n').includes('branch refs/heads/main'));
+  const tree = held === undefined ? fs.mkdtempSync(path.join(os.tmpdir(), 'quick-fix-main-')) : held.split('\n')[0].slice('worktree '.length);
+  if (held === undefined) git(repo, ['worktree', 'add', '-q', tree, 'main']);
+  for (const { file, text, subject } of commits) {
+    createFile(tree, file, text);
+    git(tree, ['add', file]);
+    git(tree, ['commit', '-q', '-m', subject]);
+  }
+  if (held === undefined) git(repo, ['worktree', 'remove', '--force', tree]);
+}
+
 /** A commit of the person's own in the repository at `dir`, writing `mine.txt` on the branch its checkout has out, made in their terminal. @param {string} dir @param {string} subject */
 function ownCommit(dir, subject) {
   createFile(dir, 'mine.txt', 'mine\n');
   git(dir, ['add', 'mine.txt']);
   git(dir, ['commit', '-q', '-m', subject]);
-}
-
-/** A commit of the person's own (`ownCommit`) on a branch of the quick-fix's name made in the repository at `dir`. @param {string} dir @param {string} subject */
-function ownBranchCommit(dir, subject) {
-  git(dir, ['switch', '-q', '-c', BRANCH]);
-  ownCommit(dir, subject);
 }
 
 /** Finish's checklist worked and closed in the conversation `as` names, the build's log written. @param {string} dir @param {As} as */
@@ -498,6 +528,6 @@ function entered(dir, as) {
 }
 
 module.exports = {
-  UNIT, PLACE, DESCRIPTION, NOTE, FLAG, HELP, BRANCH, RECORDS, SET, CALL, FIRST_GO, fixFile, parkedOn, quickFix, createFix, fixChanged, fixBuilt, fixDone, fixRewritten, cutLeftOff, accountFigures, recordFile, twoFixesBuilt, quickFixConformance, quickFixNestedConformance, summaryChunks,
-  guardedGit, ownCommit, ownBranchCommit, checklistClosed, fixesRecorded, closeYes, asGone, entered,
+  UNIT, PLACE, DESCRIPTION, NOTE, FLAG, HELP, BRANCH, RECORDS, SET, CALL, FIRST_GO, fixTree, fixFile, parkedOn, quickFix, createFix, fixChanged, fixBuilt, fixDone, fixRewritten, cutLeftOff, accountFigures, recordFile, twoFixesBuilt, quickFixConformance, quickFixNestedConformance, summaryChunks,
+  guardedGit, ownCommit, onMain, checklistClosed, fixesRecorded, closeYes, asGone, entered, treeGone,
 };

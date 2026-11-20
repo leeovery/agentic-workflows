@@ -40,7 +40,7 @@ const { commitAcrossRepos, commitStateScoped, discoveryScope, PRODUCT_SCOPE, onS
 const { commitMigrations, finishing } = require('./domain/migration-commit.cjs');
 const { committingAlone } = require('./domain/state-worktree.cjs');
 const { readProjectManifest } = require('./kernel/manifest-io.cjs');
-const { inFlightTask, refuseClockBehind, onWorkBranch, checksFor, runChecks, recordWork, oneLineAdditions, workMessage } = require('./domain/commit-task.cjs');
+const { inFlightTask, refuseClockBehind, checksFor, runChecks, recordWork, oneLineAdditions, workMessage } = require('./domain/commit-task.cjs');
 const { taskId } = require('./domain/task-id.cjs');
 const {
   stageableSpecs, hasStagedDeletions, deletedAtHead, onBranch, operationInProgress, addRefused, unmergedPast,
@@ -2243,15 +2243,13 @@ function assertCommitsHere(repo, paths) {
 /**
  * The project's repos and the code commit's share of the declared paths in
  * each, every path and every repo checked before any repo commits, a merge
- * in progress among them (`assertCommitsHere`) — once `ready` has readied
- * the repos the commit commits in.
- * @param {string} cwd @param {string[]} paths @param {(repos: import('./kernel/repos.cjs').Repo[]) => void} [ready]
+ * in progress among them (`assertCommitsHere`).
+ * @param {string} cwd @param {string[]} paths
  */
-function checkedGroups(cwd, paths, ready = () => {}) {
+function checkedGroups(cwd, paths) {
   const read = projectRepos(cwd);
   const { repos, links } = linksHeldOut(read);
   const groups = commitGroups(repos, paths.map((p) => codePathSpec(cwd, repos, p)));
-  ready(groups.map(({ repo }) => repo));
   groups.forEach(({ repo, paths: own }) => {
     const linked = own.filter((p) => links.get(repo.dir)?.includes(p));
     if (linked.length > 0) {
@@ -2308,7 +2306,7 @@ function codeCommitted(repos, committed, more = {}) {
 function commitTaskPaths(cwd, paths, message, unit, given) {
   const { ref, manifest } = inFlightTask(cwd, unit, given);
   refuseClockBehind(cwd, ref, manifest);
-  const { repos, groups } = checkedGroups(cwd, paths, (committing) => onWorkBranch(cwd, ref, manifest, committing));
+  const { repos, groups } = checkedGroups(cwd, paths);
   const checks = runChecks(cwd, checksFor(cwd, manifest, ref));
   const warnings = recordWork(cwd, ref, manifest, groups.map(({ repo }) => repo));
   const committed = commitAcrossRepos(groups, workMessage(message, ref, oneLineAdditions(cwd, ref)));
@@ -2667,16 +2665,17 @@ const COMMANDS = Object.freeze({
 // its commit one hold, so no peer's write lands between them — a command
 // added later included — but the ones named here, `*` for every sub-verb or
 // the sub-verbs alone. None of them writes what a state commit takes but
-// `boot`, `ledger`, `asset`, `raise`, `enter`, `verify`, `task worktree`
-// and `inbox capture`, and none but they waits on the lock: `inbox capture` holds
+// `boot`, `ledger`, `asset`, `raise`, `enter`, `verify`, `task worktree`,
+// `task start` and `inbox capture`, and none but they waits on the lock: `inbox capture` holds
 // the lock of the project it captures into, which may be another's than
 // the caller's, around its name, its write and its commit;
 // `knowledge` writes the store the state ignores,
 // under a lock of its own; `verify` holds it around a run's record or the
 // setup's and the commit alone, so the product's parts, which run for
 // minutes, hold no peer up and may run the engine; `task worktree` holds it
-// around the task's layout alone, so the steps that prepare the environment,
-// which run for minutes, hold no peer up;
+// around the task's layout alone, and `task start` around the start, a
+// quick-fix's worktree laid out with it, so the steps that prepare the
+// environment, which run for minutes, hold no peer up;
 // `boot` holds the writer lock around each state write it makes and no
 // longer, so its knowledge pass never holds a peer up; a `ledger` write
 // holds it around its read of the ledger, the append and the commit alone,
@@ -2737,7 +2736,7 @@ const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */
   convergence: '*',
   trust: ['threshold', 'build-threshold'],
   environment: ['show'],
-  task: ['worktree'],
+  task: ['worktree', 'start'],
   drivers: ['check'],
 }));
 

@@ -1391,7 +1391,7 @@ function parking(place, target, sealed, { task, wentAhead = null, logs = null })
  */
 function parkedLine(task, name, asks, tasks, phase, aside) {
   if (task === null) return `${name} waits for you, parking ${questions.parkedTasks(tasks)}: ${asks} The ${phase === 'review' ? 'review' : 'build'} carries on.`;
-  const kept = aside.length === 0 ? '' : ` What the checkout held not committed is set aside until it starts again: ${aside.join(', ')}.`;
+  const kept = aside.length === 0 ? '' : ` What its worktree held not committed is set aside until it starts again: ${aside.join(', ')}.`;
   return `Task ${task} parks on ${name}, waiting for you: ${asks}${kept} The other tasks carry on.`;
 }
 
@@ -1419,16 +1419,17 @@ function parkLanded(cwd, park, { decision, reason }, warnings) {
 
 /**
  * What a quick-fix's fix had not committed, set aside as a question parks
- * it while it holds the checkout, so the next fix starts on a clean one
+ * it while it holds the worktree, so the next fix starts on a clean one
  * (fix-aside.cjs): each path, from the project — none where the task holds
- * no checkout, a parked or freed fix waiting behind another, or any task
- * of a unit that is no quick-fix.
+ * no worktree, a parked or freed fix waiting behind another, where none is
+ * laid out, or for any task of a unit that is no quick-fix.
  * @param {string} cwd @param {string} unit @param {string} task @returns {string[]}
  */
 function setAsideFor(cwd, unit, task) {
   const turn = turnNow(cwd, unit);
   if (turn === null || !turn.checkout || turn.inFlight !== task) return [];
-  return require('./fix-aside.cjs').setAside(cwd, parseShownTask(unit, task), SAID);
+  const { root } = require('./fix-branch.cjs').fixWorktree(cwd, unit);
+  return fs.existsSync(root) ? require('./fix-aside.cjs').setAside(root, parseShownTask(unit, task), SAID) : [];
 }
 
 /**

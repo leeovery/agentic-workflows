@@ -35,7 +35,7 @@ for (const { name } of listDrivers('landing')) {
       const at = project();
       built(at, 1, { 'lib/lib.txt': 'lib --colour\n' });
       const held = git(at.lib, ['rev-parse', 'fix/typo']).trim();
-      gone(at.lib, NESTED.lib.into);
+      gone(at, 'lib');
       built(at, 2, { 'lib/rates.txt': 'rates --colour\n' });
       const taken = git(at.lib, ['rev-parse', 'fix/typo~1']).trim();
       closed(at);

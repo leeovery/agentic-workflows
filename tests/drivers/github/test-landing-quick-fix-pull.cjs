@@ -9,7 +9,11 @@
 // main there by hand, the close squashing what is left alone; and the pull
 // request closed by hand there, a fix's done and close refused in the
 // landing's words, each opening on its own verb, and by a move, unmerged, a
-// second close closing nothing. Merged by hand there is
+// second close closing nothing; and the close over the person's checkout
+// holding changes the landing touches, the branch it lands on out there:
+// the merge standing and the unit completing, main here left behind, the
+// close's line naming it and the call that brings it up. Merged by hand
+// there is
 // test-landing-quick-fix.cjs's. Git layer: quick-fix-world.cjs's two fixes
 // built on a fake GitHub (world.cjs), their pull request #1, built once and
 // copied for each test.
@@ -19,6 +23,8 @@ require('../../scripts/hermetic-env.cjs');
 
 const { describe, it, afterEach } = require('node:test');
 const assert = require('node:assert');
+const fs = require('fs');
+const path = require('path');
 
 const harness = require('../../scripts/engine-harness.cjs');
 const { useTempFolder } = require('../../scripts/discovery-test-utils.cjs');
@@ -26,7 +32,9 @@ const { UNIT, DESCRIPTION, BRANCH, SET, fixChanged, twoFixesBuilt, fixesRecorded
 const side = require('./landing.cjs');
 const { GH_ENV, github, bareOf, closeByHand, pulls, tipOnGithub } = require('./world.cjs');
 
-const { ok, refuses, git, withEnv, fixtureFrom, cleanupFixture } = harness;
+const {
+  ok, okSections, refuses, sectionOf, git, createFile, readManifest, withEnv, fixtureFrom, cleanupFixture,
+} = harness;
 const { quickFixLanding, quickFixClose } = require('../../../skills/ledger-engine/scripts/domain/landing.cjs');
 
 const world = fixtureFrom('quick-fix-two-fixes-github-', (dir) => twoFixesBuilt(dir, { ready: side.prepare, env: GH_ENV }));
@@ -87,5 +95,22 @@ describe('a quick-fix\'s one pull request on GitHub (R14)', () => {
     assert.deepStrictEqual([refuses(dir, ['task', 'done', UNIT, '1.3'], as()).error, refuses(dir, ['task', 'close', UNIT, '1.3', '--reason', 'Not wanted.'], as()).error], [
       `task done: ${words}`, `task close: ${words}`,
     ]);
+  });
+});
+
+describe('a quick-fix\'s close over the person\'s checkout, the branch it lands on out there with changes the landing touches (R14)', () => {
+  it('the merge stands and the unit completes, main here left where it was with the person\'s change, the close\'s line naming it behind and the call that brings it up', () => {
+    dir = world();
+    const before = git(dir, ['rev-parse', 'main']).trim();
+    const mine = 'const flag = \'mine\';\n';
+    createFile(dir, SET[0].file, mine);
+    fixesRecorded(dir, 2, as());
+    const { res: { landed }, sections } = okSections(dir, ['finish', 'yes', UNIT], as());
+
+    assert.deepStrictEqual([landed.map((/** @type {any} */ { repo, into, behind }) => [repo, into, behind]), readManifest(dir, UNIT).status, pulls(dir)], [
+      [['.', 'main', 'origin/main']], 'completed', [{ number: 1, state: 'MERGED', base: 'main' }],
+    ]);
+    assert.deepStrictEqual([git(dir, ['rev-parse', 'main']).trim(), fs.readFileSync(path.join(dir, SET[0].file), 'utf8'), git(dir, ['merge-base', '--is-ancestor', before, tipOnGithub(dir, 'main')]) === ''], [before, mine, true]);
+    assert.strictEqual(sectionOf(sections, 'DISPLAY: ended').trim(), '`main` is behind what landed: its checkout holds changes the landing touches, so it was not moved. Once they are committed or set aside, `git merge --ff-only origin/main` there brings it up.');
   });
 });

@@ -17,7 +17,8 @@
 // (`mergeWaiting`, phase-checks.cjs). The review phase's verbs refuse as
 // it does.
 // Another session holding the checkout's code stops it at the build's code
-// gate, nothing written, and `--take` enters all the same (12.7.8, 12.S50).
+// gate, nothing written, and `--take` enters all the same (12.7.8, 12.S50)
+// — but a quick-fix's review, which reads the quick-fix's worktree.
 //
 // As the conversation arrives, every task the tracker holds in progress in
 // a phase the build has written — a fix task, the review's fix phases built
@@ -74,7 +75,7 @@ const { statePath } = require('../kernel/state-root.cjs');
 const {
   buildFinished, phaseClosed, buildRefusal, quickFixReviewRefusal, quickFixBuild, cutPhases, cutLength,
 } = require('./derivations.cjs');
-const { reading, reposOf, mergeWaiting } = require('./phase-checks.cjs');
+const { reading, mergeWaiting } = require('./phase-checks.cjs');
 const {
   codeHeld, buildLogOf, standingOf, ownInFlight, inFlightLines, waitingLines, askedLines, takeInFlight, readingOf,
 } = require('./build-entry.cjs');
@@ -84,7 +85,7 @@ const { specPath } = require('./spec-sections.cjs');
 const { summaryFile } = require('./knowledge/artifacts.cjs');
 const { notesPath } = require('./notes.cjs');
 const {
-  reviewStanding, recordedRounds, reportsIn, endedWords, readsWords, mergingWords, roundReportFile, takeSnapshot, snapshotRound, fixPhase, setAsideHeld,
+  reviewStanding, recordedRounds, reportsIn, endedWords, readsWords, mergingWords, roundReportFile, takeSnapshot, snapshotRound, fixPhase, setAsideHeld, treeRepos,
 } = require('./review-phase.cjs');
 const { reviewOpened } = require('./landing.cjs');
 const {
@@ -311,7 +312,7 @@ function arriving(at) {
   const opening = recordedRounds(at.cwd, at.unit).length === 0 && snapshotRound(at.cwd, at.unit) === null;
   if (opening) reviewOpened(at.cwd, at.unit);
   takeInFlight(at);
-  if (opening) takeSnapshot(at.cwd, at.unit, 1, reposOf(readingOf(at)));
+  if (opening) takeSnapshot(at.cwd, at.unit, 1, treeRepos(readingOf(at)));
 }
 
 /** @type {Entry} */

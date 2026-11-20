@@ -307,6 +307,22 @@ describe('engine presence', () => {
     }
   });
 
+  it('the code-slot read never takes a quick-fix\'s rows, its code built in a worktree of its own', () => {
+    const { heldCodeSessions } = require('../../skills/ledger-engine/scripts/domain/presence.cjs');
+    fs.writeFileSync(path.join(dir, '.ledger', 'pay', 'manifest.json'), JSON.stringify({ name: 'pay', work_type: 'quick-fix', status: 'in-progress', phases: {} }));
+    craftRecord(dir, 'implementation', 'pay', { pid: 1, pid_start: null, session_id: 'peer' });
+    const beforePid = process.env.CLAUDE_PID;
+    process.env.CLAUDE_PID = String(process.pid);
+    try {
+      const quickFix = heldCodeSessions(dir);
+      fs.writeFileSync(path.join(dir, '.ledger', 'pay', 'manifest.json'), JSON.stringify({ name: 'pay', work_type: 'feature', status: 'in-progress', phases: {} }));
+      assert.deepStrictEqual([quickFix, heldCodeSessions(dir).length], [[], 1], 'the same row of a feature holds the slot');
+    } finally {
+      if (beforePid === undefined) delete process.env.CLAUDE_PID;
+      else process.env.CLAUDE_PID = beforePid;
+    }
+  });
+
   it('the code-slot read excludes a row carrying the caller\'s pid under another session id', () => {
     // A resumed conversation keeps the process and takes a new session id, so
     // pid ownership is the second arm of the same question — without it the

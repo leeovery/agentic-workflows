@@ -6,7 +6,8 @@
 // scenario makes —
 //   - every manifest parses and is schema-valid (statuses in vocabulary,
 //     discovery items status-less, no phase-named shadow roots, a
-//     quick-fix's record naming each nested repository it touched once,
+//     quick-fix's record naming each nested repository it touched once, its
+//     worktree standing only while its fixes are built, on its one branch,
 //     the landing record naming the unit's own tasks landed in the
 //     project's repositories at commits each holds, a unit's own branch
 //     an epic's or a feature's, the default branch holding none of its
@@ -77,6 +78,8 @@ const { LEARNED } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain
 const { PERSON } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/user-files.cjs'));
 const { EXPERIMENT_TERMINAL_STATUSES } = require(path.join(ROOT, 'skills/ledger-engine/scripts/kernel/manifest-schema.cjs'));
 const { environmentFaults } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/environment.cjs'));
+const { layoutsFolder, layoutFolderName } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/project-layout.cjs'));
+const { quickFixBranch } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/landing-names.cjs'));
 
 // The words a shell makes of a route written into a command: split at spaces,
 // a double-quoted span one word without its quotes.
@@ -96,6 +99,12 @@ function listWorkUnits(dir) {
     .filter((e) => e.isDirectory() && !e.name.startsWith('.'))
     .filter((e) => fs.existsSync(path.join(wf, e.name, 'manifest.json')))
     .map((e) => e.name);
+}
+
+/** The branch the linked worktree at `tree` has out, read from git's own files. @param {string} tree */
+function branchOutAt(tree) {
+  const gitDir = fs.readFileSync(path.join(tree, '.git'), 'utf8').trim().replace(/^gitdir: /, '');
+  return fs.readFileSync(path.join(gitDir, 'HEAD'), 'utf8').trim().replace(/^ref: refs\/heads\//, '');
 }
 
 /**
@@ -266,6 +275,15 @@ function auditState(dir, label) {
       const { repos } = manifest.fixes;
       assert.ok(Array.isArray(repos) && new Set(repos).size === repos.length, ctx(`${wu}: fixes.repos ${JSON.stringify(repos)} is not a list naming each repository once`));
       for (const repo of repos) assert.ok(fs.existsSync(path.join(dir, repo, '.git')), ctx(`${wu}: fixes.repos names ${repo}, no repository of the project's`));
+    }
+
+    // A quick-fix's worktree stands only while its fixes are built, on its
+    // one branch: laid out at its first fix's start, taken apart at its
+    // close, cancel or move (fix-branch.cjs).
+    const fixTree = path.join(layoutsFolder(dir), layoutFolderName(wu));
+    if (fs.existsSync(fixTree)) {
+      assert.ok(manifest.work_type === 'quick-fix' && manifest.status === 'in-progress' && derivations.fixesBegun(manifest), ctx(`${wu}: a quick-fix's worktree stands for a ${manifest.status} ${manifest.work_type}`));
+      assert.strictEqual(branchOutAt(fixTree), quickFixBranch(wu), ctx(`${wu}: its worktree has another branch out`));
     }
 
     if (manifest[schema.LANDINGS] !== undefined) auditLandings(dir, wu, manifest[schema.LANDINGS], ctx);

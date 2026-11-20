@@ -56,7 +56,6 @@
 
 const fs = require('fs');
 const path = require('path');
-const { codeRoot } = require('../kernel/code-root.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { git, literally } = require('../kernel/git.cjs');
 const { repoOf, repoPath, repoName, topPath } = require('../kernel/repos.cjs');
@@ -66,9 +65,9 @@ const { refuserFor } = require('./task-account.cjs');
 const { unitInProgress } = require('./topic-standing.cjs');
 const { itemTitle } = require('./derivations.cjs');
 const { reviewHeld } = require('./review-entry.cjs');
-const { reading, reposOf } = require('./phase-checks.cjs');
+const { reading } = require('./phase-checks.cjs');
 const {
-  roundRefusal, snapshotRound, treeDrift, movedWords, setAsideFolder, setAsideHeld, EMPTY_PRINT,
+  roundRefusal, snapshotRound, treeDrift, movedWords, setAsideFolder, setAsideHeld, EMPTY_PRINT, treeRepos,
 } = require('./review-phase.cjs');
 const { reviewTreeScreen } = require('./projections/review-phase.cjs');
 
@@ -87,7 +86,7 @@ const driftPrint = ({ moved, paths }) => fingerprint(JSON.stringify([moved, path
 function roundHeld(cwd, unit, said) {
   const at = reading(cwd, unit, refusing(said, () => unitInProgress(cwd, unit)));
   const { round } = refusing(said, () => reviewHeld(at, roundRefusal));
-  return { manifest: at.manifest, round, repos: reposOf(at) };
+  return { manifest: at.manifest, round, repos: treeRepos(at) };
 }
 
 /** Why no snapshot of the round's is held. @param {number} round @param {number|null} held */
@@ -203,7 +202,7 @@ function stagedApart(repos, back) {
  * @returns {import('./review-phase.cjs').SetAside|null}
  */
 function setAside(cwd, unit, round, repos, back, refuse) {
-  const root = codeRoot(cwd);
+  const root = repos[0].path;
   const { folder, making } = putFolders(cwd, unit, round);
   /** @type {string[]} */
   const paths = [];
@@ -260,7 +259,7 @@ function restoreTree(cwd, unit, listed) {
   const said = 'review restore-tree';
   const refuse = refuserFor(said);
   const { round, repos } = roundHeld(cwd, unit, said);
-  const root = codeRoot(cwd);
+  const root = repos[0].path;
   const drift = driftOf(cwd, unit, round, repos, refuse);
   if (listed !== drift.print) refuse(`the working tree changed since the gate listed it — render review-tree ${unit} lists it as it stands`);
   const kept = listedChanges(repos, drift).filter(({ kept: why }) => why !== null);

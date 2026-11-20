@@ -28,7 +28,7 @@
 // phase not merged, and a quick-fix's review asked for and not passed
 // among them — a question waiting, a record not indexed, finish's
 // checklist not closed, a quick-fix's fix unended or done and not
-// recorded, a verdict still to ask, and a quick-fix's checkout holding
+// recorded, a verdict still to ask, and a quick-fix's worktree holding
 // changes not committed.
 // `chain` answers, where the task chained is the last of a phase of the cut
 // not yet ended, the phase's notes consolidated (notes.cjs), its phase

@@ -19,7 +19,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
 const { ok, refuses, git, createFile } = require('../../scripts/engine-harness.cjs');
-const { UNIT, BRANCH, quickFixNestedConformance, guardedGit } = require('../../scripts/quick-fix-world.cjs');
+const { UNIT, BRANCH, quickFixNestedConformance, guardedGit, fixTree } = require('../../scripts/quick-fix-world.cjs');
 const { NESTED } = require('../../scripts/landing-world.cjs');
 const { bareOf, madeOnGithub } = require('./world.cjs');
 const lg = require('../../../skills/ledger-engine/scripts/domain/landing-git.cjs');
@@ -33,14 +33,14 @@ describe('a quick-fix\'s branch in a nested clone conflicting with GitHub\'s cop
     const at = project();
     opened(at, 1, { 'lib/lib.txt': 'lib --colour\n' });
     const suggestion = lg.short(madeOnGithub(at.lib, BRANCH, { 'lib.txt': 'lib --colour // suggested\n' }, 'Update lib.txt'));
-    createFile(at.dir, 'lib/lib.txt', 'lib --colour // reworked\n');
-    ok(at.dir, ['commit', '--paths', 'lib/lib.txt', '--task', UNIT, '1.1', '-m', `fix(${UNIT}): rework the lib`], as());
+    createFile(fixTree(at.dir), 'lib/lib.txt', 'lib --colour // reworked\n');
+    ok(fixTree(at.dir), ['commit', '--paths', 'lib/lib.txt', '--task', UNIT, '1.1', '-m', `fix(${UNIT}): rework the lib`], as());
     const refusal = refuses(at.dir, ['land', 'open', UNIT, '1.1'], as()).error;
     try {
-      guardedGit(at.dir, ['-C', 'lib', 'merge', '--no-ff', '--no-commit', suggestion], as());
+      guardedGit(fixTree(at.dir), ['-C', 'lib', 'merge', '--no-ff', '--no-commit', suggestion], as());
     } catch { /* the conflict the refusal names, settled below */ }
-    createFile(at.dir, 'lib/lib.txt', SETTLED);
-    ok(at.dir, ['commit', '--paths', 'lib/lib.txt', '--task', UNIT, '1.1', '-m', `fix(${UNIT}): take the suggestion`], as());
+    createFile(fixTree(at.dir), 'lib/lib.txt', SETTLED);
+    ok(fixTree(at.dir), ['commit', '--paths', 'lib/lib.txt', '--task', UNIT, '1.1', '-m', `fix(${UNIT}): take the suggestion`], as());
     ok(at.dir, ['land', 'open', UNIT, '1.1'], as());
     ended(at, 1);
     closed(at);

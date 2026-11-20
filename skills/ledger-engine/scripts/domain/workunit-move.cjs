@@ -15,7 +15,7 @@
 //   work stages a start, and start this work's screen drawn from it
 //   (start-this-work.cjs): one payload, one screen, naming what a
 //   quick-fix's move keeps — each fix's work set aside, and what the fix
-//   holding the checkout has not committed, which the yes sets aside (R26).
+//   holding the worktree has not committed, which the yes sets aside (R26).
 //   Nothing moves before the yes.
 // - What the move carries (19.5.16): the unit itself, re-typed in place
 //   under its name, so its seeds, its discovery log, its assets and the
@@ -52,15 +52,14 @@
 //   again, against the unit as it stands, and, where lines are carried, a
 //   conversation naming its session. Then, the writer lock held, each step
 //   one a second yes repeats or finds done: for a quick-fix, what the fix
-//   holding the checkout has not committed set aside, as a park sets it
-//   aside, and each checkout taken back to the branch its repository lands
-//   on where it has the quick-fix's one branch out — refused first,
-//   nothing moved, while one still holds changes not committed, the
-//   person's own — as its cancel leaves it too (fix-leave.cjs); and each
-//   of its tasks not yet ended, its fixes and its review's fix tasks,
-//   closed, as the verb closes it but for the refusal of a fix holding
-//   work, which the move lands nothing of, and the drop of what a fix's
-//   park set aside, which it keeps (`closeForMove`, task-verbs.cjs; R26),
+//   holding the worktree has not committed set aside, as a park sets it
+//   aside, and the worktree taken apart — refused first, nothing moved,
+//   while it still holds changes not committed — as its cancel leaves it
+//   too (fix-leave.cjs); and each of its tasks not yet ended, its fixes
+//   and its review's fix tasks, closed, as the verb closes it but for the
+//   refusal of a fix holding work, which the move lands nothing of, and
+//   the drop of what a fix's park set aside, which it keeps
+//   (`closeForMove`, task-verbs.cjs; R26),
 //   each close committing the tracker as the verb does; the carry
 //   appended, the lines read once the fixes have closed; then nothing
 //   left that the new type's build, numbering its own phase 1 and tasks
@@ -82,13 +81,12 @@
 //   and the ledger where lines were carried. It answers what this call
 //   did — the fixes it closed, the branch it kept, each fix's work set
 //   aside it kept, by its ref and the call that shows it (fix-aside.cjs,
-//   `keptAside`), whether it closed the pull request, where it took the
-//   checkout — and the handoff into the
-//   new type's first phase (24.1.2).
+//   `keptAside`), and whether it closed the pull request — and the
+//   handoff into the new type's first phase (24.1.2).
 // - Known edges: a failure between the save and the commit leaves the move
 //   made and uncommitted, the unit of the new type, so the yes refuses to
 //   run again; a fix an answer freed, its turn come and not started again,
-//   its work still set aside, refuses the yes while the checkout holds
+//   its work still set aside, refuses the yes while the worktree holds
 //   changes, its ref being taken; a quick-fix named like a waiting roadmap
 //   idea moves beside it, its name being kept; and a line another clone writes at the
 //   quick-fix's implementation after the move is no line the carry lists:
@@ -123,7 +121,7 @@ const { trackedBuild, removeBuild, closeForMove, ENDED } = require('./task-verbs
 const { quickFixLanding, quickFixClose } = require('./landing.cjs');
 const { keptUnder, setBranchAside } = require('./fix-branch.cjs');
 const { keptAside, keptWords, asideWords } = require('./fix-aside.cjs');
-const { holderOf, leaveCheckout } = require('./fix-leave.cjs');
+const { heldWork, leaveWorktree } = require('./fix-leave.cjs');
 const { linesOf, movedFiles } = require('./workunit-absorb.cjs');
 const { reindexWorkUnit } = require('./workunit-lifecycle.cjs');
 const { topicLog } = require('./topic-log.cjs');
@@ -243,12 +241,12 @@ function movePayload(cwd, given) {
 /**
  * The quick-fix's work its move keeps, as start this work's screen names
  * it before the yes: each fix's work set aside, then what the fix holding
- * the checkout has not committed, which the yes sets aside (R26).
+ * the worktree has not committed, which the yes sets aside (R26).
  * @param {string} cwd @param {Record<string, any>} manifest @returns {string[]}
  */
 function keptByMove(cwd, manifest) {
-  const holder = holderOf(cwd, manifest);
-  return [...keptAside(cwd, manifest.name).map(keptWords), ...(holder === null ? [] : asideWords(cwd, holder))];
+  const held = heldWork(cwd, manifest);
+  return [...keptAside(cwd, manifest.name).map(keptWords), ...(held === null ? [] : asideWords(held.root, held.holder))];
 }
 
 /**
@@ -332,32 +330,22 @@ function carriedLines(root, unit, warnings) {
 }
 
 /**
- * What a quick-fix's move closes of its fixes: the branch the checkout was
- * taken back to, null where it was not, and the fixes it closed.
- * @typedef {{checkout: string|null, closed: string[]}} ClosedFixes
- */
-
-/** A bugfix's move, which has no fixes. @type {ClosedFixes} */
-const NO_FIXES = Object.freeze({ checkout: null, closed: [] });
-
-/**
- * A quick-fix's fixes closed for its move (the header's): its checkout
+ * A quick-fix's fixes closed for its move (the header's): its worktree
  * left, what the fix holding it has not committed set aside as a park sets
- * it aside and the checkout taken back to the branch they land on
- * (fix-leave.cjs), then each not yet ended closed.
+ * it aside and the worktree taken apart (fix-leave.cjs), then each not yet
+ * ended closed. Answers the fixes it closed.
  * @param {string} cwd @param {Record<string, any>} manifest @param {TaskRow[]} fixes the tracker's
  * @param {string} to @param {string[]} warnings
- * @returns {ClosedFixes}
+ * @returns {string[]}
  */
 function closeFixes(cwd, manifest, fixes, to, warnings) {
   const unit = manifest.name;
-  const checkout = leaveCheckout(cwd, manifest, 'the move', 'move');
-  const closed = fixes.filter(({ status }) => !ENDED.includes(status)).map(({ ref }) => {
+  leaveWorktree(cwd, manifest, 'the move', 'move');
+  return fixes.filter(({ status }) => !ENDED.includes(status)).map(({ ref }) => {
     const { warnings: said = [] } = /** @type {{warnings?: string[]}} */ (closeForMove(cwd, unit, shownTask(ref), `${unit} moved to ${aType(to)}`));
     warnings.push(...said);
     return shownTask(ref);
   });
-  return { checkout, closed };
 }
 
 /**
@@ -396,7 +384,7 @@ function moveYes(cwd, staged) {
   carriedLines(root, unit, warnings);
 
   return withStateLock(root, () => {
-    const { checkout, closed } = quickFix ? closeFixes(cwd, manifest, fixes, to, warnings) : NO_FIXES;
+    const closed = quickFix ? closeFixes(cwd, manifest, fixes, to, warnings) : [];
     const lines = carriedLines(root, unit, warnings);
     if (lines.ids.length > 0) {
       appendEntry(root, { event: 'rehomed', unit, topic: unit, phase: OPENS_IN[to], session: handedSession(), lines: lines.ids, files: movedFiles(lines.files, asides) }, warnings);
@@ -423,7 +411,6 @@ function moveYes(cwd, staged) {
       fixes_closed: closed,
       branches,
       pull_request_closed: pullClosed,
-      checkout,
       committed: outcome.committed,
       next: nextAfter(to, unit),
     };

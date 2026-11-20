@@ -37,7 +37,7 @@ for (const { name } of listDrivers('landing')) {
     it('takes the clone\'s branch from its host\'s at the next fix\'s start, that fix in the project alone, and the close lands both, the earlier in the clone', () => {
       const at = project();
       built(at, 1, { 'lib/lib.txt': 'lib --colour\n' });
-      secondClone(at.lib, NESTED.lib.into);
+      secondClone(at, 'lib');
       built(at, 2, { [SET[1].file]: SET[1].text });
       const close = closed(at);
 

@@ -50,7 +50,7 @@
 //   line that the project has no way to run it, no verify setup recorded
 //   (P9); what its notes for later sent to the inbox, as the close answered
 //   them (notes.cjs, `answeredAtClose`); each fix's work a question's park set aside and none put back,
-//   kept, with the calls that show it and bring it into the checkout
+//   kept, with the calls that show it and bring it into a checkout
 //   (fix-aside.cjs, `keptAside`, R26); then its gate, the yes — saying it merges its pull request, where
 //   a fix done is still to land — a review asked for, and questions about
 //   the change.
@@ -58,27 +58,27 @@
 //   among it (finish-checks.cjs) — is said on the screen, and on the yes's
 //   answer.
 // - The yes stands on the screen as drawn: the close it shows and no
-//   verdict still to ask; a quick-fix's refuses besides a project's
-//   checkout holding changes not committed outside the state, naming each,
-//   its fixes having been built there (fix-branch.cjs). It lands every phase still
+//   verdict still to ask; a quick-fix's refuses besides its worktree
+//   holding changes not committed outside the state, naming each
+//   (fix-branch.cjs). It lands every phase still
 //   standing (`land finish`, landing.cjs) — the review phase's fix phases,
 //   numbered past the cut, after every other (7.2.6), then, for a unit with
 //   a branch of its own, that branch on the default branch (7.2.38); a quick-fix's one pull
 //   request, every task's commit squashed into one, or, where a merge by
 //   hand landed it, the branch it lands on here brought up to the host's —
 //   a refusal there leaving the unit as it was, with its way on; a
-//   quick-fix's then puts the project's checkout back on the branch it
-//   lands on; then
+//   quick-fix's then takes its worktree apart (fix-branch.cjs); then
 //   completes the unit (workunit-lifecycle.cjs). It answers where the work
 //   goes (24.1.2): on in the conversation, no menu drawn, the conversation
 //   leaving the unit's place and its tasks in flight (topic-leave.cjs,
 //   `leftUnit`) — for any unit but a quick-fix, the engine saying in a line
-//   that it is done and what waits on the person (receipts.cjs,
-//   `finishedOf`).
+//   that it is done and what waits on the person, and for a quick-fix,
+//   where the landing answered a branch here behind what it landed, that it
+//   is and how to bring it up (receipts.cjs, `finishedOf`).
 // - What the yes stands on before it lands anything is `land finish`'s
 //   refusal too, and a quick-fix's `land phase`'s, which lands its one pull
 //   request whole (landing.cjs): one read, the screen's standing and no
-//   verdict still to ask, a quick-fix's checkout clean among it
+//   verdict still to ask, a quick-fix's worktree clean among it
 //   (`finishLandRefusal`, `refuseLanding`), so neither lands what the
 //   other would refuse. The yes reads it once and lands past it
 //   (`finishMerge`); `land finish` called on its own reads it itself.
@@ -109,7 +109,7 @@ const { reading } = require('./phase-checks.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { recordedFixes, pairVerdict } = require('./quick-fix-record.cjs');
 const { shownTask } = require('./task-id.cjs');
-const { refuseDirtyClose, checkOutLanding } = require('./fix-branch.cjs');
+const { refuseDirtyClose, takeFixApart } = require('./fix-branch.cjs');
 const { keptAside, keptWords } = require('./fix-aside.cjs');
 const { ranOf } = require('./build-screens.cjs');
 const { verifySetup } = require('./environment.cjs');
@@ -292,7 +292,7 @@ const VERDICT_OWED = 'a verdict is still to ask — render finish asks each befo
 
 /**
  * Refuse a finish that stands from landing: a verdict still to ask; or,
- * for a quick-fix, the project's checkout holding changes not committed
+ * for a quick-fix, its worktree holding changes not committed
  * (fix-branch.cjs).
  * @param {string} cwd @param {string} unit @param {{verdict: unknown, fixes: TaskDetail[]|null}} standing
  */
@@ -316,7 +316,7 @@ function refuseAskedOpen(unit, open) {
 /**
  * Why the unit's finish cannot land yet, as the yes refuses before it lands
  * anything (the header's): what its screen stands on refused, a verdict
- * still to ask, or a quick-fix's checkout holding changes not committed —
+ * still to ask, or a quick-fix's worktree holding changes not committed —
  * null where it can.
  * @param {string} cwd @param {string} unit @returns {string|null}
  */
@@ -331,19 +331,18 @@ function finishLandRefusal(cwd, unit) {
 
 /**
  * Every phase still standing landed, refused as `refuseLanding` refuses,
- * and for a quick-fix the checkout then put back on the branch it lands
- * on — a refusal carrying what finish's standing warned.
+ * and for a quick-fix its worktree then taken apart — a refusal carrying
+ * what finish's standing warned.
  * @param {string} cwd @param {string} unit @param {{verdict: unknown, warnings: string[], fixes: TaskDetail[]|null}} standing
- * @returns {{repos: Record<string, any>[], warnings?: string[], checkout?: string}}
+ * @returns {{repos: Record<string, any>[], warnings?: string[]}}
  */
 function landStanding(cwd, unit, standing) {
   const { warnings, fixes } = standing;
   return carryingAll(warnings, () => {
     refuseLanding(cwd, unit, standing);
     const landed = finishMerge(cwd, unit, 'say yes at finish again');
-    if (fixes === null) return landed;
-    const checkout = checkOutLanding(cwd, unit);
-    return checkout === null ? landed : { ...landed, checkout };
+    if (fixes !== null) takeFixApart(cwd, unit);
+    return landed;
   });
 }
 
@@ -361,7 +360,7 @@ function finishYes(cwd, unit) {
   const said = [...warnings, ...(landed.warnings ?? []), ...completed.warnings];
   leftUnit(cwd, unit);
   /** @type {Record<string, unknown>} */
-  const result = { unit, landed: landed.repos, ...(landed.checkout === undefined ? {} : { checkout: landed.checkout }), completed_at: completed.completed_at, committed: completed.committed, next: CONTINUE };
+  const result = { unit, landed: landed.repos, completed_at: completed.completed_at, committed: completed.committed, next: CONTINUE };
   if (completed.note !== undefined) result.note = completed.note;
   if (said.length > 0) result.warnings = said;
   return result;

@@ -176,7 +176,10 @@
 //   where they are not — `already` where its head, title and body are the
 //   landing's. Its merge is a squash, under its title with GitHub's " (#N)"
 //   and its body, once GitHub has worked out that it can, refused as a lone
-//   pull request's merge is, the default branch here then brought to it.
+//   pull request's merge is but for changes not committed where the
+//   default branch here is checked out: the merge stands over them, that
+//   branch here brought to it where it can be, and else answered as behind
+//   it, with the branch on GitHub that brings it up (`behindHere`).
 //   With nothing to merge, that branch is brought up alone. Its verbs keep their
 //   reads (landing.cjs), so each fetches a repository's default branch once
 //   before it merges there, and once more as a merge of its own moves it
@@ -1488,14 +1491,28 @@ function mergeQuickFix(ctx, landing, opened) {
   }
   const number = /** @type {{pull_request: number}} */ (opened).pull_request;
   const head = /** @type {string} */ (lg.branches(ctx.root).get(landing.branch));
-  refuseDirtyDefault(ctx, head, defaultFetched(ctx, host));
   const { title, body } = titled(landing);
   const pull = { number, state: /** @type {const} */ ('OPEN'), head: landing.branch, base: ctx.into, oid: head, title, body };
   const merging = { what: `${ctx.unit}'s pull request`, named: () => `${ctx.unit}'s pull request #${number}`, listed: () => `#${number}`, then: '' };
   awaitMergeable(ctx, host, merging, [pull], new Map([[number, head]]));
   ghAt(ctx, host, ['pr', 'merge', String(number), '--squash', '--subject', `${title} (#${number})`, '--body', body], `merge ${ctx.unit}'s pull request`);
   const warnings = bringDefaultUp(ctx, host, true);
-  return { into: ctx.into, merged: landing.tasks, pull_requests: [number], ...(warnings.length > 0 ? { warnings } : {}) };
+  const behind = behindHere(ctx, host);
+  return { into: ctx.into, merged: landing.tasks, pull_requests: [number], ...(behind === null ? {} : { behind }), ...(warnings.length > 0 ? { warnings } : {}) };
+}
+
+/**
+ * The default branch on GitHub, where the default branch here stands
+ * behind it once the merge has been brought up (`bringDefaultUp`) — its
+ * checkout's changes in the way — so a fast-forward to it brings it up;
+ * else null.
+ * @param {LandingContext} ctx @param {Host} host @returns {string|null}
+ */
+function behindHere(ctx, host) {
+  const fetched = defaultFetched(ctx, host);
+  const ours = lg.branches(ctx.root).get(ctx.into);
+  if ('failed' in fetched || ours === undefined || ours === fetched.commit) return null;
+  return lg.isAncestor(ctx.root, ours, fetched.commit) ? `${host.remote}/${ctx.into}` : null;
 }
 
 /** A unit's own pull request as the seam reads it (landing.cjs). @typedef {import('../../../domain/landing.cjs').UnitPull} UnitPull */
