@@ -28,8 +28,11 @@
 //   close then deletes the branch in each repository where it holds no
 //   commit past the branch it lands on — a clone the quick-fix never
 //   touched among them — or stands where it landed, at a tip the unit's
-//   landing records there hold (landing-record.cjs), and keeps it where a
-//   commit came after (`fixClosed`).
+//   landing records there hold (landing-record.cjs) — every commit past
+//   that branch it holds, or its reflog alone keeps, a task's, stamped by
+//   the door — and keeps it where a commit came after, or one of the
+//   person's sits below that tip or was left off by a readying, so its
+//   deletion leaves no commit of theirs on no ref (`fixClosed`, `spent`).
 // - The holder's done and close are refused while the worktree holds
 //   changes not committed, a fix leaving it clean as it stops holding it
 //   (`refuseDirtyEnd`): done commits them, a close puts them back. The
@@ -118,6 +121,8 @@ const { parseTaskId, shownTask, taskName } = require('./task-id.cjs');
 const landing = () => require('./landing.cjs');
 /** The build's entry, read when asked, for the calling conversation's tasks in flight: it reads the task verbs too. */
 const buildEntry = () => require('./build-entry.cjs');
+/** The trailer the door stamps a task's commit with, read when asked: the door reads this module. */
+const stamp = () => require('./commit-task.cjs').TRAILER;
 
 /**
  * The quick-fix's worktree (the header's): the project's folder in its own
@@ -310,7 +315,7 @@ function mergeWayOn(held, head) {
   const { unit, repo } = held.ctx;
   const [task] = buildEntry().ownInFlight(unit);
   const [theirs, folder] = [lg.short(head), lg.quoted(repo)];
-  return task === undefined ? quickFixMerged(unit, theirs, folder) : `merge it into ${held.branch} there with ${mergedThrough(unit, task.task, theirs, folder)}`;
+  return task === undefined ? quickFixMerged(unit, theirs, folder) : `merge it into ${held.branch} in ${unit}'s worktree with ${mergedThrough(unit, task.task, theirs, folder)}`;
 }
 
 /** A commit replayed, or left off, and the task it is stamped with, null for none. @typedef {import('./landing.cjs').QuickFixCommit} Commit */
@@ -513,22 +518,32 @@ function keptUnder(cwd, unit) {
 
 /**
  * The quick-fix's code as its close leaves it (the header's): its worktree
- * taken apart, then the branch deleted in each repository where it holds
- * no commit past the branch it lands on, or stands at a tip the unit's
- * landing records there hold, nothing added since it landed — one still
- * checked out somewhere left as it is.
+ * taken apart, then the branch deleted in each repository where it is spent
+ * (`spent`) — one still checked out somewhere left as it is.
  * @param {string} cwd @param {string} unit
  */
 function fixClosed(cwd, unit) {
   takeFixApart(cwd, unit);
   const branch = quickFixBranch(unit);
   const manifest = loadWorkUnitManifest(cwd, unit);
-  /** @param {Repo} repo */
-  const landedAt = (repo) => {
-    const at = lg.branches(repo.path).get(branch);
-    return [...recordsIn(manifest, repoName(repo)).values()].some(({ tip }) => tip === at);
-  };
-  for (const repo of holding(cwd, branch)) if (!branchHolds(cwd, repo, unit) || landedAt(repo)) tryGit(repo.path, ['branch', '-D', branch]);
+  for (const repo of holding(cwd, branch)) if (spent(cwd, repo, unit, manifest)) tryGit(repo.path, ['branch', '-D', branch]);
+}
+
+/**
+ * Whether a repository's quick-fix branch is spent at the close (the
+ * header's): it holds no commit past the branch it lands on, or stands at a
+ * tip the unit's landing records there hold, nothing added since it landed;
+ * and every commit past that branch, here or as last fetched, that it holds
+ * or its reflog alone keeps is a task's, stamped by the door — none of the
+ * person's, below a landed tip or left off by a readying, which its
+ * deletion would leave on no ref.
+ * @param {string} cwd @param {Repo} repo @param {string} unit @param {Record<string, any>|null} manifest the unit's
+ */
+function spent(cwd, repo, unit, manifest) {
+  const branch = quickFixBranch(unit);
+  const at = lg.branches(repo.path).get(branch);
+  const landed = !branchHolds(cwd, repo, unit) || [...recordsIn(manifest, repoName(repo)).values()].some(({ tip }) => tip === at);
+  return landed && lg.tasksAlone(repo.path, branch, lg.landingBranchTips(cwd, repo, unit), stamp(), unit);
 }
 
 /**

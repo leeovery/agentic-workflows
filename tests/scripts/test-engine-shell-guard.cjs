@@ -25,7 +25,8 @@
 // command that makes a commit there, each with its own way through the
 // door — in a nested repository's part of the worktree too, the state found
 // beside the checkout enclosing it — and, where the text cannot say where a
-// raw commit runs, one whose text names a worktree of the engine's own; a
+// raw commit runs, one whose text names a worktree of the engine's own, by
+// a name only it gives — one of the person's own named like it passing; a
 // raw commit in the state worktree at any time; a command naming a file at user level the layout
 // hook refuses Claude's writes to; and a command writing, by any form a
 // shell writes with, to a file in the state only the engine writes, for the
@@ -538,10 +539,11 @@ describe('raw commits (6.3.7, 6.3.12, 12.9.8)', () => {
     }
   });
 
-  it('where the text cannot say where a raw commit runs, one whose text names a worktree of the engine\'s own is refused, naming the door; one naming none runs', () => {
-    const named = `WT=${path.join(dir, '.claude', 'worktrees', `ledger-${FIX}`)} && cd "$WT" && git commit -am x`;
-    assertRefused(guard(dir, named, { session: IDLE }), 'a raw git commit is refused here — the command names a worktree of Ledger\'s own, and its text cannot say where it runs: a quick-fix\'s work goes through the commit door alone, a fix\'s change with `engine commit --paths <file>… --task <unit> <task> -m "<message>"`, anything else from a checkout of your own', named);
+  it('where the text cannot say where a raw commit runs, one whose text names a worktree of the engine\'s own is refused, naming the door; one naming none, or a worktree of the person\'s own named like the engine\'s, runs', () => {
+    const named = (/** @type {string} */ name) => `WT=${path.join(dir, '.claude', 'worktrees', name)} && cd "$WT" && git commit -am x`;
+    assertRefused(guard(dir, named(`ledger-${FIX}`), { session: IDLE }), 'a raw git commit is refused here — the command names a worktree of Ledger\'s own, and its text cannot say where it runs: a quick-fix\'s work goes through the commit door alone, a fix\'s change with `engine commit --paths <file>… --task <unit> <task> -m "<message>"`, anything else from a checkout of your own', named(`ledger-${FIX}`));
     assertPassed(guard(dir, 'cd "$WT" && git commit -am x', { session: IDLE }), 'naming none');
+    assertPassed(guard(dir, named('ledger-export'), { session: IDLE }), 'the person\'s own');
   });
 
   it('a raw commit with no task in flight reads one manifest, the quick-fix\'s the checkout\'s branch names, once however many commits the command holds, and none where its branch names no quick-fix', (t) => {

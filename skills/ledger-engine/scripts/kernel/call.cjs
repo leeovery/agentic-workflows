@@ -86,15 +86,19 @@ function processCall() {
  * engine (the header's), where this copy lies inside one of the engine's
  * own layouts and that one is there (kernel/code-root.cjs, `checkoutPath`):
  * run on the same argv, from the same folder, on the process's own streams,
- * its exit code left on the process. Whether it was handed. Code-root is
- * loaded at the call: the layout and brief guards load this module, and none
- * of it.
+ * its exit code left on the process — a copy that could not start said on
+ * stderr, exiting 1, and one a signal ended ending this process by the
+ * same. Whether it was handed. Code-root is loaded at the call: the layout
+ * and brief guards load this module, and none of it.
  * @param {string[]} argv @returns {boolean}
  */
 function handedToCheckout(argv) {
   const copy = require('./code-root.cjs').checkoutPath(ENGINE_CJS);
   if (copy === null || !fs.existsSync(copy)) return false;
-  process.exitCode = spawnSync(process.execPath, [copy, ...argv], { stdio: 'inherit' }).status ?? 1;
+  const ran = spawnSync(process.execPath, [copy, ...argv], { stdio: 'inherit' });
+  if (ran.error !== undefined) process.stderr.write(`${ran.error.message}\n`);
+  process.exitCode = ran.status ?? 1;
+  if (ran.signal !== null) process.kill(process.pid, ran.signal);
   return true;
 }
 

@@ -25,9 +25,11 @@
 //   each repository holding the branch, those it holds past the branch the
 //   repository lands on that the door stamped with the task
 //   (commit-task.cjs), oldest first, a merge among them only where it
-//   brings in that branch, here or as last fetched — as a one-line task's
-//   merge of it, settling their conflict, is its change — and no merge of
-//   another (`ownCommits`; landing-git.cjs, `landingTips`).
+//   brings in that branch, here or as last fetched, or the host's copy of
+//   the quick-fix's branch as last fetched — as a one-line task's merge of
+//   either, settling their conflict, is its change — and no merge of
+//   another: the one rule its own commits are read by everywhere
+//   (`ownCommits`; landing-git.cjs, `quickFixMerges`).
 // - A one-line task, the orchestrator's own work, has no rounds and no
 //   account to prove it built, so it is built once its branch holds work of
 //   its own (`builtOneLine`): in a repository holding it, a commit the door
@@ -46,7 +48,7 @@ const { quickFixBuild } = require('./derivations.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { stateRoot } = require('../kernel/state-root.cjs');
 const { taskId, taskName } = require('./task-id.cjs');
-const { branches, branchesHeldBy, defaultBranch, landingBranch, landingRev, landingTips, isAncestor, latestOf, stampedPast, holdingBranch } = require('./landing-git.cjs');
+const { branches, branchesHeldBy, defaultBranch, landingBranch, landingRev, quickFixMerges, isAncestor, latestOf, stampedPast, holdingBranch } = require('./landing-git.cjs');
 const { remoteName } = require('./remote.cjs');
 const { workBelow } = require('./review-change.cjs');
 const { repoLanded } = require('./task-landed.cjs');
@@ -130,12 +132,13 @@ function ownCommits(cwd, ref, repo) {
 /**
  * The commits a task's branch holds past the branch the repository lands
  * the unit on, with the door's stamp each carries (the header's): merges
- * aside, but, on a quick-fix's branch, one bringing that branch in.
+ * aside, but, on a quick-fix's branch, one its own by the one rule its
+ * own commits are read by (`quickFixMerges`).
  * @param {string} cwd @param {string} unit @param {Repo} repo @param {string} branch
  */
 function stampedOn(cwd, unit, repo, branch) {
-  const mergesOf = branch === quickFixBranch(unit) ? landingTips(cwd, repo, unit) : [];
-  return stampedPast(repo.path, `refs/heads/${branch}`, landingBranch(cwd, repo, unit), stampKey(), null, { mergesOf });
+  const how = branch === quickFixBranch(unit) ? { merges: quickFixMerges(cwd, repo, unit) } : {};
+  return stampedPast(repo.path, `refs/heads/${branch}`, landingBranch(cwd, repo, unit), stampKey(), null, how);
 }
 
 /**

@@ -16,11 +16,12 @@
 // worktree of the person's own by a name like it is none of the engine's
 // (`inLayout`). A call made from inside one stands for the same folder of
 // the project's own checkout, the layout's part of its path taken out, or,
-// where the checkout lacks that folder, the nearest one up it holds
-// (`outsideLayouts`), so a verb that takes the layout apart never carries on
-// in the folder it took away (engine.cjs); and a file there has its copy in
-// the checkout at the same place (`checkoutPath`), the engine's own among
-// them (kernel/call.cjs).
+// where the checkout lacks that folder or holds a file there, the nearest
+// folder up it holds (`outsideLayouts`), so a verb that takes the layout
+// apart never carries on in the folder it took away (engine.cjs); a file
+// there has its copy in the checkout at the same place (`checkoutPath`),
+// the engine's own among them (kernel/call.cjs); and a text naming a path
+// into one is told by the same names (`namesLayout`, domain/shell-guard).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -66,6 +67,19 @@ function engineNamed(checkout, name) {
   return fs.existsSync(path.join(checkout, STATE_DIR_NAME, unit, 'manifest.json'));
 }
 
+/** A path into one of the engine's own layouts as a text names it, the layout's name after the prefix. */
+const LAYOUT_PATH = new RegExp(`${LAYOUTS.replace('.', '\\.')}/${LAYOUT}([A-Za-z0-9._-]+)`, 'g');
+
+/**
+ * Whether `text` names a path into one of the engine's own layouts of the
+ * main checkout `checkout` (`engineNamed`) — a worktree of the person's own
+ * named like one none.
+ * @param {string} checkout @param {string} text
+ */
+function namesLayout(checkout, text) {
+  return [...text.matchAll(LAYOUT_PATH)].some(([, name]) => engineNamed(checkout, name));
+}
+
 /**
  * Where an absolute path enters one of the engine's own layouts (the
  * header's): the main checkout the layout sits in, and the path's parts
@@ -85,8 +99,8 @@ function inLayout(abs) {
 /**
  * The folder a call made from `cwd` stands for (the header's): inside one of
  * the engine's own layouts, the same folder of the project's own checkout,
- * else the nearest one up it holds, its top at most; else `cwd` itself,
- * absolute.
+ * else — the checkout lacking it, or holding a file there — the nearest
+ * folder up it holds, its top at most; else `cwd` itself, absolute.
  * @param {string} cwd
  * @returns {string}
  */
@@ -95,9 +109,12 @@ function outsideLayouts(cwd) {
   const layout = inLayout(from);
   if (layout === null) return from;
   let folder = path.join(layout.checkout, ...layout.below);
-  while (folder !== layout.checkout && !fs.existsSync(folder)) folder = path.dirname(folder);
+  while (folder !== layout.checkout && !isFolder(folder)) folder = path.dirname(folder);
   return folder;
 }
+
+/** Whether a folder stands at `at`. @param {string} at */
+const isFolder = (at) => fs.statSync(at, { throwIfNoEntry: false })?.isDirectory() === true;
 
 /**
  * A file inside one of the engine's own layouts at the same place in the
@@ -111,4 +128,4 @@ function checkoutPath(file) {
   return layout === null ? null : path.join(layout.checkout, ...layout.below);
 }
 
-module.exports = { LAYOUTS, LAYOUT, LAYOUT_KINDS, codeRoot, outsideLayouts, checkoutPath };
+module.exports = { LAYOUTS, LAYOUT, LAYOUT_KINDS, codeRoot, outsideLayouts, checkoutPath, namesLayout };

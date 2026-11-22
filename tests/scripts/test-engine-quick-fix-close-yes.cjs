@@ -13,7 +13,8 @@
 // apart, letting go of every ref the local driver kept of it — its opening
 // and the head it merged — deleting its branch, which stands at the tip its
 // landing recorded, but where a commit of the person's came after the
-// landing, completing the unit and
+// landing, sits below that tip, or was left off by the close's readying,
+// which its deletion would leave on no ref, completing the unit and
 // carrying on in the conversation, its folder then holding `build/` and `summary.md`
 // alone of the work (4.S23), its record found once it is closed (22.S22), its
 // questions and notes read once, as its checklist alone reads them. Its
@@ -38,7 +39,9 @@ const {
 } = require('./engine-harness.cjs');
 const { datedAt } = require('./discovery-test-utils.cjs');
 const { ledgerReadHelpers } = require('./ledger-world.cjs');
-const { UNIT, PLACE, DESCRIPTION, BRANCH, checklistClosed, fixTree } = require('./quick-fix-world.cjs');
+const {
+  UNIT, PLACE, DESCRIPTION, BRANCH, SET, checklistClosed, fixBuilt, fixTree, ownCommit, recordFile,
+} = require('./quick-fix-world.cjs');
 const { RAISED, world, closeHelpers } = require('./quick-fix-close-world.cjs');
 
 let dir = ''; // the project
@@ -155,6 +158,33 @@ describe('finish yes <quick-fix> (19.5.15, 24.1.2)', () => {
     run(['finish', 'yes', UNIT]);
 
     assert.deepStrictEqual([readManifest(dir, UNIT).status, git(dir, ['log', '-1', '--format=%s', BRANCH]).trim()], ['completed', 'My own touch']);
+  });
+
+  it('keeps the quick-fix\'s branch where a commit of the person\'s sits below the tip its landing recorded, its change landed with the fixes', () => {
+    dir = world();
+    ownCommit(fixTree(dir), 'My own note');
+    fixBuilt(dir, 3, SET[2].title, SET[2].file, SET[2].text, as());
+    run(['quick-fix', 'record', UNIT, '1.3', '--file', recordFile(dir, 3, { changed: 'The docs name --colour.', why: 'The docs matched the old flag.', leaves: 'Nothing.' })]);
+    closeable();
+    run(['finish', 'yes', UNIT]);
+
+    assert.deepStrictEqual([readManifest(dir, UNIT).status, git(dir, ['log', '-1', '--format=%s', `${BRANCH}~1`]).trim(), git(dir, ['show', 'main:mine.txt'])], ['completed', 'My own note', 'mine\n']);
+  });
+
+  it('keeps the quick-fix\'s branch where its readying at the close left a commit of the person\'s off, warning of it — its reflog that commit\'s last ref', () => {
+    dir = world();
+    closeable();
+    git(dir, ['merge', '-q', '--squash', BRANCH]);
+    git(dir, ['commit', '-qm', 'The fixes, squashed by hand']);
+    fs.writeFileSync(path.join(dir, 'src', 'help.js'), 'const help = \'--colour\'; // main\'s\n');
+    git(dir, ['commit', '-qam', 'Main\'s own touch']);
+    fs.writeFileSync(path.join(fixTree(dir), 'src', 'help.js'), 'const help = \'--colour\'; // mine\n');
+    git(fixTree(dir), ['commit', '-qam', 'My own touch']);
+    const mine = git(dir, ['rev-parse', BRANCH]).trim();
+    const { warnings } = run(['finish', 'yes', UNIT]);
+
+    assert.deepStrictEqual([readManifest(dir, UNIT).status, warnings.filter((/** @type {string} */ warning) => warning.includes(mine.slice(0, 7))).length, git(dir, ['rev-parse', '--verify', '--quiet', `${BRANCH}@{1}`]).trim() !== ''], ['completed', 1, true]);
+    assert.notStrictEqual(git(dir, ['log', '-g', '--format=%H', BRANCH]).split('\n').indexOf(mine), -1);
   });
 
   it('22.S22: a closed quick-fix\'s short record is returned when the knowledge base is queried for what it changed, a bulk index after its close keeping it', async () => {

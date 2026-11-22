@@ -47,7 +47,7 @@ describe('a quick-fix\'s branch in a nested clone conflicting with GitHub\'s cop
     closed(at);
 
     assert.strictEqual(refusal, `land: ${BRANCH} in lib and its pull request's head, ${suggestion}, each hold commits the other lacks, conflicting at lib.txt, so nothing moved — `
-      + `merge it into ${BRANCH} there with \`git -C lib merge --no-ff --no-commit ${suggestion}\`, settle the conflict, then commit the merge through the door, naming each file you settled, which finishes it: `
+      + `merge it into ${BRANCH} in ${UNIT}'s worktree with \`git -C lib merge --no-ff --no-commit ${suggestion}\`, settle the conflict, then commit the merge through the door, naming each file you settled, which finishes it: `
       + `\`engine commit --paths lib/<file>… --task ${UNIT} 1.1 -m "<message>"\`, and try again`);
     assert.strictEqual(git(bareOf(at.lib), ['show', `${NESTED.lib.into}:lib.txt`]), SETTLED);
   });

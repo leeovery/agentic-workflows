@@ -34,7 +34,8 @@
 //   door, where it has one, the door, or a checkout of the caller's own;
 //   and, where the text cannot say which folder it runs in, one whose text
 //   names a worktree of the engine's own, a path through
-//   `.claude/worktrees/ledger-…` (kernel/code-root);
+//   `.claude/worktrees/ledger-…` by a name only the engine gives, a
+//   worktree of the person's own named like one none (kernel/code-root);
 // - a command naming a file at user level the layout hook refuses Claude's
 //   writes to (user-files.cjs, `userLevelRefusal`) — a conversation's
 //   briefs, the brief hook's refusals, the trust log and its kin, Claude
@@ -99,13 +100,13 @@ const fs = require('fs');
 const path = require('path');
 const { simpleCommands } = require('../kernel/shell-reader.cjs');
 const { STATE_DIR_NAME, STATE_BRANCH, BRANCH_REF } = require('../kernel/state-root.cjs');
-const { LAYOUTS, LAYOUT } = require('../kernel/code-root.cjs');
+const { namesLayout } = require('../kernel/code-root.cjs');
 const { tasksInFlight } = require('./conversation.cjs');
 const { userLevelRefusal } = require('./user-files.cjs');
 
 /** @typedef {import('../kernel/shell-reader.cjs').SimpleCommand} SimpleCommand */
 /** @typedef {{unit: string, task: string}} InFlight */
-/** What a git command's refusal reads beyond the command: the tasks in flight, read when asked, and whether the shell command's text names one of the engine's own layouts. @typedef {{inFlight: () => InFlight[], layoutNamed: boolean}} Reads */
+/** What a git command's refusal reads beyond the command, each when asked: the tasks in flight, and whether the shell command's text names one of the engine's own layouts. @typedef {{inFlight: () => InFlight[], layoutNamed: () => boolean}} Reads */
 
 /** The tools the hook stands before, as the settings' matcher names them. */
 const SHELL_HOOK_TOOLS = ['Bash'];
@@ -360,7 +361,7 @@ const fixDoor = (unit) => `a fix's change with \`engine commit --paths <file>…
 function fixRefusal({ folder }, { layoutNamed }, said, way) {
   const door = (/** @type {string} */ unit) => `${way === null ? '' : `${way}; `}${fixDoor(unit)}`;
   if (folder === null) {
-    return layoutNamed ? `${said} is refused here — the command names a worktree of Ledger's own, and its text cannot say where it runs: a quick-fix's work goes through the commit door alone, ${door('<unit>')}` : null;
+    return layoutNamed() ? `${said} is refused here — the command names a worktree of Ledger's own, and its text cannot say where it runs: a quick-fix's work goes through the commit door alone, ${door('<unit>')}` : null;
   }
   const branch = branchOut(folder);
   const unit = branch === null ? null : require('./landing-names.cjs').quickFixOfBranch(branch);
@@ -652,8 +653,17 @@ function inFlightOf(cwd, { session_id: session }) {
   });
 }
 
-/** How a shell command's text names one of the engine's own layouts: a path through them. */
-const LAYOUT_NAMED = `${LAYOUTS}/${LAYOUT}`;
+/**
+ * Whether the shell command's text names one of the engine's own layouts of
+ * the project the hook's folder belongs to: a path through one by a name
+ * only the engine gives (kernel/code-root.cjs, `namesLayout`), a worktree of
+ * the person's own named like one none.
+ * @param {string} cwd @param {string} command
+ */
+function layoutNamedIn(cwd, command) {
+  const state = stateOf(cwd);
+  return state !== null && namesLayout(path.dirname(state), command);
+}
 
 /**
  * Why the hook refuses the shell command the tool call `input` describes —
@@ -666,7 +676,7 @@ function shellRefusal(cwd, input) {
   const toolInput = input.tool_input;
   const command = toolInput !== null && typeof toolInput === 'object' ? /** @type {Record<string, unknown>} */ (toolInput).command : null;
   if (typeof command !== 'string') return null;
-  const reads = { inFlight: inFlightOf(cwd, input), layoutNamed: command.includes(LAYOUT_NAMED) };
+  const reads = { inFlight: inFlightOf(cwd, input), layoutNamed: once(() => layoutNamedIn(cwd, command)) };
   for (const simple of simpleCommands(command, cwd)) {
     const reason = commandRefusal(simple, reads);
     if (reason !== null) return reason;

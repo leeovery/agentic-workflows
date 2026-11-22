@@ -18,8 +18,10 @@
 // repository holds no commit of its own — and in the pull
 // request where the one open holds that commit. Its own work is a commit
 // of its own through the door (commit-task.cjs) — a merge it finished there
-// among them, as a one-line task merging the branch the quick-fix lands on
-// to settle their conflict makes one (landing-names.cjs, `quickFixMerged`)
+// among them only where it brings in the branch the quick-fix lands on or
+// the host's copy of its branch, as a one-line task settling their conflict
+// makes one (landing-names.cjs, `quickFixMerged`), by the one rule its own
+// commits are read by everywhere (landing-git.cjs, `quickFixMerges`)
 // — on the quick-fix's branch
 // or wherever the repository keeps it, or its change landed; it has landed
 // once it has in every repository it holds work in.
