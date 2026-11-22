@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/github/v/tag/leeovery/agentic-workflows?label=release" alt="release">
+  <img src="https://img.shields.io/github/v/tag/leeovery/ledger?label=release" alt="release">
   <img src="https://img.shields.io/badge/license-MIT-blue" alt="license">
 </p>
 
@@ -20,7 +20,7 @@
 > Claude Code is a capable engineer with no memory and no process. Ledger adds both, and learns when to ask you.
 
 ```bash
-npx agntc add leeovery/agentic-workflows
+npx agntc add leeovery/ledger
 ```
 
 Then in Claude Code:
@@ -132,7 +132,7 @@ The [full documentation](docs/README.md) covers every phase in detail, trust and
 
 **Setup:** Node 18+, git 2.40.0+, and Claude Code 2.1.287+ in its terminal app or the Desktop app's Code tab, which Ledger is built for — on the web or in the VS Code extension the menus stay text and support is soft, fixes welcome. Run your session at medium effort or above. There is no setup procedure: your first session sets everything up in chat. The build's tracker needs Tick, and landing on GitHub needs GitHub's CLI with its stack extension. Optional: an OpenAI(-compatible) key for search by meaning, entered in your terminal, never the chat.
 
-**Managing the install:** commit the installed files to share Ledger with your team. `npx agntc update` pulls the latest; `npx agntc remove leeovery/agentic-workflows` uninstalls.
+**Managing the install:** commit the installed files to share Ledger with your team. `npx agntc update` pulls the latest; `npx agntc remove leeovery/ledger` uninstalls.
 
 ## Contributing
 

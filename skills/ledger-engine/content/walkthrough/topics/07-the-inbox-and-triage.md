@@ -2,7 +2,7 @@
 
 Not every thought arrives ready to become a piece of work. Mid-way through building one thing you notice another that is broken, an idea worth exploring later, or a small change that ought to happen sometime. The inbox is where such thoughts wait, so you can keep working; triage is how you decide on them.
 
-You capture by asking, in any conversation: "log that as an idea", "log this bug", "log a quick-fix". Claude writes a short note into the inbox of the project it concerns and carries on with what you were doing. Capture is deliberately narrow: it writes your thought down faithfully and nothing more, so the thinking happens later, if you decide the thought is worth it.
+Claude keeps what comes up in any conversation, whether you asked or it came up in passing, and carries on with what you were doing. An idea, a bug or a fix for later goes into the inbox of the project it concerns, committed at once, with one line saying so; say "drop that" and it goes. A capture writes your thought down as you said it, never padded, so the thinking happens later, if you decide the thought is worth it. The rest has its places too: a view of the product or a direction you dropped goes into the product's conversation, a fact about the code becomes a finding, a file you share is kept among the product's files, and a point for a topic under way reaches it as a message. Two wait for your yes: the project's setup, how it builds, tests and runs, and an instruction for its `CLAUDE.md`.
 
 ```
    ideas        something you might build or explore

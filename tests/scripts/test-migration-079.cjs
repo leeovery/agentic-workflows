@@ -1409,7 +1409,7 @@ describe('the next step the check names on each record, so the session learns a 
 
   const UNREPORTED = 'its verifier has not reported yet: wait for it; once it has returned without writing its findings, brief a fresh verifier';
 
-  it('through a record\'s rounds: its verifier briefed, awaited — and, once it returns without writing or its files are removed, briefed afresh — its findings answered by an agent, a reversal and a late round by the session, a verifier that gave no verdict replaced, naming only the files it wrote, a record changed since read again, what an agent left removed, findings handed back settled — then ready to carry', () => {
+  it('through a record\'s rounds: its verifier briefed, awaited — and, once it returns without writing or its files are removed, briefed afresh — its findings answered by an agent, a reversal and a late round by the session, a verifier that gave no verdict replaced, naming only the files it wrote, a record changed since read again, what an agent left removed, findings handed back settled — then ready to carry; and once the carry refused it, its amend by a fresh per-topic agent next', () => {
     dir = world();
     const record = GOOD[GONE];
     const hash = composeGone(record);
@@ -1442,6 +1442,8 @@ describe('the next step the check names on each record, so the session learns a 
     walked.push(next());
     fs.rmSync(statePath(dir, handbackPath('gone', 'gone')));
     walked.push(next());
+    writeState(dir, refusedPath('gone', 'gone'), 'ledger carry: gone\'s gone breaks the records directive\'s rules, so nothing is carried — entry q1 cites a heading its log holds twice\n');
+    walked.push(next());
 
     const dry = `\`ledger carry ${GONE} --dry-run\``;
     assert.deepStrictEqual(walked, [
@@ -1457,6 +1459,7 @@ describe('the next step the check names on each record, so the session learns a 
       `remove what an agent left beside its record: ${statePath(dir, `${composedPath('gone', 'gone')}.draft`)}`,
       `settle each finding its composer handed back, then remove ${statePath(dir, handbackPath('gone', 'gone'))}`,
       `ready to carry: \`ledger carry ${GONE}\``,
+      `the carry refused it: a fresh per-topic agent amends it, its brief carrying the refusal in ${statePath(dir, refusedPath('gone', 'gone'))}`,
     ]);
   });
 

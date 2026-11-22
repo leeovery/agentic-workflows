@@ -226,16 +226,16 @@ the compaction that comes reuses it beneath the note.
 
 ## How it keeps each task's builder and reviewers
 
-A build runs several tasks at once, each dispatching one builder agent and a
-pair of reviewer agents, and sends the task's later rounds — a fix to the
-builder, a re-review to the pair — to those same agents by their ids, so they
-keep what they learned. In a session that announced, in a conversation the
+A build runs several tasks at once, each but a one-line task dispatching one
+builder agent and its reviewer agents, one or two, and sends the task's
+later rounds — a fix to the builder, a re-review to its reviewers — to those
+same agents by their ids, so they keep what they learned. In a session that announced, in a conversation the
 engine has marked, when the main loop dispatches `ledger-builder` or
 `ledger-reviewer` with its brief's pointer (`brief:{id}`), the mod hands the
 agent id the dispatch answers with, foreground or background, and the brief's
 id to the engine's `conversation builder`, which records it on the position
 against the task the brief was issued for — a builder in place of any before
-it, a reviewer beside the pair's other; with that task not in flight it
+it, a reviewer beside any other of the task's; with that task not in flight it
 records nothing. The ids ride with their task and go when it ends, so a compaction's note names each task
 with its agents (``on task 2.3 (internal id `ledger-2-3`), its builder agent
 `aa76bd7f82a2ef3e4`, its reviewer agents `ab12` and `cd34` ``) and the next

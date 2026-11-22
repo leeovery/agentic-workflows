@@ -318,7 +318,7 @@ describe('the verbs say what follows', () => {
 
 describe('a finish leaves the unit (24.1.2, 19.5.1, 24.1.8)', () => {
   /** Whether a finish of `unit` leaves it, from this conversation. @param {string} unit */
-  const finished = (unit) => withEnv(ENV(), () => leftUnit(dir, unit));
+  const finished = (unit) => withEnv(ENV(), () => leftUnit(dir, unit).left);
 
   it('any unit\'s finish — an epic\'s, a feature\'s, a bugfix\'s, a quick-fix\'s close — leaves the conversation\'s place and the task in flight there, so a raw commit is no longer refused', () => {
     const left = [EPIC, SOLO, BUG, QUICK_FIX].map((unit) => {

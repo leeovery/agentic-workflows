@@ -43,6 +43,11 @@
 //                  stands, the conversation is at no place, whatever
 //                  `position.json` names; what the board reads to close a
 //                  unit finished there (D38); read here alone (`readLeft`)
+//   came-from.json the project-level place the conversation was in as it
+//                  started a quick-fix, and the quick-fix's name: where its
+//                  close or its cancel puts the conversation back, forgotten
+//                  as the position is left or dropped, or the quick-fix
+//                  moves (position.cjs, `keepCameFrom`)
 //   trust-pending.jsonl
 //                  the trust log's events waiting in the conversation
 //                  (trust-log.cjs): those it could not append, for its next
@@ -177,6 +182,11 @@ function positionPath(sessionId) {
 /** Where a conversation keeps the place it left for the start menu (position.cjs). @param {string} sessionId */
 function leftPath(sessionId) {
   return path.join(conversationDir(sessionId), 'left.json');
+}
+
+/** Where a conversation keeps the place it started a quick-fix from (position.cjs). @param {string} sessionId */
+function cameFromPath(sessionId) {
+  return path.join(conversationDir(sessionId), 'came-from.json');
 }
 
 /**
@@ -552,4 +562,4 @@ function tidyConversations(keeps = () => false) {
   }
 }
 
-module.exports = { conversationsRoot, conversationDir, safeId, positionPath, leftPath, isAgentId, storedPosition, readPosition, readLeft, tasksInFlight, taskAt, isMarked, markConversation, endConversation, claudeProjectsDir, runningTranscript, callerModel, subagentType, tidyConversations };
+module.exports = { conversationsRoot, conversationDir, safeId, positionPath, leftPath, cameFromPath, isAgentId, storedPosition, readPosition, readLeft, tasksInFlight, taskAt, isMarked, markConversation, endConversation, claudeProjectsDir, runningTranscript, callerModel, subagentType, tidyConversations };

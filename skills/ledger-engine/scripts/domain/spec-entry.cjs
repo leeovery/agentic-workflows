@@ -61,8 +61,9 @@ const { sweptStaged } = require('./approve-map.cjs');
 const PHASE = 'specification';
 
 /**
- * What carries the unit's spec on: each live topic's record call and its log
- * on disk, then the unit's own record call; the files its current entries link as canonical; the spec, once
+ * What carries the unit's spec on: an epic's each live topic's record call,
+ * each topic's log on disk, then the unit's own record call, which holds
+ * a single-topic unit's one topic's record; the files its current entries link as canonical; the spec, once
  * written; the cut's call, once the manifest holds a cut; and the review
  * page, while it is open. What a read of the ledger said on the way is
  * pushed to `warnings`.
@@ -73,7 +74,7 @@ function specSources(cwd, manifest, warnings) {
   const unit = manifest.name;
   const topics = specTopics(manifest);
   return {
-    records: [...topics.map((topic) => recordCall(unit, topic)), `${ENGINE_COMMAND} ledger record ${unit}`],
+    records: [...(manifest.work_type === 'epic' ? topics.map((topic) => recordCall(unit, topic)) : []), `${ENGINE_COMMAND} ledger record ${unit}`],
     logs: topics.map((topic) => statePath(cwd, topicLog(unit, topic))).filter((log) => fs.existsSync(log)),
     assets: canonicalAssets(stateRoot(cwd), unit, warnings).map((asset) => statePath(cwd, asset)),
     spec: [specPath(cwd, unit)].filter((spec) => fs.existsSync(spec)),

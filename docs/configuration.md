@@ -5,10 +5,10 @@ Ledger configures itself the way it does everything else: conversationally, the 
 ## Installing and updating
 
 ```bash
-npx agntc add leeovery/agentic-workflows
+npx agntc add leeovery/ledger
 ```
 
-This installs Ledger's skills, agents and Claude Code mods into the project. Commit the installed files to share Ledger with your team. `npx agntc update` pulls the latest version, and `npx agntc remove leeovery/agentic-workflows` uninstalls. An update carries itself forward: the first `/ledger` after it brings your existing work into line with the new version, showing you what moved.
+This installs Ledger's skills, agents and Claude Code mods into the project. Commit the installed files to share Ledger with your team. `npx agntc update` pulls the latest version, and `npx agntc remove leeovery/ledger` uninstalls. An update carries itself forward: the first `/ledger` after it brings your existing work into line with the new version, showing you what moved.
 
 Ledger needs Node 18 or newer, git 2.40.0 or newer — older, or none, and `/ledger` stops and says how to get a newer one — and a project inside a git repository: in a folder in none, `/ledger` stops and says so, and never makes one. In Claude Code's terminal app or the Desktop app's Code tab it needs Claude Code 2.1.287 or newer, where its Claude Code mod is on by default (see [buttons above the prompt](#buttons-above-the-prompt)).
 
@@ -66,7 +66,7 @@ Settings that belong to the project live on the state branch, on the project man
 - the knowledge base's API key, stored apart and never passed through the chat;
 - `trust.jsonl` — the trust log, every answer the ask rule counts, across all your projects;
 - `person.md` — the record of you, your preferences in words and your care entries;
-- `conversations/` — each Claude Code conversation's own folder: where it is working, the buttons it was showing, the briefs it issued, its boot stamp.
+- `conversations/` — each Claude Code conversation's own folder: where it is working, where a quick-fix was started from, the buttons it was showing, the briefs it issued, its boot stamp.
 
 A conversation's folder is found wherever the conversation runs. It lasts as long as Claude Code keeps that conversation to resume, and goes at the next `/ledger` in any project once Claude Code has deleted it, unless a trust log event still waits in it. A conversation whose end the session-end hook never saw — the one whose `/ledger` first installed the hook, since Claude Code picks hooks up only as a session starts, or one that crashed — names no transcript, and its folder stays, a few bytes.
 

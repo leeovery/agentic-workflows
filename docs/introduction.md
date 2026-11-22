@@ -23,7 +23,7 @@ A few gates always stop for you: starting the work, approving an epic's map, a t
 ## Getting started
 
 ```bash
-npx agntc add leeovery/agentic-workflows
+npx agntc add leeovery/ledger
 ```
 
 Then, in Claude Code:

@@ -4,7 +4,7 @@ Guidance for Claude Code working in this repo.
 
 ## Project Overview
 
-Ledger: agentic workflows for Claude Code. Installed via `npx agntc add leeovery/agentic-workflows`.
+Ledger: agentic workflows for Claude Code. Installed via `npx agntc add leeovery/ledger`.
 
 **This project authors Ledger — it does not use it.** Never invoke Ledger's skills (`/ledger`, `/ledger-continue-*`, etc.) for work on this project. Edit skill files, references, and scripts directly. This CLAUDE.md is development documentation that does not ship with the product — installed projects get their own. Skills and agents must be self-contained — never rely on this file for runtime behaviour.
 
@@ -50,7 +50,7 @@ The phases group into three **stages**, the top-level grouping of the epic dashb
 3. **Discussion** (`ledger-discussion-process`) — one conversation per topic, research one of its tools: every question, finding and decision on the ledger, the decided checklist closing it; topics send each other messages through mailboxes.
 4. **Investigation** (`ledger-investigation-process`) — bugfix: symptoms and code analysis to a root cause.
 5. **Specification** (`ledger-specification-process`) — turn a unit's decided topics (a bugfix's investigation) into its one spec, cut into phases and approved at ready to build, where the build's position is chosen.
-6. **Implementation** (`ledger-implementation-process`) — the build: one conversation through every phase of the spec's cut, each task built with the tests that prove it, held by the tests the commit door runs and the reviewer pair; a quick-fix's is its own skill (`ledger-quick-fix-process`), each fix a task, from the first fix to its close in one conversation.
+6. **Implementation** (`ledger-implementation-process`) — the build: one conversation through every phase of the spec's cut, each task built with the tests that prove it, held by the tests the commit door runs and its reviewers, the one or two Claude chooses (none for a one-line task); a quick-fix's is its own skill (`ledger-quick-fix-process`), each fix a task, from the first fix to its close in one conversation.
 7. **Review** (`ledger-review-process`) — verify the built change against the specification, its findings landing as fix tasks; a quick-fix's only when the person asks for one at its close.
 
 ### Work types and topics
@@ -106,6 +106,7 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 - `.ledger/.product/` — the product's conversation: `sessions/session-NNN.md` its logs, `picture.md` its picture of where the product stands, rewritten in place, `notes/{YYYY-MM-DD}--{slug}.md` the roadmap items' notes, `assets/` the files shared and, as `assets/{unit}/`, each retired unit's folder kept whole as reference, `assets/legacy/` the files from before Ledger of no unit's the migration had no other place for, each at its path from `.workflows/`, and in `assets/legacy/{unit}/` a retired unit's legacy files, `spikes/{NNN}-{slug}/` its spikes
 - `.ledger/.knowledge/` — the checkout-local knowledge store and config, gitignored
 - `.claude/worktrees/ledger-{work_unit}` — in the main checkout, a quick-fix's worktree on `fix/{work_unit}`, where its fixes are built: laid out at its first fix's start, taken apart at its close, cancel or move
+- `.claude/worktrees/ledger-{work_unit}-{task}` — in the main checkout, a one-line task's layout of the whole project, every repository on the task's branch: laid out by `task worktree`, taken apart whole as the task ends
 - `refs/ledger/aside/{work_unit}/{task_id}` — in each code repository, the work a quick-fix's fix had not committed, set aside when a question parked it or the quick-fix moved
 - `~/.config/ledger/` (or `LEDGER_CONFIG_DIR`) — system config, credentials, `trust.jsonl` the trust log, `person.md` the record of the person, `decision-checks.jsonl` the one-decision check's log, and `conversations/{session-id}/`, per-conversation state: `booted.json` boot's stamp, which the verbs that touch work refuse without, `briefs/` the briefs the conversation issued, and `set-aside.json` the parks of the questions it set aside
 

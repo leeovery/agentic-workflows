@@ -125,8 +125,10 @@
 // and judge the contradictions named on it; check it and brief its
 // verifier, or a fresh one where it changed since; a fresh per-topic agent
 // to answer its findings, or the session where one reverses a ruling or
-// the round is the third or later; once passed, what its carry waits on,
-// each record by its place; else ready to carry. A carried record never in
+// the round is the third or later; a fresh per-topic agent to amend it,
+// where the carry refused it, the refusal kept beside it until that
+// agent's brief carries it; once passed, what its carry waits on, each
+// record by its place; else ready to carry. A carried record never in
 // the ledger is carried again.
 // And the contradictions a unit's records name between sections of the
 // sources they share — its approved specs, its discovery sessions and the
@@ -235,7 +237,7 @@ const CUT = require('./080-cut-and-merges.check.cjs');
 // The files a record is kept in, and what the carry still refuses a record
 // its verifier passed for, read as the carry reads them.
 const {
-  COMPOSED, RECORD_ENDINGS, SETTLED_FROM, carriedPath, composedPath, findingsPath, settledPath, verifyingPath, handbackPath, roundsPath,
+  COMPOSED, RECORD_ENDINGS, SETTLED_FROM, carriedPath, composedPath, findingsPath, refusedPath, settledPath, verifyingPath, handbackPath, roundsPath,
   briefedOn, recordHash, roundsKept, findingItems, handedBack, verdictGaps, verdictlessFiles, unsettledRound,
 } = require('../record-files.cjs');
 // The section a cite names, which every reader of a cite takes.
@@ -1516,6 +1518,12 @@ const SETTLED = 'was settled by the session, and waits to be carried';
 /** Where a record waits for the carry alone. */
 const WAITING = [PASSED, SETTLED];
 
+/** The carry's refusal kept beside a record, absolute; null where none stands. @param {Project} project @param {Unit} unit @param {string|null} topic */
+function refusalOf(project, unit, topic) {
+  const file = path.join(project.stateDir, refusedPath(unit.name, topic));
+  return isFile(file) ? file : null;
+}
+
 /**
  * Where a record not yet carried stands: none composed; what the carry
  * would refuse it for on its own — findings handed back, not passed by its
@@ -1682,8 +1690,9 @@ function namesWhole(text, name) {
 /**
  * The one step the session takes next on a record not done, in the
  * directive's terms: what stops it (`heldStep`), what the session reads or
- * removes on it (`sessionStep`), what its verifiers still owe
- * (`verifierStep`), what its carry waits on (`waitStep`), else the carry.
+ * removes on it (`sessionStep`), its amend where the carry refused it,
+ * what its verifiers still owe (`verifierStep`), what its carry waits on
+ * (`waitStep`), else the carry.
  * A carried record never in the ledger is carried again.
  * @param {Project} project @param {Set<string>} ids @param {Unit} unit @param {string|null} topic
  * @param {{strays: string[], uncited: number, unshared: number, waited: () => {unit: Unit, on: Waiting}[]}} on
@@ -1697,8 +1706,10 @@ function nextStep(project, ids, unit, topic, { strays, uncited, unshared, waited
     return sessionStep(strays, uncited, unshared) ?? 'mend what its problems name';
   }
   const round = roundOf(project, unit, topic);
+  const refusal = refusalOf(project, unit, topic);
   return heldStep(project, unit, topic, round)
     ?? sessionStep(strays, uncited, unshared)
+    ?? (refusal === null ? null : `the carry refused it: a fresh per-topic agent amends it, its brief carrying the refusal in ${refusal}`)
     ?? verifierStep(project, unit, topic, /** @type {Round} */ (round))
     ?? waitStep(waited())
     ?? `ready to carry: \`ledger carry ${place}\``;

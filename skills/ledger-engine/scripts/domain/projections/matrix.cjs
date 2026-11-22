@@ -182,7 +182,7 @@ function oneGoing(threshold, { asks, opens, losses }) {
 
 /** Claude's one-answer calls, and where they stand. @param {MatrixView} view */
 function oneSays({ settings: { threshold }, one }) {
-  return `${one.tally.calls} calls · ${one.tally.overruled} overruled · rate ${rateAt(one.bound, threshold)}. ${oneGoing(threshold, one)}`;
+  return `${counted(one.tally.calls, 'call')} · ${one.tally.overruled} overruled · rate ${rateAt(one.bound, threshold)}. ${oneGoing(threshold, one)}`;
 }
 
 /** The threshold mid-build, where a question blocks work: the higher of the person's pick and the threshold. @param {Settings} settings */

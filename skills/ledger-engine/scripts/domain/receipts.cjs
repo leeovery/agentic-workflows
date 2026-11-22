@@ -21,7 +21,7 @@ const { loadProjectManifest } = require('./reads.cjs');
 const { roadmapState } = require('./roadmap.cjs');
 const { liveItem, archivedOne, deletedItemTitle } = require('./inbox-set.cjs');
 const { workunitReceipt, topicReceipt, absorbReceipt, inboxArchiveReceipt, inboxRestoreReceipt, inboxDeleteReceipt } = require('./projections/transactions.cjs');
-const { endedReceipt, behindReceipt } = require('./projections/start-menu.cjs');
+const { endedReceipt, closedReceipt } = require('./projections/start-menu.cjs');
 const { startMenuRead } = require('./start-menu.cjs');
 
 /** @typedef {import('./projections/transactions.cjs').Stayed} Stayed */
@@ -152,16 +152,18 @@ function deletedReceipt(cwd, { deleted }) {
 /**
  * A unit's finish said in the start menu's place: its title done, and what
  * waits on the person across the project; for a quick-fix, whose close
- * carries on in its conversation (24.1.5), only each branch here its
- * landing left behind what it landed, where one did.
- * @param {string} cwd @param {{unit: string, landed?: {repo: string, into: string, behind?: {branch: string, why: string}}[]}} answered
+ * carries on in its conversation (24.1.5), the board's done line for it
+ * where the close put the conversation back at another place (`back_to`),
+ * and each branch here its landing left behind what it landed, where one
+ * did.
+ * @param {string} cwd @param {{unit: string, back_to?: string, landed?: {repo: string, into: string, behind?: {branch: string, why: string}}[]}} answered
  * @returns {string}
  */
-function finishedOf(cwd, { unit, landed = [] }) {
+function finishedOf(cwd, { unit, back_to: back, landed = [] }) {
   const manifest = loadWorkUnitManifest(cwd, unit);
   if (quickFixBuild(manifest)) {
     const behind = landed.flatMap(({ repo, into, behind: held }) => (held === undefined ? [] : [{ repo, into, ...held }]));
-    return behind.length === 0 ? '' : behindReceipt(behind);
+    return closedReceipt(back === undefined ? null : `✓ ${itemTitle(manifest, 'implementation', unit)} · quick-fix · complete`, behind);
   }
   return endedReceipt(`${itemTitle(manifest, 'review', unit)} is done.`, startMenuRead(cwd));
 }

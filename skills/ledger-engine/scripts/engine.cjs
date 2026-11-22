@@ -705,8 +705,8 @@ function runWorkunit(call, argv) {
       }
       if (command === 'cancel') {
         const cancelled = cancelWorkUnit(call.cwd, workUnit);
-        const left = leftUnit(call.cwd, workUnit);
-        respondWithReceipt(call, { ...cancelled, next: putBackNext(call.cwd, workUnit, homelessNames(cancelled)) }, cancelledOf(call.cwd, cancelled, left));
+        const { left, back } = leftUnit(call.cwd, workUnit);
+        respondWithReceipt(call, { ...cancelled, next: putBackNext(call.cwd, workUnit, homelessNames(cancelled), back?.entry ?? null) }, cancelledOf(call.cwd, cancelled, left));
         return;
       }
       const reactivated = reactivateWorkUnit(call.cwd, workUnit);

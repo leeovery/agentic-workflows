@@ -246,7 +246,7 @@ function reviewsBlock(reviews) {
 
 /** Why a task has no account: a one-line task, which owes none; it landed before the migration cut the unit, closed without one, or has yet to land. @param {boolean} closed @param {boolean} before @param {string|null} none */
 function absentAccount(closed, before, none) {
-  if (none !== null) return `No account, and no reviewer: ${none}.`;
+  if (none !== null) return `No account, and no reviewer: ${none}${/[.?!]$/.test(none) ? '' : '.'}`;
   if (before) return 'No account was written: it landed before the migration cut the unit.';
   return closed ? 'No account was written: it closed without one.' : 'No account is written yet: its builder writes it as the task lands.';
 }

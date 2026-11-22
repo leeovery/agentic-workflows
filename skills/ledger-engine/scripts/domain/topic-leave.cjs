@@ -12,10 +12,16 @@
 // where it is there, its tasks in flight with it, so nothing holds the
 // conversation afterwards (`leftUnit`; `leaveUnit`, position.cjs), and its
 // session's own label comes back (session-label.cjs). A quick-fix's start
-// keeps the conversation's row in the product's conversation
-// (start-this-work.cjs); leaving the unit drops it, so the product's
-// session is never held open by a window no longer in it — talking
-// product again brings the conversation back there (discovery-entry.cjs).
+// made at a project-level place — the product's conversation or the
+// roadmap — keeps it (start-this-work.cjs, `keepCameFrom`), and its close
+// and its cancel, leaving the unit while the conversation is still at it,
+// put the conversation back there: its
+// position and label, the product's presence row beaten again, and the
+// place's own entry as the way on, so its skill and its log are read again
+// and a product's session closed meanwhile opens again by that entry
+// (`returnTo`). Left with nowhere to go back to, the conversation's row in
+// the product's conversation is dropped, so the product's session is never
+// held open by a window no longer in it.
 // Its move starts the new type as any start does (workunit-move.cjs).
 //
 // A topic cancelled or postponed (`topic cancel`, `topic postpone`) takes
@@ -41,10 +47,10 @@
 // ---------------------------------------------------------------------------
 
 const { handedSession } = require('../kernel/process.cjs');
-const { readPosition, leaveUnit } = require('./position.cjs');
-const { clearOwnQuietly } = require('./presence.cjs');
+const { readPosition, leaveUnit, takeCameFrom } = require('./position.cjs');
+const { clearOwnQuietly, beatQuietly } = require('./presence.cjs');
 const { PRODUCT } = require('../kernel/manifest-schema.cjs');
-const { repairTerminalLabel } = require('./session-label.cjs');
+const { repairTerminalLabel, arriveAt } = require('./session-label.cjs');
 const { UNIT_PHASES } = require('./derivations.cjs');
 const { roadmapState } = require('./roadmap.cjs');
 
@@ -69,19 +75,43 @@ function ontoMenu(workUnit, workType) {
   return workType === 'epic' ? ontoEpic(workUnit) : ONTO_START;
 }
 
+/** Each project-level place's own entry, the way back into it. @type {Readonly<Record<string, Next>>} */
+const ENTRIES = Object.freeze({
+  [PRODUCT]: Object.freeze({ kind: 'invoke', skill: 'ledger-discovery', args: ['none', 'none'] }),
+  roadmap: Object.freeze({ kind: 'invoke', skill: 'ledger-roadmap', args: [] }),
+});
+
 /**
  * A unit finished or cancelled (the header's): where the calling
  * conversation sat in it, its place and the unit's tasks in flight left,
- * its own row in the product's conversation dropped, and its session's own
- * label put back. Whether it left.
- * @param {string} cwd @param {string} workUnit @returns {boolean}
+ * then, where it is still at the unit, the conversation back where it
+ * started a quick-fix from, else its
+ * own row in the product's conversation dropped and its session's own
+ * label put back. Whether it left, and the place it went back to with that
+ * place's entry, null where it went back nowhere.
+ * @param {string} cwd @param {string} workUnit @returns {{left: boolean, back: {place: string, entry: Next}|null}}
  */
 function leftUnit(cwd, workUnit) {
-  const left = leaveUnit(handedSession(), workUnit);
-  if (!left) return false;
+  const sessionId = handedSession();
+  const taken = takeCameFrom(workUnit);
+  const place = sessionId !== null && readPosition(sessionId)?.name === workUnit ? taken : null;
+  if (!leaveUnit(sessionId, workUnit)) return { left: false, back: null };
+  if (place !== null) return { left: true, back: { place, entry: returnTo(cwd, place) } };
   clearOwnQuietly(cwd, PRODUCT, 'discovery', PRODUCT);
   repairTerminalLabel(cwd);
-  return true;
+  return { left: true, back: null };
+}
+
+/**
+ * The conversation arrived back at the project-level place `name`: its
+ * position and label, the product's presence row beaten again. Answers the
+ * place's entry.
+ * @param {string} cwd @param {string} name @returns {Next}
+ */
+function returnTo(cwd, name) {
+  arriveAt(cwd, name);
+  if (name === PRODUCT) beatQuietly(cwd, PRODUCT, 'discovery', PRODUCT);
+  return ENTRIES[name];
 }
 
 /** Where the calling conversation sits, or null where it sits nowhere. */
@@ -163,15 +193,16 @@ function wayOn(from) {
 /**
  * A put-back's `next` (the header's): the horizon pick for the first of
  * `names` still waiting on no horizon, the rest carried on, else where the
- * verb goes.
- * @param {string} cwd @param {string} from @param {string[]} names
+ * verb goes — `back`, the entry of the place a quick-fix's cancel went back
+ * to, where it went back to one.
+ * @param {string} cwd @param {string} from @param {string[]} names @param {Next|null} [back]
  * @returns {Next}
  */
-function putBackNext(cwd, from, names) {
+function putBackNext(cwd, from, names, back = null) {
   const homeless = new Set(roadmapState(cwd).items.filter((row) => row.horizon === null && row.state === 'waiting').map((row) => row.name));
   const [first, ...rest] = names.filter((name) => homeless.has(name));
   return first === undefined
-    ? wayOn(from)
+    ? back ?? wayOn(from)
     : { kind: 'engine', argv: ['render', 'horizon-pick', '--back', first, '--from', from, ...thenArgs(rest)] };
 }
 

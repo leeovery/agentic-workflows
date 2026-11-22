@@ -82,7 +82,12 @@
 //   did — the fixes it closed, the branch it kept, each fix's work set
 //   aside it kept, by its ref and the call that shows it (fix-aside.cjs,
 //   `keptAside`), and whether it closed the pull request — and the
-//   handoff into the new type's first phase (24.1.2).
+//   handoff into the new type's first phase (24.1.2). A quick-fix's start
+//   kept the place the conversation was in for its close, and its row in
+//   the product's conversation; the move forgets the one and drops the
+//   other, as a start of work that leaves the talk does, so the new type's
+//   close or cancel puts the conversation back nowhere (`forgetCameFrom`,
+//   position.cjs).
 // - Known edges: a failure between the save and the commit leaves the move
 //   made and uncommitted, the unit of the new type, so the yes refuses to
 //   run again; a fix an answer freed, its turn come and not started again,
@@ -106,9 +111,11 @@ const {
   ensureContainer,
 } = require('../kernel/manifest.cjs');
 const { isObject } = require('../kernel/manifest-io.cjs');
-const { LANDINGS } = require('../kernel/manifest-schema.cjs');
+const { LANDINGS, PRODUCT } = require('../kernel/manifest-schema.cjs');
+const { clearOwnQuietly } = require('./presence.cjs');
 const { stateRoot, statePath } = require('../kernel/state-root.cjs');
 const { handedSession } = require('../kernel/process.cjs');
+const { forgetCameFrom } = require('./position.cjs');
 const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('./commit.cjs');
 const { appendEntry, commitLedger } = require('./ledger.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
@@ -397,6 +404,10 @@ function moveYes(cwd, staged) {
     saveMoved(cwd, unit, to, description);
     fs.rmSync(draft.scratch, { force: true });
     fs.rmSync(stagedFile(cwd), { force: true });
+    if (quickFix) {
+      forgetCameFrom(handedSession());
+      clearOwnQuietly(cwd, PRODUCT, 'discovery', PRODUCT);
+    }
 
     reindexWorkUnit(cwd, unit, warnings, { clearFirst: true });
     const paths = [unit, PROJECT_MANIFEST_SPEC, ...store];

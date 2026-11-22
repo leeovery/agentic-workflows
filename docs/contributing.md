@@ -16,8 +16,8 @@ by `test-engine-commands-reference.cjs`), the module header comments
 ## Getting set up
 
 ```bash
-git clone git@github.com:leeovery/agentic-workflows.git
-cd agentic-workflows
+git clone git@github.com:leeovery/ledger.git
+cd ledger
 npm install
 npm test
 ```
