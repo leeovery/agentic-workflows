@@ -248,8 +248,8 @@ describe('what the spec reads at its entry', () => {
     ]));
   });
 
-  it('a bugfix\'s topic log is its investigation\'s log, read once on disk (19.4.15)', () => {
-    assert.strictEqual(enter('fixed').sections, data([...records('fixed', 'fixed'), `topic log: ${at(layout.topic('fixed', 'fixed', 'log.md'))}`]));
+  it('a bugfix\'s topic log is its investigation\'s log, read once on disk (19.4.15), and its record the unit\'s alone, which holds its one topic\'s', () => {
+    assert.strictEqual(enter('fixed').sections, data([...records('fixed'), `topic log: ${at(layout.topic('fixed', 'fixed', 'log.md'))}`]));
   });
 
   it('once the spec is written, the spec and, once cut, the cut; and the agents the spec was left with, landed or lost with a process gone (9.7.8)', () => {

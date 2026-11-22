@@ -575,7 +575,7 @@ function labEntry(sim, wu, topic, record) {
 // The spec's entry, at the work unit: handed off as above, the spec skill's
 // first engine call is its entry, which starts nothing and records the unit
 // as its place, so a compaction there carries on in the spec's skill,
-// re-reading each live topic's record.
+// re-reading each live topic's record — a single-topic unit's in the unit's.
 /** @param {Sim} sim @param {string} wu @param {string[]} topics the unit's live topics */
 function specEntry(sim, wu, topics) {
   sim.handOver();
@@ -585,7 +585,7 @@ function specEntry(sim, wu, topics) {
   assert.deepStrictEqual(here.position, { name: wu, phase: 'specification', topic: wu }, 'the entry records the unit as its place');
   assert.strictEqual(here.skill, path.join(sim.dir, '.claude/skills', /** @type {string} */ (skillAt(wu, 'specification')), 'SKILL.md'),
     'a compaction there carries on in the spec\'s skill');
-  for (const topic of topics) assert.ok(here.text.includes(`ledger record ${wu} ${topic}\``), `a compaction there re-reads ${topic}'s record`);
+  for (const topic of topics) assert.ok(here.text.includes(topic === wu ? `ledger record ${wu}\`` : `ledger record ${wu} ${topic}\``), `a compaction there re-reads ${topic}'s record`);
   return res;
 }
 

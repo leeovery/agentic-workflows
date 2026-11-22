@@ -12,10 +12,12 @@
 // test-engine-landing-conformance-quick-fix-nested-cancel.cjs's. And two
 // quick-fixes started from the product's talk in one conversation — one
 // cancelled, one moved — each leaving the product's session open: the
-// cancel carries on in the conversation, whose talk of the product goes on
-// in that session (the close's is the by-hand sim's), the move hands off
-// into the feature's discussion as any start does, and a return in a new
-// window reads the one log (8.14.11).
+// cancel carries on in the conversation back in the product's, whose talk
+// goes on in that session (the close's is the by-hand sim's), the move
+// hands off into the feature's discussion as any start does, and a return
+// in a new window reads the one log (8.14.11). And a quick-fix started from
+// inside a feature's discussion, cancelled, putting the conversation back
+// in that discussion, its position and its presence row there.
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -30,7 +32,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const { git, statePath } = require('./engine-harness.cjs');
-const { Sim, answerGate, startUnit, startThisWork, startBare, startPick, writeTasks, finishClosed, fixTree, fixBuilt } = require('./pipeline-world.cjs');
+const { Sim, answerGate, startUnit, startThisWork, startBare, startPick, writeTasks, finishClosed, fixTree, fixBuilt, carryOn, presenceRow } = require('./pipeline-world.cjs');
 
 const CONTINUE = Object.freeze({ kind: 'continue' });
 
@@ -87,9 +89,9 @@ describe('pipeline simulation: quick-fix cancelled mid-fix', () => {
       sim.run(['enter', 'implementation', wu]);
       return started.product_session_closed;
     };
-    /** The conversation carried on by `next`, then talking product again: whether that started a session. @param {object} next */
+    /** The conversation carried on by `next`, back in the product's, then talking product again: whether that started a session. @param {object} next */
     const back = (next) => {
-      assert.deepStrictEqual(next, CONTINUE);
+      assert.deepStrictEqual([next, carryOn(sim).position], [CONTINUE, { name: 'product' }], 'the cancel puts the conversation back in the product\'s');
       return sim.run(['enter', 'discovery', 'product']).started;
     };
 
@@ -112,5 +114,23 @@ describe('pipeline simulation: quick-fix cancelled mid-fix', () => {
 
     assert.deepStrictEqual([closed, started, moved, open, read], [[null, null], false, { kind: 'handoff', skill: 'ledger-discussion-process', args: ['feature', 'grows'] }, '001', [log]]);
     assert.match(fs.readFileSync(read[0], 'utf8'), /Three tiers, the middle one leading\./);
+  });
+
+  it('a quick-fix started from inside a feature\'s discussion, by the type call, and cancelled puts the conversation back in that discussion: its position, and its presence row there', () => {
+    startUnit(sim, 'feature', 'pricing', 'Three pricing tiers');
+    sim.handOver();
+    sim.run(['enter', 'discussion', 'pricing']);
+    const at = carryOn(sim).position;
+    sim.run(['enter', 'discovery', 'product', '--type-call']);
+    startThisWork(sim, { type: 'quick-fix', name: 'typo', description: 'Fix the typo.', reason: 'Settled and small.' });
+    sim.run(['enter', 'implementation', 'typo']);
+    const away = carryOn(sim).position;
+    sim.run(['presence', 'cleanup', sim.env.CLAUDE_CODE_SESSION_ID]);
+    sim.render(['cancel-gate', 'typo'], { expect: 'content' });
+    const cancelled = sim.run(answerGate(sim, 'cancel gate', '--pick', 'y').next.argv);
+    const row = presenceRow(sim.run(['presence', 'scan', 'pricing']), 'discussion', 'pricing');
+
+    assert.deepStrictEqual([at, away.name, cancelled.next, carryOn(sim).position], [{ name: 'pricing', phase: 'discussion', topic: 'pricing' }, 'typo', CONTINUE, at]);
+    assert.deepStrictEqual([row?.session_id, row?.held], [sim.env.CLAUDE_CODE_SESSION_ID, true], 'its presence row in the discussion is back');
   });
 });

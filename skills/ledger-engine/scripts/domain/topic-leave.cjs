@@ -12,10 +12,14 @@
 // where it is there, its tasks in flight with it, so nothing holds the
 // conversation afterwards (`leftUnit`; `leaveUnit`, position.cjs), and its
 // session's own label comes back (session-label.cjs). A quick-fix's start
-// keeps the conversation's row in the product's conversation
-// (start-this-work.cjs); leaving the unit drops it, so the product's
-// session is never held open by a window no longer in it — talking
-// product again brings the conversation back there (discovery-entry.cjs).
+// keeps the place the conversation was in (start-this-work.cjs,
+// `keepCameFrom`), and its close and its cancel, leaving the unit, put the
+// conversation back there — arriving as an entry does, its position and
+// label, and its presence row: the product's conversation, or a unit's
+// phase and topic, while the project has it (`returnTo`). Left with
+// nowhere to go back to, the conversation's row in the product's
+// conversation is dropped, so the product's session is never held open by
+// a window no longer in it.
 // Its move starts the new type as any start does (workunit-move.cjs).
 //
 // A topic cancelled or postponed (`topic cancel`, `topic postpone`) takes
@@ -41,10 +45,10 @@
 // ---------------------------------------------------------------------------
 
 const { handedSession } = require('../kernel/process.cjs');
-const { readPosition, leaveUnit } = require('./position.cjs');
-const { clearOwnQuietly } = require('./presence.cjs');
+const { readPosition, leaveUnit, takeCameFrom, isPlace } = require('./position.cjs');
+const { clearOwnQuietly, beatQuietly } = require('./presence.cjs');
 const { PRODUCT } = require('../kernel/manifest-schema.cjs');
-const { repairTerminalLabel } = require('./session-label.cjs');
+const { repairTerminalLabel, arriveAt } = require('./session-label.cjs');
 const { UNIT_PHASES } = require('./derivations.cjs');
 const { roadmapState } = require('./roadmap.cjs');
 
@@ -72,16 +76,34 @@ function ontoMenu(workUnit, workType) {
 /**
  * A unit finished or cancelled (the header's): where the calling
  * conversation sat in it, its place and the unit's tasks in flight left,
- * its own row in the product's conversation dropped, and its session's own
+ * then the conversation back where it started a quick-fix from, else its
+ * own row in the product's conversation dropped and its session's own
  * label put back. Whether it left.
  * @param {string} cwd @param {string} workUnit @returns {boolean}
  */
 function leftUnit(cwd, workUnit) {
+  const back = takeCameFrom(workUnit);
   const left = leaveUnit(handedSession(), workUnit);
   if (!left) return false;
+  if (back !== null && isPlace(cwd, back.name, back.phase, back.topic)) {
+    returnTo(cwd, back);
+    return true;
+  }
   clearOwnQuietly(cwd, PRODUCT, 'discovery', PRODUCT);
   repairTerminalLabel(cwd);
   return true;
+}
+
+/**
+ * The conversation arrived back at `place` as its entry arrives: its
+ * position and label, and its presence row — the product's conversation's
+ * at the product, a unit's at its phase and topic.
+ * @param {string} cwd @param {import('./conversation.cjs').Position} place
+ */
+function returnTo(cwd, { name, phase, topic, record }) {
+  arriveAt(cwd, name, phase, topic, record);
+  if (name === PRODUCT) beatQuietly(cwd, PRODUCT, 'discovery', PRODUCT);
+  else if (phase !== undefined && topic !== undefined) beatQuietly(cwd, name, phase, topic);
 }
 
 /** Where the calling conversation sits, or null where it sits nowhere. */

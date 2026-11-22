@@ -56,7 +56,10 @@
 // the conversation carries on there, so it leaves the unit's place whole,
 // its tasks in flight with it, the place it left kept for the board to draw
 // the close (`leaveUnit`, topic-leave.cjs) — nothing holds a commit it
-// makes afterwards.
+// makes afterwards. Its start keeps the place the conversation was in, the
+// product's conversation or a unit's phase and topic, beside the position
+// (`keepCameFrom`), and its close or cancel puts the conversation back
+// there (`takeCameFrom`).
 //
 // The engine is the file's one writer, and writes only for a conversation
 // that runs Ledger: recording a position marks the conversation first
@@ -76,7 +79,7 @@ const path = require('path');
 const { PRODUCT, PROJECT_IDENTITIES, TERMINAL_STATUSES, VALID_PHASES, illegalNameReason, isTopicPhase } = require('../kernel/manifest-schema.cjs');
 const { LOCK_TIMEOUT_MS, isObject, withStateLockFile, writeJsonAtomic } = require('../kernel/manifest-io.cjs');
 const { handedSession } = require('../kernel/process.cjs');
-const { positionPath, leftPath, storedPosition, readPosition, isMarked, markConversation, runningTranscript } = require('./conversation.cjs');
+const { positionPath, leftPath, cameFromPath, storedPosition, readPosition, isMarked, markConversation, runningTranscript } = require('./conversation.cjs');
 const { ROLES, issuedOf } = require('./brief-names.cjs');
 const { loadManifest, loadProjectManifest } = require('./reads.cjs');
 const { buildBegun, buildRefusal, quickFixReviewRefusal, isFixPhase, computeTopicLifecycle, itemOf, phaseData, UNIT_PHASES, briefFile } = require('./derivations.cjs');
@@ -499,6 +502,39 @@ function leaveUnit(sessionId, workUnit) {
   });
 }
 
+/**
+ * The place the calling conversation is in kept, its tasks aside, as the
+ * one it started the quick-fix `workUnit` from (the header's); nothing kept
+ * where it is at no place.
+ * @param {string} workUnit
+ */
+function keepCameFrom(workUnit) {
+  const own = ownConversation();
+  const at = own === null ? null : readPosition(own);
+  if (own === null || at === null) return;
+  writeJsonAtomic(cameFromPath(own), { unit: workUnit, place: placeOf(at) });
+}
+
+/**
+ * The place the calling conversation started the quick-fix `workUnit` from,
+ * taken: null where it kept none for that unit.
+ * @param {string} workUnit @returns {Position|null}
+ */
+function takeCameFrom(workUnit) {
+  const own = ownConversation();
+  if (own === null) return null;
+  const file = cameFromPath(own);
+  let kept;
+  try {
+    kept = JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch {
+    return null;
+  }
+  if (!isObject(kept) || kept.unit !== workUnit || !isObject(kept.place) || typeof kept.place.name !== 'string') return null;
+  fs.rmSync(file, { force: true });
+  return /** @type {Position} */ (kept.place);
+}
+
 // ---------------------------------------------------------------------------
 // What a conversation re-reads to carry on from its position: the skill that
 // runs the work there, then the topic's documents. A linear unit's place
@@ -522,8 +558,8 @@ function leaveUnit(sessionId, workUnit) {
 // conversation its open log (24.2.8, 8.14.6) — the latest on disk where
 // none is open — or, once its picture is written, the picture, the log
 // named only to be caught up; specification's, at the unit whatever topic
-// its place names, what its entry reads to carry it on — each live topic's record and
-// log, the unit's own record, the canonical assets, then the spec once written and the cut once cut,
+// its place names, what its entry reads to carry it on — an epic's each live topic's
+// record, each topic's log, the unit's own record, the canonical assets, then the spec once written and the cut once cut,
 // and while the person's review page is open, its address and where its
 // marks are read back to (spec-entry.cjs), the spec keeping no log;
 // implementation's, once the unit's build has begun, what its entry reads
@@ -909,6 +945,6 @@ function positionSections(reads) {
 }
 
 module.exports = {
-  readPosition, assertPlace, isPlace, recordPosition, recordTask, recordTasksAt, recordBuilder, recordWorktree, recordStop, clearStop, clearTask, clearTasks, leavePosition, dropPosition, leaveUnit,
+  readPosition, assertPlace, isPlace, recordPosition, recordTask, recordTasksAt, recordBuilder, recordWorktree, recordStop, clearStop, clearTask, clearTasks, leavePosition, dropPosition, leaveUnit, keepCameFrom, takeCameFrom,
   placeLine, skillAt, positionReads, positionSections,
 };

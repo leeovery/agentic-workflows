@@ -289,7 +289,7 @@ describe('the matrix (16.15.1, 17.1.2, 17.1.3)', () => {
     assert.match(block(matrix(dir), 'Carried', 1)[0], /^Carried from your other projects: 5 answers' weight,/);
   });
 
-  it('N4: the one-answer calls\' line says where they stand — asking until the rate falls under the threshold; quiet since it did, asking again over a quarter above it; quiet with overrules weighing under one whole — their rate told from every line the threshold draws', () => {
+  it('N4: the one-answer calls\' line says where they stand, one call counted in the singular — asking until the rate falls under the threshold; quiet since it did, asking again over a quarter above it; quiet with overrules weighing under one whole — their rate told from every line the threshold draws', () => {
     const { dir, id } = fumi();
     /** Claude's one-answer calls, `n` of them, then one the person reversed, in `h`. @param {ReturnType<typeof history>} h @param {number} n */
     const overruledAfter = (h, n) => {
@@ -303,8 +303,10 @@ describe('the matrix (16.15.1, 17.1.2, 17.1.3)', () => {
     overruledAfter(band, 10);
     const inherited = history({ project: id, model: MODEL_LINES[0][2] });
     overruledAfter(inherited, 5);
+    const single = history({ project: id });
+    single.call('one', null);
 
-    const said = [asking, band, inherited].map((h) => {
+    const said = [asking, band, inherited, single].map((h) => {
       logHolding(h.events);
       const drawn = matrix(dir);
       const heading = drawn.indexOf('CLAUDE\'S ONE-ANSWER CALLS');
@@ -315,6 +317,7 @@ describe('the matrix (16.15.1, 17.1.2, 17.1.3)', () => {
       '11 calls · 1 overruled · rate 34%. Overrules have lifted the rate over your 20%, so they ask you until it falls under it.',
       '22 calls · 2 overruled · rate 24.9%. They went quiet once the rate fell under your 20%, and go ahead as mine until it rises over 25%.',
       '6 calls · 1 overruled · rate 65%. They go ahead as mine, and ask you once overrules lift the rate over your 20%. They ask only once overrules weigh one whole overrule; these weigh 0.5.',
+      '1 call · 0 overruled · rate 78%. They go ahead as mine, and ask you once overrules lift the rate over your 20%.',
     ]);
   });
 

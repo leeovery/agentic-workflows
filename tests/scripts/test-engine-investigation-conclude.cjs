@@ -190,7 +190,6 @@ describe('the close into the spec, with no gate — `investigation stage` (19.4.
     assert.deepStrictEqual(held(), [], 'the close releases the investigation\'s place');
     const { sections } = drawn(['enter', 'specification', RIPE]);
     assert.deepStrictEqual(sections.split('\n').filter((line) => /^(record|topic log): /.test(line)), [
-      `record: \`${ENGINE} ledger record ${RIPE} ${RIPE}\``,
       `record: \`${ENGINE} ledger record ${RIPE}\``,
       `topic log: ${at(layout.topic(RIPE, RIPE, 'log.md'))}`,
     ], 'the spec reads the investigation\'s record and its log (19.4.15, 11.1.6)');

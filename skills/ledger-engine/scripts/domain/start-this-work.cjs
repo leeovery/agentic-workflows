@@ -46,8 +46,11 @@
 //   nor a type call's. The yes removes the conversation's payload with its
 //   staged copy, and, for work that leaves, its presence row in the
 //   product's conversation — its place there kept, which an epic's move
-//   departs from; a window in a quick-fix stays in the conversation. A
-//   failure part-way leaves no unit. One commit takes it all.
+//   departs from; a window in a quick-fix stays in the conversation, and
+//   the place it was in — the product's conversation, or a unit's phase
+//   and topic — is kept for the quick-fix's close or cancel to put it back
+//   there (topic-leave.cjs). A failure part-way leaves no unit. One commit
+//   takes it all.
 // - What comes next: a feature into its discussion, a bugfix into its
 //   investigation, each a handoff (24.1.2); a quick-fix into its work, its
 //   skill invoked in this same conversation, nothing cleared (19.5.1,
@@ -74,6 +77,7 @@ const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { productSession, inTheProduct } = require('./discovery-session.cjs');
 const { SHAPED_BY, conversationFile, payloadFile } = require('./discovery-entry.cjs');
 const { peerHold, clearOwnQuietly } = require('./presence.cjs');
+const { keepCameFrom } = require('./position.cjs');
 const { draftIn, writeBrief, twinRefusal } = require('./discovery-map.cjs');
 const {
   FIRST_LOG, assertLegalWorkUnitName, workUnitTaken, checkWorkUnit, writeWorkUnit, unwriteWorkUnit, registerWorkUnit, createdPaths, landedSeeds,
@@ -380,6 +384,7 @@ function startThisWorkYes(cwd) {
   fs.rmSync(payloadFile(cwd), { force: true });
   // Work that leaves the product's talk takes the conversation's row there, its place kept for an epic's move.
   if (type !== 'quick-fix') clearOwnQuietly(cwd, PRODUCT, 'discovery', PRODUCT);
+  else keepCameFrom(name);
 
   /** @type {string[]} */
   const warnings = [];
