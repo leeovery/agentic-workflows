@@ -28,4 +28,4 @@ node .claude/skills/ledger-engine/scripts/engine.cjs discovery-log not-taken {ho
 
 ## A Shared File
 
-Load **[importing-shared-files.md](../../ledger-shared/references/importing-shared-files.md)** with home = `{home}`, phase = `discovery`, and follow its instructions as written. Link each file it landed from the log.
+Load **[importing-shared-files.md](../../ledger-shared/references/importing-shared-files.md)** with home = `{home}`, phase = `discovery`, and follow its instructions as written. Link each path it answered from the log.

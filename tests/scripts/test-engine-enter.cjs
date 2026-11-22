@@ -714,6 +714,16 @@ describe('discovery: the product\'s conversation (8.2.7–8.2.10)', () => {
       ]));
     });
 
+    it('a return names each unit started since the latest closed sitting\'s last conversation began — on its day or after, whichever door started it — and none from before it', () => {
+      const project = JSON.parse(readState(dir, layout.projectManifest));
+      for (const [unit, type, created] of [['old-work', 'feature', '2026-01-01'], ['gifting', 'epic', '2026-01-02'], ['pricing-page', 'quick-fix', '2026-01-05']]) {
+        createManifest(dir, unit, { work_type: type, created });
+        project.work_units = { ...project.work_units, [unit]: { work_type: type } };
+      }
+      writeState(dir, layout.projectManifest, JSON.stringify(project, null, 2));
+      assert.deepStrictEqual(enter(['discovery', 'product']).sections.match(/^started since: .*$/gm), ['started since: gifting epic', 'started since: pricing-page quick-fix']);
+    });
+
     it('carrying on the open sitting another conversation left reads that log in full beside the picture, the latest closed log by its closing line, and the catch-up brings the picture up to date with the log', () => {
       const first = transcript('sess-1');
       enter(['discovery', 'product']);

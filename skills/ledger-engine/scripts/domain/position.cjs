@@ -79,7 +79,7 @@ const { handedSession } = require('../kernel/process.cjs');
 const { positionPath, leftPath, storedPosition, readPosition, isMarked, markConversation, runningTranscript } = require('./conversation.cjs');
 const { ROLES, issuedOf } = require('./brief-names.cjs');
 const { loadManifest, loadProjectManifest } = require('./reads.cjs');
-const { buildBegun, buildRefusal, quickFixReviewRefusal, isFixPhase, computeTopicLifecycle, itemOf, phaseData, UNIT_PHASES } = require('./derivations.cjs');
+const { buildBegun, buildRefusal, quickFixReviewRefusal, isFixPhase, computeTopicLifecycle, itemOf, phaseData, UNIT_PHASES, briefFile } = require('./derivations.cjs');
 const { latestSessionLog, productSession, sessionLogs } = require('./discovery-session.cjs');
 const { PRODUCT_SESSIONS, PRODUCT_PICTURE } = require('./layout.cjs');
 const { FROM_BEFORE } = require('./from-before.cjs');
@@ -605,7 +605,7 @@ function productActive(cwd) {
  * topic's documents, whether or not they exist — neither at a work unit's
  * menu; and, where the place has any, the engine calls it re-reads and the
  * log its conversation keeps.
- * @typedef {{skill: string|null, documents: string[], whole?: {calls: string[], log: string|null, lines?: string[]}}} Work
+ * @typedef {{skill: string|null, documents: string[], whole?: {calls: string[], log: string|null, picture?: string, lines?: string[]}}} Work
  */
 
 /**
@@ -621,13 +621,14 @@ function discoveryWork(skill, calls, log, beside = []) {
 
 /**
  * The product's conversation's note: once its picture is written, the
- * picture re-read and the log caught up alone; else its log, as any home's.
+ * picture re-read, then the log and the picture caught up; else its log, as
+ * any home's.
  * @param {string} cwd @param {string} skill @returns {Work}
  */
 function productWork(cwd, skill) {
   const log = sessionLog(statePath(cwd, PRODUCT_SESSIONS), productActive(cwd));
   const picture = statePath(cwd, PRODUCT_PICTURE);
-  return fs.existsSync(picture) ? { skill, documents: [picture], whole: { calls: [], log: log[0] ?? null } } : discoveryWork(skill, [], log);
+  return fs.existsSync(picture) ? { skill, documents: [picture], whole: { calls: [], log: log[0] ?? null, picture } } : discoveryWork(skill, [], log);
 }
 
 /**
@@ -709,7 +710,7 @@ function workAt(cwd, position, manifest, sessionId) {
       const log = statePath(cwd, topicLog(name, topic));
       const whole = { calls: [recordCall(name, topic)], log };
       const stays = phase === 'discussion' && staysDecided({ cwd, phase, unit: name, topic, manifest });
-      return { skill, documents: [log], whole: stays ? staysDecidedWhole(whole, name, topic) : whole };
+      return { skill, documents: [statePath(cwd, briefFile(name, topic)), log], whole: stays ? staysDecidedWhole(whole, name, topic) : whole };
     }
     case 'specification': {
       // Required here, as the ledger read it makes requires this module; a
@@ -802,24 +803,32 @@ function closedReason(position, manifest) {
 }
 
 /**
- * The lines a whole note gives the log its conversation keeps: caught up
- * from the conversation's transcript, or the transcript's loss said in one
- * line; and the line the conversation's next write to it opens with, where
- * it has not written there yet or another conversation has since.
- * @param {string} log absolute @param {string} sessionId
+ * The lines a whole note gives the log its conversation keeps, and the
+ * product's picture with it where one is given: caught up from the
+ * conversation's transcript, or the transcript's loss said in one line; and
+ * the line the conversation's next write to the log opens with, where it has
+ * not written there yet or another conversation has since.
+ * @param {string} log absolute @param {string} sessionId @param {string} [picture] absolute
  */
-function logLines(log, sessionId) {
+function logLines(log, sessionId, picture) {
   const transcript = runningTranscript(sessionId);
   const header = owedHeader(log, sessionId, transcript);
   const written = namedConversations(log).some((conversation) => conversation.session === sessionId);
+  const caught = picture === undefined ? `the log, ${log},` : `the log, ${log}, and the picture, ${picture},`;
   return [
     transcript === null
-      ? 'This conversation\'s transcript cannot be found: say so in one line, and carry on from the log.'
-      : `Catch the log, ${log}, up from this conversation's transcript, ${transcript}, from the log's last write onward.`,
+      ? `This conversation's transcript cannot be found: say so in one line, and carry on from ${picture === undefined ? 'the log' : `the log, ${log}, and the picture, ${picture}`}.`
+      : `Catch ${caught} up from this conversation's transcript, ${transcript}, from the log's last write onward.`,
     ...(header === null ? [] : [written
       ? `Another conversation has written to the log since this one did: its next write opens with this line again: \`${header}\``
       : `This conversation has not written to the log yet: its first write opens with this line: \`${header}\``]),
   ];
+}
+
+/** A document's line in the note: a section of one named as that section, read alone. @param {string} file absolute */
+function fileLine(file) {
+  const at = file.indexOf('#');
+  return at === -1 ? `- ${file}` : `- ${file.slice(0, at)}, its section \`${file.slice(at)}\` alone`;
 }
 
 /**
@@ -828,16 +837,16 @@ function logLines(log, sessionId) {
  * log, where it keeps one, caught up (`logLines`); and the conversation
  * carried on.
  * @param {string} where @param {string} skill absolute @param {string[]} calls @param {string[]} files absolute
- * @param {string|null} log absolute @param {string} sessionId @param {string[]} [lines]
+ * @param {string|null} log absolute @param {string} sessionId @param {string[]} [lines] @param {string} [picture] absolute, caught up with the log
  */
-function wholeNote(where, skill, calls, files, log, sessionId, lines = []) {
+function wholeNote(where, skill, calls, files, log, sessionId, lines = [], picture = undefined) {
   return [
     `${COMPACTED} This conversation is working in ${where}. Before anything else, re-read these in full, running each engine call:`,
     `- ${skill} and its framework`,
     ...calls.map((c) => `- \`${c}\``),
-    ...files.map((f) => `- ${f}`),
+    ...files.map(fileLine),
     ...lines,
-    ...(log === null ? [] : logLines(log, sessionId)),
+    ...(log === null ? [] : logLines(log, sessionId, picture)),
     'Then carry on from where the conversation was, as if the break never happened — no recap and no announcement.',
   ].join('\n');
 }
@@ -884,8 +893,8 @@ function positionReads(cwd, sessionId) {
   const skill = absolute(skillFile(work.skill));
   if (!fs.existsSync(skill)) return nothing(`This conversation was working in ${where}, but this project has no ${work.skill} skill, so there is nothing to carry on from.`);
   const files = [...new Set(work.documents)].map(absolute).filter((f) => fs.existsSync(f.split('#')[0]));
-  const { calls, log, lines } = work.whole ?? { calls: [], log: null };
-  const text = wholeNote(where, skill, calls, files, log, sessionId, lines);
+  const { calls, log, lines, picture } = work.whole ?? { calls: [], log: null };
+  const text = wholeNote(where, skill, calls, files, log, sessionId, lines, picture);
   return { session_id: sessionId, position, place, skill, files, text };
 }
 

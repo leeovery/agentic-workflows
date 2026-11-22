@@ -548,12 +548,13 @@ describe('conversation position', () => {
   });
 
   /** A topic's note, a discussion's or an investigation's: its log named where written, the transcript found or not, the log's header line owed or not — again where the conversation wrote there before another. */
-  function topicNote(where, unit, topic, { log = false, transcript = null, header = null, again = false, phase = 'discussion' } = {}) {
+  function topicNote(where, unit, topic, { brief = false, log = false, transcript = null, header = null, again = false, phase = 'discussion' } = {}) {
     const logFile = abs(`.ledger/${unit}/topics/${topic}/log.md`);
     return [
       `The conversation was just compacted. This conversation is working in ${where}. Before anything else, re-read these in full, running each engine call:`,
       `- ${abs(`.claude/skills/ledger-${phase}-process/SKILL.md`)} and its framework`,
       `- \`node .claude/skills/ledger-engine/scripts/engine.cjs ledger record ${unit} ${topic}\``,
+      ...(brief ? [`- ${abs(`.ledger/${unit}/topics/${topic}/brief.md`)}`] : []),
       ...(log ? [`- ${logFile}`] : []),
       transcript === null
         ? 'This conversation\'s transcript cannot be found: say so in one line, and carry on from the log.'
@@ -573,17 +574,18 @@ describe('conversation position', () => {
     return file;
   }
 
-  it('a discussion carries its recovery whole: the skill, the topic\'s record and its log, the log caught up from the conversation\'s transcript (24.S10)', () => {
+  it('a discussion carries its recovery whole: the skill, the topic\'s record, its brief and its log, the log caught up from the conversation\'s transcript (24.S10)', () => {
     install('ledger-discussion-process');
+    write('.ledger/pay/topics/ledger/brief.md', '# Ledger\n');
     write('.ledger/pay/topics/ledger/log.md', '## 2026-01-01 · session sess-1\n\nWhere it stands.\n');
     const file = transcript();
     ok(['session', 'label', 'pay', 'discussion', 'ledger']);
     const answer = reads();
     assert.deepStrictEqual([answer.position, answer.place, answer.skill, answer.files], [
       { name: 'pay', phase: 'discussion', topic: 'ledger' }, 'pay › discussion › ledger',
-      abs('.claude/skills/ledger-discussion-process/SKILL.md'), [abs('.ledger/pay/topics/ledger/log.md')],
+      abs('.claude/skills/ledger-discussion-process/SKILL.md'), [abs('.ledger/pay/topics/ledger/brief.md'), abs('.ledger/pay/topics/ledger/log.md')],
     ]);
-    assert.strictEqual(answer.text, topicNote('the discussion of "ledger" in the epic "pay"', 'pay', 'ledger', { log: true, transcript: file }));
+    assert.strictEqual(answer.text, topicNote('the discussion of "ledger" in the epic "pay"', 'pay', 'ledger', { brief: true, log: true, transcript: file }));
   });
 
   it('a bugfix\'s investigation carries its recovery whole, as a discussion does — the topic\'s record and its log, the investigation itself, caught up from the transcript, and no document beside them (19.4.3)', () => {
@@ -749,15 +751,16 @@ describe('conversation position', () => {
   });
 
   /** A discovery home's note: its calls and its documents, then its log caught up from the transcript, found or not. */
-  function discoveryNote(where, calls, log, transcript = null, documents = [log]) {
+  function discoveryNote(where, calls, log, transcript = null, documents = [log], picture = null) {
+    const caught = picture === null ? `the log, ${abs(log)},` : `the log, ${abs(log)}, and the picture, ${abs(picture)},`;
     return [
       `The conversation was just compacted. This conversation is working in ${where}. Before anything else, re-read these in full, running each engine call:`,
       `- ${abs('.claude/skills/ledger-discovery/SKILL.md')} and its framework`,
       ...calls.map((call) => `- \`${call}\``),
-      ...documents.map((file) => `- ${abs(file)}`),
+      ...documents.map((file) => (file.includes('#') ? `- ${abs(file.split('#')[0])}, its section \`#${file.split('#')[1]}\` alone` : `- ${abs(file)}`)),
       transcript === null
-        ? 'This conversation\'s transcript cannot be found: say so in one line, and carry on from the log.'
-        : `Catch the log, ${abs(log)}, up from this conversation's transcript, ${transcript}, from the log's last write onward.`,
+        ? `This conversation's transcript cannot be found: say so in one line, and carry on from ${picture === null ? 'the log' : caught.slice(0, -1)}.`
+        : `Catch ${caught} up from this conversation's transcript, ${transcript}, from the log's last write onward.`,
       'Then carry on from where the conversation was, as if the break never happened — no recap and no announcement.',
     ].join('\n');
   }
@@ -842,7 +845,7 @@ describe('conversation position', () => {
     assert.deepStrictEqual(carried, [[skill, []], [skill, []]]);
   });
 
-  it('the project-level places: the product\'s conversation, carried whole in discovery\'s skill before any unit exists, its open log — once its picture is written, the picture — re-read and the log caught up from the transcript (24.S19); the roadmap with its skill alone, holding no session', () => {
+  it('the project-level places: the product\'s conversation, carried whole in discovery\'s skill before any unit exists, its open log re-read and caught up from the transcript — once its picture is written, the picture re-read and caught up with the log (24.S19); the roadmap with its skill alone, holding no session', () => {
     install('ledger-roadmap');
     install('ledger-discovery');
     write('.ledger/.product/sessions/session-003.md', '## 2026-01-01 · session sess-1\n');
@@ -859,10 +862,13 @@ describe('conversation position', () => {
     assert.strictEqual(reads().text, discoveryNote('the product\'s conversation', [], '.ledger/.product/sessions/session-003.md', file));
     write('.ledger/.product/picture.md', '# Where the product stands\n');
     const pictured = reads();
+    const picture = '.ledger/.product/picture.md';
     assert.deepStrictEqual([pictured.files, pictured.text], [
-      [abs('.ledger/.product/picture.md')],
-      discoveryNote('the product\'s conversation', [], '.ledger/.product/sessions/session-003.md', file, ['.ledger/.product/picture.md']),
-    ], 'its picture, once written, re-read in the log\'s place, the log caught up alone');
+      [abs(picture)],
+      discoveryNote('the product\'s conversation', [], '.ledger/.product/sessions/session-003.md', file, [picture], picture),
+    ], 'its picture, once written, re-read in the log\'s place, the log and the picture caught up');
+    fs.rmSync(file);
+    assert.strictEqual(reads().text, discoveryNote('the product\'s conversation', [], '.ledger/.product/sessions/session-003.md', null, [picture], picture), 'the transcript gone, naming both');
   });
 
   it('a position left at the baseline, a place the project no longer has, carries nothing on', () => {

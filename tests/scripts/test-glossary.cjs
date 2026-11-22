@@ -99,7 +99,7 @@ describe('the glossary (23.3)', () => {
     assert.deepStrictEqual(stages.sort(), Object.entries(PHASE_STAGES).map(([phase, stage]) => `${phase} ${stage}`).sort());
   });
 
-  it('23.S8: has an entry for every term 23.3.2 adds, the trust machinery\'s, and the earlier record\'s with the product picture', () => {
+  it('23.S8: has an entry for every term 23.3.2 adds, the trust machinery\'s, and the record from before\'s with the product picture', () => {
     assert.deepStrictEqual(ADDED.filter((term) => !entries.some((e) => e.term === term && e.definition)), []);
   });
 

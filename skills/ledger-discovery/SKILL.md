@@ -37,14 +37,14 @@ node .claude/skills/ledger-engine/scripts/engine.cjs enter discovery {home} [--t
 
 A refusal names the way on: say it in a line. Where another session holds an epic's home, the entry asks first; carrying on from it ends the turn.
 
-Then read what the DATA names that this conversation does not hold already: each `session log` and the `picture` in full — in the type call the picture is read, never written; each `older log` and the `latest sitting` by the closing line it carries; each `shaped by` section of the product's sessions; `from before`, the points from before the epic carries, in full; the `map`, the `roadmap` and the `product` record, by running each call; the `inbox`'s items by their titles; each `seed` in full; and for each `roadmap seed`, its `note` in full and the parts of the logs its `source` lines point at — and where its row in `roadmap state` carries `earlier`, the record the topic left in the epic that postponed it: its brief, log and mail in full and its record by running the call, as input never changed. Do what `catch up` says. The `log` is this conversation's (**The Log**). Where `research owed` is `yes`, load **[researching-the-code.md](references/researching-the-code.md)** and follow its instructions as written before you open.
+Then read what the DATA names that this conversation does not hold already: each `session log` and the `picture` in full — in the type call the picture is read, never written; each `older log` and the `latest sitting` by the closing line it carries; each `shaped by` section of the product's sessions; `from before`, the points from before and the shared files the epic carries, in full; each `started since`, work started since the last sitting; the `map`, the `roadmap` and the `product` record, by running each call; the `inbox`'s items by their titles; each `seed` in full; and for each `roadmap seed`, its `note` in full and the parts of the logs its `source` lines point at — and where its row in `roadmap state` carries `earlier`, the record the topic left in the epic that postponed it: its brief, log and mail in full and its record by running the call, as input never changed. Do what `catch up` says. The `log` is this conversation's (**The Log**). Where `research owed` is `yes`, load **[researching-the-code.md](references/researching-the-code.md)** and follow its instructions as written before you open.
 
 Then open the conversation; never stop in silence once you have read.
 
 ## The Opening
 
 What you say is your own, and the way in decides what it opens on:
-- **A return** — `none`, or any way into an epic's discovery — opens with a short account of where the conversation had got to: the threads it was circling, the person's leans, what was left open. Then ask where they want to take it. A first session, with no logs, asks what is on their mind the way it sits in their head.
+- **A return** — `none`, or any way into an epic's discovery — opens with a short account of where the conversation had got to: the threads it was circling, the person's leans, what was left open. Then ask where they want to take it. A first session, with no logs, asks what is on their mind the way it sits in their head. An epic's discovery opening for the first time on a `from before` says, in a line or a short list, what came across: each point by its id and a few words, and the shared files.
 - **A roadmap idea to take in**, each `take in`, opens an epic's discovery on it: talk it through as a new topic of the map, taken in as **Changing the Map** says, `--from-roadmap {item}`.
 - **A work type or seeds** open on that piece of work, whatever the history. A type is a hint to trust: confirm it lightly once the description fits, and reconsider only on a clear, strong signal. Seeds open on one sketch across them all and a question that pulls on its shape, but an inbox item that already names its cause and fix is confirmed in one line, not shaped again. With nothing to read, ask the person to describe the work the way it sits in their head, and invite any notes, screenshots or files that frame it.
 - **`start`** takes what the person brings with no announcement, asking for it only where they have said nothing yet: a piece of work goes to the type call; talk about the product carries the product's conversation on — enter it as **Entering** says, without `--type-call`, read what its DATA names, and answer from where its sessions had got to.
@@ -61,7 +61,7 @@ Two senior engineers throwing an idea around: opinionated, willing to disagree, 
 
 ### Input, Never Decisions
 
-What the person says is their view: a lean, a rejected path with why, an open question. A point they leave open stays open, its lean recorded as theirs, and a suggestion of yours they never took up is not theirs. A record they bring from before — notes, a decision log, a model, research — is the record from before, and its points the position from before: where they had got to, cited by its own ids and files, its own open questions still open. A point of it becomes their view only once they take it up here, restated, changed or dropped; one dropped is a direction not taken, with why. A principle they state is carried as input and decided in the first topic it bears on. What you read in the code is a finding saying how it is known (`ledger find`). Never ask to fill the product record.
+What the person says is their view: a lean, a rejected path with why, an open question. A point they leave open stays open, its lean recorded as theirs, and a suggestion of yours they never took up is not theirs. A record they bring from before — notes, a decision log, a model, research — is the record from before, and its points the points from before: where they had got to, cited by its own ids and files, its own open questions still open. A point of it becomes their view only once they take it up here, restated, changed or dropped; one dropped is a direction not taken, with why. A principle they state is carried as input and decided in the first topic it bears on. What you read in the code is a finding saying how it is known (`ledger find`). Never ask to fill the product record.
 
 ### Research and Spikes
 
@@ -93,13 +93,15 @@ The DATA's `log` is the record everything here comes back to, and nothing talked
 
 In the product's conversation, `.ledger/.product/picture.md` is where the product stands now; the log is the journey there. Rewrite it in place as the talk moves on, never appending, re-reading it before each rewrite, as another window may have rewritten it since: when a view, a lean or an open question changes, its line is replaced, and the log keeps how it changed. Each point in it says which of four it is:
 - the person's view, linked to where they said it in the log;
-- the position from before, with its id and file;
+- a point from before, with its id and file;
 - an open question, with the leans on it;
 - decided, a pointer to its entry in the product record, never the decision restated.
 
-On a return, a point the product record now decides becomes its pointer, and one a piece of work started since now carries, a pointer to the work by its name. A section of its own lists the reference files (**[reference-files.md](../ledger-shared/references/reference-files.md)**).
+On a return, a point the product record now decides becomes its pointer, and one a piece of work `started since` now carries, a pointer to the work by its name. A section of its own lists the shared files not read in full:
 
-It decides nothing, and holds the product's level: what no started work holds yet — an epic has its map and its briefs, a topic its record. Where the DATA names no `picture` there is none yet: write it as the conversation goes. A record from before's model of the product is its first version, every point of it the position from before, its open questions open questions. Where the person asks to see it, show it as it stands.
+Load **[reference-files.md](../ledger-shared/references/reference-files.md)** and follow its instructions as written.
+
+It decides nothing, and holds the product's level: what no started work holds yet — an epic has its map and its briefs, a topic its record. Where the DATA names no `picture` there is none yet: write it as the conversation goes. A record from before's model of the product is its first version, every point of it a point from before, its open questions open questions. Where the person asks to see it, show it as it stands.
 
 ## Doors
 

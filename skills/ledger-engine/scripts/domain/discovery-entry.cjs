@@ -19,9 +19,12 @@
 //     conversation opened and said nothing in never pushes the talk out of
 //     what a return reads — or, once the conversation has written its
 //     picture of where the product stands, the picture in full, the latest
-//     closed log holding talk by its closing line, and the open log in full
+//     closed log holding talk by its closing line, the open log in full
 //     where it holds talk, as a conversation carrying the sitting on from
-//     another reads it; the roadmap, the product record with the code's
+//     another reads it, and each unit started since that closed sitting's
+//     last conversation began — on its day or after, whichever door started
+//     it, so a return points the picture at work started without it; the
+//     roadmap, the product record with the code's
 //     findings, and whether the baseline's research is owed (8.2.10,
 //     8.12.13) — where it starts work from seeds, the seeds and the picture
 //     in place of the logs, and only those (18.8.15, seeds.cjs) — and
@@ -79,6 +82,7 @@ const { productCall, mapCall, namedConversations, isHeader, appendLine, topicLog
 const { beyondLists } = require('./discovery-log.cjs');
 const { assertSeeds, seedReads } = require('./seeds.cjs');
 const { fromBeforeFile } = require('./from-before.cjs');
+const { loadProjectManifest, loadManifest } = require('./reads.cjs');
 
 /** @typedef {import('./enter.cjs').Entry} Entry */
 /** @typedef {import('./enter.cjs').Entering} Entering */
@@ -236,11 +240,29 @@ function productStanding(cwd) {
   if (picture.length === 0) return talk.slice(-RECENT).map(as('session log'));
   const open = activeSession(cwd, PRODUCT);
   const openLog = open === null ? null : statePath(cwd, logAt(PRODUCT, open));
+  const closed = talk.filter((log) => log !== openLog).at(-1);
   return [
     ...picture,
-    ...talk.filter((log) => log !== openLog).slice(-1).map((log) => as('latest sitting')(closedBy(log))),
+    ...(closed === undefined ? [] : [as('latest sitting')(closedBy(closed))]),
     ...talk.filter((log) => log === openLog).map(as('session log')),
+    ...(closed === undefined ? [] : startedSince(cwd, closed)),
   ];
+}
+
+/**
+ * Each unit started on or after the day the closed sitting's last
+ * conversation began, `{unit} {type}`, in the order the project registered
+ * them.
+ * @param {string} cwd @param {string} closed absolute @returns {Line[]}
+ */
+function startedSince(cwd, closed) {
+  const since = namedConversations(closed).at(-1)?.date;
+  if (since === undefined) return [];
+  const units = Object.entries(loadProjectManifest(cwd)?.work_units ?? {});
+  return units.flatMap(([unit, { work_type: type }]) => {
+    const created = loadManifest(cwd, unit)?.created;
+    return typeof created === 'string' && created >= since ? [as('started since')(`${unit} ${type}`)] : [];
+  });
 }
 
 /**

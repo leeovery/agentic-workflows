@@ -41,7 +41,7 @@ Then open the conversation; never stop in silence once you have read. The openin
 
 What you say is your own and fits the topic: the shape of what has been said, a perspective from the brief or beyond it, what decisions already made settle and where from — the product record cited — the open questions with your lean on any where a logical one exists, and perhaps where to start. A principle the person stated in the product's conversation is your position in the first topic it bears on. Each open question you name goes on the map (`ledger ask`) in the same turn. The opening decides nothing.
 
-The brief, the seeds and discovery's log are the inherited position: what the person settled on in discovery is working ground to build on, never asked again. It moves when something here contradicts it, or when the person reopens it. A point the brief marks as from before is not inherited: it goes on the map as an open question like any other, the answer from before your lean — most are a quick yes. With nothing to open from, open on the problem, its constraints and the code worth reading.
+The brief, the seeds and discovery's log are the inherited position: what the person settled on in discovery is working ground to build on, never asked again. It moves when something here contradicts it, or when the person reopens it. A point the brief marks as from before is not inherited: it goes on the map as an open question, the answer from before your lean, raised marked `--always from-before` so it comes to the person — most are a quick yes. With nothing to open from, open on the problem, its constraints and the code worth reading.
 
 ## The Conversation
 
@@ -112,7 +112,7 @@ Content is one JSON object on stdin; `{place}` is `{work_unit}.discussion.{topic
 - A decision → `ledger decide {place} --answers {id} [--relies-on {id} …]`, `{"text", "why", "rules_out", "by", "given", "who_moved_whom": "none"}` — `given` `your-call` or `dont-care` with `"by": "claude"`.
 - A changed answer → `ledger replace {place} --replaces {id} --reason {reason:[new-fact|other-topic|changed-mind|was-wrong]} [--cause {id}]`, the content of the kind it replaces with `"drops"`, a line for each part of the old it drops; an entry that still holds after it → `ledger hold {place} --entry {id} --after {id}`, `{"by", "who_moved_whom"}`.
 - A question moved → `ledger move {place} --question {id} --to {target:[topic|roadmap:item]}`; one already answered → `ledger merge {place} --question {id} --into {id}`; each `{"by", "who_moved_whom"}`.
-- A call you lean on → `raise {place} --answers {id}`; a fact only the person holds → the same with `--fact`; a decision you would replace → `raise {place} --replaces {id} --reason {reason}`.
+- A call you lean on → `raise {place} --answers {id}`, adding `--always from-before` for a point from before; a fact only the person holds → the same with `--fact`; a decision you would replace → `raise {place} --replaces {id} --reason {reason}`.
 - Settling the rest → `render convergence {work_unit}.{topic} [--asked]`, whose rows run `convergence accept|decline`.
 - The topic as it stands → `ledger record|map|since|affected|product {work_unit} {topic}`, `render map {work_unit}.{topic}`.
 - A spike, and the files an entry links → `asset spike|add|status|lift`.

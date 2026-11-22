@@ -81,6 +81,10 @@ const POINTS = Object.freeze([
 ]);
 const FROM_BEFORE = layout.fromBefore('fumi');
 const HELD = '# From before\n\n- D101: One gift shape (.product/assets/planning/decisions/decision-log.md)\n- B51: How a pocket pays for itself is open (.product/assets/planning/model/current.md)\n';
+/** A transcript shared in the product's conversation, as the payload names it and as the epic's own place holds it. */
+const TRANSCRIPT = '.product/assets/planning/log/2026-01-04.md';
+const SHARED = Object.freeze([{ path: TRANSCRIPT, holds: 'The gifting call with the shop owners', kind: 'reference' }]);
+const HELD_FILES = `\n## Shared files\n\n- ${TRANSCRIPT} — The gifting call with the shop owners (reference)\n`;
 
 /** A one-topic unit's payload, its brief drafted. @param {string} type @param {string} name */
 function oneTopic(type, name) {
@@ -175,10 +179,15 @@ describe('start this work, the yes (8.8.1, 8.14.3, 8.14.11)', () => {
     assert.ok(!touched(statePath(dir()), 'HEAD').some((line) => line.includes('.product/')), 'the product\'s sessions are not the yes\'s to commit');
   });
 
-  it('writes an epic\'s points from before once into its own place, committed with the unit, the product\'s conversation\'s start and the type call\'s alike', () => {
+  it('writes an epic\'s points from before and the shared files bearing on it once into its own place, and lands the picture thinned from its draft, all in the yes\'s one commit', () => {
+    writeState(dir(), TRANSCRIPT, '# The gifting call\n');
+    writeState(dir(), layout.productPicture, '# Where the product stands\n\n- One gift shape — from before, D101\n');
     inTheProduct();
-    started({ ...FUMI, from_before: POINTS });
-    assert.deepStrictEqual([readState(dir(), FROM_BEFORE), touched(statePath(dir()), 'HEAD').includes(`A\t${FROM_BEFORE}`)], [HELD, true]);
+    const thinned = scratch('# Where the product stands\n\n- Gifting — started, in fumi.\n');
+    started({ ...FUMI, from_before: POINTS, shared_files: SHARED, picture: thinned });
+    assert.deepStrictEqual([readState(dir(), FROM_BEFORE), readState(dir(), layout.productPicture), fs.existsSync(thinned)], [`${HELD}${HELD_FILES}`, '# Where the product stands\n\n- Gifting — started, in fumi.\n', false]);
+    const committed = touched(statePath(dir()), 'HEAD').map((line) => line.split('\t')[1]);
+    assert.deepStrictEqual([FROM_BEFORE, layout.productPicture].filter((rel) => !committed.includes(rel)), [], 'both in the one commit');
   });
 
   it('a type call starting an epic beside another window holding the product\'s conversation open writes its points from before into the epic, that window\'s log untouched', () => {
@@ -366,10 +375,21 @@ describe('start this work, refused (8.2.4, 8.8.18)', () => {
     assert.match(screen(['start-this-work'], called), /^Fumi \(epic\)$/m);
   });
 
+  it('refuses shared files for any type but an epic, and one off disk, outside an asset home, of no kind it knows, or named twice; and a thinned picture from a type call', () => {
+    writeState(dir(), TRANSCRIPT, '# The gifting call\n');
+    assert.strictEqual(refusedStage({ ...oneTopic('feature', 'saved-filters'), shared_files: SHARED }), 'render start-this-work: shared_files is an epic\'s — a feature\'s brief carries them: drop shared_files');
+    assert.strictEqual(refusedStage({ ...FUMI, shared_files: [{ ...SHARED[0], path: '.product/assets/gone.md' }] }), 'render start-this-work: shared_files 1: .product/assets/gone.md is no shared file on disk — a path from the state root, below an assets folder or a spike');
+    assert.strictEqual(refusedStage({ ...FUMI, shared_files: [{ ...SHARED[0], path: PRODUCT_LOG }] }), `render start-this-work: shared_files 1: ${PRODUCT_LOG} is no shared file on disk — a path from the state root, below an assets folder or a spike`);
+    assert.strictEqual(refusedStage({ ...FUMI, shared_files: [{ ...SHARED[0], kind: 'skim' }] }), 'render start-this-work: shared_files 1\'s kind is "reference" or "to read" — got "skim"');
+    assert.strictEqual(refusedStage({ ...FUMI, shared_files: [SHARED[0], SHARED[0]] }), `render start-this-work: shared_files names ${TRANSCRIPT} twice`);
+    const { shaped_by: _shaped, ...called } = FUMI;
+    assert.strictEqual(refusedStage({ ...called, picture: scratch('# Thinned\n') }), 'render start-this-work: a type call only reads the picture — drop picture: the next return to the product\'s conversation brings it up to date');
+  });
+
   it('refuses points from before for any type but an epic, and a point that is not one line apiece, an id written with a space, or an id twice', () => {
-    assert.strictEqual(refusedStage({ ...oneTopic('feature', 'saved-filters'), from_before: POINTS }), 'render start-this-work: from_before is an epic\'s — a feature\'s points from before its brief carries: drop from_before');
+    assert.strictEqual(refusedStage({ ...oneTopic('feature', 'saved-filters'), from_before: POINTS }), 'render start-this-work: from_before is an epic\'s — a feature\'s brief carries them: drop from_before');
     const { brief: _brief, ...quick } = oneTopic('quick-fix', 'typo-fix');
-    assert.strictEqual(refusedStage({ ...quick, from_before: POINTS }), 'render start-this-work: from_before is an epic\'s — a quick-fix\'s points from before stay in the picture: drop from_before');
+    assert.strictEqual(refusedStage({ ...quick, from_before: POINTS }), 'render start-this-work: from_before is an epic\'s — a quick-fix\'s stay in the picture: drop from_before');
     assert.strictEqual(refusedStage({ ...FUMI, from_before: [{ ...POINTS[0], point: 'One\ngift' }] }), 'render start-this-work: from_before 1\'s point is one line of text');
     assert.strictEqual(refusedStage({ ...FUMI, from_before: [{ ...POINTS[0], id: 'D 101' }] }), 'render start-this-work: from_before 1\'s id is the record\'s own, as it writes it — no space or colon: got "D 101"');
     assert.strictEqual(refusedStage({ ...FUMI, from_before: [POINTS[0], POINTS[0]] }), 'render start-this-work: from_before names D101 twice');

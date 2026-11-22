@@ -6,12 +6,17 @@
 // whatever door it came through.
 //
 // A shared folder lands whole: its own name by the rules a file's stem
-// takes, deduped as a file is, and its tree beneath it with every name kept,
-// so the links its files make to each other still resolve. A dotted entry in
-// it is tooling state, passed over and named as a dotfile is; a name the
-// state cannot hold — one holding a control character or a character a
-// filesystem the state may live on refuses — and anything that is neither a
-// file nor a folder refuse the whole call, by name, before anything lands.
+// takes, deduped as a file is and never the migration's `legacy`, and its
+// tree beneath it with every name kept, so the links its files make to each
+// other still resolve. A dotted entry in it is tooling state, passed over
+// and named as a dotfile is, and a folder landing no file is skipped and
+// named. A name a filesystem the state may live on refuses is slugged by
+// the file rules and named. A file Claude Code loads as instructions once
+// a file beside it is read — `CLAUDE.md`, `CLAUDE.local.md`, `AGENTS.md`, in
+// any case — lands under a name it never loads, named, whether shared alone
+// or in a folder. A name holding a control character, an entry that is
+// neither a file nor a folder, a file that cannot be read and a folder that
+// cannot be listed refuse the whole call, by name, before anything lands.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -70,33 +75,93 @@ function normaliseFolderName(basename) {
   return slug === '' ? null : slug;
 }
 
-/** A name the state cannot hold: a control character, or one a filesystem the state may live on refuses. */
-const UNHOLDABLE = /[\x00-\x1f\x7f<>:"\\|?*]/;
+/** A name holding a control character, which no landing carries. */
+const UNHOLDABLE = /[\x00-\x1f\x7f]/;
+
+/** A name a filesystem the state may live on refuses, which lands slugged. */
+const UNPORTABLE = /[<>:"\\|?*]/;
+
+/** The files Claude Code loads as instructions, by their names lowercased, and the names they land under. */
+const INSTRUCTIONS = Object.freeze({ 'claude.md': 'claude-md.md', 'claude.local.md': 'claude-local-md.md', 'agents.md': 'agents-md.md' });
+
+/** The name a file lands under where Claude Code would load it as instructions; null for any other. @param {string} name */
+const unloaded = (name) => INSTRUCTIONS[/** @type {keyof typeof INSTRUCTIONS} */ (name.toLowerCase())] ?? null;
+
+/** The assets folder the migration's legacy files live in, which no shared folder takes. */
+const MIGRATION_FOLDER = 'legacy';
 
 /**
- * A shared folder's tree as it lands, each path below the folder, in name
- * order: its files; its dotted entries, passed over; and what the state
- * cannot hold — a name it cannot carry, or an entry that is neither a file
- * nor a folder.
- * @param {string} folder absolute
- * @returns {{files: string[], skipped: string[], refused: string[]}}
+ * Why an entry of a shared folder cannot land, or null where it can.
+ * @param {string} at absolute @param {fs.Dirent} entry
+ * @returns {string|null}
+ */
+function cannotLand(at, entry) {
+  if (UNHOLDABLE.test(entry.name)) return 'a control character in its name — rename it, or share the folder without it';
+  if (entry.isSymbolicLink()) return 'a link — share the folder without it';
+  if (!entry.isFile() && !entry.isDirectory()) return 'neither a file nor a folder — share the folder without it';
+  try {
+    fs.accessSync(at, entry.isDirectory() ? fs.constants.R_OK | fs.constants.X_OK : fs.constants.R_OK);
+    return null;
+  } catch {
+    return `${entry.isDirectory() ? 'a folder that cannot be listed' : 'a file that cannot be read'} — make it readable, or share the folder without it`;
+  }
+}
+
+/**
+ * A shared folder's tree as it lands, in name order: each file, by its path
+ * below the folder and the path it lands at; its dotted entries, passed
+ * over; each name the landing changes; and what cannot land, with why.
+ * @typedef {{files: {from: string, to: string}[], skipped: string[], renamed: {from: string, to: string}[], refused: string[]}} Tree
+ * @param {string} folder absolute @returns {Tree}
  */
 function folderTree(folder) {
-  /** @type {{files: string[], skipped: string[], refused: string[]}} */
-  const tree = { files: [], skipped: [], refused: [] };
-  /** @param {string} rel */
-  const walk = (rel) => {
-    const entries = fs.readdirSync(path.join(folder, rel), { withFileTypes: true }).sort((a, b) => (a.name < b.name ? -1 : 1));
+  /** @type {Tree} */
+  const tree = { files: [], skipped: [], renamed: [], refused: [] };
+  /** @param {string} from @param {string} to */
+  const walk = (from, to) => {
+    const entries = fs.readdirSync(path.join(folder, from), { withFileTypes: true }).sort((a, b) => (a.name < b.name ? -1 : 1));
+    /** @type {Set<string>} */
+    const taken = new Set(entries.map((entry) => entry.name));
     for (const entry of entries) {
-      const at = rel === '' ? entry.name : `${rel}/${entry.name}`;
+      const at = from === '' ? entry.name : `${from}/${entry.name}`;
+      const why = entry.name.startsWith('.') ? null : cannotLand(path.join(folder, at), entry);
       if (entry.name.startsWith('.')) tree.skipped.push(at);
-      else if (UNHOLDABLE.test(entry.name) || !(entry.isFile() || entry.isDirectory())) tree.refused.push(at);
-      else if (entry.isDirectory()) walk(at);
-      else tree.files.push(at);
+      else if (why !== null) tree.refused.push(`${at} (${why})`);
+      else {
+        const named = landedName(entry, taken);
+        if (named === null) {
+          tree.skipped.push(at);
+          continue;
+        }
+        const landed = to === '' ? named : `${to}/${named}`;
+        if (named !== entry.name) tree.renamed.push({ from: at, to: landed });
+        if (entry.isDirectory()) walk(at, landed);
+        else tree.files.push({ from: at, to: landed });
+      }
     }
   };
-  walk('');
+  walk('', '');
   return tree;
+}
+
+/**
+ * The name an entry of a shared folder lands under: its own, but slugged
+ * where a filesystem the state may live on refuses it and moved off a name
+ * Claude Code loads as instructions, either deduped against its folder's
+ * other names; null where the rules slug it away.
+ * @param {fs.Dirent} entry @param {Set<string>} taken its folder's names, each kept or landed
+ * @returns {string|null}
+ */
+function landedName(entry, taken) {
+  const portable = UNPORTABLE.test(entry.name);
+  const name = portable ? (entry.isDirectory() ? normaliseFolderName(entry.name) : normaliseBasename(entry.name)) : entry.name;
+  if (name === null) return null;
+  const moved = entry.isFile() ? unloaded(name) : null;
+  if (!portable && moved === null) return name;
+  taken.delete(entry.name);
+  const free = dedupe(moved ?? name, null, taken);
+  taken.add(free);
+  return free;
 }
 
 /** A source path with any trailing slash taken off. @param {string} src */
@@ -131,11 +196,11 @@ const isFolder = (cwd, src) => fs.statSync(path.resolve(cwd, src)).isDirectory()
 
 /**
  * Refuse the whole batch unless every source is an existing file or folder,
- * and every name in each folder one the state can hold — checked before
- * anything is copied, so nothing lands half. A path naming neither rides the
- * error as `payload.missing_imports`, which is what the caller re-prompts
- * over; a folder holding what the state cannot is refused naming each such
- * path.
+ * and everything in each folder can land — checked before anything is
+ * copied, so nothing lands half. A path naming neither rides the error as
+ * `payload.missing_imports`, which is what the caller re-prompts over; a
+ * folder holding what cannot land is refused naming each such path, with
+ * why.
  * @param {string} cwd project root
  * @param {string[]} paths source paths
  * @throws {Error & {payload?: {missing_imports: string[]}}}
@@ -156,8 +221,8 @@ function assertLandableSources(cwd, paths) {
     err.payload = { missing_imports: missing };
     throw err;
   }
-  const unholdable = paths.filter((p) => isFolder(cwd, p)).flatMap((p) => folderTree(path.resolve(cwd, p)).refused.map((rel) => `${unslashed(p)}/${rel}`));
-  if (unholdable.length > 0) throw new Error(`import: a shared folder holds what the state cannot hold — ${unholdable.join(', ')}: rename each, or share the folder without it`);
+  const cannot = paths.filter((p) => isFolder(cwd, p)).flatMap((p) => folderTree(path.resolve(cwd, p)).refused.map((rel) => `${unslashed(p)}/${rel}`));
+  if (cannot.length > 0) throw new Error(`import: a shared folder holds what cannot land, so nothing landed — ${cannot.join('; ')}`);
 }
 
 /**
@@ -166,13 +231,13 @@ function assertLandableSources(cwd, paths) {
  * and the batch so far. The batch check keeps a source path given twice from
  * silently overwriting.
  * @param {string} name normalised filename
- * @param {string} destDir absolute destination directory
+ * @param {string|null} destDir absolute destination directory, or null for a folder not on disk yet
  * @param {Set<string>} taken names already chosen in this batch
  * @returns {string}
  */
 function dedupe(name, destDir, taken) {
   /** @param {string} n */
-  const clashes = (n) => taken.has(n) || fs.existsSync(path.join(destDir, n));
+  const clashes = (n) => taken.has(n) || (destDir !== null && fs.existsSync(path.join(destDir, n)));
   if (!clashes(name)) return name;
   const { stem, ext } = splitName(name);
   const suffix = ext === '' ? '' : `.${ext}`;
@@ -184,21 +249,25 @@ function dedupe(name, destDir, taken) {
 
 /**
  * A planned landing: its source, its name in the destination, and for a
- * folder the files of its tree, each by its path below it.
- * @typedef {{src: string, dest: string, files?: string[]}} Landing
+ * folder the files of its tree, each by its path below the source and the
+ * path it lands at below the destination.
+ * @typedef {{src: string, dest: string, files?: {from: string, to: string}[]}} Landing
  */
 
 /**
  * Plan a batch of sources into landing names, deduped against the
- * destination directory and the batch: a file by the filename rules, a
- * folder by its own name's, its tree beneath it as it is. Reads the
- * directory, writes nothing — the copy is a separate step, so a caller can
- * refuse before anything lands. A dotfile, and a folder's dotted entries,
- * are skipped and named.
+ * destination directory and the batch: a file by the filename rules, moved
+ * off a name Claude Code loads as instructions, a folder by its own name's,
+ * never the migration's legacy folder, its tree beneath it as it lands.
+ * Reads the directory, writes nothing — the copy is a separate step, so a
+ * caller can refuse before anything lands. A dotfile, a folder's dotted
+ * entries and a folder landing no file are skipped and named; each name the
+ * landing changes beyond the file rules is named, from its source to where
+ * it lands below the destination.
  * @param {string} cwd project root
  * @param {string[]} sources source paths
  * @param {string} destDir absolute destination directory
- * @returns {{planned: Landing[], skipped: string[]}}
+ * @returns {{planned: Landing[], skipped: string[], renamed: {from: string, to: string}[]}}
  */
 function planImports(cwd, sources, destDir) {
   /** @type {Set<string>} */
@@ -207,25 +276,30 @@ function planImports(cwd, sources, destDir) {
   const planned = [];
   /** @type {string[]} */
   const skipped = [];
+  /** @type {{from: string, to: string}[]} */
+  const renamed = [];
   for (const src of sources) {
     const folder = isFolder(cwd, src);
     const base = path.basename(unslashed(src));
-    const name = folder ? normaliseFolderName(base) : normaliseBasename(base);
-    if (name === null) {
-      skipped.push(src);
+    const normal = folder ? normaliseFolderName(base) : normaliseBasename(base);
+    const tree = folder ? folderTree(path.resolve(cwd, src)) : null;
+    if (normal === null || tree?.files.length === 0) {
+      skipped.push(src, ...(tree?.skipped ?? []).map((rel) => `${unslashed(src)}/${rel}`));
       continue;
     }
-    const dest = dedupe(name, destDir, taken);
+    const name = unloaded(normal) ?? normal;
+    const dest = dedupe(name, destDir, folder ? new Set([...taken, MIGRATION_FOLDER]) : taken);
     taken.add(dest);
-    if (!folder) {
+    if (tree === null) {
+      if (name !== normal) renamed.push({ from: src, to: dest });
       planned.push({ src, dest });
       continue;
     }
-    const tree = folderTree(path.resolve(cwd, src));
     skipped.push(...tree.skipped.map((rel) => `${unslashed(src)}/${rel}`));
+    renamed.push(...tree.renamed.map(({ from, to }) => ({ from: `${unslashed(src)}/${from}`, to: `${dest}/${to}` })));
     planned.push({ src, dest, files: tree.files });
   }
-  return { planned, skipped };
+  return { planned, skipped, renamed };
 }
 
 /** One file copied into place, at a readable mode. @param {string} from absolute @param {string} to absolute */
@@ -249,7 +323,7 @@ function copyImports(cwd, destDir, planned) {
     const from = path.resolve(cwd, move.src);
     const landed = path.join(destDir, move.dest);
     if (move.files === undefined) copyFile(from, landed);
-    else for (const rel of move.files) copyFile(path.join(from, rel), path.join(landed, rel));
+    else for (const file of move.files) copyFile(path.join(from, file.from), path.join(landed, file.to));
   }
 }
 

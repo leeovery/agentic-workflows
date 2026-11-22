@@ -5,7 +5,8 @@
 // spike`, a spike's numbered folder and its twin under the cache, a unit's
 // or the product's; `engine asset import`, the files the person shares
 // landed in its assets/ by the filename rules, a shared folder whole with
-// its tree and names kept; and
+// its tree and names kept, a file Claude Code would load as instructions
+// landed under a name it never loads; and
 // `engine asset add|status|lift`, each appending the ledger's asset event
 // from an entry to a file — its first link giving its status, a later one
 // changing it or recording a lift into the project — tagged as the entry is
@@ -211,37 +212,82 @@ describe('an import (9.10.5, 9.10.11)', () => {
     assert.ok(fs.existsSync(statePath(dir, '.product', 'assets', 'market-notes.md')));
   });
 
-  it('lands a shared folder whole under its own name by the rules, deduped as a file is, its tree and its names kept so its own links still resolve, a dotted entry in it skipped and named — answering the folder\'s path, nothing committed', () => {
+  it('lands a shared folder whole under its own name by the rules, deduped as a file is, its tree and its names kept so its own links still resolve, a dotted entry in it skipped and named — answering the folder\'s path with its files, nothing committed', () => {
     const before = head(dir);
     saved('.product/assets/planning-notes/kept.md');
     const folder = path.join(shared(), 'Planning Notes');
-    for (const rel of ['README.md', 'model/current.md', 'research/README.md', 'research/R1 Payments.md']) sharing(path.join('Planning Notes', rel));
+    const tree = ['README.md', 'model/current.md', 'research/R1 Payments.md', 'research/README.md'];
+    for (const rel of tree) sharing(path.join('Planning Notes', rel));
     const hidden = sharing('Planning Notes/research/.DS_Store');
 
     const res = asset(['import', 'product', `${folder}/`]);
 
-    assert.deepStrictEqual(res, { ok: true, imports: ['.product/assets/planning-notes-2'], skipped_imports: [`${folder}/research/.DS_Store`] });
-    assert.deepStrictEqual(['README.md', 'model/current.md', 'research/README.md', 'research/R1 Payments.md'].map((rel) => fs.readFileSync(statePath(dir, '.product/assets/planning-notes-2', rel), 'utf8')),
-      ['Planning Notes/README.md\n', 'Planning Notes/model/current.md\n', 'Planning Notes/research/README.md\n', 'Planning Notes/research/R1 Payments.md\n']);
+    assert.deepStrictEqual(res, { ok: true, imports: ['.product/assets/planning-notes-2'], skipped_imports: [`${folder}/research/.DS_Store`], folders: [{ path: '.product/assets/planning-notes-2', files: tree }] });
+    assert.deepStrictEqual(tree.map((rel) => fs.readFileSync(statePath(dir, '.product/assets/planning-notes-2', rel), 'utf8')), tree.map((rel) => `Planning Notes/${rel}\n`));
     assert.strictEqual(fs.existsSync(statePath(dir, '.product/assets/planning-notes-2/research/.DS_Store')), false, `${hidden} landed`);
     assert.strictEqual(head(dir), before);
 
     const finding = write('find', 'product.discovery', [], { ...MADE, text: 'The planning notes model the product.', how: 'the planning notes', known: 'documented' }).id;
     asset(['add', 'product', '.product/assets/planning-notes-2', '--entry', finding, '--status', 'reference']);
-    assert.deepStrictEqual(committedFiles(), [layout.ledger, ...['README.md', 'model/current.md', 'research/R1 Payments.md', 'research/README.md'].map((rel) => `.product/assets/planning-notes-2/${rel}`)].sort(), 'its tree entering the state with its link');
+    assert.deepStrictEqual(committedFiles(), [layout.ledger, ...tree.map((rel) => `.product/assets/planning-notes-2/${rel}`)].sort(), 'its tree entering the state with its link');
   });
 
-  it('refuses the whole call over a path naming no file or folder, naming each, a folder holding a name the state cannot hold or what is neither a file nor a folder, naming each, and a call whose every file the rules skip — landing nothing', () => {
+  it('lands a file Claude Code would load as instructions under a name it never loads, in any case, shared alone or at any depth of a folder, and a name a filesystem refuses slugged — naming each', () => {
+    const folder = path.join(shared(), 'Record');
+    for (const rel of ['CLAUDE.md', 'agents-md.md', 'AGENTS.md', 'notes/Claude.local.md', 'notes/What next?.md']) sharing(path.join('Record', rel));
+    const alone = sharing('alone/claude.MD');
+
+    const res = asset(['import', 'product', folder, alone]);
+
+    assert.deepStrictEqual(res, {
+      ok: true,
+      imports: ['.product/assets/record', '.product/assets/claude-md.md'],
+      skipped_imports: [],
+      renamed_imports: [
+        { from: `${folder}/AGENTS.md`, to: '.product/assets/record/agents-md-2.md' },
+        { from: `${folder}/CLAUDE.md`, to: '.product/assets/record/claude-md.md' },
+        { from: `${folder}/notes/Claude.local.md`, to: '.product/assets/record/notes/claude-local-md.md' },
+        { from: `${folder}/notes/What next?.md`, to: '.product/assets/record/notes/what-next.md' },
+        { from: alone, to: '.product/assets/claude-md.md' },
+      ],
+      folders: [{ path: '.product/assets/record', files: ['agents-md-2.md', 'claude-md.md', 'agents-md.md', 'notes/claude-local-md.md', 'notes/what-next.md'] }],
+    });
+    assert.strictEqual(fs.readFileSync(statePath(dir, '.product/assets/record/claude-md.md'), 'utf8'), 'Record/CLAUDE.md\n');
+  });
+
+  it('skips and names a folder that lands no file, and never lands one as the migration\'s legacy folder', () => {
+    const empty = path.join(shared(), 'Empty');
+    fs.mkdirSync(empty);
+    const dotted = path.dirname(sharing('Dotted/.env'));
+    const legacy = path.dirname(sharing('Legacy/old-plan.md'));
+
+    const res = asset(['import', 'product', empty, dotted, legacy]);
+
+    assert.deepStrictEqual(res, { ok: true, imports: ['.product/assets/legacy-2'], skipped_imports: [empty, dotted, `${dotted}/.env`], folders: [{ path: '.product/assets/legacy-2', files: ['old-plan.md'] }] });
+    assert.strictEqual(refused(['import', UNIT, empty]), `asset import: nothing to land — the filename rules skip every file given (${empty})`);
+  });
+
+  it('refuses the whole call over a path naming no file or folder, naming each; over a folder holding a link, a file it cannot read, a folder it cannot list or a name with a control character, naming each with why; and over a call whose every file the rules skip — landing nothing', () => {
     const real = sharing('real.md');
     const ghost = path.join(shared(), 'ghost.md');
 
     const missing = refusedPristine(dir, ['asset', 'import', 'product', real, ghost], { env: SESSION });
     assert.deepStrictEqual(missing, { ok: false, error: `import path(s) not found, not a file or a folder, or unreadable: ${ghost}`, missing_imports: [ghost] });
-    const album = path.dirname(sharing('album/one.png'));
-    sharing('album/two|draft.png');
+    const album = path.dirname(sharing('album/a.png'));
+    sharing('album/b\u0007bell.png');
+    sharing('album/locked.png', 0o000);
+    fs.mkdirSync(path.join(album, 'shut'), { mode: 0o000 });
     fs.symlinkSync(real, path.join(album, 'linked.md'));
-    assert.strictEqual(refusedPristine(dir, ['asset', 'import', 'product', real, album], { env: SESSION }).error,
-      `import: a shared folder holds what the state cannot hold — ${album}/linked.md, ${album}/two|draft.png: rename each, or share the folder without it`);
+    try {
+      assert.strictEqual(refusedPristine(dir, ['asset', 'import', 'product', real, album], { env: SESSION }).error, `import: a shared folder holds what cannot land, so nothing landed — ${[
+        `${album}/b\u0007bell.png (a control character in its name — rename it, or share the folder without it)`,
+        `${album}/linked.md (a link — share the folder without it)`,
+        `${album}/locked.png (a file that cannot be read — make it readable, or share the folder without it)`,
+        `${album}/shut (a folder that cannot be listed — make it readable, or share the folder without it)`,
+      ].join('; ')}`);
+    } finally {
+      fs.chmodSync(path.join(album, 'shut'), 0o755);
+    }
     const hidden = sharing('.DS_Store');
     assert.strictEqual(refused(['import', UNIT, hidden]), `asset import: nothing to land — the filename rules skip every file given (${hidden})`);
   });

@@ -11,7 +11,8 @@
 // day's session, after the last one ended on its roadmap items, opening
 // from the picture of the product it kept; an epic the position from before
 // bears on, started in the product's conversation or by a type call beside
-// another window there, its points kept in the epic and read at its entry,
+// another window there, its points and shared files kept in the epic, the
+// product's thinned picture landing with the yes, and read at its entry,
 // after a compaction and at a new sitting, the map's check naming the one no
 // brief cites; the note a
 // compaction carries at either level; the brownfield offer's research, owed
@@ -103,14 +104,17 @@ const POINTS = [
   { id: 'B51', point: 'How a pocket pays for itself is open', file: 'planning/model.md' },
 ];
 
+/** The epic's own place as the yes writes those points. */
+const HELD = '# From before\n\n- D101: One gift shape (planning/decision-log.md)\n- B51: How a pocket pays for itself is open (planning/model.md)\n';
+
 /**
- * The epic's points from before read where it was entered, after a
- * compaction there, and at a new sitting's entry in a conversation of its
- * own. @param {Sim} sim @param {string} epic
+ * The epic's points from before, as `text`, read where it was entered,
+ * after a compaction there, and at a new sitting's entry in a conversation
+ * of its own. @param {Sim} sim @param {string} epic @param {string} [text]
  */
-function readsItsPointsFromBefore(sim, epic) {
+function readsItsPointsFromBefore(sim, epic, text = HELD) {
   const held = path.join(sim.dir, '.ledger', epic, 'discovery/from-before.md');
-  assert.strictEqual(fs.readFileSync(held, 'utf8'), '# From before\n\n- D101: One gift shape (planning/decision-log.md)\n- B51: How a pocket pays for itself is open (planning/model.md)\n');
+  assert.strictEqual(fs.readFileSync(held, 'utf8'), text);
   assert.deepStrictEqual(named(sim, 'from before'), [held], 'its entry');
   assert.ok(carryOn(sim).files.includes(held), 'a compaction');
   sim.run(['discovery-session', 'close', epic, '-m', `discovery(${epic}): end the session`]);
@@ -231,15 +235,20 @@ describe('pipeline simulation: discovery\'s entry', () => {
     assert.match(tail(), /^2 sessions, last on /, 'the start menu\'s row counts the sessions holding talk and names the last date');
   });
 
-  it('an epic started in the product\'s conversation with points from before: the yes keeps them in the epic, the picture thinned before the next is followed; its entry, a compaction and a new sitting each read them, and the map\'s check names the one no brief cites', () => {
+  it('an epic started in the product\'s conversation with points from before and a shared file: the yes keeps them in the epic and lands the thinned picture in its one commit; its entry, a compaction and a new sitting each read them, and the map\'s check names the one no brief cites', () => {
     const shaped = shapedInTheProduct(sim, 'gifting');
-    const picture = sim.write('.ledger/.product/picture.md', '# Where the product stands\n\n- One gift shape — the position from before, D101 in planning/decision-log.md\n');
-    const started = startThisWork(sim, { type: 'epic', name: 'gifting', description: 'Gifting between pockets', reason: 'Its parts each need decisions.', shaped_by: [shaped], from_before: POINTS });
-    sim.write(picture, '# Where the product stands\n\n- Gifting — started, in gifting.\n');
+    sim.write('.ledger/.product/picture.md', '# Where the product stands\n\n- One gift shape — a point from before, D101 in planning/decision-log.md\n');
+    const [call] = sim.run(['asset', 'import', PRODUCT, sim.write('notes/Gifting call.md', '# The gifting call\n')]).imports;
+    const thinned = '# Where the product stands\n\n- Gifting — started, in gifting.\n\n## Shared files\n\n- .product/assets/gifting-call.md — the gifting call (reference)\n';
+    const started = startThisWork(sim, {
+      type: 'epic', name: 'gifting', description: 'Gifting between pockets', reason: 'Its parts each need decisions.', shaped_by: [shaped], from_before: POINTS,
+      shared_files: [{ path: call, holds: 'The gifting call', kind: 'reference' }],
+      picture: sim.write('.ledger/.cache/product/discovery/product/picture-gifting.md', thinned),
+    });
+    assert.deepStrictEqual([fs.readFileSync(statePath(sim.dir, '.product/picture.md'), 'utf8'), stateGit(sim.dir, ['status', '--porcelain', '--', '.product/picture.md'])], [thinned, ''], 'the thinned picture landed in the yes\'s commit');
     sim.run(started.next.argv);
 
-    readsItsPointsFromBefore(sim, 'gifting');
-    assert.strictEqual(stateGit(sim.dir, ['status', '--porcelain', '--', '.product/picture.md']), '', 'the thinned picture committed');
+    readsItsPointsFromBefore(sim, 'gifting', `${HELD}\n## Shared files\n\n- ${call} — The gifting call (reference)\n`);
     const draft = (name, text) => sim.write(`.ledger/.cache/gifting/discovery/gifting/${name}.md`, `# ${name}\n\n${text}\n`);
     const screen = sim.render(['approve-map', 'gifting', '--file', sim.write('.ledger/.cache/gifting/discovery/gifting/approve-map-payload.json', {
       topics: [{ name: 'gift-shape', summary: 'What a gift is', brief: draft('gift-shape', 'D101, from before: one gift shape.') }],

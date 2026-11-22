@@ -19,9 +19,11 @@
 //   feature or a bugfix
 //   also its one topic's brief (8.7.7), the topic being the unit, which is
 //   refused beside a waiting roadmap item of its name it does not start from
-//   (8.1.6); an epic also the points from before that bear on it, where any
-//   do, each by its id (from-before.cjs). The screen draws from the staged
-//   payload again without `--file`.
+//   (8.1.6); an epic also the points from before and the shared files that
+//   bear on it, where any do (from-before.cjs); and, in the product's
+//   conversation, the picture thinned as the work leaves it, a draft in the
+//   cache, which a type call, only reading the picture, never gives. The
+//   screen draws from the staged payload again without `--file`.
 // - The name is Claude's to derive, with no question (8.8.10): a name a unit
 //   has already is refused, and so is a taken name with a number appended,
 //   so Claude derives a more specific one (8.8.18).
@@ -31,7 +33,8 @@
 //   roadmap item's note copied in beside them (4.11.16), and its first
 //   discovery log holding a pointer line into the product's sessions for
 //   each place that shaped it — its one topic's brief, an epic's points from
-//   before in its own place, whichever way it started, and then, in one
+//   before and shared files in its own place, whichever way it started, the
+//   thinned picture, and then, in one
 //   write of the project manifest, the unit's registration, each roadmap item
 //   it starts from joined to it, and the product's open session closed
 //   where the work leaves this conversation's talk there — a feature, a
@@ -64,7 +67,7 @@ const { PRODUCT } = require('../kernel/manifest-schema.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 const { roadmapItems, roadmapSeedRefusal, briefFile } = require('./derivations.cjs');
 const { waitingTwin, isNote } = require('./roadmap.cjs');
-const { PRODUCT_SESSIONS } = require('./layout.cjs');
+const { PRODUCT_SESSIONS, PRODUCT_PICTURE } = require('./layout.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { productSession, inTheProduct } = require('./discovery-session.cjs');
 const { SHAPED_BY, conversationFile, payloadFile } = require('./discovery-entry.cjs');
@@ -76,7 +79,7 @@ const {
 const { filled, shaped, listed, readPayload, stage, stagedAt, refusing } = require('./staged-payload.cjs');
 const { startThisWorkScreen } = require('./projections/discovery-gates.cjs');
 const { phaseSkill } = require('./handoff.cjs');
-const { pointsFromBefore, fromBeforeText, fromBeforeFile } = require('./from-before.cjs');
+const { pointsFromBefore, sharedFiles, fromBeforeText, fromBeforeFile } = require('./from-before.cjs');
 
 // The move's yes, loaded at its call: the move stages through this module.
 const move = () => require('./workunit-move.cjs');
@@ -86,9 +89,9 @@ const move = () => require('./workunit-move.cjs');
 /**
  * Claude's payload as staged: the work's type, name, description and reason;
  * its inbox seeds and roadmap items; the places in the product's sessions
- * that shaped it, state-relative; a one-topic unit's brief draft; and an
- * epic's points from before.
- * @typedef {{type: string, name: string, description: string, reason: string, seeds: string[], roadmap: string[], shaped_by: string[], brief?: string, from_before?: import('./from-before.cjs').PointFromBefore[]}} Staged
+ * that shaped it, state-relative; a one-topic unit's brief draft; an epic's
+ * points from before and shared files; and the thinned picture's draft.
+ * @typedef {{type: string, name: string, description: string, reason: string, seeds: string[], roadmap: string[], shaped_by: string[], brief?: string, from_before?: import('./from-before.cjs').PointFromBefore[], shared_files?: import('./from-before.cjs').SharedFile[], picture?: string}} Staged
  */
 
 /** The types start this work creates. */
@@ -188,14 +191,33 @@ function briefDraft(cwd, type, brief) {
 }
 
 /**
- * An epic's points from before; refused for any other type, whose points
- * from before a brief carries or the picture keeps.
- * @param {string} type @param {unknown} given @returns {import('./from-before.cjs').PointFromBefore[]}
+ * An epic's points from before and shared files; refused for any other
+ * type, whose brief carries them or whose picture keeps them.
+ * @param {string} cwd @param {string} type @param {Record<string, unknown>} fields
+ * @returns {import('./from-before.cjs').FromBefore}
  */
-function epicPoints(type, given) {
-  const points = given === undefined ? [] : pointsFromBefore(given);
-  if (points.length > 0 && type !== 'epic') throw new Error(`from_before is an epic's — a ${type}'s points from before ${ONE_TOPIC.includes(type) ? 'its brief carries' : 'stay in the picture'}: drop from_before`);
-  return points;
+function epicCarries(cwd, type, fields) {
+  const held = {
+    points: fields.from_before === undefined ? [] : pointsFromBefore(fields.from_before),
+    files: fields.shared_files === undefined ? [] : sharedFiles(cwd, fields.shared_files),
+  };
+  for (const [field, given] of [['from_before', held.points], ['shared_files', held.files]]) {
+    if (given.length > 0 && type !== 'epic') throw new Error(`${field} is an epic's — a ${type}'s ${ONE_TOPIC.includes(type) ? 'brief carries them' : 'stay in the picture'}: drop ${field}`);
+  }
+  return held;
+}
+
+/**
+ * The picture thinned as the work leaves the product's conversation, a
+ * draft in the cache; refused from a type call, which only reads it.
+ * @param {string} cwd @param {unknown} picture @returns {string|undefined}
+ */
+function thinnedPicture(cwd, picture) {
+  if (picture === undefined) return undefined;
+  if (!inTheProduct()) throw new Error('a type call only reads the picture — drop picture: the next return to the product\'s conversation brings it up to date');
+  if (!filled(picture)) throw new Error('picture names the thinned picture\'s draft');
+  draftIn(cwd, picture, 'the picture');
+  return /** @type {string} */ (picture);
 }
 
 /**
@@ -206,7 +228,7 @@ function epicPoints(type, given) {
  * @returns {{staged: Staged, seedItems: import('./inbox.cjs').InboxItem[]}}
  */
 function checked(cwd, given) {
-  const fields = shaped(given, 'the payload', ['type', 'name', 'description', 'reason'], ['shaped_by', 'seeds', 'roadmap', 'brief', 'from_before']);
+  const fields = shaped(given, 'the payload', ['type', 'name', 'description', 'reason'], ['shaped_by', 'seeds', 'roadmap', 'brief', 'from_before', 'shared_files', 'picture']);
   const type = startType(fields.type);
   const name = freeName(cwd, fields.name);
   if (!filled(fields.description) || !filled(fields.reason)) throw new Error('the description and the reason are each a non-empty string');
@@ -226,8 +248,18 @@ function checked(cwd, given) {
     shaped_by: shapingPlaces(cwd, fields.shaped_by ?? []),
   };
   const brief = briefDraft(cwd, type, fields.brief);
-  const points = epicPoints(type, fields.from_before);
-  return { staged: { ...staged, ...(brief === undefined ? {} : { brief }), ...(points.length === 0 ? {} : { from_before: points }) }, seedItems };
+  const { points, files } = epicCarries(cwd, type, fields);
+  const picture = thinnedPicture(cwd, fields.picture);
+  return {
+    staged: {
+      ...staged,
+      ...(brief === undefined ? {} : { brief }),
+      ...(points.length === 0 ? {} : { from_before: points }),
+      ...(files.length === 0 ? {} : { shared_files: files }),
+      ...(picture === undefined ? {} : { picture }),
+    },
+    seedItems,
+  };
 }
 
 /**
@@ -316,6 +348,8 @@ function startThisWorkYes(cwd) {
   const inProduct = inTheProduct();
   const closing = type !== 'quick-fix' && inProduct && peerHold(cwd, PRODUCT, 'discovery', PRODUCT) === null;
   const draft = staged.brief === undefined ? null : draftIn(cwd, staged.brief, 'the brief');
+  const picture = staged.picture === undefined ? null : draftIn(cwd, staged.picture, 'the picture');
+  const carried = { points: staged.from_before ?? [], files: staged.shared_files ?? [] };
   const landed = writeWorkUnit(cwd, name, type, {
     description: staged.description, firstLog: firstLogOf(name, staged.shaped_by), seedItems, noteSeeds: noteSeedsOf(cwd, staged.roadmap),
   });
@@ -323,13 +357,17 @@ function startThisWorkYes(cwd) {
   let closed;
   try {
     if (draft !== null) writeBrief(cwd, name, name, draft.content);
-    if (staged.from_before !== undefined) fs.writeFileSync(fromBeforeFile(cwd, name), fromBeforeText(staged.from_before));
+    if (carried.points.length + carried.files.length > 0) fs.writeFileSync(fromBeforeFile(cwd, name), fromBeforeText(carried));
     closed = writeProject(cwd, staged, closing);
   } catch (err) {
     unwriteWorkUnit(cwd, name, landed.seeds);
     throw err;
   }
   if (draft !== null) fs.rmSync(draft.scratch, { force: true });
+  if (picture !== null) {
+    fs.writeFileSync(statePath(cwd, PRODUCT_PICTURE), picture.content);
+    fs.rmSync(picture.scratch, { force: true });
+  }
   fs.rmSync(stagedFile(cwd), { force: true });
   fs.rmSync(payloadFile(cwd), { force: true });
   // Work that leaves the product's talk takes the conversation's row there, its place kept for an epic's move.
@@ -337,7 +375,7 @@ function startThisWorkYes(cwd) {
 
   /** @type {string[]} */
   const warnings = [];
-  const paths = [...createdPaths(name, landed), ...(closed === null ? [] : [PRODUCT_SESSIONS])];
+  const paths = [...createdPaths(name, landed), ...(closed === null ? [] : [PRODUCT_SESSIONS]), ...(picture === null ? [] : [PRODUCT_PICTURE])];
   const outcome = commitStateTail(cwd, paths, `discovery(${name}): start this work (${type})`, warnings);
   /** @type {Record<string, unknown>} */
   const result = {

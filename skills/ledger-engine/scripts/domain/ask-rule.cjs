@@ -85,6 +85,7 @@ const ALWAYS = Object.freeze({
   'design-problem': 'The root cause is a design problem, so it always comes to you.',
   'live-server': 'It means testing against a live server, so it always comes to you.',
   'built-otherwise': 'The code was built otherwise than a decision from before Ledger, so it always comes to you.',
+  'from-before': 'It was where you had got to before, so it comes to you once.',
 });
 
 const UNLABELLED = 'I couldn\'t tell what kind of question this is, so it comes to you.';
