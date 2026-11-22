@@ -921,7 +921,8 @@ describe('discovery: the product\'s conversation (8.2.7–8.2.10)', () => {
 });
 
 describe('discovery: an epic\'s (8.6.7)', () => {
-  it('four logs, the fourth open: the older two by their closing lines, never an entry of the fixed lists recorded after one, the latest two in full, the first log\'s pointers into the product\'s sessions, the map and the product record; the open log carried on, and the conversation that last wrote it named for catch-up (8.S53, 8.S62)', () => {
+  it('four logs, the fourth open: the older two by their closing lines, never an entry of the fixed lists recorded after one, the latest two in full, the first log\'s pointers into the product\'s sessions, the points from before it carries, the map and the product record; the open log carried on, and the conversation that last wrote it named for catch-up (8.S53, 8.S62)', () => {
+    writeState(dir, layout.fromBefore(EPIC), '# From before\n\n- D101: One gift shape (planning/decision-log.md)\n');
     const four = transcript('four');
     const { res, sections } = withFrozenClock(() => enter(['discovery', EPIC]));
     assert.deepStrictEqual(res, { ok: true, phase: 'discovery', unit: EPIC, entered: true, started: false });
@@ -931,6 +932,7 @@ describe('discovery: an epic\'s (8.6.7)', () => {
       `session log: ${at(layout.session(EPIC, '003'))}`,
       `session log: ${at(layout.session(EPIC, '004'))}`,
       `shaped by: ${at(layout.productSession('001'))}#pricing`,
+      `from before: ${at(layout.fromBefore(EPIC))}`,
       `map: \`${ENGINE} render discovery-map ${EPIC}\``,
       `product: \`${ENGINE} ledger product ${EPIC}\``,
       `catch up: read ${four} from the log's last write onward, and add to the log what it is missing`,

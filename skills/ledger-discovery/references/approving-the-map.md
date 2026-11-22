@@ -26,7 +26,7 @@ What the shaping put beyond this epic — the person placed it later, or the log
 
 ## The Position from Before
 
-Where a `shaped by` section holds the points from before this epic took at its start, read them against the briefs: name to the person each that no brief carries, and put each where their word places it — a brief, a message to a started topic (**A Message to a Topic**), a park, or a direction not taken. The record's own superseded entries and false paths are directions it already left, never points to carry, and a reference file is searched, never read whole.
+Where the epic carries points from before (`from before`), each brief cites by its id each point it carries. The screen names every point no brief cites: name each to the person and put it where their word places it — a brief, a message to a started topic (**A Message to a Topic**), a park, or a direction not taken. The record's own superseded entries and false paths are directions it already left, never points to carry, and a reference file is searched, never read whole.
 
 ## The Screen
 

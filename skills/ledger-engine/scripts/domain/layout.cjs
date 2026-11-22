@@ -110,6 +110,7 @@ const LAYOUT = Object.freeze([
   place('free', '.cache', '4.11.3'),
   engineFile('{unit}/manifest.json', '4.11.5', 'a unit\'s manifest', 'manifest set|push|pull|delete|apply'),
   place('log', '{unit}/discovery/session-{NNN}.md', '4.11.5'),
+  place('file', '{unit}/discovery/from-before.md', '4.11.5'),
   place('free', '{unit}/seeds', '4.11.16'),
   engineFile('{unit}/topics/{topic}/brief.md', '4.11.5', 'a topic\'s brief', 'topic add|brief'),
   place('log', '{unit}/topics/{topic}/log.md', '4.11.5'),

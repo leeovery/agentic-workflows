@@ -29,8 +29,9 @@ Once the signals agree and have held, and the next question would only go deeper
 Then write the payload to the DATA's `payload`, this conversation's own:
 - `type` and `name` — the name derived, never asked: the name the person offered, else a single seed's, else the description's; a lowercase slug of letters, digits and hyphens; a name taken derived again more specifically, never numbered.
 - `description` — one line in the person's framing; `reason` — one line on why it is this type.
-- `shaped_by` — each part of the product's logs that shaped the work, `.product/sessions/session-NNN.md#{anchor}`: one session's log can shape several pieces of work, each pointing at its own parts. A type call, which keeps no log, names only the logs its roadmap seeds' `source` lines point at, and none where it has none. For an epic that points from before bear on, name too the section the yes writes them into, `#from-before-{name}` of this conversation's log — in a type call, of the product's latest log.
+- `shaped_by` — each part of the product's logs that shaped the work, `.product/sessions/session-NNN.md#{anchor}`: one session's log can shape several pieces of work, each pointing at its own parts. A type call, which keeps no log, names only the logs its roadmap seeds' `source` lines point at, and none where it has none.
 - `seeds` — the inbox paths it starts from, `$2`'s and any taken in; `roadmap` — the waiting roadmap items it starts from, `$2`'s `roadmap:{item}` seeds and any taken in.
+- `from_before` — for an epic, each point from before that bears on it, `{"id", "point", "file"}`: the record's own id, the point in one line, and the file it is in by its path from the state root. The yes keeps them in the epic, where its discovery reads them.
 - `brief` — for a feature or a bugfix, the path of its one topic's brief, drafted under `.ledger/.cache/product/discovery/product/`: load **[writing-a-brief.md](writing-a-brief.md)** and follow its instructions as written.
 
 Stage it and draw the screen:
@@ -39,8 +40,6 @@ Stage it and draw the screen:
 node .claude/skills/ledger-engine/scripts/engine.cjs render start-this-work --file {payload}
 ```
 
-A refusal names what to fix: fix the payload and stage it again. At the gate, follow the `next` of what the answer ran; on the yes, first:
-- for an epic, write each point from before that bears on it, marked as from before with its id and file, into the `#from-before-{name}` section `shaped_by` names, above the log's closing line;
-- outside a type call, thin the picture: the work's own detail leaves it, carried on by its brief, or an epic's by that section and its discovery, and the picture points to the work by its name for it. Work with no brief, as a quick-fix, leaves its points from before in the picture, pointed at the unit.
+A refusal names what to fix: fix the payload and stage it again. At the gate, follow the `next` of what the answer ran. On the yes, outside a type call, thin the picture before you follow it: the work's own detail leaves it, carried on by its brief, or an epic's by its points from before and its discovery, and the picture points to the work by its name for it. Work with no brief, as a quick-fix, leaves its points from before in the picture, pointed at the unit.
 
 For an epic, the `next` carries the conversation into the epic's own discovery: read its DATA as on entering — `{home}` is now the epic — and shape its topics there. Keep shaping takes the person's word back into the conversation.

@@ -82,6 +82,7 @@ const { loadManifest, loadProjectManifest } = require('./reads.cjs');
 const { buildBegun, buildRefusal, quickFixReviewRefusal, isFixPhase, computeTopicLifecycle, itemOf, phaseData, UNIT_PHASES } = require('./derivations.cjs');
 const { latestSessionLog, productSession, sessionLogs } = require('./discovery-session.cjs');
 const { PRODUCT_SESSIONS, PRODUCT_PICTURE } = require('./layout.cjs');
+const { FROM_BEFORE } = require('./from-before.cjs');
 const { phaseSkill, HANDOFF_TARGETS } = require('./handoff.cjs');
 const { stepOfId, shownTask } = require('./task-id.cjs');
 const { section, dataSection, GATE_MOD_INSTRUCTION } = require('./projections/surfaces.cjs');
@@ -514,8 +515,9 @@ function leaveUnit(sessionId, workUnit) {
 // approval the spawning topic's record and log (experiment-entry.cjs);
 // discussion's names the topic's record and its log (24.2.1–24.2.3), and a
 // bugfix investigation's the same, its log the investigation (19.4.3);
-// discovery's, at an epic, the unit's map, the open log and each section of
-// the product's sessions its first log points at, and at the product's
+// discovery's, at an epic, the unit's map, the open log, each section of
+// the product's sessions its first log points at and the points from before
+// it carries (from-before.cjs), and at the product's
 // conversation its open log (24.2.8, 8.14.6) — the latest on disk where
 // none is open — or, once its picture is written, the picture, the log
 // named only to be caught up; specification's, at the unit whatever topic
@@ -701,7 +703,7 @@ function workAt(cwd, position, manifest, sessionId) {
   const topic = /** @type {string} */ (position.topic);
   switch (phase) {
     case 'discovery':
-      return discoveryWork(skill, [mapCall(name)], sessionLog(path.join(wu, 'discovery'), phaseData(manifest, 'discovery').active_session), shapingSections(path.join(wu, 'discovery')));
+      return discoveryWork(skill, [mapCall(name)], sessionLog(path.join(wu, 'discovery'), phaseData(manifest, 'discovery').active_session), [...shapingSections(path.join(wu, 'discovery')), path.join(wu, FROM_BEFORE)]);
     case 'discussion':
     case 'investigation': {
       const log = statePath(cwd, topicLog(name, topic));

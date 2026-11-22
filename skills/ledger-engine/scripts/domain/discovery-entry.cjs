@@ -29,7 +29,7 @@
 //     its own (`conversationFile`, start-this-work.cjs);
 //   - an epic's: its older logs by their closing lines, its two latest
 //     holding talk in full, the pointers its first log keeps into the product's sessions
-//     (8.14.3), its map, and the product record with what discovery found of
+//     (8.14.3), the points from before it carries (from-before.cjs), its map, and the product record with what discovery found of
 //     the unit (8.6.7) — and, from seeds, each roadmap idea to take in
 //     (18.8.4);
 //   - either, where the open log was last written by another conversation:
@@ -78,6 +78,7 @@ const { researchOwed } = require('./brownfield.cjs');
 const { productCall, mapCall, namedConversations, isHeader, appendLine, topicLog } = require('./topic-log.cjs');
 const { beyondLists } = require('./discovery-log.cjs');
 const { assertSeeds, seedReads } = require('./seeds.cjs');
+const { fromBeforeFile } = require('./from-before.cjs');
 
 /** @typedef {import('./enter.cjs').Entry} Entry */
 /** @typedef {import('./enter.cjs').Entering} Entering */
@@ -265,6 +266,7 @@ function epicReads(at) {
     ...talk.slice(0, -RECENT).map((log) => as('older log')(closedBy(log))),
     ...talk.slice(-RECENT).map(as('session log')),
     ...shapedBy(homeLogs(at.cwd, at.unit)[0]).map(as('shaped by')),
+    ...[fromBeforeFile(at.cwd, at.unit)].filter((file) => fs.existsSync(file)).map(as('from before')),
     as('map')(`\`${mapCall(at.unit)}\``),
     as('product')(`\`${productCall(at.unit)}\``),
     ...(at.seeds === null ? [] : seedReads(at.cwd, at.unit, at.seeds)),

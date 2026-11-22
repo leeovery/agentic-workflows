@@ -283,6 +283,8 @@ const layout = Object.freeze({
   experiment: (unit, topic, ...segments) => [unit, 'topics', topic, 'experiments', ...segments].join('/'),
   /** A unit's discovery session log. @param {string} unit @param {string} number zero-padded */
   session: (unit, number) => `${unit}/discovery/session-${number}.md`,
+  /** A unit's points from before. @param {string} unit */
+  fromBefore: (unit) => `${unit}/discovery/from-before.md`,
   /** The product's conversation's session log. @param {string} number zero-padded */
   productSession: (number) => `.product/sessions/session-${number}.md`,
   /** The product's conversation's picture of where the product stands. */

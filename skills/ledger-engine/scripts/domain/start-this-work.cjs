@@ -19,7 +19,9 @@
 //   feature or a bugfix
 //   also its one topic's brief (8.7.7), the topic being the unit, which is
 //   refused beside a waiting roadmap item of its name it does not start from
-//   (8.1.6). The screen draws from the staged payload again without `--file`.
+//   (8.1.6); an epic also the points from before that bear on it, where any
+//   do, each by its id (from-before.cjs). The screen draws from the staged
+//   payload again without `--file`.
 // - The name is Claude's to derive, with no question (8.8.10): a name a unit
 //   has already is refused, and so is a taken name with a number appended,
 //   so Claude derives a more specific one (8.8.18).
@@ -28,7 +30,8 @@
 //   create.cjs) — its manifest, its seeds moved out of the inbox, each
 //   roadmap item's note copied in beside them (4.11.16), and its first
 //   discovery log holding a pointer line into the product's sessions for
-//   each place that shaped it — its one topic's brief, and then, in one
+//   each place that shaped it — its one topic's brief, an epic's points from
+//   before in its own place, whichever way it started, and then, in one
 //   write of the project manifest, the unit's registration, each roadmap item
 //   it starts from joined to it, and the product's open session closed
 //   where the work leaves this conversation's talk there — a feature, a
@@ -73,6 +76,7 @@ const {
 const { filled, shaped, listed, readPayload, stage, stagedAt, refusing } = require('./staged-payload.cjs');
 const { startThisWorkScreen } = require('./projections/discovery-gates.cjs');
 const { phaseSkill } = require('./handoff.cjs');
+const { pointsFromBefore, fromBeforeText, fromBeforeFile } = require('./from-before.cjs');
 
 // The move's yes, loaded at its call: the move stages through this module.
 const move = () => require('./workunit-move.cjs');
@@ -82,8 +86,9 @@ const move = () => require('./workunit-move.cjs');
 /**
  * Claude's payload as staged: the work's type, name, description and reason;
  * its inbox seeds and roadmap items; the places in the product's sessions
- * that shaped it, state-relative; and a one-topic unit's brief draft.
- * @typedef {{type: string, name: string, description: string, reason: string, seeds: string[], roadmap: string[], shaped_by: string[], brief?: string}} Staged
+ * that shaped it, state-relative; a one-topic unit's brief draft; and an
+ * epic's points from before.
+ * @typedef {{type: string, name: string, description: string, reason: string, seeds: string[], roadmap: string[], shaped_by: string[], brief?: string, from_before?: import('./from-before.cjs').PointFromBefore[]}} Staged
  */
 
 /** The types start this work creates. */
@@ -183,6 +188,17 @@ function briefDraft(cwd, type, brief) {
 }
 
 /**
+ * An epic's points from before; refused for any other type, whose points
+ * from before a brief carries or the picture keeps.
+ * @param {string} type @param {unknown} given @returns {import('./from-before.cjs').PointFromBefore[]}
+ */
+function epicPoints(type, given) {
+  const points = given === undefined ? [] : pointsFromBefore(given);
+  if (points.length > 0 && type !== 'epic') throw new Error(`from_before is an epic's — a ${type}'s points from before ${ONE_TOPIC.includes(type) ? 'its brief carries' : 'stay in the picture'}: drop from_before`);
+  return points;
+}
+
+/**
  * Claude's payload checked against the project as it stands, as it is
  * staged, with its seeds as inbox items: refused where any part of it could
  * not be created.
@@ -190,7 +206,7 @@ function briefDraft(cwd, type, brief) {
  * @returns {{staged: Staged, seedItems: import('./inbox.cjs').InboxItem[]}}
  */
 function checked(cwd, given) {
-  const fields = shaped(given, 'the payload', ['type', 'name', 'description', 'reason'], ['shaped_by', 'seeds', 'roadmap', 'brief']);
+  const fields = shaped(given, 'the payload', ['type', 'name', 'description', 'reason'], ['shaped_by', 'seeds', 'roadmap', 'brief', 'from_before']);
   const type = startType(fields.type);
   const name = freeName(cwd, fields.name);
   if (!filled(fields.description) || !filled(fields.reason)) throw new Error('the description and the reason are each a non-empty string');
@@ -210,7 +226,8 @@ function checked(cwd, given) {
     shaped_by: shapingPlaces(cwd, fields.shaped_by ?? []),
   };
   const brief = briefDraft(cwd, type, fields.brief);
-  return { staged: brief === undefined ? staged : { ...staged, brief }, seedItems };
+  const points = epicPoints(type, fields.from_before);
+  return { staged: { ...staged, ...(brief === undefined ? {} : { brief }), ...(points.length === 0 ? {} : { from_before: points }) }, seedItems };
 }
 
 /**
@@ -306,6 +323,7 @@ function startThisWorkYes(cwd) {
   let closed;
   try {
     if (draft !== null) writeBrief(cwd, name, name, draft.content);
+    if (staged.from_before !== undefined) fs.writeFileSync(fromBeforeFile(cwd, name), fromBeforeText(staged.from_before));
     closed = writeProject(cwd, staged, closing);
   } catch (err) {
     unwriteWorkUnit(cwd, name, landed.seeds);

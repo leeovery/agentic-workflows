@@ -42,7 +42,7 @@ const { counted } = require('./map.cjs');
  * The map as approve the map draws it: the epic, each topic by its title in
  * the order staged — marked new or moved on a re-shape — and each park by
  * its summary and the horizon the person gave it.
- * @typedef {{unit: string, topics: {title: string, mark: 'new'|'moved'|null}[], parks: {summary: string, horizon: string}[]}} MapView
+ * @typedef {{unit: string, topics: {title: string, mark: 'new'|'moved'|null}[], parks: {summary: string, horizon: string}[], uncarried: string[]}} MapView
  */
 
 /**
@@ -123,15 +123,22 @@ function parksBlock(parks) {
   return `TO THE ROADMAP (${parks.length}, with the map)\n${tree.replace(/\n+$/, '')}`;
 }
 
+/** FROM BEFORE: each point from before the epic carries that no brief cites. @param {string[]} points */
+function uncarriedBlock(points) {
+  const tree = renderTree(points.map((point) => ({ title: point })), { width: TREE_WIDTH, wrapTitles: true });
+  return `FROM BEFORE, IN NO BRIEF (${points.length}, each placed at your word)\n${tree.replace(/\n+$/, '')}`;
+}
+
 /**
- * Approve the map (8.8.4): the topics in their order and the parks, then the
- * authority gate whose yes lands them.
+ * Approve the map (8.8.4): the topics in their order, the parks and the
+ * points from before no brief carries, then the authority gate whose yes
+ * lands the topics and the parks.
  * @param {MapView} view
  * @returns {string}
  */
-function approveMapScreen({ unit, topics, parks }) {
+function approveMapScreen({ unit, topics, parks, uncarried }) {
   const parked = parks.length > 0;
-  const display = [mapBlock(topics), ...(parked ? [parksBlock(parks)] : [])].join('\n\n');
+  const display = [mapBlock(topics), ...(parked ? [parksBlock(parks)] : []), ...(uncarried.length > 0 ? [uncarriedBlock(uncarried)] : [])].join('\n\n');
   const lands = `Your yes puts the topics on ${titlecase(unit)} in this order${parked ? ' and the parks on the roadmap' : ''}.`;
   return section('DISPLAY: approve the map', CONTINUE_INSTRUCTION, display)
     + section('MENU: approve the map', MENU_INSTRUCTION, menu(lands, [

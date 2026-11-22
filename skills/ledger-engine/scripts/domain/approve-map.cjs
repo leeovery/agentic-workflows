@@ -83,6 +83,7 @@ const { commitStateTail, noteCommitOutcome, discoveryScope, PROJECT_MANIFEST_SPE
 const { filled, shaped, listed, readPayload, stage, stagedAt, refusing } = require('./staged-payload.cjs');
 const { approveMapScreen, sweptMapScreen, sweptStrikePick } = require('./projections/discovery-gates.cjs');
 const { counted } = require('./projections/map.cjs');
+const { uncarried } = require('./from-before.cjs');
 const { ontoEpic } = require('./topic-leave.cjs');
 
 /**
@@ -417,13 +418,29 @@ function reshapeMarks(approved, now) {
 }
 
 /**
+ * The text of each topic's brief as staged: a new topic's draft, a topic on
+ * the map already its brief there, empty where it has none on disk.
+ * @param {string} cwd @param {string} unit @param {StagedTopic[]} topics @returns {string[]}
+ */
+function briefsOf(cwd, unit, topics) {
+  return topics.map(({ name, brief }) => {
+    if (brief !== undefined) return draftIn(cwd, brief, `"${name}"'s brief`).content;
+    try {
+      return fs.readFileSync(statePath(cwd, briefFile(unit, name)), 'utf8');
+    } catch {
+      return '';
+    }
+  });
+}
+
+/**
  * The map as the screen draws it: each topic by its title, marked on a
- * re-shape — a map approved before, its topics holding their order — and
- * each park.
- * @param {string} unit @param {Record<string, any>} manifest @param {Staged} staged
+ * re-shape — a map approved before, its topics holding their order — each
+ * park, and each point from before the epic carries that no brief cites.
+ * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {Staged} staged
  * @returns {import('./projections/discovery-gates.cjs').MapView}
  */
-function mapView(unit, manifest, { topics, parks }) {
+function mapView(cwd, unit, manifest, { topics, parks }) {
   const items = manifest.phases?.discovery?.items ?? {};
   const approved = liveInOrder(manifest).filter((key) => Number.isInteger(items[key].order));
   const names = topics.map(({ name }) => name);
@@ -432,6 +449,7 @@ function mapView(unit, manifest, { topics, parks }) {
     unit,
     topics: names.map((name) => ({ title: topicTitle(manifest, name), mark: marks.get(name) ?? null })),
     parks: parks.map(({ summary, horizon }) => ({ summary, horizon })),
+    uncarried: uncarried(cwd, unit, briefsOf(cwd, unit, topics)),
   };
 }
 
@@ -478,7 +496,7 @@ function approveMapSurface(cwd, { dotpath: unit = '', file, sweep }) {
     if (file !== undefined && sweep !== undefined) throw new Error('--file stages Claude\'s map and --sweep the map after the sweep — one or the other');
     const manifest = openMap(cwd, unit);
     const staged = stagedFrom(cwd, unit, manifest, { file, sweep });
-    return staged.candidates === undefined ? approveMapScreen(mapView(unit, manifest, staged)) : sweptMapScreen(sweptView(unit, manifest, staged));
+    return staged.candidates === undefined ? approveMapScreen(mapView(cwd, unit, manifest, staged)) : sweptMapScreen(sweptView(unit, manifest, staged));
   });
 }
 

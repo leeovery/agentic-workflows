@@ -6,7 +6,9 @@
 // Claude's payload and drawing the screen the spec draws, creating nothing
 // (8.S16), with no name question (8.S21), staged apart for each
 // conversation; `start-this-work yes` creating the unit from the staged copy
-// as one transaction, its first log pointing into the product's sessions
+// as one transaction, its first log pointing into the product's sessions, an
+// epic's points from before written into its own place whichever way it
+// started, a type call never touching the product's conversation
 // (8.S64), the product's session closed where the work leaves the
 // conversation's place there — never at a quick-fix's yes or a type call's,
 // nor while another live window holds the product's conversation — and what
@@ -71,6 +73,14 @@ const FUMI = Object.freeze({
   reason: 'An epic: the note model, Spaces, the note window, the agent surface and selling it each need decisions of their own.',
   shaped_by: [`${PRODUCT_LOG}#notes`],
 });
+
+/** An epic's points from before, as the payload gives them and as its own place holds them. */
+const POINTS = Object.freeze([
+  { id: 'D101', point: 'One gift shape', file: '.product/assets/planning/decisions/decision-log.md' },
+  { id: 'B51', point: 'How a pocket pays for itself is open', file: '.product/assets/planning/model/current.md' },
+]);
+const FROM_BEFORE = layout.fromBefore('fumi');
+const HELD = '# From before\n\n- D101: One gift shape (.product/assets/planning/decisions/decision-log.md)\n- B51: How a pocket pays for itself is open (.product/assets/planning/model/current.md)\n';
 
 /** A one-topic unit's payload, its brief drafted. @param {string} type @param {string} name */
 function oneTopic(type, name) {
@@ -163,6 +173,21 @@ describe('start this work, the yes (8.8.1, 8.14.3, 8.14.11)', () => {
     assert.deepStrictEqual([res.product_session_closed, readManifest(dir(), '.').product_session, readState(dir(), layout.session('fumi', '001')), res.next],
       [null, '001', '', { kind: 'engine', argv: ['enter', 'discovery', 'fumi'] }]);
     assert.ok(!touched(statePath(dir()), 'HEAD').some((line) => line.includes('.product/')), 'the product\'s sessions are not the yes\'s to commit');
+  });
+
+  it('writes an epic\'s points from before once into its own place, committed with the unit, the product\'s conversation\'s start and the type call\'s alike', () => {
+    inTheProduct();
+    started({ ...FUMI, from_before: POINTS });
+    assert.deepStrictEqual([readState(dir(), FROM_BEFORE), touched(statePath(dir()), 'HEAD').includes(`A\t${FROM_BEFORE}`)], [HELD, true]);
+  });
+
+  it('a type call starting an epic beside another window holding the product\'s conversation open writes its points from before into the epic, that window\'s log untouched', () => {
+    peerInTheProduct();
+    const log = readState(dir(), PRODUCT_LOG);
+    const { shaped_by: _shaped, ...called } = FUMI;
+    started({ ...called, from_before: POINTS });
+    assert.deepStrictEqual([readState(dir(), FROM_BEFORE), readState(dir(), PRODUCT_LOG), readManifest(dir(), '.').product_session], [HELD, log, '001']);
+    assert.ok(!touched(statePath(dir()), 'HEAD').some((line) => line.includes('.product/')), 'nothing of the product\'s conversation is the yes\'s');
   });
 
   it('8.14.11: a quick-fix started in the product\'s conversation never ends its session; a feature started there ends it as the work leaves the conversation', () => {
@@ -339,6 +364,16 @@ describe('start this work, refused (8.2.4, 8.8.18)', () => {
     withEnv(SESSION, () => leavePosition(SESSION.CLAUDE_CODE_SESSION_ID));
     const { shaped_by: _shaped, ...called } = FUMI;
     assert.match(screen(['start-this-work'], called), /^Fumi \(epic\)$/m);
+  });
+
+  it('refuses points from before for any type but an epic, and a point that is not one line apiece, an id written with a space, or an id twice', () => {
+    assert.strictEqual(refusedStage({ ...oneTopic('feature', 'saved-filters'), from_before: POINTS }), 'render start-this-work: from_before is an epic\'s — a feature\'s points from before its brief carries: drop from_before');
+    const { brief: _brief, ...quick } = oneTopic('quick-fix', 'typo-fix');
+    assert.strictEqual(refusedStage({ ...quick, from_before: POINTS }), 'render start-this-work: from_before is an epic\'s — a quick-fix\'s points from before stay in the picture: drop from_before');
+    assert.strictEqual(refusedStage({ ...FUMI, from_before: [{ ...POINTS[0], point: 'One\ngift' }] }), 'render start-this-work: from_before 1\'s point is one line of text');
+    assert.strictEqual(refusedStage({ ...FUMI, from_before: [{ ...POINTS[0], id: 'D 101' }] }), 'render start-this-work: from_before 1\'s id is the record\'s own, as it writes it — no space or colon: got "D 101"');
+    assert.strictEqual(refusedStage({ ...FUMI, from_before: [POINTS[0], POINTS[0]] }), 'render start-this-work: from_before names D101 twice');
+    assert.strictEqual(refusedStage({ ...FUMI, from_before: [{ id: 'D101' }] }), 'render start-this-work: from_before 1 must be {id, point, file}');
   });
 
   it('refuses a one-topic unit without its brief, and a brief for an epic or a quick-fix', () => {

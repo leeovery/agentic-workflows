@@ -4,7 +4,8 @@
 // Approve the map (ledger-engine/scripts/domain/approve-map.cjs): the
 // authority gate at the end of an epic's shaping — `render approve-map`
 // staging Claude's payload and drawing one screen of the topics in order and
-// the parks with their horizons (8.S17), refusing a park with no horizon
+// the parks with their horizons (8.S17), and each point from before the
+// epic carries that no brief cites by its id; refusing a park with no horizon
 // (8.S49), a name struck from the map, a twin of a waiting roadmap item not
 // taken in (8.S52), a topic beside the epic's own unbound seed, a live topic
 // left out, and every malformed order, park and bind, each writing nothing;
@@ -27,7 +28,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 
-const { ok, output, refusedPristine, sectionOf, readManifest, readState, statePath, lastMessage, touched, head, layout, startItem } = require('./engine-harness.cjs');
+const { ok, output, refusedPristine, sectionOf, readManifest, readState, statePath, lastMessage, touched, head, layout, startItem, writeState } = require('./engine-harness.cjs');
 const { joinedTo } = require('./roadmap-world.cjs');
 const { EPIC, SESSION, useGatesWorld, gatesHelpers, failingWrites, manifestTemp } = require('./discovery-gates-world.cjs');
 
@@ -109,6 +110,26 @@ describe('approve the map, the screen (8.8.4, 8.S17)', () => {
     assert.deepStrictEqual({ head: head(dir()), manifest: readManifest(dir(), EPIC) }, before, 'nothing reaches the map or the roadmap before the yes');
     assert.ok(fs.existsSync(statePath(dir(), STAGED)), 'the payload waits in the epic\'s discovery cache');
     assert.deepStrictEqual(answer('approve the map', 'y'), { kind: 'engine', argv: ['approve-map', 'yes', EPIC] });
+  });
+
+  it('names each point from before the epic carries that no brief cites by its id — a new topic\'s draft or the brief of a topic on the map — and none where every one is cited', () => {
+    writeState(dir(), layout.fromBefore(EPIC), '# From before\n\n- D101: One gift shape (planning/decision-log.md)\n- B51: How a pocket pays (planning/model.md)\n- R1: Payments research (planning/research/r1.md)\n');
+    fourApproved();
+    writeState(dir(), layout.brief(EPIC, 'sharing'), '# Sharing\n\nB51, from before: how a pocket pays.\n');
+    const topics = [{ name: 'note-model' }, { name: 'storage-and-sync' }, { name: 'sharing' }, { name: 'search' }];
+    const named = (given) => sectionOf(screen(['approve-map', EPIC], given), 'DISPLAY: approve the map').split('\n\n').find((block) => block.startsWith('FROM BEFORE')) ?? null;
+    assert.strictEqual(named({ topics: [...topics, { name: 'gifting', summary: 'Gifting', brief: scratch('# Gifting\n\nD101 from before, and D1010 apart.\n') }] }), [
+      'FROM BEFORE, IN NO BRIEF (1, each placed at your word)',
+      '  └─ R1: Payments research (planning/research/r1.md)',
+      '',
+    ].join('\n'));
+    assert.strictEqual(named({ topics: [...topics, { name: 'gifting', summary: 'Gifting', brief: scratch('# Gifting\n\nD1010 alone; R1-ish.\n') }] }), [
+      'FROM BEFORE, IN NO BRIEF (2, each placed at your word)',
+      '  ├─ D101: One gift shape (planning/decision-log.md)',
+      '  └─ R1: Payments research (planning/research/r1.md)',
+      '',
+    ].join('\n'), 'an id inside a longer word cites nothing');
+    assert.strictEqual(named({ topics: [...topics, { name: 'gifting', summary: 'Gifting', brief: scratch('# Gifting\n\nD101 and R1.\n') }] }), null);
   });
 
   it('refuses a park with no horizon: the person is asked first, Claude naming none (8.S49)', () => {

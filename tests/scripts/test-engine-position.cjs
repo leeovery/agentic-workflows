@@ -26,10 +26,10 @@
 // conversation's transcript, and the line its next write opens with where
 // the log does not name the conversation yet, or another conversation has
 // written since (24.S10, 9.S67); so does
-// discovery's, at an epic its map, its open log and the sections of the
-// product's sessions its first log points at, at the product's conversation
-// its open log, or once written its picture, the log caught up alone
-// (24.S19, 8.S67); and specification's, at the
+// discovery's, at an epic its map, its open log, the sections of the
+// product's sessions its first log points at and its points from before,
+// at the product's conversation its open log, or once written its picture,
+// the log caught up alone (24.S19, 8.S67); and specification's, at the
 // unit, each live topic's record and log, the files linked canonical, then
 // the spec once written and its cut, and the review page while it is open,
 // a concluded spec carrying nothing on; the laboratory's, what its entry
@@ -777,15 +777,16 @@ describe('conversation position', () => {
     assert.strictEqual(answer.text, discoveryNote('the discovery of the epic "pay"', [map], '.ledger/pay/discovery/session-002.md', file));
   });
 
-  it('an epic\'s discovery re-reads, beside its open log, each section of the product\'s sessions its first log points at, the points from before it took among them', () => {
+  it('an epic\'s discovery re-reads, beside its open log, each section of the product\'s sessions its first log points at and the points from before it carries', () => {
     install('ledger-discovery');
-    write('.ledger/.product/sessions/session-004.md', '## From before: pay\n');
-    write('.ledger/pay/discovery/session-001.md', 'Shaped by: [.product/sessions/session-004.md#from-before-pay](../../.product/sessions/session-004.md#from-before-pay)\n\n## 2026-01-01 · session sess-1\n');
+    write('.ledger/.product/sessions/session-004.md', '## Payouts\n');
+    write('.ledger/pay/discovery/session-001.md', 'Shaped by: [.product/sessions/session-004.md#payouts](../../.product/sessions/session-004.md#payouts)\n\n## 2026-01-01 · session sess-1\n');
+    write('.ledger/pay/discovery/from-before.md', '# From before\n\n- D101: One gift shape (planning/decision-log.md)\n');
     const file = transcript();
     ok(['session', 'label', 'pay', 'discovery', 'pay']);
     const map = 'node .claude/skills/ledger-engine/scripts/engine.cjs render discovery-map pay';
     const answer = reads();
-    const documents = ['.ledger/pay/discovery/session-001.md', '.ledger/.product/sessions/session-004.md#from-before-pay'];
+    const documents = ['.ledger/pay/discovery/session-001.md', '.ledger/.product/sessions/session-004.md#payouts', '.ledger/pay/discovery/from-before.md'];
     assert.deepStrictEqual([answer.files, answer.text], [documents.map(abs), discoveryNote('the discovery of the epic "pay"', [map], documents[0], file, documents)]);
   });
 
