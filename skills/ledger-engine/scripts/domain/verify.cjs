@@ -161,7 +161,7 @@ const { trackedTask, trackedPhase } = require('./task-verbs.cjs');
 const { phaseStack, repoNamed } = require('./phase-stack.cjs');
 const { taskBranch } = require('./landing-names.cjs');
 const { holdingBranch, holdsBeyond, landingBranch, landingRev } = require('./landing-git.cjs');
-const { layOutAt, layOutCommits, scratchTop, takeApart } = require('./project-layout.cjs');
+const { layOutAt, layOutCommits, scratchTop, kindName, takeApart } = require('./project-layout.cjs');
 const { isoNow, dayBefore } = require('./dates.cjs');
 const { repoLanded } = require('./task-landed.cjs');
 const { recordsIn } = require('./landing-record.cjs');
@@ -546,7 +546,7 @@ function verifyUnfixed(cwd, unit, scenario, command) {
   const reviewing = buildFinished(manifest);
   const repos = projectRepos(codeRoot(cwd));
   const lay = unfixedLayout(cwd, unit, task, reviewing ? bugRuns(cwd, unit, manifest).series : null, command, repos);
-  const { checkout, commits, ran } = inScratch(repos, `unfixed-${unit}`, lay, (laid) => ({ checkout: laid[0].path, commits: headsOf(laid), ran: runsOnUnfixed(laid[0].path, command) }));
+  const { checkout, commits, ran } = inScratch(repos, kindName('unfixed', unit), lay, (laid) => ({ checkout: laid[0].path, commits: headsOf(laid), ran: runsOnUnfixed(laid[0].path, command) }));
   const passedIn = ran.findIndex(({ verdict }) => verdict === 'pass') + 1;
   /** @type {string[]} */
   const warnings = [];
@@ -816,7 +816,7 @@ function verifyMutants(cwd, unit, given) {
   const tasks = withStateLock(stateRoot(cwd), () => trackedPhase(cwd, unit, phase).tasks ?? []);
   const { repos, tips } = phaseStack(cwd, unit, phase, builtSince(manifest, tasks));
   const branches = new Map([...tips].map(([repo, tip]) => [repo.dir, tip]));
-  return inScratch(repos, `mutants-${unit}-phase-${phase}`, (top) => layOutAt(repos[0].path, unit, repos, branches, top), (laid) => mutantsAt(cwd, unit, phase, mutation, laid));
+  return inScratch(repos, kindName('mutants', `${unit}-phase-${phase}`), (top) => layOutAt(repos[0].path, unit, repos, branches, top), (laid) => mutantsAt(cwd, unit, phase, mutation, laid));
 }
 
 /**

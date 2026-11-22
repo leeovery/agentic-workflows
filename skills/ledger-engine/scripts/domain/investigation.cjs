@@ -1,10 +1,12 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: an investigation's process gates as `render` serves them
-// (19.4.19), each read from the hunt its log holds (investigation-log.cjs)
-// and Claude's payload, and drawn by projections/investigation.cjs; each is
-// answered through `gate` where it shows, and nothing here writes.
+// Domain ring: an investigation's plan gate and its check-in as `render`
+// serves them (19.4.19, 19.4.28), each read from the hunt its log holds
+// (investigation-log.cjs) and Claude's payload, and drawn by
+// projections/investigation.cjs; the plan gate is answered through `gate`
+// where it shows, the check-in a display the hunt carries past, and nothing
+// here writes.
 //
 // - `investigation-plan <bugfix> --file <plan.json> [--revised]`: the
 //   payload `{"order": [{"hypothesis": "H{n}", "check": "<how>"}, …]}`,
@@ -14,13 +16,13 @@
 //   saying besides what the finding changed, `"changed"`.
 // - `investigation-check-in <bugfix> --file <check-in.json>`: the payload
 //   `{"resolved": ["H{n}", …], "next": "<what is checked next>"}`, the
-//   hypotheses resolved since the last gate, each one the log holds settled.
+//   hypotheses resolved since the last check-in, each one the log holds
+//   settled.
 //
-// Each gate is a learned one (learned-gates.cjs), drawn as the decision
-// point steps it at the investigation's place (`investigationStep`, the
-// conclude's too: investigation-conclude.cjs), its showing told by what it
-// asks about: the plan's order and what a revision changed, the check-in's
-// hypotheses resolved.
+// The plan gate is a learned one (learned-gates.cjs), drawn as the decision
+// point steps it at the investigation's place (`investigationStep`), its
+// showing told by what it asks about: the plan's order and what a revision
+// changed.
 //
 // Each refuses, opening on its command: a place whose investigation cannot
 // take work or has not started (`openInvestigation`), a payload that cannot
@@ -31,7 +33,7 @@
 // still open, and none resolved.
 //
 // A line of the log the hunt's reader passes over is said ahead of the
-// gate, in a DATA section of `warning:` lines, so a line out of place is
+// screen, in a DATA section of `warning:` lines, so a line out of place is
 // said where Claude reads.
 // ---------------------------------------------------------------------------
 
@@ -131,7 +133,7 @@ function investigationCheckInSurface(cwd, args) {
     const open = namedHypotheses(hunt.hypotheses, names, 'the check-in').find(({ state }) => state === 'suspected');
     if (open !== undefined) throw new Error(`the check-in names ${open.name}, which the log holds open — log where it stands first: engine investigation-log hypothesis ${unit} ${open.name} --state <state>`);
     const view = { title, hypotheses: hunt.hypotheses, resolved: names, experiments: hunt.experiments, next: lineOf(checkIn.next, 'what is checked next') };
-    return warned(warnings, checkInScreen(view, investigationStep(cwd, unit, 'check-in gate', names)));
+    return warned(warnings, checkInScreen(view));
   });
 }
 

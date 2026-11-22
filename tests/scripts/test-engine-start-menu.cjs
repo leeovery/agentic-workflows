@@ -46,7 +46,7 @@ const { SHOWN } = require(path.join(SCRIPTS, 'domain/gate.cjs'));
 const { NBSP } = require(path.join(SCRIPTS, 'domain/projections/surfaces.cjs'));
 const { WAIT_KINDS } = require(path.join(SCRIPTS, 'domain/waits.cjs'));
 const { counts } = require(path.join(SCRIPTS, 'domain/start-menu.cjs'));
-const { startMenuScreen } = require(path.join(SCRIPTS, 'domain/projections/start-menu.cjs'));
+const { startMenuScreen, endedReceipt } = require(path.join(SCRIPTS, 'domain/projections/start-menu.cjs'));
 
 /** The decided world's conversation, where its raises are sealed and its screens drawn. */
 const HERE = 'session-1';
@@ -165,7 +165,7 @@ describe('the start menu (18.2.12)', () => {
     assert.deepStrictEqual(startMenu().menu.slice(2, 3), ['p/product → Talk about the product']);
   });
 
-  it('18.2.3, 20.12.5: every kind of wait lands in exactly one count — approve the map, decided, ready to build, an investigation\'s conclude and finish the gates, a question wherever it is asked the questions, a decided topic a replaced answer holds the topics — and a verdict in none', () => {
+  it('18.2.3, 20.12.5: every kind of wait lands in exactly one count — approve the map, decided, ready to build and finish the gates, a question wherever it is asked the questions, a decided topic a replaced answer holds the topics — and a verdict in none', () => {
     /** The count each kind of wait lands in. */
     const landsIn = Object.fromEntries(WAIT_KINDS.map((kind) => {
       const waiting = counts([/** @type {any} */ ({ kind })]);
@@ -173,7 +173,7 @@ describe('the start menu (18.2.12)', () => {
     }));
 
     assert.deepStrictEqual(landsIn, {
-      map: 'gates', decided: 'gates', ready: 'gates', conclude: 'gates', finish: 'gates', gap: 'questions', question: 'questions', raise: 'questions', raised: 'questions', affected: 'topics', verdict: null,
+      map: 'gates', decided: 'gates', ready: 'gates', finish: 'gates', gap: 'questions', question: 'questions', raise: 'questions', raised: 'questions', affected: 'topics', verdict: null,
     });
   });
 
@@ -230,6 +230,23 @@ describe('the start menu (18.2.12)', () => {
     ]);
   });
 
+  it('after a finish or a cancel from inside the work, one line in the menu\'s place says what waits on the person — each unit\'s count, the verdicts, the inbox where it holds anything — and that the menu is one `/ledger` away, a finish opening on the work done', () => {
+    /** The line, `units` waiting, `verdicts` and `ideas` in the inbox, `opening` first. @param {string|null} opening @param {Array<[string, {gates: number, questions: number, topics: number}]>} units @param {number} verdicts @param {number} ideas */
+    const line = (opening, units, verdicts, ideas) => endedReceipt(opening, {
+      units: units.map(([name, waiting]) => ({ name, type: 'feature', progress: 'specification', waiting, mail: false })),
+      inbox: { ideas, bugs: 0, quickfixes: 0 }, product: { sessions: 0, last: null }, researchOwed: false, verdicts, closed: false, legacy: [], warnings: [],
+    }).split('\n')[1];
+    const none = { gates: 0, questions: 0, topics: 0 };
+
+    assert.deepStrictEqual([
+      line('Tally is done.', [['tally', { gates: 1, questions: 2, topics: 0 }], ['search', none]], 3, 2),
+      line(null, [['search', none]], 0, 0),
+    ], [
+      'Tally is done. Waiting on you: Tally — 1 gate and 2 questions; 3 verdicts. Inbox: 2 ideas. The menu is one `/ledger` away.',
+      'Nothing waits on you. The menu is one `/ledger` away.',
+    ]);
+  });
+
   it('N1: a raise sealed at a bug\'s investigation counts on its row in the conversation that drew it, listing it first, and in no other', async () => {
     hunting('kill-all');
     await raisedAt('kill-all');
@@ -260,6 +277,7 @@ describe('the start menu (18.2.12)', () => {
       writeState(dir(), `.inbox/${kind}/2026-10-01--${slug}.md`, `# ${slug}\n`);
     }
     ok(dir(), ['enter', 'discovery', 'product'], { env: { CLAUDE_CODE_SESSION_ID: HERE } });
+    fs.appendFileSync(statePath(dir(), '.product/sessions/session-001.md'), '\nWhere sync should go.\n');
     ok(dir(), ['brownfield', 'record', 'accepted']);
     createManifest(dir(), 'shipped', { work_type: 'feature', status: 'completed' });
     const full = startMenu();
@@ -309,11 +327,20 @@ describe('the start menu (18.2.12)', () => {
     assert.deepStrictEqual([owed, lettered(startMenu().menu)[0]], ['p/product → Talk about the product — research owed', 'p/product → Talk about the product']);
   });
 
-  it('18.2.13: the product\'s sessions whose logs name no conversation are counted, with no date', () => {
-    writeState(dir(), '.product/sessions/session-001.md', '# Product session 001\n');
-    writeState(dir(), '.product/sessions/session-002.md', '# Product session 002\n');
+  it('18.2.13: the product\'s sessions holding talk are counted, those whose logs name no conversation with no date; a session opened and said nothing in never, nor its conversation\'s date', () => {
+    const row = () => lettered(startMenu().menu)[0];
+    writeState(dir(), '.product/sessions/session-001.md', 'Where sync should go.\n');
+    writeState(dir(), '.product/sessions/session-002.md', 'Pricing, a first pass.\n');
+    const undated = row();
+    writeState(dir(), '.product/sessions/session-003.md', '## 2026-10-19 · session sess-9\n');
+    const opened = row();
+    writeState(dir(), '.product/sessions/session-002.md', '## 2026-10-12 · session sess-8\n\nPricing, a first pass.\n');
 
-    assert.strictEqual(lettered(startMenu().menu)[0], 'p/product → Talk about the product — 2 sessions');
+    assert.deepStrictEqual([undated, opened, row()], [
+      'p/product → Talk about the product — 2 sessions',
+      'p/product → Talk about the product — 2 sessions',
+      'p/product → Talk about the product — 2 sessions, last on 12 Oct',
+    ]);
   });
 
   it('18.2.3, 18.2.12: the rows in their order — the units with something waiting first, then features, bugfixes, quick-fixes and epics, each type in the project\'s order; then product, start, triage, roadmap, verdicts, view, manage and help', () => {

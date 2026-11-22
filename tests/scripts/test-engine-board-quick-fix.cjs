@@ -111,8 +111,19 @@ describe('a quick-fix\'s fixes on the board (20.14)', () => {
     const half = board();
     writeState(dir, settlementPath(refOf('1.1'), 1), '# Settled\n');
 
-    assert.deepStrictEqual([half.view.fixes[0].rounds, half.warnings], [{ sent_back: 1, reading: 2, passed: null, settled: false }, []]);
-    assert.deepStrictEqual(board().view.fixes[0].rounds, { sent_back: 0, reading: 2, passed: 1, settled: true });
+    assert.deepStrictEqual([half.view.fixes[0].rounds, half.warnings], [{ sent_back: 1, reading: 2, passed: null, settled: false, unreviewed: false }, []]);
+    assert.deepStrictEqual(board().view.fixes[0].rounds, { sent_back: 0, reading: 2, passed: 1, settled: true, unreviewed: false });
+  });
+
+  it('a one-line fix under way says no reviewer reads it, its rounds none', () => {
+    dir = working();
+    atTheFixes();
+    run(['task', 'close', UNIT, '1.1', '--reason', 'Folded into 1.3.']);
+    run(['task', 'create', UNIT, '1', '--title', 'Spell the docs --colour', '--type', 'fix', '--why', 'one word, nothing for a reviewer to read']);
+    run(['task', 'start', UNIT, '1.3']);
+    const line = board().view.fixes.find((/** @type {{task: string}} */ fix) => fix.task === '1.3');
+
+    assert.deepStrictEqual(line.rounds, { sent_back: 0, reading: null, passed: null, settled: false, unreviewed: true });
   });
 
   it('REPLACES reaches past the quick-fix\'s own replacements to the decision of another unit its chain goes back to, whose it was read from that decision — the person replacing Claude\'s call there, Claude replacing its own; the person\'s decisions never among Claude\'s calls', () => {
@@ -160,7 +171,7 @@ describe('a quick-fix\'s fixes on the board (20.14)', () => {
   const parkedOnTheCall = (how) => appendEntry(statePath(dir), {
     event: 'parked', unit: UNIT, topic: null, phase: 'implementation', session: SESSION,
     question: null, replaces: ledgerHelpers(() => dir).full(made.call), cause: null, relies_on: [], number: 1,
-    call: { ...CALL, question: 'What does the README say entering does?' }, rows_judged: [], why_asking: 'Asked cold.', label: null, model: null, blocks_build: true, replaced_by: null, always: null,
+    call: { ...CALL, question: 'What does the README say entering does?' }, rows_judged: [], why_asking: 'Asked cold.', asked_by: 'counts', label: null, model: null, blocks_build: true, replaced_by: null, always: null,
     measured: null, chain: ledgerHelpers(() => dir).full(made.asked), ...how,
   }, []);
 

@@ -126,6 +126,22 @@ describe('engine presence', () => {
     assert.match(engineFails(dir, ['presence', 'beat', 'ghost', 'discovery', 'ghost']).error, /no work unit directory/);
   });
 
+  it('the product\'s conversation keeps a row for each conversation in it — every other place one — each read, beaten, cleared and swept as its own', () => {
+    for (const identity of [OWN, PEER]) engine(dir, ['presence', 'beat', 'product', 'discovery', 'product'], identity);
+    for (const identity of [OWN, PEER]) engine(dir, ['presence', 'beat', 'pay', 'discussion', 'alpha'], identity);
+    const rows = () => engine(dir, ['presence', 'scan']).res.sessions.map((r) => `${r.work_unit} ${r.session_id}`).sort();
+    const both = rows();
+    engine(dir, ['presence', 'clear', 'product', 'discovery', 'product'], PEER);
+    const cleared = rows();
+    engine(dir, ['presence', 'beat', 'product', 'discovery', 'product'], PEER);
+    engine(dir, ['presence', 'cleanup', 'sess-peer']);
+    assert.deepStrictEqual([both, cleared, rows()], [
+      ['pay sess-peer', 'product sess-one', 'product sess-peer'],
+      ['pay sess-peer', 'product sess-one'],
+      ['product sess-one'],
+    ]);
+  });
+
   it('refuses illegal phases, unknown work units, and malformed calls', () => {
     assert.match(engineFails(dir, ['presence', 'beat', 'pay', 'grooming', 'x']).error, /got "grooming"/);
     assert.match(engineFails(dir, ['presence', 'beat', 'pay', 'discussion', '../../escapee']).error, /invalid topic name/);
@@ -288,6 +304,22 @@ describe('engine presence', () => {
       }
     } finally {
       fs.rmSync(worktree, { recursive: true, force: true });
+    }
+  });
+
+  it('the code-slot read never takes a quick-fix\'s rows, its code built in a worktree of its own', () => {
+    const { heldCodeSessions } = require('../../skills/ledger-engine/scripts/domain/presence.cjs');
+    fs.writeFileSync(path.join(dir, '.ledger', 'pay', 'manifest.json'), JSON.stringify({ name: 'pay', work_type: 'quick-fix', status: 'in-progress', phases: {} }));
+    craftRecord(dir, 'implementation', 'pay', { pid: 1, pid_start: null, session_id: 'peer' });
+    const beforePid = process.env.CLAUDE_PID;
+    process.env.CLAUDE_PID = String(process.pid);
+    try {
+      const quickFix = heldCodeSessions(dir);
+      fs.writeFileSync(path.join(dir, '.ledger', 'pay', 'manifest.json'), JSON.stringify({ name: 'pay', work_type: 'feature', status: 'in-progress', phases: {} }));
+      assert.deepStrictEqual([quickFix, heldCodeSessions(dir).length], [[], 1], 'the same row of a feature holds the slot');
+    } finally {
+      if (beforePid === undefined) delete process.env.CLAUDE_PID;
+      else process.env.CLAUDE_PID = beforePid;
     }
   });
 

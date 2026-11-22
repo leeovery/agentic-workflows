@@ -27,6 +27,13 @@
 // from its template (12.4.1): a lowercase word, as feat or fix. The merge
 // bringing the default branch into a unit's own branch is `Merge {default}
 // into feat/{unit}` (`bringUpSubject`), no conventional commit's either.
+// A quick-fix's branch that conflicts with the branch it lands on, or with
+// the host's copy of it, is settled by a merge in the quick-fix's worktree,
+// in the repository that conflicts — `git -C {its folder}` in a nested one
+// — committed through the door under a task in flight, each settled file
+// named from the worktree's top (`mergedThrough`): with none in flight, a
+// one-line task of its own, `merge {theirs}` (`quickFixMerged`), each
+// landing driver's way on from the conflict.
 // ---------------------------------------------------------------------------
 
 const { KEBAB_SLUG } = require('../kernel/manifest-schema.cjs');
@@ -105,10 +112,19 @@ function taskOfBranch(unit, branch) {
   return named === null ? null : { unit, phase: Number(named[1]), n: Number(named[2]) };
 }
 
+const QUICK_FIX = 'fix/';
+const QUICK_FIX_UNIT = new RegExp(`^${KEBAB_SLUG}$`);
+
 /** A quick-fix's one branch. @param {string} unit @returns {string} */
 function quickFixBranch(unit) {
   assertUnit(unit);
-  return `fix/${unit}`;
+  return `${QUICK_FIX}${unit}`;
+}
+
+/** The unit whose quick-fix branch `branch` would be, or null where it names none. @param {string} branch @returns {string|null} */
+function quickFixOfBranch(branch) {
+  const unit = branch.startsWith(QUICK_FIX) ? branch.slice(QUICK_FIX.length) : '';
+  return QUICK_FIX_UNIT.test(unit) ? unit : null;
 }
 
 /** Whether a branch is one a task of the unit's commits on: a task's own, or a quick-fix's one branch. @param {string} unit @param {string} branch @returns {boolean} */
@@ -167,6 +183,21 @@ function unitLanding(unit, title, phases) {
  */
 const bringUpSubject = (into, branch) => `Merge ${into} into ${branch}`;
 
+/**
+ * The merge of `theirs` into a quick-fix's branch in the repository at
+ * `folder` of its worktree — as the shell takes it, `.` for the project's
+ * own — settled and committed through the door under the task `task` shows
+ * (the header's).
+ * @param {string} unit @param {string} task @param {string} theirs @param {string} folder
+ */
+function mergedThrough(unit, task, theirs, folder) {
+  const [git, under] = folder === '.' ? ['git', ''] : [`git -C ${folder}`, `${folder}/`];
+  return `\`${git} merge --no-ff --no-commit ${theirs}\`, settle the conflict, then commit the merge through the door, naming each file you settled, which finishes it: \`engine commit --paths ${under}<file>… --task ${unit} ${task} -m "<message>"\``;
+}
+
+/** The way on from a quick-fix's branch conflicting with `theirs` in the repository at `folder` of its worktree, no task of the unit's in flight (the header's). @param {string} unit @param {string} theirs @param {string} folder as `mergedThrough` takes it */
+const quickFixMerged = (unit, theirs, folder) => `start a one-line task, "merge ${theirs}", and in ${unit}'s worktree run ${mergedThrough(unit, '<task>', theirs, folder)}`;
+
 /** The task a line naming one by `key` names, or null. @param {string} line @param {string} key @returns {TaskRef|null} */
 function taskOfLine(line, key) {
   const value = line.startsWith(`${key}: `) ? line.slice(key.length + 2) : '';
@@ -208,4 +239,4 @@ function landingOf(ref, message) {
   return null;
 }
 
-module.exports = { slugOf, taskBranch, phaseBranch, unitBranch, quickFixBranch, phaseOfBranch, taskOfBranch, isWorkBranch, isUnitBranch, landedMessage, quickFixMessage, unitLanding, bringUpSubject, landingOf, tasksOfMessage };
+module.exports = { slugOf, taskBranch, phaseBranch, unitBranch, quickFixBranch, quickFixOfBranch, phaseOfBranch, taskOfBranch, isWorkBranch, isUnitBranch, landedMessage, quickFixMessage, unitLanding, bringUpSubject, mergedThrough, quickFixMerged, landingOf, tasksOfMessage };

@@ -32,11 +32,14 @@
 //   product record (5.8.6); named with no unit, the product's questions —
 //   those standing at its place that discovery did not ask, a retired
 //   unit's (21.7.5), open or answered — which the product's conversation
-//   alone opens on; and, under a heading of its own, what discovery found
+//   alone opens on; under a heading of its own, what discovery found
 //   (9.3.12): the findings at the product's place (8.12.9), given a unit
 //   those at the unit's own level, which no topic's record shows, and given
 //   a topic too, what discovery left on it, which a topic's first opening
-//   reads here, reading no record. The one exception to the rule
+//   reads here, reading no record; and beside them the product's views,
+//   directions not taken and spikes, as its logs list them (8.9.15,
+//   discovery-log.cjs), so every opening that reads the product record
+//   reads them. The one exception to the rule
 //   is `ledger earlier`, the record a topic set aside left: its entries as
 //   they stood, read as `ledger record` reads a live topic's, for a later
 //   topic it was pulled into to read as input (18.8.17, 21.8.9) — marked
@@ -284,12 +287,15 @@ function answerMap(shower, { unit, topic }, root) {
 /**
  * `ledger product`: the product record; at the product's own place, named
  * with no unit, the product's questions, which its conversation opens on;
- * and apart from them what discovery found of the product and, given a
- * unit, of the unit, and given a topic too, of the topic — each entry with
- * its chain, its confirmations and its keeps.
- * @param {Shower} shower @param {Place} place
+ * apart from them what discovery found of the product and, given a unit,
+ * of the unit, and given a topic too, of the topic — each entry with its
+ * chain, its confirmations and its keeps; and the lists the product's logs
+ * keep.
+ * @param {Shower} shower @param {Place} place @param {string} root @param {string[]} warnings
  */
-function answerProduct(shower, { unit, topic }) {
+function answerProduct(shower, { unit, topic }, root, warnings) {
+  // Required here: discovery-log.cjs reaches this module through asset.cjs.
+  const { productHeard } = require('./discovery-log.cjs');
   const ids = productOf(shower.folded);
   const asked = unit === null ? { questions: productQuestionsOf(shower.folded).map((id) => chained(shower, id)) } : {};
   return {
@@ -297,6 +303,7 @@ function answerProduct(shower, { unit, topic }) {
     decisions: ids.decisions.map((id) => chained(shower, id)),
     ...asked,
     discovery: discoveredOf(shower.folded, unit, topic).map((id) => chained(shower, id)),
+    ...productHeard(root, warnings),
   };
 }
 

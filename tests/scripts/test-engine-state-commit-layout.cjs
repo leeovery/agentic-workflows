@@ -208,9 +208,11 @@ describe('the logs a state commit takes along (6.3.2)', () => {
     createFile(root, LOG, '# login\n\n## 2026-10-30\n\nDecided the session length.\n');
 
     const res = ok(main, ['inbox', 'archive', path.join(root, IDEA)]);
+    assert.deepStrictEqual(touched(root, 'HEAD'), [`A\t${ARCHIVED}`, `D\t${IDEA}`], 'a keep\'s door, the archive commits its own paths alone');
+    const restored = ok(main, ['inbox', 'restore', path.join(root, ARCHIVED)]);
 
-    assert.deepStrictEqual(res, { ok: true, archived: [path.join(root, ARCHIVED)], committed: short(root, 'HEAD') });
-    assert.deepStrictEqual(touched(root, 'HEAD'), [`A\t${ARCHIVED}`, `D\t${IDEA}`, `M\t${LOG}`]);
+    assert.deepStrictEqual([res.archived, restored.committed], [[path.join(root, ARCHIVED)], short(root, 'HEAD')]);
+    assert.deepStrictEqual(touched(root, 'HEAD'), [`A\t${IDEA}`, `D\t${ARCHIVED}`, `M\t${LOG}`]);
     assert.strictEqual(remoteTip(/** @type {string} */ (bare)), tip(root, STATE_BRANCH));
     assert.strictEqual(status(root), '');
   });

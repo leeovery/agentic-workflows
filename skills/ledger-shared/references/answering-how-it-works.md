@@ -17,4 +17,4 @@ Every session may answer a question about how Ledger works — the system, the w
 node .claude/skills/ledger-engine/scripts/engine.cjs render walkthrough-topic --name {card:[kinds-of-work|the-phases|epics-the-map-and-the-menu|the-roadmap|gates-auto-and-step|the-knowledge-base|the-inbox-and-triage|reshaping-work|working-in-parallel]} --content-only
 ```
 
-5. Where the person was at a gate, the question set it aside, and it comes back as [instructions.md](instructions.md) says, fetched with the render call that produced it or the one the caller names. Otherwise the conversation carries on where it was.
+5. Where the person was at a gate, the question set it aside: it waits as [instructions.md](instructions.md) says, taking their answer whenever it comes. Otherwise the conversation carries on where it was.

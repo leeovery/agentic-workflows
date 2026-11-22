@@ -47,7 +47,7 @@ const { readShown } = require('../ledger-read.cjs');
 const { factsOf, madeOn, isCurrent, decidedNow } = require('../ledger-fold.cjs');
 const { claudesCall } = require('../ledger-events.cjs');
 const { heldBackIn } = require('../questions.cjs');
-const { pairPassed, beingRead } = require('../round-report.cjs');
+const { pairPassed, beingRead, reviewedNone } = require('../round-report.cjs');
 const { parseShownTask } = require('../task-id.cjs');
 const { fixesUnderWay, startedOn, FIXES_PHASE } = require('../derivations.cjs');
 const { closeVerdicts } = require('../finish.cjs');
@@ -68,21 +68,23 @@ const { taskLine, standingAt, questionsOf, roundsRead } = require('./board-build
 const fixing = ({ manifest }) => fixesUnderWay(manifest);
 
 /** A fix's rounds when none is told. @type {FixLine['rounds']} */
-const NO_ROUNDS = Object.freeze({ sent_back: 0, reading: null, passed: null, settled: false });
+const NO_ROUNDS = Object.freeze({ sent_back: 0, reading: null, passed: null, settled: false, unreviewed: false });
 
 /**
  * A fix's pair's rounds (the header's): those sent back, the one being read
  * in this conversation, and the round its review ended in, null for each
- * where none is, and whether that round was settled.
+ * where none is, and whether that round was settled; a one-line fix, read
+ * by no reviewer, said so.
  * @param {BoardAt} at @param {string} task @returns {FixLine['rounds']}
  */
 function roundsOf(at, task) {
   const ref = parseShownTask(at.unit, task);
+  if (reviewedNone(at.cwd, ref) !== null) return { ...NO_ROUNDS, unreviewed: true };
   const rounds = roundsRead(at, ref);
   if (rounds === null) return NO_ROUNDS;
   const last = rounds.at(-1);
   const ended = last !== undefined && pairPassed(last) ? last : null;
-  return { sent_back: rounds.filter((round) => !pairPassed(round)).length, reading: beingRead(at.cwd, ref, at.session), passed: ended?.round ?? null, settled: ended !== null && !ended.passes };
+  return { sent_back: rounds.filter((round) => !pairPassed(round)).length, reading: beingRead(at.cwd, ref, at.session), passed: ended?.round ?? null, settled: ended !== null && !ended.passes, unreviewed: false };
 }
 
 /** The quick-fix's fixes, each as the build draws a task with its rounds, read once a call. @param {BoardAt} at @returns {FixLine[]} */

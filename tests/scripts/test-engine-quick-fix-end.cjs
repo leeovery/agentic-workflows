@@ -33,7 +33,7 @@ const { describe, it, afterEach } = require('node:test');
 const assert = require('node:assert');
 const { ok, refusedPristine, git, createFile, fixtureFrom, cleanupFixture } = require('./engine-harness.cjs');
 const { useTempFolder } = require('./discovery-test-utils.cjs');
-const { UNIT, BRANCH, createFix, fixChanged, fixDone, twoFixesBuilt } = require('./quick-fix-world.cjs');
+const { UNIT, BRANCH, createFix, fixChanged, fixDone, fixTree, twoFixesBuilt } = require('./quick-fix-world.cjs');
 
 const DOCS = 'Spell the docs --colour';
 const MAN = 'Spell the man page --colour';
@@ -59,10 +59,10 @@ const refused = (args) => refusedPristine(dir, args, as()).error;
 /** Fix `n` made, as `fixChanged` makes it, in this test's conversation. @param {number} n @param {string} title @param {string} file */
 const changed = (n, title, file) => fixChanged(dir, n, title, file, '--colour\n', as());
 
-/** Another commit of fix `n`'s through the door. @param {number} n @param {string} file */
+/** Another commit of fix `n`'s through the door, from the quick-fix's worktree. @param {number} n @param {string} file */
 const again = (n, file) => {
-  createFile(dir, file, '--colour\n');
-  run(['commit', '--paths', file, '--task', UNIT, `1.${n}`, '-m', `fix(${UNIT}): spell ${file}`]);
+  createFile(fixTree(dir), file, '--colour\n');
+  ok(fixTree(dir), ['commit', '--paths', file, '--task', UNIT, `1.${n}`, '-m', `fix(${UNIT}): spell ${file}`], as());
 };
 
 /** Fix `n`'s status, as the tracker holds it. @param {number} n */
@@ -106,7 +106,7 @@ describe('task done <quick-fix> <fix> (R1, R14)', () => {
   it('R11: reads a fix whose commits the branch it lands on holds, moved to them by hand, as landed — done, its opening refused naming its done, its close naming the reversal', () => {
     dir = world();
     changed(3, DOCS, 'docs/flags.md');
-    git(dir, ['branch', '-f', 'main', BRANCH]);
+    git(dir, ['merge', '-q', '--ff-only', BRANCH]);
     const opening = refused(['land', 'open', UNIT, '1.3']);
     const closing = refused(['task', 'close', UNIT, '1.3', '--reason', 'Not wanted.']);
     fixDone(dir, '1.3', as());
@@ -122,7 +122,7 @@ describe('task done <quick-fix> <fix> (R1, R14)', () => {
     dir = world();
     changed(3, DOCS, 'docs/flags.md');
     run(['land', 'open', UNIT, '1.3']);
-    git(dir, ['branch', '-f', 'main', BRANCH]);
+    git(dir, ['merge', '-q', '--ff-only', BRANCH]);
     again(3, 'docs/more.md');
     const moved = refused(['task', 'done', UNIT, '1.3']);
     run(['land', 'open', UNIT, '1.3']);
@@ -131,12 +131,12 @@ describe('task done <quick-fix> <fix> (R1, R14)', () => {
     assert.deepStrictEqual([moved, status(3)], [unpushed(3), 'done']);
   });
 
-  it('R12: takes a fix merged by hand before it ever opened, by a squash under the person\'s own message, its branch then deleted, done — read by its change on the branch it lands on, its own commit found where the deleted branch leaves it', () => {
+  it('R12: takes a fix merged by hand before it ever opened, by a squash under the person\'s own message, its worktree then put off the branch and the branch deleted, done — read by its change on the branch it lands on, its own commit found where the deleted branch leaves it', () => {
     dir = world();
     changed(3, DOCS, 'docs/flags.md');
-    git(dir, ['switch', '-q', 'main']);
     git(dir, ['merge', '-q', '--squash', BRANCH]);
     git(dir, ['commit', '-q', '-m', 'Spell the docs the British way']);
+    git(fixTree(dir), ['switch', '-q', '--detach']);
     git(dir, ['branch', '-q', '-D', BRANCH]);
     fixDone(dir, '1.3', as());
 
@@ -146,7 +146,6 @@ describe('task done <quick-fix> <fix> (R1, R14)', () => {
   it('R12: takes a fix whose own commit was put on the branch it lands on by a cherry-pick, its line changed there since, done — read by the copy there', () => {
     dir = world();
     changed(3, DOCS, 'docs/flags.md');
-    git(dir, ['switch', '-q', 'main']);
     git(dir, ['cherry-pick', BRANCH]);
     createFile(dir, 'docs/flags.md', '--color\n');
     git(dir, ['commit', '-q', '-am', 'Spell the docs the American way']);

@@ -13,13 +13,14 @@
 // fix direction only after a current root cause and carrying what the step
 // back found (19.S7, 19.4.1–19.4.3), every refusal writing nothing, a line
 // passed over said where Claude reads; and a raise setting out the fix
-// refused before the root cause. Its plan and check-in gates, `render
+// refused before the root cause. Its plan gate and check-in, `render
 // investigation-plan|investigation-check-in` (domain/investigation.cjs,
-// domain/projections/investigation.cjs): learned process gates drawn from
-// the hunt's log and Claude's payload, the revised plan back at the plan
-// gate saying first what the finding changed (19.S35, 19.4.19, 19.4.24),
-// each gate's showing held at the investigation across conversations and
-// stepped by the decision point there, and what each refuses. Its validations' briefs and its close are
+// domain/projections/investigation.cjs), drawn from the hunt's log and
+// Claude's payload: the plan a learned process gate, the revised plan back
+// at it saying first what the finding changed (19.S35, 19.4.19, 19.4.24),
+// its showing held at the investigation across conversations and stepped by
+// the decision point there; the check-in a display the hunt carries past;
+// and what each refuses. Its validations' briefs and its close are
 // test-engine-investigation-conclude.cjs's.
 //
 // Layer: verb. World: investigation-world.cjs's, copied for each test, each
@@ -369,7 +370,7 @@ describe('investigation-log — the hunt under its fixed headings (19.4.1–19.4
   });
 });
 
-describe('the plan and check-in gates — learned process gates (19.4.19)', () => {
+describe('the plan gate, a learned process gate, and the check-in, a display (19.4.19)', () => {
   /** The hunt with three hypotheses, the first confirmed and an experiment. */
   function hunting() {
     for (const title of ['Killing every session empties the state', 'kill-server saves an empty state', 'A reboot finds the server gone']) log('hypothesis', ['--title', title]);
@@ -441,12 +442,13 @@ describe('the plan and check-in gates — learned process gates (19.4.19)', () =
     assert.strictEqual(plan({ order: [] }), `render investigation-plan: the log holds no open hypothesis — log each one the plan checks first: engine investigation-log hypothesis ${HUNT} --title "<title>"`);
   });
 
-  it('the check-in: every hypothesis, those just resolved marked, the experiments with what each showed and what comes next, then the check-in gate; its showing held at the investigation, so set aside by a Comment it shows on its hold in the next conversation, the yes there the same event (N2)', () => {
+  it('the check-in: every hypothesis, those just resolved marked, the experiments with what each showed and what comes next — a display the hunt carries past, with no gate, never stepped by the decision point', (t) => {
     hunting();
+    const asked = t.mock.method(decisionPoint, 'gateStep');
 
     const sections = rendered(['investigation-check-in', HUNT, '--file', payload('check-in.json', { resolved: ['H1'], next: 'Run kill-server with the runtime live' })]);
 
-    assert.strictEqual(sections.slice(0, sections.indexOf('=== MENU')), [
+    assert.strictEqual(sections, [
       '=== DISPLAY: investigation check-in (emit verbatim as a text code block (```text fence) — do not stop; continue as the skill instructs) ===',
       'Hunt · check-in',
       '',
@@ -465,13 +467,7 @@ describe('the plan and check-in gates — learned process gates (19.4.19)', () =
       '  Run kill-server with the runtime live',
       '',
     ].join('\n'));
-    const checkIn = ['investigation-check-in', HUNT, '--file', payload('check-in.json', { resolved: ['H1'], next: 'Run kill-server' })];
-    const gate = auditGate(rendered(checkIn, true), 'investigation-check-in');
-    assert.strictEqual(gate?.gate, 'check-in gate');
-    run(['gate', 'check-in gate', '--typed', 'comment']);
-    output(dir, ['render', ...checkIn], { env: NEXT() });
-    assert.deepStrictEqual(ok(dir, ['gate', 'check-in gate', '--pick', 'y'], { env: NEXT() }).next, { kind: 'continue' });
-    assert.deepStrictEqual(showingAnswers(config, 'check-in gate'), [['comment', 'y'], [0, 0]]);
+    assert.strictEqual(asked.mock.callCount(), 0);
   });
 
   it('an intended hypothesis is drawn with the ruled-out glyph, as 20.12.1 draws it (19.4.13)', () => {
@@ -494,7 +490,7 @@ describe('the plan and check-in gates — learned process gates (19.4.19)', () =
     ]);
   });
 
-  it('each is stepped by the decision point at the investigation, its showing told by what it asks about — the plan by its order and what a revision changed, the check-in by the hypotheses it resolved — and run as a step on yes, its report in its menu\'s place', (t) => {
+  it('the plan is stepped by the decision point at the investigation, its showing told by its order and what a revision changed, and run as a step on yes, its report in its menu\'s place', (t) => {
     hunting();
     const asked = t.mock.method(decisionPoint, 'gateStep', (/** @type {string} */ gate) => ({ step: 'automatic', gate, row: 'y', showing: '47e5a17f3cac2787' }));
     const changed = 'E1 showed a kill alone empties it, so the reboot comes first';
@@ -502,19 +498,17 @@ describe('the plan and check-in gates — learned process gates (19.4.19)', () =
     const drawn = [
       rendered(['investigation-plan', HUNT, '--file', payload('plan.json', PLAN)]),
       rendered(['investigation-plan', HUNT, '--file', payload('plan.json', { ...PLAN, changed }), '--revised']),
-      rendered(['investigation-check-in', HUNT, '--file', payload('check-in.json', { resolved: ['H1'], next: 'Run kill-server' })]),
     ];
 
     const place = { unit: HUNT, phase: 'investigation', topic: HUNT };
     assert.deepStrictEqual(asked.mock.calls.map(({ arguments: [name, at] }) => [name, at.place, at.key]), [
       ['plan gate', place, [['H3', 'H2'], null]],
       ['plan gate', place, [['H3', 'H2'], changed]],
-      ['check-in gate', place, ['H1']],
     ]);
-    assert.deepStrictEqual(drawn.map((sections) => sections.match(/^automatic step: .+$/m)?.[0]), ['automatic step: plan gate', 'automatic step: plan gate', 'automatic step: check-in gate']);
+    assert.deepStrictEqual(drawn.map((sections) => sections.match(/^automatic step: .+$/m)?.[0]), ['automatic step: plan gate', 'automatic step: plan gate']);
   });
 
-  it('each gate refuses a place whose investigation is not open, and a call with no payload', () => {
+  it('each refuses a place whose investigation is not open, and a call with no payload', () => {
     const file = payload('plan.json', PLAN);
     assert.deepStrictEqual([
       refused(['render', 'investigation-plan', BUG, '--file', file]),

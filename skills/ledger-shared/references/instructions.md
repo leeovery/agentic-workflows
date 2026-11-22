@@ -32,11 +32,11 @@ Stop only where a gate stops, a raise is drawn, the conversation hands the turn 
 
 One gate or raise at a time. A gate or a raise that background work brings up while another is on screen awaiting its answer is held, and shown once that one is answered — never beside it or in its place.
 
-Background work that arrives while a gate or a raise is on screen awaiting its answer — an agent's report, a notification, anything the person did not send — is handled and said in a line, and the waiting gate or raise is shown again in the same turn, fetched fresh from its call. At a gate set aside, the report is said in a line and the gate is not shown again.
+Background work that arrives while a gate or a raise is on screen awaiting its answer — an agent's report, a notification, anything the person did not send — is handled and said in a line, and the waiting gate, or a raise outside the build, is shown again in the same turn, fetched fresh from its call; a question waiting in the build — a quick-fix's and the review phase's among them — is never drawn again on it. At a gate set aside, the report is said in a line and the gate is not shown again.
 
 ## Answering a Gate
 
-A gate is answered by its command rows: a pressed row, a typed key or word, or plain words that name one row unambiguously ("yes, go with feature"). The answer goes to `gate`, under the name the MENU's marker declares, the row named by its key or its word: the one the person typed, or else the key of the row their answer picks:
+A gate takes a clear answer at any point while it waits, set aside or not: a pressed row, a typed key or word, or the person's own words that pick one row ("yes, go with feature"; "ok, go ahead" where the gate has one way forward — a yes/no consent, a single continue). Words that could pick more than one row, or none plainly, are asked back in the conversation, never guessed. The answer goes to `gate`, under the name the MENU's marker declares, the row named by its key or its word: the one the person typed, or else the key of the row their answer picks:
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs gate "{name}" --pick {row}
@@ -44,9 +44,7 @@ node .claude/skills/ledger-engine/scripts/engine.cjs gate "{name}" --pick {row}
 
 `gate` logs the answer and returns `next`: an engine call to run, a handoff to make, a skill to invoke in this conversation, or carry on. Do what `next` says, and branch on nothing else. A few gates' rows still carry a null `next` — the backlog gate's, the import reprompt's, the walkthrough screens' and the lost-state gate's no — and there the skill's own words for that row say what follows.
 
-A bare go-ahead given at a gate on screen ("ok, let's move ahead") picks a row only where the gate has one way forward — a yes/no consent, a single continue.
-
-Any other reply — through the prompt row (Comment, Ask), or free text: a question, a thought, a request, a go-ahead that picks no row — still goes to `gate` as typed, the call described as `Record your reply` either way: under the prompt row's key, such as `comment`, or with no key for free text, the person's words on stdin as they wrote them. The gate is then set aside.
+Any other reply to a gate not yet set aside — through the prompt row (Comment, Ask), or free text: a question, a thought, a request, a go-ahead that picks no row — still goes to `gate` as typed, the call described as `Record your reply` either way: under the prompt row's key, such as `comment`, or with no key for free text, the person's words on stdin as they wrote them. The gate is then set aside.
 
 ```bash
 node .claude/skills/ledger-engine/scripts/engine.cjs gate "{name}" --typed <<'WORDS'
@@ -58,9 +56,7 @@ A reply that changes what happens next — a pick with a condition on it ("yes, 
 
 ## A Gate Set Aside
 
-A gate set aside — by a reply that answered no row, or by a request that interrupted the work — waits while the person talks. Answer and talk it through for as long as they need. When it looks settled, ask in conversation, never through a gate, whether they are ready to move on, and on yes show the gate again, fetched fresh from its call. Another question starts the cycle over.
-- A set-aside gate moves forward only by being shown again and answered there. A yes to being ready is never its answer, whatever the gate offers, and neither is a go-ahead or a pick the person volunteers in the conversation ("ok, let's move ahead", "fine, conclude it"): each says they are ready, so show the gate again at once, without asking first, in the turn that answers whatever else they said.
-- An answered question opens a conversation: never put the gate straight back after answering it. Readiness brings the gate back; only an answer given at the gate moves past it, however plainly its one way forward or its recommended row looks like what they mean.
+A gate set aside — by a reply that answered no row, or by a request that interrupted the work — waits while the person talks. Answer and talk it through for as long as they need; an answered question opens a conversation, so never put the gate straight back after it. Their clear answer, whenever they give it, answers the gate where it waits, as **Answering a Gate** says, and it is not drawn again for a press. Shown again, it is fetched fresh from its call.
 
 ## Questions About Ledger
 

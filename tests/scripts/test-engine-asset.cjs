@@ -8,7 +8,8 @@
 // `engine asset add|status|lift`, each appending the ledger's asset event
 // from an entry to a file — its first link giving its status, a later one
 // changing it or recording a lift into the project — tagged as the entry is
-// and committing the ledger to the state branch; every refusal writing and
+// and committing the ledger to the state branch, `add` and `status` at the
+// product too, from a finding standing at its place; every refusal writing and
 // committing nothing; and the files a call Claude spiked to settle shows
 // beside it, in its record and in "what have you decided without me?"
 // (domain/ledger-since.cjs). How the fold reads the links is
@@ -285,6 +286,34 @@ describe('a first link (9.10.5–9.10.7, 9.10.22)', () => {
   });
 });
 
+describe('a link at the product (6.1.11, 18.11.1)', () => {
+  it('links a file shared outside any unit from a finding at the product\'s place, tagged as the finding is, and changes its status there', () => {
+    const finding = write('find', 'product.discovery', [], { ...MADE, text: 'The brand is blue.', how: 'the brand guide', known: 'documented' }).id;
+    const guide = saved('.product/assets/guide.pdf');
+
+    const res = asset(['add', 'product', guide, '--entry', finding, '--status', 'reference']);
+    const { id, at, v } = entries().at(-1);
+    assert.strictEqual(rawLines().at(-1), JSON.stringify({ v, id, event: 'asset', unit: 'product', topic: null, phase: 'discovery', session: SESSION_ID, at, entry: full(finding), path: guide, status: 'reference', into: null }));
+    assert.deepStrictEqual(res, { ok: true, path: guide, links: [{ id: shortOf(id), entry: finding }], committed: stateGit(dir, ['rev-parse', '--short', 'HEAD']).trim() });
+    assert.deepStrictEqual(committedFiles(), [layout.ledger, guide].sort());
+
+    asset(['status', 'product', guide, 'canonical']);
+    assert.deepStrictEqual(read('product').discovery.find((/** @type {{id: string}} */ e) => e.id === finding).assets, [{ path: guide, status: 'canonical', into: null }]);
+  });
+
+  it('refuses a unit\'s file, a unit\'s entry, and a lift, at the product', () => {
+    const finding = write('find', 'product.discovery', [], { ...MADE, text: 'The brand is blue.', how: 'the brand guide', known: 'documented' }).id;
+
+    assert.strictEqual(refused(['add', 'product', MOCK, '--entry', finding, '--status', 'reference']),
+      `asset add: ${MOCK} is not where an asset lives — the product's .product/assets/ or .product/spikes/NNN-{slug}/`);
+    assert.strictEqual(refused(['add', 'product', saved('.product/assets/brand.png'), '--entry', made.frameless, '--status', 'reference']),
+      `asset add --entry names ${made.frameless}, an entry of ${UNIT} — an asset of product's is linked from product's own entries`);
+    fs.mkdirSync(path.join(dir, path.dirname(LIFTED)), { recursive: true });
+    fs.writeFileSync(path.join(dir, LIFTED), 'struct Frame {}\n');
+    assert.strictEqual(refused(['lift', 'product', FRAME, '--into', LIFTED, '--entry', finding]), 'asset lift: there is no work unit "product"');
+  });
+});
+
 describe('what a link commits (9.10.4)', () => {
   it('takes every file a link names into each ledger commit after: an edit since its link and a linked folder\'s new file land with the next unrelated ledger write, and none removes a linked file; a spike\'s file no entry links stays untracked (9.S38)', () => {
     asset(['add', UNIT, MOCK, '--entry', made.frameless, '--status', 'reference']);
@@ -534,14 +563,14 @@ describe('the writer lock', () => {
 describe('the verb\'s argv', () => {
   it('refuses a verb it lacks, a flag it does not take or given twice, a missing flag it needs, and positionals of another count, each with its usage', () => {
     const usage = 'Usage: engine asset <spike|import|add|status|lift|legacy|keep|discard> …\nasset spike <work-unit|product> <slug>\nasset import <work-unit|product> <path> …\n'
-      + 'asset add <work-unit> <path> --entry <id> [--status <canonical|reference>]\n'
-      + 'asset status <work-unit> <path> <canonical|reference> [--entry <id>]\nasset lift <work-unit> <path> --into <path-in-project> --entry <id>\n'
+      + 'asset add <work-unit|product> <path> --entry <id> [--status <canonical|reference>]\n'
+      + 'asset status <work-unit|product> <path> <canonical|reference> [--entry <id>]\nasset lift <work-unit> <path> --into <path-in-project> --entry <id>\n'
       + 'asset legacy [<work-unit|product>]\nasset keep <work-unit|product> <path> [<work-unit|product> <path> …]\nasset discard <work-unit|product> <path>';
     assert.strictEqual(refused(['move', UNIT, MOCK]), usage);
-    assert.strictEqual(refused(['add', UNIT, MOCK, '--entry', made.frameless, '--into', LIFTED]), 'Usage: engine asset add <work-unit> <path> --entry <id> [--status <canonical|reference>]');
-    assert.strictEqual(refused(['add', UNIT, MOCK, '--entry', made.frameless, '--entry', made.active]), 'Usage: engine asset add <work-unit> <path> --entry <id> [--status <canonical|reference>]');
+    assert.strictEqual(refused(['add', UNIT, MOCK, '--entry', made.frameless, '--into', LIFTED]), 'Usage: engine asset add <work-unit|product> <path> --entry <id> [--status <canonical|reference>]');
+    assert.strictEqual(refused(['add', UNIT, MOCK, '--entry', made.frameless, '--entry', made.active]), 'Usage: engine asset add <work-unit|product> <path> --entry <id> [--status <canonical|reference>]');
     assert.strictEqual(refused(['lift', UNIT, FRAME, '--into', LIFTED]), 'Usage: engine asset lift <work-unit> <path> --into <path-in-project> --entry <id>');
-    assert.strictEqual(refused(['status', UNIT, MOCK]), 'Usage: engine asset status <work-unit> <path> <canonical|reference> [--entry <id>]');
+    assert.strictEqual(refused(['status', UNIT, MOCK]), 'Usage: engine asset status <work-unit|product> <path> <canonical|reference> [--entry <id>]');
     assert.strictEqual(refused(['spike', UNIT]), 'Usage: engine asset spike <work-unit|product> <slug>');
     assert.strictEqual(refused(['import', UNIT]), 'Usage: engine asset import <work-unit|product> <path> …');
   });

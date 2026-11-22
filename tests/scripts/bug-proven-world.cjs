@@ -94,7 +94,7 @@ const testRuns = (dir) => (fs.existsSync(logOf(dir)) ? fs.readFileSync(logOf(dir
 const tipOf = (dir, branch) => git(dir, ['rev-parse', branch]).trim();
 
 /** Where the engine lays the project out for a run on the unfixed code. @param {string} dir */
-const scratchOf = (dir) => path.join(fs.realpathSync(dir), '.claude', 'worktrees', `ledger-unfixed-${UNIT}`);
+const scratchOf = (dir) => path.join(fs.realpathSync(dir), '.claude', 'worktrees', `ledger-unfixed.${UNIT}`);
 
 /** `verify run … --unfixed`'s call for 1.S1, the command `test`. @param {string} [test] @param {string} [scenario] */
 const unfixedArgs = (test = TEST, scenario = '1.S1') => ['verify', 'run', UNIT, scenario, '--unfixed', '--test', test];

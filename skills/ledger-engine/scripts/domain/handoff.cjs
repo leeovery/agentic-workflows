@@ -18,11 +18,8 @@
 // its topic, the experiment the handoff names: the one a spawn worked now
 // just conceived, so its entry asks no pick of it.
 //
-// The epic's menu takes the epic alone: one in progress, or one finish
-// completed, whose menu is its complete variant (18.4.23). The start,
-// `ledger`, takes nothing: where finish hands every other unit once it is
-// done, and where a feature's, bugfix's or quick-fix's cancel from inside
-// its session goes (18.4.20). The roadmap takes nothing either.
+// The epic's menu takes the epic alone, one in progress. The start,
+// `ledger`, takes nothing. The roadmap takes nothing either.
 //
 // Discovery is told how the conversation was come to: a work type, the
 // person starting a piece of work of that kind; `start`, a piece of work of
@@ -126,16 +123,6 @@ function assertWorkUnit(cwd, name, type) {
   }
 }
 
-/**
- * Whether the unit is an epic finish completed, whose menu is its complete
- * variant (18.4.23).
- * @param {string} cwd @param {string} unit
- */
-function finishedEpic(cwd, unit) {
-  const manifest = workUnitManifest(cwd, unit);
-  return manifest.work_type === 'epic' && manifest.status === 'completed';
-}
-
 /** A place, and the most specific name in it where there is one. @param {string} place @param {string|null} [name] */
 function at(place, name = null) {
   return name === null ? place : `${place} · ${name}`;
@@ -233,7 +220,7 @@ const TARGETS = {
     usage: '<epic>',
     counts: [1],
     check: (cwd, [unit]) => {
-      if (!finishedEpic(cwd, unit)) assertWorkUnit(cwd, unit, 'epic');
+      assertWorkUnit(cwd, unit, 'epic');
     },
     where: (_cwd, [unit]) => at('Epic', unit),
   },

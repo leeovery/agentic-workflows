@@ -14,8 +14,8 @@
 //   for the epic's own discovery
 //   (8.2.13), `{unit}.specification` for its spec, whose sweep sends what
 //   only carries a decision into a topic (8.10.5), `{unit}.{topic}` for
-//   another unit's, or an
-//   experiment of the unit — `E{n}` of the
+//   another unit's, `product` for a conversation outside the unit (10.1.9),
+//   or an experiment of the unit — `E{n}` of the
 //   target topic's series, `{topic}/E{n}` of another topic's, where the
 //   person moved its question (9.1.11). It takes the next number under the
 //   writer lock, so a send racing another takes the one after it, and parks
@@ -52,11 +52,11 @@
 const fs = require('fs');
 const path = require('path');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, ensureContainer } = require('../kernel/manifest.cjs');
-const { EXPERIMENT_ID_PATTERN, KEBAB_SLUG_PATTERN, WORK_TYPE_PIPELINES, illegalNameReason, workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
+const { EXPERIMENT_ID_PATTERN, KEBAB_SLUG_PATTERN, PRODUCT, WORK_TYPE_PIPELINES, illegalNameReason, workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
 const { stateRoot, statePath, stateRelative, cacheScratch } = require('../kernel/state-root.cjs');
 const { messageOf } = require('../kernel/call.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
-const { computeTopicLifecycle, mailboxDir, mailboxFiles, mailPhase, dismissedNames, topicTitle, itemTitle, topicKey, voidDecidedClose } = require('./derivations.cjs');
+const { computeTopicLifecycle, mailboxDir, mailboxFiles, mailPhase, dismissedNames, topicTitle, itemTitle, topicKey, voidTopicClose } = require('./derivations.cjs');
 const { parkMessageItem, assertLegalTopicName } = require('./transitions.cjs');
 const { liveness, manifestOf } = require('./ledger-units.cjs');
 const { ID_FACTS, foldLedger, movedToBy } = require('./ledger-fold.cjs');
@@ -137,6 +137,9 @@ function topicSender(cwd, manifest, from) {
   return unit === manifest.name || held === unit ? title : `${title}, on ${titlecase(unit)}`;
 }
 
+/** How the waiting mail titles the product, sending from a conversation outside the unit (10.1.9). */
+const PRODUCT_SENDER = 'the product';
+
 /** The unit's own places that send, by the phase each is, and how the waiting mail titles each. */
 const UNIT_SENDERS = Object.freeze({ discovery: 'Discovery', specification: 'Specification' });
 
@@ -156,14 +159,14 @@ function unitSender(manifest, from) {
 
 /**
  * How the waiting mail titles a message's sender, refused where `from`
- * names neither the unit's discovery or spec, an experiment nor a topic it
- * takes.
+ * names neither the product, the unit's discovery or spec, an experiment
+ * nor a topic it takes.
  * @param {string} cwd @param {Record<string, any>} manifest @param {string} topic @param {string} from
  */
 function senderTitle(cwd, manifest, topic, from) {
-  const title = unitSender(manifest, from) ?? experimentSender(manifest, topic, from) ?? topicSender(cwd, manifest, from);
+  const title = from === PRODUCT ? PRODUCT_SENDER : unitSender(manifest, from) ?? experimentSender(manifest, topic, from) ?? topicSender(cwd, manifest, from);
   if (title === null) {
-    throw new Error(`--from names "${from}" — it takes who sent the message: a topic of ${manifest.name} or an item of one of its phases, ${manifest.name}.discovery for its discovery, ${manifest.name}.specification for its spec, {unit}.{topic} for another unit's, E{n} for an experiment of ${topic}, or {topic}/E{n} for one of another topic`);
+    throw new Error(`--from names "${from}" — it takes who sent the message: a topic of ${manifest.name} or an item of one of its phases, ${manifest.name}.discovery for its discovery, ${manifest.name}.specification for its spec, {unit}.{topic} for another unit's, ${PRODUCT} for a conversation outside it, E{n} for an experiment of ${topic}, or {topic}/E{n} for one of another topic`);
   }
   return title;
 }
@@ -308,7 +311,7 @@ function toMailbox(cwd, manifest, phase, topic, message, slug) {
     const phases = ensureContainer(manifest, 'phases', 'phases');
     const items = ensureContainer(ensureContainer(phases, phase, `phases.${phase}`), 'items', `phases.${phase}.items`);
     const park = parkMessageItem(items, phase, topic);
-    const voided = voidDecidedClose(manifest, topic, new Date().toISOString());
+    const voided = voidTopicClose(manifest, topic, new Date().toISOString());
     if (park.reopened) fields.reopened = true;
     if (park.dirty || voided) saveWorkUnitManifest(cwd, unit, manifest);
   }

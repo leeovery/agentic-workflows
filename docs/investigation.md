@@ -20,7 +20,7 @@ Claude traces from where you meet the bug back to its source: the data's path, t
 
 What the code or a run shows lands on the ledger as a finding saying how it is known: read in the code, documented with its source, or exploratory, with the command and its result. A check run to test a hypothesis is logged with what it showed. Each hypothesis's state follows the evidence: confirmed, or ruled out, a dead end kept and never deleted, or intended, where you say the behaviour is meant. A new suspect joins as a hypothesis of its own.
 
-Whenever hypotheses resolve, a **check-in** shows what was resolved and what is checked next, before the trace moves on. Between check-ins, a line or two on what just flipped keeps you with the hunt without stopping it.
+Whenever hypotheses resolve, a **check-in** shows what was resolved and what is checked next, and the trace moves on without waiting for you.
 
 ## What only you can say
 
@@ -59,7 +59,7 @@ When you decide the right fix is to rework the area, the bugfix moves to a featu
 
 The investigation closes once the root cause and the fix stand, both validated since, nothing of yours open and no mail waiting; it has no checklist. Its recap tells the hunt short, in the product's terms: what was suspected, what ruled each out, what proved the cause. It also names what the bug is in, for the bugs found after a review: the piece of work whose code the bug is in, where one built it, and where the project has a verify setup, the area of its feature map the bug sits in. Bugs found after a review are grouped by those areas, which steers the checks there.
 
-The **conclude** gate shows the recap and asks a verdict on each call you changed along the way: what Claude's answer would have cost, nothing, a fix later, or a real loss. Your yes concludes the investigation and hands the work into its specification; keep going carries the hunt on.
+The investigation has no gate of its own: once it closes, the work moves into its specification, and the recap is shown at [ready to build](specification.md#ready-to-build), with a verdict asked on each call you changed along the way: what Claude's answer would have cost, nothing, a fix later, or a real loss. That yes concludes the investigation with the spec. Until the spec is written, opening the investigation again, a message reaching it, a question asked there, a decision replaced there or a new line in its log takes it back, and it closes again once it can; taken back while the spec is being written, it holds the spec back until it closes again. Once the spec is written the investigation is set: a change to the root cause or the fix, asked for at ready to build or found in the spec's review, is made in the spec, and the recap is told again over it.
 
 From there a bugfix runs as a feature does, with two differences. [The build](the-build.md)'s first task writes the test that reproduces the bug, and it lands only once that test has failed on the unfixed code, five times in a row. And before its first round, the [review phase](review.md) runs that test on the unfixed code again: a pass there is a finding, since the test no longer proves the bug.
 

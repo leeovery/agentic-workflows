@@ -113,7 +113,7 @@ describe('render review-report: a round\'s report (14.4.1)', () => {
       '  └─ Card expiry (idea)',
       '',
       'CALLS DECIDED FOR YOU',
-      `  5 calls: 1 danger · 1 words · 1 behaviour · 2 unlabelled — render review-calls ${UNIT} lists them`,
+      `  5 calls: 1 danger · 1 words · 1 behaviour · 2 unlabelled — ask me to list them`,
       '',
     ].join('\n'));
     assert.strictEqual(stateText(`${UNIT}/review/round-1.md`), shown.replace('TO FIX, PHASE 3', 'FIX TASKS, PHASE 3').replace('  5 calls:', '  5 calls, when round 1 was recorded:'));
@@ -130,7 +130,7 @@ describe('render review-report: a round\'s report (14.4.1)', () => {
 
     assert.ok(settled.startsWith('Pay — review settled in round 2, the certificate of the work\n'), settled);
     assert.ok(settled.includes('SETTLED\n  └─ The amount is the bank\'s to show.\n'), settled);
-    assert.ok(first.includes('  5 calls: 1 danger · 1 words · 1 behaviour · 2 unlabelled — render review-calls'), first);
+    assert.ok(first.includes('  5 calls: 1 danger · 1 words · 1 behaviour · 2 unlabelled — ask me to list them'), first);
     assert.strictEqual(screen(['review-report', UNIT, '--round', '1']), first.replace('TO FIX, PHASE 3 (1 task)\n  └─ 3.1 The receipt is never sent.', 'FIXED (1)\n  └─ The receipt is never sent.').replace('  5 calls: 1 danger · 1 words · 1 behaviour · 2 unlabelled', '  6 calls: 1 danger · 1 words · 1 behaviour · 3 unlabelled'));
     assert.deepStrictEqual([none, refuses(dir, ['render', 'review-report', UNIT, '--round', '3'], { env: env() }).error], [
       `render review-report: ${UNIT}'s review phase has recorded no round yet — review round ${UNIT} --file <round.json> records one`,
@@ -148,7 +148,7 @@ describe('render review-report: a round\'s report (14.4.1)', () => {
     const shown = screen(['review-report', UNIT]);
 
     const lines = (/** @type {string} */ text) => text.split('\n').filter((line) => /^(Pay|ROUND|FIXED|NOT BUILT|TO FIX|FIX TASKS|CALLS|  \d+ calls|  └─ (\d\.\d )?The receipt)/.test(line));
-    const calls = `  5 calls across the work unit, 3 of them in the build: 1 danger · 1 words · 1 behaviour · 2 unlabelled — render review-calls ${UNIT} lists them`;
+    const calls = `  5 calls across the work unit, 3 of them in the build: 1 danger · 1 words · 1 behaviour · 2 unlabelled — ask me to list them`;
 
     assert.deepStrictEqual(lines(shown), [
       'Pay — review passed in round 3, the certificate of the work',
@@ -221,7 +221,7 @@ describe('a blind question\'s call gone ahead, held back (16.17.2)', () => {
         rows: [{ key: '1', name: 'Two', text: 'Two words.', notice: 'the label reads plainer' }, { key: '2', name: 'One', text: 'One word.', notice: 'the label is shorter' }],
         lean: '1', why: 'It reads plainer.', sort: 'several', mechanism: 'The label\'s text.', product_wide: false,
       },
-      rows_judged: [], why_asking: 'Asked cold.', label: null, model: null, blocks_build: true, replaced_by: null, always: null, measured: null, chain: answers, blind: true,
+      rows_judged: [], why_asking: 'Asked cold.', asked_by: 'counts', label: null, model: null, blocks_build: true, replaced_by: null, always: null, measured: null, chain: answers, blind: true,
     }, []);
   }
 

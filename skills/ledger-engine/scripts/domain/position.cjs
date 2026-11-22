@@ -52,6 +52,11 @@
 // conversation is at no place while its builders go on (conversation.cjs) —
 // until each task closes, the position going with the last, or a position
 // is recorded again, which carries them only to a place of the same unit.
+// A quick-fix closed or cancelled from inside its session is the exception:
+// the conversation carries on there, so it leaves the unit's place whole,
+// its tasks in flight with it, the place it left kept for the board to draw
+// the close (`leaveUnit`, topic-leave.cjs) — nothing holds a commit it
+// makes afterwards.
 //
 // The engine is the file's one writer, and writes only for a conversation
 // that runs Ledger: recording a position marks the conversation first
@@ -434,18 +439,27 @@ function leaveFor(sessionId, { name, phase }) {
   writeJsonAtomic(leftPath(sessionId), { name, phase });
 }
 
+/** The place `prior` names kept as left where it names a phase, else none. @param {string} sessionId @param {Position|null} prior */
+function keepLeft(sessionId, prior) {
+  if (prior?.phase === undefined) fs.rmSync(leftPath(sessionId), { force: true });
+  else leaveFor(sessionId, prior);
+}
+
 /**
  * The conversation `sessionId` leaves its position for the start menu, the
  * place left kept where it names a phase, else none — the position kept for
- * its tasks in flight where it holds any (conversation.cjs).
+ * its tasks in flight where it holds any (conversation.cjs). One that has
+ * left already, sitting nowhere, keeps the place it left: a finish or a
+ * cancel leaves the unit before a start's boot (`leaveUnit`), its done
+ * banner kept through it.
  * @param {string|null|undefined} sessionId
  */
 function leavePosition(sessionId) {
   if (!sessionId) return;
   underPositionLock(sessionId, (file) => {
+    if (!fs.existsSync(file)) return false;
     const prior = storedPosition(sessionId);
-    if (prior?.phase === undefined) fs.rmSync(leftPath(sessionId), { force: true });
-    else leaveFor(sessionId, prior);
+    keepLeft(sessionId, prior);
     if (prior?.tasks === undefined) fs.rmSync(file, { force: true });
     return true;
   });
@@ -462,6 +476,24 @@ function dropPosition(sessionId) {
     const prior = storedPosition(sessionId);
     if (prior?.tasks === undefined) fs.rmSync(file, { force: true });
     else leaveFor(sessionId, prior);
+    return true;
+  });
+}
+
+/**
+ * The conversation `sessionId` leaves the unit's place whole, where its
+ * position names it: the position gone with the unit's tasks in flight,
+ * the place left kept where it names a phase (the header's). Whether it
+ * left.
+ * @param {string|null} sessionId @param {string} workUnit @returns {boolean}
+ */
+function leaveUnit(sessionId, workUnit) {
+  if (!sessionId) return false;
+  return underPositionLock(sessionId, (file) => {
+    const prior = storedPosition(sessionId);
+    if (prior?.name !== workUnit) return false;
+    keepLeft(sessionId, prior);
+    fs.rmSync(file, { force: true });
     return true;
   });
 }
@@ -839,6 +871,6 @@ function positionSections(reads) {
 }
 
 module.exports = {
-  readPosition, assertPlace, isPlace, recordPosition, recordTask, recordTasksAt, recordBuilder, recordWorktree, recordStop, clearStop, clearTask, clearTasks, leavePosition, dropPosition,
+  readPosition, assertPlace, isPlace, recordPosition, recordTask, recordTasksAt, recordBuilder, recordWorktree, recordStop, clearStop, clearTask, clearTasks, leavePosition, dropPosition, leaveUnit,
   placeLine, skillAt, positionReads, positionSections,
 };

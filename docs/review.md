@@ -1,6 +1,6 @@
 # Review
 
-The review phase is the last phase: the whole change held up against the specification's intent, with the product run, once every phase of [the build](the-build.md) has closed. It is the third kind of review the work meets, after each task's reviewer pair and each phase's review, and the only one that reads the change as a whole against what was agreed.
+The review phase is the last phase: the whole change held up against the specification's intent, with the product run, once every phase of [the build](the-build.md) has closed. It is the third kind of review the work meets, after each task's review and each phase's review, and the only one that reads the change as a whole against what was agreed.
 
 The build runs straight into it in the same conversation, with no stop between them. After a break, the menus move back into it where it stood. A quick-fix has one only when you ask for one at its close.
 
@@ -18,7 +18,7 @@ The review works in rounds. Each round reads, lands what it finds, and reports t
 
 Each call to file or drop a finding, and each serious finding or bug dropped in scope, is a call on the ledger with its reason, so you can see later what was set aside and why.
 
-**The fix tasks.** A round's fix tasks are one more phase of the build, its own, each task's acceptance scenario the user scenario of the finding it fixes. They are built in the build's own task loop, each passed by its reviewer pair, in the build's position. A fix phase has no phase review: the areas its tasks changed are read again instead.
+**The fix tasks.** A round's fix tasks are one more phase of the build, its own, each task's acceptance scenario the user scenario of the finding it fixes. They are built in the build's own task loop, each passed by its reviewers, in the build's position. A fix phase has no phase review: the areas its tasks changed are read again instead.
 
 **The report.** Each round's report is drawn for you: what was read, what was found, where each finding went, and what goes to the inbox. It is not a gate. The review carries on.
 
@@ -32,7 +32,7 @@ A round that fails again on findings its fixes already addressed is Claude's to 
 
 The review runs without you but for its reports and finish. A question that needs you goes through the [ask rule](trust.md), and one that waits parks only the fix tasks that depend on it, as in the build. Ask "what did you decide for me?" and you get the calls made along the way. You can ask for any task's account, the build's or a fix's, and for the phases and tasks, the fix phases among them.
 
-The review takes its turn in the project's checkout and leaves the working tree as it found it. Where something in the working tree changed while a round ran, you are asked what becomes of it; whatever is put back is kept aside where you can find it, until you remove it.
+The review takes its turn in the project's checkout, a quick-fix's reading its worktree, and leaves the working tree as it found it. Where something in the working tree changed while a round ran, you are asked what becomes of it; whatever is put back is kept aside where you can find it, until you remove it. A quick-fix closing in another session meanwhile, which brings your checkout up to what it landed, is no change: the review reads its own work, never what landed beside it.
 
 ## Finish
 
@@ -40,7 +40,7 @@ Once a round has passed, or been settled, and its fix tasks are done, finish is 
 
 **Finish** is the gate that ends the work. It shows the finish report, asks a verdict on each call you changed during the build and the review, and names each inbox item the work resolved and archived, so nothing is silently discarded. An item closed wrongly can be asked back to the inbox.
 
-Your yes lands what is left to land, the review's fix phases last, and a work unit with a branch of its own lands it on the default branch. A refusal names the way on, such as a conflict with the default branch to settle with you first. Then the work is complete: it leaves the start menu for the list behind its `v/view` row, its decisions stay current in the [knowledge base](knowledge-base.md), and it stays finished. A later change to it is new work.
+Your yes lands what is left to land, the review's fix phases last, and a work unit with a branch of its own lands it on the default branch. A refusal names the way on, such as a conflict with the default branch to settle with you first. Then the work is complete: it leaves the start menu for the list behind its `v/view` row, its decisions stay current in the [knowledge base](knowledge-base.md), and it stays finished. A later change to it is new work. No menu follows: a line says it is done and what waits on you, with the menu one `/ledger` away.
 
 ## A quick-fix's review
 

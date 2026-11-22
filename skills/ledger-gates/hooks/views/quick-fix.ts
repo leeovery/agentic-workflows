@@ -17,7 +17,7 @@ import { taskLineOf, taskState, waitingLines, type TaskLine, type Waiting } from
 import type { ViewDrawing } from './index.ts'
 import { header, section } from './words.ts'
 
-type Rounds = { sent_back: number; reading: number | null; passed: number | null; settled: boolean }
+type Rounds = { sent_back: number; reading: number | null; passed: number | null; settled: boolean; unreviewed?: boolean }
 type Fix = TaskLine & { rounds: Rounds }
 type Replaced = { id: string; text: string; by: 'person' | 'claude'; unit_title: string }
 type FixRecord = { title: string; changed: string; why: string; leaves: string }
@@ -84,17 +84,18 @@ const changeLines = (view: QuickFix, width: number): Line[] => [
 /** Rounds 1 to `last`, as their words say them. */
 const roundsUpTo = (last: number) => (last === 1 ? 'round 1' : `rounds 1 to ${last}`)
 
-/** The round a done fix's review ended in, as the build says it: settled by the orchestrator, or passed after the rounds of fixes before it; nothing where none did. */
-function endedWords({ passed, settled, sent_back }: Rounds): string {
+/** The round a done fix's review ended in, as the build says it: settled by the orchestrator, or passed after the rounds of fixes before it; a one-line fix, read by no reviewer; nothing where none did. */
+function endedWords({ passed, settled, sent_back, unreviewed }: Rounds): string {
+  if (unreviewed === true) return 'a one-line fix, read by no reviewer'
   if (passed === null) return ''
   if (settled) return `settled by the orchestrator in round ${passed}`
 
   return `passed its review in round ${passed}${sent_back === 0 ? '' : `, after ${counted(sent_back, 'round')} of fixes`}`
 }
 
-/** A fix's pair's rounds, as the line beneath it says them: how its review ended once done, else those sent back and the one being read. */
+/** A fix's reviewers' rounds, as the line beneath it says them: how its review ended once done, and a one-line fix's from its start; else those sent back and the one being read. */
 function roundsWords({ state, rounds }: Fix): string {
-  if (state === 'done') return endedWords(rounds)
+  if (state === 'done' || rounds.unreviewed === true) return endedWords(rounds)
 
   return [...(rounds.sent_back === 0 ? [] : [`${roundsUpTo(rounds.sent_back)} sent back`]), ...(rounds.reading === null ? [] : [`round ${rounds.reading} being read`])].join(' · ')
 }

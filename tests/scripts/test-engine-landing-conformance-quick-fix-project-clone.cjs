@@ -6,8 +6,8 @@
 // verbs against each shipped driver in turn. A fix across the project and a
 // nested clone, the door's record of the clone on the state branch, then
 // every repository as a second clone of the project has it once its state
-// branch merges — the record, and no branch of the quick-fix's here nor any
-// commit of one in a reflog: the next fix, in the project alone, walks the
+// branch merges — the record, and no worktree or branch of the quick-fix's
+// here nor any commit of one in a reflog: the next fix, in the project alone, walks the
 // clone the record names, and the close lands it there with the project's.
 // A second clone of the clone alone is
 // test-engine-landing-conformance-quick-fix-nested-second-clone.cjs's. A
@@ -38,11 +38,10 @@ for (const { name } of listDrivers('landing')) {
       const at = project();
       built(at, 1, { [SET[0].file]: SET[0].text, 'lib/lib.txt': 'lib --colour\n' });
       const carried = JSON.parse(git(at.dir, ['show', `${STATE_BRANCH}:${UNIT}/manifest.json`])).fixes.repos;
-      git(at.dir, ['switch', '-q', 'main']);
+      secondClone(at, 'lib');
       git(at.dir, ['branch', '-q', '-D', BRANCH]);
       git(at.dir, ['update-ref', '-d', `refs/remotes/origin/${BRANCH}`]);
       git(at.dir, ['reflog', 'expire', '--expire=now', 'HEAD']);
-      secondClone(at.lib, NESTED.lib.into);
       built(at, 2, { [SET[1].file]: SET[1].text });
       const close = closed(at);
 

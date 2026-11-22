@@ -22,7 +22,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
 const { ok, refuses, readManifest } = require('./engine-harness.cjs');
-const { UNIT, DESCRIPTION, BRANCH, ownCommit, checklistClosed, quickFixConformance } = require('./quick-fix-world.cjs');
+const { UNIT, DESCRIPTION, BRANCH, ownCommit, checklistClosed, fixTree, quickFixConformance } = require('./quick-fix-world.cjs');
 const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
 
 for (const { name } of listDrivers('landing')) {
@@ -34,7 +34,7 @@ for (const { name } of listDrivers('landing')) {
       const at = project();
       built(at, 1);
       merge(at, BRANCH);
-      ownCommit(at, 'My own change');
+      ownCommit(fixTree(at), 'My own change');
       record(at, 1);
       checklistClosed(at, as());
       const { env: refusing, undo } = side.refuseMerge(at);

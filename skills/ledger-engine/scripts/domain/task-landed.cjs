@@ -96,7 +96,9 @@
 // it on leaves it; else, its branch gone, the newest anywhere the repository
 // holds it, on any ref or reflog, so a branch deleted loses none — never on
 // a branch the engine kept a moved branch's work aside on, a task of its
-// own, nor a commit dropped from a branch that stands. Only content decides
+// own, nor a commit dropped from a branch that stands; a quick-fix's task's
+// merge only by the one rule its own commits are read by everywhere, as its
+// landing's reads give it (`lg.quickFixMerges`). Only content decides
 // a landing (R28), and never when a commit was made: two made in one second
 // read as they do a second apart, or a clock set wrong. The one name of one
 // read is a `Task:` line, which the engine's squash writes, and the door's
@@ -272,11 +274,14 @@ const stamp = () => require('./commit-task.cjs').TRAILER;
  * on that branch's line, with its tip (`oldest`); each task's branch here,
  * by its name; and the
  * commits every task's branch's tip holds since the unit's work began, on
- * any revision or past it, each after its parents (`lg.commitGraph`).
- * @param {string} root @param {string} unit @param {string|null} since @param {Map<string, string>} [local] the branches here, where the caller read them
+ * any revision or past it, each after its parents (`lg.commitGraph`). A
+ * merge stamped with a task is its work where `merges` takes it — a
+ * quick-fix's by the one rule its tasks' own commits are read by
+ * (`lg.quickFixMerges`) — and every one where none is given.
+ * @param {string} root @param {string} unit @param {string|null} since @param {Map<string, string>} [local] the branches here, where the caller read them @param {import('./landing-git.cjs').MergeRule} [merges]
  * @returns {{stamps: () => Map<string, TimedCommit>, oldest: () => Map<string, import('./landing-git.cjs').OldestOn>, strays: () => Map<string, TimedCommit>, straysRead: () => boolean, last: (id: string) => TimedCommit|undefined, lasts: () => Map<string, TimedCommit>, tips: () => Map<string, string>, anywhere: () => Map<string, TimedCommit[]>, names: () => Map<string, string>, graph: () => TipGraph}}
  */
-function workIn(root, unit, since, local) {
+function workIn(root, unit, since, local, merges) {
   /** @type {Map<string, string>|undefined} */
   let refs = local;
   /** @type {TipGraph|undefined} */
@@ -292,8 +297,8 @@ function workIn(root, unit, since, local) {
   /** @type {Map<string, TimedCommit[]>|undefined} */
   let all;
   const branches = () => (refs ??= lg.branches(root));
-  const anywhere = () => (all ??= lg.stampedAnywhere(root, stamp(), unit, since, branches()));
-  const owned = () => (onBranches ??= lg.lastStamped(root, stamp(), unit, since, branches()));
+  const anywhere = () => (all ??= lg.stampedAnywhere(root, stamp(), unit, since, branches(), merges));
+  const owned = () => (onBranches ??= lg.lastStamped(root, stamp(), unit, since, branches(), merges));
   const strays = () => (strayLasts ??= new Map([...anywhere()].flatMap(([id, [commit]]) => (owned().owned.has(id) ? [] : [[id, commit]]))));
   /** Each task's branch here, by the task's internal id. */
   const branchNames = () => (named ??= new Map([...branches().keys()].flatMap((name) => {

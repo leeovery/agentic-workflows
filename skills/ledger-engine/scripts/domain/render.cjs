@@ -9,15 +9,15 @@
 // branching renders inside the surface: the caller never chooses between
 // gated and auto output.
 //
-// Surfaces read; they never write a state commit takes, and write three
-// things beside. `map` moves the last-looked mark as
-// it draws, since the map shown in the conversation is the person looking
+// Surfaces read; they never write a state commit takes, and write four
+// things beside. `map` moves the last-looked mark as it draws, since the map shown in the conversation is the person looking
 // (5.8.14). `decided --file` stages Claude's payload in the topic's cache,
 // what the gate's yes lands (decided.cjs); `start-this-work --file` and
 // `approve-map --file` stage theirs in discovery's cache the same way
-// (start-this-work.cjs, approve-map.cjs), and `conclude --file` the recap in
-// the investigation's (investigation-conclude.cjs). A menu leaves the
-// conversation's position where its registry says (menus.cjs).
+// (start-this-work.cjs, approve-map.cjs). `convergence`, due and settling
+// nothing, starts the topic's run again in its cache, as the person's no
+// does (convergence.cjs). A menu leaves the conversation's position where
+// its registry says (menus.cjs).
 
 const fs = require('fs');
 const path = require('path');
@@ -34,14 +34,13 @@ const {
   ORIGINS: WALKTHROUGH_ORIGINS, loadScreen, loadCard, walkthroughOffer, walkthroughScreen, walkthroughTopic,
 } = require('./projections/walkthrough.cjs');
 const { helpTopicsSurface } = require('./projections/help-topics.cjs');
-const { RESHAPE_PARTS, migrationsApplied, migrationGate, stateLostGate, repoStop, migrationGuardStop, migrationChecksStop, githubRuleGate, githubSquashGate, labelGate, brownfieldOfferGate, banner, workPick, knowledgeGate, knowledgeAsk, knowledgeReady, knowledgeNotDone, KEY_PROVIDERS } = require('./projections/boot.cjs');
+const { RESHAPE_PARTS, migrationsApplied, migrationGate, stateLostGate, repoStop, migrationGuardStop, migrationChecksStop, githubRuleGate, labelGate, brownfieldOfferGate, banner, workPick, knowledgeGate, knowledgeAsk, knowledgeReady, knowledgeNotDone, KEY_PROVIDERS } = require('./projections/boot.cjs');
 const { readiness } = require('./knowledge/status.cjs');
 const { knowledgeFiles } = require('../kernel/knowledge/files.cjs');
 const { readMetadata } = require('../kernel/knowledge/store.cjs');
 const { detectSystemConfig } = require('./boot.cjs');
 const { pickRows } = require('./boot-route.cjs');
 const { messageOf } = require('../kernel/call.cjs');
-const { githubSquashNested } = require('./github-setup.cjs');
 const { multiplexerHere } = require('./session-label.cjs');
 const { roadmapState, hasRoadmapNode } = require('./roadmap.cjs');
 const { putBackBy, stillToAsk, thenArgs, ontoMenu } = require('./topic-leave.cjs');
@@ -63,7 +62,6 @@ const { approveMapSurface, approveMapStrikeSurface } = require('./approve-map.cj
 const { readyToBuildSurface } = require('./ready-to-build.cjs');
 const { buildHeadlineSurface, taskLandedSurface, taskAccountSurface, stepGateSurface, phaseMergeGateSurface, buildStopSurface, buildProgressSurface } = require('./build-screens.cjs');
 const { investigationPlanSurface, investigationCheckInSurface } = require('./investigation.cjs');
-const { concludeSurface } = require('./investigation-conclude.cjs');
 const decisionPoint = require('./decision-point.cjs');
 const { reviewReportSurface, reviewCallsSurface } = require('./review-round.cjs');
 const { reviewTreeSurface } = require('./review-tree.cjs');
@@ -407,7 +405,7 @@ function epicUnitCancel(cwd, dotpath) {
 /**
  * What a unit's cancel does to its code, as its gate says it before the yes
  * (18.3.9): a quick-fix's, once its fixes have begun, its branch kept and
- * each checkout taken off it, its work not committed set aside; any other
+ * its worktree taken apart, its work not committed set aside; any other
  * unit's, its branches kept — each saying its pull requests closed only
  * where one may stand open (landing.cjs, `mayHoldOpen`); null where it
  * says nothing.
@@ -417,7 +415,7 @@ function epicUnitCancel(cwd, dotpath) {
 function cancelCodeLine(cwd, unit, manifest) {
   if (quickFixBuild(manifest)) {
     if (!fixesBegun(manifest)) return null;
-    const keeps = `keeps ${quickFixBranch(unit)}, taking each checkout off it, any work not committed set aside and kept.`;
+    const keeps = `keeps ${quickFixBranch(unit)}, taking its worktree apart, any work not committed set aside and kept.`;
     return mayHoldOpen(cwd, unit) ? `It closes its open pull requests and ${keeps}` : `It ${keeps}`;
   }
   return mayHoldOpen(cwd, unit) ? 'It closes its open pull requests, keeping each branch for a reactivate to carry on from.' : null;
@@ -777,20 +775,15 @@ function brownfieldOfferGateSurface(cwd) {
 // no surface reads it.
 // ---------------------------------------------------------------------------
 
-/**
- * ledger's one-time offer, standing before the walk. `--menu-only`
- * serves the return from a question.
- * @param {string} _cwd @param {Record<string, string|undefined>} args @returns {string}
- */
-function walkthroughOfferSurface(_cwd, args) {
-  return walkthroughOffer(Boolean(args['menu-only']));
+/** ledger's one-time offer, standing before the walk. @returns {string} */
+function walkthroughOfferSurface() {
+  return walkthroughOffer();
 }
 
 /**
  * One screen of the walk. `--from` carries the caller, which is what varies
  * the exits: a first run can skip to the start menu, a walk opened from help
- * goes back to it. `--menu-only` serves the return from a question — the
- * screen is already on the reader's terminal.
+ * goes back to it.
  * @param {string} _cwd @param {Record<string, string|undefined>} args @returns {string}
  */
 function walkthroughScreenSurface(_cwd, args) {
@@ -798,21 +791,17 @@ function walkthroughScreenSurface(_cwd, args) {
   if (origin === undefined || !WALKTHROUGH_ORIGINS.includes(origin)) {
     throw new Error(`render walkthrough-screen: --from must be one of ${WALKTHROUGH_ORIGINS.join(', ')}, got "${origin ?? ''}"`);
   }
-  return walkthroughScreen(loadScreen(args.screen), origin, Boolean(args['menu-only']));
+  return walkthroughScreen(loadScreen(args.screen), origin);
 }
 
 /**
  * One reference card, addressed by its slug, as the cards' row for it names
- * it: whole, with its menu. `--menu-only` serves the return from a question,
- * the card already on the reader's terminal; `--content-only`, a card shown
- * in an answer, mid-conversation, where it carries no gate.
+ * it: whole, with its menu; `--content-only`, a card shown in an answer,
+ * mid-conversation, where it carries no gate.
  * @param {string} _cwd @param {Record<string, string|undefined>} args @returns {string}
  */
 function walkthroughTopicSurface(_cwd, args) {
-  if (args['menu-only'] && args['content-only']) throw new Error('render walkthrough-topic: --menu-only and --content-only each draw part of the card — give one');
-  const card = loadCard(args.name);
-  if (args['menu-only']) return walkthroughTopic(card, 'menu');
-  return walkthroughTopic(card, args['content-only'] ? 'content' : 'whole');
+  return walkthroughTopic(loadCard(args.name), Boolean(args['content-only']));
 }
 
 /** The knowledge gate's variants a row draws by name; with none, the gate opens on reuse or mode. */
@@ -915,7 +904,6 @@ const SURFACES = {
   'git-floor-stop': () => gitFloorStopSurface(),
   'repo-stop': repoStopSurface,
   'github-rule-gate': (cwd) => githubRuleGate(projectName(cwd)),
-  'github-squash-gate': (cwd) => githubSquashGate(projectName(cwd), githubSquashNested(cwd)),
   'label-gate': () => labelGateSurface(),
   'knowledge-gate': knowledgeGateSurface,
   'knowledge-ask': knowledgeAskSurface,
@@ -951,7 +939,6 @@ const SURFACES = {
   'finish': finishSurface,
   'investigation-plan': investigationPlanSurface,
   'investigation-check-in': investigationCheckInSurface,
-  'conclude': concludeSurface,
   'help': (_cwd, { dotpath, item, ...flags }) => helpSurface(dotpath, { arg: item, flags }),
   'verdicts': (cwd, { unit }) => verdictsSurface(cwd, unit ?? null),
   'start-menu': (cwd) => startMenuSurface(cwd),

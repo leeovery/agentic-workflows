@@ -37,7 +37,11 @@
 // Every phase a session sits in carries presence, discovery among them: an
 // epic's at the unit itself, and the product's conversation at
 // `product/discovery/product` — the product, which has no directory of its
-// own, keeping its row beside the units'.
+// own, keeping its rows beside the units'. The product's conversation is
+// the one place several conversations sit in at once, so it keeps a row for
+// each, `presence-{session}`: the hold read there is any other live
+// conversation's, whichever beat last, and a conversation leaving it drops
+// its own. Every other place keeps one row, `presence`.
 //
 // So does the migration, while a session carries it on (21.10.10, P7): one
 // row, in the folder the runner journals in, which the reshape's commit
@@ -52,21 +56,41 @@
 
 const fs = require('fs');
 const path = require('path');
-const { callerIdentity, startTimeReader, ownerAlive, ownsRow } = require('../kernel/process.cjs');
+const { callerIdentity, startTimeReader, ownerAlive, ownsRow, handedSession } = require('../kernel/process.cjs');
 const { PRODUCT, VALID_PHASES } = require('../kernel/manifest-schema.cjs');
-const { statePath } = require('../kernel/state-root.cjs');
+const { statePath, stateRoot } = require('../kernel/state-root.cjs');
 const { workTree } = require('../kernel/isolated-git.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { MIGRATION_JOURNALS } = require('./migration-commit.cjs');
+const { safeId } = require('./conversation.cjs');
+const { manifestOf } = require('./ledger-units.cjs');
+const { quickFixBuild } = require('./derivations.cjs');
 
 // Every phase a session sits in.
 const PHASES = VALID_PHASES;
 // The phases that write the tree and the index — the unpartitionable pair.
 const CODE_PHASES = ['implementation', 'review'];
 
-/** @param {string} cwd @param {string} wu @param {string} phase @param {string} topic */
+/** A place's rows, by their file names. */
+const ROW = /^presence(-[A-Za-z0-9_-]+)?$/;
+
+/**
+ * The calling conversation's row at a place (the header's): its own at the
+ * product's conversation, the place's one row anywhere else.
+ * @param {string} cwd @param {string} wu @param {string} phase @param {string} topic
+ */
 function presencePath(cwd, wu, phase, topic) {
-  return statePath(cwd, '.cache', wu, phase, topic, 'presence');
+  const session = handedSession();
+  return statePath(cwd, '.cache', wu, phase, topic, wu === PRODUCT && session !== null ? `presence-${safeId(session)}` : 'presence');
+}
+
+/** Every row file at the place `dir` holds. @param {string} dir @returns {string[]} */
+function rowFiles(dir) {
+  try {
+    return fs.readdirSync(dir).filter((name) => ROW.test(name)).map((name) => path.join(dir, name));
+  } catch {
+    return [];
+  }
 }
 
 /** The migration's row. @param {string} cwd */
@@ -234,15 +258,17 @@ function heldBy(record, startOf) {
 }
 
 /**
- * One topic's heartbeat as a row, the held verdict applied; null where the
+ * One topic's heartbeats as rows, the held verdict applied: none where the
  * topic has none.
  * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic
  * @param {(pid: number) => string|null|undefined} startOf
- * @returns {PresenceRow|null}
+ * @returns {PresenceRow[]}
  */
-function rowAt(cwd, workUnit, phase, topic, startOf) {
-  const row = rowOf(presencePath(cwd, workUnit, phase, topic), startOf);
-  return row === null ? null : { phase, topic, ...row };
+function rowsAt(cwd, workUnit, phase, topic, startOf) {
+  return rowFiles(statePath(cwd, '.cache', workUnit, phase, topic)).flatMap((file) => {
+    const row = rowOf(file, startOf);
+    return row === null ? [] : [{ phase, topic, ...row }];
+  });
 }
 
 /**
@@ -282,25 +308,31 @@ function collectRows(cwd, workUnit, startOf) {
     try {
       topics = fs.readdirSync(dir, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name);
     } catch { /* phase never cached */ }
-    for (const topic of topics) {
-      const row = rowAt(cwd, workUnit, phase, topic, startOf);
-      if (row !== null) rows.push(row);
-    }
+    for (const topic of topics) rows.push(...rowsAt(cwd, workUnit, phase, topic, startOf));
   }
   return rows;
 }
 
 /**
+ * Whether the conversation `sessionId` holds the place live — a row of its
+ * own there, its owner alive. Catch-up's read (discovery-entry.cjs), at the
+ * product's conversation, where several conversations keep rows at once.
+ * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic @param {string} sessionId
+ */
+function holdsLive(cwd, workUnit, phase, topic, sessionId) {
+  return rowsAt(cwd, workUnit, phase, topic, startTimeReader()).some((row) => row.held && row.session_id === sessionId);
+}
+
+/**
  * The hold a peer has on one topic — its row, naming when it was last
- * active — or null where none does, or the caller holds it. The entry's read
+ * active — or null where none does but the caller. The entry's read
  * (enter.cjs), which asks before it takes a topic another session holds.
  * @param {string} cwd @param {string} workUnit @param {string} phase @param {string} topic
  * @returns {PresenceRow|null}
  */
 function peerHold(cwd, workUnit, phase, topic) {
   if (!PHASES.includes(phase)) return null;
-  const row = rowAt(cwd, workUnit, phase, topic, startTimeReader());
-  return row !== null && row.held && !ownsRow(row) ? row : null;
+  return rowsAt(cwd, workUnit, phase, topic, startTimeReader()).find((row) => row.held && !ownsRow(row)) ?? null;
 }
 
 /**
@@ -405,7 +437,9 @@ function scanProject(cwd) {
  * Every held implementation or review heartbeat working in the caller's
  * checkout, minus the calling session's own — the code gate's read. Code is
  * the one resource that does not partition by topic: one tree, one index,
- * so one code session per checkout whatever work unit or topic it sits in.
+ * so one code session per checkout whatever work unit or topic it sits in;
+ * a quick-fix's, built in a worktree of its own (fix-branch.cjs), holds
+ * none.
  * @param {string} cwd
  * @returns {(PresenceRow & {work_unit: string})[]}
  */
@@ -414,7 +448,14 @@ function heldCodeSessions(cwd) {
   return scanProject(cwd).sessions.filter((row) => row.held
     && CODE_PHASES.includes(row.phase)
     && row.checkout === checkout
-    && !ownsRow(row));
+    && !ownsRow(row)
+    && !builtApart(cwd, row.work_unit));
+}
+
+/** Whether the unit's code is built in a worktree of its own, a quick-fix's. @param {string} cwd @param {string} unit */
+function builtApart(cwd, unit) {
+  const manifest = manifestOf(stateRoot(cwd), unit);
+  return manifest !== null && quickFixBuild(manifest);
 }
 
 /** A place the exit sweep cleared: a topic's, or the migration's. @typedef {{work_unit: string, phase: string, topic: string}|{place: 'migration'}} Cleared */
@@ -461,7 +502,7 @@ function cleanupPresence(cwd, sessionId) {
         topics = fs.readdirSync(dir, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name);
       } catch { continue; }
       for (const topic of topics) {
-        if (dropOwned(path.join(dir, topic, 'presence'), sessionId)) cleared.push({ work_unit: wu, phase, topic });
+        if (rowFiles(path.join(dir, topic)).map((file) => dropOwned(file, sessionId)).includes(true)) cleared.push({ work_unit: wu, phase, topic });
       }
     }
   }
@@ -471,7 +512,7 @@ function cleanupPresence(cwd, sessionId) {
 
 module.exports = {
   beatPresence, clearPresence, beatQuietly, refreshQuietly, clearQuietly, clearOwnQuietly,
-  scanPresence, scanProject, heldCodeSessions, peerHold, cleanupPresence,
+  scanPresence, scanProject, heldCodeSessions, peerHold, holdsLive, cleanupPresence,
   migrationCarrier, migrationCarried, carriesMigration, beatMigrationQuietly, refreshMigrationQuietly, dropMigrationRow,
   fmtAge,
 };

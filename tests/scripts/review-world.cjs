@@ -19,6 +19,8 @@
 // relying on Claude's call on the receipt; and the project's linters.
 // Beside it a quick-fix, a unit whose build has not begun, one whose second phase has not closed, one with no
 // phase closed, one of one area and one of five, each its one phase closed.
+// A round's suite lands the quick-fix on main, recorded, as its close in
+// another conversation leaves the checkout (`quickFixLanded`).
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -277,9 +279,13 @@ function fixPhaseWritten(phase, tasks) {
 /** The unit switched to step. */
 const inStep = () => createManifest(dir, UNIT, { ...readManifest(dir, UNIT), build: { position: 'step' } });
 
-/** Task 2.2 written in the cut's last phase and done, its branch not landed: the phase's stack waits to merge — at its gate, in step. */
+/**
+ * Task 2.2 in the cut's last phase, as its phase was written with it, then
+ * done, its branch not landed: the phase's stack waits to merge — at its
+ * gate, in step.
+ */
 function cutUnmerged() {
-  taskMade(2, 'Refund twice', '§2.1');
+  DRIVER.createTask(statePath(dir), { unit: UNIT, phase: 2, n: 2 }, readTaskText(taskText('Refund twice', '§2.1')));
   fixBuilt(2, 2, 'Refund twice', 'main', 'src/twice.js');
 }
 
@@ -343,6 +349,22 @@ function firstRoundReady() {
   enter();
   reported(1, EVERY, FAILING);
   fixPhaseWritten(3, [['Send the receipt', '§1.2']]);
+}
+
+/**
+ * The quick-fix's close in another conversation, as it leaves the project's
+ * checkout with main out: `file` written with `text` and committed on main,
+ * the commit recorded as its fix's landing. The commit.
+ * @param {string} dir @param {string} file @param {string} text
+ */
+function quickFixLanded(dir, file, text) {
+  fs.writeFileSync(path.join(dir, file), text);
+  git(dir, ['add', file]);
+  git(dir, ['commit', '-q', '-m', 'fix(tweak): the tweak']);
+  const commit = git(dir, ['rev-parse', 'HEAD']).trim();
+  const landings = { 'tweak-1-1': { '.': { commit, tip: commit, first: commit, by: 'engine', at: FROZEN_AT } } };
+  writeState(dir, layout.manifest('tweak'), JSON.stringify({ ...readManifest(dir, 'tweak'), landings }, null, 2));
+  return commit;
 }
 
 /** Round 1 recorded failing, area 1's finding fixed by task 3.1, not yet built. */
@@ -430,6 +452,6 @@ function storedBriefs() {
 module.exports = {
   UNIT, OTHER, ENGINE, ENGINE_LINE, SESSION_ID, areaText, AREAS, EVERY, FIVE, calls,
   useWorld, env, enter, inStep, payload, reportText, reported, named, recorded, refusedRound, taskMade, fixPhaseWritten, cutUnmerged, fixBranch, fixBuilt, fixClosed, commitFile, data, stateText, lastStateCommit, issued, storedBriefs,
-  decided, reviewCall, filed, raisedAtReview, replacedAtReview, reviewPassed, finishClosed, finishReady, FOUND, RECEIPT, FAILING, firstRoundReady, firstRoundFailed, secondRoundReady, fixParked,
+  decided, reviewCall, filed, raisedAtReview, replacedAtReview, reviewPassed, finishClosed, finishReady, FOUND, RECEIPT, FAILING, firstRoundReady, firstRoundFailed, secondRoundReady, fixParked, quickFixLanded,
   ok, okSections, refusedPristine, statePath, writeState, readManifest, git, stateGit, createManifest, initRepo, assert,
 };

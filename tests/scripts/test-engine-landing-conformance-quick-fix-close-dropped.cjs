@@ -20,7 +20,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
 const { ok, git, createFile, readManifest } = require('./engine-harness.cjs');
-const { UNIT, BRANCH, SET, checklistClosed, quickFixConformance, fixChanged, fixDone } = require('./quick-fix-world.cjs');
+const { UNIT, BRANCH, SET, checklistClosed, quickFixConformance, fixChanged, fixDone, fixTree } = require('./quick-fix-world.cjs');
 const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
 
 const [FLAG] = SET;
@@ -33,9 +33,9 @@ for (const { name } of listDrivers('landing')) {
     it('reads the fix by its branch as it stands, never by the commit dropped, which the reflog keeps: the close lands, nothing left off', () => {
       const at = project();
       fixChanged(at, 1, FLAG.title, FLAG.file, FLAG.text, as());
-      createFile(at, FLAG.file, 'const flag = \'a wrong turn\';\n');
-      ok(at, ['commit', '--paths', FLAG.file, '--task', UNIT, '1.1', '-m', `fix(${UNIT}): take a wrong turn`], as());
-      git(at, ['reset', '-q', '--hard', 'HEAD~1']);
+      createFile(fixTree(at), FLAG.file, 'const flag = \'a wrong turn\';\n');
+      ok(fixTree(at), ['commit', '--paths', FLAG.file, '--task', UNIT, '1.1', '-m', `fix(${UNIT}): take a wrong turn`], as());
+      git(fixTree(at), ['reset', '-q', '--hard', 'HEAD~1']);
       ok(at, ['land', 'open', UNIT, '1.1'], as());
       fixDone(at, '1.1', as());
       built(at, 2);

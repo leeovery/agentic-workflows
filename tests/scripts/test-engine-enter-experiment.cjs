@@ -38,7 +38,7 @@ const { writeManifest, readManifest, setup, problemScratch, SESSION, MADE } = re
 const UNIT = 'lab';
 const TOPIC = 'timing';
 const ENGINE = 'node .claude/skills/ledger-engine/scripts/engine.cjs';
-const USAGE = 'Usage: engine enter <discussion|discovery|specification|implementation|review|investigation|experiment> <work-unit|product> [<topic>] [--take] [--move] [--seeds <seeds>] [--record <record>]';
+const USAGE = 'Usage: engine enter <discussion|discovery|specification|implementation|review|investigation|experiment> <work-unit|product> [<topic>] [--take] [--move] [--type-call] [--seeds <seeds>] [--record <record>]';
 const PEER = String(process.ppid);
 
 const world = fixtureFrom('engine-enter-experiment-', (dir) => {

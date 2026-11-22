@@ -3,8 +3,7 @@
 // ---------------------------------------------------------------------------
 // The render catalogue's surfaces (domain/render.cjs) for the walkthrough:
 // the offer, the walk's screens and the reference cards (23.2.3), each card
-// whole with its way back to the cards, its menu alone after a question, or
-// its content alone in an answer; and the cards' slugs as the answering rule
+// whole with its way back to the cards, or its content alone in an answer; and the cards' slugs as the answering rule
 // names them (answering-how-it-works.md).
 //
 // Layer: verb. World: the project world (setupFixture), a copied git project,
@@ -157,15 +156,6 @@ describe('walkthrough surfaces', () => {
     assert.match(renderSurface(dir, 'walkthrough-screen', { screen: String(last), from: 'help' }), /\*\*`d\/done`\*\*\s+→ Back to help/);
   });
 
-  it('--menu-only is the menu alone — the return from a question, not the screen again', () => {
-    for (const from of ['first-run', 'help']) {
-      const full = renderSurface(dir, 'walkthrough-screen', { screen: '2', from });
-      const menuOnly = renderSurface(dir, 'walkthrough-screen', { screen: '2', from, 'menu-only': '1' });
-      assert.deepStrictEqual(markers(menuOnly), ['MENU: walkthrough screen']);
-      assert.strictEqual(menuOnly, menuOf(full), `${from}: the keys come back exactly as they stood`);
-    }
-  });
-
   it('refuses a screen outside the walk, a missing or unknown origin', () => {
     const total = screenFiles().length;
     for (const screen of [undefined, '', '0', String(total + 1), 'two', '1.5']) {
@@ -206,12 +196,6 @@ describe('walkthrough surfaces', () => {
       ['y', { kind: 'engine', argv: ['walkthrough', 'record', 'walked'] }],
       ['s', { kind: 'engine', argv: ['walkthrough', 'record', 'skipped'] }],
     ]);
-  });
-
-  it('walkthrough-offer --menu-only is the menu alone — the return from a question', () => {
-    const menuOnly = renderSurface(dir, 'walkthrough-offer', { 'menu-only': '1' });
-    assert.deepStrictEqual(markers(menuOnly), ['MENU: walkthrough offer']);
-    assert.strictEqual(menuOnly, menuOf(renderSurface(dir, 'walkthrough-offer', {})));
   });
 
   it('the offer stands outside the walk — no screen of it, and the walk\'s length is the screens alone', () => {
@@ -262,23 +246,16 @@ describe('walkthrough surfaces', () => {
     ]);
   });
 
-  it('every card wears the same menu; --menu-only is that menu alone, and --content-only the card without it, carrying no gate', () => {
+  it('every card wears the same menu, and --content-only is the card without it, carrying no gate', () => {
     const menus = new Set();
     for (const slug of SLUGS) {
       const whole = renderSurface(dir, 'walkthrough-topic', { name: slug });
-      const menuOnly = renderSurface(dir, 'walkthrough-topic', { name: slug, 'menu-only': '1' });
       const content = renderSurface(dir, 'walkthrough-topic', { name: slug, 'content-only': '1' });
-      assert.deepStrictEqual([markers(menuOnly), menuOnly], [['MENU: walkthrough card'], CARD_MENU], slug);
       assert.ok(!markers(content).some((m) => m.startsWith('MENU')), slug);
-      assert.strictEqual(`${content}\n${menuOnly}`, whole, slug);
+      assert.strictEqual(`${content}\n${CARD_MENU}`, whole, slug);
       menus.add(menuOf(whole));
     }
     assert.strictEqual(menus.size, 1);
-  });
-
-  it('refuses a card asked for as its menu alone and its content alone at once', () => {
-    assert.throws(() => renderSurface(dir, 'walkthrough-topic', { name: SLUGS[0], 'menu-only': '1', 'content-only': '1' }),
-      { message: 'render walkthrough-topic: --menu-only and --content-only each draw part of the card — give one' });
   });
 
   it('the answering rule names every card by its slug, and no other', () => {
@@ -288,21 +265,10 @@ describe('walkthrough surfaces', () => {
     assert.deepStrictEqual(named?.[1].split('|'), SLUGS);
   });
 
-  it('a question asked at a card puts back the card\'s menu alone, as the start skill fetches it', () => {
-    const prose = fs.readFileSync(path.join(__dirname, '..', '..', 'skills', 'ledger', 'references', 'start-menu.md'), 'utf8');
-    const call = /^node \S+engine\.cjs render (walkthrough-topic --name \{card\} .+)$/m.exec(prose.split('## The Reference Cards')[1] ?? '')?.[1];
-
-    assert.strictEqual(call, 'walkthrough-topic --name {card} --menu-only');
-    assert.match(renderSurface(dir, 'walkthrough-topic', { name: SLUGS[0], 'menu-only': true }), /^=== MENU: walkthrough card/);
-  });
-
   it('refuses a missing or unknown card, naming the ones there are', () => {
     const named = new RegExp(`--name is one of ${SLUGS.join(', ')} — got`);
     for (const name of [undefined, '', 'the-map', '01-kinds-of-work', 'Kinds-Of-Work']) {
       assert.throws(() => renderSurface(dir, 'walkthrough-topic', { name }), named, JSON.stringify(name));
-      // The return from a question is addressed the same way: a menu never
-      // comes back for a card that does not exist.
-      assert.throws(() => renderSurface(dir, 'walkthrough-topic', { name, 'menu-only': '1' }), named, JSON.stringify(name));
     }
   });
 });

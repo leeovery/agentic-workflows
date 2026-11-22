@@ -76,7 +76,7 @@ Every screen is drawn by the engine from the state on disk and shown exactly as 
 
 ## The build runs on its own
 
-The spec is cut into phases at ready to build, where you pick the build's position: auto, where it runs on its own and only what needs you stops it, or step, where it also stops after each task for you to try it. Each phase's tasks are written as it starts. Builders work them side by side, each in a worktree of its own, building each task with the tests that prove it; a pair of reviewers who didn't write the code checks each task, and each phase's whole change, against the spec. On GitHub every task lands as its own pull request, each phase a stack of them. A question for you parks only the tasks that depend on it; the rest carry on. Front-load your attention on the conversation and the spec; the build handles the rest.
+The spec is cut into phases at ready to build, where you pick the build's position: auto, where it runs on its own and only what needs you stops it, or step, where it also stops after each task for you to try it. Each phase's tasks are written as it starts. Builders work them side by side, each in a worktree of its own, building each task with the tests that prove it; reviewers who didn't write the code check each task, as many as its stakes call for, and a pair checks each phase's whole change, against the spec. On GitHub every task lands as its own pull request, each phase a stack of them. A question for you parks only the tasks that depend on it; the rest carry on. Front-load your attention on the conversation and the spec; the build handles the rest.
 
 ## The ledger and the record
 
@@ -96,7 +96,7 @@ Tasks live in your tracker through a driver, and land in your repository through
 
 ## The roadmap and the inbox
 
-Say "log that as an idea" mid-conversation and keep working: it lands in the inbox, for you to triage later. Above the pieces of work sits the roadmap: horizons you name in your own release language, holding what you've decided on but not started. Say "that's a v2 thing" anywhere and it's on the roadmap in one line. Pick items off it and they go into discovery together as the seeds of one piece of work.
+Mention an idea or a bug mid-conversation and keep working: it lands in the inbox, for you to triage later. Above the pieces of work sits the roadmap: horizons you name in your own release language, holding what you've decided on but not started. Say "that's a v2 thing" anywhere and it's on the roadmap in one line. Pick items off it and they go into discovery together as the seeds of one piece of work.
 
 ## When work changes shape
 
@@ -110,7 +110,7 @@ A feature that outgrows its scope pivots into an epic. A feature that belongs in
 - **Full audit trail.** Every decision, every review finding and every verification run lands in git through engine-owned commits.
 - **Durable by construction.** State changes are transactions: checked first, refused cleanly, committed whole. A crash mid-anything leaves nothing half-written.
 - **Nothing falls on the floor.** A point raised in the wrong topic is sent as mail to the topic it belongs to, and waits there until read.
-- **Many sessions, one checkout.** Talk through as many topics in parallel as you like; a commit takes what its own action wrote and the conversation logs written since, never another session's half-made change. A build, the review phase and a quick-fix take turns in the checkout.
+- **Many sessions, one checkout.** Talk through as many topics in parallel as you like; a commit takes what its own action wrote and the conversation logs written since, never another session's half-made change. A build and the review phase take turns in the checkout; a quick-fix is built in a worktree of its own.
 - **Recovers from anything.** After a compaction, a crash or a new session, the work re-reads its record and carries on where it was, with no recap.
 - **Session labels.** Opt in per project and your terminal session's label shows where you're working — `myproject · payments · discussion · auth-flow` — the original put back on exit, in the terminal multiplexers [configuration](docs/configuration.md#session-labels) lists.
 - **Zero-maintenance upgrades.** Updates migrate existing projects in place on the next run, including a project from before Ledger.

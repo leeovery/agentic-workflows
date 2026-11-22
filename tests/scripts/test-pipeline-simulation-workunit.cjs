@@ -387,7 +387,6 @@ describe('pipeline simulation: workunit', () => {
     // state; the offer stands before the walk, so its yes records before
     // the first screen renders.
     assert.match(sim.render(['walkthrough-offer'], { expect: 'content' }), /Take the walkthrough\?/);
-    assert.match(sim.render(['walkthrough-offer', '--menu-only'], { expect: 'content' }), /y\/yes/);
     sim.refuses(['walkthrough', 'record', 'bananas'], /one of walked, skipped/);
     const answer = sim.run(['walkthrough', 'record', 'walked']);
     assert.match(answer.committed, /^[0-9a-f]+$/, 'the answer commits in the same call');
@@ -404,7 +403,7 @@ describe('pipeline simulation: workunit', () => {
     assert.deepStrictEqual(answerGate(sim, 'walkthrough card', '--pick', 'b').next, { kind: 'engine', argv: ['render', 'help-topics'] });
     sim.render(['walkthrough-topic', '--name', 'the-inbox-and-triage', '--content-only'], { expect: 'content' });
     sim.refuses(['render', 'walkthrough-screen', '--screen', '9', '--from', 'help'], /--screen is 1–8/);
-    assert.match(sim.render(['walkthrough-screen', '--screen', '8', '--from', 'help', '--menu-only'], { expect: 'content' }), /d\/done/);
+    assert.match(sim.render(['walkthrough-screen', '--screen', '8', '--from', 'help'], { expect: 'content' }), /d\/done/);
 
     // After every refusal the unit still derives and is decided normally.
     assert.deepStrictEqual(discussed(sim, wu, wu).next, { kind: 'handoff', skill: 'ledger-specification-process', args: ['feature', wu] });

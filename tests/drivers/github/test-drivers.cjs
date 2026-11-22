@@ -45,6 +45,9 @@ const remote = (url) => git(dir(), ['remote', 'add', 'origin', url]);
 /** The project on GitHub's driver, set through manage's verb. */
 const onGithub = () => ok(dir(), ['drivers', 'set', 'landing', 'github'], { env: env() });
 
+/** The squash default's offer, which the first ready to build draws in its place, declined. */
+const squashAnswered = () => ok(dir(), ['github-squash', 'no'], { env: env() });
+
 /** The drivers' menu's rows, below its question. */
 function rows() {
   const menu = screenOf(output(dir(), ['render', 'drivers'], { env: env() }), 'MENU: drivers');
@@ -113,8 +116,10 @@ describe('GitHub\'s tools in the drivers\' check (22.4.9)', () => {
 describe('GitHub\'s driver at ready to build (22.4.5–22.4.9)', () => {
   beforeEach(() => remote(ON_GITHUB));
 
-  it('with every tool at its floor, the screen draws, and its yes begins the build', () => {
+  it('with every tool at its floor, the screen draws, the squash default\'s offer answered first, and its yes begins the build', () => {
     onGithub();
+    assert.ok(screen().includes('=== MENU: github squash gate '), 'the first ready to build offers the squash default in its place');
+    squashAnswered();
 
     assert.ok(sectionOf(screen(), 'MENU: ready to build').includes('a/auto'));
     assert.deepStrictEqual(yes().position, 'auto');
@@ -134,6 +139,7 @@ describe('GitHub\'s driver at ready to build (22.4.5–22.4.9)', () => {
 
   it('22.4.5, O20: the stack extension gone while the screen waited stops the yes, refused with the stop, writing nothing', () => {
     onGithub();
+    squashAnswered();
     assert.ok(sectionOf(screen(), 'MENU: ready to build').includes('a/auto'));
 
     assert.strictEqual(refusedPristine(dir(), ['ready-to-build', 'yes', UNIT, '--position', 'auto'], { env: env({ GH_STUB_NO_STACK: '1' }) }).error,

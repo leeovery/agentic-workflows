@@ -46,7 +46,7 @@ One coherent thing to build. It runs the full journey from discussion to review 
 Something that used to work and now doesn't. An investigation finds the cause in place of a discussion, then comes the specification; the build's first task proves the bug with a failing test before it is fixed, and review follows.
 
 **quick-fix**:
-Settled work of any size, a tweak or an update needing no decision beyond a quick call. It goes from discovery straight to its fixes, each built and reviewed like a task, from the first fix to its close in one session, and has a review phase only if the person asks for one at the close. One that turns out to need a real decision moves to a feature or a bugfix.
+Settled work of any size, a tweak or an update needing no decision beyond a quick call. It goes from discovery straight to its fixes, each built and reviewed like a task, from the first fix to its close in one session; they are built in a worktree of the quick-fix's own, so the person's checkout never moves while they are built; the close brings it up where it has out the branch the quick-fix lands on. It has a review phase only if the person asks for one at the close. One that turns out to need a real decision moves to a feature or a bugfix.
 _Avoid_: a small mechanical change
 
 **topic**:
@@ -81,7 +81,7 @@ A controlled measurement in its own laboratory, designed before it is run, spawn
 Code or design built to be looked at or pressed and never wired into the product — a design board, draft code, a working prototype. What it shows is evidence, kept as an asset of the work.
 
 **investigation**:
-The bugfix's route to the cause: gathering symptoms, reading the code, and arriving at the root cause before anything is specified. Its conclusion asks a verdict on each call the person changed in it.
+The bugfix's route to the cause: gathering symptoms, reading the code, and arriving at the root cause before anything is specified. It closes into the specification with no gate of its own: its recap is shown at ready to build, whose yes concludes it.
 
 **specification**:
 The contract: a piece of work's one spec, written from its decided topics (a bugfix's investigation), each statement traced to the entry it comes from, cut into phases and approved at ready to build. Once concluded it is never corrected: a later change replaces the decision itself.
@@ -98,7 +98,7 @@ The specification's cut into build phases, in the order they are built, each nam
 _Avoid_: the plan, planning
 
 **ready to build**:
-The authority gate that closes the specification: one screen showing the spec's outline and its phase cut, where the person approves both and picks the build's position, auto or step. The drivers are checked there, the environment setup is asked for the first time, and verdicts are asked for the calls the person changed in the spec's review.
+The authority gate that closes the specification: one screen showing the spec's outline and its phase cut, where the person approves both and picks the build's position, auto or step. The drivers are checked there, the environment setup is asked for the first time, and verdicts are asked for the calls the person changed in the spec's review. A feature's shares the screen with its decided, a bugfix's with its investigation's recap and verdicts.
 
 **implementation**:
 The building phase, which the screens call the build. One conversation runs it across every phase of the cut, and straight into the review phase.
@@ -117,11 +117,11 @@ The agent that builds one task, writing its tests from the task's acceptance cri
 _Avoid_: implementer
 
 **task loop**:
-One task's way through the build: a builder builds it, the reviewer pair reads it whole, and every finding but a nit goes back to the same builder, the whole task read again until a round passes with nothing serious and no bug. No count of rounds stops it; Claude fixes a nit itself, and settles a task that looks stuck.
+One task's way through the build: a builder builds it, the reviewers Claude chose for it read it whole, and every finding but a nit goes back to the same builder, the whole task read again until a round passes with nothing serious and no bug. No count of rounds stops it; Claude fixes a nit itself, and settles a task that looks stuck.
 
 **reviewer pair**:
-The two independent reviewer agents, run side by side, that every review in the build is done by: each task's, each phase's, and the review phase's. Fresh to the code, never the builder that wrote it; the same pair reads again after a finding.
-_Avoid_: the reviewer (as if there were one)
+The two independent reviewer agents, run side by side, that each phase's review and the review phase's are done by, and a task's where Claude chooses two. Fresh to the code, never the builder that wrote it; the same pair reads again after a finding.
+_Avoid_: the reviewer, for a phase's review or the review phase's (as if there were one)
 
 **phase review**:
 The one independent review closing each build phase: a reviewer pair over the phase's whole change, its tasks' criteria, its coherence, and where it meets what earlier phases built. Its fixes land before the phase closes.
@@ -147,7 +147,7 @@ A pane the Claude Code mod draws beside the conversation, showing what is happen
 ## Verification
 
 **environment setup**:
-How the project runs for the work: how to run it and its tests, the steps that prepare its environment, what cannot run at once, and its linters. It is asked at the first ready to build, used once the person confirms it, and changed from manage's setup.
+How the project runs for the work: how to run it and its tests, the steps that prepare its environment, what cannot run at once, and its linters. It is asked at the first ready to build, used once the person confirms it, and changed from manage's setup or, on the person's yes, from any conversation.
 
 **verify setup**:
 How the project's product is run to prove the work: launch, a health check, drive, evidence and cleanup, with the feature map. It is built by a task the first time a build needs it, counts only once it has run end to end, and shows beside the environment setup in manage, changed only by the task that builds it.
@@ -196,7 +196,7 @@ A decision brought into Ledger from a project's documents from before it, where 
 ## Gates and trust
 
 **gate**:
-A stop where Ledger shows a menu and waits. There are three kinds: the authority gates always stop — start this work, approve the map, decided, ready to build and finish; product questions go through the ask rule; and routine process gates are learned, one the person answers the same way nearly every time running on its own with a one-line report, until their answers vary. A question typed at a gate sets it aside, and it comes back when the exchange is done.
+A stop where Ledger shows a menu and waits. There are three kinds: the authority gates always stop — start this work, approve the map, decided, ready to build and finish; product questions go through the ask rule; and routine process gates are learned, one the person answers the same way nearly every time running on its own with a one-line report, until their answers vary. A gate takes a clear answer in the person's own words as its row, at any point; a question typed there sets it aside while they talk, and their answer, whenever it comes, still answers it.
 _Avoid_: checkpoint, approval step, stop (fine as a description)
 
 **menu**:
@@ -217,7 +217,7 @@ A question's kind — process, danger, contract, scope, look, words, behaviour o
 _Avoid_: category; kind of work (another thing)
 
 **verdict**:
-What Claude's answer would have cost the product, given for each call where the person's answer changed Claude's lean: nothing, a fix later, or a real loss. It is asked where the person signs off — decided, ready to build, an investigation's conclusion, finish and a quick-fix's close — and skip leaves it in the verdict queue. Every call not yet judged counts as a real loss until it is; verdicts are what the ask rule learns from.
+What Claude's answer would have cost the product, given for each call where the person's answer changed Claude's lean: nothing, a fix later, or a real loss. It is asked where the person signs off — decided, ready to build, finish and a quick-fix's close — and skip leaves it in the verdict queue. Every call not yet judged counts as a real loss until it is; verdicts are what the ask rule learns from.
 
 **the verdict queue**:
 The verdicts still waiting, reached from the Verdicts row on the start menu or an epic's menu while any wait, and given one at a time, oldest first.
@@ -253,13 +253,16 @@ A named bucket on the roadmap, in the person's own staging words (launch, v1, so
 Choosing roadmap items or inbox items to work on now. They go into discovery together as the seeds of one piece of work, which settles its kind, while the rest wait.
 _Avoid_: promote
 
+**views of the product**:
+What the person has said of the product as a whole, in any conversation — a principle, a direction, who it is for, a constraint, a lean — kept as their input beside the directions they dropped, each with why. Every topic's opening reads them beside the product record, which speaks where both do, and a view is decided in the first topic it bears on.
+
 **backlog**:
 Putting something aside from any conversation, whichever phase it is in. It covers both homes: a line on the roadmap, saying where it belongs, when the person has decided to do it, an inbox note when they haven't yet — and they are asked where it should wait when their words leave it open. A topic already on an epic's map is postponed instead. The roadmap's backlog is whichever horizon they name for it, such as Backlog or Later.
 
 ## Everyday
 
 **inbox**:
-The place captures wait: ideas, bugs and quick-fixes put down in a line ("log that as an idea") without stopping the work in hand, waiting until they are triaged. The start menu shows it as one line, counted by kind.
+The place captures wait: ideas, bugs and quick-fixes for later, put down in a line as they come up in any conversation, without stopping the work in hand, waiting until they are triaged. The start menu shows it as one line, counted by kind.
 _Avoid_: triage (that is the act, not the place)
 
 **triage**:
@@ -277,7 +280,7 @@ _Avoid_: import, attachment
 The files a piece of work had from before Ledger that the migration found no place for — old plans, agent reports, research — set aside with the work, or with the product, until each is sorted. The start menu shows them on one row, *Sort the legacy files from the migration*, and an epic's menu shows its own. Each file or folder is kept among the work's assets, everything that names it following it, or discarded; a file brought in becomes findings on the record, citing it where it was kept.
 
 **mail**:
-The messages waiting for a discussion or investigation: from another topic of the same epic, or from a later phase that met a question only that conversation can settle. Its next session raises each one, and it cannot close while one waits; the menus show it as *mail waiting*.
+The messages waiting for a discussion or investigation: from another topic of the same epic, from a later phase that met a question only that conversation can settle, or from a conversation outside the work that found something bearing on it. Its next session raises each one, and it cannot close while one waits; the menus show it as *mail waiting*.
 _Avoid_: triage waiting, triage queue, queue
 
 **message**:
@@ -310,7 +313,7 @@ Bringing a postponed topic back from the roadmap, through an epic's discovery ro
 Opening an epic's decided topic again, from its discovery row until the spec is first written. A finished piece of work, of any type, is never reopened: it stays finished, and a later change to it is new work.
 
 **in session**:
-The cue on a topic another conversation is working right now, with how long ago it was last active; its row is struck through, and entering it asks first. Awareness only: it never locks anyone out. Code phases are different: a build, the review phase and a quick-fix run one at a time in the project's checkout, and entering one while another session is building there names that session and asks before going on.
+The cue on a topic another conversation is working right now, with how long ago it was last active; its row is struck through, and entering it asks first. Awareness only: it never locks anyone out. Code phases are different: a build and the review phase run one at a time in the project's checkout, and entering one while another session is building there names that session and asks before going on. A quick-fix is built in a worktree of its own and waits on neither.
 _Avoid_: code session
 
 **nested repo**:

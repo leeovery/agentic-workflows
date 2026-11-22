@@ -21,7 +21,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { ok, okSections, createFile, writeState, layout } = require('./engine-harness.cjs');
-const { UNIT, BRANCH, SET, fixFile, fixDone, checklistClosed, quickFixConformance } = require('./quick-fix-world.cjs');
+const { UNIT, BRANCH, SET, fixFile, fixDone, fixTree, checklistClosed, quickFixConformance } = require('./quick-fix-world.cjs');
 const { reportText } = require('./review-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
@@ -118,8 +118,8 @@ function fixTaskRead(conf, at) {
   const run = (/** @type {string[]} */ args) => ok(at, args, conf.as());
   firstRoundFailed(conf, at);
   run(['task', 'start', UNIT, '2.1']);
-  createFile(at, DOCS, '--colour\n');
-  run(['commit', '--paths', DOCS, '--task', UNIT, '2.1', '-m', `fix(${UNIT}): name the flag in the docs`]);
+  createFile(fixTree(at), DOCS, '--colour\n');
+  ok(fixTree(at), ['commit', '--paths', DOCS, '--task', UNIT, '2.1', '-m', `fix(${UNIT}): name the flag in the docs`], conf.as());
   run(['land', 'open', UNIT, '2.1']);
   fixDone(at, '2.1', conf.as());
   okSections(at, ['enter', 'review', UNIT], conf.as());

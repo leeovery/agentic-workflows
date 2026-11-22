@@ -20,9 +20,11 @@ require('./hermetic-env.cjs');
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
+const path = require('path');
 
 const { ok, git, readManifest, datedAt } = require('./engine-harness.cjs');
-const { UNIT, BRANCH, SET, ownBranchCommit, quickFixNestedConformance } = require('./quick-fix-world.cjs');
+const { UNIT, BRANCH, SET, ownCommit, fixTree, quickFixNestedConformance } = require('./quick-fix-world.cjs');
+const { NESTED } = require('./landing-world.cjs');
 const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
 
 for (const { name } of listDrivers('landing')) {
@@ -32,7 +34,7 @@ for (const { name } of listDrivers('landing')) {
     it('a commit on it dated long before the unit was made is none of its: never opened nor landed, and the close completes, the commit left on the branch there', () => {
       const at = project();
       opened(at, 1, { [SET[0].file]: SET[0].text });
-      datedAt('2020-01-01T00:00:00Z', () => ownBranchCommit(at.lib, 'An old change of mine'));
+      datedAt('2020-01-01T00:00:00Z', () => ownCommit(path.join(fixTree(at.dir), NESTED.lib.folder), 'An old change of mine'));
       const reopened = ok(at.dir, ['land', 'open', UNIT, '1.1'], as());
       ended(at, 1);
       closed(at);

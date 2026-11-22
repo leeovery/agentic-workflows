@@ -5,15 +5,24 @@
 // session (18.4.20, 24.1.2), and the one source of every move onto a menu:
 // an epic's, `ledger-continue-epic {wu}`, and the start menu, `ledger`. A
 // unit's own menu is its epic's for an epic, and the start menu for any
-// other unit — where its laboratory left for the menu goes, and its finish
-// (24.1.2, 14.6.2), a finished epic's menu its complete variant (18.4.23).
+// other unit — where its laboratory left for the menu goes.
+//
+// A unit's finish and its cancel carry on in the conversation, with no menu
+// drawn (18.4.20, 19.5.1, 24.1.5): the conversation leaves the unit's place
+// where it is there, its tasks in flight with it, so nothing holds the
+// conversation afterwards (`leftUnit`; `leaveUnit`, position.cjs), and its
+// session's own label comes back (session-label.cjs). A quick-fix's start
+// keeps the conversation's row in the product's conversation
+// (start-this-work.cjs); leaving the unit drops it, so the product's
+// session is never held open by a window no longer in it — talking
+// product again brings the conversation back there (discovery-entry.cjs).
+// Its move starts the new type as any start does (workunit-move.cjs).
 //
 // A topic cancelled or postponed (`topic cancel`, `topic postpone`) takes
-// the conversation sitting in its discussion to its epic's menu; a unit
-// cancelled (`workunit cancel`) takes the conversation sitting in any phase
-// of it to the start menu. From anywhere else — another topic of the epic,
-// its menu, manage on the start menu — the calling flow carries on. Where
-// the conversation sits is its position (position.cjs).
+// the conversation sitting in its discussion to its epic's menu. From
+// anywhere else — another topic of the epic, its menu, manage on the start
+// menu — the calling flow carries on. Where the conversation sits is its
+// position (position.cjs).
 //
 // A cancel, or the removal of a topic not yet started, puts each roadmap
 // item it took in back on the horizon it came from; one whose horizon was
@@ -32,7 +41,10 @@
 // ---------------------------------------------------------------------------
 
 const { handedSession } = require('../kernel/process.cjs');
-const { readPosition } = require('./position.cjs');
+const { readPosition, leaveUnit } = require('./position.cjs');
+const { clearOwnQuietly } = require('./presence.cjs');
+const { PRODUCT } = require('../kernel/manifest-schema.cjs');
+const { repairTerminalLabel } = require('./session-label.cjs');
 const { UNIT_PHASES } = require('./derivations.cjs');
 const { roadmapState } = require('./roadmap.cjs');
 
@@ -55,6 +67,21 @@ const ontoEpic = (workUnit) => ({ kind: 'handoff', skill: 'ledger-continue-epic'
  */
 function ontoMenu(workUnit, workType) {
   return workType === 'epic' ? ontoEpic(workUnit) : ONTO_START;
+}
+
+/**
+ * A unit finished or cancelled (the header's): where the calling
+ * conversation sat in it, its place and the unit's tasks in flight left,
+ * its own row in the product's conversation dropped, and its session's own
+ * label put back. Whether it left.
+ * @param {string} cwd @param {string} workUnit @returns {boolean}
+ */
+function leftUnit(cwd, workUnit) {
+  const left = leaveUnit(handedSession(), workUnit);
+  if (!left) return false;
+  clearOwnQuietly(cwd, PRODUCT, 'discovery', PRODUCT);
+  repairTerminalLabel(cwd);
+  return true;
 }
 
 /** Where the calling conversation sits, or null where it sits nowhere. */
@@ -95,15 +122,6 @@ function leaveNext(workUnit, topic) {
 }
 
 /**
- * The `next` of a unit cancelled, from the calling conversation's position.
- * @param {string} workUnit
- * @returns {Next}
- */
-function unitLeaveNext(workUnit) {
-  return seatIn(workUnit) === null ? CONTINUE : ONTO_START;
-}
-
-/**
  * What put the items back, read from its name: a unit, or one of its topics
  * at discovery. Refused in any other shape.
  * @param {string} from @returns {{workUnit: string, topic: string|null}}
@@ -133,12 +151,13 @@ const thenArgs = (names) => (names.length === 0 ? [] : ['--then', names.join(','
 
 /**
  * Where the verb goes once every item it put back has a horizon: a topic's
- * as `leaveNext` says, a unit's as `unitLeaveNext` says.
+ * as `leaveNext` says; a unit's on in the conversation, which its cancel
+ * left (the header's).
  * @param {string} from @returns {Next}
  */
 function wayOn(from) {
   const { workUnit, topic } = putBackBy(from);
-  return topic === null ? unitLeaveNext(workUnit) : leaveNext(workUnit, topic);
+  return topic === null ? CONTINUE : leaveNext(workUnit, topic);
 }
 
 /**
@@ -156,4 +175,4 @@ function putBackNext(cwd, from, names) {
     : { kind: 'engine', argv: ['render', 'horizon-pick', '--back', first, '--from', from, ...thenArgs(rest)] };
 }
 
-module.exports = { ontoEpic, ontoMenu, seatIn, sittingIn, leaveNext, putBackNext, putBackBy, stillToAsk, thenArgs };
+module.exports = { ontoEpic, ontoMenu, leftUnit, seatIn, sittingIn, leaveNext, putBackNext, putBackBy, stillToAsk, thenArgs };

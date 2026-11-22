@@ -10,20 +10,21 @@
 // the repository's index touched, and a put back that conflicts naming each
 // path from the folder; a
 // set-aside that fails part-way undone, all or nothing: the raise refused,
-// saying so, no question parked, no ref left, and the checkout holding the
+// saying so, no question parked, no ref left, and the worktree holding the
 // work as before; and a cancel keeping what the park set aside, its receipt
 // naming the branch its commits stay on and the work with the calls that
-// show it, bring it into the checkout and drop it, and one during the first
-// fix, nothing committed, naming no branch (R26, 19.5.29). The
-// set-aside's own rules: test-engine-quick-fix-checkout.cjs.
+// show it, bring it into the checkout and drop it, the worktree taken
+// apart, and one during the first fix, nothing committed, naming no branch
+// (R26, 19.5.29). The set-aside's own rules: test-engine-quick-fix-worktree.cjs.
 //
 // Layer: git. World: a repository holding the project in its folder `app`,
 // beside the quick-fix world's own `src/flag.js` at its top, a path the
 // project's own shares; the quick-fix entered there by a
-// conversation gone since, its fix 1.1 started there, its change committed,
-// and a question asked at its place — built once and copied. Each test's
+// conversation gone since, its fix 1.1 started there, its change committed
+// in the quick-fix's worktree, laid out at the repository's top, and a
+// question asked at its place — built once and copied. Each test's
 // conversation keeps its records in a config folder of its own, and every
-// call is made from the folder.
+// call is made from the folder, the fix's in the worktree.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -38,7 +39,7 @@ const {
 const { useTempFolder } = require('./discovery-test-utils.cjs');
 const { MADE, ledgerHelpers } = require('./ledger-world.cjs');
 const {
-  UNIT, PLACE, FLAG, HELP, CALL, quickFix, createFix, fixDone, asGone, entered,
+  UNIT, PLACE, FLAG, HELP, CALL, quickFix, createFix, fixDone, fixTree, asGone, entered,
 } = require('./quick-fix-world.cjs');
 
 /** Where fix 1.1's work is set aside. */
@@ -57,8 +58,8 @@ const world = fixtureFrom('quick-fix-aside-', (dir) => {
     entered(app, as);
     createFix(app, 1, FLAG, as);
     ok(app, ['task', 'start', UNIT, '1.1'], as);
-    createFile(app, 'src/flag.js', 'const flag = \'colour\';\n');
-    ok(app, ['commit', '--paths', 'src/flag.js', '--task', UNIT, '1.1', '-m', `fix(${UNIT}): spell the flag --colour`], as);
+    createFile(path.join(fixTree(dir), 'app'), 'src/flag.js', 'const flag = \'colour\';\n');
+    ok(path.join(fixTree(dir), 'app'), ['commit', '--paths', 'src/flag.js', '--task', UNIT, '1.1', '-m', `fix(${UNIT}): spell the flag --colour`], as);
   });
   asked.id = ledgerHelpers(() => dir).write('ask', PLACE, [], { ...MADE, text: 'Does --color still work?' }).id;
 });
@@ -83,6 +84,12 @@ afterEach(() => {
 /** The project, the repository's folder `app`. */
 const app = () => path.join(dir, 'app');
 
+/** The quick-fix's worktree, at the repository's top. */
+const tree = () => fixTree(dir);
+
+/** The project's folder in the quick-fix's worktree, where its fixes are built. */
+const appTree = () => path.join(tree(), 'app');
+
 /** This test's conversation, as a call's options. */
 const as = () => ({ env: { LEDGER_CONFIG_DIR: config(), CLAUDE_CODE_SESSION_ID: 'sess-1', CLAUDE_PID: String(process.pid), TMUX: undefined, TMUX_PANE: undefined } });
 
@@ -95,45 +102,45 @@ const raise = ['raise', PLACE, '--answers', () => asked.id, '--parks', '1.1'];
 /** The raise's arguments, the question's id read now. */
 const raiseArgs = () => raise.map((arg) => (typeof arg === 'function' ? arg() : arg));
 
-/** What the whole repository holds not committed, as git lists it. */
-const status = () => git(dir, ['status', '--porcelain', '--untracked-files=all']).trim();
+/** What the whole of the quick-fix's worktree holds not committed, as git lists it. */
+const status = () => git(tree(), ['status', '--porcelain', '--untracked-files=all']).trim();
 
 /** The commit a ref names, null where it names none. @param {string} ref */
 const at = (ref) => git(dir, ['for-each-ref', '--format=%(objectname)', ref]).trim() || null;
 
-/** The fix's change to its file and the file it added, written in the project. */
+/** The fix's change to its file and the file it added, written in the project's folder in the quick-fix's worktree. */
 function changed() {
-  createFile(app(), 'src/flag.js', 'const flag = \'colour\';\nconst alias = \'color\';\n');
-  createFile(app(), 'src/alias.js', 'module.exports = \'color\';\n');
+  createFile(appTree(), 'src/flag.js', 'const flag = \'colour\';\nconst alias = \'color\';\n');
+  createFile(appTree(), 'src/alias.js', 'module.exports = \'color\';\n');
 }
 
 describe('a quick-fix\'s set-aside at its edges (19.5.23)', () => {
   it('in a project that is a folder of a larger repository, a park sets aside the fix\'s change, the file it added and the file it renamed, read from the folder, the file of the same path at the top untouched; its next start puts each back, naming a rename\'s both paths as the park did, and leaves a change staged elsewhere in the repository staged', async () => {
     dir = world();
     run(['task', 'start', UNIT, '1.1']);
-    const top = fs.readFileSync(path.join(dir, 'src/flag.js'), 'utf8');
+    const top = fs.readFileSync(path.join(tree(), 'src/flag.js'), 'utf8');
     changed();
-    fs.renameSync(path.join(app(), 'src/old.js'), path.join(app(), 'src/renamed.js'));
+    fs.renameSync(path.join(appTree(), 'src/old.js'), path.join(appTree(), 'src/renamed.js'));
     const parked = (await okSectionsAsync(app(), raiseArgs(), { ...as(), stdin: JSON.stringify(CALL) })).res;
     const clean = status();
     const { raise: drawn } = okSections(app(), ['raise', 'draw', UNIT, 'Q1'], as()).res;
     ok(app(), ['raise', 'answer', drawn, '--pick', '1'], { ...as(), stdin: JSON.stringify({ why: 'Old scripts pass it.' }) });
-    createFile(dir, 'docs/notes.md', '# Notes\n');
-    git(dir, ['add', 'docs/notes.md']);
+    createFile(tree(), 'docs/notes.md', '# Notes\n');
+    git(tree(), ['add', 'docs/notes.md']);
     const started = run(['task', 'start', UNIT, '1.1']);
 
     const paths = ['src/alias.js', 'src/flag.js', 'src/old.js', 'src/renamed.js'];
-    assert.deepStrictEqual([parked.set_aside, clean, fs.readFileSync(path.join(dir, 'src/flag.js'), 'utf8')], [paths, '', top]);
+    assert.deepStrictEqual([parked.set_aside, clean, fs.readFileSync(path.join(tree(), 'src/flag.js'), 'utf8')], [paths, '', top]);
     assert.deepStrictEqual([started.put_back, status(), at(ASIDE)], [paths, 'M app/src/flag.js\n D app/src/old.js\nA  docs/notes.md\n?? app/src/alias.js\n?? app/src/renamed.js', null]);
-    assert.strictEqual(fs.readFileSync(path.join(app(), 'src/flag.js'), 'utf8'), 'const flag = \'colour\';\nconst alias = \'color\';\n');
+    assert.strictEqual(fs.readFileSync(path.join(appTree(), 'src/flag.js'), 'utf8'), 'const flag = \'colour\';\nconst alias = \'color\';\n');
   });
 
-  it('a set-aside that fails part-way is undone, all or nothing: the raise refused, saying so, no question parked, no ref left, and the checkout holding the work as before', async () => {
+  it('a set-aside that fails part-way is undone, all or nothing: the raise refused, saying so, no question parked, no ref left, and the worktree holding the work as before', async () => {
     dir = world();
     run(['task', 'start', UNIT, '1.1']);
     changed();
-    const locked = path.join(app(), 'src/locked');
-    createFile(app(), 'src/locked/new.js', 'module.exports = \'new\';\n');
+    const locked = path.join(appTree(), 'src/locked');
+    createFile(appTree(), 'src/locked/new.js', 'module.exports = \'new\';\n');
     fs.chmodSync(locked, 0o555);
     const before = status();
     let error = '';
@@ -143,9 +150,9 @@ describe('a quick-fix\'s set-aside at its edges (19.5.23)', () => {
       fs.chmodSync(locked, 0o755);
     }
 
-    assert.match(error, new RegExp(`^raise: task 1\\.1 of ${UNIT}'s work could not be set aside, so nothing was: the checkout holds it as before, none of it staged, and no question parked the fix — `));
+    assert.match(error, new RegExp(`^raise: task 1\\.1 of ${UNIT}'s work could not be set aside, so nothing was: the worktree holds it as before, none of it staged, and no question parked the fix — `));
     assert.deepStrictEqual([at(ASIDE), status(), run(['raise', 'waiting', UNIT]).waiting], [null, before, []]);
-    assert.strictEqual(fs.readFileSync(path.join(app(), 'src/flag.js'), 'utf8'), 'const flag = \'colour\';\nconst alias = \'color\';\n');
+    assert.strictEqual(fs.readFileSync(path.join(appTree(), 'src/flag.js'), 'utf8'), 'const flag = \'colour\';\nconst alias = \'color\';\n');
   });
   it('in a project that is a folder of a larger repository, a put back that conflicts with what the tip now holds names each path from the folder', async () => {
     dir = world();
@@ -154,8 +161,8 @@ describe('a quick-fix\'s set-aside at its edges (19.5.23)', () => {
     await okSectionsAsync(app(), raiseArgs(), { ...as(), stdin: JSON.stringify(CALL) });
     createFix(app(), 2, HELP, as());
     run(['task', 'start', UNIT, '1.2']);
-    createFile(app(), 'src/flag.js', 'const flag = \'colours\';\n');
-    run(['commit', '--paths', 'src/flag.js', '--task', UNIT, '1.2', '-m', `fix(${UNIT}): spell the flag in the help`]);
+    createFile(appTree(), 'src/flag.js', 'const flag = \'colours\';\n');
+    ok(appTree(), ['commit', '--paths', 'src/flag.js', '--task', UNIT, '1.2', '-m', `fix(${UNIT}): spell the flag in the help`], as());
     run(['land', 'open', UNIT, '1.2']);
     fixDone(app(), '1.2', as());
     const { raise: drawn } = okSections(app(), ['raise', 'draw', UNIT, 'Q1'], as()).res;
@@ -164,7 +171,7 @@ describe('a quick-fix\'s set-aside at its edges (19.5.23)', () => {
     assert.match(refuses(app(), ['task', 'start', UNIT, '1.1'], as()).error, / — it conflicts at src\/flag\.js — so nothing moved/);
   });
 
-  it('R26, 19.5.29: a cancel keeps what the park set aside, its receipt naming the branch its commits stay on and the work with the calls that show it, bring it into the checkout and drop it', async () => {
+  it('R26, 19.5.29: a cancel keeps what the park set aside, its receipt naming the branch its commits stay on and the work with the calls that show it, bring it into the checkout and drop it, and takes the worktree apart', async () => {
     dir = world();
     run(['task', 'start', UNIT, '1.1']);
     changed();
@@ -178,7 +185,7 @@ describe('a quick-fix\'s set-aside at its edges (19.5.23)', () => {
       `⚑ Task 1.1's work, set aside when a question parked it, is kept in the project's repository at ${ASIDE} — see it with git diff ${ASIDE}^ ${ASIDE}; bring it into the checkout with git cherry-pick --no-commit ${ASIDE}, settling any conflict; drop it with git update-ref -d ${ASIDE}`,
       '',
     ].join('\n'));
-    assert.deepStrictEqual([kept === null, at(ASIDE)], [false, kept]);
+    assert.deepStrictEqual([kept === null, at(ASIDE), fs.existsSync(tree())], [false, kept, false]);
   });
 
   it('a cancel during the first fix, nothing of it committed, names no branch on its receipt: the branch holds no commit of its own', () => {

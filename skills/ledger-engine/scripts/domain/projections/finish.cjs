@@ -3,28 +3,31 @@
 // ---------------------------------------------------------------------------
 // Domain ring: finish as the person sees it (14.5.1), drawn from the unit's
 // checklists and the ledger (finish.cjs): the title; every inbox item the
-// unit closed, under CLOSED IN THE INBOX, each with its kind, and how one
-// closed wrongly comes back, its claim taken out of the build's log
-// (18.6.7); what its reads warned of, each a callout, so nothing they took
-// off the checklist goes unsaid; every checklist item skipped on the way —
-// each phase's start and close, then finish's own — with where it was
-// skipped and its reason (6.4.5); what the review's put backs set aside,
-// where they set aside anything, which stays until the person removes it
-// (review-tree.cjs); then the first departure the person made in the build
-// and the review phase still to be asked its verdict, under the verdict gate
-// at the point `finish` — one at a time, as ready to build asks its own
-// (16.10.3, closing.cjs); and once none is, finish's gate, an authority gate
+// unit closed, under CLOSED IN THE INBOX, each with its kind, and that one
+// closed wrongly comes back on the person's word (18.6.7); what its reads
+// warned of, each a callout, so nothing they took off the checklist goes
+// unsaid — never a checklist item skipped, Ledger's own bookkeeping (6.4.5);
+// what the review's put backs set aside, where they set aside anything,
+// which stays until the person removes it (review-tree.cjs); then the first
+// departure the person made in the build and the review phase still to be
+// asked its verdict, under the verdict gate at the point `finish` — one at a
+// time, as ready to build asks its own, the screen drawn whole once and each
+// later verdict alone (16.10.3, 16.10.14, closing.cjs); and once none is,
+// finish's gate, an authority gate
 // that always stops: an invitation to ask about what was built, answered
 // before finishing, then yes and a comment. No measure adds a line to it
 // (17.2.2).
 //
 // A quick-fix's close, its finish gate (19.5.13), is drawn the same but for
-// its title, `{Title} — ready to close`; each fix done with its pair's
-// verdict, under REVIEWED BY THE PAIR, the round its pair passed it in or
-// the orchestrator settled it; what running the product proved,
+// its title, `{Title} — ready to close`; each fix done with its review's
+// verdict, under REVIEWED, the round its reviewers passed it in or the
+// orchestrator settled it, or, ○, that no reviewer read it, a one-line
+// fix, with why; what running the product proved,
 // under its title — PROVEN BY RUNNING {PRODUCT}, each fix's scenario a line,
 // ✓ where proven, else its standing — or one line saying the project has
-// no way to run it (P9); each fix's work a question's park set aside and
+// no way to run it (P9); what its notes for later sent to the inbox, under
+// WENT TO THE INBOX, as a round's report lists it (19.5.26, review-phase.cjs);
+// each fix's work a question's park set aside and
 // none put back, a ⚑ line naming where it is kept and the calls that show
 // it and bring it into the checkout (R26); each departure asked its verdict at the verdict
 // point `close` (16.10.4); and its gate, `Close it?`: the yes, merging its
@@ -34,50 +37,41 @@
 // (18.10.8).
 // ---------------------------------------------------------------------------
 
-const { section, menu, cmdOption, promptOption, callout, treeList, MENU_INSTRUCTION, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
+const { section, menu, cmdOption, promptOption, callout, treeList, MENU_INSTRUCTION } = require('./surfaces.cjs');
 const { TREE_WIDTH } = require('../conventions.cjs');
 const { renderTree, wrapWithPrefix } = require('../../kernel/render.cjs');
-const { block, verdictBlock, verdictGate } = require('./closing.cjs');
-const { asideBlock } = require('./review-phase.cjs');
+const { block, verdictBlock, verdictPoint } = require('./closing.cjs');
+const { asideBlock, filedBlock } = require('./review-phase.cjs');
 
 /**
  * Finish as it is drawn: the unit and its title, the inbox items it closed,
- * the skips it shows, the verdict asked, null where none waits, what its
- * reads warned of, what put back set aside, null where it set aside
- * nothing, and the unit's own branch and the default branch it lands on,
- * null for a unit with no branch of its own (14.5.2).
+ * the verdict asked, null where none waits, what its reads warned of, what
+ * put back set aside, null where it set aside nothing, the unit's own
+ * branch and the default branch it lands on, null for a unit with no branch
+ * of its own (14.5.2), and whether it is drawn alone after a verdict.
  * @typedef {{
  *   unit: string, title: string, lands: {branch: string, into: string}|null,
  *   closed: {title: string, kind: string}[],
- *   skips: {checklist: string, text: string, reason: string}[],
  *   verdict: import('../ledger-verdicts.cjs').AskedVerdict|null,
  *   warnings: string[],
  *   aside: import('../review-phase.cjs').SetAside|null,
+ *   alone: boolean,
  * }} FinishView
  */
 
-/** Where an item was skipped, as a line says it: `phase 2's start`, or `finish`. @param {string} checklist */
-function skippedAt(checklist) {
-  const phase = /^phase-(\d+)-(start|close)$/.exec(checklist);
-  return phase === null ? checklist : `phase ${phase[1]}'s ${phase[2]}`;
-}
-
-/** Every inbox item the unit closed, and how one closed wrongly comes back (18.6.7); none where it closed none. @param {FinishView} view @returns {string[]} */
+/** Every inbox item the unit closed, and that one closed wrongly comes back on the person's word (18.6.7); none where it closed none. @param {FinishView} view @returns {string[]} */
 function closedBlock({ title, closed }) {
   if (closed.length === 0) return [];
   const items = renderTree(closed.map((item) => ({ title: item.title, tag: item.kind })), { width: TREE_WIDTH }).replace(/\n$/, '');
-  const note = closed.length === 1
-    ? `It is archived as closed by ${title}. Closed wrongly, it comes back from the archived items in triage, or ask me to bring it back — its Resolved: line taken out of the build's log with it.`
-    : `Each is archived as closed by ${title}. One closed wrongly comes back from the archived items in triage, or ask me to bring it back — its Resolved: line taken out of the build's log with it.`;
+  const note = `${closed.length === 1 ? 'It is' : 'Each is'} archived as closed by ${title}. Closed wrongly? Ask me to bring it back.`;
   return [block(`CLOSED IN THE INBOX (${closed.length})`, [items, ...wrapWithPrefix(`↳ ${note}`, { width: TREE_WIDTH, prefix: '  ', hang: 2 })].join('\n'))];
 }
 
 /** The blocks under the screen's title, each that has something to show. @param {FinishView} view @returns {string[]} */
 function finishBlocks(view) {
-  const { skips, verdict, warnings, aside } = view;
+  const { verdict, warnings, aside } = view;
   const blocks = [...closedBlock(view)];
   if (warnings.length > 0) blocks.push(warnings.map((warning) => callout(warning, { width: TREE_WIDTH })).join('\n'));
-  if (skips.length > 0) blocks.push(skips.map(({ checklist, text, reason }) => callout(`Skipped at ${skippedAt(checklist)}: ${text} — ${reason}`, { width: TREE_WIDTH })).join('\n'));
   blocks.push(...asideBlock(aside));
   if (verdict !== null) blocks.push(verdictBlock(verdict));
   return blocks;
@@ -102,29 +96,29 @@ function finishGate({ unit, lands }) {
 
 /**
  * Finish: its display, then the verdict gate while a departure waits to be
- * asked, else finish's gate.
+ * asked, else finish's gate — drawn alone after a verdict.
  * @param {FinishView} view
  * @returns {string}
  */
 function finishScreen(view) {
-  const display = section('DISPLAY: finish', CONTINUE_INSTRUCTION, finishDisplay(view));
-  return display + (view.verdict === null ? finishGate(view) : verdictGate(view.verdict, 'finish'));
+  return verdictPoint({ name: 'finish', display: () => finishDisplay(view), verdict: view.verdict, point: 'finish', gate: () => finishGate(view), alone: view.alone });
 }
 
 /**
- * A fix done as the close shows its pair's verdict: its task and title, the
- * round its review ended in, and whether the orchestrator settled it.
- * @typedef {{task: string, title: string, round: number, settled: boolean}} PairVerdict
+ * A fix done as the close shows its review's verdict: its task and title,
+ * the round its review ended in, whether the orchestrator settled it, and
+ * why no reviewer read it, where none did.
+ * @typedef {{task: string, title: string, round: number, settled: boolean, why: string|null}} PairVerdict
  */
 
 /**
  * A quick-fix's close as it is drawn: finish's, with each fix done and its
  * pair's verdict, the product's name, what running it proved of each fix's
- * scenarios — null where the project has no way to run it — how many fixes
- * are done, what the yes still lands — null where every fix done has
- * landed — whether its review was asked for, and each fix's work kept set
- * aside, in its words.
- * @typedef {FinishView & {pair: PairVerdict[], product: string, proven: import('./build.cjs').Ran[]|null, fixes: number, landing: Lands|null, reviewed: boolean, kept: string[]}} CloseView
+ * scenarios — null where the project has no way to run it — what its
+ * notes for later sent to the inbox, how many fixes are done, what the yes
+ * still lands — null where every fix done has landed — whether its review
+ * was asked for, and each fix's work kept set aside, in its words.
+ * @typedef {FinishView & {pair: PairVerdict[], product: string, proven: import('./build.cjs').Ran[]|null, filed: {title: string, kind: string}[], fixes: number, landing: Lands|null, reviewed: boolean, kept: string[]}} CloseView
  */
 
 /** What a quick-fix's yes lands: its pull request, or its commits where the driver opens none. @typedef {'pull request'|'commits'} Lands */
@@ -132,13 +126,13 @@ function finishScreen(view) {
 /** The yes's words for what it lands. @type {Readonly<Record<Lands, string>>} */
 const LANDS = Object.freeze({ 'pull request': 'merge its pull request', commits: 'land its commits' });
 
-/** A fix's line under its pair's verdicts. @param {PairVerdict} verdict */
-const pairLine = ({ task, title, round, settled }) => `✓ ${task} ${title} · ${settled ? 'settled' : 'passed'} in round ${round}`;
+/** A fix's line under its review's verdicts: round 0 is no reviewer's, as recorded, with why. @param {PairVerdict} verdict */
+const pairLine = ({ task, title, round, settled, why }) => (round === 0 ? `○ ${task} ${title} · not reviewed: ${why}` : `✓ ${task} ${title} · ${settled ? 'settled' : 'passed'} in round ${round}`);
 
-/** Each fix done with its pair's verdict (19.5.13). @param {CloseView} view */
+/** Each fix done with its review's verdict (19.5.13). @param {CloseView} view */
 function pairBlock({ pair }) {
   const lines = pair.length === 0 ? '  No fix was done.' : treeList(pair.map(pairLine), { indent: '  ', width: TREE_WIDTH });
-  return block('REVIEWED BY THE PAIR', lines);
+  return block('REVIEWED', lines);
 }
 
 /** A scenario's line under what was proven: its glyph, and its standing where short of proven. @param {import('./build.cjs').Ran} ran */
@@ -154,8 +148,8 @@ function provenBlock({ product, proven }) {
 /** Each fix's work kept set aside, a ⚑ line each, where any is (R26). @param {CloseView} view */
 const keptBlock = ({ kept }) => (kept.length === 0 ? [] : [kept.map((words) => callout(words, { width: TREE_WIDTH })).join('\n')]);
 
-/** The close's display: its title, the pair's verdicts, what was proven and the work kept set aside, then each block of finish's that has something to show. @param {CloseView} view */
-const closeDisplay = (view) => [`${view.title} — ready to close`, pairBlock(view), provenBlock(view), ...keptBlock(view), ...finishBlocks(view)].join('\n\n');
+/** The close's display: its title, the pair's verdicts, what was proven, what went to the inbox and the work kept set aside, then each block of finish's that has something to show. @param {CloseView} view */
+const closeDisplay = (view) => [`${view.title} — ready to close`, pairBlock(view), provenBlock(view), ...filedBlock(view.filed), ...keptBlock(view), ...finishBlocks(view)].join('\n\n');
 
 /**
  * What the yes does: land what a fix done still holds, or, where every one
@@ -179,13 +173,13 @@ function closeGate(view) {
 
 /**
  * A quick-fix's close (19.5.13): its display, then the verdict gate while a
- * departure waits to be asked, else its own gate.
+ * departure waits to be asked, else its own gate — drawn alone after a
+ * verdict.
  * @param {CloseView} view
  * @returns {string}
  */
 function closeScreen(view) {
-  const display = section('DISPLAY: finish', CONTINUE_INSTRUCTION, closeDisplay(view));
-  return display + (view.verdict === null ? closeGate(view) : verdictGate(view.verdict, 'close'));
+  return verdictPoint({ name: 'finish', display: () => closeDisplay(view), verdict: view.verdict, point: 'close', gate: () => closeGate(view), alone: view.alone });
 }
 
 module.exports = { finishScreen, closeScreen };

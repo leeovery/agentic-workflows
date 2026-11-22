@@ -35,7 +35,10 @@
 // code and output and run again by the call after, and a call while
 // another runs them refused (22.5.1, 22.S35). A task stays in flight once
 // boot routes the conversation's words, its worktree laid out after
-// (24.2.4). Taking the worktree apart as the task ends, and
+// (24.2.4). The engine's own layouts — a one-line task's, a quick-fix's
+// worktree — kept out of the project's checkout by the line the layout
+// keeps in the repository's exclude file (project-layout.cjs). Taking the
+// worktree apart as the task ends, and
 // tasks side by side: test-engine-task-worktree-end.cjs.
 // ---------------------------------------------------------------------------
 
@@ -47,8 +50,9 @@ const fs = require('fs');
 const path = require('path');
 
 const {
-  ok, refuses, git, tip, createFile, initRepo, statePath, commitAll, confirmEnvironment, holdLock, lockAttempts, layout, FROZEN_AT,
+  ok, refuses, git, tip, createFile, initRepo, statePath, writeState, commitAll, confirmEnvironment, holdLock, lockAttempts, layout, FROZEN_AT,
 } = require('./engine-harness.cjs');
+const { fixFile } = require('./quick-fix-world.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
 const { NESTED, NESTED_TASKS, TRACKER, commitFiles, followRemedy } = require('./landing-world.cjs');
 const { readPosition, tasksInFlight } = require('../../skills/ledger-engine/scripts/domain/conversation.cjs');
@@ -166,6 +170,48 @@ describe('task worktree: every repository laid out (12.7.10, 7.2.21)', () => {
       [fs.readFileSync(path.join(lib, '.secret'), 'utf8'), fs.existsSync(path.join(lib, '.env')), fs.lstatSync(path.join(lib, 'vendor')).isSymbolicLink(), fs.realpathSync(path.join(lib, 'vendor'))],
       ['SECRET=1\n', false, true, fs.realpathSync(path.join(at.lib, 'vendor'))],
     );
+  });
+
+  it('13.3.4: lays a one-line task out from the project\'s checkout in the engine\'s own layout, every repository on its branch and prepared as Claude Code prepares an isolation worktree; answers it laid out already run again; and takes it apart as the task ends, refused while it holds changes not committed', () => {
+    const at = project();
+    for (const [file, text] of Object.entries({ '.gitignore': '.secret\nvendor/\n', '.worktreeinclude': '.secret\n', '.secret': 'SECRET=1\n', 'vendor/kit.txt': 'kit\n' })) createFile(at.lib, file, text);
+    git(at.lib, ['add', '.gitignore', '.worktreeinclude']);
+    git(at.lib, ['commit', '-q', '-m', 'ignore the secret']);
+    createFile(at.dir, '.claude/settings.local.json', JSON.stringify({ worktree: { symlinkDirectories: ['vendor'] } }));
+    const { task } = ok(at.dir, ['task', 'create', UNIT, '3', '--title', 'Bold the fee', '--type', 'feat', '--why', 'one word, nothing for a reviewer to read']);
+    const session = building(at.dir, [task]);
+
+    const laid = ok(at.dir, layOut(task), as(session));
+    const top = path.join(fs.realpathSync(at.dir), '.claude', 'worktrees', `ledger-${UNIT}-${task}`);
+    const lib = path.join(top, 'lib');
+    assert.deepStrictEqual([fs.realpathSync(laid.worktree), laid.repos.map(({ repo, already }) => [repo, already ?? false])], [top, [['.', false], ['ext', false], ['lib', false]]]);
+    assert.deepStrictEqual(checkoutsOf(top).map(([branch]) => branch), [laid.branch, laid.branch, laid.branch]);
+    assert.deepStrictEqual([fs.readFileSync(path.join(lib, '.secret'), 'utf8'), fs.lstatSync(path.join(lib, 'vendor')).isSymbolicLink()], ['SECRET=1\n', true]);
+    assert.deepStrictEqual(ok(at.dir, layOut(task), as(session)).repos.map(({ already }) => already), [true, true, true]);
+
+    createFile(lib, 'loose.txt', 'not committed\n');
+    assert.match(refuses(at.dir, ['task', 'close', UNIT, task, '--reason', 'Not needed.'], as(session)).error, /^task close: .*\/lib holds changes not committed: loose\.txt, so nothing moved/);
+    fs.rmSync(path.join(lib, 'loose.txt'));
+    ok(at.dir, ['task', 'close', UNIT, task, '--reason', 'Not needed.'], as(session));
+    assert.ok(!fs.existsSync(top), 'its layout taken apart');
+    assert.ok(git(at.dir, ['branch', '--list', laid.branch]).includes(laid.branch), 'its branch kept');
+  });
+
+  it('the engine\'s own layouts, a one-line task\'s and a quick-fix\'s worktree, are kept out of the project\'s checkout by the one line the layout keeps in the repository\'s exclude file: git status there names neither, and git add -A takes neither', () => {
+    const at = project();
+    const { task } = ok(at.dir, ['task', 'create', UNIT, '3', '--title', 'Bold the fee', '--type', 'feat', '--why', 'one word, nothing for a reviewer to read']);
+    ok(at.dir, layOut(task), as(building(at.dir, [task])));
+    const log = writeState(at.dir, layout.cache('fee', 'session-001.md'), '# Discovery Session 001\n');
+    ok(at.dir, ['workunit', 'create', 'fee', 'quick-fix', '--description', 'The fee is spelt fea', '--session-log-file', log]);
+    const fixing = as(building(at.dir, []));
+    ok(at.dir, ['enter', 'implementation', 'fee'], fixing);
+    ok(at.dir, ['task', 'create', 'fee', '1', '--file', writeState(at.dir, layout.cache('fee-fix-1.md'), fixFile(1, 'Spell the fee'))], fixing);
+    ok(at.dir, ['task', 'start', 'fee', '1.1'], fixing);
+    const status = git(at.dir, ['status', '--porcelain', '--untracked-files=all']);
+    git(at.dir, ['add', '-A']);
+    const excluded = fs.readFileSync(path.join(at.dir, '.git', 'info', 'exclude'), 'utf8').split('\n').filter((line) => line.includes('.claude/worktrees'));
+
+    assert.deepStrictEqual([status, git(at.dir, ['diff', '--cached', '--name-only']), excluded], ['', '', ['/.claude/worktrees/ledger-*/']]);
   });
 
   it('answers each repository laid out already where it is run again, making nothing', () => {

@@ -34,6 +34,7 @@ const { startMenuRead } = require(path.join(ROOT, 'skills/ledger-engine/scripts/
 const { skillAt } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/position.cjs'));
 const { HANDOFF_TARGETS } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/handoff.cjs'));
 const { SHOWN, RAISE_SHOWN } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/gate.cjs'));
+const { layoutsFolder, layoutFolderName } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/project-layout.cjs'));
 const { initRepo, fixtureFrom, cleanupFixture, git, stateGit, withEnv, screenOf, stampBooted } = require('./engine-harness.cjs');
 const { BOOTED } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/user-files.cjs'));
 const { briefPath } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/brief-names.cjs'));
@@ -60,6 +61,7 @@ const RECEIPTED = Object.freeze({
   inbox: ['capture', 'archive', 'restore', 'delete'],
   topic: ['cancel', 'reactivate', 'postpone'],
   roadmap: ['pull-forward'],
+  finish: ['yes'],
 });
 // What a blind question's answer draws: its reveal (16.17.7).
 const REVEAL = '=== DISPLAY: blind question revealed ';
@@ -166,7 +168,7 @@ class Sim {
     return group === 'presence' || group === 'enter' || (group === 'raise' && !RAISE_ANSWERS.includes(verb)) || (group === 'topic' && (MAP_VERBS.includes(verb) || RECEIPTED.topic.includes(verb)))
       || (group === 'raise' && verb === 'answer' && blind && sections.startsWith(REVEAL))
       || (group === 'workunit' && RECEIPTED.workunit.includes(verb)) || (group === 'inbox' && RECEIPTED.inbox.includes(verb))
-      || (group === 'roadmap' && RECEIPTED.roadmap.includes(verb)) || (group === 'person' && verb === 'propose');
+      || (group === 'roadmap' && RECEIPTED.roadmap.includes(verb)) || (group === 'finish' && RECEIPTED.finish.includes(verb)) || (group === 'person' && verb === 'propose');
   }
 
   /**
@@ -190,13 +192,15 @@ class Sim {
   }
 
   /**
-   * A handoff the gate mod carries: the conversation is cleared and the work
-   * starts in a fresh one, in the same Claude process, boot's stamp copied
-   * into it from the one cleared, as the mod copies it.
+   * A handoff the gate mod carries: the conversation is cleared, its rows
+   * dropped as Claude Code's SessionEnd hook drops them on a clear, and the
+   * work starts in a fresh one, in the same Claude process, boot's stamp
+   * copied into it from the one cleared, as the mod copies it.
    */
   handOver() {
     const stamp = (/** @type {string} */ id) => path.join(this.configDir, 'conversations', id, BOOTED);
     const left = stamp(this.env.CLAUDE_CODE_SESSION_ID);
+    this.run(['presence', 'cleanup', this.env.CLAUDE_CODE_SESSION_ID]);
     this.conversations += 1;
     this.env = { ...this.env, CLAUDE_CODE_SESSION_ID: `sim-session-${this.conversations}` };
     fs.mkdirSync(path.dirname(stamp(this.env.CLAUDE_CODE_SESSION_ID)), { recursive: true });
@@ -636,14 +640,11 @@ function arriveAtEpicMenu(sim, wu, next) {
   return epicMenuAt(sim, wu);
 }
 
-// A discussion leaving its topic — a pause, a postpone, a cancel or a
-// spawn — fetches the wait for its agents: empty where none runs, else the
-// gate asking whether to wait for them first. Answers what it drew.
-/** @param {Sim} sim @param {string} wu @param {string} topic @param {boolean} [running] */
-function waitAgents(sim, wu, topic, running = false) {
-  const drawn = sim.render(['wait-agents', `${wu}.${topic}`], { expect: running ? 'content' : 'empty' });
-  if (running) assert.match(drawn, /^=== MENU: wait for agents /m);
-  return drawn;
+// A discussion closing its topic fetches the wait for its agents, empty
+// where none runs.
+/** @param {Sim} sim @param {string} wu @param {string} topic */
+function waitAgents(sim, wu, topic) {
+  sim.render(['wait-agents', `${wu}.${topic}`], { expect: 'empty' });
 }
 
 // A menu's pick into work hands off along the route the menu built for it, as
@@ -845,8 +846,8 @@ const investigationCache = (wu, name) => `${STATE_DIR_NAME}/.cache/${wu}/investi
  * hypotheses logged, the plan agreed at its gate, or run as its learned
  * step; where `live`, the person's permission to run the save against the
  * live server asked at the investigation's own level (19.4.20); a trace's
- * finding logged as an experiment settling both, the check-in agreed, or
- * run as its step; and the root cause decided on that finding and logged.
+ * finding logged as an experiment settling both, the check-in drawn and
+ * carried past; and the root cause decided on that finding and logged.
  * Answers the root cause's id.
  * @param {Sim} sim @param {string} wu @param {{live?: boolean}} [opts]
  */
@@ -867,8 +868,7 @@ async function rootCaused(sim, wu, { live = false } = {}) {
   log('experiment', ['--title', 'Trace the save', '--showed', 'a null on every crash', '--entry', finding]);
   log('hypothesis', ['H1', '--state', 'confirmed']);
   log('hypothesis', ['H2', '--state', 'ruled-out']);
-  const checkIn = sim.render(['investigation-check-in', wu, '--file', sim.write(investigationCache(wu, 'check-in.json'), { resolved: ['H1', 'H2'], next: 'Name the root cause' })], { expect: 'content' });
-  passGate(sim, checkIn, 'check-in gate', 'y');
+  sim.render(['investigation-check-in', wu, '--file', sim.write(investigationCache(wu, 'check-in.json'), { resolved: ['H1', 'H2'], next: 'Name the root cause' })], { expect: 'content' });
   const asked = ledger('ask', [], { ...CLAUDES, text: 'What crashes the save?' });
   const cause = ledger('decide', ['--answers', asked, '--relies-on', finding], { ...CLAUDES, text: 'The save writes a null that nothing checks.', why: 'The trace showed it.' });
   log('root-cause', ['--entry', cause]);
@@ -966,23 +966,21 @@ async function hunted(sim, wu) {
 }
 
 /**
- * The conclude as the investigation closes (19.4.23): the recap staged at
- * its gate, naming what the bug is in where `bug` does, and the yes run —
- * the person's, or the gate's learned step's — handing off into the spec
- * (24.S17).
+ * The investigation closed into its spec with no gate (19.4.23, 11.2.1):
+ * the recap staged, naming what the bug is in where `bug` does, handing
+ * off into the spec (24.S17), whose ready to build concludes it.
  * @param {Sim} sim @param {string} wu @param {{fixes?: string}} [bug]
  */
 function concluded(sim, wu, bug = {}) {
   const recap = sim.write(investigationCache(wu, 'recap.json'), { hunt: 'Two hypotheses; the save wrote a null on every crash, and nothing checked it.', ...bug });
-  const shown = sim.render(['conclude', wu, '--file', recap], { expect: 'content' });
-  const { next } = sim.run(/** @type {{argv: string[]}} */ (passGate(sim, shown, 'conclude gate', 'y')).argv);
+  const { next } = sim.run(['investigation', 'stage', wu, '--file', recap]);
   const route = `/ledger-specification-process bugfix ${wu}`;
-  assert.strictEqual([`/${next.skill}`, ...next.args].join(' '), route, 'the conclude hands off into the spec');
+  assert.strictEqual([`/${next.skill}`, ...next.args].join(' '), route, 'the close hands off into the spec');
   handoff(sim, route);
 }
 
 // A bugfix started as discovery starts one and handed into its
-// investigation, worked to its conclude and handed into its spec.
+// investigation, worked to its close and handed into its spec.
 /** @param {Sim} sim @param {string} wu @param {string} description */
 async function investigated(sim, wu, description) {
   startNew(sim);
@@ -1197,11 +1195,16 @@ function specToBuild(sim, wu, topics, position = 's') {
 /** @param {Sim} sim @param {string} wu @param {string[]} topics */
 function specWritten(sim, wu, topics) {
   specEntry(sim, wu, topics);
+  specLanded(sim, wu, topics);
+}
+
+// The spec's writer briefed, the spec written from the first decision of
+// each of `topics`, then each of `since`, and landed.
+/** @param {Sim} sim @param {string} wu @param {string[]} topics @param {string[]} [since] */
+function specLanded(sim, wu, topics, since = []) {
   sim.run(['brief', 'spec-writer', wu]);
-  const statements = topics.map((topic, i) => {
-    const [decision] = JSON.parse(sim.read(['ledger', 'record', wu, topic])).decisions;
-    return `1.1.${i + 1} ${topic} holds as decided. [${decision.id}]`;
-  });
+  const cited = [...topics.map((topic) => JSON.parse(sim.read(['ledger', 'record', wu, topic])).decisions[0].id), ...since];
+  const statements = cited.map((id, i) => `1.1.${i + 1} ${topics[i] ?? 'the change'} holds as decided. [${id}]`);
   sim.write(`.ledger/${wu}/spec.md`, [
     `# ${wu}`, '', '## 1. The work', '', '### 1.1 As decided', '', ...statements.flatMap((s) => [s, '']),
     '## 1-S. Scenarios for §1', '', '1.S1 Given the work, when it runs, then it holds as decided. (1.1.1)', '',
@@ -1309,17 +1312,23 @@ function environmentSetup(sim) {
   sim.run(answerGate(sim, 'environment setup', '--pick', 'y').next.argv);
 }
 
-// Ready to build as the prose reaches it (11.8): its checklist worked —
-// Claude's items marked done, the environment setup asked where it never
-// was, the engine's holding — and closed, then the screen fetched, `flags`
-// given. Answers what it drew.
-/** @param {Sim} sim @param {string} wu @param {string[]} [flags] */
-function readyToBuild(sim, wu, flags = []) {
+// Ready to build's checklist worked as the prose works it (11.8): Claude's
+// items marked done, the environment setup asked where it never was, the
+// engine's holding — and closed.
+/** @param {Sim} sim @param {string} wu */
+function readyClosed(sim, wu) {
   for (const { key, by, state } of JSON.parse(sim.read(['checklist', 'show', 'ready-to-build', wu])).items) {
     if (by === 'claude' && state === 'open') sim.run(['checklist', 'done', 'ready-to-build', wu, key]);
     if (key === 'environment-recorded' && state === 'open') environmentSetup(sim);
   }
   sim.run(['checklist', 'close', 'ready-to-build', wu]);
+}
+
+// Ready to build as the prose reaches it: its checklist closed, then the
+// screen fetched, `flags` given. Answers what it drew.
+/** @param {Sim} sim @param {string} wu @param {string[]} [flags] */
+function readyToBuild(sim, wu, flags = []) {
+  readyClosed(sim, wu);
   return sim.render(['ready-to-build', wu, ...flags], { expect: 'content' });
 }
 
@@ -1506,9 +1515,14 @@ function taskBuilt(sim, wu, task, tree, files, setup, { gated = false, note, acc
   return banked;
 }
 
+// A quick-fix's worktree, where its fixes are built, laid out by its first
+// fix's start (fix-branch.cjs).
+/** @param {Sim} sim @param {string} wu */
+const fixTree = (sim, wu) => path.join(layoutsFolder(sim.dir), layoutFolderName(wu));
+
 // A quick-fix's task, started, as its skill builds it through the task loop
 // (19.5.4, 19.5.20, 19.5.22): its builder briefed, `files` committed through
-// the door in the project's own checkout and pushed to the quick-fix's one
+// the door in the quick-fix's worktree and pushed to the quick-fix's one
 // pull request, its pair passing it, its short record written where `record`
 // says what changed, its account written once its builder's brief again says
 // it landed, and taken, pushed again and done. Answers the done.
@@ -1519,8 +1533,9 @@ function taskBuilt(sim, wu, task, tree, files, setup, { gated = false, note, acc
  */
 function fixBuilt(sim, wu, task, files, { record } = {}) {
   sim.run(['brief', 'builder', wu, task]);
-  for (const file of files) sim.write(file, '--colour\n');
-  sim.run(['commit', '--paths', ...files, '--task', wu, task, '-m', `fix(${wu}): task ${task}`]);
+  const tree = fixTree(sim, wu);
+  for (const file of files) sim.write(path.join(tree, file), '--colour\n');
+  sim.runIn(tree, ['commit', '--paths', ...files, '--task', wu, task, '-m', `fix(${wu}): task ${task}`]);
   sim.run(['land', 'open', wu, task]);
   for (const letter of ['a', 'b']) landed(placeIn(sim, sim.run(['brief', 'reviewer', wu, task, '--letter', letter]), 'Where your report goes'), PASSED_REPORT);
   if (record !== undefined) {
@@ -1839,7 +1854,7 @@ function finishClosed(sim, wu) {
  * @param {{question: string, lean: string, other: string}} call
  */
 async function wentAheadBlind(t, sim, wu, task, { question, lean, other }) {
-  t.mock.method(decisionPoint, 'decide', () => ({ decision: 'blind', reason: 'Asked cold.' }));
+  t.mock.method(decisionPoint, 'decide', () => ({ decision: 'blind', reason: 'Asked cold.', by: 'counts' }));
   sim.env = { ...sim.env, CLAUDE_STUB_ANSWERS: JSON.stringify({ [question]: labelAnswers('behaviour'), '': 'no-login' }) };
   const asked = sim.run(['ledger', 'ask', `${wu}.implementation`, '--task', task], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: question })).id;
   const drawn = await sim.runAsync(['raise', `${wu}.implementation`, '--answers', asked, '--parks', task], null, JSON.stringify({ ...leaningCall(lean, other), question }));
@@ -1870,6 +1885,6 @@ function finished(sim, wu, { closed = false } = {}) {
 
 module.exports = {
   Sim, worldFrom, worlds, readyForSim, shownRows, SPEC_TO_BUILD_UNIT, CUT_CLOSED_UNIT, sessionLog, handoffEntry, enterEntry, labEntry, specEntry, handoff, answerGate, typeAtGate, gatesAnswered, shapedInTheProduct, briefDraft, startThisWork, approveTheMap, startUnit, mapTopics, roadmapMenu, pullFromRoadmap, decideTopic, discussed, askedOn,
-  investigationCache, rootCaused, reported, validated, fixDirected, concluded, investigated, startMenu, startPick, continueUnit, continueInto, startRow, backToStart, startNew, startBare, startWith, arrive, send, mappedEpic, continueEpic, menuEntry, epicMenuAt, arriveAtEpicMenu, epicMenuLooked, epicRow, epicSetAside, epicPick, epicBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, waitAgents, triagePick, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, passTakenIn, passSurfaced, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed, handoffBy, follow,
-  DECIDED_ITEMS, specWritten, specBuilt, builders, taskBuilt, fixBuilt, builtAside, firstPhaseBuilt, cutClosed, areaRead, testsRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, reviewCall, strayRound, finishClosed, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic, wentAheadBlind, pickedRow,
+  investigationCache, rootCaused, reported, validated, fixDirected, concluded, investigated, startMenu, startPick, continueUnit, continueInto, startRow, backToStart, startNew, startBare, startWith, arrive, send, mappedEpic, continueEpic, menuEntry, epicMenuAt, arriveAtEpicMenu, epicMenuLooked, epicRow, epicSetAside, epicPick, epicBuildPick, epicKey, literal, sendArgv, presenceRow, carryOn, triagePick, workTheSet, pickRoute, buildEntry, startPhase, writePhaseTasks, writeTasks, specReviewed, passTakenIn, passSurfaced, cutTheSpec, readyToBuild, specToBuild, intoTheBuild, briefOf, scratchCalls, deadReader, laidBeside, placeIn, landed, handoffBy, follow,
+  DECIDED_ITEMS, specWritten, specLanded, specBuilt, readyClosed, builders, taskBuilt, fixTree, fixBuilt, builtAside, firstPhaseBuilt, cutClosed, areaRead, testsRead, failedHashRound, raisedAtReview, answeredAtStop, reviewNext, reviewCall, strayRound, finishClosed, finished, PASSED_REPORT, VERIFY_FILES, VERIFY_SETUP, buildLoop, twoPhaseEpic, wentAheadBlind, pickedRow,
 };

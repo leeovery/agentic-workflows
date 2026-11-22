@@ -11,8 +11,8 @@
 // intended, and the fix direction's step back and options, Claude's lean
 // marked (20.S19); nothing of earlier fixes (20.S20); each decision read
 // where its chain stands now; a raise named by the decision it asks about,
-// drawn again the same line; the conclude waiting from its draw to the
-// person's pick, never on the start menu's count; a call refused before the
+// drawn again the same line; the investigation closed into its spec with
+// no gate, nothing of it waiting on the person; a call refused before the
 // ledger is read; the investigation dated by its close on the
 // unit's tab, opened there once concluded, the hunt's moments in its
 // LATELY, and how far it has come on All work; the hunt's pages (20.12.2). The mod's fixtures are held to the
@@ -42,6 +42,7 @@ const { ledgerHelpers } = require('./ledger-world.cjs');
 const { fixture, misfits, emptyLists, place, standingOn } = require('./board-world.cjs');
 const { labelling } = require('./labels.cjs');
 const { undrawn } = require('./raise-world.cjs');
+const { cut, landReviewed, closeReady } = require('./ready-to-build-world.cjs');
 
 const BUG = 'kill-all';
 const EARLIER = 'empty-save';
@@ -523,26 +524,30 @@ describe('each decision where its chain stands now', () => {
 });
 
 describe('the investigation concluded, the unit\'s tab and All work (20.12.4, 20.15, 20.16)', () => {
-  it('concluded: This session says the specification is next, the banner done, a raise left unanswered no longer waiting, nor what waits on the unit since; the tab dates the investigation by its close, its row counts the hypotheses and opens the investigation, concluded, holding none of it either', async () => {
-    await raised(KEEP_CALL, made.keep);
-    const manifest = readManifest(dir, BUG);
-    manifest.phases.investigation.items[BUG] = { status: 'completed', concluded_at: '2026-08-20T15:00:00.000Z' };
-    manifest.phases.specification = { items: { [BUG]: { status: 'in-progress' } } };
-    writeState(dir, layout.manifest(BUG), JSON.stringify(manifest, null, 2));
-    wrote('ask', `${BUG}.specification`, [], { ...CLAUDE, text: 'Does a save retry once?' });
+  it('concluded at ready to build\'s yes: This session says so, the banner done, nothing of it waiting; the tab dates the investigation by its conclude, its row counts the hypotheses and opens the investigation, concluded, holding none of it either', async () => {
+    await closed();
+    run(['brief', 'spec-writer', BUG]);
+    writeState(dir, layout.unit(BUG, 'spec.md'), [
+      '# Kill All', '', '## 1. Saving', '', '### 1.1 The capture', '',
+      `1.1.1 A save never drops a session it did not see. [${made.rootCause}]`, '',
+      '## 1-S. Scenarios for §1', '', '1.S1 Given three sessions saved, when every one is killed, then the save keeps them. (1.1.1)', '',
+    ].join('\n'));
+    landReviewed(dir, BUG);
+    cut(dir, [{ name: 'Saving', goal: 'A save never drops a session.', scenarios: ['1.S1'], sections: ['1'], relies_on: [] }], BUG);
+    run(['environment', 'confirm']);
+    closeReady(dir, BUG);
+    const { concluded } = run(['ready-to-build', 'yes', BUG, '--position', 'auto']);
     atTheHunt();
     const { view, banner } = board();
     const opened = board(['--tab', 'unit', '--page', 'phase:investigation']).view;
 
-    assert.deepStrictEqual(board(['--tab', 'unit']).view.waiting.map((/** @type {{kind: string}} */ { kind }) => kind), ['gap'], 'the spec\'s gap waits on the unit');
-    assert.deepStrictEqual(opened.waiting, []);
-    assert.deepStrictEqual([view.standing, view.waiting, banner.state, banner.facts.at(-1).text], ['concluded', [], 'done', 'concluded · the specification next']);
-    assert.deepStrictEqual(tabRow(), { phase: 'investigation', state: 'complete', words: '3 hypotheses', doing: '', on: '2026-08-20T15:00:00.000Z', session: 'this', page: true });
-    assert.deepStrictEqual([opened.kind, opened.standing], ['investigation', 'concluded']);
+    assert.deepStrictEqual([view.standing, view.waiting, banner.state, banner.facts.at(-1).text], ['concluded', [], 'done', 'concluded']);
+    assert.deepStrictEqual(tabRow(), { phase: 'investigation', state: 'complete', words: '3 hypotheses', doing: '', on: concluded, session: 'this', page: true });
+    assert.deepStrictEqual([opened.kind, opened.standing, opened.waiting], ['investigation', 'concluded', []]);
   });
 
-  /** The hunt brought to its conclude, both validated, and the conclude drawn with Claude's recap staged. */
-  async function concludeDrawn() {
+  /** The hunt brought to its close, both validated, and closed into its spec with Claude's recap staged. */
+  async function closed() {
     takenIn(dispatched('root-cause-validation', []).id);
     picked(await raised(FIX_CALL, made.fix), '1');
     run(['investigation-log', 'fix-direction', BUG, '--question', made.fix]);
@@ -550,50 +555,23 @@ describe('the investigation concluded, the unit\'s tab and All work (20.12.4, 20
     write('decide', ['--answers', made.keep], { ...PERSON, text: 'A session you kill never comes back.', why: 'Killing it is the person saying so.' });
     const recap = path.join(config, 'recap.json');
     fs.writeFileSync(recap, JSON.stringify({ hunt: 'Three hypotheses; killing every session emptied the save.' }));
-    output(dir, ['render', 'conclude', BUG, '--file', recap], { env: env() });
+    run(['investigation', 'stage', BUG, '--file', recap]);
     atTheHunt();
   }
 
-  it('its conclude drawn, its yes waits on the person: This session, the banner, the tab and All work each say the conclude waits, flagged first and counted, and the start menu\'s row counts it among the gates, the unit listed first (18.2.3, 20.12.5); the root cause replaced, logged and both validated again since, the recap drawn before it, it waits no longer', async () => {
-    await concludeDrawn();
+  it('19.4.23: closed into its spec with no gate, nothing of it waits on the person — This session says it is closed and the specification next, its conclude still to come at ready to build, the banner done, the unit at its specification on the tab and All work, and the start menu counting no gate', async () => {
+    await closed();
     createManifest(dir, 'tally', { work_type: 'feature' });
-    const started = /** @type {{head: string, cue: string}} */ (startMenuScreen(withEnv(env(), () => startMenuRead(dir))).rows[0].label);
+    const labels = /** @type {{head: string, tail?: string, cue?: string}[]} */ (startMenuScreen(withEnv(env(), () => startMenuRead(dir))).rows.map(({ label }) => label));
     const { view, banner } = board();
-    const standing = standingOn(board, BUG);
-    const replaced = write('replace', ['--replaces', made.rootCause, '--reason', 'was-wrong'], { ...CLAUDE, drops: ['the whole truth'], text: 'A save trusts a capture taken mid-shutdown.', why: 'E6 showed it.' }).id;
-    const body = path.join(config, 'body.md');
-    fs.writeFileSync(body, 'A capture mid-shutdown reads as no sessions.\n');
-    run(['investigation-log', 'root-cause', BUG, '--entry', replaced, '--body', body]);
-    takenIn(dispatched('root-cause-validation', []).id);
-    takenIn(dispatched('fix-validation', []).id);
-    const stale = board().view;
 
-    assert.deepStrictEqual([view.standing, view.waiting.map(({ kind, id, text }) => [kind, id, text])], ['conclude-waits', [['conclude', 'conclude', 'Conclude: the hunt\'s recap, the root cause and the fix, for your yes']]]);
-    assert.deepStrictEqual([banner.state, banner.facts.slice(2).map(({ text, needs }) => [text, needs])], ['needs', [['conclude waits on you', false], ['1 waiting on you', true]]]);
-    assert.deepStrictEqual(standing, {
-      tab: { now: 'investigation', state: 'waits', words: '3 hypotheses', waiting: ['conclude conclude'] },
-      all: { phase: 'investigation', standing: 'conclude waits on you', waiting: 1, total: 1 },
-      banner: { state: 'needs', waits: ['⚑ 1 waiting on you'] },
+    assert.deepStrictEqual([view.standing, view.waiting, banner.state, banner.facts.at(-1).text], ['closed', [], 'done', 'closed · the specification next']);
+    assert.deepStrictEqual(standingOn(board, BUG), {
+      tab: { now: 'specification', state: 'running', words: '', waiting: [] },
+      all: { phase: 'specification', standing: 'being written', waiting: 0, total: 0 },
+      banner: { state: 'done', waits: [] },
     });
-    assert.deepStrictEqual([stale.standing, stale.waiting], ['investigating', []]);
-    assert.deepStrictEqual([started.head, started.cue], ['Continue bugfix: Kill All', '1 gate waiting for you']);
-  });
-
-  it('20.12.5: the conclude waits from its draw to the person\'s pick — keep going ends the wait on every view, and its next draw opens it again', async () => {
-    await concludeDrawn();
-    const drawn = standingOn(board, BUG);
-    ok(dir, ['gate', 'conclude gate', '--pick', 'k'], { env: env() });
-    const kept = { this: board().view.waiting, ...standingOn(board, BUG) };
-    output(dir, ['render', 'conclude', BUG], { env: env() });
-    const again = standingOn(board, BUG);
-
-    assert.deepStrictEqual([drawn.all.standing, drawn.banner.state, again], ['conclude waits on you', 'needs', drawn]);
-    assert.deepStrictEqual(kept, {
-      this: [],
-      tab: { now: 'investigation', state: 'running', words: '3 hypotheses', waiting: [] },
-      all: { phase: 'investigation', standing: 'fix confirmed', waiting: 0, total: 0 },
-      banner: { state: 'running', waits: [] },
-    });
+    assert.deepStrictEqual(labels.find(({ head }) => head === 'Continue bugfix: Kill All'), { head: 'Continue bugfix: Kill All', tail: 'specification', cue: undefined });
   });
 
   it('a raise drawn again for its question keeps its line, named by the question it asks', async () => {

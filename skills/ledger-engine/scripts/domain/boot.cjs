@@ -139,7 +139,9 @@
 // first, before the migrations — a boot that fails leaves none — the place
 // it left kept for the board where it names a phase, and its tasks in
 // flight kept there whatever boot answers, the menu, a route or a pick, so
-// the builders still at work go on (position.cjs).
+// the builders still at work go on (position.cjs); and it leaves the
+// product's conversation, its presence row there gone with its position
+// (presence.cjs).
 //
 // Where a decision landed unchecked, never one the migration carried, and
 // no late check has judged it, boot launches the late one-decision check,
@@ -159,7 +161,7 @@ const { withStateLock, withBootLock, migrationRuns } = require('./state-worktree
 const { placeState } = require('./state-checks.cjs');
 const { catchUpState } = require('./state-merge.cjs');
 const { keepStateIgnored } = require('./code-trace.cjs');
-const { githubRuleOffered, githubSquashOffered } = require('./github-setup.cjs');
+const { githubRuleOffered } = require('./github-setup.cjs');
 const { bootKnowledge } = require('./knowledge/sync.cjs');
 const { renderLedgerCopies } = require('./ledger-copies.cjs');
 const { detectSystemConfig: detectKnowledgeSettings } = require('./knowledge/setup.cjs');
@@ -170,14 +172,15 @@ const { tidyConversations } = require('./conversation.cjs');
 const { stampBoot } = require('./boot-stamp.cjs');
 const { appendWaiting, holdsWaiting } = require('./trust-log.cjs');
 const { leavePosition } = require('./position.cjs');
+const { PRODUCT } = require('../kernel/manifest-schema.cjs');
 const { brownfieldOffer, brownfieldSignal } = require('./brownfield.cjs');
 const { walkthroughState } = require('./walkthrough.cjs');
 const { launchLateCheck } = require('./ledger-late-check.cjs');
 const { commitUncommitted } = require('./ledger.cjs');
 const { MIGRATE_CJS, MIGRATIONS_RECORD, MIGRATION_JOURNALS, directiveStopped } = require('./directives.cjs');
-const { finishOwed, projectInMain } = require('./migration-commit.cjs');
+const { finishOwed, projectInMain, reviewWaits } = require('./migration-commit.cjs');
 const { entryOf, gatesDue } = require('./boot-route.cjs');
-const { migrationCarrier, beatMigrationQuietly, dropMigrationRow } = require('./presence.cjs');
+const { migrationCarrier, beatMigrationQuietly, dropMigrationRow, clearOwnQuietly } = require('./presence.cjs');
 const { unmoved } = require('../../../ledger-migrate/scripts/old-layout.cjs');
 
 // The migration orchestrator prints this marker if and only if files were updated — it is the
@@ -376,7 +379,6 @@ function sessionEffort() {
  * @typedef {object} BootResult
  * @property {'ready'|'restarted'} state `restarted` where this boot started a lost state again, on the person's yes — the product's read of the code follows
  * @property {boolean} github_rule_offer the state's remote is on GitHub and the rule against deleting or force-pushing its branch was never answered — `render github-rule-gate` offers it, and `github-rule <yes|no>` answers
- * @property {boolean} github_squash_offer the project lands through GitHub and the squash default was never answered — `render github-squash-gate` offers it, and `github-squash <yes|no>` answers
  * @property {{changed: boolean, ran: number, output: string, verify: VerifyAddendum[], notices: MigrationNotice[]}} migrations `changed` counts files, `ran` counts migrations executed — a migration can run and change nothing
  * @property {'ready'|'not-ready'} knowledge
  * @property {boolean} indexed the store's keyword side came in line with the files — no artifact left failing
@@ -395,7 +397,7 @@ function sessionEffort() {
  * @property {import('./brownfield.cjs').BrownfieldOffer} brownfield_offer the answer to the brownfield offer from the project manifest — `none` means nothing recorded yet (ledger's one-time judgment: native, or the offer), `accepted` that its research is owed, which the product's conversation resumes at its next opening
  * @property {'none'|'walked'|'skipped'} walkthrough the answer to the walkthrough offer from the project manifest — `none` means nothing recorded yet, the state ledger's one-time offer keys on
  * @property {import('./brownfield.cjs').BrownfieldSignal|null} [brownfield_signal] present only where `gates` holds `brownfield` — the repository facts the judgment is made from; null when there is no git history to read
- * @property {SystemConfigReport} [system_config] present only when knowledge is not-ready — lets the calling skill offer setup without extra probes
+ * @property {SystemConfigReport} [system_config] present only when knowledge is not-ready — a valid one adopted (`knowledge-adopt`), the gate asking otherwise
  */
 
 /**
@@ -481,6 +483,7 @@ function boot(cwd, { startAgain = false, words = '' } = {}) {
   if (gitShortfall() !== null) return { state: 'git', stop: stopAt('git'), warnings: [] };
   if (outsideRepository(cwd)) return { state: 'repo', stop: stopAt('repo'), warnings: [] };
   leavePosition(handedSession());
+  clearOwnQuietly(cwd, PRODUCT, 'discovery', PRODUCT);
   /** @type {string[]} */
   const warnings = [];
   appendWaiting(cwd, warnings);
@@ -493,8 +496,11 @@ function boot(cwd, { startAgain = false, words = '' } = {}) {
     warnings.push(...caught.warnings);
     if (caught.action === 'stopped') return null;
     keepStateIgnored(cwd, warnings);
+    const waited = reviewWaits(cwd);
     const ran = runMigrations(cwd, codeRoot(cwd), warnings);
-    return 'migrations' in ran ? { ...ran, migrationsCommitted: commitRecord(cwd, ran.migrations, warnings) } : ran;
+    if (!('migrations' in ran)) return ran;
+    const migrations = waited ? { ...ran.migrations, changed: true } : ran.migrations;
+    return { ...ran, migrations, migrationsCommitted: commitRecord(cwd, migrations, warnings) };
   });
   if (migrated === null) return { state: 'merge', stop: stopAt('merge'), warnings };
   if ('refused' in migrated) return guardStop(migrated.refused, warnings);
@@ -528,16 +534,16 @@ function boot(cwd, { startAgain = false, words = '' } = {}) {
   launchLateCheck(root, warnings);
 
   const surface = gateSurface(cwd);
-  const facts = { migrations, knowledge, indexed, compacted, migrations_committed: migrationsCommitted, warnings, session_labels: labelConfigStatus(cwd), label_repaired: repairSessionLabels(cwd).repaired, session_hooks_installed: sessionHooksInstalled, mod: MOD[surface], effort: sessionEffort(), brownfield_offer: brownfieldOffer(cwd), walkthrough: walkthroughState(cwd).status, github_rule_offer: githubRuleOffered(cwd), github_squash_offer: githubSquashOffered(cwd) };
+  // Not-ready responses carry the system-config report: where it is valid
+  // the project adopts it, `knowledge-adopt`, else the knowledge gate asks
+  // (reuse what is there, a mode choice, or the terminal wizard).
+  const systemConfig = knowledge === 'not-ready' ? { system_config: detectSystemConfig() } : {};
+  const facts = { migrations, knowledge, ...systemConfig, indexed, compacted, migrations_committed: migrationsCommitted, warnings, session_labels: labelConfigStatus(cwd), label_repaired: repairSessionLabels(cwd).repaired, session_hooks_installed: sessionHooksInstalled, mod: MOD[surface], effort: sessionEffort(), brownfield_offer: brownfieldOffer(cwd), walkthrough: walkthroughState(cwd).status, github_rule_offer: githubRuleOffered(cwd) };
   const entry = entryOf(cwd, words);
   const restarted = placed.made === 'restarted';
   /** @type {BootResult} */
   const result = { state: restarted ? 'restarted' : 'ready', ...facts, ...entry, gates: gatesDue(facts, { bare: entry.go === 'menu', outdated: surface === 'outdated', restarted }) };
   if (result.gates.includes('brownfield')) result.brownfield_signal = brownfieldSignal(cwd);
-  // Not-ready responses carry the system-config report so the calling
-  // skill's knowledge gate can branch (reuse the system config, offer a
-  // mode choice, or fall back to the terminal wizard) without extra probes.
-  if (knowledge === 'not-ready') result.system_config = detectSystemConfig();
   return stamped(cwd, result);
 }
 
@@ -731,8 +737,11 @@ function carriedOn(cwd, stop, at) {
  * and that write has no other path to a commit: with nothing to review the
  * calling skill says "up to date" and never reaches its `commit
  * --migrations`. So boot leaves the record clean whenever no reviewed commit
- * will carry it — dirt this run recorded, and dirt an earlier boot left
- * behind the same way. When the review gate does fire, its own commit takes
+ * will carry it: dirt this run recorded. Dirt an earlier run left — the
+ * record differing from the state branch's before this one ran — is a
+ * migration another conversation ran, waiting on its review's yes: boot
+ * answers its run changed, so the review is named here too and its yes
+ * commits the record, never a later commit beside it. When the review gate does fire, its own commit takes
  * the record in with the diff the user approved and boot stays out of the
  * way. The migrations are already applied, so a commit failure is a warning.
  * @param {string} cwd @param {BootResult['migrations']} migrations @param {string[]} warnings

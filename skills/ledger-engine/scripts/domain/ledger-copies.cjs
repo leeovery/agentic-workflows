@@ -9,11 +9,10 @@
 // - What is rendered: every place whose record shows a current entry — a
 //   topic's, or a unit's own level's (ledger-fold.cjs) — each showing its
 //   current answers only, never what they replaced, and the current entries
-//   elsewhere made there or that it rests on (5.8.19); and once the ledger
-//   exists, the product record. The product's place (8.12.9) has none: it is
-//   no unit's, and its findings reach a topic through its opening alone
-//   (9.3.12), never a search. A place whose record shows nothing has no
-//   copy: a cancelled topic or unit, or a postponed topic while it waits,
+//   elsewhere made there or that it rests on (5.8.19); the product's place
+//   (8.12.9), its findings alone, so a search from any work finds them
+//   (8.12.12, 22.6.2); and once the ledger exists, the product record. A
+//   place whose record shows nothing has no copy: a cancelled topic or unit, or a postponed topic while it waits,
 //   has its copy removed, and gets it back when it is live again (5.8.17).
 // - When: the whole set is rendered against the ledger after a ledger write
 //   commits and its lock is released, and after any command that changes
@@ -176,8 +175,8 @@ function productText(shower) {
 
 /**
  * Every copy the ledger renders, by its state-relative file: each record
- * holding a current entry, and the product record's — none where there is
- * no ledger.
+ * holding a current entry, the product's place's findings, and the product
+ * record's — none where there is no ledger.
  * @param {string} root @param {string[]} notes what a landing the read's check finished said, pushed to
  * @returns {Map<string, string>}
  */
@@ -187,8 +186,9 @@ function copiesOf(root, notes) {
     /** @type {Map<string, string>} */
     const copies = new Map();
     for (const { unit, topic, record } of placeRecords(shower.folded)) {
-      if (unit === PRODUCT || record.questions.length + record.findings.length + record.decisions.length + record.other_topics.length === 0) continue;
-      copies.set(recordFile(unit, topic), recordText(shower, unit, topic, record));
+      const shown = unit === PRODUCT ? { ...record, questions: [], decisions: [], other_topics: [] } : record;
+      if (shown.questions.length + shown.findings.length + shown.decisions.length + shown.other_topics.length === 0) continue;
+      copies.set(recordFile(unit, topic), recordText(shower, unit, topic, shown));
     }
     copies.set(PRODUCT_FILE, productText(shower));
     return copies;

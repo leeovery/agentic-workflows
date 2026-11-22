@@ -46,7 +46,7 @@ In your account, under `## What the tests prove`, name each scenario you ran thr
 
 Build to the task. Where it, its sections and the decided calls leave a call open:
 
-- A feasible way the person would leave to you — how the code does what the record decided — is yours: take it, and report it as your call with why, so it is on the record before the review, where the reviewers read it among the decided calls.
+- A feasible way the person would leave to you — how the code does what the record decided — is yours: take it, and report it as your call with why, so it is on the record before its review reads it among the decided calls.
 - A question the person would want to answer — what the product does, or a decision the record holds that the work shows wrong — is never yours. Stop, and report it in product terms, with the options you see and your lean. The orchestrator takes it through the ask rule, adds the answer to the task, and sends you back in.
 - A problem you cannot build past: stop, and report what you met and where the work stands.
 
@@ -60,7 +60,7 @@ The starting point is that the work stands — the decisions are made, the spec 
 
 Weigh each finding professionally: its cause, whether it is the symptom of a deeper fault, and the right fix, which is often the simple one. Where your design and your build hold, stand by them.
 
-Where the two reviewers disagree, or you reject a finding, decide against this brief and the design, and say why in the round's summary. The next round reads the whole task again.
+Where your reviewers disagree, or you reject a finding, decide against this brief and the design, and say why in the round's summary. The next round reads the whole task again.
 
 Whatever the fix's size, before it lands check the edge cases around it and whether it disturbs the design, the architecture, the data model, the plan, later phases' plans, or the considerations behind any decision.
 

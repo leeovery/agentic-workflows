@@ -78,7 +78,7 @@ describe('verify mutants: the mutation tool over a phase\'s lines (15.6.3, 15.6.
   }
 
   /** Where the engine lays the project out at phase 1's tips: beside the builders' isolation worktrees. */
-  const scratch = () => path.join(fs.realpathSync(dir), '.claude', 'worktrees', `ledger-mutants-${UNIT}-phase-1`);
+  const scratch = () => path.join(fs.realpathSync(dir), '.claude', 'worktrees', `ledger-mutants.${UNIT}-phase-1`);
 
   /** The folders Jest, Vitest and their like leave out of a test run wherever they fall on its path. */
   const LEFT_OUT = ['.git', '.hg', '.sl', '.cache', '.idea', '.output', '.temp'];

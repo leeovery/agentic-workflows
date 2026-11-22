@@ -11,7 +11,8 @@
 //   (derivations.cjs); an epic's discovery runs until its map is first
 //   approved, as the yes records it (`phases.discovery.approved_at`,
 //   approve-map.cjs), each phase after it later until then. A feature's
-//   discussion is complete once it has closed into its spec (11.2.1). The
+//   discussion, or a bugfix's investigation, is complete once it has closed
+//   into its spec (11.2.1). The
 //   specification is under way from its entry, once the topics are settled
 //   (spec-standing.cjs). A quick-fix's phases are discovery and its
 //   implementation, its one session, and its review once the person asks
@@ -20,8 +21,8 @@
 //   review from then, each complete once it closes. A phase complete
 //   carries the day it closed, as its records keep it: a linear unit's
 //   discovery the day the unit was made, an epic's the map last approved,
-//   the discussion its last topic decided, the investigation its conclude
-//   (`concluded_at`, P2), the specification ready to build's yes, the
+//   the discussion its last topic decided, the investigation its close
+//   into its spec, or its conclude at ready to build (`concluded_at`, P2), the specification ready to build's yes, the
 //   build its last phase closed, a quick-fix's implementation its review
 //   asked for, else its close, and the review the unit completed.
 // - Where it has come to (`now`): the first phase not complete — an epic
@@ -36,7 +37,7 @@
 
 const { specBegun } = require('./spec-standing.cjs');
 const {
-  phaseStatus, buildPlaceStatus, buildBegun, buildFinished, closedIntoSpec, quickFixBuild, fixesBegun, reviewAsked, startedOn,
+  phaseStatus, buildPlaceStatus, buildBegun, buildFinished, closedFrom, quickFixBuild, fixesBegun, reviewAsked, startedOn,
 } = require('./derivations.cjs');
 
 /** @typedef {import('./board.cjs').BoardAt} BoardAt */
@@ -81,7 +82,7 @@ function builtOn(manifest) {
 const CLOSED = Object.freeze({
   discovery: ({ manifest }) => (manifest.work_type === 'epic' ? approvedOn(manifest) : startedOn(manifest)),
   discussion: ({ manifest }) => latest(Object.values(manifest.checklists?.decided ?? {}).map((record) => record?.closed)),
-  investigation: ({ manifest, unit }) => latest([manifest.phases?.investigation?.items?.[unit]?.concluded_at]),
+  investigation: ({ manifest, unit }) => latest([manifest.phases?.investigation?.items?.[unit]?.concluded_at, manifest.checklists?.conclusion?.[unit]?.closed]),
   specification: ({ manifest }) => latest([manifest.checklists?.['ready-to-build']?.closed]),
   implementation: ({ manifest }) => builtOn(manifest),
   review: ({ manifest }) => latest([manifest.completed_at]),
@@ -105,7 +106,7 @@ function quickFixStatus(manifest, reads) {
 
 /** Where a phase stands, by the status of the phase it reads. @param {UnitRead} at @param {string} reads @returns {Status} */
 function statusOf(at, reads) {
-  if (reads === 'discovery' || (reads === 'discussion' && closedIntoSpec(at.manifest))) return 'complete';
+  if (reads === 'discovery' || closedFrom(at.manifest, reads)) return 'complete';
   if (quickFixBuild(at.manifest)) return quickFixStatus(at.manifest, reads);
   const status = reads === 'review' ? buildPlaceStatus(at.manifest, reads) : phaseStatus(at.manifest, reads, reads === 'specification' && specBegun(at.cwd, at.manifest));
   if (status === 'completed') return 'complete';

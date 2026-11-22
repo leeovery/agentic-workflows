@@ -6,7 +6,8 @@
 // scenario makes —
 //   - every manifest parses and is schema-valid (statuses in vocabulary,
 //     discovery items status-less, no phase-named shadow roots, a
-//     quick-fix's record naming each nested repository it touched once,
+//     quick-fix's record naming each nested repository it touched once, its
+//     worktree standing only while its fixes are built, on its one branch,
 //     the landing record naming the unit's own tasks landed in the
 //     project's repositories at commits each holds, a unit's own branch
 //     an epic's or a feature's, the default branch holding none of its
@@ -77,6 +78,8 @@ const { LEARNED } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain
 const { PERSON } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/user-files.cjs'));
 const { EXPERIMENT_TERMINAL_STATUSES } = require(path.join(ROOT, 'skills/ledger-engine/scripts/kernel/manifest-schema.cjs'));
 const { environmentFaults } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/environment.cjs'));
+const { layoutsFolder, layoutFolderName } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/project-layout.cjs'));
+const { quickFixBranch } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/landing-names.cjs'));
 
 // The words a shell makes of a route written into a command: split at spaces,
 // a double-quoted span one word without its quotes.
@@ -96,6 +99,12 @@ function listWorkUnits(dir) {
     .filter((e) => e.isDirectory() && !e.name.startsWith('.'))
     .filter((e) => fs.existsSync(path.join(wf, e.name, 'manifest.json')))
     .map((e) => e.name);
+}
+
+/** The branch the linked worktree at `tree` has out, read from git's own files. @param {string} tree */
+function branchOutAt(tree) {
+  const gitDir = fs.readFileSync(path.join(tree, '.git'), 'utf8').trim().replace(/^gitdir: /, '');
+  return fs.readFileSync(path.join(gitDir, 'HEAD'), 'utf8').trim().replace(/^ref: refs\/heads\//, '');
 }
 
 /**
@@ -268,6 +277,15 @@ function auditState(dir, label) {
       for (const repo of repos) assert.ok(fs.existsSync(path.join(dir, repo, '.git')), ctx(`${wu}: fixes.repos names ${repo}, no repository of the project's`));
     }
 
+    // A quick-fix's worktree stands only while its fixes are built, on its
+    // one branch: laid out at its first fix's start, taken apart at its
+    // close, cancel or move (fix-branch.cjs).
+    const fixTree = path.join(layoutsFolder(dir), layoutFolderName(wu));
+    if (fs.existsSync(fixTree)) {
+      assert.ok(manifest.work_type === 'quick-fix' && manifest.status === 'in-progress' && derivations.fixesBegun(manifest), ctx(`${wu}: a quick-fix's worktree stands for a ${manifest.status} ${manifest.work_type}`));
+      assert.strictEqual(branchOutAt(fixTree), quickFixBranch(wu), ctx(`${wu}: its worktree has another branch out`));
+    }
+
     if (manifest[schema.LANDINGS] !== undefined) auditLandings(dir, wu, manifest[schema.LANDINGS], ctx);
     if (manifest.build?.branch !== undefined) auditUnitBranch(dir, wu, manifest, ctx);
 
@@ -285,6 +303,24 @@ function auditState(dir, label) {
     if (manifest.checklists?.finish !== undefined) {
       const begun = manifest.work_type === 'quick-fix' ? derivations.fixesBegun(manifest) : derivations.buildBegun(manifest);
       assert.ok(begun, ctx(`${wu}: a finish checklist on a ${manifest.work_type} whose ${manifest.work_type === 'quick-fix' ? 'fixes' : 'build'} has not begun`));
+    }
+
+    // A bugfix's investigation closes into its spec as a mark keyed by the
+    // unit, keeping its recap and the root cause and the fix by their ids
+    // alone, and once ready to build's yes concludes it, its close is taken
+    // at the instant it concluded (investigation-conclude.cjs): a bugfix
+    // whose build has begun has its investigation concluded.
+    if (manifest.work_type === 'bugfix' && derivations.buildBegun(manifest)) {
+      assert.strictEqual(manifest.phases?.investigation?.items?.[wu]?.status, 'completed', ctx(`${wu}: its build begun, its investigation not concluded`));
+    }
+    const conclusion = manifest.checklists?.conclusion;
+    if (conclusion !== undefined) {
+      assert.deepStrictEqual([manifest.work_type, Object.keys(conclusion)], ['bugfix', [wu]], ctx(`${wu}: a conclusion close on a ${manifest.work_type}, or keyed by another topic`));
+      const { closed, voided, taken, hunt, root_cause: rootCause, fix, fixes, area, ...more } = conclusion[wu];
+      assert.deepStrictEqual([typeof closed, typeof hunt, typeof rootCause, typeof fix, more], ['string', 'string', 'string', 'string', {}], ctx(`${wu}: a conclusion close out of its shape`));
+      assert.ok([voided, taken, fixes, area].every((field) => field === undefined || typeof field === 'string'), ctx(`${wu}: a conclusion close's optional fields out of their shape`));
+      const item = manifest.phases?.investigation?.items?.[wu];
+      if (item?.status === 'completed') assert.strictEqual(conclusion[wu].taken, item.concluded_at, ctx(`${wu}: concluded at ${item.concluded_at}, its close taken at ${conclusion[wu].taken}`));
     }
 
     // No phase-named shadow roots beside `phases`.
@@ -349,9 +385,9 @@ function auditState(dir, label) {
       }
     }
 
-    // An epic's menu draws over whatever state the pipeline is in, but a
-    // cancelled epic's, which it refuses.
-    if (manifest.work_type === 'epic' && manifest.status !== 'cancelled') auditMenuDrawn(dir, () => epicMenuSurface(dir, wu), `${label} — ${wu}'s epic menu`);
+    // An epic's menu draws over whatever state the pipeline is in while the
+    // epic is in progress; a cancelled or a finished epic's it refuses.
+    if (manifest.work_type === 'epic' && manifest.status === 'in-progress') auditMenuDrawn(dir, () => epicMenuSurface(dir, wu), `${label} — ${wu}'s epic menu`);
     auditMenuDrawn(dir, () => manageUnitSurface(dir, wu), `${label} — ${wu} in manage`);
   }
 
@@ -816,8 +852,9 @@ function ledgerAuditsOf(dir) {
 }
 
 // The ledger's copies in the knowledge directory, held to the records: a
-// copy for each place a shown entry is placed in — its unit's own level, or
-// a topic, never the product's place — and for no other; each naming every
+// copy for each place a shown entry is placed in — its unit's own level, a
+// topic, or the product's place, whose copy shows its findings alone — and
+// for no other; each naming every
 // entry shown there and no entry that is not shown, so no replaced answer is
 // in one; the product record's file naming the shown entries marked
 // product-wide alone; no words of an entry that is not shown — a question's
@@ -835,8 +872,10 @@ function ledgerAuditsOf(dir) {
 function auditCopies(root, events, shownAt, placed, headings, full, ctx) {
   /** @type {Map<string, string[]>} */
   const expected = new Map();
+  const byId = new Map(events.map((e) => [e.id, e]));
+  const finding = (/** @type {string} */ id) => byId.get(id).event === 'found' || byId.get(id).of === 'finding';
   for (const id of shownAt.keys()) {
-    for (const { unit, topic } of placed(id).filter((at) => at.unit !== PRODUCT)) {
+    for (const { unit, topic } of placed(id).filter((at) => at.unit !== PRODUCT || finding(id))) {
       const file = topic === null ? `${RECORDS_DIR}/${unit}.md` : `${RECORDS_DIR}/${unit}/${topic}.md`;
       expected.set(file, [...(expected.get(file) ?? []), id]);
     }
@@ -852,7 +891,6 @@ function auditCopies(root, events, shownAt, placed, headings, full, ctx) {
     assert.deepStrictEqual(ids.filter((id) => !names.includes(id)), [], ctx(`${file} does not name every entry its record shows`));
     assert.deepStrictEqual(names.filter((id) => !shownAt.has(id)), [], ctx(`${file} names an entry that is not current`));
   }
-  const byId = new Map(events.map((e) => [e.id, e]));
   assert.deepStrictEqual([...new Set(named(PRODUCT_FILE))].sort(), [...shownAt.keys()].filter((id) => byId.get(id).product_wide === true).sort(),
     ctx('the product record\'s file does not name the shown entries marked product-wide alone'));
   /** @param {Record<string, any>} e @returns {string[]} */

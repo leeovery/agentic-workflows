@@ -28,7 +28,7 @@ const {
   ok, okSections, writeState, layout, sectionOf, createFile, git,
 } = require('./engine-harness.cjs');
 const {
-  UNIT, FLAG, createFix, parkedOn, quickFixNestedConformance,
+  UNIT, FLAG, createFix, fixTree, parkedOn, quickFixNestedConformance,
 } = require('./quick-fix-world.cjs');
 const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
 
@@ -55,9 +55,9 @@ for (const { name } of listDrivers('landing')) {
       const at = project();
       createFix(at.dir, 1, FLAG, as());
       ok(at.dir, ['task', 'start', UNIT, '1.1'], as());
-      createFile(at.dir, 'lib/lib.txt', 'lib --colour\n');
-      ok(at.dir, ['commit', '--paths', 'lib/lib.txt', '--task', UNIT, '1.1', '-m', `fix(${UNIT}): spell the lib --colour`], as());
-      for (const [file, text] of Object.entries(UNCOMMITTED)) createFile(at.dir, file, text);
+      createFile(fixTree(at.dir), 'lib/lib.txt', 'lib --colour\n');
+      ok(fixTree(at.dir), ['commit', '--paths', 'lib/lib.txt', '--task', UNIT, '1.1', '-m', `fix(${UNIT}): spell the lib --colour`], as());
+      for (const [file, text] of Object.entries(UNCOMMITTED)) createFile(fixTree(at.dir), file, text);
       await parkedOn(at.dir, '1.1', as());
       const screen = sectionOf(okSections(at.dir, ['workunit', 'move', UNIT, '--to', 'feature', '--file', payload(at.dir)], as()).sections, 'DISPLAY: start this work');
       const { next } = ok(at.dir, ['gate', 'start this work', '--pick', 'y'], as());

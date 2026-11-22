@@ -4,12 +4,14 @@
 // The pipeline simulation's quick-fix with a fix parked mid-build (19.5.23,
 // 19.5.25): its builder's question parking it with a commit of its own and
 // work not committed, which its park sets aside; the next fix built and
-// done in the checkout it leaves clean; the parked fix freed, named back by
+// done in the worktree it leaves clean; the parked fix freed, named back by
 // `task ready`, started again — its work put back — and finished, its
 // account's figures counting its own commits alone, the other fix's between
 // them left out (task-base.cjs, `ownWork`); and the close landing both,
-// with no handoff from the opener to the close (24.S8). The checkout's
-// rules are test-engine-quick-fix-checkout.cjs's.
+// with no handoff from the opener to the close (24.S8). The quick-fix is
+// asked for in the person's words, in an ordinary conversation, so its
+// close carries on in that conversation, nothing drawn (19.5.1). The
+// worktree's rules are test-engine-quick-fix-worktree.cjs's.
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -21,8 +23,9 @@ require('./hermetic-env.cjs');
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert');
+const path = require('path');
 const {
-  Sim, answerGate, startUnit, writeTasks, finishClosed, fixBuilt,
+  Sim, answerGate, startWith, startThisWork, writeTasks, finishClosed, fixTree, fixBuilt,
 } = require('./pipeline-world.cjs');
 const { leaningCall } = require('./ledger-world.cjs');
 
@@ -31,10 +34,13 @@ describe('pipeline simulation: quick-fix with a fix parked', () => {
   beforeEach(() => { sim = new Sim(); });
   afterEach(() => { sim.destroy(); });
 
-  it('quick-fix: a fix parked holding a commit and work not committed sets it aside; the next fix built and done; the parked fix named back, its work put back and finished, its account counting its own commits alone; the close landing both, no handoff on the way', async () => {
+  it('quick-fix: a fix parked holding a commit and work not committed sets it aside; the next fix built and done; the parked fix named back, its work put back and finished, its account counting its own commits alone; the close landing both, no handoff on the way, and carrying on in the conversation the person asked for it in', async () => {
     const wu = 'typo';
     const place = `${wu}.implementation`;
-    startUnit(sim, 'quick-fix', wu, 'The --color flag is spelt --colour');
+    const conversation = sim.conversations;
+    startWith(sim, 'Spell the --color flag --colour');
+    sim.run(['enter', 'discovery', 'product', '--type-call']);
+    startThisWork(sim, { type: 'quick-fix', name: wu, description: 'The --color flag is spelt --colour', reason: 'One known change.' });
     const handedOff = sim.handoffs.length;
     sim.run(['enter', 'implementation', wu]);
     /** Fix `title` written: its task. @param {string} title */
@@ -43,9 +49,10 @@ describe('pipeline simulation: quick-fix with a fix parked', () => {
     const flag = written('Spell the flag --colour');
     sim.run(['task', 'start', wu, flag]);
     sim.run(['brief', 'builder', wu, flag]);
-    sim.write('src/flag.js', '--colour\n');
-    sim.run(['commit', '--paths', 'src/flag.js', '--task', wu, flag, '-m', `fix(${wu}): spell the flag --colour`]);
-    sim.write('src/alias.js', '--color\n');
+    const tree = fixTree(sim, wu);
+    sim.write(path.join(tree, 'src/flag.js'), '--colour\n');
+    sim.runIn(tree, ['commit', '--paths', 'src/flag.js', '--task', wu, flag, '-m', `fix(${wu}): spell the flag --colour`]);
+    sim.write(path.join(tree, 'src/alias.js'), '--color\n');
     const asked = sim.run(['ledger', 'ask', place, '--task', flag], null, JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'Does --color stay as an alias?' })).id;
     const parked = await sim.runAsync(['raise', place, '--answers', asked, '--parks', flag], null, JSON.stringify({ ...leaningCall('Yes.', 'No.'), question: 'Does --color stay as an alias?' }));
 
@@ -69,5 +76,6 @@ describe('pipeline simulation: quick-fix with a fix parked', () => {
     assert.match(account, /✓ Proves 1 criterion · 2 files changed · \+2 −0\n/, 'its own two commits, the help\'s between them left out');
     assert.deepStrictEqual(unclosed, [], 'no handoff from the opener to the close (24.S8)');
     assert.deepStrictEqual([yes.landed.map((/** @type {{merged: string[]}} */ { merged }) => merged), sim.manifest(wu).status], [[[help, flag]], 'completed']);
+    assert.deepStrictEqual([yes.next, sim.conversations], [{ kind: 'continue' }, conversation], 'the close carries on in the conversation it was asked for in');
   });
 });

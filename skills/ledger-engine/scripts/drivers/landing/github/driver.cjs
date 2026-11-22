@@ -176,7 +176,12 @@
 //   where they are not — `already` where its head, title and body are the
 //   landing's. Its merge is a squash, under its title with GitHub's " (#N)"
 //   and its body, once GitHub has worked out that it can, refused as a lone
-//   pull request's merge is, the default branch here then brought to it.
+//   pull request's merge is but for changes not committed where the
+//   default branch here is checked out: the merge stands over them, that
+//   branch here brought to it where it can be, and else, where a
+//   fast-forward would bring it up but its checkout stops it, answered as
+//   behind it, with the branch on GitHub that brings it up and what stops it
+//   there, said once (`broughtUp`).
 //   With nothing to merge, that branch is brought up alone. Its verbs keep their
 //   reads (landing.cjs), so each fetches a repository's default branch once
 //   before it merges there, and once more as a merge of its own moves it
@@ -826,38 +831,51 @@ function refuseSquashDefault(ctx, host, stack) {
 
 /**
  * The default branch here brought to the merge GitHub's holds (see the
- * header), or the warning why it is not — whatever stops it, the merge
- * stands. GitHub's is fetched again where the call's own merge moved it
- * since it was fetched, else read as fetched (`defaultFetched`).
+ * header): nothing where it is; else where a fast-forward would bring it up
+ * but its checkout stops it, `behind` — the branch on GitHub that brings it
+ * up, what stops it, and that commit there; else the warning why it is not
+ * — whatever stops it, the merge stands. GitHub's is fetched again where
+ * the call's own merge moved it since it was fetched, else read as fetched
+ * (`defaultFetched`).
+ * @param {LandingContext} ctx @param {Host} host @param {boolean} merged whether the call merged here
+ * @returns {{warnings: string[], behind?: {branch: string, why: string, at: string}}}
+ */
+function broughtUp(ctx, host, merged) {
+  const { root, into } = ctx;
+  const theirs = `${host.remote}/${into}`;
+  const fetched = (merged ? lg.readAgain : lg.readOnce)(ctx, DEFAULT_FETCHED, () => lg.fetchBranch(root, host.remote, into));
+  if ('failed' in fetched) return { warnings: [`${into} here was not brought up to the merge, as ${theirs} could not be fetched (${fetched.failed}) — fetch it, and fast-forward ${into} to it`] };
+  const ours = /** @type {string} */ (lg.branches(root).get(into));
+  if (ours === fetched.commit) return { warnings: [] };
+  if (!lg.isAncestor(root, ours, fetched.commit)) return { warnings: [`${into} here holds commits ${theirs} does not, so it was not moved to the merge — bring it up to date with ${theirs} yourself`] };
+  const behind = (/** @type {string} */ why) => ({ warnings: [], behind: { branch: theirs, why, at: lg.short(fetched.commit) } });
+  try {
+    const block = lg.checkoutBlock(root, into, { from: ours, to: fetched.commit });
+    if (block !== null) return behind(block.split(', so nothing moved')[0]);
+    lg.moveBranch(root, into, ours, fetched.commit);
+  } catch (err) {
+    return behind(lg.gitSaid(/** @type {Error} */ (err)));
+  }
+  return { warnings: [] };
+}
+
+/**
+ * The default branch here brought to the merge GitHub's holds (`broughtUp`),
+ * or the warning why it is not, a branch left behind among them.
  * @param {LandingContext} ctx @param {Host} host @param {boolean} merged whether the call merged here
  * @returns {string[]}
  */
 function bringDefaultUp(ctx, host, merged) {
-  const { root, into } = ctx;
-  const theirs = `${host.remote}/${into}`;
-  const fetched = (merged ? lg.readAgain : lg.readOnce)(ctx, DEFAULT_FETCHED, () => lg.fetchBranch(root, host.remote, into));
-  if ('failed' in fetched) return [`${into} here was not brought up to the merge, as ${theirs} could not be fetched (${fetched.failed}) — fetch it, and fast-forward ${into} to it`];
-  const ours = /** @type {string} */ (lg.branches(root).get(into));
-  if (ours === fetched.commit) return [];
-  if (!lg.isAncestor(root, ours, fetched.commit)) return [`${into} here holds commits ${theirs} does not, so it was not moved to the merge — bring it up to date with ${theirs} yourself`];
-  const notMoved = (/** @type {string} */ why) => [
-    `${into} here was not moved to the merge, ${theirs} at ${lg.short(fetched.commit)}: ${why} — once that is clear, \`git merge --ff-only ${theirs}\` where ${into} is checked out brings it up`,
-  ];
-  try {
-    const block = lg.checkoutBlock(root, into, { from: ours, to: fetched.commit });
-    if (block !== null) return notMoved(block.split(', so nothing moved')[0]);
-    lg.moveBranch(root, into, ours, fetched.commit);
-  } catch (err) {
-    return notMoved(lg.gitSaid(/** @type {Error} */ (err)));
-  }
-  return [];
+  const { warnings, behind } = broughtUp(ctx, host, merged);
+  if (behind === undefined) return warnings;
+  return [`${ctx.into} here was not moved to the merge, ${behind.branch} at ${behind.at}: ${behind.why} — once that is clear, \`git merge --ff-only ${behind.branch}\` where ${ctx.into} is checked out brings it up`];
 }
 
 /**
  * A repository's default branch on GitHub as a fetch of it answered,
  * fetched once on its context, so a call fetches it
  * once before it merges — and once again after each merge of its own moves
- * it, as the default branch here is brought up (`bringDefaultUp`), the
+ * it, as the default branch here is brought up (`broughtUp`), the
  * reads after that merge taking that fetch.
  * @param {LandingContext} ctx @param {Host} host
  * @returns {{commit: string}|{failed: string}}
@@ -1049,18 +1067,22 @@ function pushUp(ctx, host, made, then) {
 
 /**
  * What a merge is, as its refusals name it: what was not merged, a pull
- * request of it, and a list of them, as they are named, and what follows
- * settling a conflict before landing again.
+ * request of it, and a list of them, as they are named, and the way a
+ * conflict of its head with the branch it merges onto, `theirs`, is settled
+ * before landing again.
  * @template {BranchPull} P
- * @typedef {{what: string, named: (pull: P) => string, listed: (pulls: P[]) => string, then: string}} Merging
+ * @typedef {{what: string, named: (pull: P) => string, listed: (pulls: P[]) => string, settle: (theirs: string, head: string) => string}} Merging
  */
+
+/** The way a conflict of a pull request's head with the branch it merges onto is settled: that branch merged into it, then `then`. @param {string} then @returns {(theirs: string, head: string) => string} */
+const mergedInto = (then) => (theirs, head) => `merge ${theirs} into ${head}, settling the conflict, ${then}`;
 
 /** A phase's stack's merge, as its refusals name it. @param {Stack} stack @returns {Merging<Pull>} */
 const stackMerging = (stack) => ({
   what: `phase ${stack.phase}'s stack`,
   named: (pull) => `task ${shownTask(pull.ref)}'s pull request #${pull.number}`,
   listed: pullsNamed,
-  then: 'push it, ',
+  settle: mergedInto('push it'),
 });
 
 /**
@@ -1077,7 +1099,7 @@ function canMerge(ctx, host, merging, pull, head) {
   if (read.mergeable === 'MERGEABLE') return true;
   if (read.mergeable !== 'CONFLICTING') return false;
   throw new Error(`land: ${merging.named(pull)} conflicts with ${read.baseRefName} on GitHub, so ${merging.what} was not merged — `
-    + `merge ${host.remote}/${read.baseRefName} into ${pull.head}, settling the conflict, ${merging.then}and land again`);
+    + `${merging.settle(`${host.remote}/${read.baseRefName}`, pull.head)}, and land again`);
 }
 
 /**
@@ -1488,14 +1510,13 @@ function mergeQuickFix(ctx, landing, opened) {
   }
   const number = /** @type {{pull_request: number}} */ (opened).pull_request;
   const head = /** @type {string} */ (lg.branches(ctx.root).get(landing.branch));
-  refuseDirtyDefault(ctx, head, defaultFetched(ctx, host));
   const { title, body } = titled(landing);
   const pull = { number, state: /** @type {const} */ ('OPEN'), head: landing.branch, base: ctx.into, oid: head, title, body };
-  const merging = { what: `${ctx.unit}'s pull request`, named: () => `${ctx.unit}'s pull request #${number}`, listed: () => `#${number}`, then: '' };
+  const merging = { what: `${ctx.unit}'s pull request`, named: () => `${ctx.unit}'s pull request #${number}`, listed: () => `#${number}`, settle: (/** @type {string} */ theirs) => names.quickFixMerged(ctx.unit, theirs, lg.quoted(ctx.repo)) };
   awaitMergeable(ctx, host, merging, [pull], new Map([[number, head]]));
   ghAt(ctx, host, ['pr', 'merge', String(number), '--squash', '--subject', `${title} (#${number})`, '--body', body], `merge ${ctx.unit}'s pull request`);
-  const warnings = bringDefaultUp(ctx, host, true);
-  return { into: ctx.into, merged: landing.tasks, pull_requests: [number], ...(warnings.length > 0 ? { warnings } : {}) };
+  const { warnings, behind } = broughtUp(ctx, host, true);
+  return { into: ctx.into, merged: landing.tasks, pull_requests: [number], ...(behind === undefined ? {} : { behind: { branch: behind.branch, why: behind.why } }), ...(warnings.length > 0 ? { warnings } : {}) };
 }
 
 /** A unit's own pull request as the seam reads it (landing.cjs). @typedef {import('../../../domain/landing.cjs').UnitPull} UnitPull */
@@ -1577,7 +1598,7 @@ function landUnit(ctx, landing) {
   const { branch, title, body } = landing;
   const number = unitOpened(ctx, host, landing, read.opened);
   const pull = { number, state: /** @type {const} */ ('OPEN'), head: branch, base: ctx.into, oid: landing.tip, title, body };
-  const merging = { what: `${ctx.unit}'s pull request`, named: () => `${ctx.unit}'s pull request #${number}`, listed: () => `#${number}`, then: `push ${branch}, ` };
+  const merging = { what: `${ctx.unit}'s pull request`, named: () => `${ctx.unit}'s pull request #${number}`, listed: () => `#${number}`, settle: mergedInto(`push ${branch}`) };
   awaitMergeable(ctx, host, merging, [pull], new Map([[number, landing.tip]]));
   ghAt(ctx, host, ['pr', 'merge', String(number), '--merge', '--subject', `${landing.subject} (#${number})`, '--body', body], `merge ${ctx.unit}'s pull request`);
   const warnings = bringDefaultUp(ctx, host, true);

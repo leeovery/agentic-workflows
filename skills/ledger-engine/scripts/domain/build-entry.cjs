@@ -10,11 +10,13 @@
 // A quick-fix is built by its own arm of the row (below), wherever
 // `quickFixBuild` says it is one (derivations.cjs). The entry refuses,
 // before anything else, a unit whose build has not begun, ready to build's
-// yes beginning it (11.8.3). Another
-// session holding the checkout's code stops it with the code gate alone,
-// nothing written, and `--take` enters all the same (12.7.8) — the refusals
-// and the gate the review phase's entry makes too (review-entry.cjs). It starts
-// nothing and names no log of the conversation's: the build's log is
+// yes beginning it (11.8.3). Another session holding the checkout's code
+// stops it with the code gate alone, nothing written, and `--take` enters
+// all the same (12.7.8) — but a quick-fix's, built in a worktree of its own
+// (fix-branch.cjs), which neither stops at the gate nor holds the
+// checkout's code (presence.cjs) — the refusals and the gate the review
+// phase's entry makes too (review-entry.cjs). It starts nothing and names
+// no log of the conversation's: the build's log is
 // Claude's to append as it goes (12.2.1), a log of the layout's, which
 // every state commit carries. As the conversation arrives — here, or at the
 // review phase's entry, whose fix tasks the same loop builds (14.3.2) —
@@ -22,9 +24,9 @@
 // is put in flight on its position at the place entered (position.cjs), a
 // task already there kept as it stands and one there the tracker holds
 // done or closed taken off (`takeInFlight`): one another
-// conversation left comes with no builder and no pair, which are dispatched
+// conversation left comes with no builder and no reviewers, which are dispatched
 // afresh on its branch, as its line names the way: a round briefed and not
-// reported whole is its new pair's to read, each reviewer whose report is
+// reported whole is its new reviewers' to read, each reviewer whose report is
 // not in or does not read briefed again for it, never its builder's, which
 // goes once the round is read (round-report.cjs); a round that failed, its
 // fix not yet read, a new builder's, briefed with its brief and then the
@@ -33,7 +35,10 @@
 // taken, to its taking; else the orchestrator's to read for its notes for
 // later and the nits the task's commits do not yet fix, fixed in the
 // worktree that has its branch out, then the new builder's for the account
-// (task-account.cjs, `reviewOverWay`); anything else its new builder's —
+// (task-account.cjs, `reviewOverWay`); a one-line task, by whether it is
+// built (task-base.cjs, `builtOneLine`): built, to its landing; else the
+// orchestrator's own to make in the worktree `task worktree` lays out for
+// it; anything else its new builder's —
 // a quick-fix's fix whose work its park set aside its start's first, which
 // puts it back (fix-aside.cjs), then that way. A task a question parks is
 // put in flight as well, but no builder goes to it until the person answers
@@ -87,7 +92,8 @@
 // linked after (12.6.4) — and, in step, behind the task in flight where it
 // goes on beside it, held until that one is done (task-verbs.cjs,
 // `stepTurn`); else at its gate once it lands: in progress, parked by no
-// question, its pair passed and its account taken (task-account.cjs), with
+// question, its reviewers passed and its account taken (task-account.cjs) —
+// a one-line task, once it is built — with
 // nothing added to it since and nothing changed under its last round
 // (round-report.cjs) — an addition, the person's Comment at its gate among
 // them (13.11.3), is reworked and read again first, the task in progress
@@ -101,10 +107,10 @@
 // first (7.2.4), so the review phase is next only once none waits there
 // (`mergeWaiting`, phase-checks.cjs).
 //
-// A quick-fix's arm (19.5.1–19.5.5, E2, E4) is entered as the row is, the
-// code gate first (12.7.8, 19.5.18), with no cut, no ready to build and no
-// position: its build is its one phase, the fixes, each fix its own task,
-// which the arm starts — the phase written into the tracker where it is
+// A quick-fix's arm (19.5.1–19.5.5, E2, E4) is entered as the row is, with
+// no code gate, no cut, no ready to build and no position: its build is its
+// one phase, the fixes, each fix its own task, which the arm starts — the
+// phase written into the tracker where it is
 // missing, the tracker's verb committing it, and the fixes' beginning
 // recorded on the manifest (`fixesBegun`), which the entry commits and the
 // phase's status reads — and the review's fixes, asked for at its close,
@@ -136,19 +142,19 @@ const { isoNow } = require('./dates.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { seedFiles } = require('./reads.cjs');
 const { summaryFile } = require('./knowledge/artifacts.cjs');
-const { STATUS_WORDS, ENDED, goesOn, takesTurns, turnOf, turnEnds, writePhase, trackedPhase } = require('./task-verbs.cjs');
+const { STATUS_WORDS, ENDED, goesOn, takesTurns, turnOf, turnEnds, writePhase, trackedPhase, trackedTask } = require('./task-verbs.cjs');
 const { heldCodeSessions } = require('./presence.cjs');
 const { codeGate } = require('./projections/enter.cjs');
 const { tasksInFlight } = require('./conversation.cjs');
 const { recordTasksAt } = require('./position.cjs');
 const { waitingAndFreed, parkedTasks, askedOpen } = require('./questions.cjs');
 const { reading, phaseLists, phaseTasks, phaseLanded, mergeWaiting, fixesOwed, passed } = require('./phase-checks.cjs');
-const { takenFigures, reviewOverWay } = require('./task-account.cjs');
-const { ofQuickFix } = require('./task-base.cjs');
+const { takenFigures, reviewOverWay, landingWay } = require('./task-account.cjs');
+const { ofQuickFix, builtOneLine } = require('./task-base.cjs');
 const { heldAside } = require('./fix-aside.cjs');
 const { recordedRounds, mergingWords } = require('./review-phase.cjs');
 const { shownTask, parseShownTask } = require('./task-id.cjs');
-const { roundStanding, taskRounds, pairPassed } = require('./round-report.cjs');
+const { roundStanding, taskRounds, pairPassed, reviewedNone } = require('./round-report.cjs');
 const { reproducingHold } = require('./bug-proven.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { stepsAt, concurrency } = require('./environment.cjs');
@@ -277,14 +283,15 @@ const additionsOf = (at, ref) => phaseTasks(at, ref.phase)?.find((task) => shown
 
 /**
  * Whether a task in progress stands at its gate: in step, parked by no
- * question, its account taken with nothing added to it since, and its pair
- * passed (the header's).
+ * question, its account taken with nothing added to it since, and its
+ * reviewers passed — a one-line task, once it is built (the header's).
  * @param {Reading} at @param {TaskRow} row @param {string[]} parked
  */
 function atGate(at, { ref, status }, parked) {
   if (at.manifest.build?.position !== 'step' || status !== 'in-progress' || parked.length > 0) return false;
+  if (reviewedNone(at.cwd, ref) !== null) return passed(at, { ref, status });
   const figures = takenFigures(at.cwd, ref);
-  return figures !== null && figures.additions === additionsOf(at, ref) && passed(at, ref);
+  return figures !== null && figures.additions === additionsOf(at, ref) && passed(at, { ref, status });
 }
 
 /**
@@ -445,7 +452,7 @@ function heldBy(unit, { task, stopped }, standing, turn) {
   if (standing?.status === 'behind') return { holds: STATUS_WORDS.behind, then: `it goes on once ${turn?.checkout ? turnEnds(turn) : 'that task is done'}, and no builder goes to it until then` };
   if (standing?.unproven !== undefined) return { holds: 'its account taken, its bug not yet proven', then: standing.unproven };
   if (standing?.status === 'at-gate') {
-    return { holds: STATUS_WORDS['at-gate'], then: `it waits on the person's go there, the gate drawn again with render step-gate ${unit} ${task}, and its builder is never sent afresh` };
+    return { holds: STATUS_WORDS['at-gate'], then: `it waits on the person's go there, the gate drawn again with render step-gate ${unit} ${task}, and no agent is sent to it afresh` };
   }
   return null;
 }
@@ -467,7 +474,7 @@ function afreshWords(cwd, session, unit, task) {
   const goes = roundWords(cwd, session, ref);
   const held = ofQuickFix(cwd, unit) ? heldAside(cwd, ref) : [];
   if (held.length === 0) return goes;
-  return `its work, set aside ${held[0].why}, is not back in the checkout — start it again, engine task start ${unit} ${task}, which puts it back, then ${goes}`;
+  return `its work, set aside ${held[0].why}, is not back in its worktree — start it again, engine task start ${unit} ${task}, which puts it back, then ${goes}`;
 }
 
 /**
@@ -478,6 +485,7 @@ function afreshWords(cwd, session, unit, task) {
 function roundWords(cwd, session, ref) {
   const { unit } = ref;
   const task = shownTask(ref);
+  if (reviewedNone(cwd, ref) !== null) return oneLineWords(cwd, ref);
   const standing = roundStanding(cwd, ref, session);
   if (standing !== null) {
     const open = standing.readers.filter(({ state }) => state !== 'reported');
@@ -496,7 +504,22 @@ function roundWords(cwd, session, ref) {
   }
   const over = reviewOverWay(cwd, ref);
   if (over !== null) return `${over.said} — ${over.way}`;
-  return 'its builder and pair go afresh on its branch';
+  return 'its builder and reviewers go afresh on its branch';
+}
+
+/**
+ * Where a one-line task goes, by whether it is built (task-base.cjs,
+ * `builtOneLine`): built, to its landing; else made in its worktree, the
+ * orchestrator's own work — what was added to it since its last commit
+ * among it, where anything was.
+ * @param {string} cwd @param {TaskRef} ref
+ */
+function oneLineWords(cwd, ref) {
+  const detail = trackedTask(cwd, ref);
+  if (builtOneLine(cwd, ref, detail)) return `a one-line task, built — ${landingWay(cwd, ref)}`;
+  const what = detail.additions.length === 0 ? 'your own work' : 'your own work, what was added to it not yet committed';
+  const where = ofQuickFix(cwd, ref.unit) ? `make it in ${ref.unit}'s worktree` : `lay out its worktree, engine task worktree ${ref.unit} ${shownTask(ref)}`;
+  return `a one-line task, ${what} — ${where}, commit it there through the door, and land it`;
 }
 
 /**
@@ -741,9 +764,11 @@ function beginFixes(cwd, unit) {
 /**
  * The code gate, where another session holds the checkout's code (12.7.8):
  * back to the epic's menu, or carrying on; the entry again with `--take`.
+ * None for a quick-fix, built in a worktree of its own (the header's).
  * @param {Standing} at @param {HeldWays} ways @returns {string|null}
  */
-function codeHeld({ cwd }, { take, menu }) {
+function codeHeld({ cwd, manifest }, { take, menu }) {
+  if (quickFixBuild(manifest)) return null;
   const holders = heldCodeSessions(cwd);
   if (holders.length === 0) return null;
   return codeGate(holders, {
@@ -756,7 +781,6 @@ function codeHeld({ cwd }, { take, menu }) {
 const QUICK_FIX = Object.freeze({
   level: /** @type {const} */ ('unit'),
   standing: () => null,
-  held: codeHeld,
   unstarted: ({ manifest }) => !fixesBegun(manifest),
   start: beginFixes,
   readies: firstSteps,

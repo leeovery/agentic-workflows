@@ -6,6 +6,8 @@ Ledger keeps everything it records — the ledger, each work unit's manifest, th
 
 Ledger's state lives on a branch of its own in your repository, `ledger-state`: an orphan branch, sharing no history with your code, checked out as a git worktree at `.ledger/` inside the project's main checkout. Every code branch ignores `.ledger/` — boot keeps the line in the repository's own exclude file, which is never committed, so even a branch cut before Ledger was set up ignores it — and so code branches and pull requests never carry state, and nothing ever merges it.
 
+The worktrees Ledger lays out for its own work — a quick-fix's, a one-line task's, a reviewer's scratch — sit in `.claude/worktrees/` of the main checkout, each named `ledger-…`, and the same exclude file keeps them out of your checkout: `git status` never names one, and `git add -A` never takes one.
+
 There is one copy of the state. Every session writes that one copy, whichever worktree it runs in: a builder working in a worktree of its own finds the same `.ledger/` through the repository's shared git directory, and no code worktree ever holds a `.ledger/` of its own. What is local to one machine stays off the branch: the knowledge base's store, the session caches, the recordings a verification run keeps by hash.
 
 A project inside a larger repository works the same way, its state in the repository's main checkout. Code can also live in repositories nested inside the project's folder, clones of their own: Ledger finds them every time, with nothing to configure, and a code commit lands in each one it touches. The state stays in the project's own repository.

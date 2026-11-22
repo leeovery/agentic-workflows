@@ -12,10 +12,12 @@
 // decline`. Its DATA, for Claude alone: that the forecast is the rule's as
 // the counts stand now, so at settle time a point may still be drawn blind
 // and come to the person, its reveal saying why; and each open question by
-// its short id, with what the rule forecasts for it and its kind.
+// its short id, with what the rule forecasts for it and its kind. Where
+// Claude would settle none, on the person's word, a line says so in its
+// place, its forecast with it.
 // ---------------------------------------------------------------------------
 
-const { section, dataSection, menu, cmdOption, MENU_INSTRUCTION } = require('./surfaces.cjs');
+const { section, dataSection, menu, cmdOption, MENU_INSTRUCTION, CONTINUE_INSTRUCTION } = require('./surfaces.cjs');
 const { KINDS } = require('../event-fields.cjs');
 
 /** @typedef {import('../event-fields.cjs').Kind} Kind */
@@ -108,4 +110,19 @@ function offerScreen({ title, unit, topic, run, forecast, warnings }) {
     + section(`MENU: ${OFFER_GATE}`, MENU_INSTRUCTION, menu([why, '', forecastLine(forecast.length, mine, yours)].join('\n'), rows, { question: 'Settle the rest?' }));
 }
 
-module.exports = { OFFER_GATE, offerScreen };
+/** The topic's open questions as one line names them, by how many. @param {number} open */
+const openQuestions = (open) => (open === 1 ? 'The one open question' : `${open === 2 ? 'Both' : `All ${open}`} open questions`);
+
+/**
+ * In the offer's place, on the person's word, where Claude would settle
+ * none of the topic's open questions: that each comes to the person, so
+ * nothing is Claude's to settle.
+ * @param {string} title @param {Forecast[]} forecast
+ * @returns {string}
+ */
+function nothingToSettle(title, forecast) {
+  const come = forecast.length === 1 ? 'comes' : 'come';
+  return section('DISPLAY: convergence', CONTINUE_INSTRUCTION, `${openQuestions(forecast.length)} on ${title} ${come} to you by the rule, so nothing there is mine to settle.`);
+}
+
+module.exports = { OFFER_GATE, offerScreen, nothingToSettle };

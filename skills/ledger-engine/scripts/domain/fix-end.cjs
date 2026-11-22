@@ -17,7 +17,12 @@
 // commit there naming it was made after that one — named there, where the
 // repository holds no commit of its own — and in the pull
 // request where the one open holds that commit. Its own work is a commit
-// of its own through the door (commit-task.cjs), on the quick-fix's branch
+// of its own through the door (commit-task.cjs) — a merge it finished there
+// among them only where it brings in the branch the quick-fix lands on or
+// the host's copy of its branch, as a one-line task settling their conflict
+// makes one (landing-names.cjs, `quickFixMerged`), by the one rule its own
+// commits are read by everywhere (landing-git.cjs, `quickFixMerges`)
+// — on the quick-fix's branch
 // or wherever the repository keeps it, or its change landed; it has landed
 // once it has in every repository it holds work in.
 //
@@ -184,7 +189,7 @@ function refuseHeld(cwd, ref, said) {
   if (!read.held) return;
   const failed = read.landed ? undefined : taskRounds(cwd, ref).at(-1);
   const lands = read.landed ? 'it has landed, so it is done'
-    : failed !== undefined && !pairPassed(failed) ? `its pair failed it in round ${failed.round}, so it lands once its review is settled, task settle ${ref.unit} ${shownTask(ref)} --file <why.md>, then done once it is in ${ref.unit}'s pull request`
+    : failed !== undefined && !pairPassed(failed) ? `its reviewers failed it in round ${failed.round}, so it lands once its review is settled, task settle ${ref.unit} ${shownTask(ref)} --file <why.md>, then done once it is in ${ref.unit}'s pull request`
       : `it lands as it is with ${ref.unit}'s pull request, done once it is in it`;
   throw new Error(
     `${said}: ${taskName(ref)} holds work of its own — ${lands}, and its change is given up as a landed change is, `

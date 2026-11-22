@@ -24,19 +24,19 @@ A pattern or principle for the whole project is never a type here: it is the pro
 
 For a quick-fix, search earlier work in the area it touches first, one `knowledge query`, and fold what it finds into the read.
 
-Once the signals agree and have held, and the next question would only go deeper, say the read in plain terms with the type's name folded in, and the signals that drove it, concretely enough that the person can challenge one. Re-read the log against the conversation first.
+Once the signals agree and have held, and the next question would only go deeper, say the read in plain terms with the type's name folded in, and the signals that drove it, concretely enough that the person can challenge one. Re-read the log against the conversation first, where it keeps one: a type call keeps none.
 
-Then write the payload to `.ledger/.cache/product/discovery/product/start-this-work-payload.json`:
+Then write the payload to the DATA's `payload`, this conversation's own:
 - `type` and `name` — the name derived, never asked: the name the person offered, else a single seed's, else the description's; a lowercase slug of letters, digits and hyphens; a name taken derived again more specifically, never numbered.
 - `description` — one line in the person's framing; `reason` — one line on why it is this type.
-- `shaped_by` — each part of the product's logs that shaped the work, `.product/sessions/session-NNN.md#{anchor}`: one session's log can shape several pieces of work, each pointing at its own parts.
+- `shaped_by` — each part of the product's logs that shaped the work, `.product/sessions/session-NNN.md#{anchor}`: one session's log can shape several pieces of work, each pointing at its own parts. A type call, which keeps no log, names only the logs its roadmap seeds' `source` lines point at, and none where it has none.
 - `seeds` — the inbox paths it starts from, `$2`'s and any taken in; `roadmap` — the waiting roadmap items it starts from, `$2`'s `roadmap:{item}` seeds and any taken in.
 - `brief` — for a feature or a bugfix, the path of its one topic's brief, drafted under `.ledger/.cache/product/discovery/product/`: load **[writing-a-brief.md](writing-a-brief.md)** and follow its instructions as written.
 
 Stage it and draw the screen:
 
 ```bash
-node .claude/skills/ledger-engine/scripts/engine.cjs render start-this-work --file .ledger/.cache/product/discovery/product/start-this-work-payload.json
+node .claude/skills/ledger-engine/scripts/engine.cjs render start-this-work --file {payload}
 ```
 
 A refusal names what to fix: fix the payload and stage it again. At the gate, follow the `next` of what the answer ran. For an epic that carries the conversation into the epic's own discovery: read its DATA as on entering — `{home}` is now the epic — and shape its topics there. Keep shaping takes the person's word back into the conversation.

@@ -6,8 +6,10 @@
 // answered and the state it left — so a warning, a count or an item left
 // where it stands reaches the person with no caller carrying it across: a
 // work unit cancelled, reactivated or pivoted, a feature absorbed into an
-// epic, a topic cancelled, reactivated, postponed or pulled forward, and
-// inbox items archived, restored or deleted.
+// epic, a topic cancelled, reactivated, postponed or pulled forward, inbox
+// items archived, restored or deleted; and in the start menu's place, a
+// unit finished, or cancelled from inside it, with what waits on the
+// person (projections/start-menu.cjs, `endedReceipt`).
 // ---------------------------------------------------------------------------
 
 const { loadWorkUnitManifest } = require('../kernel/manifest.cjs');
@@ -19,6 +21,8 @@ const { loadProjectManifest } = require('./reads.cjs');
 const { roadmapState } = require('./roadmap.cjs');
 const { liveItem, archivedOne, deletedItemTitle } = require('./inbox-set.cjs');
 const { workunitReceipt, topicReceipt, absorbReceipt, inboxArchiveReceipt, inboxRestoreReceipt, inboxDeleteReceipt } = require('./projections/transactions.cjs');
+const { endedReceipt, behindReceipt } = require('./projections/start-menu.cjs');
+const { startMenuRead } = require('./start-menu.cjs');
 
 /** @typedef {import('./projections/transactions.cjs').Stayed} Stayed */
 
@@ -145,4 +149,34 @@ function deletedReceipt(cwd, { deleted }) {
   return inboxDeleteReceipt(deleted.map((at) => deletedItemTitle(cwd, at)));
 }
 
-module.exports = { unitReceipt, topicReceiptOf, absorbedReceipt, archivedReceipt, restoredReceipt, deletedReceipt };
+/**
+ * A unit's finish said in the start menu's place: its title done, and what
+ * waits on the person across the project; for a quick-fix, whose close
+ * carries on in its conversation (24.1.5), only each branch here its
+ * landing left behind what it landed, where one did.
+ * @param {string} cwd @param {{unit: string, landed?: {repo: string, into: string, behind?: {branch: string, why: string}}[]}} answered
+ * @returns {string}
+ */
+function finishedOf(cwd, { unit, landed = [] }) {
+  const manifest = loadWorkUnitManifest(cwd, unit);
+  if (quickFixBuild(manifest)) {
+    const behind = landed.flatMap(({ repo, into, behind: held }) => (held === undefined ? [] : [{ repo, into, ...held }]));
+    return behind.length === 0 ? '' : behindReceipt(behind);
+  }
+  return endedReceipt(`${itemTitle(manifest, 'review', unit)} is done.`, startMenuRead(cwd));
+}
+
+/**
+ * A unit's cancel receipt, and where the cancel left the conversation that
+ * sat in it (topic-leave.cjs, `leftUnit`), what waits on the person said in
+ * the start menu's place — but at a quick-fix, whose cancel carries on as
+ * its close does (24.1.5).
+ * @param {string} cwd @param {{work_unit: string, warnings?: string[], inbox?: string[]}} answered @param {boolean} left
+ * @returns {string}
+ */
+function cancelledOf(cwd, answered, left) {
+  const ended = left && !quickFixBuild(loadWorkUnitManifest(cwd, answered.work_unit));
+  return unitReceipt(cwd, 'cancel', answered) + (ended ? endedReceipt(null, startMenuRead(cwd)) : '');
+}
+
+module.exports = { unitReceipt, topicReceiptOf, absorbedReceipt, archivedReceipt, restoredReceipt, deletedReceipt, finishedOf, cancelledOf };

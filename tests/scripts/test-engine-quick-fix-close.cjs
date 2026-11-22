@@ -42,7 +42,7 @@ const {
 } = require('./engine-harness.cjs');
 const { ledgerReadHelpers, ledgerHelpers } = require('./ledger-world.cjs');
 const {
-  UNIT, PLACE, FLAG, HELP, RECORDS, quickFix, createFix, fixBuilt, fixDone, recordFile, checklistClosed, asGone, entered,
+  UNIT, PLACE, FLAG, HELP, RECORDS, quickFix, createFix, fixBuilt, fixDone, fixTree, recordFile, checklistClosed, asGone, entered,
 } = require('./quick-fix-world.cjs');
 const { RAISED, world, closeHelpers } = require('./quick-fix-close-world.cjs');
 
@@ -69,16 +69,16 @@ const provenWorld = fixtureFrom('quick-fix-close-proven-', (dir) => {
     entered(dir, as);
     createFix(dir, 1, FLAG, as);
     ok(dir, ['task', 'start', UNIT, '1.1'], as);
-    createFile(dir, 'src/flag.js', 'const flag = \'colour\';\n');
-    createFile(dir, 'verify/features.md', '# Features\n');
-    createFile(dir, 'verify/drive.sh', '#!/bin/sh\nprintf "pass\\n" > "$LEDGER_RUN/verdict"\n');
-    fs.chmodSync(path.join(dir, 'verify', 'drive.sh'), 0o755);
-    ok(dir, ['commit', '--paths', 'src/flag.js', 'verify/features.md', 'verify/drive.sh', '--task', UNIT, '1.1', '-m', `fix(${UNIT}): ${FLAG}`], as);
+    createFile(fixTree(dir), 'src/flag.js', 'const flag = \'colour\';\n');
+    createFile(fixTree(dir), 'verify/features.md', '# Features\n');
+    createFile(fixTree(dir), 'verify/drive.sh', '#!/bin/sh\nprintf "pass\\n" > "$LEDGER_RUN/verdict"\n');
+    fs.chmodSync(path.join(fixTree(dir), 'verify', 'drive.sh'), 0o755);
+    ok(fixTree(dir), ['commit', '--paths', 'src/flag.js', 'verify/features.md', 'verify/drive.sh', '--task', UNIT, '1.1', '-m', `fix(${UNIT}): ${FLAG}`], as);
     const setup = writeState(dir, layout.cache('verify-setup.json'), JSON.stringify({
       place: 'verify', feature_map: 'verify/features.md', launch: 'true', health: 'true', drive: 'verify/drive.sh', evidence: 'true', cleanup: 'true',
     }));
-    ok(dir, ['verify', 'setup', UNIT, '--file', setup, '--scenario', '1.S1'], as);
-    ok(dir, ['verify', 'run', UNIT, '1.S1'], as);
+    ok(fixTree(dir), ['verify', 'setup', UNIT, '--file', setup, '--scenario', '1.S1'], as);
+    ok(fixTree(dir), ['verify', 'run', UNIT, '1.S1'], as);
     ok(dir, ['land', 'open', UNIT, '1.1'], as);
     fixDone(dir, '1.1', as);
     fixBuilt(dir, 2, HELP, 'src/help.js', 'const help = \'--colour\';\n', as);
@@ -133,8 +133,8 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
     assert.deepStrictEqual([unrecorded, landing, refused(['render', 'finish', UNIT]), refused(['finish', 'yes', UNIT])], [
       `render finish: ${UNIT} closes once each fix done has its record — 1.1, 1.2 have none: quick-fix record ${UNIT} 1.1 --file <record.md>`,
       `land: ${UNIT} closes once each fix done has its record — 1.1, 1.2 have none: quick-fix record ${UNIT} 1.1 --file <record.md>`,
-      `render finish: ${UNIT} closes once each of its fixes has ended — 1.3 is not started: each is done once it is committed, in ${UNIT}'s pull request and passed by its pair, or closed with its reason`,
-      `finish yes: ${UNIT} closes once each of its fixes has ended — 1.3 is not started: each is done once it is committed, in ${UNIT}'s pull request and passed by its pair, or closed with its reason`,
+      `render finish: ${UNIT} closes once each of its fixes has ended — 1.3 is not started: each is done once it is committed, in ${UNIT}'s pull request and passed by its reviewers, where any read it, or closed with its reason`,
+      `finish yes: ${UNIT} closes once each of its fixes has ended — 1.3 is not started: each is done once it is committed, in ${UNIT}'s pull request and passed by its reviewers, where any read it, or closed with its reason`,
     ]);
   });
 
@@ -150,11 +150,11 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
     appendEntry(statePath(dir), {
       event: 'parked', unit: UNIT, topic: null, phase: 'implementation', session: 'sess-1', number: 1,
       question: null, replaces: ledgerHelpers(() => dir).full(call), reason: 'asked-blind', cause: null, relies_on: [], task: null, went_ahead: '1.3',
-      call: RAISED, rows_judged: [], why_asking: 'Asked cold.', label: null, model: null, blocks_build: true, replaced_by: null, always: null, measured: null, chain: ledgerHelpers(() => dir).full(question), blind: true,
+      call: RAISED, rows_judged: [], why_asking: 'Asked cold.', asked_by: 'counts', label: null, model: null, blocks_build: true, replaced_by: null, always: null, measured: null, chain: ledgerHelpers(() => dir).full(question), blind: true,
     }, []);
     const building = refused(['render', 'finish', UNIT]);
     for (const letter of REVIEWER_LETTERS) writeState(dir, roundReportPath({ unit: UNIT, phase: 1, n: 3 }, 1, letter), '# Review\n\n## Findings\n\nNone.\n\nVerdict: pass\n');
-    const ended = `each is done once it is committed, in ${UNIT}'s pull request and passed by its pair, or closed with its reason`;
+    const ended = `each is done once it is committed, in ${UNIT}'s pull request and passed by its reviewers, where any read it, or closed with its reason`;
 
     assert.deepStrictEqual([building, refused(['render', 'finish', UNIT])], [
       `render finish: ${UNIT} closes once each of its fixes has ended — 1.3 is in progress: ${ended}`,
@@ -166,7 +166,7 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
     dir = world();
     closeable();
     for (const letter of REVIEWER_LETTERS) writeState(dir, roundReportPath({ unit: UNIT, phase: 1, n: 2 }, 2, letter), '# Review\n\n## Findings\n\n- bug: the help still says --color\n  Scenario: the help read\n\nVerdict: fail\n');
-    const said = `${UNIT} closes once its pair has passed each fix done — 1.2 has no round its pair passed: its pair reads it, engine brief reviewer ${UNIT} 1.2 --letter a, and b`;
+    const said = `${UNIT} closes once its reviewers have passed each fix done — 1.2 has no round they passed: its reviewers read it, engine brief reviewer ${UNIT} 1.2 --letter a, and b where two read it`;
 
     assert.deepStrictEqual([refused(['render', 'finish', UNIT]), refused(['land', 'finish', UNIT])], [`render finish: ${said}`, `land: ${said}`]);
   });
@@ -179,7 +179,7 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
     assert.strictEqual(sectionOf(out, 'DISPLAY: finish'), [
       'Typo — ready to close',
       '',
-      'REVIEWED BY THE PAIR',
+      'REVIEWED',
       `  ├─ ✓ 1.1 ${FLAG} · passed in round 1`,
       `  └─ ✓ 1.2 ${HELP} · passed in round 1`,
       '',
@@ -202,19 +202,25 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
   });
 
   it('offers a yes that merges nothing, where no fix is done', () => {
-    const view = { unit: UNIT, title: 'Typo', closed: [], skips: [], verdict: null, warnings: [], aside: null, product: 'app', proven: null, fixes: 0, landing: null, pair: [], kept: [] };
+    const view = { unit: UNIT, title: 'Typo', closed: [], verdict: null, warnings: [], aside: null, product: 'app', proven: null, filed: [], fixes: 0, landing: null, pair: [], kept: [] };
     const out = closeScreen(view);
 
     assert.match(sectionOf(out, 'MENU: finish'), /\*\*`y\/yes`\*\* {4}→ Close it — mark it complete\n/);
-    assert.match(sectionOf(out, 'DISPLAY: finish'), /^Typo — ready to close\n\nREVIEWED BY THE PAIR\n {2}No fix was done\.\n\n/);
+    assert.match(sectionOf(out, 'DISPLAY: finish'), /^Typo — ready to close\n\nREVIEWED\n {2}No fix was done\.\n\n/);
+  });
+
+  it('says what its notes for later sent to the inbox, as the close answered them', () => {
+    const view = { unit: UNIT, title: 'Typo', closed: [], verdict: null, warnings: [], aside: null, product: 'app', proven: null, filed: [{ title: 'Spell --colour in the man page', kind: 'idea' }], fixes: 0, landing: null, pair: [], kept: [] };
+
+    assert.match(sectionOf(closeScreen(view), 'DISPLAY: finish'), /\n\nWENT TO THE INBOX \(1\)\n {2}└─ Spell --colour in the man page \(idea\)\n/);
   });
 
   it('19.5.13: draws each fix\'s verdict from its pair — one its pair failed, its review settled by the orchestrator, closes said as settled in its round', () => {
     dir = world();
     createFix(dir, 3, DOCS, as());
     run(['task', 'start', UNIT, '1.3']);
-    createFile(dir, 'docs/flag.md', '--colour\n');
-    run(['commit', '--paths', 'docs/flag.md', '--task', UNIT, '1.3', '-m', `fix(${UNIT}): spell the docs --colour`]);
+    createFile(fixTree(dir), 'docs/flag.md', '--colour\n');
+    ok(fixTree(dir), ['commit', '--paths', 'docs/flag.md', '--task', UNIT, '1.3', '-m', `fix(${UNIT}): spell the docs --colour`], as());
     run(['land', 'open', UNIT, '1.3']);
     for (const letter of REVIEWER_LETTERS) writeState(dir, roundReportPath({ unit: UNIT, phase: 1, n: 3 }, 1, letter), FAILED);
     run(['task', 'settle', UNIT, '1.3', '--file', writeState(dir, layout.cache('why.md'), 'The docs are generated: the finding is the generator\'s.\n')]);
@@ -222,7 +228,21 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
     run(['quick-fix', 'record', UNIT, '1.3', '--file', recordFile(dir, 3, RECORDS[1])]);
     closeable();
 
-    assert.match(sectionOf(screen(), 'DISPLAY: finish'), new RegExp(`\\nREVIEWED BY THE PAIR\\n {2}├─ ✓ 1\\.1 ${FLAG} · passed in round 1\\n {2}├─ ✓ 1\\.2 ${HELP} · passed in round 1\\n {2}└─ ✓ 1\\.3 ${DOCS} · settled in round 1\\n\\n`));
+    assert.match(sectionOf(screen(), 'DISPLAY: finish'), new RegExp(`\\nREVIEWED\\n {2}├─ ✓ 1\\.1 ${FLAG} · passed in round 1\\n {2}├─ ✓ 1\\.2 ${HELP} · passed in round 1\\n {2}└─ ✓ 1\\.3 ${DOCS} · settled in round 1\\n\\n`));
+  });
+
+  it('13.3.4: a one-line fix is done with no round and no account, and the close takes it, said as not reviewed with why, under a mark of its own', () => {
+    dir = world();
+    run(['task', 'create', UNIT, '1', '--title', DOCS, '--type', 'fix', '--why', 'one word, nothing for a reviewer to read']);
+    run(['task', 'start', UNIT, '1.3']);
+    createFile(fixTree(dir), 'docs/flag.md', '--colour\n');
+    ok(fixTree(dir), ['commit', '--paths', 'docs/flag.md', '--task', UNIT, '1.3', '-m', `fix(${UNIT}): spell the docs --colour`], as());
+    run(['land', 'open', UNIT, '1.3']);
+    run(['task', 'done', UNIT, '1.3']);
+    run(['quick-fix', 'record', UNIT, '1.3', '--file', recordFile(dir, 3, RECORDS[1])]);
+    closeable();
+
+    assert.match(sectionOf(screen(), 'DISPLAY: finish'), new RegExp(`\\nREVIEWED\\n {2}├─ ✓ 1\\.1 ${FLAG} · passed in round 1\\n {2}├─ ✓ 1\\.2 ${HELP} · passed in round 1\\n {2}└─ ○ 1\\.3 ${DOCS} · not reviewed: one word,\\n {5}nothing for a reviewer to read\\n\\n`));
   });
 
   it('19.5.25: refuses while a question asked in its conversation stands open, after a /clear as before it, naming it and the raise that asks it again — its checklist\'s questions-answered held open over it, naming the same', async () => {
@@ -243,7 +263,7 @@ describe('render finish <quick-fix>: the close (19.5.8, 19.5.13)', () => {
     dir = world();
     closeable();
     assert.strictEqual(sectionOf(screen(), 'DISPLAY: finish'), [
-      'Typo — ready to close', '', 'REVIEWED BY THE PAIR', `  ├─ ✓ 1.1 ${FLAG} · passed in round 1`, `  └─ ✓ 1.2 ${HELP} · passed in round 1`, '',
+      'Typo — ready to close', '', 'REVIEWED', `  ├─ ✓ 1.1 ${FLAG} · passed in round 1`, `  └─ ✓ 1.2 ${HELP} · passed in round 1`, '',
       `Nothing was proven by running ${projectName(dir)} — the project has no way to run it`, '',
     ].join('\n'));
   });

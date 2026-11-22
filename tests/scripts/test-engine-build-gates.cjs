@@ -26,10 +26,11 @@ const os = require('os');
 const path = require('path');
 const { ok, git, writeState, readManifest, layout, cleanupFixture, sectionOf, accountTaken, withFrozenClock } = require('./engine-harness.cjs');
 const { withEnv, createManifest } = require('./discovery-test-utils.cjs');
-const { UNIT, ACCOUNT_DRAWN, taskText, reportOf, buildScreensWorld, buildScreenHelpers } = require('./build-screens-world.cjs');
+const { UNIT, ACCOUNT_DRAWN, taskText, reportOf, branchWith, buildScreensWorld, buildScreenHelpers } = require('./build-screens-world.cjs');
 const { lines, trustLogHelpers, history } = require('./trust-world.cjs');
 const { gateStep } = require('../../skills/ledger-engine/scripts/domain/decision-point.cjs');
 const { TRUST_LOG } = require('../../skills/ledger-engine/scripts/domain/trust-log.cjs');
+const { taskBranch } = require('../../skills/ledger-engine/scripts/domain/landing-names.cjs');
 
 let dir = ''; // the project
 let config = ''; // the system config: the conversations' folders
@@ -91,6 +92,35 @@ describe('the gate after a task, in step (12.14.3, 12.12.7, 3.3.8, 13.4.7)', () 
       a: { kind: 'engine', argv: ['workunit', 'position', UNIT, 'auto'] },
     });
     assert.match(refused(['step-gate', UNIT, '1.1']), /^render step-gate: pay builds in auto, where no gate follows a task — /, 'in auto no gate follows a task (3.S17)');
+  });
+
+  it('13.3.4: a one-line task has its gate with no account once it is built, its title and that no reviewer read it in the account\'s place, with its change; a Comment takes it off its gate until a commit made since', () => {
+    ok(dir, ['task', 'create', UNIT, '1', '--title', 'Bold the total', '--type', 'feat', '--why', 'one word, nothing for a reviewer to read'], { env: env() });
+    assert.match(refused(['step-gate', UNIT, '1.4']), /^render step-gate: task 1\.4 of pay is not built — a one-line task goes on once its branch holds a commit of its own/);
+    branchWith(dir, 4, 'Bold the total', [['src/total.js', 'export const total = 1;\nexport const bold = 2;\n']]);
+
+    assert.strictEqual(sectionOf(screen(['step-gate', UNIT, '1.4']), 'DISPLAY: step gate'), [
+      '▪ Bold the total (task 1.4)',
+      '',
+      '- Phase: 1 — Cards',
+      '- Position: 4 of 4 in phase',
+      '',
+      'WHAT IT DOES',
+      '  Bold the total',
+      '',
+      '  No account, and no reviewer: one word, nothing for a reviewer to read.',
+      '  1 file changed · +2 −0',
+      '',
+    ].join('\n'));
+
+    fs.writeFileSync(path.join(config, 'addition.md'), 'Bold it in red.\n');
+    ok(dir, ['task', 'add', UNIT, '1.4', '--file', path.join(config, 'addition.md'), '--by', 'person'], { env: env() });
+    assert.match(refused(['step-gate', UNIT, '1.4']), /^render step-gate: task 1\.4 of pay is not built — a one-line task goes on once its branch holds a commit of its own made through the door since anything added to it/);
+    git(dir, ['checkout', '-q', taskBranch({ unit: UNIT, phase: 1, n: 4 }, 'feat', 'Bold the total')]);
+    fs.writeFileSync(path.join(dir, 'src/total.js'), 'export const total = 1;\nexport const bold = 3;\n');
+    git(dir, ['commit', '-q', '-am', `feat(${UNIT}): red\n\nLedger-Task: ${UNIT}-1-4\nLedger-Additions: 1`]);
+    git(dir, ['checkout', '-q', 'main']);
+    assert.match(screen(['step-gate', UNIT, '1.4']), /\n {2}No account, and no reviewer: one word, nothing for a reviewer to read\.\n/, 'its gate again once a commit names the addition');
   });
 
   it('is refused before the task\'s account is taken, once the task is done, and in auto — writing nothing', () => {

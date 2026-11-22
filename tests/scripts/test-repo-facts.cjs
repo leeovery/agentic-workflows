@@ -40,8 +40,6 @@ const { onStateBranch, withCommitLock } = require(path.join(SCRIPTS, 'domain/com
 const { stateRemote } = require(path.join(SCRIPTS, 'domain/state-worktree.cjs'));
 const { holdsTrace } = require(path.join(SCRIPTS, 'domain/code-trace.cjs'));
 const { stagedHeldOut } = require(path.join(SCRIPTS, 'domain/worktree-prep.cjs'));
-const { putOnBranch } = require(path.join(SCRIPTS, 'domain/fix-branch.cjs'));
-const { quickFixBranch } = require(path.join(SCRIPTS, 'domain/landing-names.cjs'));
 
 const world = useTempFolder('repo-facts-');
 
@@ -187,7 +185,6 @@ describe('every reader of a fact answering from the facts', () => {
     const nested = initRepo(path.join(main, 'api'));
     createFile(nested, 'index.js', '1\n');
     commitCode(nested, 'api');
-    git(nested, ['switch', '-q', '-c', quickFixBranch('unit')]);
     createFile(main, 'staged.md', 'staged\n');
     git(main, ['add', 'staged.md']);
     const repos = projectRepos(main);
@@ -204,7 +201,6 @@ describe('every reader of a fact answering from the facts', () => {
       ['the branch the state\'s remote is chosen by (domain/state-worktree)', () => stateRemote(isolatedGit(main)), 0],
       ['the trace at the tips of the branches (domain/code-trace)', () => holdsTrace(main), 0],
       ['the project\'s own checkout (domain/worktree-prep)', () => stagedHeldOut(repos, repos[0]), 0],
-      ['the branch a nested repository has out (domain/fix-branch)', () => putOnBranch(main, 'unit', [repos[1]]), 0],
       ['HEAD\'s ref, after the commit\'s staging (kernel/git)', () => commitStaged(main, ['staged.md'], 'staged'), 1],
     ];
 

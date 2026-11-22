@@ -38,7 +38,7 @@ const path = require('path');
 const { treeSnapshot, sectionOf } = require('./engine-harness.cjs');
 const { standingOn } = require('./board-world.cjs');
 const {
-  Sim, worldFrom, mappedEpic, discussed, specEntry, specReviewed, cutTheSpec, readyToBuild, answerGate, intoTheBuild, epicBuildPick, epicMenuAt, firstPhaseBuilt, carryOn, handoff,
+  Sim, worldFrom, mappedEpic, discussed, specEntry, specReviewed, cutTheSpec, readyToBuild, answerGate, intoTheBuild, epicBuildPick, epicMenuAt, firstPhaseBuilt, carryOn,
   writePhaseTasks, builders, taskBuilt, areaRead, testsRead, reviewNext, reviewCall, finishClosed, finished,
 } = require('./pipeline-world.cjs');
 
@@ -104,7 +104,7 @@ describe('pipeline simulation: the review phase, as its skill runs it', () => {
       'the review phase\'s entry records its place, its first round to read');
   });
 
-  it('an epic in auto: the build runs straight into the review phase in one conversation; round 1 reads both areas and the tests, files one finding out of scope and drops another by Claude\'s calls, its fix phase the one the entry names, built; round 2 reads only the area it changed and passes; finish lands the fix phase and hands off to the epic\'s menu; the finished folder holds what the layout lays out (14.S1, 24.S7, 12.S43, 14.S3, 14.S5, 4.S21, 4.S22, 20.10.1, 20.10.2)', () => {
+  it('an epic in auto: the build runs straight into the review phase in one conversation; round 1 reads both areas and the tests, files one finding out of scope and drops another by Claude\'s calls, its fix phase the one the entry names, built; round 2 reads only the area it changed and passes; finish lands the fix phase and draws no menu unasked, the conversation leaving the work; the finished folder holds what the layout lays out (14.S1, 24.S7, 12.S43, 14.S3, 14.S5, 4.S21, 4.S22, 20.10.1, 20.10.2)', () => {
     const handedOff = sim.handoffs.length;
     sim.run(['enter', 'implementation', WU]);
     assert.deepStrictEqual(sim.sections.split('\n').filter((line) => line.startsWith('finished: ')), [`finished: every phase of the cut has closed — the review phase is next: enter review ${WU}`],
@@ -184,9 +184,9 @@ describe('pipeline simulation: the review phase, as its skill runs it', () => {
     // Finish, its checklist closed above, the build's log closed first.
     const { landed, next } = finished(sim, WU, { closed: true });
     assert.deepStrictEqual(landed, [[phase]], 'finish lands the fix phase, the cut\'s merged before it');
-    assert.deepStrictEqual(standing(), { now: { phase: 'complete', since: sim.manifest(WU).completed_at }, spec: { state: 'complete', words: '', session: null }, build: { state: 'complete', session: 'this' } },
-      'S2, 20.8.2: finished, the epic is complete the day it completed, its build and review complete');
-    handoff(sim, `/${next.skill} ${next.args.join(' ')}`);
+    assert.deepStrictEqual(standing(), { now: { phase: 'complete', since: sim.manifest(WU).completed_at }, spec: { state: 'complete', words: '', session: null }, build: { state: 'complete', session: null } },
+      'S2, 20.8.2: finished, the epic is complete the day it completed, its build and review complete, the conversation gone from it');
+    assert.deepStrictEqual(next, { kind: 'continue' }, 'an epic finished draws no menu unasked');
 
     const files = unitFiles(sim);
     assert.deepStrictEqual(files.filter((file) => !LAID_OUT.some((place) => place.test(file))), [], 'every file is a place 4.11.5 lays out: no tracking or analysis files, no .state/ (4.S21, 4.S22)');

@@ -141,7 +141,9 @@ function fixtureTemplate() {
 
 /**
  * A copy of the world at `from` at `dir`, the folder made where it is
- * missing, its state worktree relinked to the copy's own repository.
+ * missing, its state worktree relinked to the copy's own repository, and
+ * every other worktree of that repository the world laid out with it
+ * (`relinkWorktrees`).
  * @param {string} from @param {string} dir
  * @returns {string} dir, symbolic links resolved — the path the engine names it by
  */
@@ -150,7 +152,29 @@ function copyWorld(from, dir) {
   const at = fs.realpathSync(dir);
   fs.cpSync(from, at, { recursive: true });
   repairStateWorktree(path.join(at, STATE_DIR_NAME));
+  relinkWorktrees(at, from, at);
   return at;
+}
+
+/**
+ * Each worktree of the repository at `repo`, copied with it from `from` to
+ * `at`, relinked to the copy: its registration naming its folder in the
+ * copy, and its folder naming that registration — a worktree laid out
+ * elsewhere, the state's relinked already among them, left as it is.
+ * @param {string} repo @param {string} from @param {string} at
+ */
+function relinkWorktrees(repo, from, at) {
+  const registrations = path.join(repo, '.git', 'worktrees');
+  const was = fs.realpathSync(from) + path.sep;
+  for (const name of fs.existsSync(registrations) ? fs.readdirSync(registrations) : []) {
+    const own = path.join(registrations, name);
+    const link = path.join(own, 'gitdir');
+    const named = fs.readFileSync(link, 'utf8').trim();
+    if (!named.startsWith(was)) continue;
+    const moved = path.join(at, named.slice(was.length));
+    fs.writeFileSync(link, `${moved}\n`);
+    fs.writeFileSync(moved, `gitdir: ${own}\n`);
+  }
 }
 
 /**
@@ -171,6 +195,7 @@ function copyFolder(from, dir) {
     if (!fs.existsSync(config)) continue;
     fs.writeFileSync(config, fs.readFileSync(config, 'utf8').split(`${from}${path.sep}`).join(`${at}${path.sep}`));
     if (fs.existsSync(path.join(repo, STATE_DIR_NAME, '.git'))) repairStateWorktree(path.join(repo, STATE_DIR_NAME));
+    relinkWorktrees(repo, from, at);
   }
   return at;
 }

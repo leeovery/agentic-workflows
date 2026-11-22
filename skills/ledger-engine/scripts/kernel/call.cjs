@@ -6,11 +6,18 @@
 // door — the one JSON object a command takes on stdin, a hook's among them,
 // how a command ends it with an exit code without ending its caller, what a
 // failure says, and how a command starts one detached, to outlive it.
+//
+// The skills run the engine by its path from the shell's folder, and a
+// project commits its installed copy, so a call made from inside one of the
+// engine's own layouts runs the layout's copy — which the verb may take
+// apart under it: the close, a cancel or a move of a quick-fix its
+// worktree. The shell door hands such a call to the copy at the same place
+// in the project's own checkout, where it is there (`handedToCheckout`).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const path = require('path');
-const { spawn } = require('./spawn.cjs');
+const { spawn, spawnSync } = require('./spawn.cjs');
 const { isObject } = require('./manifest-io.cjs');
 const { findStateRoot } = require('./state-root.cjs');
 
@@ -72,6 +79,27 @@ function processCall() {
     stdin: () => (terminal ? '' : fs.readFileSync(0, 'utf8')),
     ...(terminal ? { terminal: { input: process.stdin, output: process.stdout } } : {}),
   };
+}
+
+/**
+ * The shell door's call handed to the project's own checkout's copy of the
+ * engine (the header's), where this copy lies inside one of the engine's
+ * own layouts and that one is there (kernel/code-root.cjs, `checkoutPath`):
+ * run on the same argv, from the same folder, on the process's own streams,
+ * its exit code left on the process — a copy that could not start said on
+ * stderr, exiting 1, and one a signal ended ending this process by the
+ * same. Whether it was handed. Code-root is loaded at the call: the layout
+ * and brief guards load this module, and none of it.
+ * @param {string[]} argv @returns {boolean}
+ */
+function handedToCheckout(argv) {
+  const copy = require('./code-root.cjs').checkoutPath(ENGINE_CJS);
+  if (copy === null || !fs.existsSync(copy)) return false;
+  const ran = spawnSync(process.execPath, [copy, ...argv], { stdio: 'inherit' });
+  if (ran.error !== undefined) process.stderr.write(`${ran.error.message}\n`);
+  process.exitCode = ran.status ?? 1;
+  if (ran.signal !== null) process.kill(process.pid, ran.signal);
+  return true;
 }
 
 /**
@@ -147,4 +175,4 @@ function stdinObject(stdin, said, what) {
   return value;
 }
 
-module.exports = { ENGINE_COMMAND, ENGINE_RUN, processCall, ExitSignal, messageOf, exitCodeOf, stdinObject, hookInput, hookProjectDir, launcher };
+module.exports = { ENGINE_COMMAND, ENGINE_RUN, processCall, handedToCheckout, ExitSignal, messageOf, exitCodeOf, stdinObject, hookInput, hookProjectDir, launcher };

@@ -109,7 +109,7 @@ describe('19.S23: the review asked for runs over the quick-fix\'s record and its
     const note = output(dir, ['conversation', 'position', 'sess-1'], as());
     const fresh = sectionOf(okSections(dir, ['enter', 'review', UNIT], { env: { ...as().env, CLAUDE_CODE_SESSION_ID: 'sess-2' } }).sections, 'DATA').split('\n');
 
-    const inFlight = 'in flight: task 2.1, no builder dispatched here — its builder and pair go afresh on its branch';
+    const inFlight = 'in flight: task 2.1, no builder dispatched here — its builder and reviewers go afresh on its branch';
     assert.deepStrictEqual([again.includes(inFlight), note.split('\n').includes(inFlight), fresh.includes(inFlight)], [true, true, true]);
     assert.doesNotMatch(note, /could not be read/);
     assert.ok(note.split('\n').includes(`- ${statePath(dir, layout.unit(UNIT, 'summary.md'))}`), 'the quick-fix\'s record re-read in full, as the spec is');
@@ -127,10 +127,8 @@ describe('19.S23: the review asked for runs over the quick-fix\'s record and its
 
   it('a merge by hand of the fixes before the review\'s fix task lands leaves the close\'s yes merging its pull request, the fix task still to land', () => {
     dir = world();
-    git(dir, ['switch', '-q', 'main']);
     git(dir, ['merge', '-q', '--squash', BRANCH]);
     git(dir, ['commit', '-q', '-m', 'Spell it the British way']);
-    git(dir, ['switch', '-q', BRANCH]);
     firstRoundFailed();
     fixTaskBuilt();
     secondRoundPassed();

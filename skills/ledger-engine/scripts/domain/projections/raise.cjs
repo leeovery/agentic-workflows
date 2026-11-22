@@ -6,9 +6,10 @@
 // stands — for a question waiting in the build, its number and the tasks it
 // parks besides (16.9.5, 12.12.5) — the question, what Claude found stepping
 // back from the problem where its call says (19.4.21), Claude's lean, what
-// the person would notice with each row, why it asks, and, with the toggle
-// on, the mechanism; then the rows, the lean recommended, the toggle, "I
-// don't follow" and a comment.
+// the person would notice with each row, why it asks where a rule always
+// asks it, and, with the toggle on, the mechanism and, where the counts
+// sent it, their reason beside it (16.9.2); then the rows, the lean
+// recommended, the toggle, "I don't follow" and a comment.
 // A raise on a replacement draws Claude's proposals, then the row its seal
 // holds for keeping the entry as it stands, recommended only where Claude
 // leaned to keep it, under the built-otherwise mark — and where a
@@ -123,12 +124,13 @@ function steppedBack(call) {
 /**
  * The lines above the rows, each block apart: the header, the question,
  * what the step back found, the lean as shown, what the person would
- * notice, why it asks — none on a blind question — and the mechanism where
- * it is shown.
- * @param {Seal} seal @param {boolean} technical @param {string|null} shown the topic's title as screens show it
+ * notice, why it asks where a rule always asks it — `ruled` — and the
+ * mechanism where it is shown, the counts' reason beside it where they sent
+ * the question; none of why on a blind question.
+ * @param {Seal} seal @param {boolean} technical @param {string|null} shown the topic's title as screens show it @param {string|null} ruled
  * @returns {string[]}
  */
-function statement(seal, technical, shown) {
+function statement(seal, technical, shown, ruled) {
   const { call, reason } = seal;
   const lean = drawnRows(seal).find((row) => row.key === leanShown(seal));
   const rows = drawnRows(seal);
@@ -138,19 +140,21 @@ function statement(seal, technical, shown) {
     steppedBack(call),
     lean === undefined ? [] : [`I lean: ${escapeProse(lean.text)}`],
     rows.length === 0 ? [] : ['WHAT YOU\'D NOTICE', '', ...rows.map((row) => `- ${escapeProse(row.name)}: ${escapeProse(row.notice)}`)],
-    seal.blind ? [] : ['WHY I\'M ASKING', '', escapeProse(reason)],
+    seal.blind || ruled === null ? [] : ['WHY I\'M ASKING', '', escapeProse(ruled)],
     technical ? ['THE MECHANISM', '', ...mechanismLines(call.mechanism)] : [],
+    technical && !seal.blind && ruled === null ? ['WHY I\'M ASKING', '', escapeProse(reason)] : [],
   ];
   return blocks.filter((block) => block.length > 0).flatMap((block, i) => (i === 0 ? block : ['', ...block]));
 }
 
 /**
  * The raise's MENU, declared as its seal names it; `topic` the title of the
- * topic it is about as screens show it, null where it has none of its own.
- * @param {Seal} seal @param {{technical?: boolean, topic: string|null}} opts
+ * topic it is about as screens show it, null where it has none of its own;
+ * `ruled` the reason a rule always asks it, null where the counts sent it.
+ * @param {Seal} seal @param {{technical?: boolean, topic: string|null, ruled: string|null}} opts
  * @returns {string}
  */
-function raiseScreen(seal, { technical = false, topic }) {
+function raiseScreen(seal, { technical = false, topic, ruled }) {
   const { id } = seal;
   wordsAsWritten();
   const { question, prompt } = asking(seal);
@@ -160,7 +164,7 @@ function raiseScreen(seal, { technical = false, topic }) {
     cmdOption('e', 'explain', 'I don\'t follow — explain it again', { next: engine(['raise', 'answer', id, '--didnt-follow']) }),
     promptOption('Comment', prompt),
   ];
-  return section(`MENU: ${seal.menu}`, MENU_INSTRUCTION, menu(statement(seal, technical, topic).join('\n'), rows, { question }));
+  return section(`MENU: ${seal.menu}`, MENU_INSTRUCTION, menu(statement(seal, technical, topic, ruled).join('\n'), rows, { question }));
 }
 
 /**

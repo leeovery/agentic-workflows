@@ -76,6 +76,18 @@
 //   a nested clone's folder, which it never tracks, is no change. Removal failing
 //   partway leaves the task in flight, so the verb run again finishes it.
 //
+// A one-line task, the orchestrator's own work (round-report.cjs,
+// `reviewedNone`), has no isolation worktree of a builder's: `task
+// worktree` lays the whole project out for it from wherever it is run, in
+// the engine's own layout beside the builders' worktrees,
+// `.claude/worktrees/ledger-{unit}-{task}` of the main checkout
+// (project-layout.cjs, `scratchTop`), every repository on the task's
+// branch, made where the task is built on or checked out as it stands, and
+// each prepared as Claude Code prepares an isolation worktree; laid out
+// already, it is answered so; refused for a quick-fix's, made in the
+// quick-fix's worktree as its fixes are. As the task ends, that layout is
+// taken apart whole, refused first where it holds changes not committed.
+//
 // A task started again — after a `/clear`, in a new conversation and a new
 // worktree of Claude Code's isolation — finds its branch out in the
 // worktree it was built in before, which Claude Code keeps for the commits
@@ -115,8 +127,8 @@ const { realpathOrSelf, within } = require('../kernel/isolated-git.cjs');
 const { projectRepos, repoName, placeOf, folderUnder } = require('../kernel/repos.cjs');
 const { tasksInFlight, taskAt } = require('./conversation.cjs');
 const { recordWorktree } = require('./position.cjs');
-const { recordLaidOut } = require('./round-report.cjs');
-const { commitOf, heldIn, startsAt, layOut } = require('./project-layout.cjs');
+const { recordLaidOut, reviewedNone } = require('./round-report.cjs');
+const { commitOf, heldIn, startsAt, layOut, scratchTop, takeApart } = require('./project-layout.cjs');
 const { preparedLinkOf, removePreparedLinks, prepareWorktreeSteps } = require('./worktree-prep.cjs');
 const { refusing } = require('./staged-payload.cjs');
 const { withStateLock } = require('./state-worktree.cjs');
@@ -384,7 +396,7 @@ function childPart(ref, repos, repo, root, branch, session, removing, base) {
  */
 function layOutTask(cwd, ref, read) {
   const laid = withStateLock(stateRoot(cwd), () => laidOut(cwd, ref, read));
-  const prepared = refusing('task worktree', () => prepareWorktreeSteps(cwd, fs.realpathSync(codeRoot(cwd)), laid.worktree, 'the task does not start in this worktree'));
+  const prepared = refusing('task worktree', () => prepareWorktreeSteps(cwd, laid.repos[0].path, laid.worktree, 'the task does not start in this worktree'));
   return prepared.length === 0 ? laid : { ...laid, prepared };
 }
 
@@ -396,6 +408,7 @@ function layOutTask(cwd, ref, read) {
  */
 function laidOut(cwd, ref, read) {
   const session = buildingConversation(ref);
+  if (reviewedNone(cwd, ref) !== null) return laidOutOneLine(cwd, ref, read, session);
   const here = worktreeHere(cwd, session, ref);
   const { committed, warnings, type, title } = read();
   if (type === null) {
@@ -424,6 +437,63 @@ function laidOut(cwd, ref, read) {
     ...(committed === undefined ? {} : { committed }),
     ...(warnings === undefined ? {} : { warnings }),
   };
+}
+
+/** A one-line task's layout's top (the header's), by the project's own repository. @param {Repo} own @param {TaskRef} ref */
+const oneLineTop = (own, ref) => scratchTop(own, `${ref.unit}-${shownTask(ref)}`);
+
+/**
+ * A one-line task's worktree laid out in its layout, or answered as laid
+ * out already (the header's), recorded against the task.
+ * @param {string} cwd @param {TaskRef} ref @param {() => TaskDetail & {committed?: string|null, warnings?: string[]}} read @param {string} session
+ */
+function laidOutOneLine(cwd, ref, read, session) {
+  if (require('./task-base.cjs').ofQuickFix(cwd, ref.unit)) throw refusal(`${taskName(ref)} is a quick-fix's one-line fix — make it in the quick-fix's worktree, ${require('./fix-branch.cjs').fixWorktree(cwd, ref.unit).root}, as its fixes are`);
+  const { committed, warnings, type, title } = read();
+  const branch = taskBranch(ref, /** @type {string} */ (type), title);
+  const project = lg.projectCheckout(fs.realpathSync(codeRoot(cwd)));
+  const repos = projectRepos(project);
+  const top = oneLineTop(repos[0], ref);
+  const already = fs.existsSync(top);
+  const folder = folderUnder(repos[0], top);
+  const parts = repos.map((repo) => ({ repo, at: path.join(folder, repo.dir) }));
+  if (!already) {
+    const base = startsAt(project, ref.unit, repos, below().belowTips(project, ref.unit, ref.phase, repos));
+    const start = (/** @type {Repo} */ repo) => (lg.branches(repo.path).has(branch) ? null : /** @type {string} */ (base.get(repo.dir)));
+    const made = parts.map(({ repo, at }) => ({ repo, at, make: { inPlace: false, start: start(repo) } }));
+    layOut(made, branch, project);
+    recordLaidOut(cwd, ref, Object.fromEntries(made.flatMap(({ repo, make }) => (make.start === null ? [] : [[repo.dir, make.start]]))));
+  }
+  const { recorded } = recordWorktree(session, ref.unit, shownTask(ref), top);
+  return {
+    task: shownTask(ref),
+    id: taskId(ref),
+    branch,
+    worktree: top,
+    repos: parts.map(({ repo, at }) => ({ repo: repoName(repo), path: at, ...(already ? { already: true } : {}) })),
+    recorded,
+    ...(committed === undefined ? {} : { committed }),
+    ...(warnings === undefined ? {} : { warnings }),
+  };
+}
+
+/**
+ * A one-line task's layout taken apart as `task {verb}` ends it, deepest
+ * first (the header's): refused where any repository there holds changes
+ * not committed, answering where each was; none where it is not laid out.
+ * @param {string} cwd @param {TaskRef} ref @param {string} verb
+ * @returns {string[]}
+ */
+function takeOneLineApart(cwd, ref, verb) {
+  const repos = projectRepos(lg.projectCheckout(fs.realpathSync(codeRoot(cwd))));
+  const top = oneLineTop(repos[0], ref);
+  if (!fs.existsSync(top)) return [];
+  const folder = folderUnder(repos[0], top);
+  const laid = repos.map((repo) => ({ repo, at: path.join(folder, repo.dir) })).filter(({ at }) => fs.existsSync(at));
+  const dirty = laid.map(({ repo, at }) => ({ at, dirt: uncommitted(repos, repo, at) })).find(({ dirt }) => dirt.length > 0);
+  if (dirty !== undefined) throw new Error(`task ${verb}: ${dirty.at} holds changes not committed: ${dirty.dirt.join(', ')}, so nothing moved — commit them, or move them out of the way, then run it again`);
+  takeApart(repos, top);
+  return laid.map(({ at }) => at).reverse();
 }
 
 /**
@@ -456,6 +526,7 @@ function childWorktrees(cwd, ref, read) {
  * @returns {string[]}
  */
 function takeWorktreeApart(cwd, ref, verb, read) {
+  if (reviewedNone(cwd, ref) !== null) return takeOneLineApart(cwd, ref, verb);
   const { repos, trees } = childWorktrees(cwd, ref, read);
   const [first] = dirtIn(repos, trees);
   if (first !== undefined) {

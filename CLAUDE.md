@@ -70,7 +70,7 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 - **Discovery** (`ledger-discovery`) — the product's conversation, where new work starts, and an epic's discovery, where its map is shaped and changed.
 - **Navigation** (`ledger-continue-epic`) — an epic's menu; any other unit is continued from the start menu, where it stands.
 - **Phase skills** (`ledger-{phase}-process`) — one per phase after discovery, and a quick-fix's own, `ledger-quick-fix-process`, from its first fix to its close; what each holds is in CONVENTIONS.md (The Phase Skill).
-- **Capture** (`ledger-log-idea`, `ledger-log-bug`, `ledger-log-quickfix`) — write to the inbox; no steps, no gates.
+- **Keep** (`ledger-keep`) — keeps anything of substance said in any conversation where Ledger keeps it: the inbox or the roadmap, the product's views, directions not taken and spikes, findings, shared files, the environment's setup, a line in CLAUDE.md, a message to a topic; no framework, no gates of its own.
 - **Project-level** — `ledger-roadmap` (the product roadmap, and starting work from it through discovery).
 - **Help** — the engine's: each menu's help beside the projection that draws it (`skills/ledger-engine/scripts/domain/projections/{menu}.help.md`), and the walkthrough and reference cards in `skills/ledger-engine/content/walkthrough/`.
 - **Shared references** (`skills/ledger-shared/references/`) — protocols several skills load; `framework.md` is loaded once per conversation (CONVENTIONS.md, The Framework Load).
@@ -91,7 +91,7 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 - `.ledger/{work_unit}/topics/{topic}/` — a topic's own place: `brief.md` its brief, `log.md` its conversation's log, `experiments/{id}-{slug}/` one experiment record, `mail/` the messages waiting for it, `earlier/` the files a unit moved to another type set aside from before
 - `.ledger/{work_unit}/spec.md` — the unit's one spec
 - `.ledger/{work_unit}/summary.md` — a quick-fix's short record after the work
-- `.ledger/{work_unit}/build/` — the build's `log.md` and `notes.md`; `notes-answered.json`, the notes for later a quick-fix's close answered; `tasks/{task}.md` with each task's round reports, `figures.json` and settlements; `phases/phase-{N}/` with the phase review's reports, the consolidation and `settlement.json`; `runs/{scenario}/run-NNN.json`, the verification runs
+- `.ledger/{work_unit}/build/` — the build's `log.md` and `notes.md`; `notes-answered.json`, the notes for later a quick-fix's close answered; `tasks/{task}.md` with each task's round reports, `review.json` its reviewers chosen, `figures.json` and settlements; `phases/phase-{N}/` with the phase review's reports, the consolidation and `settlement.json`; `runs/{scenario}/run-NNN.json`, the verification runs
 - `.ledger/{work_unit}/review/` — the review phase's rounds: `round-{N}.json`, `round-{N}.md`, `round-{N}-checks.md`, `round-{N}-reads.json`, and `round-{N}/` holding the readers' reports
 - `.ledger/{work_unit}/seeds/` — the inbox items the unit was started from
 - `.ledger/{work_unit}/assets/` — the files the user shared; `assets/legacy/` the unit's files from before Ledger the migration had no other place for, each at its path from the unit's old folder
@@ -105,8 +105,9 @@ A *topic* is the item within a phase; every phase keeps per-topic items in the m
 - `.ledger/.inbox/{ideas,bugs,quickfixes}/` — undecided captures; `.archived/` the declined ones
 - `.ledger/.product/` — the product's conversation: `sessions/session-NNN.md` its logs, `notes/{YYYY-MM-DD}--{slug}.md` the roadmap items' notes, `assets/` the files shared and, as `assets/{unit}/`, each retired unit's folder kept whole as reference, `assets/legacy/` the files from before Ledger of no unit's the migration had no other place for, each at its path from `.workflows/`, and in `assets/legacy/{unit}/` a retired unit's legacy files, `spikes/{NNN}-{slug}/` its spikes
 - `.ledger/.knowledge/` — the checkout-local knowledge store and config, gitignored
+- `.claude/worktrees/ledger-{work_unit}` — in the main checkout, a quick-fix's worktree on `fix/{work_unit}`, where its fixes are built: laid out at its first fix's start, taken apart at its close, cancel or move
 - `refs/ledger/aside/{work_unit}/{task_id}` — in each code repository, the work a quick-fix's fix had not committed, set aside when a question parked it or the quick-fix moved
-- `~/.config/ledger/` (or `LEDGER_CONFIG_DIR`) — system config, credentials, `trust.jsonl` the trust log, `person.md` the record of the person, `decision-checks.jsonl` the one-decision check's log, and `conversations/{session-id}/`, per-conversation state: `booted.json` boot's stamp, which the verbs that touch work refuse without, and `briefs/` the briefs the conversation issued
+- `~/.config/ledger/` (or `LEDGER_CONFIG_DIR`) — system config, credentials, `trust.jsonl` the trust log, `person.md` the record of the person, `decision-checks.jsonl` the one-decision check's log, and `conversations/{session-id}/`, per-conversation state: `booted.json` boot's stamp, which the verbs that touch work refuse without, `briefs/` the briefs the conversation issued, and `set-aside.json` the parks of the questions it set aside
 
 ### State
 

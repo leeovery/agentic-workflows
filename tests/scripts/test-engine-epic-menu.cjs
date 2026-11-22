@@ -5,9 +5,9 @@
 // 18.4.17): `render epic-menu <epic>` — its heading the phase the epic is
 // in, the tally beneath it, DECIDED and SET ASIDE listed with no key, the
 // topics by what they need, the way on past them, discovery's row while the
-// map is open, the recommended row first; the complete variant; where each
-// row leads, through `gate "epic menu"`; and what the render refuses. What
-// waits on the person: test-engine-epic-menu-waits.cjs.
+// map is open, the recommended row first; where each row leads, through
+// `gate "epic menu"`; and what the render refuses. What waits on the
+// person: test-engine-epic-menu-waits.cjs.
 //
 // Layer: verb. World: an epic, `fumi`, mid-discussion, its manifest and its
 // mailboxes written by hand, built once and copied for each test; each test
@@ -215,17 +215,6 @@ describe('the screen (18.4.17)', () => {
     ]);
   });
 
-  it('18.S77: a finished epic\'s menu is its complete variant — its heading, its tally and its lists, and help and back alone', () => {
-    settled();
-    createManifest(dir, EPIC, { ...readManifest(dir, EPIC), status: 'completed' });
-    const out = menuOf();
-
-    assert.deepStrictEqual([sectionOf(out, 'TITLE'), screenOf(out, 'DISPLAY: epic-menu')[0], rowsOf(out)], [
-      '# **`■ Complete — Fumi`**\n',
-      '8 topics · 6 decided · 1 cancelled · 1 postponed',
-      ['h/help → What this menu is for, row by row', 'b/back → Back to the start menu'],
-    ]);
-  });
 
   it('19.S4: the heading follows the epic through discovery, discussion, specification, the build and the review', () => {
     const headings = [];
@@ -352,15 +341,17 @@ describe('what the render does and refuses', () => {
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(path.join(config(), 'conversations', SESSION, 'position.json'), 'utf8')), { name: EPIC });
   });
 
-  it('refuses a unit this project lacks, a unit of another type, and a cancelled epic, writing nothing', () => {
+  it('refuses a unit this project lacks, a unit of another type, and an epic not in progress, cancelled or finished, writing nothing', () => {
     createManifest(dir, 'solo', { work_type: 'feature' });
     createManifest(dir, 'gone-epic', { work_type: 'epic', status: 'cancelled' });
-    const refused = ['nowhere', 'solo', 'gone-epic'].map((unit) => refusedPristine(dir, ['render', 'epic-menu', unit], { env: conversation() }).error);
+    createManifest(dir, 'done-epic', { work_type: 'epic', status: 'completed' });
+    const refused = ['nowhere', 'solo', 'gone-epic', 'done-epic'].map((unit) => refusedPristine(dir, ['render', 'epic-menu', unit], { env: conversation() }).error);
 
     assert.deepStrictEqual(refused, [
       'there is no work unit "nowhere" — the start menu lists the work in progress',
       'solo is a feature — only an epic has a menu of its own',
       'gone-epic is cancelled — reactivating it comes first',
+      'done-epic is completed — new work starts from the start menu',
     ]);
     assert.strictEqual(fs.existsSync(path.join(config(), 'conversations', SESSION, 'position.json')), false);
   });

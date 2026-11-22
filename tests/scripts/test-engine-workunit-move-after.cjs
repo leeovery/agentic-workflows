@@ -28,7 +28,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  ok, okSections, refuses, refusedPristine, git, stateGit, statePath, layout, writeState,
+  ok, okSections, refuses, refusedPristine, git, stateGit, statePath, layout, writeState, commitAll,
   readState, readManifest, cleanupFixture, killedAt, STATE_DIR_NAME,
 } = require('./engine-harness.cjs');
 const {
@@ -86,7 +86,7 @@ describe('the yes: a bugfix moved to a feature (19.S30, 19.4.22)', () => {
     const investigated = readState(dir, INVESTIGATION_LOG);
     const res = moved(BUG, 'feature');
 
-    assert.deepStrictEqual([res.fixes_closed, res.branches, res.checkout, res.next], [[], [], null, { kind: 'handoff', skill: 'ledger-discussion-process', args: ['feature', BUG] }]);
+    assert.deepStrictEqual([res.fixes_closed, res.branches, res.next], [[], [], { kind: 'handoff', skill: 'ledger-discussion-process', args: ['feature', BUG] }]);
     const manifest = readManifest(dir, BUG);
     assert.deepStrictEqual([manifest.work_type, manifest.phases], ['feature', { discussion: { items: { [BUG]: { status: 'unstarted' } } } }]);
     assert.deepStrictEqual(readManifest(dir, '.').work_units[BUG], { work_type: 'feature' });
@@ -164,9 +164,12 @@ describe('what the move refuses (19.5.9, 19.4.22, P7)', () => {
     }
 
     assert.deepStrictEqual([
-      refusedYes(QF, () => git(dir, ['branch', '-f', 'main', BRANCH])),
+      refusedYes(QF, () => git(dir, ['merge', '-q', '--ff-only', BRANCH])),
       refusedYes(QF, () => ok(dir, ['workunit', 'cancel', QF])),
-      refusedYes(BUG, () => writeState(dir, layout.unit(BUG, 'spec.md'), '# Spec\n')),
+      refusedYes(BUG, () => {
+        writeState(dir, layout.unit(BUG, 'spec.md'), '# Spec\n');
+        commitAll(dir, 'the spec landed');
+      }),
       refusedYes(BUG, () => ok(dir, ['manifest', 'set', `${BUG}.investigation.${BUG}`, 'status=completed'])),
     ], [
       `start-this-work yes: ${QF}'s fix 1.1 has landed — finish the quick-fix, then start the feature as work of its own`,
@@ -178,17 +181,17 @@ describe('what the move refuses (19.5.9, 19.4.22, P7)', () => {
 });
 
 describe('the yes run again (19.5.16)', () => {
-  it('stopped before the manifests\' save, every step before it done, a second yes completes the move whole, its commit taking every path, and answers what it did itself — no fix closed, no branch kept, the checkout where the first left it', () => {
+  it('stopped before the manifests\' save, every step before it done, a second yes completes the move whole, its commit taking every path, and answers what it did itself — no fix closed, no branch kept, the worktree the first took apart', () => {
     dir = world();
     staged(QF, 'feature');
     killedAt({ method: 'renameSync', file: `${STATE_DIR_NAME}/manifest.json`, when: 'before' }, dir, ['start-this-work', 'yes'], { env: env() });
-    const stopped = [readManifest(dir, QF).work_type, git(dir, ['branch', '--list', BRANCH]), fs.existsSync(statePath(dir, QF, 'build')), ledgerLines().at(-1).event];
+    const stopped = [readManifest(dir, QF).work_type, git(dir, ['branch', '--list', BRANCH]), fs.existsSync(path.join(dir, '.claude', 'worktrees', `ledger-${QF}`)), fs.existsSync(statePath(dir, QF, 'build')), ledgerLines().at(-1).event];
     const res = ok(dir, ['start-this-work', 'yes'], { env: env() });
 
-    assert.deepStrictEqual(stopped, ['quick-fix', '', false, 'rehomed']);
+    assert.deepStrictEqual(stopped, ['quick-fix', '', false, false, 'rehomed']);
     const [first, again] = ledgerLines().filter((line) => line.event === 'rehomed');
     assert.deepStrictEqual(again.lines, first.lines, 'the second carry lists the same lines, never the first carry');
-    assert.deepStrictEqual([res.work_type, res.fixes_closed, res.branches, res.checkout, readManifest(dir, '.').work_units[QF]], ['feature', [], [], null, { work_type: 'feature' }]);
+    assert.deepStrictEqual([res.work_type, res.fixes_closed, res.branches, readManifest(dir, '.').work_units[QF]], ['feature', [], [], { work_type: 'feature' }]);
     assert.deepStrictEqual([git(dir, ['branch', '--list', KEPT]).trim(), branchOut()], [KEPT, 'main']);
     assert.strictEqual(refuses(dir, ['task', 'list', QF, '1']).error, `phase 1 of ${QF} is not written`);
     const record = ok(dir, ['ledger', 'record', QF, QF]);

@@ -183,24 +183,6 @@ FIX DIRECTION ──────────────────────
     ])
   })
 
-  test('its conclude drawn, the facts line flags it waiting and WAITING ON YOU asks for its yes in the conversation, as the unit\'s tab does', () => {
-    const conclude = { kind: 'conclude', id: 'conclude', text: "Conclude: the hunt's recap, the root cause and the fix, for your yes", page: null, raised_by: null, why: null, options: null, lean: null }
-    const waits = { ...fixture, standing: 'conclude-waits', waiting: [conclude], fix_direction: { ...fixture.fix_direction, state: 'picked', pick: '1', fix: 'Harden the reads.' } } as View
-    const tab = { ...MINT, type: 'bugfix', here: false, waiting: [conclude], phases: [phase('discovery', 'complete', 'from your inbox note'), phase('investigation', 'waits', '6 hypotheses')] } as View
-    const { text, holds } = drawn(INVESTIGATION, waits)
-
-    expect(text.slice(2, 8)).toEqual(block(`
-6 hypotheses · 3 confirmed · 10 experiments · ⚑ conclude waits
-on you
-
-WAITING ON YOU ───────────────── 1 · asked in the conversation
-⚑ Conclude: the hunt's recap, the root cause and the fix, for
-  your yes
-`))
-    expect(holds.turns).toBe(false)
-    expect(sectionOf(drawn(UNIT, tab).text, 'WAITING ON YOU')).toEqual(sectionOf(text, 'WAITING ON YOU'))
-  })
-
   test('20.15: the unit\'s tab draws a raise as the investigation does, with what raised it and why it reached the person', () => {
     const tab = { ...MINT, type: 'bugfix', here: false, waiting: VALIDATING.waiting, phases: [phase('discovery', 'complete', 'from your inbox note'), phase('investigation', 'waits', '6 hypotheses')] } as View
 
@@ -232,14 +214,22 @@ WAITING ON YOU ───────────────── 1 · asked in
     expect(drawn(INVESTIGATION, picked).text[2]).toBe('6 hypotheses · 3 confirmed · 10 experiments · ◐ validating the')
   })
 
-  test('20.12.1, 20.12.4: concluded, the facts line says the specification is next and nothing turns, and the unit\'s tab shows the specification being written', () => {
+  test('20.12.1, 20.12.4: concluded at ready to build\'s yes, the facts line says so and nothing turns, and the unit\'s tab shows the build under way', () => {
     const done = { ...fixture, standing: 'concluded', waiting: [], fix_direction: { ...fixture.fix_direction, state: 'picked', pick: '1', fix: 'Harden the reads.' } } as View
-    const tab = { ...MINT, type: 'bugfix', here: false, waiting: [], phases: [phase('discovery', 'complete', 'from your inbox note'), phase('investigation', 'complete', '6 hypotheses'), phase('specification', 'running', '', { doing: 'being written' })] } as View
+    const tab = { ...MINT, type: 'bugfix', here: false, waiting: [], phases: [phase('discovery', 'complete', 'from your inbox note'), phase('investigation', 'complete', '6 hypotheses'), phase('specification', 'complete', '1 phase'), phase('implementation', 'running', '0 of 1 done', { doing: 'building' })] } as View
     const { text, holds } = drawn(INVESTIGATION, done)
 
-    expect(text.slice(2, 4)).toEqual(['6 hypotheses · 3 confirmed · 10 experiments · ✓ concluded ·', 'the specification next'])
+    expect(text[2]).toBe('6 hypotheses · 3 confirmed · 10 experiments · ✓ concluded')
     expect(holds.turns).toBe(false)
-    expect(drawn(UNIT, tab).text.find(row => row.includes('Specification'))).toEndWith(' being written')
+    expect(drawn(UNIT, tab).text.find(row => row.includes('Implementation'))).toEndWith(' building')
+  })
+
+  test('closed into its spec, not yet concluded at ready to build, the facts line says it is closed and the specification next, and nothing turns', () => {
+    const closed = { ...fixture, standing: 'closed', waiting: [], fix_direction: { ...fixture.fix_direction, state: 'picked', pick: '1', fix: 'Harden the reads.' } } as View
+    const { text, holds } = drawn(INVESTIGATION, closed)
+
+    expect(text.slice(2, 4)).toEqual(['6 hypotheses · 3 confirmed · 10 experiments · ✓ closed · the', 'specification next'])
+    expect(holds.turns).toBe(false)
   })
 
   test('each validation by where it stands: not started, lost, done with nothing found', () => {

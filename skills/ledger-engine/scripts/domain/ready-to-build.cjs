@@ -17,7 +17,11 @@
 //   one, and at no later one (22.5.3, environment-verbs.cjs). Then the
 //   drivers are checked against the tools they need: where a tool is not
 //   fine, the stop is drawn in the screen's place, and the yes, checking
-//   them again, is refused with it (22.4.5–22.4.9, drivers-verbs.cjs). It refuses a unit
+//   them again, is refused with it (22.4.5–22.4.9, drivers-verbs.cjs). Where
+//   the project lands through GitHub and the squash default's offer was
+//   never answered, the offer is drawn in the screen's place, at the
+//   project's first ready to build and at no later one (4.4.6,
+//   github-setup.cjs), its answer leading back to the screen. It refuses a unit
 //   `enter specification` refuses (spec-entry.cjs) — one the project lacks,
 //   one not in progress, a quick-fix, topics not settled; and a unit whose
 //   build has begun, the gate raised once per spec
@@ -34,8 +38,12 @@
 //   beside the spec's — what the person decided, the product-record lines,
 //   the candidates and their strike — Claude's calls on the topic counted
 //   with those at the spec, and decided's skips before ready to build's;
-//   and it asks decided's verdicts, at decided, before the spec's. Then the
-//   gate offers the build's
+//   and it asks decided's verdicts, at decided, before the spec's. A
+//   bugfix's is one screen with its investigation's conclude alike
+//   (investigation-conclude.cjs): it stands on the investigation's close
+//   into its spec and the recap staged for it, shows the recap before the
+//   spec's parts, and asks the investigation's verdicts, at the conclusion,
+//   before the spec's. Then the gate offers the build's
 //   position, auto first and recommended, nothing preselected (3.3.9), the
 //   review page where the session can publish one (`--page`, 11.11.11), the
 //   calls, and a comment. While the review page is open (spec-review.cjs)
@@ -54,8 +62,9 @@
 //   every line and candidate checked before the review is settled, and
 //   lands them after: the product-record lines through the ledger, then, in
 //   the manifest's one save, the candidates parked on the roadmap, the topic
-//   decided and its close recorded as taken, which dates the discussion.
-//   Then it writes each driver's setting the project lacks, as the first
+//   decided and its close recorded as taken, which dates the discussion. A
+//   bugfix's concludes its investigation in that save, what the bug is in
+//   checked before anything is written. Then it writes each driver's setting the project lacks, as the first
 //   verb needing it would, so the build records its drivers (22.4.3); then
 //   `build: {position}` on the unit's manifest — the first
 //   pick of the position, its record the gate's answer (E14) — concluding
@@ -87,6 +96,7 @@ const { specEntryRefusal } = require('./spec-entry.cjs');
 const { specReading } = require('./spec-sections.cjs');
 const { readyClose, decidedClose } = require('./checklist.cjs');
 const { closesIntoSpec, featureClose, closingYes } = require('./decided.cjs');
+const { concludedClose, concludingYes } = require('./investigation-conclude.cjs');
 const { pageOpen, readBackFile, reviewStates, settleReview } = require('./spec-review.cjs');
 const { handedTag } = require('./topic-map.cjs');
 const { record } = require('./trust-log.cjs');
@@ -94,6 +104,9 @@ const { commitStateTail, noteCommitOutcome, PROJECT_MANIFEST_SPEC } = require('.
 const { refusing, stands } = require('./staged-payload.cjs');
 const { resolveDriver } = require('./drivers.cjs');
 const { driversStop } = require('./drivers-verbs.cjs');
+const { githubSquashOffered, githubSquashNested } = require('./github-setup.cjs');
+const { githubSquashGate } = require('./projections/boot.cjs');
+const { projectName } = require('./state-checks.cjs');
 const { phaseSkill } = require('./handoff.cjs');
 const { readyToBuildScreen } = require('./projections/ready-to-build.cjs');
 
@@ -147,14 +160,17 @@ function callsAtSpec(shower, unit) {
 /**
  * The close the screen stands on, refused where ready to build cannot show:
  * the unit's own refusals; a feature's topic's close, as the decided gate
- * stands on it (`decidedClose`); then its checklist's close (`readyClose`).
+ * stands on it (`decidedClose`); then its checklist's close (`readyClose`);
+ * then a bugfix's investigation's close (`concludedClose`).
  * @param {string} cwd @param {string} unit
  */
 function readyStanding(cwd, unit) {
   const refused = unitRefusal(cwd, unit);
   if (refused !== null) throw new Error(refused);
-  const decided = closesIntoSpec(/** @type {Record<string, any>} */ (manifestOf(stateRoot(cwd), unit))) ? decidedClose(cwd, unit, unit) : null;
-  return { ...readyClose(cwd, unit), decided };
+  const manifest = /** @type {Record<string, any>} */ (manifestOf(stateRoot(cwd), unit));
+  const decided = closesIntoSpec(manifest) ? decidedClose(cwd, unit, unit) : null;
+  const ready = readyClose(cwd, unit);
+  return { ...ready, decided, concluded: concludedClose(cwd, manifest, ready.warnings) };
 }
 
 /** Whether ready to build's screen draws, as `render ready-to-build` stands on it: what the board lists waiting on the person's yes. @param {string} cwd @param {string} unit */
@@ -163,33 +179,36 @@ const readyDraws = (cwd, unit) => stands(() => readyStanding(cwd, unit));
 /**
  * What the screen and the yes stand on, refused where ready to build
  * cannot show: the unit's manifest, the skips its checklists show, the
- * landed spec the close seals, and, read in one pass of the ledger, a
- * feature's topic's close, Claude's calls, and the verdict asked — for a
- * feature, counted across its topic's departures and the spec's, the
- * topic's first — with the point it is given at.
+ * landed spec the close seals, a bugfix's investigation's close, and, read
+ * in one pass of the ledger, a feature's topic's close, Claude's calls, and
+ * the verdict asked — counted across a feature's topic's departures, or a
+ * bugfix's investigation's, and the spec's, the topic's or the
+ * investigation's first — with the point it is given at.
  * @param {string} cwd @param {string} unit
  */
 function standing(cwd, unit) {
-  const { closed, skips, warnings, landed, decided } = readyStanding(cwd, unit);
+  const { closed, skips, warnings, landed, decided, concluded } = readyStanding(cwd, unit);
   const root = stateRoot(cwd);
   try {
     const manifest = loadWorkUnitManifest(cwd, unit);
+    /** The verdict point a departure is asked at on this screen, and the close it is asked under, or null. @param {IdFacts} facts */
+    const pointOf = (facts) => {
+      if (facts.unit !== unit) return null;
+      if (decided !== null && facts.topic === unit) return { point: 'decided', closed: decided.closed };
+      if (concluded !== null && facts.phase === 'investigation') return { point: 'conclusion', closed: concluded.closed };
+      return facts.phase === PHASE ? { point: 'ready-to-build', closed } : null;
+    };
     const read = readShown(root, warnings, (shower) => {
       const topic = decided === null ? null : featureClose(shower, root, cwd, manifest, decided.closed, warnings);
-      const onTopic = (/** @type {IdFacts} */ facts) => decided !== null && facts.topic === unit;
-      const verdict = verdictAsked(shower, root, (facts) => {
-        if (facts.unit !== unit) return null;
-        if (onTopic(facts)) return /** @type {{closed: string}} */ (decided).closed;
-        return facts.phase === PHASE ? closed : null;
-      });
+      const verdict = verdictAsked(shower, root, (facts) => pointOf(facts)?.closed ?? null);
       return {
         topic,
         calls: [...(topic?.calls ?? []), ...callsAtSpec(shower, unit)],
         verdict,
-        point: verdict !== null && onTopic(factsOf(shower.folded, verdict.entry)) ? 'decided' : 'ready-to-build',
+        point: verdict === null ? 'ready-to-build' : /** @type {{point: string}} */ (pointOf(factsOf(shower.folded, verdict.entry))).point,
       };
     });
-    return { manifest, skips: [...(decided?.skips ?? []), ...skips], warnings: [...(decided?.warnings ?? []), ...warnings], landed, ...read };
+    return { manifest, skips: [...(decided?.skips ?? []), ...skips], warnings: [...(decided?.warnings ?? []), ...warnings], landed, concluded, ...read };
   } catch (err) {
     throw carrying(err, warnings);
   }
@@ -208,16 +227,18 @@ function reviewCounts(cwd, unit) {
 }
 
 /**
- * `render ready-to-build <unit> [--page] [--calls]`: the screen, the review
- * row offered with `--page`, Claude's calls listed with `--calls`.
- * @param {string} cwd @param {{dotpath?: string, page?: string, calls?: string}} args
+ * `render ready-to-build <unit> [--page] [--calls] [--alone]`: the screen,
+ * the review row offered with `--page`, Claude's calls listed with
+ * `--calls`, drawn after a verdict with `--alone`.
+ * @param {string} cwd @param {{dotpath?: string, page?: string, calls?: string, alone?: string}} args
  * @returns {string}
  */
-function readyToBuildSurface(cwd, { dotpath: unit = '', page, calls }) {
+function readyToBuildSurface(cwd, { dotpath: unit = '', page, calls, alone }) {
   return refusing('render ready-to-build', () => {
     const ready = standing(cwd, unit);
     const stop = driversStop(cwd);
     if (stop !== null) return stop.screen();
+    if (githubSquashOffered(cwd)) return githubSquashGate(projectName(cwd), githubSquashNested(cwd));
     const { headings } = specReading(ready.landed);
     const open = pageOpen(cwd, unit);
     return readyToBuildScreen({
@@ -231,9 +252,11 @@ function readyToBuildSurface(cwd, { dotpath: unit = '', page, calls }) {
       verdict: ready.verdict,
       point: ready.point,
       close: ready.topic?.close ?? null,
+      recap: ready.concluded?.recap ?? null,
       page: page !== undefined,
       review: open ? reviewCounts(cwd, unit) : null,
       readBack: readBackFile(cwd, unit),
+      alone: alone !== undefined,
     });
   });
 }
@@ -255,7 +278,8 @@ function nextAfterYes(manifest) {
  * `ready-to-build yes <unit> --position auto|step [--marks <file>]`: the
  * person's pick, concluding the spec and beginning the build in the
  * position picked — a feature's taking its topic's close too, every line
- * and candidate checked before anything is written.
+ * and candidate checked before anything is written, and a bugfix's
+ * concluding its investigation.
  * @param {string} cwd @param {string} unit @param {string} position @param {string} [marks] absolute or from cwd
  */
 function readyToBuildYes(cwd, unit, position, marks) {
@@ -267,6 +291,7 @@ function readyToBuildYes(cwd, unit, position, marks) {
   if (topic !== null && topic.unreplaced !== null) throw new Error(topic.unreplaced);
   if (marks !== undefined && !pageOpen(cwd, unit)) throw new Error(`${unit}'s review page is not open, so the yes takes no marks — the build starts with no review recorded`);
   const yes = topic === null ? null : closingYes(cwd, unit, unit, topic.staged, warnings);
+  const concluding = ready.concluded === null ? null : concludingYes(cwd, unit, ready.concluded.staged);
   const settled = settleReview(cwd, unit, marks);
   if (settled.waiting.length > 0) {
     throw new Error(`a comment on the review page waits for Claude, so the build does not start — Claude answers each beneath its line, then shows ready to build again:\n${settled.waiting.map(waitingLine).join('\n')}`);
@@ -277,6 +302,7 @@ function readyToBuildYes(cwd, unit, position, marks) {
   const { manifest, beside, parked } = withWorkUnitLock(cwd, unit, () => {
     const fresh = loadWorkUnitManifest(cwd, unit);
     const taken = yes === null ? null : yes.take(fresh, at);
+    concluding?.take(fresh, at);
     fresh.build = { position };
     saveWorkUnitManifest(cwd, unit, fresh);
     return { manifest: fresh, beside: yes === null || taken === null ? [] : yes.paths(taken), parked: taken?.parked ?? [] };
@@ -284,7 +310,10 @@ function readyToBuildYes(cwd, unit, position, marks) {
   const paths = [...new Set([`${unit}/manifest.json`, PROJECT_MANIFEST_SPEC, ...beside, ...(settled.record === null ? [] : [settled.record])])];
   const outcome = commitStateTail(cwd, paths, `ready-to-build(${unit}): ${position}`, warnings);
   yes?.done();
-  const closing = yes === null ? {} : { decided: at, ...landed, candidates: yes.candidates, struck: yes.struck, parked };
+  const closing = {
+    ...(yes === null ? {} : { decided: at, ...landed, candidates: yes.candidates, struck: yes.struck, parked }),
+    ...(concluding === null ? {} : { concluded: at }),
+  };
   /** @type {Record<string, unknown>} */
   const result = { unit, position, record: settled.record, ...closing, committed: outcome.committed, next: nextAfterYes(manifest) };
   if (warnings.length > 0) result.warnings = warnings;

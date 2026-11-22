@@ -155,10 +155,7 @@ describe('engine boot', () => {
     assert.strictEqual(git(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'init', 'and nothing on the code side');
   });
 
-  it('a migrations record an earlier boot left dirty is committed by the next one, which ran nothing at all', () => {
-    // The state this bug leaves behind: a previous boot recorded an ID and
-    // never committed it. Those migrations are recorded now, so nothing runs
-    // — and the line still has to go.
+  it('a migrations record an earlier boot left dirty — a migration another conversation ran, waiting on its review — is no commit of the next boot, which ran nothing at all: it names the review, whose yes commits the record', () => {
     writeState(fix.project, layout.migrations, '045\n');
     commitAll(fix.project, 'record baseline');
     writeState(fix.project, layout.migrations, '045\n046\n');
@@ -166,11 +163,12 @@ describe('engine boot', () => {
     const res = runEngine(stubbed, fix.project, ['boot']);
 
     assert.strictEqual(res.migrations.ran, 0, 'nothing ran this boot');
-    assert.strictEqual(res.migrations.changed, false);
+    assert.strictEqual(res.migrations.changed, true, 'the review waits');
+    assert.ok(res.gates.includes('migration-review'), `the review is named again: ${res.gates}`);
     assert.deepStrictEqual(res.warnings, []);
-    assert.strictEqual(res.migrations_committed, stateGit(fix.project, ['rev-parse', '--short', 'HEAD']).trim());
-    assert.strictEqual(stateGit(fix.project, ['log', '-1', '--pretty=%s']).trim(), "chore: record Ledger's migrations");
-    assert.strictEqual(stateGit(fix.project, ['status', '--porcelain']).trim(), '');
+    assert.strictEqual(res.migrations_committed, null);
+    assert.strictEqual(stateGit(fix.project, ['log', '-1', '--pretty=%s']).trim(), 'record baseline');
+    assert.strictEqual(stateGit(fix.project, ['status', '--porcelain', '--', layout.migrations]).trim(), `M ${layout.migrations}`);
   });
 
   it('a run that changed documents leaves the migrations record to the reviewed commit — boot never commits it twice', () => {

@@ -73,7 +73,7 @@ describe('pipeline simulation: the build in step', () => {
   /** Where `task` stands, as the build's progress shows it when the person asks for the phases and tasks: its glyph. @param {string} task */
   const shown = (task) => new RegExp(`([○◐◌●✓⊘⚑]) ${task.replace('.', '\\.')} `).exec(sim.render(['build-progress', WU], { expect: 'content' }))?.[1];
 
-  it('12.S52, 12.S27, 12.1.4: a feature in step — one task at a time, a Comment at the gate put onto the task before its builder goes back in, the task in progress and its account refused until its pair reads it again, the gate again; the next laid out on the chain; the phase merged at its gate', () => {
+  it('12.S52, 12.S27, 12.1.4: a feature in step — one task at a time, a Comment at the gate put onto the task before its builder goes back in, the task in progress and its account refused until its pair reads it again, the gate again; the next laid out on the chain; the phase merged at its gate, and no task made in it once its stack has landed', () => {
     buildEntry(sim, WU);
     sim.run(['task', 'phase', WU, '1', '--title', 'The work']);
     loop.brief(['task-writer', WU, '1']);
@@ -125,6 +125,7 @@ describe('pipeline simulation: the build in step', () => {
     for (const letter of ['a', 'b']) landed(placeIn(sim, loop.brief(['phase-review', WU, '1', '--letter', letter]), 'Where your report goes'), PASSED);
     sim.render(['phase-merge-gate', WU, '1'], { expect: 'content' });
     sim.run(answerGate(sim, 'phase merge', '--pick', 'y').next.argv);
+    sim.refuses(['task', 'create', WU, '1', '--title', 'Bold the title', '--type', 'fix', '--why', 'one word, nothing for a reviewer to read'], /phase 1 of ledger's stack has landed/);
     sim.run(['checklist', 'close', 'phase-close', WU, '1']);
     assert.strictEqual(sim.run(['enter', 'review', WU]).entered, true, 'every phase merged, the review phase is entered');
   });

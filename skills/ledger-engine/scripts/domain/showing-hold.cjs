@@ -6,7 +6,7 @@
 // it opened, and the key it was drawn from. It is kept with the place's
 // state, in its cache, under the gate's name made a slug —
 // `.cache/{unit}/{phase}/{topic}/.showings/{gate-slug}.json`
-// (`check-in-gate.json`), and for a gate that comes at no place, the import
+// (`plan-gate.json`), and for a gate that comes at no place, the import
 // reprompt, `.cache/.showings/{gate-slug}.json` — so it outlives the
 // conversation, and goes with the unit's cache at its close (cache.cjs).
 //

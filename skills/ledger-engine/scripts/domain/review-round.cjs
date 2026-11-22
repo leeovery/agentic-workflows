@@ -124,7 +124,7 @@ const {
 } = require('./bug-proven.cjs');
 const {
   NOTES, isBuilderNote, reportNames, notesStanding, reviewStanding, roundRefusal, endedWords, recordedRounds, fixesOf, endsReview, fixPhase, roundRecordPath, roundReportFile, roundChecksFile, roundFolder,
-  snapshotRound, dropSnapshot, treeChanges, setAsideHeld, callsForThePerson, reviewCallFault, inTheBuild,
+  snapshotRound, dropSnapshot, treeChanges, setAsideHeld, callsForThePerson, reviewCallFault, inTheBuild, treeRepos,
 } = require('./review-phase.cjs');
 const {
   roundReport, closingReport, reportScreen, reviewCallsScreen,
@@ -368,16 +368,16 @@ function scenarioStandings(cwd, unit, manifest, round, repos, warnings) {
 }
 
 /**
- * The round under review, the unit as it reads and the project's repos,
- * refused where its review phase cannot be entered or the round cannot be
- * read.
+ * The round under review, the unit as it reads, the project's repos, and
+ * the repos of the tree the round reads (`treeRepos`), refused where its
+ * review phase cannot be entered or the round cannot be read.
  * @param {string} cwd @param {string} unit
  */
 function roundUnderReview(cwd, unit) {
   const at = reading(cwd, unit, refusing('review round', () => unitInProgress(cwd, unit)));
   const standing = refusing('review round', () => reviewHeld(at, roundRefusal));
   return {
-    manifest: at.manifest, ...standing, reads: /** @type {string[]} */ (standing.reads), repos: reposOf(at),
+    manifest: at.manifest, ...standing, reads: /** @type {string[]} */ (standing.reads), repos: reposOf(at), tree: treeRepos(at),
   };
 }
 
@@ -419,10 +419,10 @@ function recordRound(cwd, unit, file) {
   const said = 'review round';
   const refuse = refuserFor(said);
   const {
-    manifest, areas, rounds, round, reads, notes, repos,
+    manifest, areas, rounds, round, reads, notes, repos, tree,
   } = roundUnderReview(cwd, unit);
   const rerunPass = rerunHeld(cwd, unit, manifest, round, refuse);
-  treeHeld(cwd, unit, round, repos, refuse);
+  treeHeld(cwd, unit, round, tree, refuse);
   const { faults, reports } = roundReports(cwd, unit, round, reads);
   if (faults.length > 0) refuse(faults.join('; '));
   const phase = fixPhase(manifest, round);
@@ -643,8 +643,8 @@ function reportText(cwd, unit, manifest, rounds, statuses, warnings) {
   const view = (/** @type {number} */ round) => roundView(cwd, manifest, rounds[round - 1], round, wordings, statuses);
   const calls = { ...callsCount(cwd, unit, warnings), recorded: statuses === null ? rounds.length : null };
   const aside = statuses === null ? null : setAsideHeld(cwd, unit);
-  if (endsReview(last)) return closingReport(unit, title, rounds.map((_, at) => view(at + 1)), calls, aside);
-  return roundReport(unit, title, view(rounds.length), calls, aside);
+  if (endsReview(last)) return closingReport(title, rounds.map((_, at) => view(at + 1)), calls, aside);
+  return roundReport(title, view(rounds.length), calls, aside);
 }
 
 /**
@@ -675,5 +675,5 @@ function reviewCallsSurface(cwd, { dotpath: unit = '' }) {
 }
 
 module.exports = {
-  recordRound, answerNotes, answerCloseNotes, handBack, reviewReportSurface, reviewCallsSurface,
+  recordRound, answerNotes, answerCloseNotes, handBack, reviewReportSurface, reviewCallsSurface, filedItem,
 };

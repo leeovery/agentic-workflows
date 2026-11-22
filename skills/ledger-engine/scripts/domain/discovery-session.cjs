@@ -10,14 +10,18 @@
 //     `.product/sessions/session-NNN.md`, its marker `product_session` on the
 //     project manifest, under the project's lock.
 //
-// The entry opens one where none is open (`openSession`, enter.cjs): the
-// next session number from the logs on disk, its log made empty for the
-// conversation to write, and the marker set — one manifest write, no commit:
-// the session is live, and every state commit takes its log along
-// (state-worktree.cjs).
+// The entry opens one where none is open (`openSession`, enter.cjs), and so
+// does a write to the product's fixed lists (`sessionOpen`,
+// discovery-log.cjs): the next session number from the logs on disk, its
+// log made empty for the conversation to write, and the marker set — one
+// manifest write, no commit: the session is live, and every state commit
+// takes its log along (state-worktree.cjs).
 //
 // close clears the marker and commits the place's scope with the caller's
-// message — the unit's discovery scope, or the product's — the log with it.
+// message — the unit's discovery scope, or the product's — the log with it;
+// the product's takes the calling conversation out of the product's
+// conversation, its position and its presence row there gone, and clears
+// the marker only where no other live conversation is still in it.
 // The knowledge base never indexes a log (8.14.7).
 //
 // The log's content is the conversation's: the engine writes no prose of its
@@ -38,7 +42,8 @@ const { PRODUCT } = require('../kernel/manifest-schema.cjs');
 const { commitStateTail, noteCommitOutcome, discoveryScope, PRODUCT_SCOPE } = require('./commit.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
 const { PRODUCT_SESSIONS } = require('./layout.cjs');
-const { namedConversations } = require('./topic-log.cjs');
+const { handedSession } = require('../kernel/process.cjs');
+const { clearOwnQuietly, peerHold } = require('./presence.cjs');
 
 const SESSION_LOG = /^session-(\d+)\.md$/;
 
@@ -165,22 +170,6 @@ function activeSession(cwd, name) {
 }
 
 /**
- * The product's conversation as the start menu names it (18.2.13): how many
- * sessions it has had, and the date of the latest conversation its logs name
- * — null while none names one.
- * @param {string} cwd @returns {{sessions: number, last: string|null}}
- */
-function productConversation(cwd) {
-  const dir = statePath(cwd, PRODUCT_SESSIONS);
-  const logs = sessionLogs(dir);
-  for (const { file } of [...logs].reverse()) {
-    const latest = namedConversations(path.join(dir, file)).at(-1);
-    if (latest !== undefined) return { sessions: logs.length, last: latest.date };
-  }
-  return { sessions: logs.length, last: null };
-}
-
-/**
  * Install a place's next log, empty, and set the marker to it: the number
  * one past the highest on disk.
  * @param {string} cwd @param {SessionPlace} place @param {Marker} marker
@@ -218,19 +207,54 @@ function openSession(cwd, name) {
 }
 
 /**
+ * The session a place has open, or its next opened where none is — read
+ * and opened under the place's lock, so two writers meeting none open one.
+ * No commit: the writer's.
+ * @param {string} cwd @param {string} name a work unit, or `product`
+ * @returns {string}
+ */
+function sessionOpen(cwd, name) {
+  const place = sessionPlace(cwd, name);
+  return place.withMarker((marker) => marker.active ?? installLog(cwd, place, marker).session);
+}
+
+/**
  * @typedef {object} DiscoverySessionCloseResult
  * @property {string} session      the closed session's number string (e.g. `002`)
  * @property {string} session_log  the closed log's path
  * @property {string|null} committed  short commit sha, or null when nothing was staged
  * @property {string} [note]       set when committed is null
+ * @property {true} [still_open]   the product's, left open for another live conversation still in it
  * @property {string[]} warnings   non-blocking failures (the commit, its push)
  */
+
+/** Whether the calling conversation's place is the product's conversation. */
+function inTheProduct() {
+  const { readPosition } = require('./position.cjs');
+  const sessionId = handedSession();
+  const at = sessionId === null ? null : readPosition(sessionId);
+  return at !== null && at.name === PRODUCT && at.phase === undefined;
+}
+
+/**
+ * The calling conversation leaves the product's conversation: its presence
+ * row there dropped (presence.cjs), and its place where it is there.
+ * @param {string} cwd
+ */
+function leaveTheProduct(cwd) {
+  if (inTheProduct()) require('./position.cjs').dropPosition(handedSession());
+  clearOwnQuietly(cwd, PRODUCT, 'discovery', PRODUCT);
+}
 
 /**
  * Close a place's open session: clear the marker, then commit the place's
  * scope with the caller's message — one call covers whatever the session
- * left uncommitted. A peer session's topic files are never swept: discovery
- * runs beside live discussion sessions.
+ * left uncommitted. The product's, ended, takes the calling conversation
+ * out of the product's conversation, and leaves the session open where
+ * another live conversation is still in it, as start this work's yes does
+ * (presence.cjs): the last one out ends it, and one before it is answered,
+ * and its commit says, that the session stays open. A peer session's topic files
+ * are never swept: discovery runs beside live discussion sessions.
  * @param {string} cwd project root
  * @param {string} name a work unit, or `product`
  * @param {{message: string}} opts  commit message — it varies by caller, so it arrives via -m
@@ -238,26 +262,29 @@ function openSession(cwd, name) {
  */
 function closeDiscoverySession(cwd, name, { message }) {
   const place = sessionPlace(cwd, name);
+  const shared = name === PRODUCT && peerHold(cwd, PRODUCT, 'discovery', PRODUCT) !== null;
   const session = place.withMarker((marker) => {
     if (marker.active === null) throw new Error(`no discovery session is open for "${name}" — nothing to close`);
     const log = statePath(cwd, place.logs, `session-${marker.active}.md`);
     if (!fs.existsSync(log)) {
       throw new Error(`session log missing on disk: ${log} — the active-session marker names a session with no log`);
     }
-    marker.set(null);
-    return { number: marker.active, log };
+    const number = marker.active;
+    if (!shared) marker.set(null);
+    return { number, log };
   });
 
+  if (name === PRODUCT) leaveTheProduct(cwd);
   /** @type {string[]} */
   const warnings = [];
-  const outcome = commitStateTail(cwd, place.scope(), message, warnings);
+  const outcome = commitStateTail(cwd, place.scope(), shared ? `${message} — the session stays open for another conversation still in it` : message, warnings);
   /** @type {DiscoverySessionCloseResult} */
-  const result = { session: session.number, session_log: session.log, committed: outcome.committed, warnings };
+  const result = { session: session.number, session_log: session.log, committed: outcome.committed, ...(shared ? { still_open: /** @type {true} */ (true) } : {}), warnings };
   noteCommitOutcome(result, outcome, place.retry);
   return result;
 }
 
 module.exports = {
-  openSession, closeDiscoverySession, sessionLogs, latestSessionLog, productSession,
-  activeSession, sessionLogsAt, productConversation,
+  openSession, sessionOpen, closeDiscoverySession, sessionLogs, latestSessionLog, productSession,
+  activeSession, sessionLogsAt, inTheProduct,
 };

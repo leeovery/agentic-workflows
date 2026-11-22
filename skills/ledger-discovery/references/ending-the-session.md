@@ -30,4 +30,4 @@ A change the person asks for changes the file, and the items are drawn again.
 node .claude/skills/ledger-engine/scripts/engine.cjs discovery-session close {home} -m "discovery({home}): end the session"
 ```
 
-Where it commits nothing or answers warnings, say what it said in a line. The turn ends.
+Where it commits nothing, answers warnings, or answers `still_open` — the session left open for another conversation still in it — say so in a line. The turn ends.

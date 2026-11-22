@@ -94,7 +94,7 @@ const { projectName } = require('./state-checks.cjs');
 const { unraised } = require('./raise.cjs');
 const { listWorkUnitManifests } = require('../kernel/manifest.cjs');
 const { CARRIED } = require('../../../ledger-migrate/scripts/record-files.cjs');
-const { MIGRATION_JOURNALS, finishing, codeFiles } = require('./migration-commit.cjs');
+const { MIGRATIONS_RECORD, MIGRATION_JOURNALS, finishing, codeFiles } = require('./migration-commit.cjs');
 const { refreshMigrationQuietly } = require('./presence.cjs');
 const { CHECKS_DONE } = require('../../../ledger-migrate/scripts/old-layout.cjs');
 const { markPath } = require('./cut-migrating.cjs');
@@ -104,10 +104,6 @@ const { headingLevels, sectionEnd } = require('./spec-sections.cjs');
 const MIGRATE_SCRIPTS = path.resolve(__dirname, '..', '..', '..', 'ledger-migrate', 'scripts');
 const MIGRATE_CJS = path.join(MIGRATE_SCRIPTS, 'migrate.cjs');
 const MIGRATIONS = path.join(MIGRATE_SCRIPTS, 'migrations');
-
-// The record of the migrations applied, state-relative, which the runner
-// writes and a directive's close appends to.
-const MIGRATIONS_RECORD = '.state/migrations';
 
 // The move's journal of the corrections it made (078), among the migration's journals.
 const MOVE_JOURNAL = 'move.json';

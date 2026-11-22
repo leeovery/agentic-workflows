@@ -4,13 +4,18 @@
 // The pipeline simulation's discovery entry: the ways into the product's
 // conversation — the start menu's p, the roadmap's p and start's new-work
 // rows, each handing into `discovery none` — and its one log carried on from
-// conversation to conversation, each caught up from the last; the next
+// conversation to conversation, each caught up from the last; work brought
+// in words taking its type call in no session of the product's, so a fix
+// asked for in one window never stops, reads or closes the product's talk
+// going on in another; the next
 // day's session, after the last one ended on its roadmap items; the note a
 // compaction carries at either level; the brownfield offer's research, owed
 // from its yes until the findings land; the conversation moving between the
 // product, an epic's discovery and a topic in one session, with no handoff;
 // and the epic menu's d into its discovery, where the map changes at the
-// person's word.
+// person's word; and what a conversation outside Ledger keeps of the
+// product, through the keep's doors, with no boot, read by a topic's
+// opening.
 //
 // Layer: simulation. World: the project every scenario starts from
 // (pipeline-world.cjs), a copy per scenario; each replays the engine calls
@@ -28,9 +33,11 @@ const path = require('path');
 const ROOT = path.join(__dirname, '../..');
 const { startMenuRead } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/start-menu.cjs'));
 const { startMenuScreen } = require(path.join(ROOT, 'skills/ledger-engine/scripts/domain/projections/start-menu.cjs'));
-const { stateGit } = require('./engine-harness.cjs');
+const { stateGit, statePath, commitOnState } = require('./engine-harness.cjs');
+const { highestMigration } = require(path.join(ROOT, 'skills/ledger-migrate/scripts/migration-ids.cjs'));
 const {
-  Sim, startUnit, handoff, handoffBy, answerGate, typeAtGate, startPick, startNew, startBare, startWith, startMenu, epicPick, carryOn, mappedEpic, enterEntry, waitAgents, presenceRow, briefDraft, roadmapMenu,
+  Sim, startUnit, handoff, handoffBy, answerGate, typeAtGate, startPick, startNew, startBare, startWith, startMenu, epicPick, carryOn, mappedEpic, enterEntry, presenceRow, briefDraft, roadmapMenu,
+  startThisWork,
 } = require('./pipeline-world.cjs');
 
 const PRODUCT = 'product';
@@ -122,21 +129,38 @@ describe('pipeline simulation: discovery\'s entry', () => {
     assert.ok(!fs.existsSync(logPath(sim, PRODUCT, 2)), 'one product conversation, one log');
   });
 
-  it('work brought in conversation comes through the one entry: boot given the words sends new work to Start in this conversation, with no menu, and words naming a unit in progress into it as the start menu\'s number does; the bare command draws the banner before boot, then the menu (8.S79, 18.S72, 18.2.15, 25.S10)', () => {
+  it('work brought in conversation comes through the one entry: boot given the words sends new work to Start\'s type call in this conversation, with no menu, and words naming a unit in progress into it as the start menu\'s number does — so Claude brings the request itself, which goes to Start beside a unit in progress — and talk about the product naming one into the product\'s conversation by the pick\'s Start, never its menu; the bare command draws the banner before boot, then the menu (8.S79, 18.S72, 18.2.15, 25.S10, 8.2.17)', () => {
     const conversation = sim.conversations;
     const brought = startWith(sim, 'Change what the help command prints when it has no topic');
     assert.deepStrictEqual([brought.go, brought.route], ['route', { kind: 'start', words: 'Change what the help command prints when it has no topic', next: { kind: 'invoke', skill: 'ledger-discovery', args: ['start', 'none'] } }]);
-    const opened = sim.run(['enter', 'discovery', PRODUCT]);
+    const opened = sim.run(['enter', 'discovery', PRODUCT, '--type-call']);
     assert.strictEqual(opened.entered, true);
     assert.strictEqual(sim.conversations, conversation, 'the route opens in place, nothing cleared: what the person said stays with the work');
 
-    startUnit(sim, 'quick-fix', 'help-topic', 'What help prints with no topic');
+    startThisWork(sim, { type: 'quick-fix', name: 'help-topic', description: 'What help prints with no topic', reason: 'One known change.' });
+    assert.strictEqual(startWith(sim, 'Make the sidebar margin match on narrow windows').route?.kind, 'start', 'the request, not a go-ahead, beside a unit in progress');
     const named = startWith(sim, 'carry on with help-topic');
     const { invoked } = handoffBy(sim, ['handoff', 'unit', 'help-topic']);
     assert.deepStrictEqual([named.go, named.route.unit, `/${named.route.next.skill} ${named.route.next.args.join(' ')}`], ['route', 'help-topic', invoked]);
 
+    const talk = startWith(sim, 'I think help-topic should never print the whole list, the product is quieter than that');
+    assert.deepStrictEqual([talk.go, talk.pick.start], ['pick', brought.route.next]);
+    assert.strictEqual(sim.run(['enter', 'discovery', PRODUCT]).entered, true, 'the talk carries the product\'s conversation on, the pick never drawn');
+
     assert.strictEqual(startBare(sim).go, 'menu', 'the bare command, in a new conversation, draws the banner before boot, then the menu');
     assert.ok(startMenu(sim).some(({ next }) => next?.kind === 'engine' && next.argv.join(' ') === 'handoff unit help-topic'), 'the menu lists the unit');
+  });
+
+  it('8.2.9: a fix asked for in one window while another talks product — its type call asks that window nothing, and its yes starts the quick-fix in place and leaves the product\'s session open, for that window to end its own session after', () => {
+    const talking = sim.session('product-window');
+    talking.run(['enter', 'discovery', PRODUCT]);
+    startWith(sim, 'Change what the help command prints when it has no topic');
+    sim.run(['enter', 'discovery', PRODUCT, '--type-call']);
+    const asked = /=== MENU: held topic gate /.test(sim.sections);
+    const started = startThisWork(sim, { type: 'quick-fix', name: 'help-topic', description: 'What help prints with no topic', reason: 'One known change.' });
+    const ended = talking.run(['discovery-session', 'close', PRODUCT, '-m', 'discovery(product): end the session']);
+
+    assert.deepStrictEqual([asked, started.product_session_closed, started.next.kind, ended.session], [false, null, 'invoke', '001']);
   });
 
   it('the next day\'s opening, after the session was ended, opens the next log and reads where it had got to (8.S69)', () => {
@@ -150,11 +174,10 @@ describe('pipeline simulation: discovery\'s entry', () => {
     const shared = sim.write('notes/pricing.md', '# Pricing\n');
     sim.refuses(['asset', 'import', PRODUCT, shared, 'notes/gone.png'], /notes\/gone\.png/);
     // The person asks first in their own words, which sets the prompt
-    // aside; shown again, they skip.
-    const reprompt = () => sim.render(['import-reprompt', '--file', sim.write('.ledger/.cache/product/discovery/product/import-reprompt.json', { missing: ['notes/gone.png'] })], { expect: 'content' });
-    reprompt();
+    // aside; once it is answered, their skip answers the prompt where it
+    // waits, never drawn again.
+    sim.render(['import-reprompt', '--file', sim.write('.ledger/.cache/product/discovery/product/import-reprompt.json', { missing: ['notes/gone.png'] })], { expect: 'content' });
     typeAtGate(sim, 'import reprompt', 'is the png one I need?');
-    reprompt();
     answerGate(sim, 'import reprompt', '--pick', 's');
     assert.deepStrictEqual(sim.run(['asset', 'import', PRODUCT, shared]).imports, ['.product/assets/pricing.md']);
 
@@ -172,8 +195,11 @@ describe('pipeline simulation: discovery\'s entry', () => {
     assert.strictEqual(next.started, true);
     assert.deepStrictEqual([named(sim, 'session log'), named(sim, 'log'), named(sim, 'research owed')],
       [[logPath(sim, PRODUCT, 1)], [logPath(sim, PRODUCT, 2)], ['no']]);
-    assert.match(/** @type {any} */ (startMenuScreen(startMenuRead(sim.dir)).rows.find((row) => row.key === 'p')?.label).tail, /^2 sessions, last on /,
-      'the start menu\'s row counts the sessions and names the last date');
+    const tail = () => /** @type {any} */ (startMenuScreen(startMenuRead(sim.dir)).rows.find((row) => row.key === 'p')?.label).tail;
+    const opened = tail();
+    fs.appendFileSync(logPath(sim, PRODUCT, 2), '\nSeats before pricing.\n');
+    assert.match(opened, /^1 session, last on /, 'a session nothing has been said in yet is not counted');
+    assert.match(tail(), /^2 sessions, last on /, 'the start menu\'s row counts the sessions holding talk and names the last date');
   });
 
   it('a compaction at either level names the skill, the open log and the log\'s transcript to catch up from (8.S67, 8.S75, 24.S19)', () => {
@@ -258,14 +284,13 @@ describe('pipeline simulation: discovery\'s entry', () => {
     assert.deepStrictEqual(Object.keys(sim.manifest(EPIC).phases.discovery.items), ['licensing', 'pricing', 'seats', 'offline-notes']);
   });
 
-  // The discussion skill's Moving Up: the log brought up to date, the wait
-  // for the topic's agents, then the move in the same conversation.
-  it('a topic\'s talk moving up to its epic: its agents waited on, the sitting committed and the topic\'s presence gone, in the same conversation (8.S72, 24.S20)', () => {
+  // The discussion skill's Moving Up: the log brought up to date, then the
+  // move in the same conversation.
+  it('a topic\'s talk moving up to its epic: the sitting committed and the topic\'s presence gone, in the same conversation (8.S72, 24.S20)', () => {
     mappedEpic(sim, EPIC, ['licensing']);
     enterEntry(sim, EPIC, 'discussion', 'licensing');
     const conversation = sim.conversations;
     sim.write(`.ledger/${EPIC}/topics/licensing/log.md`, `${named(sim, 'log header')[0]}\n\nThis is about the whole epic.\n`);
-    waitAgents(sim, EPIC, 'licensing');
 
     const up = sim.run(['enter', 'discovery', EPIC, '--move']);
     assert.strictEqual(typeof up.committed, 'string');
@@ -309,7 +334,6 @@ describe('pipeline simulation: discovery\'s entry', () => {
     enterEntry(sim, wu, 'discussion', wu);
     const conversation = sim.conversations;
     sim.write(`.ledger/${wu}/topics/${wu}/log.md`, `${named(sim, 'log header')[0]}\n\nThis is about the product.\n`);
-    waitAgents(sim, wu, wu);
 
     sim.refuses(['enter', 'discovery', wu, '--move'], /its discovery ended at start this work/);
     sim.run(['enter', 'discovery', PRODUCT, '--move']);
@@ -317,5 +341,40 @@ describe('pipeline simulation: discovery\'s entry', () => {
     assert.strictEqual(presenceRow(sim.run(['presence', 'scan', wu]), 'discussion', wu), undefined);
     assert.deepStrictEqual(carryOn(sim).position, { name: PRODUCT });
     assert.strictEqual(sim.conversations, conversation);
+  });
+
+  it('a conversation outside Ledger keeps what is said of the product through the keep\'s doors, never booted: a view, a direction dropped and a spike with its files in the product\'s log, a finding at its place with the file it rests on, a message to a topic, and an idea kept then dropped, marking nothing; the topic\'s opening reads them all (8.14.12, 18.11.1, 18.11.7, 10.1.9)', () => {
+    mappedEpic(sim, EPIC, ['licensing']);
+    commitOnState(statePath(sim.dir), { '.state/migrations': `${highestMigration()}\n` }, 'migrations: the record, as boot left it');
+    sim.open();
+    sim.refuses(['render', 'start-menu'], /has not booted Ledger/);
+
+    sim.run(['discovery-log', 'view', PRODUCT, '--text', 'Notes are furniture.']);
+    sim.run(['discovery-log', 'not-taken', PRODUCT, '--direction', 'A web client', '--why', 'the Mac is the product']);
+    const { spike, path: folder } = sim.run(['asset', 'spike', PRODUCT, 'menu-bar']);
+    sim.write(`.ledger/${folder}/MenuBar.swift`, 'struct MenuBar {}\n');
+    sim.run(['discovery-log', 'spike', PRODUCT, spike, '--tool', 'Xcode', '--showed', 'A menu-bar note reads at a glance']);
+    const { captured } = sim.run(['inbox', 'capture', 'idea'], null, '# Notes in the dock\n');
+    sim.run(['inbox', 'archive', captured]);
+    const finding = sim.run(['ledger', 'find', `${PRODUCT}.discovery`], null,
+      JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'The brand is blue.', how: 'the brand guide', known: 'documented' })).id;
+    const shared = path.join(sim.configDir, 'brand-guide.pdf');
+    fs.writeFileSync(shared, 'blue\n');
+    const [guide] = sim.run(['asset', 'import', PRODUCT, shared]).imports;
+    sim.run(['asset', 'add', PRODUCT, guide, '--entry', finding, '--status', 'reference']);
+    const sent = sim.run(['topic', 'send', EPIC, 'licensing', '--from', PRODUCT, '--slug', 'brand-colour',
+      '--content', sim.write(`.ledger/.cache/${PRODUCT}/discovery/${PRODUCT}/message-brand-colour.md`, 'Brand colour\n\nThe brand is blue; a licence screen shows it.\n')]);
+    assert.match(fs.readFileSync(sent.message_path, 'utf8'), /^From the product · /m);
+    assert.match(sim.render(['send-report', `${EPIC}.licensing`, '--sent', sent.message_path], { expect: 'content' }), /^Sent to Licensing, on Fumi$/m);
+    assert.strictEqual(stateGit(sim.dir, ['status', '--porcelain', '--untracked-files=all', '--', '.product', '.inbox', '.ledger.jsonl', EPIC]), '', 'every door committed what it kept');
+    assert.strictEqual(fs.existsSync(path.join(sim.configDir, 'conversations', sim.env.CLAUDE_CODE_SESSION_ID, 'workflow')), false, 'no door marked the conversation as one that runs Ledger');
+
+    sim.run(['boot']);
+    enterEntry(sim, EPIC, 'discussion', 'licensing');
+    assert.ok(named(sim, 'mail').includes(sent.message_path), 'the message waits for the opening');
+    const call = /^product: `node \S+ (ledger product .+)`$/m.exec(sim.sections)?.[1];
+    const read = JSON.parse(sim.read(/** @type {string} */ (call).split(' ')));
+    assert.deepStrictEqual([read.views, read.not_taken], [['Notes are furniture.'], [{ direction: 'A web client', why: 'the Mac is the product' }]]);
+    assert.deepStrictEqual(read.discovery.map((/** @type {{id: string, assets: object[]}} */ e) => [e.id, e.assets]), [[finding, [{ path: guide, status: 'reference', into: null }]]]);
   });
 });

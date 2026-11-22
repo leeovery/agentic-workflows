@@ -8,22 +8,21 @@
 //
 // - The list is explicit (P4) and pools nothing (16.14.7): discovery's import
 //   prompt (8.8.12); the wait for a topic's running agents, the one gate
-//   around a discussion's reviews (9.7.8, 9.8.12); an investigation's plan,
-//   check-in and conclude (19.4.19); and the experiment's spawn, now or later
-//   (24.1.2). No authority gate is on it (3.2.3, 16.20.4), and neither are
+//   around a discussion's reviews (9.7.8, 9.8.12); an investigation's plan
+//   (19.4.19); and the experiment's spawn, now or later (24.1.2). No
+//   authority gate is on it (3.2.3, 16.20.4), and neither are
 //   the build's gate after a task and its phase merge, which show only in
 //   step, where every process gate stops (3.3.3, 7.2.4). Each name is the
 //   gate's key in the trust log for good (16.11.9), declared by one MENU, and
 //   one with an entry after it, `{name} — {entry}`, is that gate.
 // - A row that may run as a step has its report. A typed row — a Comment,
-//   paths in the person's words — never runs as one; nor does the conclude's
-//   keep going, which would hold the investigation open with no one to end
-//   it; nor the wait's wait, whose next draws the wait again while the agents
-//   run, so as a step it would never stop.
+//   paths in the person's words — never runs as one; nor does the wait's
+//   wait, whose next draws the wait again while the agents run, so as a
+//   step it would never stop.
 // - A showing is one occurrence of a gate: drawn, then waiting, set aside
 //   by free text and shown again, until a pick answers it or it runs as a
 //   step. A row whose next shows the gate again at its place leaves it open
-//   — the Comment at the investigation's gates, the wait's wait — and any
+//   — the Comment at the investigation's plan, the wait's wait — and any
 //   other pick answers it, the reprompt's paths in the person's words among
 //   them. Its digest (`showingOf`) hashes the gate's place — unit, phase and
 //   topic — when that place was last entered (place-entry.cjs; for the
@@ -39,8 +38,8 @@
 // - A showing held keeps its key, so a gate whose key names its subject
 //   tells a showing held of a subject gone (`heldFor`): the reprompt over
 //   other paths, the spawn gate for another experiment, the wait once none
-//   of the agents it waited on runs. The investigation's gates change their
-//   keys within one showing, so theirs stands until a pick answers it.
+//   of the agents it waited on runs. The investigation's plan changes its key
+//   within one showing, so its showing stands until a pick answers it.
 // - A gate shows while its count asks (trust-counts.cjs): with no answers at
 //   all, and until the bound on leaving its usual answer, the row picked
 //   most often, falls below the person's threshold; once under, it runs as
@@ -80,12 +79,6 @@ const LEARNED = Object.freeze({
   'plan gate': Object.freeze({
     y: 'Analysis plan approved [auto]. Checking the hypotheses in this order.',
   }),
-  'check-in gate': Object.freeze({
-    y: 'Check-in approved [auto]. Carrying on with what\'s next.',
-  }),
-  'conclude gate': Object.freeze({
-    y: 'Investigation concluded [auto]. Moving to the specification.',
-  }),
   'experiment spawn gate': Object.freeze({
     y: 'Experiment worked now [auto]. Opening the laboratory.',
     l: 'Experiment left for later [auto]. Its question waits for the result.',
@@ -101,8 +94,6 @@ const BLIND_ASK = 0.05;
 const KEEPING = Object.freeze({
   'wait for agents': Object.freeze(['w']),
   'plan gate': Object.freeze(['comment']),
-  'check-in gate': Object.freeze(['comment']),
-  'conclude gate': Object.freeze(['comment']),
 });
 
 /** Whether two keys are one. @param {unknown} held @param {unknown} key */

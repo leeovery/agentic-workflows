@@ -908,7 +908,7 @@ function mergeQuickFix(ctx, landing) {
   const at = /** @type {string} */ (refs.get(landing.branch));
   const merged = lg.mergeTree(root, lg.mergeBase(root, intoTip, at), intoTip, at);
   if ('conflicts' in merged) {
-    throw new Error(`land: ${landing.branch} conflicts with ${into} at ${merged.conflicts.map(lg.plain).join(', ')}, so nothing moved — merge ${into} into ${landing.branch}, settling the conflict, and land again`);
+    throw new Error(`land: ${landing.branch} conflicts with ${into} at ${merged.conflicts.map(lg.plain).join(', ')}, so nothing moved — ${names.quickFixMerged(ctx.unit, into, lg.quoted(ctx.repo))}, and land again`);
   }
   const commit = lg.commitTree(root, { tree: merged.tree, parent: intoTip, message: landing.message, signed: lg.signs(root) }, `${ctx.unit}'s squash onto ${into}`, 'land again');
   movedDefault(ctx, intoTip, commit);

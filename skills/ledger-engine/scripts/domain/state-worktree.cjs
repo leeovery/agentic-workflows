@@ -66,7 +66,9 @@
 //   refused nor committed, and nor is an agent's staging of a file place, a
 //   `.txt` beside it waiting on its rename (layout.cjs, `stagedPlace`, the
 //   layout hook's own rule), so one agent mid-write holds up no commit. A merge's landing is no verb's commit, and is
-//   never checked.
+//   never checked. A commit made alone takes its own paths and no log: the
+//   capture line's, and every commit a keep's door makes (`committingAlone`),
+//   so a keep from outside the work never carries what another wrote.
 // - Its `.gitignore`: written whole at the orphan's first commit; the task
 //   driver's local files are added to it later, as its store is made.
 //
@@ -80,6 +82,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { AsyncLocalStorage } = require('async_hooks');
 const { isolatedGit, repoFacts, gitfileTarget, realpathOrSelf } = require('../kernel/isolated-git.cjs');
 const { GitError, literally } = require('../kernel/git.cjs');
 const { dropReads } = require('../kernel/git-reads.cjs');
@@ -958,6 +961,18 @@ function push(git, timeoutMs) {
   }
 }
 
+/** Whether the commits of the call under way take their paths alone (`committingAlone`). */
+const aloneHere = new AsyncLocalStorage();
+
+/**
+ * `fn`, every state commit it makes — until its promise settles, where it
+ * answers with one — taking its own paths alone, as `alone` takes them.
+ * @template T @param {() => T} fn @returns {T}
+ */
+function committingAlone(fn) {
+  return aloneHere.run(true, fn);
+}
+
 /**
  * Commit `paths`, as the working tree holds them, onto `ledger-state` in
  * the state worktree, with every log of the layout's changed since the last
@@ -979,14 +994,16 @@ function push(git, timeoutMs) {
  * Of each scope in `owned` — a unit, or null for the project's own files
  * beside the units — every file only the engine writes that changed is taken
  * too: the engine's verbs commit each such file they write, so one changed
- * is a commit still to make.
+ * is a commit still to make. `alone` commits `paths` and nothing else: no
+ * log changed since, for a commit made from outside the work, as the
+ * capture line's is, which never carries what another wrote.
  * @param {string} root
  * @param {string[]} paths absolute, or from the state root
  * @param {string} message
- * @param {{contents?: Record<string, Change>, kept?: string[], owned?: (string|null)[]}} [opts] `contents` by path as `paths` gives one; `kept` as `paths` gives one
+ * @param {{contents?: Record<string, Change>, kept?: string[], owned?: (string|null)[], alone?: boolean}} [opts] `contents` by path as `paths` gives one; `kept` as `paths` gives one
  * @returns {{commit: string|null, held?: true, warnings: string[]}}
  */
-function commitHere(root, paths, message, { contents = {}, kept = [], owned = [] } = {}) {
+function commitHere(root, paths, message, { contents = {}, kept = [], owned = [], alone = false } = {}) {
   if (!fs.existsSync(root)) throw new Error(`no state worktree at ${root}`);
   const specs = paths.map((given) => fromRoot(root, given));
   const keptSpecs = kept.map((given) => fromRoot(root, given));
@@ -1007,7 +1024,7 @@ function commitHere(root, paths, message, { contents = {}, kept = [], owned = []
   const landed = finishLanding(worktree, STATE_BRANCH);
   const changes = placedChanges(worktree);
   refuseOutsideLayout(root, changes);
-  const logs = changes.filter(({ at }) => at?.kind === 'log').map(({ rel }) => rel);
+  const logs = alone || aloneHere.getStore() === true ? [] : changes.filter(({ at }) => at?.kind === 'log').map(({ rel }) => rel);
   const engines = changes.filter(({ rel, at }) => at?.kind === 'engine' && owned.some((scope) => (scope === null ? !rel.includes('/') : rel.startsWith(`${scope}/`))))
     .map(({ rel }) => rel);
   const keeps = [...keptSpecs, ...logLinks(root, logs)];
@@ -1022,11 +1039,11 @@ function commitHere(root, paths, message, { contents = {}, kept = [], owned = []
  * @param {string} root
  * @param {string[]} paths absolute, or from the state root
  * @param {string} message
- * @param {{pushTimeoutMs?: number, contents?: Record<string, Change>, kept?: string[], owned?: (string|null)[]}} [opts] `contents`, `kept` and `owned` as `commitHere` takes them
+ * @param {{pushTimeoutMs?: number, contents?: Record<string, Change>, kept?: string[], owned?: (string|null)[], alone?: boolean}} [opts] `contents`, `kept`, `owned` and `alone` as `commitHere` takes them
  * @returns {CommitOutcome}
  */
-function commitState(root, paths, message, { pushTimeoutMs = PUSH_TIMEOUT_MS, contents = {}, kept = [], owned = [] } = {}) {
-  const { commit, held, warnings } = commitHere(root, paths, message, { contents, kept, owned });
+function commitState(root, paths, message, { pushTimeoutMs = PUSH_TIMEOUT_MS, contents = {}, kept = [], owned = [], alone = false } = {}) {
+  const { commit, held, warnings } = commitHere(root, paths, message, { contents, kept, owned, alone });
   if (commit === null) return { commit: null, pushed: false, ...(held ? { held } : {}), warnings };
   const pushed = push(isolatedGit(mainOf(root)), pushTimeoutMs);
   return { commit, pushed: pushed.pushed, warnings: [...warnings, ...pushed.warnings] };
@@ -1085,6 +1102,7 @@ function pushState(root, { timeoutMs = PUSH_TIMEOUT_MS } = {}) {
 }
 
 module.exports = {
+  committingAlone,
   STATE_BRANCH,
   SIDECAR_NAME,
   STATE_LOCK_REASON,

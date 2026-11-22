@@ -12,7 +12,9 @@
 // its identity's topic `.unit` — a name no topic's identity can take, as a
 // dotted one is refused. A live unit's copies on disk are what belongs: the
 // ledger's render writes each record that holds something and removes the
-// rest.
+// rest. So does the copy of the findings at the product's place,
+// `.knowledge/records/product.md` (8.12.12), whose identity's work unit and
+// work type are `product`, no unit's name: only its file gone retires it.
 //
 // A quick-fix's short record after the work, its `{unit}/summary.md`
 // (22.6.9, 19.5.6), is indexed as its unit's own, its identity's topic
@@ -41,6 +43,7 @@ const { RECORDS_DIR } = require('../../kernel/knowledge/files.cjs');
 const { UserError } = require('../../kernel/knowledge/retry.cjs');
 const { messageOf } = require('../../kernel/call.cjs');
 const { isIndexableImport } = require('../import-landing.cjs');
+const { PRODUCT } = require('../../kernel/manifest-schema.cjs');
 
 const SUMMARY_PATH = /^([^/]+)\/summary\.md$/;
 
@@ -168,11 +171,12 @@ function deriveIdentity(filePath) {
 
 /**
  * The work type a chunk of the artifact carries: the work unit's — from the
- * manifests already read where they hold it.
+ * manifests already read where they hold it — or the product's own.
  * @param {string} root @param {Identity} identity @param {Array<Record<string, any>>} [workUnits]
  * @returns {string}
  */
 function workTypeOf(root, { workUnit }, workUnits = []) {
+  if (workUnit === PRODUCT) return PRODUCT;
   const read = workUnits.find((unit) => unit.name === workUnit);
   if (read && read.work_type) return read.work_type;
   const manifestFile = path.join(root, workUnit, 'manifest.json');
@@ -309,7 +313,11 @@ function unitArtifacts(root, unit) {
  */
 function discoverArtifacts(root, manifests) {
   const live = manifests.workUnits.filter((unit) => unit.name && unit.status !== 'cancelled');
-  return live.flatMap((unit) => unitArtifacts(root, unit));
+  const product = recordFile(PRODUCT, null);
+  return [
+    ...live.flatMap((unit) => unitArtifacts(root, unit)),
+    ...(fs.existsSync(path.resolve(root, product)) ? [{ file: product, workUnit: PRODUCT, phase: RECORD_PHASE, topic: UNIT_RECORD }] : []),
+  ];
 }
 
 // ---------------------------------------------------------------------------
@@ -319,7 +327,7 @@ function discoverArtifacts(root, manifests) {
 /**
  * Why an indexed identity no longer belongs in the store, or null while it
  * may. Only positive knowledge retires: the source gone from disk, the work
- * unit unregistered or cancelled. A work unit whose manifest could not be
+ * unit unregistered or cancelled — the product's, its source alone. A work unit whose manifest could not be
  * read is evidence of nothing.
  * @param {string} root @param {Identity & {file: string}} entry
  * @param {Map<string, Record<string, any>>} units  work-unit manifests by name
@@ -328,6 +336,7 @@ function discoverArtifacts(root, manifests) {
  */
 function retiredReason(root, entry, units, registry) {
   if (!fs.existsSync(path.join(root, entry.file))) return 'source deleted';
+  if (entry.workUnit === PRODUCT) return null;
   if (registry && !registry.has(entry.workUnit)) return 'work unit not registered';
   const unit = units.get(entry.workUnit);
   return unit?.status === 'cancelled' ? 'work unit cancelled' : null;

@@ -1,24 +1,29 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// `engine discovery-log not-taken|view|spike <epic> …` (ledger-engine/
-// scripts/domain/discovery-log.cjs, 20.11.1, 20.11.3): each entry put in its
-// fixed shape under its fixed heading in the log of the epic's open session
-// — after the last entry of the last heading of its name, or under the
-// heading added at the log's end — and every refusal writing nothing. How
-// the board reads the lists is test-engine-board-discovery.cjs's.
+// `engine discovery-log not-taken|view|spike <epic|product> …` (ledger-
+// engine/scripts/domain/discovery-log.cjs, 20.11.1, 20.11.3, 8.14.12): each
+// entry put in its fixed shape under its fixed heading in the log of the
+// open session — after the last entry of the last heading of its name, or
+// under the heading added at the log's end — and every refusal writing
+// nothing; at the product, from any conversation, the session opened where
+// none is, no conversation's line written, and the line committed, a
+// spike's folder with it; and the product's lists as `ledger product` reads
+// them for every opening (8.9.15). How the board reads an epic's lists is
+// test-engine-board-discovery.cjs's.
 //
 // Layer: verb. World: discovery's gate suites' epic to shape, its first
-// session open (discovery-gates-world.cjs), copied for each test.
+// session open (discovery-gates-world.cjs), copied for each test; the
+// product's first session closed for its own tests.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
 
-const { describe, it } = require('node:test');
+const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert');
 
-const { ok, refusedPristine, writeState, readState, layout } = require('./engine-harness.cjs');
-const { EPIC, useGatesWorld } = require('./discovery-gates-world.cjs');
+const { ok, refusedPristine, writeState, readState, layout, stateGit, lastMessage } = require('./engine-harness.cjs');
+const { EPIC, PRODUCT_LOG, useGatesWorld } = require('./discovery-gates-world.cjs');
 
 const dir = useGatesWorld('epic');
 const LOG = layout.session(EPIC, '001');
@@ -81,16 +86,16 @@ describe('discovery-log (20.11.1, 20.11.3)', () => {
 
   it('refuses, writing nothing: an entry of no kind, arguments out of shape, a unit the project lacks or no epic, a value missing, empty or past one line, one holding what its line keeps for itself, a live link that is no web address, and a spike the epic lacks', () => {
     ok(dir(), ['asset', 'spike', EPIC, 'frame']);
-    const usage = 'Usage: engine discovery-log not-taken <epic> --direction "<direction>" --why "<why>"';
+    const usage = 'Usage: engine discovery-log not-taken <epic|product> --direction "<direction>" --why "<why>"';
     const refusals = /** @type {[string[], string|RegExp][]} */ ([
       [[], /^Usage: engine discovery-log <not-taken\|view\|spike> …\ndiscovery-log not-taken/],
       [['aside', EPIC], /^Usage: engine discovery-log <not-taken\|view\|spike> …/],
       [['not-taken', EPIC, '--direction', 'Stickies'], usage],
       [['not-taken', EPIC, '--direction', 'Stickies', '--why', 'no', '--text', 'x'], usage],
       [['not-taken', EPIC, 'extra', '--direction', 'Stickies', '--why', 'no'], usage],
-      [['spike', EPIC, '--tool', 'Paper', '--showed', 'x'], 'Usage: engine discovery-log spike <epic> <spike> --tool "<tool>" --showed "<what it showed>" [--link <live link>]'],
+      [['spike', EPIC, '--tool', 'Paper', '--showed', 'x'], 'Usage: engine discovery-log spike <epic|product> <spike> --tool "<tool>" --showed "<what it showed>" [--link <live link>]'],
       [['view', 'nowhere', '--text', 'x'], 'discovery-log: there is no work unit "nowhere"'],
-      [['view', 'atlas', '--text', 'x'], 'discovery-log: atlas is a feature — the fixed lists are an epic\'s discovery\'s'],
+      [['view', 'atlas', '--text', 'x'], 'discovery-log: atlas is a feature — the fixed lists are an epic\'s discovery\'s and the product\'s'],
       [['view', EPIC, '--text'], 'discovery-log: --text is one line of words, not empty'],
       [['view', EPIC, '--text', '  '], 'discovery-log: --text is one line of words, not empty'],
       [['view', EPIC, '--text', 'one\ntwo'], 'discovery-log: --text is one line of words, not empty'],
@@ -116,5 +121,91 @@ describe('discovery-log (20.11.1, 20.11.3)', () => {
 
     assert.strictEqual(refusedPristine(dir(), ['discovery-log', 'view', EPIC, '--text', 'Modern Swift']).error,
       'discovery-log: no discovery session is open for fumi — enter discovery fumi opens one');
+  });
+});
+
+describe('discovery-log at the product (8.14.12)', () => {
+  const KEEPER = Object.freeze({ CLAUDE_CODE_SESSION_ID: 'keeper' });
+  const LOG = layout.productSession('002');
+  /** The product's open session, as the project manifest marks it. */
+  const open = () => JSON.parse(readState(dir(), 'manifest.json')).product_session ?? null;
+  /** A call of the verb from the conversation `session`. @param {string[]} args @param {string} [session] */
+  const keep = (args, session = 'keeper') => ok(dir(), ['discovery-log', ...args], { env: { CLAUDE_CODE_SESSION_ID: session } });
+
+  beforeEach(() => {
+    ok(dir(), ['discovery-session', 'close', 'product', '-m', 'discovery(product): the session ends']);
+  });
+
+  it('from a conversation outside it, opens the product\'s next session where none is open, writes the entry alone, and commits the product\'s scope', () => {
+    assert.strictEqual(open(), null);
+
+    const kept = keep(['view', 'product', '--text', 'Notes are furniture.']);
+
+    assert.deepStrictEqual({ kept, log: readState(dir(), LOG), open: open(), dirt: stateGit(dir(), ['status', '--porcelain', '--', '.product', 'manifest.json']), message: lastMessage(dir()) }, {
+      kept: { ok: true, log: LOG, heading: 'Views of the product', line: '- Notes are furniture.', committed: stateGit(dir(), ['rev-parse', '--short', 'HEAD']).trim() },
+      log: ['## Views of the product', '', '- Notes are furniture.', ''].join('\n'),
+      open: '002',
+      dirt: '',
+      message: 'discovery(product): view kept',
+    });
+  });
+
+  it('a keep from a fresh conversation while the product\'s conversation holds the session commits its own line alone, onto the log as the branch holds it: what the product\'s conversation wrote stays in the tree, uncommitted', () => {
+    ok(dir(), ['enter', 'discovery', 'product'], { env: { CLAUDE_CODE_SESSION_ID: 'talker' } });
+    const talked = readState(dir(), LOG);
+    writeState(dir(), LOG, `${talked}${talked.endsWith('\n') ? '' : '\n'}- The person wants notes kept as furniture.\n`);
+    const before = stateGit(dir(), ['show', `HEAD:${LOG}`]);
+
+    keep(['view', 'product', '--text', 'Notes are furniture.']);
+
+    assert.deepStrictEqual({
+      committed: stateGit(dir(), ['show', `HEAD:${LOG}`]), files: stateGit(dir(), ['show', '--name-only', '--format=', 'HEAD']), tree: readState(dir(), LOG), dirt: stateGit(dir(), ['status', '--porcelain', '--', '.product']),
+    }, {
+      committed: `${before}${before === '' ? '' : '\n'}## Views of the product\n\n- Notes are furniture.\n`,
+      files: `${LOG}\n`,
+      tree: `${talked}${talked.endsWith('\n') ? '' : '\n'}- The person wants notes kept as furniture.\n\n## Views of the product\n\n- Notes are furniture.\n`,
+      dirt: ` M ${LOG}\n`,
+    });
+    assert.match(talked, /^## \d{4}-\d{2}-\d{2} · session talker$/m, 'the product\'s conversation\'s header stands in the tree, uncommitted');
+  });
+
+  it('a second conversation\'s keep lands in the same open session, under the list\'s heading, holding nothing and closing nothing', () => {
+    keep(['view', 'product', '--text', 'Notes are furniture.']);
+    keep(['not-taken', 'product', '--direction', 'A web client', '--why', 'the Mac is the product'], 'fixing-a-bug');
+    keep(['view', 'product', '--text', 'One-time pricing.'], 'fixing-a-bug');
+
+    assert.deepStrictEqual({ log: readState(dir(), LOG), open: open() }, {
+      log: ['## Views of the product', '', '- Notes are furniture.', '- One-time pricing.', '', '## Not taken', '', '- A web client — the Mac is the product', ''].join('\n'),
+      open: '002',
+    });
+  });
+
+  it('records a spike the product holds, committing its folder with the line, and refuses one it lacks, writing nothing and opening no session', () => {
+    const { spike, path: folder } = ok(dir(), ['asset', 'spike', 'product', 'frame']);
+    writeState(dir(), `${folder}/Frame.swift`, 'struct Frame {}\n');
+
+    assert.strictEqual(refusedPristine(dir(), ['discovery-log', 'spike', 'product', '009-ghost', '--tool', 'Paper', '--showed', 'x'], { env: KEEPER }).error,
+      'discovery-log: product has no spike "009-ghost" — name it as asset spike answered it, its spike');
+    assert.strictEqual(open(), null);
+    assert.strictEqual(keep(['spike', 'product', spike, '--tool', 'Paper', '--showed', 'Glass reads at a glance']).line, `- ${spike} · Paper — Glass reads at a glance`);
+    assert.strictEqual(stateGit(dir(), ['status', '--porcelain', '--untracked-files=all', '--', '.product']), '');
+    assert.match(stateGit(dir(), ['show', '--name-only', '--format=', 'HEAD']), new RegExp(`^${folder}/Frame\\.swift$`, 'm'));
+  });
+
+  it('ledger product reads the product\'s lists for every opening, every session\'s in order, an entry out of shape passed over and said (8.9.15)', () => {
+    const { spike } = ok(dir(), ['asset', 'spike', 'product', 'frame']);
+    writeState(dir(), PRODUCT_LOG, `${readState(dir(), PRODUCT_LOG)}\n## Views of the product\n\n- Stickies, but smarter.\n\n## Not taken\n\n- A menu-bar app alone\n`);
+    keep(['not-taken', 'product', '--direction', 'A web client', '--why', 'the Mac is the product']);
+    keep(['view', 'product', '--text', 'Notes are furniture.']);
+    keep(['spike', 'product', spike, '--tool', 'Paper', '--showed', 'Glass reads at a glance', '--link', 'https://paper.design/f/1']);
+
+    const { not_taken, views, spikes, warnings } = ok(dir(), ['ledger', 'product', EPIC]);
+
+    assert.deepStrictEqual({ not_taken, views, spikes, warnings }, {
+      not_taken: [{ direction: 'A web client', why: 'the Mac is the product' }],
+      views: ['Stickies, but smarter.', 'Notes are furniture.'],
+      spikes: [{ spike, tool: 'Paper', link: 'https://paper.design/f/1', showed: 'Glass reads at a glance' }],
+      warnings: [`${PRODUCT_LOG}: "A menu-bar app alone" under ## Not taken does not read as a direction and why, and is passed over`],
+    });
   });
 });

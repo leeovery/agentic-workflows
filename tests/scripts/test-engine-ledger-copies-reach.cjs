@@ -7,7 +7,8 @@
 // and never indexed; a topic's record indexed and never its log; answers from
 // the records alone — never a seed, an asset, an inbox item or the product
 // record's file — an asset reached through the entry that links it; and one
-// unit's records found from a session in another.
+// unit's records, and the findings at the product's place, found from a
+// session in another.
 //
 // Layer: verb. World: a project with its state worktree from the fixture
 // library, its knowledge set up keyword-only; the unit's manifest written
@@ -83,6 +84,18 @@ describe('the knowledge base\'s reach (22.6.1, 22.6.12)', () => {
     const found = await sources('panel sketch');
     assert.deepStrictEqual(found.files, [NOTE_COPY]);
     assert.match(found.stdout, new RegExp(`^- ${sketch}, reference$`, 'm'));
+  });
+
+  it('finds a finding made at the product\'s place from any work, after its write and after a full index alike (8.12.12, 22.S40)', async () => {
+    floatingPanel();
+    write('find', 'product.discovery', [], { ...MADE, text: 'Skill-frontmatter SessionEnd hooks never fire.', how: 'a hook that logs, run a week', known: 'read' });
+    const product = '.knowledge/records/product.md';
+    assert.deepStrictEqual(indexedFiles(dir()), [NOTE_COPY, product]);
+
+    const full = await callAsync(dir(), ['knowledge', 'index'], { env: SESSION });
+    assert.strictEqual(full.code, 0, full.stderr);
+    assert.deepStrictEqual(indexedFiles(dir()), [NOTE_COPY, product]);
+    assert.match((await callAsync(dir(), ['knowledge', 'query', 'SessionEnd', 'hooks'], { env: SESSION })).stdout, /\[record \| product\/\.unit /);
   });
 
   it('finds one unit\'s records from a session in another (22.S20)', async () => {

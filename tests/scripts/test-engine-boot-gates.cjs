@@ -21,14 +21,14 @@ const { gatesDue } = require('../../skills/ledger-engine/scripts/domain/boot-rou
 const SETTLED = Object.freeze({
   migrations: { changed: false, verify: [], notices: [] },
   knowledge: 'ready', mod: 'running', effort: null, walkthrough: 'walked', session_labels: 'no-multiplexer',
-  brownfield_offer: 'native', github_rule_offer: false, github_squash_offer: false,
+  brownfield_offer: 'native', github_rule_offer: false,
 });
 
 /** Boot's facts where every gate is due. */
 const ALL_DUE = Object.freeze({
   migrations: { changed: true, verify: [], notices: [] },
-  knowledge: 'not-ready', mod: 'could', effort: 'low', walkthrough: 'none', session_labels: 'prompt',
-  brownfield_offer: 'none', github_rule_offer: true, github_squash_offer: true,
+  knowledge: 'not-ready', system_config: { status: 'absent' }, mod: 'could', effort: 'low', walkthrough: 'none', session_labels: 'prompt',
+  brownfield_offer: 'none', github_rule_offer: true,
 });
 
 /** Claude's entry, with the person's words. */
@@ -56,13 +56,17 @@ describe('engine boot: the setup gates due at a start (22.2.1, O3)', () => {
 
   it('the stop at a Claude Code older than the floor, and the knowledge gate while the project has no knowledge base, show on either entry', () => {
     assert.deepStrictEqual(onBoth({}, { outdated: true }), [['claude-code-floor'], ['claude-code-floor']]);
-    assert.deepStrictEqual(onBoth({ knowledge: 'not-ready' }), [['knowledge'], ['knowledge']]);
+    assert.deepStrictEqual(['absent', 'invalid'].map((status) => onBoth({ knowledge: 'not-ready', system_config: { status } })), [[['knowledge'], ['knowledge']], [['knowledge'], ['knowledge']]]);
+  });
+
+  it('22.2.1: where this machine holds a valid knowledge configuration, the project adopts it on either entry, and the knowledge gate is due on neither', () => {
+    assert.deepStrictEqual(onBoth({ knowledge: 'not-ready', system_config: { status: 'valid' } }), [['knowledge-adopt'], ['knowledge-adopt']]);
   });
 
   it('O3: the mod\'s notice, the effort notice and the one-time offers wait for the bare command, after the gates every entry shows, in start\'s order — none of them offering a decision model (1.S3)', () => {
     assert.deepStrictEqual(gatesDue(ALL_DUE, { ...CLAUDE, outdated: true }), ['migration-review', 'claude-code-floor', 'knowledge']);
     assert.deepStrictEqual(gatesDue(ALL_DUE, { ...BARE, outdated: true }), [
-      'migration-review', 'claude-code-floor', 'knowledge', 'mod-notice', 'effort', 'walkthrough', 'session-labels', 'brownfield', 'github-rule', 'github-squash',
+      'migration-review', 'claude-code-floor', 'knowledge', 'mod-notice', 'effort', 'walkthrough', 'session-labels', 'brownfield', 'github-rule',
     ]);
   });
 

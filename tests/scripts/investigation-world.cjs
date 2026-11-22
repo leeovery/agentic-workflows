@@ -2,9 +2,9 @@
 
 // ---------------------------------------------------------------------------
 // The investigation suites' world and helpers (test-engine-investigation.cjs:
-// its entry, its log, its plan and check-in gates; and
+// its entry, its log, its plan gate and check-in; and
 // test-engine-investigation-conclude.cjs: its validations' briefs and its
-// conclude). The world, built once per run and copied
+// close). The world, built once per run and copied
 // for each test: a bugfix, `crash`, from two seeds, with its brief and
 // discovery's log, not yet started; a bugfix, `hunt`, its investigation
 // entered, with the ledger entries its hunt rests on — the root cause

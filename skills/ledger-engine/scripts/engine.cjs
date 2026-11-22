@@ -25,12 +25,15 @@
 //
 // A guard — a hook Claude Code runs before every call of a tool — is
 // answered at the shell door before anything below loads, loading its own
-// module alone (guards.cjs).
+// module alone (guards.cjs). So is a call this copy of the engine runs from
+// inside one of its own layouts, handed to the project's own checkout's
+// copy where it is there (kernel/call.cjs, `handedToCheckout`).
 // ---------------------------------------------------------------------------
 
 const { GUARD_VERBS, runGuard, guardDoor } = require('./guards.cjs');
+const { ExitSignal, messageOf, exitCodeOf, hookInput, hookProjectDir, processCall, handedToCheckout } = require('./kernel/call.cjs');
 // @ts-expect-error TS1108: a return ends a CommonJS module, which tsc allows only in a function
-if (require.main === module && guardDoor(process.argv.slice(2))) return;
+if (require.main === module && (guardDoor(process.argv.slice(2)) || handedToCheckout(process.argv.slice(2)))) return;
 
 const fs = require('fs');
 const path = require('path');
@@ -38,7 +41,9 @@ const { signpost, wrapWithPrefix, renderTree, WIDTH } = require('./kernel/render
 const { resetDisplayWidth } = require('./kernel/terminal.cjs');
 const { commitAcrossRepos, commitStateScoped, discoveryScope, PRODUCT_SCOPE, onStateBranch, STATE_BRANCH_HELD } = require('./domain/commit.cjs');
 const { commitMigrations, finishing } = require('./domain/migration-commit.cjs');
-const { inFlightTask, refuseClockBehind, onWorkBranch, checksFor, runChecks, recordWork, workMessage } = require('./domain/commit-task.cjs');
+const { committingAlone } = require('./domain/state-worktree.cjs');
+const { readProjectManifest } = require('./kernel/manifest-io.cjs');
+const { inFlightTask, refuseClockBehind, checksFor, runChecks, recordWork, oneLineAdditions, workMessage } = require('./domain/commit-task.cjs');
 const { taskId } = require('./domain/task-id.cjs');
 const {
   stageableSpecs, hasStagedDeletions, deletedAtHead, onBranch, operationInProgress, addRefused, unmergedPast,
@@ -46,7 +51,7 @@ const {
 const { projectRepos, repoOf, repoPath, repoName, commitGroups } = require('./kernel/repos.cjs');
 const { codeChanges, linksHeldOut, stagedHeldOut } = require('./domain/worktree-prep.cjs');
 const { quoted } = require('./domain/landing-git.cjs');
-const { TERMINAL_STATUSES } = require('./kernel/manifest-schema.cjs');
+const { TERMINAL_STATUSES, PRODUCT } = require('./kernel/manifest-schema.cjs');
 const { sequenceMap, addTopic, addTopics, editTopic, renameTopic, removeTopic, rewriteBrief } = require('./domain/discovery-map.cjs');
 const { cancelTopic, reactivateTopic, postponeTopic } = require('./domain/transitions.cjs');
 const { mailboxDir, mailPhase } = require('./domain/derivations.cjs');
@@ -60,7 +65,7 @@ const { archiveItems, closeItems, restoreItems, deleteItems, fileItem } = requir
 const { CAPTURE_USAGE, captureItem } = require('./domain/inbox-capture.cjs');
 const agentState = require('./domain/agent-state.cjs');
 const { BOOT_STOPS, boot } = require('./domain/boot.cjs');
-const { unbootedRefusal } = require('./domain/boot-stamp.cjs');
+const { MIGRATION_OWED, unbootedRefusal, owesMigration } = require('./domain/boot-stamp.cjs');
 const { stateMergeCommand } = require('./domain/state-merge.cjs');
 const { LEDGER_USAGE, WRITE_VERBS, writeLedger } = require('./domain/ledger-write.cjs');
 const { LEDGER_READ_USAGE, READ_VERBS, readLedgerVerb } = require('./domain/ledger-read.cjs');
@@ -111,27 +116,26 @@ const { ENTER_USAGE, enter } = require('./domain/enter.cjs');
 const { createWorkUnit } = require('./domain/workunit-create.cjs');
 const { cancelWorkUnit, reactivateWorkUnit, pivotWorkUnit } = require('./domain/workunit-lifecycle.cjs');
 const { absorbWorkUnit } = require('./domain/workunit-absorb.cjs');
-const { unitReceipt, topicReceiptOf, absorbedReceipt, archivedReceipt, restoredReceipt, deletedReceipt } = require('./domain/receipts.cjs');
+const { unitReceipt, topicReceiptOf, absorbedReceipt, archivedReceipt, restoredReceipt, deletedReceipt, finishedOf, cancelledOf } = require('./domain/receipts.cjs');
 const { stageMove } = require('./domain/workunit-move.cjs');
 const { splitWorkUnit } = require('./domain/workunit-split.cjs');
 const { retireWorkUnit } = require('./domain/workunit-retire.cjs');
 const { closeDiscoverySession } = require('./domain/discovery-session.cjs');
 const { LOG_USAGE, logHeard } = require('./domain/discovery-log.cjs');
 const { HUNT_USAGE, logHunt } = require('./domain/investigation-log.cjs');
-const { CONCLUDE_USAGE, runInvestigationVerb } = require('./domain/investigation-conclude.cjs');
+const { STAGE_USAGE, runInvestigationVerb } = require('./domain/investigation-conclude.cjs');
 const { runFieldCommand, isRead } = require('./domain/fields.cjs');
 const { renderSurface, SURFACES } = require('./domain/render.cjs');
 const { resolveHandoff, topicHandoff, handoffSections, TOPIC_HANDOFF_USAGE } = require('./domain/handoff.cjs');
 const { unitHandoff, UNIT_HANDOFF_USAGE } = require('./domain/unit-handoff.cjs');
-const { sittingIn, leaveNext, putBackNext, putBackBy, stillToAsk } = require('./domain/topic-leave.cjs');
+const { sittingIn, leaveNext, leftUnit, putBackNext, putBackBy, stillToAsk } = require('./domain/topic-leave.cjs');
 const roadmap = require('./domain/roadmap.cjs');
 const brownfield = require('./domain/brownfield.cjs');
 const { subjectSelector, codeLog, selectedDiff, uncommittedDiff, codeStatus } = require('./domain/code.cjs');
 const walkthrough = require('./domain/walkthrough.cjs');
 const { runKnowledge, knowledgeWaits } = require('./domain/knowledge/commands.cjs');
-const { ExitSignal, messageOf, exitCodeOf, hookInput, hookProjectDir, processCall } = require('./kernel/call.cjs');
 const { stateRoot, statePath, insideState } = require('./kernel/state-root.cjs');
-const { codeRoot } = require('./kernel/code-root.cjs');
+const { codeRoot, outsideLayouts } = require('./kernel/code-root.cjs');
 const { withVerbReads } = require('./kernel/isolated-git.cjs');
 const { handedSession } = require('./kernel/process.cjs');
 
@@ -295,7 +299,7 @@ ${TRUST_USAGE.replace(/^/gm, '  ')}
   discovery-session close <work-unit|product> -m <message>
 ${LOG_USAGE.replace(/^/gm, '  ')}
 ${HUNT_USAGE.replace(/^/gm, '  ')}
-  ${CONCLUDE_USAGE}
+  ${STAGE_USAGE}
 ${Object.values(MAP_USAGE).map((usage) => `  ${usage}`).join('\n')}
   ${SEND_USAGE}
   ${MAILBOX_USAGE}
@@ -327,6 +331,7 @@ ${Object.values(MAP_USAGE).map((usage) => `  ${usage}`).join('\n')}
   experiment abandon <work-unit> <topic> <id> --reason <one line>
   task phase <work-unit> <N> --title <title>
   task create <work-unit> <N> --file <path>
+  task create <work-unit> <N> --title <line> --type <type> --why <reason>
   task add <work-unit> <task> --file <path> --by <orchestrator|person>
   task type <work-unit> <task> <type>
   task close-plan <work-unit> --parent <tracker-id>
@@ -341,6 +346,7 @@ ${Object.values(MAP_USAGE).map((usage) => `  ${usage}`).join('\n')}
   task worktree <work-unit> <task>
   task stopped <work-unit> <task>
   task account <work-unit> <task>
+  task review <work-unit> <task> --reviewers <1|2> --file <why>
   task settle <work-unit> <task> --file <why>
   task settle <work-unit> --phase <N> --file <why> [--fixes <task>,…]
   task note <work-unit> --file <note> [--phase <N>]
@@ -424,18 +430,18 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render banner
   render work-pick --matches <unit>[/<topic>],…
   render brownfield-offer-gate
-  render walkthrough-offer [--menu-only]
-  render walkthrough-screen --screen <1..8> --from <first-run|help> [--menu-only]
-  render walkthrough-topic --name <slug> [--menu-only | --content-only]
+  render walkthrough-offer
+  render walkthrough-screen --screen <1..8> --from <first-run|help>
+  render walkthrough-topic --name <slug> [--content-only]
   render send-report <work-unit>.<topic> --sent <path>
   render map <work-unit>.<topic>
-  render decided <work-unit>.<topic> [--file <payload.json>] [--calls]
+  render decided <work-unit>.<topic> [--file <payload.json>] [--calls] [--alone]
   render decided-strike <work-unit>.<topic> [--page]
   render wait-agents <work-unit>.<topic>   (empty when no agent of the topic is running)
   render start-this-work [--file <payload.json>]
   render approve-map <work-unit> [--file <payload.json> | --sweep]
   render approve-map-strike <work-unit>
-  render ready-to-build <work-unit> [--page] [--calls]
+  render ready-to-build <work-unit> [--page] [--calls] [--alone]
   render build-headline <work-unit> --file <payload.json>
   render task-landed <work-unit> <task>
   render task-account <work-unit> <task>
@@ -446,10 +452,9 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render review-report <work-unit> [--round <N>]
   render review-calls <work-unit>
   render review-tree <work-unit>
-  render finish <work-unit>
+  render finish <work-unit> [--alone]
   render investigation-plan <bugfix> --file <plan.json> [--revised]
   render investigation-check-in <bugfix> --file <check-in.json>
-  render conclude <bugfix> [--file <recap.json>]
   render discovery-map <work-unit>
   render migrations-applied --file <payload.json>
   render migration-gate
@@ -457,7 +462,6 @@ ${SCRATCH_USAGE.replace(/^/gm, '  ')}
   render git-floor-stop
   render repo-stop
   render github-rule-gate
-  render github-squash-gate
   render label-gate
   render knowledge-gate [--variant deviate|wizard | --variant retry (--from-system | --provider <name> --model <name> [--base-url <url>] [--dimensions <n>])]
   render knowledge-ask --provider openai|openai-compatible
@@ -701,7 +705,8 @@ function runWorkunit(call, argv) {
       }
       if (command === 'cancel') {
         const cancelled = cancelWorkUnit(call.cwd, workUnit);
-        respondWithReceipt(call, { ...cancelled, next: putBackNext(call.cwd, workUnit, homelessNames(cancelled)) }, unitReceipt(call.cwd, 'cancel', cancelled));
+        const left = leftUnit(call.cwd, workUnit);
+        respondWithReceipt(call, { ...cancelled, next: putBackNext(call.cwd, workUnit, homelessNames(cancelled)) }, cancelledOf(call.cwd, cancelled, left));
         return;
       }
       const reactivated = reactivateWorkUnit(call.cwd, workUnit);
@@ -878,8 +883,9 @@ function runDiscoverySession(call, argv) {
 
 // ---------------------------------------------------------------------------
 // discovery-log — an entry under one of the fixed headings of the log of an
-// epic's open discovery session (domain/discovery-log.cjs), never committed:
-// every state commit takes the log along.
+// epic's open discovery session, or the product's (domain/discovery-log.cjs):
+// at an epic never committed, every state commit taking the log along; at
+// the product committed with its scope.
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */
@@ -911,8 +917,8 @@ function runInvestigationLog(call, argv) {
 }
 
 // ---------------------------------------------------------------------------
-// investigation — a bugfix investigation's conclude gate's yes, closing it
-// and handing the work into its spec (domain/investigation-conclude.cjs).
+// investigation — a bugfix investigation closed into its spec, its recap
+// staged (domain/investigation-conclude.cjs).
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */
@@ -920,7 +926,7 @@ function runInvestigation(call, argv) {
   try {
     const { opts, positional } = parseArgs(argv);
     const answer = runInvestigationVerb(call.cwd, positional, opts);
-    // The conclude releases the investigation's slot, as a conclusion does.
+    // The close releases the investigation's slot, as a feature's does.
     clearQuietly(call.cwd, positional[1], 'investigation', positional[1]);
     respond(call, answer);
   } catch (err) {
@@ -1264,8 +1270,8 @@ function runExperiment(call, argv) {
 // ---------------------------------------------------------------------------
 // task — the tracker's verbs through the project's task driver
 // (domain/task-verbs.cjs): phase, create, add, type, link, ready, start,
-// done, close, list and show, and beside them the build's records, account
-// and settle (domain/task-account.cjs), settle --phase, a phase review's
+// done, close, list and show, and beside them the build's records, account,
+// review and settle (domain/task-account.cjs), settle --phase, a phase review's
 // (domain/phase-settlement.cjs), and note (domain/notes.cjs), each
 // committing what it wrote to the state branch; worktree, the task's
 // worktree laid out for its builder (domain/task-worktree.cjs); and stopped,
@@ -1552,14 +1558,16 @@ function runReview(call, argv) {
 
 // ---------------------------------------------------------------------------
 // finish — the person's yes at finish, landing every phase still standing
-// and completing the unit (domain/finish.cjs).
+// and completing the unit (domain/finish.cjs), then, but for a quick-fix,
+// the line said in the start menu's place (domain/receipts.cjs).
 // ---------------------------------------------------------------------------
 
 /** @param {Call} call @param {string[]} argv */
 function runFinish(call, argv) {
   const { opts, positional } = parseArgs(argv);
   try {
-    respond(call, runFinishVerb(call.cwd, positional, opts));
+    const answered = runFinishVerb(call.cwd, positional, opts);
+    respondWithReceipt(call, answered, finishedOf(call.cwd, /** @type {{unit: string}} */ (answered)));
   } catch (err) {
     failJson(call, err);
   }
@@ -1648,7 +1656,7 @@ function runMigrate(call, argv) {
 // commit for the whole set, its receipt after its JSON (domain/receipts.cjs);
 // close, the same archive recording who closed each; file, the review
 // phase's out-of-scope finding filed with the ledger's call that filed it;
-// and capture, the capture skills' one line (domain/inbox-capture.cjs).
+// and capture, the keep skill's line into the inbox (domain/inbox-capture.cjs).
 // ---------------------------------------------------------------------------
 
 /** Each inbox move by its command: the transaction, and the receipt drawn from its answer. @type {Record<string, [(cwd: string, paths: string[]) => any, (cwd: string, answered: any) => string]>} */
@@ -2237,15 +2245,13 @@ function assertCommitsHere(repo, paths) {
 /**
  * The project's repos and the code commit's share of the declared paths in
  * each, every path and every repo checked before any repo commits, a merge
- * in progress among them (`assertCommitsHere`) — once `ready` has readied
- * the repos the commit commits in.
- * @param {string} cwd @param {string[]} paths @param {(repos: import('./kernel/repos.cjs').Repo[]) => void} [ready]
+ * in progress among them (`assertCommitsHere`).
+ * @param {string} cwd @param {string[]} paths
  */
-function checkedGroups(cwd, paths, ready = () => {}) {
+function checkedGroups(cwd, paths) {
   const read = projectRepos(cwd);
   const { repos, links } = linksHeldOut(read);
   const groups = commitGroups(repos, paths.map((p) => codePathSpec(cwd, repos, p)));
-  ready(groups.map(({ repo }) => repo));
   groups.forEach(({ repo, paths: own }) => {
     const linked = own.filter((p) => links.get(repo.dir)?.includes(p));
     if (linked.length > 0) {
@@ -2302,10 +2308,10 @@ function codeCommitted(repos, committed, more = {}) {
 function commitTaskPaths(cwd, paths, message, unit, given) {
   const { ref, manifest } = inFlightTask(cwd, unit, given);
   refuseClockBehind(cwd, ref, manifest);
-  const { repos, groups } = checkedGroups(cwd, paths, (committing) => onWorkBranch(cwd, ref, manifest, committing));
+  const { repos, groups } = checkedGroups(cwd, paths);
   const checks = runChecks(cwd, checksFor(cwd, manifest, ref));
   const warnings = recordWork(cwd, ref, manifest, groups.map(({ repo }) => repo));
-  const committed = commitAcrossRepos(groups, workMessage(message, ref));
+  const committed = commitAcrossRepos(groups, workMessage(message, ref, oneLineAdditions(cwd, ref)));
   return codeCommitted(repos, committed, { task: taskId(ref), checks, ...(warnings.length > 0 ? { warnings } : {}) });
 }
 
@@ -2544,7 +2550,7 @@ function runHandoff(call, argv) {
   }
 }
 
-const RENDER_FLAGS = ['warn', 'from-system', 'menu-only', 'content-only', 'calls', 'sweep', 'page', 'revised', 'asked'];
+const RENDER_FLAGS = ['warn', 'from-system', 'content-only', 'calls', 'sweep', 'page', 'revised', 'asked', 'alone'];
 // The flags a surface takes more than once, each value its own, by surface:
 // every other surface takes each flag once.
 /** @type {Record<string, string[]>} */
@@ -2661,16 +2667,17 @@ const COMMANDS = Object.freeze({
 // its commit one hold, so no peer's write lands between them — a command
 // added later included — but the ones named here, `*` for every sub-verb or
 // the sub-verbs alone. None of them writes what a state commit takes but
-// `boot`, `ledger`, `asset`, `raise`, `enter`, `verify`, `task worktree`
-// and `inbox capture`, and none but they waits on the lock: `inbox capture` holds
+// `boot`, `ledger`, `asset`, `raise`, `enter`, `verify`, `task worktree`,
+// `task start` and `inbox capture`, and none but they waits on the lock: `inbox capture` holds
 // the lock of the project it captures into, which may be another's than
 // the caller's, around its name, its write and its commit;
 // `knowledge` writes the store the state ignores,
 // under a lock of its own; `verify` holds it around a run's record or the
 // setup's and the commit alone, so the product's parts, which run for
 // minutes, hold no peer up and may run the engine; `task worktree` holds it
-// around the task's layout alone, so the steps that prepare the environment,
-// which run for minutes, hold no peer up;
+// around the task's layout alone, and `task start` around the start, a
+// quick-fix's worktree laid out with it, so the steps that prepare the
+// environment, which run for minutes, hold no peer up;
 // `boot` holds the writer lock around each state write it makes and no
 // longer, so its knowledge pass never holds a peer up; a `ledger` write
 // holds it around its read of the ledger, the append and the commit alone,
@@ -2731,7 +2738,7 @@ const WRITER_LOCK_EXEMPT = /** @type {Readonly<Record<string, '*'|string[]>>} */
   convergence: '*',
   trust: ['threshold', 'build-threshold'],
   environment: ['show'],
-  task: ['worktree'],
+  task: ['worktree', 'start'],
   drivers: ['check'],
 }));
 
@@ -2776,6 +2783,40 @@ const BOOT_EXEMPT = /** @type {Readonly<Record<string, '*'|readonly string[]>>} 
 
 const FINISH_EXEMPT = /** @type {Readonly<Record<string, readonly string[]>>} */ (Object.freeze({ environment: Object.freeze(['show', 'set']) }));
 
+// The keep's doors, in the forms the keep skill uses (22.1.8, 18.11.6), each
+// read from the command's argv after its name, before it runs — the drop of
+// a roadmap item only where no unit stands behind it, so a keep never
+// cancels an epic's row: they go through without boot's stamp while the
+// checkout owes no migration on this version, and are refused naming the
+// migration while it owes one, in a conversation boot stamped too
+// (domain/boot-stamp.cjs, `owesMigration`). As the capture line, they mark
+// no conversation, and every commit they make takes its own paths alone.
+const KEEP_FORMS = /** @type {Readonly<Record<string, (args: ReturnType<typeof parseArgs>, cwd: string) => boolean>>} */ (Object.freeze({
+  'discovery-log': ({ positional }) => positional[1] === PRODUCT,
+  asset: ({ positional: [sub, name] }) => ['spike', 'import', 'add', 'status'].includes(sub) && name === PRODUCT,
+  ledger: ({ positional: [sub, place] }) => sub === 'find' && place === `${PRODUCT}.discovery`,
+  topic: ({ positional: [sub], opts }) => sub === 'send' && opts.from === PRODUCT,
+  render: ({ positional: [surface] }) => surface === 'send-report',
+  roadmap: ({ positional: [sub, name], opts }, cwd) => sub === 'state' || (sub === 'archive' && unitless(cwd, name)) || (sub === 'add' && opts.origin === `park:${PRODUCT}`),
+  inbox: ({ positional: [sub] }) => sub === 'archive',
+  environment: ({ positional: [sub] }) => ['show', 'set'].includes(sub),
+}));
+
+/** Whether the roadmap holds `name` with no unit behind it: neither pulled into one nor postponed from one. @param {string} cwd @param {string|undefined} name */
+function unitless(cwd, name) {
+  try {
+    const item = readProjectManifest(stateRoot(cwd)).roadmap?.items?.[String(name)];
+    return item !== undefined && item !== null && item.pulled_to === undefined && item.postponed_from === undefined;
+  } catch {
+    return false;
+  }
+}
+
+/** Whether a command is one of the keep's doors (`KEEP_FORMS`). @param {string[]} argv @param {string} cwd @returns {boolean} */
+function keepForm([command, ...rest], cwd) {
+  return Object.hasOwn(KEEP_FORMS, command) && KEEP_FORMS[command](parseArgs(rest), cwd);
+}
+
 /** Whether a command goes through before boot has run (`BOOT_EXEMPT`). @param {string[]} argv @returns {boolean} */
 function bootExempt([command, ...rest]) {
   const exempt = Object.hasOwn(BOOT_EXEMPT, command) ? BOOT_EXEMPT[command] : [];
@@ -2785,15 +2826,19 @@ function bootExempt([command, ...rest]) {
 }
 
 /**
- * Refuse a command boot's stamp does not let through (`BOOT_EXEMPT`); one
- * the engine does not dispatch is runCli's to answer.
- * @param {Call} call @param {string[]} argv
+ * Refuse a command boot's stamp does not let through (`BOOT_EXEMPT`), but a
+ * keep's door (`keep`, `KEEP_FORMS`), which is refused, stamped or not,
+ * while a migration is owed; one the engine does not dispatch is runCli's
+ * to answer.
+ * @param {Call} call @param {string[]} argv @param {boolean} keep
  */
-function refuseUnbooted(call, argv) {
+function refuseUnbooted(call, argv, keep) {
   const session = handedSession();
   if (session === null || !Object.hasOwn(COMMANDS, argv[0]) || bootExempt(argv)) return;
   const refused = unbootedRefusal(call.cwd, session);
-  if (refused !== null && !finishExempt(call.cwd, argv)) failJson(call, new Error(`${argv[0]}: ${refused}`));
+  if ((refused === null && !keep) || finishExempt(call.cwd, argv)) return;
+  if (!keep) failJson(call, new Error(`${argv[0]}: ${refused}`));
+  if (owesMigration(call.cwd, refused === null)) failJson(call, new Error(`${argv[0]}: ${MIGRATION_OWED}`));
 }
 
 /** Whether a command goes through while the migration waits at its finish stop (`FINISH_EXEMPT`). @param {string} cwd @param {string[]} argv */
@@ -2841,42 +2886,63 @@ const HOOK_TARGETS = ['presence cleanup', 'session cleanup', 'session resume', '
 // that one runs Ledger or not.
 const MOD_READS = ['board'];
 
-// The capture line, which a capture skill runs from a conversation in any
-// project, one that runs Ledger or not (18.6.2).
+// The capture line, which the keep skill runs from a conversation in any
+// project, one that runs Ledger or not (18.6.8).
 const CAPTURE = 'inbox capture';
 
-/** Whether a command marks the conversation that ran it. @param {string[]} argv */
-const marks = (argv) => ![...HOOK_TARGETS, CAPTURE].includes(argv.slice(0, 2).join(' ')) && !MOD_READS.includes(argv[0]);
+/** Whether a command marks the conversation that ran it: none boot's stamp lets through, nor a keep's door (`keep`). @param {string[]} argv @param {boolean} keep */
+const marks = (argv, keep) => ![...HOOK_TARGETS, CAPTURE].includes(argv.slice(0, 2).join(' ')) && !MOD_READS.includes(argv[0]) && !keep && !bootExempt(argv);
+
+// The commands whose work is the code in the folder they are made from — the
+// commit door, the verification runs and setup, the code reads — which a
+// quick-fix's builder makes from its worktree and a reader from its scratch.
+const IN_PLACE = ['commit', 'verify', 'code'];
+
+/**
+ * The call as its command runs it: made from inside one of the engine's own
+ * layouts, from the same folder of the project's own checkout
+ * (kernel/code-root, `outsideLayouts`), so no command carries on in a folder
+ * it takes apart — the close, a cancel or a move of a quick-fix its
+ * worktree, a one-line task's done its layout, a reader's remove its
+ * scratch — but for `IN_PLACE`'s, whose work is there.
+ * @param {Call} call @param {string[]} argv @returns {Call}
+ */
+const placed = (call, [command]) => (IN_PLACE.includes(command) ? call : { ...call, cwd: outsideLayouts(call.cwd) });
 
 /**
  * One command against a bound call, answering its exit code — later, for
  * the argv `ANSWERS_LATER` says waits. One boot's stamp does not let through
  * is refused before anything runs, and marks nothing. Whatever the exit of
  * any other, a command the conversation ran marks it as one that runs
- * Ledger — but a hook's, the mod's or the capture line's, run for any
- * conversation; one that answered records the gate its MENU stated as the
+ * Ledger — but a hook's, the mod's, the capture line's, a keep's door, run
+ * for any conversation, or one boot's stamp lets through, which a keep's
+ * way into the migration runs: a real start is marked by its next verb; a
+ * keep's door makes each commit alone; one that answered records the gate its MENU stated as the
  * gate the conversation was shown, where a failed one showed none. Both
  * after the command, which may take the folder both live in: boot's tidy-up
  * deletes one whose transcript is gone. Its git runners share one read of
- * the config's hooks at each cwd (kernel/isolated-git).
- * @param {Call} call @param {string[]} argv @returns {number|Promise<number>}
+ * the config's hooks at each cwd (kernel/isolated-git). The call is placed
+ * before anything runs (`placed`).
+ * @param {Call} given @param {string[]} argv @returns {number|Promise<number>}
  */
-function dispatch(call, argv) {
+function dispatch(given, argv) {
+  const call = placed(given, argv);
   return withVerbReads(() => {
+    const keep = keepForm(argv, call.cwd);
     try {
-      refuseUnbooted(call, argv);
+      refuseUnbooted(call, argv, keep);
     } catch (err) {
       return exitCodeOf(call, err);
     }
     openGate();
     const settle = (/** @type {number} */ code) => {
-      if (marks(argv)) markConversation(call.cwd);
+      if (marks(argv, keep)) markConversation(call.cwd);
       if (code === 0) recordGateShown();
       return code;
     };
     let answer;
     try {
-      answer = runCli(call, argv);
+      answer = keep ? committingAlone(() => runCli(call, argv)) : runCli(call, argv);
     } catch (err) {
       return settle(exitCodeOf(call, err));
     }

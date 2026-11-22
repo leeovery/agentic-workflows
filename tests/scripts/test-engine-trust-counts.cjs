@@ -495,7 +495,7 @@ describe('a gate\'s count (16.20.2)', () => {
     h.gate('plan gate', { picked: 'n' });
     h.gate('plan gate', { reading: null });
 
-    assert.deepStrictEqual([gateCount(countsIn(h), 'conclude gate'), gateCount(countsIn(h, { now: usual }), 'plan gate'), gateCount(countsIn(h), 'plan gate')].map((count) => standing(count)), [
+    assert.deepStrictEqual([gateCount(countsIn(h), 'wait for agents'), gateCount(countsIn(h, { now: usual }), 'plan gate'), gateCount(countsIn(h), 'plan gate')].map((count) => standing(count)), [
       { asks: true, bound: 0.95, losses: 0, clean: 0, usual: null },
       { asks: false, bound: 0.192636176, losses: 0, clean: 13, usual: 'y' },
       { asks: true, bound: 0.343825199, losses: 2, clean: 13, usual: 'y' },
@@ -515,10 +515,10 @@ describe('a gate\'s count (16.20.2)', () => {
     const h = history();
     for (let i = 0; i < 2; i += 1) h.gate('plan gate', { reading: 'n' });
     for (let i = 0; i < 3; i += 1) h.gate('plan gate', { reading: null });
-    h.gate('conclude gate', { picked: 'n' });
-    h.gate('conclude gate', { picked: 'y' });
+    h.gate('wait for agents', { picked: 'n' });
+    h.gate('wait for agents', { picked: 'y' });
 
-    assert.deepStrictEqual(['plan gate', 'conclude gate'].map((name) => {
+    assert.deepStrictEqual(['plan gate', 'wait for agents'].map((name) => {
       const { usual, losses, clean } = stateOf(gateCount(countsIn(h), name), AT_20);
       return { usual, losses, clean };
     }), [{ usual: 'n', losses: 3, clean: 2 }, { usual: 'n', losses: 1, clean: 1 }]);

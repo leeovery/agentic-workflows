@@ -1,108 +1,105 @@
 'use strict';
 
 // ---------------------------------------------------------------------------
-// Domain ring: a bugfix investigation's close (19.4.23) — its conclude gate,
-// `render conclude <bugfix> [--file <recap.json>]`, a learned process gate
-// (19.4.19) drawn by projections/investigation.cjs, and its yes,
-// `investigation conclude <bugfix>`, which closes the investigation and hands
-// the work into its spec (24.1.2).
+// Domain ring: a bugfix investigation's close (19.4.23), into its spec with
+// no gate as a feature's discussion closes (11.2.1) — `investigation stage
+// <bugfix> --file <recap.json>` — and its conclude at ready to build, one
+// screen with the spec's (11.8.5, ready-to-build.cjs).
 //
-// - Both stand once the investigation can close, each refusal naming the way
-//   on: a place whose investigation can take work and has started
-//   (investigation-log.cjs, `openInvestigation`); the log's root cause and
-//   its fix each resting on one of the unit's current entries, the fix the
-//   answer of the fix direction's question (`huntEntries`); both validations
-//   run and taken in since what each validates was made — the root cause's
-//   since the root cause, the fix's since the fix and the root cause it is
-//   checked against (26.4.10) — so either replaced since is validated again
-//   (19.4.7, agent-state.cjs `validationFor`), one dispatched since and not
-//   yet taken in named by where it stands, never dispatched again; no
-//   question of the person's open at the place, no row of its map standing
-//   open; and no mail waiting in the topic's mailbox.
+// - The close stands once the investigation can close, each refusal naming
+//   the way on: a bugfix in progress whose investigation has started and not
+//   concluded; the log's root cause and its fix each resting on one of the
+//   unit's current entries, the fix the answer of the fix direction's
+//   question (`huntEntries`); both validations run and taken in since what
+//   each validates was made — the root cause's since the root cause, the
+//   fix's since the fix and the root cause it is checked against (26.4.10)
+//   — so either replaced since is validated again (19.4.7, agent-state.cjs
+//   `validationFor`), one dispatched since and not yet taken in named by
+//   where it stands, never dispatched again; no question of the person's
+//   open at the place, no row of its map standing open; and no mail waiting
+//   in the topic's mailbox.
 // - A move of the bugfix to a feature (workunit-move.cjs) waits on the root
-//   cause's validation as the conclude does, so the feature never starts
-//   from a cause its validator would have broken (`assertMovable`): one
-//   still running is what the move waits for.
+//   cause's validation as the close does, so the feature never starts from
+//   a cause its validator would have broken (`assertMovable`): one still
+//   running is what the move waits for.
 // - Claude's recap of the hunt, `{"hunt": "<one paragraph>", "fixes"?,
-//   "area"?}`, is staged in the topic's cache with `--file`, against the
-//   root cause and the fix as they stand, and when it was staged — the key
-//   the gate's showing is told by, kept by a recap staged again that only
-//   respells the area of the one it replaces (`restage`); the
-//   screen draws from it again without `--file`, refused where nothing is
-//   staged, or it was staged before the root cause or the fix changed. The
-//   screen shows the recap, the symptoms in the person's words from the
-//   log, the root cause told against them and the fix direction (19.4.23);
-//   each departure the person made in the investigation that this machine
-//   logged is asked its verdict there first, one at a time — `verdict give
-//   … --at conclusion` — none asked where none was made (16.10.5,
-//   16.10.11); then the conclude gate: yes, keep going, and a comment. The
-//   gate is drawn as the decision point steps it (investigation.cjs): run as
-//   an automatic step, on its yes, no verdict is asked there, each waiting
-//   in the verdict queue (16.10.11). Its
-//   DATA names the areas this project's bugfixes have recorded, each as
-//   first spelt (bug-records.cjs), so Claude names an area alike. While
-//   its showing is held (showing-hold.cjs) — from its draw to the
-//   person's pick of a row that leaves it, keep going among them — and the
-//   screen stands on what is staged, its yes waits on the person, as the
-//   board lists it (`concludeDraws`).
+//   "area"?}`, is kept with the close, marked in the checklist store as a
+//   feature's decided close is, `checklists.conclusion.{unit}`: `closed`,
+//   `voided?` and `taken?`, and the recap — the paragraph, the root cause
+//   and the fix each by its full id, and what the bug is in — so a cancel,
+//   which purges the cache, keeps it. Their words are the entries', which
+//   never change, and the symptoms the log's, which nothing changes while
+//   the close stands: a log write voids it, and the spec freezes the log.
+//   The close is voided as the investigation goes on: a message delivered,
+//   a question opened or an entry replaced at the investigation
+//   (ledger-write.cjs), an entry put in the log (investigation-log.cjs), or
+//   the investigation entered again (derivations.cjs, `voidTopicClose`) —
+//   one voided while the spec's writer was out holds the spec it writes
+//   back until it closes again (spec-standing.cjs). It is committed, and
+//   answers the handoff into the spec.
+// - Once the spec is written the investigation is frozen (spec-standing.cjs):
+//   a change to the root cause or the fix is the spec's, replacing it at the
+//   specification (11.8.5). Staged again then, the close is marked again with
+//   no check of the hunt, as a feature's decided stage does: the root cause
+//   and the fix are the unit's current entries the kept ones lead to, and it
+//   carries on there to ready to build's screen. One that leads to another
+//   unit's entry alone is refused, naming the replacement at the spec that
+//   makes it the unit's again.
 // - What the bug is in, for the bugs found after review (17.1.6, 17.1.9),
 //   is the recap's, drawn on no line of the screen (17.2.2): `fixes`, the
 //   unit whose code it fixes — a unit of the project but this one — left
 //   out where no unit built that code; and `area`, the area of the verify
 //   setup's feature map it sits in, only where a verify setup is recorded.
 //   The map is the product's, in its own words, so the area is Claude's
-//   reading of it, one line of words, never checked against the map.
-// - The yes stands on the screen as drawn: what is staged was staged
-//   against the root cause and the fix as they stand, what the bug is in
-//   still holds, and no verdict is still to ask — unless the gate runs as an
-//   automatic step, the decision point asked again. Then, under the writer
-//   lock, in one manifest save, it completes the investigation's item and
-//   stamps its close, `concluded_at`, the instant (P2) — what the board
-//   dates the investigation by, its standing read from the item as every
-//   phase's is — with what the bug is in, as staged, none kept from an
-//   earlier close: `fixes` and `area` where named and, with `fixes`,
+//   reading of it, one line of words, never checked against the map, and
+//   staged in the spelling the project's bugfixes first recorded it by
+//   where one has (bug-records.cjs).
+// - Ready to build stands on the close (`concludedClose`): the recap as
+//   kept, refused where its root cause or its fix has been replaced since —
+//   staged again, it is drawn again; it draws THE HUNT, Claude's recap, the
+//   symptoms from the log, and the root cause told against them and the fix
+//   direction in their entries' words, and asks each
+//   departure the person made in the investigation that this machine logged
+//   its verdict at the conclusion, one at a time (16.10.5, 16.10.11). Its
+//   yes, checking what the bug is in again, a refusal naming the restage,
+//   concludes the investigation in the manifest's one save
+//   (`concludingYes`): it completes the investigation's item and stamps its
+//   close, `concluded_at`, the instant (P2) — what the board dates the
+//   investigation by — with what the bug is in, as staged, none kept from an
+//   earlier conclude: `fixes` and `area` where named and, with `fixes`,
 //   `after_review`, whether that unit's review phase had ended — a round of
 //   its passed or settled (14.6.3) — judged at the first conclude naming
 //   that unit, the moment the bug was found: a later conclude naming the
 //   same unit keeps it, one naming another unit judges it afresh, and one
-//   naming none drops it with `fixes`. What the bug is in is checked again
-//   here, a refusal naming the restage. It commits it, the log riding
-//   along; the staged recap goes. It answers `next`, the handoff into the
-//   spec.
+//   naming none drops it with `fixes`; and records the close as taken.
 // ---------------------------------------------------------------------------
 
-const fs = require('fs');
-const { isDeepStrictEqual } = require('util');
 const { loadWorkUnitManifest, saveWorkUnitManifest, withWorkUnitLock, listWorkUnitManifests } = require('../kernel/manifest.cjs');
-const { stateRoot, statePath } = require('../kernel/state-root.cjs');
+const { stateRoot } = require('../kernel/state-root.cjs');
 const { carrying } = require('./ledger.cjs');
 const { messageOf } = require('../kernel/call.cjs');
-const { mapOf } = require('./ledger-fold.cjs');
-const { readShown } = require('./ledger-read.cjs');
-const { verdictAsked } = require('./ledger-verdicts.cjs');
+const { mapOf, currentsOf } = require('./ledger-fold.cjs');
 const { withUnitEntries } = require('./unit-entries.cjs');
-const { mailboxDepth, topicTitle } = require('./derivations.cjs');
+const { mailboxDepth, itemOf, closedIntoSpec } = require('./derivations.cjs');
 const { validationFor } = require('./agent-state.cjs');
 const { manifestOf } = require('./ledger-units.cjs');
 const { verifySetup } = require('./environment.cjs');
 const { recordedRounds, endsReview } = require('./review-phase.cjs');
-const { byName, areaKey, bugRecords, areaSpellings } = require('./bug-records.cjs');
+const { areaKey, bugRecords, areaSpellings } = require('./bug-records.cjs');
 const { workUnitNameRefusal } = require('../kernel/manifest-schema.cjs');
-const { huntOf, huntEntries, openInvestigation } = require('./investigation-log.cjs');
+const { huntOf, huntEntries, restedOn, standsNow } = require('./investigation-log.cjs');
+const { unitInProgress, assertPhaseHeld } = require('./topic-standing.cjs');
+const { specStanding } = require('./spec-standing.cjs');
 const { commitStateTail, noteCommitOutcome } = require('./commit.cjs');
 const { phaseSkill } = require('./handoff.cjs');
-const { filled, shaped, readPayload, stage, stagedAt, refusing, stands } = require('./staged-payload.cjs');
-const { concludeScreen } = require('./projections/investigation.cjs');
-const { investigationStep, investigationPlace } = require('./investigation.cjs');
-const { heldShowing } = require('./showing-hold.cjs');
+const { filled, shaped, readPayload, refusing } = require('./staged-payload.cjs');
 
 /** @typedef {import('./investigation-log.cjs').Rested} Rested */
 /** @typedef {import('./unit-entries.cjs').UnitView} UnitView */
+/** @typedef {import('./projections/investigation.cjs').RecapView} RecapView */
 
 const PHASE = 'investigation';
-const CONCLUDE_USAGE = 'investigation conclude <bugfix>';
-const SURFACE_USAGE = 'render conclude <bugfix> [--file <recap.json>]';
-const CONCLUDE_GATE = 'conclude gate';
+const STAGE_USAGE = 'investigation stage <bugfix> --file <recap.json>';
 
 /**
  * What the bug is in: the unit whose code it fixes, and the feature map's
@@ -110,14 +107,16 @@ const CONCLUDE_GATE = 'conclude gate';
  * @typedef {{fixes?: string, area?: string}} BugIn
  */
 
+/** What the recap was drawn on: the root cause and the fix, each by its full id. @typedef {{root_cause: string, fix: string}} DrawnOn */
+
 /**
- * Claude's recap as staged: when, the recap, what the bug is in, and the
- * root cause and the fix it was drawn against, by full id.
- * @typedef {{at: string, hunt: string, root_cause: string, fix: string} & BugIn} Staged
+ * The close as the checklist store keeps it (the header's): when it was
+ * marked, voided and taken, and Claude's recap with what it was drawn on.
+ * @typedef {{closed: string, voided?: string, taken?: string, hunt: string} & DrawnOn & BugIn} Close
  */
 
-/** Where the recap is staged, in the topic's cache. @param {string} cwd @param {string} unit */
-const stagedFile = (cwd, unit) => statePath(cwd, '.cache', unit, PHASE, unit, 'conclude.json');
+/** The stage's call for the unit. @param {string} unit */
+const stageCall = (unit) => `engine ${STAGE_USAGE.replace('<bugfix>', unit)}`;
 
 /**
  * Each validation, the entry of the hunt it validates, the entries it is
@@ -169,7 +168,7 @@ function validationSince(cwd, unit, folded, { kind, since }, rests) {
  * @param {(typeof VALIDATIONS)[number]} validation @param {Partial<Record<'rootCause'|'fix', Rested>>} rests each entry it rests on
  * @param {string} [waiter]
  */
-function assertValidated(cwd, unit, { folded }, validation, rests, waiter = 'the conclude') {
+function assertValidated(cwd, unit, { folded }, validation, rests, waiter = 'the close') {
   const { kind, of, what, logged } = validation;
   const standing = validationSince(cwd, unit, folded, validation, rests);
   if (standing?.stands === 'taken-in') return;
@@ -183,7 +182,7 @@ function assertQuestionsClosed(unit, { folded, entries, short }) {
   const open = mapOf(folded, unit, unit).filter(({ stands }) => stands === 'open');
   if (open.length === 0) return;
   const listed = open.map(({ id }) => `${short(id)} "${String(entries.get(id)?.line.text ?? '').replace(/\s+/g, ' ').trim()}"`).join(', ');
-  throw new Error(`a question of the person's is open at the investigation — ${listed} — each is answered before it concludes`);
+  throw new Error(`a question of the person's is open at the investigation — ${listed} — each is answered before it closes`);
 }
 
 /**
@@ -208,13 +207,24 @@ function assertMovable(cwd, unit, warnings) {
 }
 
 /**
- * What the conclude stands on, refused where the investigation cannot
- * close: its manifest, the hunt, and the root cause and the fix it rests
- * on; what the ledger's read said pushed to `warnings`.
- * @param {string} cwd @param {string} unit @param {string} said @param {string[]} warnings
+ * Refuses all but a bugfix in progress whose investigation has started and
+ * not concluded.
+ * @param {string} cwd @param {string} unit
  */
-function closing(cwd, unit, said, warnings) {
-  const manifest = openInvestigation(cwd, unit, said);
+function assertOpen(cwd, unit) {
+  const manifest = unitInProgress(cwd, unit);
+  assertPhaseHeld(manifest, PHASE);
+  const status = itemOf(manifest, PHASE, unit)?.status;
+  if (status === 'completed') throw new Error(`${unit}'s investigation has concluded`);
+  if (status !== 'in-progress') throw new Error(`${unit}'s investigation has not started — engine enter investigation ${unit} starts it`);
+}
+
+/**
+ * What the close is drawn on before the spec, refused where the
+ * investigation cannot close (the header's).
+ * @param {string} cwd @param {string} unit @param {string[]} warnings @returns {DrawnOn}
+ */
+function closing(cwd, unit, warnings) {
   const hunt = huntOf(cwd, unit, warnings);
   return withUnitEntries(cwd, unit, warnings, (view) => {
     const entries = huntEntries(unit, view, hunt);
@@ -223,44 +233,36 @@ function closing(cwd, unit, said, warnings) {
     assertQuestionsClosed(unit, view);
     const waiting = mailboxDepth(stateRoot(cwd), unit, unit);
     if (waiting > 0) throw new Error(`${waiting} message(s) wait in its mailbox — raise and answer each first: engine topic mailbox ${unit} ${unit}`);
-    return { manifest, hunt, ...rests };
+    return { root_cause: rests.rootCause.id, fix: rests.fix.id };
   });
 }
 
+/** The close the manifest keeps for the unit, or null where none is. @param {Record<string, any>} manifest @param {string} unit @returns {Close|null} */
+const closeOf = (manifest, unit) => manifest.checklists?.conclusion?.[unit] ?? null;
+
 /**
- * The departure in the investigation still to be asked its verdict at this
- * close, staged at `at`, or null.
- * @param {string} cwd @param {string} unit @param {string} at @param {string[]} warnings
+ * The unit's current entry the kept `id` leads to (`standsNow`), refused,
+ * naming `what`, where it leads to another unit's alone: replaced there at
+ * the unit's spec, it is the unit's again.
+ * @param {string} unit @param {UnitView} view @param {string} id @param {string} what @returns {string}
  */
-function verdictOf(cwd, unit, at, warnings) {
-  const root = stateRoot(cwd);
-  return readShown(root, warnings, (shower) => verdictAsked(shower, root, (facts) => (facts.unit === unit && facts.phase === PHASE ? at : null)));
+function nowOf(unit, view, id, what) {
+  const now = standsNow(view, id);
+  if (now !== null) return now.id;
+  const elsewhere = view.short(currentsOf(view.folded, id).at(-1) ?? id);
+  throw new Error(`${unit}'s ${what}, ${view.short(id)}, now stands as ${elsewhere}, another unit's entry — make it ${unit}'s at its spec: engine ledger replace ${unit}.specification --replaces ${elsewhere}`);
 }
 
 /**
- * The recap staged for the conclude, refused where none is or it was drawn
- * before the root cause or the fix changed.
- * @param {string} cwd @param {string} unit @param {Rested} rootCause @param {Rested} fix @returns {Staged}
+ * What the close is drawn on once the spec is written (the header's): the
+ * unit's current entries the kept root cause and fix lead to; refused where
+ * nothing closed it.
+ * @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {string[]} warnings @returns {DrawnOn}
  */
-function stagedFor(cwd, unit, rootCause, fix) {
-  const staged = /** @type {Staged} */ (stagedAt(stagedFile(cwd, unit), `nothing is staged for ${unit}'s conclude — engine render conclude ${unit} --file <recap.json> stages Claude's recap`));
-  if (staged.root_cause !== rootCause.id || staged.fix !== fix.id) throw new Error(`the conclude was drawn before the root cause or the fix changed — it is staged again with engine render conclude ${unit} --file <recap.json>`);
-  return staged;
-}
-
-/**
- * Whether the conclude's yes waits on the person (the header's): its
- * showing held, and `render conclude` standing on its recap, staged against
- * the root cause and the fix as they stand, the investigation able to close
- * — what the board lists waiting on the person.
- * @param {string} cwd @param {string} unit
- */
-function concludeDraws(cwd, unit) {
-  if (heldShowing(stateRoot(cwd), CONCLUDE_GATE, investigationPlace(unit)) === null) return false;
-  return stands(() => {
-    const { rootCause, fix } = closing(cwd, unit, 'render conclude', []);
-    stagedFor(cwd, unit, rootCause, fix);
-  });
+function respelt(cwd, unit, manifest, warnings) {
+  const kept = closeOf(manifest, unit);
+  if (kept === null) throw new Error(`${unit}'s investigation never closed into its spec — its close is staged before the spec is written`);
+  return withUnitEntries(cwd, unit, warnings, (view) => ({ root_cause: nowOf(unit, view, kept.root_cause, 'root cause'), fix: nowOf(unit, view, kept.fix, 'fix') }));
 }
 
 /** Whether a value is one line of words. @param {unknown} value @returns {value is string} */
@@ -289,37 +291,51 @@ function bugIn(cwd, unit, { fixes, area }) {
   };
 }
 
+/** The area in the spelling the project's bugfixes first recorded it by, where one has. @param {string} cwd @param {string} area */
+const spelt = (cwd, area) => areaSpellings(bugRecords(listWorkUnitManifests(cwd))).get(areaKey(area)) ?? area;
+
 /**
- * Claude's recap read from `file`, refused out of its shape.
+ * Claude's recap read from `file`, refused out of its shape, its area in
+ * the spelling recorded.
  * @param {string} cwd @param {string} unit @param {string} file @returns {{hunt: string} & BugIn}
  */
 function recapOf(cwd, unit, file) {
   const { hunt, ...rest } = shaped(readPayload(cwd, file), 'the recap', ['hunt'], ['fixes', 'area']);
   if (!oneLine(hunt)) throw new Error('the recap\'s hunt is one paragraph of words, not empty');
-  return { hunt: hunt.trim(), ...bugIn(cwd, unit, rest) };
+  const bug = bugIn(cwd, unit, rest);
+  return { hunt: hunt.trim(), ...bug, ...(bug.area === undefined ? {} : { area: spelt(cwd, bug.area) }) };
 }
 
-/** The areas this project's bugfixes have recorded, each as first spelt. @param {string} cwd */
-const recordedAreas = (cwd) => [...areaSpellings(bugRecords(listWorkUnitManifests(cwd))).values()].sort(byName);
-
 /**
- * What the staged recap says the bug is in, as the yes checks it again,
- * a refusal naming the restage.
- * @param {string} cwd @param {string} unit @param {Staged} staged @returns {BugIn}
+ * The bugfix's close as ready to build stands on it and draws it (the
+ * header's), null for any other unit and a bugfix whose investigation has
+ * not closed into its spec: when it closed, the recap as drawn, and the
+ * close kept; refused where its root cause or its fix has been replaced
+ * since it was staged.
+ * @param {string} cwd @param {Record<string, any>} manifest @param {string[]} warnings
+ * @returns {{closed: string, recap: RecapView, staged: Close}|null}
  */
-function stagedBug(cwd, unit, staged) {
-  try {
-    return bugIn(cwd, unit, staged);
-  } catch (err) {
-    throw new Error(`${messageOf(err)} — engine render conclude ${unit} --file <recap.json> stages it again`);
-  }
+function concludedClose(cwd, manifest, warnings) {
+  if (manifest.work_type !== 'bugfix' || !closedIntoSpec(manifest)) return null;
+  const unit = manifest.name;
+  const close = /** @type {Close} */ (closeOf(manifest, unit));
+  const { symptoms } = huntOf(cwd, unit, warnings);
+  return withUnitEntries(cwd, unit, warnings, (view) => {
+    if (![close.root_cause, close.fix].every((id) => view.entries.has(id))) throw new Error(`the root cause or the fix has been replaced since the recap was staged — ${stageCall(unit)} stages it again`);
+    const words = (/** @type {string} */ id) => restedOn(view, id).text;
+    return {
+      closed: close.closed,
+      recap: { hunt: close.hunt, symptoms: symptoms.map(({ text }) => text), rootCause: words(close.root_cause), fix: words(close.fix) },
+      staged: close,
+    };
+  });
 }
 
 /**
  * What the yes keeps of the bug: what the recap named, and with a unit,
  * whether its review phase had ended when the bug was found — kept from the
- * earlier close where that named the same unit, else judged now.
- * @param {string} cwd @param {BugIn} bug @param {Record<string, unknown>} earlier the item as the last close left it
+ * earlier conclude where that named the same unit, else judged now.
+ * @param {string} cwd @param {BugIn} bug @param {Record<string, unknown>} earlier the item as the last conclude left it
  */
 function kept(cwd, bug, earlier) {
   if (bug.fixes === undefined) return bug;
@@ -328,95 +344,58 @@ function kept(cwd, bug, earlier) {
 }
 
 /**
- * Stage `recap` for the conclude: at the time the recap it replaces was
- * staged where it only respells that one's area, so the showing that time
- * tells is one; else now.
- * @param {string} cwd @param {string} unit @param {Omit<Staged, 'at'>} recap @returns {Staged}
+ * Ready to build's yes over a bugfix's close (the header's), what the bug
+ * is in checked before anything is written. Answers its step, `take`, under
+ * the writer lock before the manifest is saved: the investigation concluded
+ * and its close recorded as taken.
+ * @param {string} cwd @param {string} unit @param {Close} staged
  */
-function restage(cwd, unit, recap) {
-  const file = stagedFile(cwd, unit);
-  const earlier = fs.existsSync(file) ? /** @type {Staged} */ (readPayload(cwd, file)) : null;
-  return stage(file, { at: earlier !== null && respells(earlier, recap) ? earlier.at : new Date().toISOString(), ...recap });
-}
-
-/** A recap as a respelling leaves it: its area by the spelling it is told by, and not when it was staged. @param {Partial<Staged>} recap */
-const spelt = (recap) => ({ ...recap, at: null, area: recap.area === undefined ? null : areaKey(recap.area) });
-
-/** Whether `recap` is the recap `earlier` staged, its area respelt at most. @param {Staged} earlier @param {Omit<Staged, 'at'>} recap */
-const respells = (earlier, recap) => isDeepStrictEqual(spelt(earlier), spelt(recap));
-
-/**
- * The decision point's step on the conclude gate, a learned one (19.4.19),
- * on the showing its recap staged at `stagedAt` tells — as the yes checks
- * it where `check`, opening no hold.
- * @param {string} cwd @param {string} unit @param {string} stagedAt @param {{check?: boolean}} [how]
- */
-const concludeStep = (cwd, unit, stagedAt, how = {}) => investigationStep(cwd, unit, CONCLUDE_GATE, stagedAt, how);
-
-/**
- * `render conclude <bugfix> [--file <recap.json>]`: the conclude, Claude's
- * recap staged from `--file` or read back as staged.
- * @param {string} cwd @param {{dotpath?: string, file?: string}} args @returns {string}
- */
-function concludeSurface(cwd, { dotpath: unit = '', file }) {
-  return refusing('render conclude', () => {
-    if (unit === '') throw new Error(`Usage: engine ${SURFACE_USAGE}`);
-    /** @type {string[]} */
-    const warnings = [];
-    try {
-      const { manifest, hunt, rootCause, fix } = closing(cwd, unit, 'render conclude', warnings);
-      const staged = file === undefined
-        ? stagedFor(cwd, unit, rootCause, fix)
-        : restage(cwd, unit, { ...recapOf(cwd, unit, file), root_cause: rootCause.id, fix: fix.id });
-      const step = concludeStep(cwd, unit, staged.at);
-      return concludeScreen({
-        unit,
-        title: topicTitle(manifest, unit),
-        hunt: staged.hunt,
-        symptoms: hunt.symptoms.map(({ text }) => text),
-        rootCause: rootCause.text,
-        fix: fix.text,
-        verdict: step.step === 'automatic' ? null : verdictOf(cwd, unit, staged.at, warnings),
-        areas: recordedAreas(cwd),
-      }, step);
-    } catch (err) {
-      throw carrying(err, warnings);
-    }
-  });
-}
-
-/**
- * `investigation conclude <bugfix>`: the conclude gate's yes, closing the
- * investigation, keeping what the bug is in, and handing the work into its
- * spec.
- * @param {string} cwd @param {string} unit
- */
-function concludeInvestigation(cwd, unit) {
-  /** @type {string[]} */
-  const warnings = [];
-  const concludedAt = new Date().toISOString();
+function concludingYes(cwd, unit, staged) {
+  /** @type {BugIn} */
+  let bug;
   try {
-    const { rootCause, fix } = closing(cwd, unit, 'investigation conclude', warnings);
-    const staged = stagedFor(cwd, unit, rootCause, fix);
-    const bug = stagedBug(cwd, unit, staged);
-    if (verdictOf(cwd, unit, staged.at, warnings) !== null && concludeStep(cwd, unit, staged.at, { check: true }).step !== 'automatic') {
-      throw new Error(`a verdict is still to ask — engine render conclude ${unit} asks each before the yes`);
-    }
-    const manifest = withWorkUnitLock(cwd, unit, () => {
-      const fresh = loadWorkUnitManifest(cwd, unit);
-      const item = fresh.phases[PHASE].items[unit];
+    bug = bugIn(cwd, unit, staged);
+  } catch (err) {
+    throw new Error(`${messageOf(err)} — ${stageCall(unit)} stages it again`);
+  }
+  return {
+    /** @param {Record<string, any>} manifest @param {string} at */
+    take: (manifest, at) => {
+      const item = manifest.phases[PHASE].items[unit];
       const record = kept(cwd, bug, item);
       for (const field of ['fixes', 'area', 'after_review']) delete item[field];
-      Object.assign(item, { status: 'completed', concluded_at: concludedAt, ...record });
+      Object.assign(item, { status: 'completed', concluded_at: at, ...record });
+      manifest.checklists.conclusion[unit].taken = at;
+    },
+  };
+}
+
+/**
+ * `investigation stage <bugfix> --file <recap.json>`: the investigation
+ * closed into its spec (the header's) — the close marked with Claude's
+ * recap — answering the handoff into the spec, or, staged again once the
+ * spec is written, carrying on there to ready to build's screen.
+ * @param {string} cwd @param {string} unit @param {string} file
+ */
+function stageClose(cwd, unit, file) {
+  /** @type {string[]} */
+  const warnings = [];
+  try {
+    assertOpen(cwd, unit);
+    const written = specStanding(cwd, unit) !== 'none';
+    const drawn = written ? respelt(cwd, unit, loadWorkUnitManifest(cwd, unit), warnings) : closing(cwd, unit, warnings);
+    const { hunt, ...bug } = recapOf(cwd, unit, file);
+    const closed = new Date().toISOString();
+    withWorkUnitLock(cwd, unit, () => {
+      const fresh = loadWorkUnitManifest(cwd, unit);
+      ((fresh.checklists ??= {}).conclusion ??= {})[unit] = { closed, hunt, ...drawn, ...bug };
       saveWorkUnitManifest(cwd, unit, fresh);
-      return fresh;
     });
-    fs.rmSync(stagedFile(cwd, unit), { force: true });
-    const outcome = commitStateTail(cwd, `${unit}/manifest.json`, `investigation(${unit}): conclude`, warnings);
+    const outcome = commitStateTail(cwd, `${unit}/manifest.json`, `investigation(${unit}): close`, warnings);
+    /** @type {import('./projections/surfaces.cjs').Next} */
+    const next = written ? { kind: 'continue' } : { kind: 'handoff', skill: phaseSkill('specification'), args: ['bugfix', unit] };
     /** @type {Record<string, unknown>} */
-    const result = {
-      unit, concluded_at: concludedAt, committed: outcome.committed, next: { kind: 'handoff', skill: phaseSkill('specification'), args: [manifest.work_type, unit] },
-    };
+    const result = { unit, closed, ...bug, committed: outcome.committed, next };
     if (warnings.length > 0) result.warnings = warnings;
     noteCommitOutcome(result, outcome, `${unit} --state`);
     return result;
@@ -426,14 +405,14 @@ function concludeInvestigation(cwd, unit) {
 }
 
 /**
- * `investigation conclude …`: the verb's answer, its refusal opening on its
+ * `investigation stage …`: the verb's answer, its refusal opening on its
  * command.
  * @param {string} cwd @param {string[]} positional @param {Record<string, string>} opts
  * @returns {Record<string, unknown>}
  */
 function runInvestigationVerb(cwd, [verb, ...args], opts) {
-  if (verb !== 'conclude' || args.length !== 1 || Object.keys(opts).length > 0) throw new Error(`Usage: engine ${CONCLUDE_USAGE}`);
-  return refusing('investigation conclude', () => concludeInvestigation(cwd, args[0]));
+  if (verb !== 'stage' || args.length !== 1 || Object.keys(opts).join() !== 'file') throw new Error(`Usage: engine ${STAGE_USAGE}`);
+  return refusing('investigation stage', () => stageClose(cwd, args[0], opts.file));
 }
 
-module.exports = { CONCLUDE_USAGE, VALIDATIONS, validationSince, assertMovable, concludeSurface, concludeDraws, runInvestigationVerb };
+module.exports = { STAGE_USAGE, VALIDATIONS, validationSince, assertMovable, concludedClose, concludingYes, runInvestigationVerb };

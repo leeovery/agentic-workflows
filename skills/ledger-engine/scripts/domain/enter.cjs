@@ -2,14 +2,15 @@
 
 // ---------------------------------------------------------------------------
 // Domain ring: the entry (CONVENTIONS, Entering) — `enter <phase> <unit>
-// [<topic>] [--take] [--move] [--seeds <seeds>]`, the one call a phase is
-// entered by. It
+// [<topic>] [--take] [--move] [--type-call] [--seeds <seeds>]`, the one call
+// a phase is entered by. It
 // refuses what cannot be entered, each refusal naming the way on: a unit
 // this project lacks or has closed, a phase its work type has no place for,
 // and what the phase's own row refuses. Where another live session holds the
 // place, or what the row holds beyond it, it asks first (18.4.21, 12.7.8) —
 // its question the whole answer, nothing written — and `--take` enters all
-// the same. Otherwise it starts what is not yet started, writing nothing
+// the same; but the product's conversation, which several conversations
+// share, each with a presence row of its own (presence.cjs), asks no one. Otherwise it starts what is not yet started, writing nothing
 // ahead of its opening (9.3.1), and commits that start — discussion's entry
 // at a feature's topic closed into its spec voiding that close, the
 // discussion going on (9.7.9), in the same commit; records where the
@@ -61,9 +62,12 @@
 // A level move (`--move`, discovery's alone) leaves the place the
 // conversation works in as it enters the next, with no handoff (24.1.8): the
 // row's departure writes what leaving writes, and the move's commit takes it
-// with any start. Seeds (`--seeds`, discovery's alone too) are what the
-// handoff into the phase carried, checked by the row before anything is
-// written, and read from (seeds.cjs). A record (`--record`, the
+// with any start. The type call (`--type-call`, discovery's alone too) takes
+// no place: it answers what its row reads for it, and nothing is asked
+// first, started, written or recorded (discovery-entry.cjs). Seeds
+// (`--seeds`, discovery's alone too) are what the handoff into the phase
+// carried, checked by the row before anything is written, and read from
+// (seeds.cjs). A record (`--record`, the
 // laboratory's alone) is the one of the place's several the entry works,
 // checked by the row before anything is written; where the call names none
 // and the place holds several, the row asks which after any hold's question,
@@ -88,7 +92,7 @@ const { statePath, stateRoot } = require('../kernel/state-root.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { liveTopics } = require('./ledger-units.cjs');
 const { seedFiles } = require('./reads.cjs');
-const { computeTopicLifecycle, itemOf, briefFile, topicTitle, topicKey, closedIntoSpec, voidDecidedClose, EARLIER, earlierFile } = require('./derivations.cjs');
+const { computeTopicLifecycle, itemOf, briefFile, topicTitle, topicKey, closedFrom, voidTopicClose, EARLIER, earlierFile } = require('./derivations.cjs');
 const { carriedTo } = require('./ledger-fold.cjs');
 const { keptBranches } = require('./fix-branch.cjs');
 const { keptAside, keptWords } = require('./fix-aside.cjs');
@@ -160,7 +164,8 @@ const { ontoEpic } = require('./topic-leave.cjs');
  * whole, `again` the entry again naming the one picked, and the one it works
  * once nothing is asked, recorded on the position; and, for a row that
  * readies its place before its start, the readying, each line it adds to
- * the DATA. A start that commits
+ * the DATA; and, for a row that takes the type call, what it reads for it,
+ * refusing a place it is not taken at. A start that commits
  * a write of its own through the tracker's verbs, which commit their own
  * (task-verbs.cjs), answers what that commit warned of. A row may hand a
  * unit to an arm of its own, where its work type is built by another rule
@@ -186,6 +191,7 @@ const { ontoEpic } = require('./topic-leave.cjs');
  * @property {(at: Standing, again: (record: string) => string[]) => string|null} [pick]
  * @property {(at: Standing, record: string|null) => string} [worked]
  * @property {(at: Entering) => Line[]} [readies]
+ * @property {(at: Standing, seeds: string|null) => Line[]} [typeCall]
  */
 
 /** The files in a state folder, sorted, as absolute paths; none where it is not there. @param {string} dir absolute */
@@ -392,7 +398,7 @@ function topicRow(phase, reads) {
     standing: phaseStanding(phase),
     unstarted: ({ manifest, topic = '' }) => ['unstarted', undefined].includes(itemOf(manifest, phase, topic)?.status),
     start: (cwd, unit, topic = '') => { startTopic(cwd, unit, phase, topic); },
-    ...(phase === 'discussion' ? { voids: (/** @type {Standing} */ { manifest }) => closedIntoSpec(manifest) } : {}),
+    voids: (/** @type {Standing} */ { manifest }) => closedFrom(manifest, phase),
     questions: mailRaised,
     reads,
     log: ({ unit, topic = '' }) => topicLog(unit, topic),
@@ -414,7 +420,8 @@ const TAKE = '--take';
 const MOVE = '--move';
 const SEEDS = '--seeds';
 const RECORD = '--record';
-const FLAGS = [TAKE, MOVE];
+const TYPE_CALL = '--type-call';
+const FLAGS = [TAKE, MOVE, TYPE_CALL];
 
 /** The flags that carry a value, each by the row's check that takes it. */
 const VALUED = /** @type {const} */ ({ [SEEDS]: 'seeds', [RECORD]: 'record' });
@@ -426,8 +433,9 @@ function enterUsage(entries) {
   const rows = Object.values(entries);
   const unit = rows.some((entry) => entry.product) ? `<work-unit|${PRODUCT}>` : '<work-unit>';
   const move = rows.some((entry) => entry.move) ? ` [${MOVE}]` : '';
+  const typeCall = rows.some((entry) => entry.typeCall) ? ` [${TYPE_CALL}]` : '';
   const valued = Object.entries(VALUED).filter(([, key]) => rows.some((entry) => entry[key])).map(([flag, key]) => ` [${flag} <${key}>]`).join('');
-  return `enter <${Object.keys(entries).join('|')}> ${unit} [<topic>] [${TAKE}]${move}${valued}`;
+  return `enter <${Object.keys(entries).join('|')}> ${unit} [<topic>] [${TAKE}]${move}${typeCall}${valued}`;
 }
 
 const ENTER_USAGE = enterUsage(ENTRIES);
@@ -436,10 +444,11 @@ const ENTER_USAGE = enterUsage(ENTRIES);
  * The call's words, the flags trailing them and the values its valued flags
  * carry, refused as a usage error where it names no row, no unit, an empty
  * topic, a flag but the entry's, a flag twice, no value after a valued
- * flag, a move, seeds or a record into a row that takes none, or an extra
+ * flag, a move, seeds or a record into a row that takes none, a type call
+ * into a row that takes none or beside a move or a take, or an extra
  * argument.
  * @param {Readonly<Record<string, Entry>>} entries @param {string[]} argv
- * @returns {{phase: string, unit: string, named: string|undefined, take: boolean, move: boolean} & Valued}
+ * @returns {{phase: string, unit: string, named: string|undefined, take: boolean, move: boolean, typeCall: boolean} & Valued}
  */
 function parseEntry(entries, argv) {
   /** @type {Valued} */
@@ -456,15 +465,17 @@ function parseEntry(entries, argv) {
   const flags = words.slice(end);
   const [phase, unit, named, ...extra] = words.slice(0, end);
   const move = flags.includes(MOVE);
+  const take = flags.includes(TAKE);
+  const typeCall = flags.includes(TYPE_CALL);
   const row = Object.hasOwn(entries, phase) ? entries[phase] : null;
   const valueBad = Object.entries(VALUED).some(([flag, key]) => {
     const value = values[key];
     return words.includes(flag) || value === '' || value?.startsWith('--') || (value !== null && !row?.[key]);
   });
   const bad = row === null || !unit || named === '' || named?.startsWith('--') || extra.length > 0
-    || new Set(flags).size !== flags.length || (move && !row.move) || valueBad;
+    || new Set(flags).size !== flags.length || (move && !row.move) || (typeCall && (!row.typeCall || move || take)) || valueBad;
   if (bad) throw new Error(`Usage: engine ${enterUsage(entries)}`);
-  return { phase, unit, named, take: flags.includes(TAKE), move, ...values };
+  return { phase, unit, named, take, move, typeCall, ...values };
 }
 
 /**
@@ -521,13 +532,13 @@ function heldAt(cwd, phase, unit, place) {
 
 /**
  * A feature's topic's close into its spec voided as its discussion is
- * entered again (9.7.9), read and saved under the writer lock the caller
+ * entered again, a bugfix's as its investigation is (9.7.9), read and saved under the writer lock the caller
  * holds.
  * @param {string} cwd @param {string} unit @param {string} topic
  */
 function voidOnEntry(cwd, unit, topic) {
   const manifest = loadWorkUnitManifest(cwd, unit);
-  if (voidDecidedClose(manifest, topic, new Date().toISOString())) saveWorkUnitManifest(cwd, unit, manifest);
+  if (voidTopicClose(manifest, topic, new Date().toISOString())) saveWorkUnitManifest(cwd, unit, manifest);
 }
 
 /**
@@ -560,7 +571,7 @@ function settle(cwd, entry, at, held, departure) {
   return result;
 }
 
-/** What the call carried beyond its place. @typedef {{take: boolean, move: boolean} & Valued} Carried */
+/** What the call carried beyond its place. @typedef {{take: boolean, move: boolean, typeCall: boolean} & Valued} Carried */
 
 /**
  * The entry again at the place it stands at, carrying what `carried` does —
@@ -591,14 +602,15 @@ function waysOn(at, carried) {
 /**
  * The question put where the place is held, or null where it is not: the
  * row's own hold first, where it has one — the build's, the checkout's code
- * — then another live session at the place itself.
+ * — then another live session at the place itself, but the product's (the
+ * header's).
  * @param {Entry} entry @param {Standing} at @param {string} place @param {Carried} carried
  * @returns {string|null}
  */
 function heldQuestion(entry, at, place, carried) {
   const ways = waysOn(at, carried);
   const own = entry.held?.(at, ways) ?? null;
-  if (own !== null) return own;
+  if (own !== null || at.unit === PRODUCT) return own;
   const hold = peerHold(at.cwd, at.unit, at.phase, place);
   if (hold === null) return null;
   return heldGate({ unit: at.unit, phase: at.phase, place, title: topicTitle(at.manifest, place), ageSeconds: hold.age_seconds, ...ways });
@@ -612,7 +624,7 @@ function heldQuestion(entry, at, place, carried) {
  */
 function enterThrough(entries, cwd, argv) {
   const { phase, unit, named, ...carried } = parseEntry(entries, argv);
-  const { take, move, seeds, record } = carried;
+  const { take, move, typeCall, seeds, record } = carried;
   const row = entries[phase];
   const at = standingOf(row, cwd, phase, unit, named);
   const entry = row.arm?.(at.manifest) ?? row;
@@ -620,6 +632,7 @@ function enterThrough(entries, cwd, argv) {
   if (standing !== null) throw new Error(standing);
   if (seeds !== null) /** @type {NonNullable<Entry['seeds']>} */ (entry.seeds)(at, seeds);
   if (record !== null) /** @type {NonNullable<Entry['record']>} */ (entry.record)(at, record);
+  if (typeCall) return typeCalled(entry, at, seeds);
   const departure = move ? /** @type {NonNullable<Entry['move']>} */ (entry.move)(at) : null;
   const { topic } = at;
   const atTopic = topic === undefined ? {} : { topic };
@@ -645,6 +658,17 @@ function enterThrough(entries, cwd, argv) {
     response: { phase, unit, ...atTopic, entered: true, started: entering.started, ...commit, ...(warnings.length > 0 ? { warnings } : {}) },
     sections: entrySections(entry.questions(entering), lines),
   };
+}
+
+/**
+ * The type call (the header's): what its row reads for it, nothing asked
+ * first, started, written or recorded.
+ * @param {Entry} entry @param {Standing} at @param {string|null} seeds
+ * @returns {{response: Record<string, unknown>, sections: string}}
+ */
+function typeCalled(entry, at, seeds) {
+  const lines = /** @type {NonNullable<Entry['typeCall']>} */ (entry.typeCall)(at, seeds);
+  return { response: { phase: at.phase, unit: at.unit, entered: true, started: false }, sections: entrySections([], lines) };
 }
 
 /**

@@ -99,7 +99,7 @@ const questionsAnswered = (at) => waiting(at).length === 0 && stillOpen(at).leng
 /** The questions waiting, and those still open, each with the way on. @param {Reading} at */
 function questionsWay(at) {
   const asked = waiting(at).map(({ question, asks }) => `${question}, ${asks}`).join('; ');
-  const parked = asked === '' ? [] : [`${asked} — the unit never finishes over a question waiting on the person: stop for them, render build-stop ${at.unit}, and take each once they are ready to discuss it`];
+  const parked = asked === '' ? [] : [`${asked} — the unit never finishes over a question waiting on the person: draw each for them, raise draw ${at.unit} <question>, and stop for their answers, render build-stop ${at.unit}`];
   return [...parked, ...stillOpen(at).map(askedWay)].join('; ');
 }
 

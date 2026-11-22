@@ -23,7 +23,7 @@ const assert = require('node:assert');
 
 const { ok, okSections, refuses, createFile } = require('./engine-harness.cjs');
 const {
-  UNIT, FLAG, HELP, BRANCH, createFix, fixDone, parkedOn, quickFixNestedConformance,
+  UNIT, FLAG, HELP, BRANCH, createFix, fixDone, fixTree, parkedOn, quickFixNestedConformance,
 } = require('./quick-fix-world.cjs');
 const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
 
@@ -41,12 +41,12 @@ for (const { name } of listDrivers('landing')) {
       const at = project();
       createFix(at.dir, 1, FLAG, as());
       run(at, ['task', 'start', UNIT, '1.1']);
-      createFile(at.dir, 'lib/alias.txt', 'lib --color\n');
+      createFile(fixTree(at.dir), 'lib/alias.txt', 'lib --color\n');
       await parkedOn(at.dir, '1.1', as());
       createFix(at.dir, 2, HELP, as());
       run(at, ['task', 'start', UNIT, '1.2']);
-      createFile(at.dir, 'lib/alias.txt', 'lib --colour\n');
-      run(at, ['commit', '--paths', 'lib/alias.txt', '--task', UNIT, '1.2', '-m', `fix(${UNIT}): spell the lib --colour`]);
+      createFile(fixTree(at.dir), 'lib/alias.txt', 'lib --colour\n');
+      ok(fixTree(at.dir), ['commit', '--paths', 'lib/alias.txt', '--task', UNIT, '1.2', '-m', `fix(${UNIT}): spell the lib --colour`], as());
       run(at, ['land', 'open', UNIT, '1.2']);
       fixDone(at.dir, '1.2', as());
       const { raise } = okSections(at.dir, ['raise', 'draw', UNIT, 'Q1'], as()).res;

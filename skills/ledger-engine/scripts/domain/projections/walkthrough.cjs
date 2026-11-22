@@ -224,13 +224,10 @@ function cardMenu() {
 
 /**
  * One screen of the walk: its heading, its content in file order, its menu.
- * `menuOnly` serves the return from a question — the reader has the screen
- * already, and only needs the keys back.
- * @param {Screen} s @param {string} origin @param {boolean} menuOnly
+ * @param {Screen} s @param {string} origin
  * @returns {string}
  */
-function walkthroughScreen(s, origin, menuOnly) {
-  if (menuOnly) return screenMenu(s, origin);
+function walkthroughScreen(s, origin) {
   return [
     titleSection(`How Ledger works · ${s.index} of ${s.total} · ${s.title}`),
     ...chunkSections(s.chunks),
@@ -238,7 +235,7 @@ function walkthroughScreen(s, origin, menuOnly) {
   ].join('\n');
 }
 
-/** The offer's menu — the same section whether it arrives under the offer or alone — each answer leading to the verb that records it. @returns {string} */
+/** The offer's menu, each answer leading to the verb that records it. @returns {string} */
 function offerMenu() {
   return section('MENU: walkthrough offer', MENU_INSTRUCTION, menu('', [
     cmdOption('y', 'yes', "Let's do it", { next: { kind: 'engine', argv: ['walkthrough', 'record', 'walked'] } }),
@@ -248,13 +245,10 @@ function offerMenu() {
 }
 
 /**
- * The first-run offer: its heading, its content, its menu. `menuOnly` serves
- * the return from a question, as a screen's does.
- * @param {boolean} menuOnly
+ * The first-run offer: its heading, its content, its menu.
  * @returns {string}
  */
-function walkthroughOffer(menuOnly) {
-  if (menuOnly) return offerMenu();
+function walkthroughOffer() {
   const { title, chunks } = parseContent(OFFER_FILE);
   return [
     titleSection(title),
@@ -263,18 +257,15 @@ function walkthroughOffer(menuOnly) {
   ].join('\n');
 }
 
-/** How much of a card is drawn: whole, its menu alone after a question, or its content alone in an answer. @typedef {'whole'|'menu'|'content'} CardPart */
-
 /**
  * One reference card: its heading, its content in file order and its menu —
- * or the part of it `part` names.
- * @param {Card} card @param {CardPart} part
+ * or, `contentOnly`, a card shown in an answer, its content alone.
+ * @param {Card} card @param {boolean} contentOnly
  * @returns {string}
  */
-function walkthroughTopic(card, part) {
-  if (part === 'menu') return cardMenu();
+function walkthroughTopic(card, contentOnly) {
   const content = [titleSection(`Help · ${card.title}`), ...chunkSections(card.chunks)];
-  return [...content, ...(part === 'whole' ? [cardMenu()] : [])].join('\n');
+  return [...content, ...(contentOnly ? [] : [cardMenu()])].join('\n');
 }
 
 module.exports = { ORIGINS, parseContent, loadScreen, cards, loadCard, walkthroughOffer, walkthroughScreen, walkthroughTopic };

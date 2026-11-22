@@ -65,7 +65,7 @@ A feature has no other topic. A point of its own that needs decisions of its own
 
 ## Closing a topic
 
-After eight agreements in a row, or on your word, Claude offers to settle the rest: how many points are open, how many it would settle, and which still come to you by the rule, by kind. On yes its points go on the ledger, yours come one at a time, and the topic moves to its close. Declined, the offer waits for the next run of agreements.
+After eight agreements in a row, or on your word, Claude offers to settle the rest: how many points are open, how many it would settle, and which still come to you by the rule, by kind. On yes its points go on the ledger, yours come one at a time, and the topic moves to its close. Declined, the offer waits for the next run of agreements. Where it would settle none of the open points, no offer is made.
 
 A topic closes once nothing of yours is open on its map, through a **closing pass** with two readers. A fresh agent, unanchored by the conversation, reads the topic's entries and log against the other topics' records and the product record, looking for a question with no answer, a contradiction with another record, and work the decision creates that no topic owns. Claude, who was in the conversation, checks that every decision made in it has its entry, that each replacement holds up against what it replaced, that no two current answers contradict each other, and runs again each measurement a decision rests on. Anything the pass finds lands somewhere, and where it changed what the topic decides, another pass reads what changed, until one changes nothing.
 

@@ -333,7 +333,7 @@ describe('the reveal (16.17.7, 16.10.10)', () => {
   });
 
   it('16.17.2, 9.2.16: the person\'s "don\'t care" on a blind question outside the build names Claude\'s answer, which they never saw, as the builder\'s, in the reveal\'s display — no pick named; on a question asked with the lean shown, it shows nothing', async (t) => {
-    t.mock.method(decisionPoint, 'decide', (/** @type {any} */ _call, /** @type {any} */ at) => (at.chain === ASKED.note ? { decision: 'blind', reason: BLIND } : { decision: 'ask', reason: 'Ask.' }));
+    t.mock.method(decisionPoint, 'decide', (/** @type {any} */ _call, /** @type {any} */ at) => (at.chain === ASKED.note ? { decision: 'blind', reason: BLIND, by: 'counts' } : { decision: 'ask', reason: 'Ask.', by: 'counts' }));
     const env = labelledAs(CALL, 'behaviour');
     const blind = (await raised(NOTE, ['--answers', ASKED.note], CALL, env)).res.raise;
     const asked = (await raised(NOTE, ['--answers', ASKED.menu], CALL, env)).res.raise;
@@ -345,7 +345,7 @@ describe('the reveal (16.17.7, 16.10.10)', () => {
   });
 
   it('16.17.7: the reveal of the first answer the project gives on the kind says it is the first', async (t) => {
-    t.mock.method(decisionPoint, 'decide', () => ({ decision: 'blind', reason: BLIND }));
+    t.mock.method(decisionPoint, 'decide', () => ({ decision: 'blind', reason: BLIND, by: 'counts' }));
     const { raise } = (await raised(NOTE, ['--answers', ASKED.note], CALL, labelledAs(CALL, 'behaviour'))).res;
 
     const { sections } = answered(raise, ['--pick', '1']);
@@ -465,7 +465,7 @@ describe('mid-build (16.17.6, 12.13)', () => {
     assert.deepStrictEqual(parked, {
       v: 1, event: 'parked', unit: BUILT, topic: null, phase: 'implementation',
       question: null, replaces: decided.id, reason: 'asked-blind', cause: null, relies_on: [full(made.mine)], task: null, went_ahead: '2.3',
-      call: MAIN_FIRST, rows_judged: [], why_asking: BLIND, model: null, blocks_build: true, replaced_by: null, always: null, measured: null, chain: ASKED.where, blind: true,
+      call: MAIN_FIRST, rows_judged: [], why_asking: BLIND, asked_by: 'counts', model: null, blocks_build: true, replaced_by: null, always: null, measured: null, chain: ASKED.where, blind: true,
     });
     assert.deepStrictEqual(loggedOf('blind-draw').map(({ entry, kind }) => [entry, kind]), [[decided.id, 'behaviour']]);
     const ahead = withEnv({ LEDGER_CONFIG_DIR: config() }, () => evidenceOf(statePath(dir))).answers.find(({ event }) => event.entry === decided.id);
@@ -542,7 +542,7 @@ describe('mid-build (16.17.6, 12.13)', () => {
   });
 
   it('16.12.2: the person\'s keep of Claude\'s call gone ahead, the call reversed by them later, is an agreement cancelled — the kind counting the reversal alone, and Claude\'s picks as the person\'s reading it so — as their agreement with any call is', async (t) => {
-    t.mock.method(decisionPoint, 'decide', () => ({ decision: 'blind', reason: BLIND }));
+    t.mock.method(decisionPoint, 'decide', () => ({ decision: 'blind', reason: BLIND, by: 'counts' }));
     const { landed } = (await raisedInBuild()).res;
     answered(drawnQ1(), ['--pick', '2']);
 
@@ -555,7 +555,7 @@ describe('mid-build (16.17.6, 12.13)', () => {
   });
 
   it('16.12.2: the person\'s pick of Claude\'s answer to a question parking its task, reversed by them later, is an agreement cancelled, the kind counting the reversal alone', async (t) => {
-    t.mock.method(decisionPoint, 'decide', () => ({ decision: 'ask', reason: 'Ask.' }));
+    t.mock.method(decisionPoint, 'decide', () => ({ decision: 'ask', reason: 'Ask.', by: 'counts' }));
     await raisedInBuild();
     const { res } = answered(drawnQ1(), ['--pick', '1']);
 
@@ -580,7 +580,7 @@ describe('mid-build (16.17.6, 12.13)', () => {
   });
 
   it('a question proposing to replace Claude\'s call, parking its task, holds nothing back: the call stands on every list of the build\'s calls while it waits', async (t) => {
-    t.mock.method(decisionPoint, 'decide', () => ({ decision: 'ask', reason: 'Ask.' }));
+    t.mock.method(decisionPoint, 'decide', () => ({ decision: 'ask', reason: 'Ask.', by: 'counts' }));
     const call = full(write('decide', BUILD, ['--answers', made.size, '--task', '2.3'], { ...MADE, text: 'Half the screen it opens on.', why: 'It fits the screen.' }).id);
 
     const { res } = await raised(BUILD, ['--replaces', call, '--reason', 'was-wrong', '--parks', '2.3'], SHADOWED, conversation());
@@ -600,7 +600,7 @@ describe('mid-build (16.17.6, 12.13)', () => {
   });
 
   it('9.2.16, 16.5.4: the person\'s "don\'t care" on a blind question whose call went ahead keeps the call as built, the builder\'s — kept, asked-blind, moving no one, the task never marked changed though its pair reads it — revealing nothing, the receipt naming Claude\'s answer; its raise event weighs nothing in the kind\'s counts or how often Claude picked as the person did, yet counts towards a care entry\'s drop', async (t) => {
-    t.mock.method(decisionPoint, 'decide', () => ({ decision: 'blind', reason: BLIND }));
+    t.mock.method(decisionPoint, 'decide', () => ({ decision: 'blind', reason: BLIND, by: 'counts' }));
     caredForTwice();
     const { landed } = (await raisedInBuild()).res;
     const raise = drawnQ1();
@@ -621,7 +621,7 @@ describe('mid-build (16.17.6, 12.13)', () => {
   });
 
   it('9.2.16, 16.5.4: the person\'s "don\'t care" on a blind question parking its task lands Claude\'s sealed answer as the builder\'s, and the build goes on with it — the task never marked changed — revealing nothing, the receipt naming Claude\'s answer; its raise event weighs nothing in the kind\'s counts or how often Claude picked as the person did, yet counts towards a care entry\'s drop', async (t) => {
-    t.mock.method(decisionPoint, 'decide', () => ({ decision: 'blind', reason: BLIND }));
+    t.mock.method(decisionPoint, 'decide', () => ({ decision: 'blind', reason: BLIND, by: 'counts' }));
     caredForTwice();
     await raisedInBuild({ hardToUndo: true });
     const raise = drawnQ1();
@@ -632,7 +632,7 @@ describe('mid-build (16.17.6, 12.13)', () => {
 
     const { event, by, given, answers, text, task } = entries().at(-1);
     assert.deepStrictEqual([event, by, given, answers, text, task], ['decided', 'claude', 'dont-care', ASKED.where, CURSOR.text, '2.3']);
-    assert.deepStrictEqual([res.receipt, sections, marked()], ['Q1 answered · my answer stands as the builder\'s: On the screen the cursor is on · task 2.3 builds again once its pair has read round 1 · nothing waiting on you', '', null]);
+    assert.deepStrictEqual([res.receipt, sections, marked()], ['Q1 answered · my answer stands as the builder\'s: On the screen the cursor is on · task 2.3 builds again once round 1 of its review is read · nothing waiting on you', '', null]);
     assert.deepStrictEqual(standings(), [['raise', 'no-weight', null]]);
     assert.deepStrictEqual([onTheKind(), res.care_drop], [before, { care: `${projectName(dir)}: behaviour`, kind: 'behaviour', dont_cares: 3 }]);
   });
@@ -652,7 +652,7 @@ describe('mid-build (16.17.6, 12.13)', () => {
   }
 
   it('the person\'s "don\'t care" on a question asked them with Claude\'s lean shown is an agreement, its receipt naming no answer, as any "don\'t care" is', async (t) => {
-    t.mock.method(decisionPoint, 'decide', () => ({ decision: 'ask', reason: 'Ask.' }));
+    t.mock.method(decisionPoint, 'decide', () => ({ decision: 'ask', reason: 'Ask.', by: 'counts' }));
     await raisedInBuild();
 
     const { res, sections } = leftToMe(drawnQ1());

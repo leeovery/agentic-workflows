@@ -5,8 +5,9 @@
 // work unit alone, the roadmap and product identities), phase-hop
 // recomposition, the per-checkout stash, peer-checkout isolation, user-rename
 // adoption and owner identity — the conversation's position every label call
-// records (position.cjs, whose own suite is test-engine-position.cjs), and the
-// project manifest's stamp.
+// records (position.cjs, whose own suite is test-engine-position.cjs), the
+// project manifest's stamp, and a quick-fix left in place putting the
+// session's own label back (topic-leave.cjs).
 //
 // Layer: verb. World: session-label-world.cjs — the shared tmux stub stands
 // in for tmux, and the engine only ever sees the stub.
@@ -19,6 +20,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const harness = require('./engine-harness.cjs');
+const { createManifest } = require('./discovery-test-utils.cjs');
 const { world, git, stateGit, projectWith, setup, teardown, engine, resume, tmuxName, setTmuxName, setTmuxId, stashFile, stashRecords, writeStash, conversationsRoot, conversation, position, ownStartTime, optIn } = require('./session-label-world.cjs');
 
 describe('engine session label', () => {
@@ -266,6 +268,21 @@ describe('engine session label', () => {
     assert.match(engine(['session', 'label', 'ghost'], { expectFail: true }).error, /no work unit directory/);
     assert.match(engine(['session', 'label', 'roadmap', 'discovery', 'roadmap'], { expectFail: true }).error, /no work unit directory/);
     assert.strictEqual(tmuxName(), 'proj-abc');
+  });
+});
+
+describe('a quick-fix left in place puts the session\'s own label back', () => {
+  beforeEach(setup);
+  afterEach(teardown);
+
+  it('19.5.1: its cancel carries on in the conversation, the label naming the quick-fix gone and the original back, as boot\'s repair puts it', () => {
+    createManifest(world.dir, 'typo', { work_type: 'quick-fix' });
+    harness.commitAll(world.dir, 'a quick-fix');
+    optIn();
+    engine(['session', 'label', 'typo', 'implementation', 'typo']);
+    const labelled = tmuxName();
+    const { next } = engine(['workunit', 'cancel', 'typo']);
+    assert.deepStrictEqual([labelled, next, tmuxName()], ['proj-abc · typo · implementation', { kind: 'continue' }, 'proj-abc']);
   });
 });
 

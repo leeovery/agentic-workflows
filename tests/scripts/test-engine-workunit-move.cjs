@@ -7,8 +7,8 @@
 // name a quick-fix's branch is kept under in one line, nothing moved; the
 // yes, `start-this-work yes`, moving the unit in place — re-typed in both
 // manifests in one save, its brief written, its open fixes closed, a fix
-// recorded having its record taken out as it closes, its checkout taken
-// back to the branch it lands on, its commits kept unlanded on its one
+// recorded having its record taken out as it closes, its worktree taken
+// apart, the person's checkout never moved, its commits kept unlanded on its one
 // branch renamed under moved/ and a branch with none of its own deleted,
 // the fixes' phase taken out of the tracker, every line but discovery's
 // carried to the new topic at its first phase, the old type's files set
@@ -21,10 +21,10 @@
 // other topic reading none of them; one whose pull request is open moving,
 // the yes closing it unmerged and keeping its commits on its branch under
 // moved/; one holding a fix done and recorded moving, its summary.md set
-// aside, which the first opening names; and the yes refusing a checkout
+// aside, which the first opening names; and the yes refusing a worktree
 // holding changes no fix holds, lines with no conversation to carry them
 // in, and a fix landed — by hand, or recorded landed by a land verb and
-// changed since. What the holder of the checkout has not committed, which
+// changed since. What the holder of the worktree has not committed, which
 // the yes sets aside: test-engine-landing-conformance-quick-fix-move-holder.cjs.
 // What the move refuses at its stage and its yes run again, a
 // bugfix moved and what the new type's build meets are
@@ -49,6 +49,9 @@ const {
   world, moveHelpers,
 } = require('./workunit-move-world.cjs');
 const { recordFile, parkedOn } = require('./quick-fix-world.cjs');
+
+/** A quick-fix's worktree in the project, by its unit. @param {string} unit */
+const treeOf = (unit) => path.join(dir, '.claude', 'worktrees', `ledger-${unit}`);
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { quickFixBranch } = require(path.join(SCRIPTS, 'domain/landing-names.cjs'));
@@ -99,7 +102,7 @@ describe('workunit move, the stage (19.5.9, P7)', () => {
 });
 
 describe('the yes: a quick-fix moved (19.S24, 19.5.16)', () => {
-  it('re-types it in place in both manifests, writes its brief, closes its open fix, taking its record out, takes the checkout back to main, keeps the fix\'s commit unlanded on the quick-fix\'s branch renamed under moved/, takes its phase out of the tracker, carries its lines to the topic at the discussion and sets its build aside there, the call following its log, re-indexes it, commits after the close, and hands off into the feature\'s discussion', () => {
+  it('re-types it in place in both manifests, writes its brief, closes its open fix, taking its record out, takes its worktree apart, the person\'s checkout left on main, keeps the fix\'s commit unlanded on the quick-fix\'s branch renamed under moved/, takes its phase out of the tracker, carries its lines to the topic at the discussion and sets its build aside there, the call following its log, re-indexes it, commits after the close, and hands off into the feature\'s discussion', () => {
     dir = world();
     assert.deepStrictEqual(chunkTypes(QF), ['quick-fix']);
     const fixCommit = git(dir, ['rev-parse', BRANCH]).trim();
@@ -116,7 +119,6 @@ describe('the yes: a quick-fix moved (19.S24, 19.5.16)', () => {
       fixes_closed: ['1.1'],
       branches: [KEPT],
       pull_request_closed: false,
-      checkout: 'main',
       committed: head(dir).slice(0, res.committed.length),
       next: { kind: 'handoff', skill: 'ledger-discussion-process', args: ['feature', QF] },
     });
@@ -126,7 +128,7 @@ describe('the yes: a quick-fix moved (19.S24, 19.5.16)', () => {
     assert.deepStrictEqual(readManifest(dir, '.').work_units[QF], { work_type: 'feature' });
     assert.strictEqual(readState(dir, layout.brief(QF, QF)), '# typo\n\nWhat the work showed.\n');
     assert.strictEqual(refuses(dir, ['task', 'list', QF, '1']).error, `phase 1 of ${QF} is not written`);
-    assert.deepStrictEqual([branchOut(), git(dir, ['branch', '--list', BRANCH]), git(dir, ['rev-parse', KEPT]).trim(), git(dir, ['rev-list', '--count', `main..${KEPT}`]).trim()], ['main', '', fixCommit, '1']);
+    assert.deepStrictEqual([branchOut(), fs.existsSync(treeOf(QF)), git(dir, ['branch', '--list', BRANCH]), git(dir, ['rev-parse', KEPT]).trim(), git(dir, ['rev-list', '--count', `main..${KEPT}`]).trim()], ['main', false, '', fixCommit, '1']);
     const { v: _v, id: _id, at: _at, ...carry } = ledgerLines().at(-1);
     assert.deepStrictEqual(carry, {
       event: 'rehomed', unit: QF, topic: QF, phase: 'discussion', session: 'sess-1',
@@ -175,30 +177,34 @@ describe('the yes: a quick-fix moved (19.S24, 19.5.16)', () => {
     assert.deepStrictEqual([callsOf(dir, { unit: QF, phase: 1, n: 1 }), buildCalls], [[], 'None recorded.']);
   });
 
-  it('refuses while the checkout holds changes not committed that no fix holds — the person\'s own, its one fix parked — naming each, nothing moved, the checkout on its branch', async () => {
+  it('refuses while its worktree holds changes not committed that no fix holds — its one fix parked — naming each, nothing moved, the worktree kept; the person\'s own in their checkout never refuse it', async () => {
     dir = world();
     await parkedOn(dir, '1.1', { env: env() });
     staged(QF, 'feature');
-    createFile(dir, 'src/help.js', 'const help = 1;\n');
+    createFile(treeOf(QF), 'src/help.js', 'const help = 1;\n');
+    createFile(dir, 'notes.md', 'the person\'s own\n');
     const { next } = ok(dir, ['gate', 'start this work', '--pick', 'y'], { env: env() });
     const { error } = refusedPristine(dir, next.argv, { env: env() });
+    fs.rmSync(path.join(treeOf(QF), 'src/help.js'));
+    const res = ok(dir, next.argv, { env: env() });
 
-    assert.strictEqual(error, `start-this-work yes: ${QF}'s tasks leave the project's checkout, which holds changes not committed — src/help.js — so it was not taken back to main: commit them on ${BRANCH} or set them aside, then say yes again`);
-    assert.deepStrictEqual([readManifest(dir, QF).work_type, fixes(), branchOut()], ['quick-fix', [{ task: '1.1', status: 'in-progress' }], BRANCH]);
+    assert.strictEqual(error, `start-this-work yes: ${QF}'s worktree holds changes not committed that no fix holding it set aside — src/help.js — so it was not taken apart: put them back as they were, then say yes again`);
+    assert.deepStrictEqual([res.work_type, fs.existsSync(treeOf(QF)), branchOut(), git(dir, ['status', '--porcelain', '--', 'notes.md']).trim()], ['feature', false, 'main', '?? notes.md']);
   });
 
   it('refuses a quick-fix holding lines where no conversation names the session the carry is made in, nothing moved', () => {
     dir = world();
-    staged(QF, 'feature');
-    const { error } = refusedPristine(dir, ['start-this-work', 'yes'], { env: { ...env(), CLAUDE_CODE_SESSION_ID: undefined } });
+    const none = { CLAUDE_CODE_SESSION_ID: undefined };
+    staged(QF, 'feature', none);
+    const { error } = refusedPristine(dir, ['start-this-work', 'yes'], { env: { ...env(), ...none } });
 
     assert.strictEqual(error, `start-this-work yes: ${QF} holds ledger entries, which the move carries to its topic in this conversation — Claude Code hands every command it runs a session id, and this one has none`);
-    assert.deepStrictEqual([fixes(), branchOut()], [[{ task: '1.1', status: 'in-progress' }], BRANCH]);
+    assert.deepStrictEqual([fixes(), fs.existsSync(treeOf(QF))], [[{ task: '1.1', status: 'in-progress' }], true]);
   });
 
   it('refuses a quick-fix a fix of which has landed — its branch merged by hand onto main, never opened — as the landing reads it, however the tracker holds its fixes: it is finished first', () => {
     dir = world();
-    git(dir, ['branch', '-f', 'main', BRANCH]);
+    git(dir, ['merge', '-q', '--ff-only', BRANCH]);
 
     assert.strictEqual(refusedStage(QF, 'feature'), `${QF}'s fix 1.1 has landed — finish the quick-fix, then start the feature as work of its own`);
     assert.strictEqual(ok(dir, ['task', 'list', QF, '1']).tasks[0].status, 'in-progress');
@@ -206,12 +212,12 @@ describe('the yes: a quick-fix moved (19.S24, 19.5.16)', () => {
 
   it('refuses a quick-fix a fix of which a land verb recorded landed, its branch given a commit of the fix\'s since, so the landing reads it changed: the record says it landed, and no record is carried into a type whose tasks are numbered again', () => {
     dir = world();
-    git(dir, ['branch', '-f', 'main', BRANCH]);
+    git(dir, ['merge', '-q', '--ff-only', BRANCH]);
     const landing = git(dir, ['rev-parse', 'main']).trim();
     recordLandings(dir, QF, [{ id: `${QF}-1-1`, repo: '.', root: dir, commit: landing, tip: landing, by: 'engine' }], []);
-    createFile(dir, 'src/more.js', 'more\n');
-    git(dir, ['add', 'src/more.js']);
-    git(dir, ['commit', '-q', '-m', `fix(${QF}): more`, '-m', `${TRAILER}: ${QF}-1-1`]);
+    createFile(treeOf(QF), 'src/more.js', 'more\n');
+    git(treeOf(QF), ['add', 'src/more.js']);
+    git(treeOf(QF), ['commit', '-q', '-m', `fix(${QF}): more`, '-m', `${TRAILER}: ${QF}-1-1`]);
 
     assert.deepStrictEqual([quickFixLanding(dir, QF).task({ unit: QF, phase: 1, n: 1 }).landedAny, refusedStage(QF, 'feature')], [
       false, `${QF}'s fix 1.1 has landed — finish the quick-fix, then start the feature as work of its own`,
@@ -240,20 +246,20 @@ describe('the yes: a quick-fix moved (19.S24, 19.5.16)', () => {
     assert.deepStrictEqual(earlierReads(first), [`earlier summary: ${statePath(dir, EARLIER(SHIPPED, 'summary.md'))}`, `kept branch: moved/${quickFixBranch(SHIPPED)}`]);
   });
 
-  it('a quick-fix whose fixes have not begun moves leaving the checkout where it is, on another unit\'s branch, closing nothing and carrying nothing, so its topic\'s first opening reads nothing earlier', () => {
+  it('a quick-fix whose fixes have not begun moves, no worktree of its own to take apart and every other quick-fix\'s left as it is, closing nothing and carrying nothing, so its topic\'s first opening reads nothing earlier', () => {
     dir = world();
     const res = moved('small', 'feature');
 
-    assert.deepStrictEqual([res.fixes_closed, res.branches, res.checkout, branchOut()], [[], [], null, BRANCH]);
+    assert.deepStrictEqual([res.fixes_closed, res.branches, [QF, SHIPPED, BEGUN].map((unit) => fs.existsSync(treeOf(unit)))], [[], [], [true, true, true]]);
     assert.deepStrictEqual(readManifest(dir, 'small').phases, { discussion: { items: { small: { status: 'unstarted' } } } });
     assert.deepStrictEqual(earlierReads(okSections(dir, ['enter', 'discussion', 'small'], { env: env() }).sections), []);
   });
 
-  it('closes only the fix not yet ended, deletes the quick-fix\'s branch holding no commit of its own, keeping nothing, and leaves the checkout on another unit\'s branch', () => {
+  it('closes only the fix not yet ended, deletes the quick-fix\'s branch holding no commit of its own, keeping nothing, and takes its worktree apart alone', () => {
     dir = world();
     const res = moved(BEGUN, 'feature');
 
-    assert.deepStrictEqual([res.fixes_closed, res.branches, res.checkout, branchOut()], [['1.2'], [], null, BRANCH]);
+    assert.deepStrictEqual([res.fixes_closed, res.branches, [QF, SHIPPED, BEGUN].map((unit) => fs.existsSync(treeOf(unit)))], [['1.2'], [], [true, true, false]]);
     assert.strictEqual(git(dir, ['branch', '--list', quickFixBranch(BEGUN), `moved/${quickFixBranch(BEGUN)}`]), '');
   });
 

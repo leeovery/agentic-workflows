@@ -4,7 +4,7 @@
 // The landing conformance suite's quick-fix, its branch as the host has it
 // the truth for what its pull request holds (R15): the contract every
 // landing driver meets, run through the engine's verbs against each shipped
-// driver in turn. The branch deleted here while its pull request is open is
+// driver in turn. The worktree taken apart and the branch deleted here while its pull request is open is
 // taken from the host's copy, and the close lands every fix in it. A commit
 // of the person's own on the branch is
 // test-engine-landing-conformance-quick-fix-host-own.cjs's; a host's own —
@@ -24,7 +24,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
 const { git, readManifest } = require('./engine-harness.cjs');
-const { UNIT, DESCRIPTION, BRANCH, SET, quickFixConformance } = require('./quick-fix-world.cjs');
+const { UNIT, DESCRIPTION, BRANCH, SET, treeGone, quickFixConformance } = require('./quick-fix-world.cjs');
 const { HELP, steps } = require('./quick-fix-by-hand.cjs');
 const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
 
@@ -34,11 +34,11 @@ for (const { name } of listDrivers('landing')) {
   const { closed } = steps(conf);
 
   describe(`the ${name} landing driver's quick-fix, its branch as the host has it the truth (R15)`, () => {
-    it('its branch deleted here while its pull request is open: taken from the host\'s copy, the close landing every fix in it', () => {
+    it('its worktree taken apart and its branch deleted here while its pull request is open: taken from the host\'s copy, the close landing every fix in it', () => {
       const at = project();
       built(at, 1);
       built(at, 2);
-      git(at, ['switch', '-q', 'main']);
+      treeGone(at);
       git(at, ['branch', '-q', '-D', BRANCH]);
       closed(at);
 

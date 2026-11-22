@@ -117,7 +117,8 @@ const { labelsAtOnce } = require('./labeller.cjs');
 const { itemOf, topicTitle, dismissedNames } = require('./derivations.cjs');
 const { unitInProgress } = require('./topic-standing.cjs');
 const { phaseSkill } = require('./handoff.cjs');
-const { topicsSettled, specStanding } = require('./spec-standing.cjs');
+const { topicsSettled } = require('./spec-standing.cjs');
+const { landedSpec } = require('./spec-landed.cjs');
 const { decidedClose, takeDecidedClose } = require('./checklist.cjs');
 const { checkTopics, placeTopics, installBriefs, landedPaths, dismiss } = require('./discovery-map.cjs');
 const { planRoadmapBatch, parkItems } = require('./roadmap.cjs');
@@ -578,13 +579,14 @@ function closeShown(manifest, topic, side, staged) {
 }
 
 /**
- * `render decided <unit>.<topic> [--file <payload.json>] [--calls]`: the
+ * `render decided <unit>.<topic> [--file <payload.json>] [--calls] [--alone]`: the
  * decided screen, Claude's payload staged from `--file` or read back as
- * staged, its calls listed with `--calls`.
- * @param {string} cwd @param {{dotpath?: string, file?: string, calls?: string}} args
+ * staged, its calls listed with `--calls`, drawn after a verdict with
+ * `--alone` (projections/closing.cjs, `verdictPoint`).
+ * @param {string} cwd @param {{dotpath?: string, file?: string, calls?: string, alone?: string}} args
  * @returns {string}
  */
-function decidedSurface(cwd, { dotpath, file, calls }) {
+function decidedSurface(cwd, { dotpath, file, calls, alone }) {
   try {
     const { unit, topic } = topicAddress(stateRoot(cwd), dotpath, 'decided');
     return onClosedTopic(cwd, unit, topic, ({ shower, manifest, closed, skips, side }) => {
@@ -596,6 +598,7 @@ function decidedSurface(cwd, { dotpath, file, calls }) {
         listed: calls !== undefined,
         skips: skips.map(({ text, reason }) => ({ text, reason })),
         verdict: side.verdict,
+        alone: alone !== undefined,
       });
     });
   } catch (err) {
@@ -886,8 +889,9 @@ function featureClose(shower, root, cwd, manifest, closed, warnings) {
  * `decided stage <unit> <topic> --file <payload.json>`: a feature's topic
  * closed into its spec (11.2.1) — Claude's payload staged against the
  * close, as the decided screen's `--file` stages it — answering the handoff
- * into the spec, or, staged again once the spec is written, carrying on
- * there to ready to build's screen.
+ * into the spec while none has landed, a spec written while the close was
+ * voided among them (spec-standing.cjs), or, staged again once the spec has
+ * landed, carrying on there to ready to build's screen.
  * @param {string} cwd @param {string} unit @param {string} topic @param {string} file
  */
 function decidedStage(cwd, unit, topic, file) {
@@ -896,7 +900,7 @@ function decidedStage(cwd, unit, topic, file) {
     return stage(cwd, unit, topic, file, { shower, rows: side.rows, manifest, closed });
   }, openTopic);
   /** @type {import('./projections/surfaces.cjs').Next} */
-  const next = specStanding(cwd, unit) === 'none' ? { kind: 'handoff', skill: phaseSkill('specification'), args: ['feature', unit] } : { kind: 'continue' };
+  const next = landedSpec(cwd, unit) === null ? { kind: 'handoff', skill: phaseSkill('specification'), args: ['feature', unit] } : { kind: 'continue' };
   return { unit, topic, lines: staged.lines.length, withdrawals: staged.withdrawals.length, candidates: staged.candidates.map(({ name }) => name), next };
 }
 

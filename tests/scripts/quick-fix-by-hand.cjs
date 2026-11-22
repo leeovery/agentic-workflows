@@ -13,7 +13,7 @@
 const assert = require('node:assert');
 
 const { ok, refuses, git, createFile } = require('./engine-harness.cjs');
-const { UNIT, DESCRIPTION, BRANCH, SET, createFix, fixDone, checklistClosed } = require('./quick-fix-world.cjs');
+const { UNIT, DESCRIPTION, BRANCH, SET, createFix, fixDone, fixTree, checklistClosed } = require('./quick-fix-world.cjs');
 
 const HELP = SET[1];
 
@@ -21,7 +21,7 @@ const HELP = SET[1];
 
 /**
  * The steps of a day run on a driver: fix 1.2 started; its change committed
- * through the door, its text given; and fixes 1.1 and 1.2 recorded and the
+ * through the door from the quick-fix's worktree, its text given; and fixes 1.1 and 1.2 recorded and the
  * close made, its answer.
  * @param {Conformance} conf
  */
@@ -34,8 +34,8 @@ function steps({ as, record }) {
     },
     /** @param {string} at @param {string} text */
     committed: (at, text) => {
-      createFile(at, HELP.file, text);
-      ok(at, ['commit', '--paths', HELP.file, '--task', UNIT, '1.2', '-m', `fix(${UNIT}): ${HELP.title.toLowerCase()}`], as());
+      createFile(fixTree(at), HELP.file, text);
+      ok(fixTree(at), ['commit', '--paths', HELP.file, '--task', UNIT, '1.2', '-m', `fix(${UNIT}): ${HELP.title.toLowerCase()}`], as());
     },
     /** @param {string} at */
     closed: (at) => {

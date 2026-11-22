@@ -308,9 +308,11 @@ const METHODS = Object.freeze({
  * landing carries, a push replacing the host's copy only while it stands
  * where the landing read it, `already` where it is; `mergeQuickFix` merges
  * the one that opening answered, given with the landing, the branch
- * squashed onto the branch it lands on as one commit under that message,
- * or, given no landing, brings that branch here to the host's, answering
- * `already`; and `closeQuickFix` closes the one open unmerged the read given
+ * squashed onto the branch it lands on as one commit under that message —
+ * answering `behind`, the host's branch that brings it up and what stops
+ * it, where the merge stands and that branch here could not be brought to
+ * it — or, given no
+ * landing, brings that branch here to the host's, answering `already`; and `closeQuickFix` closes the one open unmerged the read given
  * found, as a move and a cancel close it, answering whether it did. A unit with a branch
  * of its own lands it on the default branch at finish (landing.cjs), its
  * context's branch the default branch: `unitPull`, where the driver lands
@@ -361,7 +363,7 @@ const METHODS = Object.freeze({
  *   nextMerge: (ctx: LandingContext) => {phase: number, merge: () => {into: string, merged: string[], warnings?: string[]}}|null,
  *   quickFixPull: (ctx: LandingContext, branch: string, since: string|null) => QuickFixPull,
  *   openQuickFix: (ctx: LandingContext, landing: QuickFixTask) => {already?: true, warnings?: string[]},
- *   mergeQuickFix: (ctx: LandingContext, landing: QuickFixTask|null, opened?: Record<string, any>) => {into: string, merged: string[], warnings?: string[]}|{into: string, already: true, warnings?: string[]},
+ *   mergeQuickFix: (ctx: LandingContext, landing: QuickFixTask|null, opened?: Record<string, any>) => {into: string, merged: string[], behind?: {branch: string, why: string}, warnings?: string[]}|{into: string, already: true, warnings?: string[]},
  *   closeQuickFix: (ctx: LandingContext, pull: QuickFixPull, closed: Closing) => PullsClosed,
  *   unitPull?: (ctx: LandingContext, branch: string) => UnitPull,
  *   openUnit?: (ctx: LandingContext, landing: UnitLanding) => {into: string, pull_request: number, opened?: true},

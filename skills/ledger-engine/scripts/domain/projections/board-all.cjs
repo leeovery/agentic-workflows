@@ -3,16 +3,15 @@
 // ---------------------------------------------------------------------------
 // Domain ring: All work on the board (20.16) — the project's units in
 // progress, its roadmap, its inbox and its units complete — and the banner
-// at the start menu, a project-level place or the migration.
+// at no place, a project-level place or the migration.
 //
 // - Each unit's phase is its standing's (board-standing.cjs), as its tab
 //   and its banner have it. What waits on the person in it is counted from
 //   its one list as the start menu's row counts it (start-menu.cjs, 18.2.3),
-//   its conclude among them (20.12.5), never its verdicts; the project's
-//   total sums them.
+//   never its verdicts; the project's total sums them.
 // - How far a unit has come, by the phase it is in: the gate ending it
-//   waiting on the person, by its name — finish, a quick-fix's close, or an
-//   investigation's conclude; an epic's discovery its topics on the map,
+//   waiting on the person, by its name — finish, or a quick-fix's close; an
+//   epic's discovery its topics on the map,
 //   and its discussion its topics decided of all, as its menu row says them
 //   (progress.cjs); a bug's investigation how far its hunt has come; the
 //   specification where it stands, as its banner says it; the build its
@@ -56,9 +55,6 @@ const { epicMeasure } = require('../progress.cjs');
 /** Where a unit's build or review has stopped, as its row leads with it. @param {BoardAt} at */
 const stoppedWords = (at) => (standingOf(at) === 'stopped' ? 'stopped · ' : '');
 
-/** The gates that end a phase, each waiting on the person by its name: finish, a quick-fix's close, an investigation's conclude. */
-const GATES = Object.freeze(['finish', 'conclude']);
-
 /** How far a unit has come, by the phase it is in (the header's). @type {Readonly<Record<string, (at: BoardAt) => string>>} */
 const HOW_FAR = Object.freeze({
   discovery: (at) => epicMeasure(at.cwd, at.manifest, 'discovery') ?? '',
@@ -81,7 +77,7 @@ function waitingCount(at) {
 
 /** How far a unit has come (the header's). @param {BoardAt} at @param {string} phase */
 function workStanding(at, phase) {
-  const gate = waitingOn(at).find(({ kind }) => GATES.includes(kind));
+  const gate = waitingOn(at).find(({ kind }) => kind === 'finish');
   if (gate !== undefined) return `${gate.id} waits on you`;
   return /** @type {Record<string, (at: BoardAt) => string>} */ (HOW_FAR)[phase]?.(at) ?? '';
 }
@@ -130,10 +126,10 @@ function roadmapOf(cwd, project) {
 
 /**
  * All work (the header's).
- * @param {string} cwd @param {(unit: string) => BoardAt} at what the board reads for a unit @param {BoardAt|null} here the session's unit @param {boolean} atStart whether the session is at the start menu
+ * @param {string} cwd @param {(unit: string) => BoardAt} at what the board reads for a unit @param {BoardAt|null} here the session's unit
  * @returns {{view: AllView}}
  */
-function allView(cwd, at, here, atStart) {
+function allView(cwd, at, here) {
   const others = new Set(scanProject(cwd).sessions.filter(({ held, session_id: session }) => held && session !== here?.session).map(({ work_unit: unit }) => unit));
   const inbox = discoverInbox(cwd);
   const units = loadActiveManifests(cwd).map((manifest) => workLine(at(manifest.name), here, others));
@@ -141,7 +137,6 @@ function allView(cwd, at, here, atStart) {
     view: {
       kind: 'all',
       project: projectName(cwd),
-      at_start: atStart,
       waiting: units.reduce((sum, { waiting }) => sum + waiting, 0),
       units,
       roadmap: roadmapOf(cwd, readProjectManifest(cwd)),
@@ -157,15 +152,15 @@ function allView(cwd, at, here, atStart) {
 
 /**
  * The banner at no unit: the project's, at the place the session is at —
- * the start menu, a project-level place, or the migration; and, once a
- * unit's finish hands the session to the start menu, that unit's close
+ * a project-level place or the migration — and alone at no place; and, once
+ * a unit's finish or a quick-fix's close completes it, that unit's close
  * (D38).
- * @param {string} cwd @param {string} place where the session is, in words @param {BoardAt|null} finished
+ * @param {string} cwd @param {string|null} place where the session is, in words, null at no place @param {BoardAt|null} finished
  * @returns {import('../board-model.cjs').Banner}
  */
 function allBanner(cwd, place, finished) {
-  if (finished !== null) return { name: finished.title, state: 'done', facts: [fact(finished.manifest.work_type), fact('complete'), placeFact('at the start menu')] };
-  return { name: projectName(cwd), state: 'idle', facts: [placeFact(place)] };
+  if (finished !== null) return { name: finished.title, state: 'done', facts: [fact(finished.manifest.work_type), fact('complete')] };
+  return { name: projectName(cwd), state: 'idle', facts: place === null ? [] : [placeFact(place)] };
 }
 
 module.exports = { allView, allBanner };

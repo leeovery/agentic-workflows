@@ -29,10 +29,10 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const {
-  ok, okSectionsAsync, refusedPristine, treeSnapshot, head, cleanupFixture, readState, readManifest, writeState, commitAll, layout,
+  ok, okSectionsAsync, refusedPristine, treeSnapshot, head, cleanupFixture, readState, readManifest, writeState, commitAll, layout, git,
 } = require('./engine-harness.cjs');
 const { createManifest } = require('./discovery-test-utils.cjs');
-const { UNIT, SESSION_ID, QUESTIONS, CALL, taskText, buildScreensWorld, buildScreenHelpers, boardHelpers } = require('./build-screens-world.cjs');
+const { UNIT, SESSION_ID, QUESTIONS, CALL, taskText, branchWith, buildScreensWorld, buildScreenHelpers, boardHelpers } = require('./build-screens-world.cjs');
 const { fixture, misfits, shapeOf, place } = require('./board-world.cjs');
 const { raiseHelpers } = require('./raise-world.cjs');
 
@@ -58,18 +58,17 @@ const { board, enterBuild, issued, project } = boardHelpers(() => dir, () => con
 /** The board's refusal, nothing written. @param {string[]} args */
 const refused = (args) => refusedPristine(dir, ['board', ...args], { env: env() }).error;
 
-describe('the board at the start menu (20.3.3, 20.16)', () => {
-  it('shows All work with the project\'s units, no unit\'s tab, and a banner naming the project at the start menu', () => {
+describe('the board at no place (20.3.3, 20.16)', () => {
+  it('shows All work with the project\'s units, no unit\'s tab, and a banner naming the project alone, claiming no place', () => {
     assert.deepStrictEqual(board(), {
       version: BOARD_VERSION,
       place: { unit: null, type: null, phase: null, topic: null },
-      banner: { name: project(), state: 'idle', facts: [place('at the start menu')] },
+      banner: { name: project(), state: 'idle', facts: [] },
       unit: null,
       tab: 'this',
       view: {
         kind: 'all',
         project: project(),
-        at_start: true,
         waiting: 0,
         units: [{ unit: UNIT, title: 'Pay', type: 'feature', phase: 'build', standing: '0 of 4 tasks done', waiting: 0, session: null }],
         roadmap: [],
@@ -186,6 +185,18 @@ describe('the tabs (20.3)', () => {
     const figures = JSON.parse(readState(dir, layout.unit(UNIT, 'build/tasks/1.1/figures.json')));
 
     assert.deepStrictEqual(board(['--tab', 'unit']).view.lately, [{ kind: 'task-finished', at: figures.finished, topic: null, detail: '1.1' }]);
+  });
+
+  it('a one-line task done says when it finished among the unit\'s moments, as the newest commit on its branch was made', () => {
+    enterBuild();
+    ok(dir, ['task', 'done', UNIT, '1.1'], { env: env() });
+    ok(dir, ['task', 'create', UNIT, '1', '--title', 'Bold the total', '--type', 'feat', '--why', 'one word, nothing for a reviewer to read'], { env: env() });
+    ok(dir, ['task', 'start', UNIT, '1.4'], { env: env() });
+    const built = branchWith(dir, 4, 'Bold the total', [['src/total.js', 'export const total = 1;\n']]);
+    ok(dir, ['task', 'done', UNIT, '1.4'], { env: env() });
+    const at = new Date(git(dir, ['log', '-1', '--format=%cI', built]).trim()).toISOString();
+
+    assert.deepStrictEqual(board(['--tab', 'unit']).view.lately.find(({ detail }) => detail === '1.4'), { kind: 'task-finished', at, topic: null, detail: '1.4' });
   });
 
   it('at the unit\'s menu, This session is the unit\'s page at its menu (20.3.3)', () => {

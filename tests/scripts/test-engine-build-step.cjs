@@ -173,7 +173,7 @@ describe('the task in flight where more than one goes on (12.7.9)', () => {
     const progress = sectionOf(screen(['build-progress', UNIT]), 'DISPLAY: build progress').split('\n');
 
     const held = 'in flight: task 1.1, behind the task in flight — it goes on once that task is done, and no builder goes to it until then';
-    const atGate = 'in flight: task 1.2, at its gate — it waits on the person\'s go there, the gate drawn again with render step-gate pay 1.2, and its builder is never sent afresh';
+    const atGate = 'in flight: task 1.2, at its gate — it waits on the person\'s go there, the gate drawn again with render step-gate pay 1.2, and no agent is sent to it afresh';
     assert.deepStrictEqual(lines, ['phase: phase 1 of 3, "Cards": running — tasks 1.1 behind the task in flight, 1.2 at its gate, 1.3 not started', held, atGate, held, atGate]);
     assert.deepStrictEqual(progress.slice(0, 5), [
       '0 of 4 tasks done · 0 running',

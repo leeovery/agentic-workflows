@@ -19,7 +19,7 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const {
-  Sim, mappedEpic, enterEntry, labEntry, handoff, handoffBy, follow, answerGate, waitAgents, decideTopic, askedOn, send, epicRow, epicMenuLooked, epicMenuAt, epicPick,
+  Sim, mappedEpic, enterEntry, labEntry, handoff, handoffBy, follow, answerGate, decideTopic, askedOn, send, epicRow, epicMenuLooked, epicMenuAt, epicPick,
 } = require('./pipeline-world.cjs');
 const { leaningCall } = require('./ledger-world.cjs');
 const { trustLines } = require('./pipeline-oracle.cjs');
@@ -87,12 +87,10 @@ describe('pipeline simulation: experiments, in an epic', () => {
       sim.refuses(['ledger', 'decide', `${wu}.discussion.${topic}`, '--answers', question], /is measured by experiment E1, still running/, null,
         JSON.stringify({ by: 'claude', who_moved_whom: 'none', text: 'A guess.', why: 'No evidence yet.' }));
     }
-    // Working it now leaves the topic: the wait for its agents first — a
-    // review this session dispatched is still running, so the gate asks, and
-    // a proceed leaves it running — then the spawn gate's yes hands the
+    // Working it now leaves the topic, a review this session dispatched
+    // still running, never waited for: the spawn gate's yes hands the
     // session straight to the laboratory.
     const review = sim.run(['agent', 'dispatch', wu, 'discussion', 'timing', '--kind', 'review']);
-    waitAgents(sim, wu, 'timing', true);
     sim.render(['experiment-spawn-gate', `${wu}.discussion.timing`, '--id', 'E1'], { expect: 'content' });
     assert.deepStrictEqual(sim.run(['gate', 'experiment spawn gate', '--pick', 'y']).next,
       { kind: 'handoff', skill: 'ledger-experiment-process', args: ['epic', wu, 'timing', 'E1'] });

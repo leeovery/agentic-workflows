@@ -80,7 +80,7 @@ describe('the build\'s standing: the review\'s fix phases past the cut (P14)', (
       'phase: phase 2 of 2, "Refunds": merged — tasks 2.1 done',
       'phase: phase 3, "the review\'s fixes, round 1": running — tasks 3.1 in progress',
       `finished: every phase of the cut has closed — the review phase is next: enter review ${UNIT}`,
-      'in flight: task 3.1, no builder dispatched here — its builder and pair go afresh on its branch',
+      'in flight: task 3.1, no builder dispatched here — its builder and reviewers go afresh on its branch',
       `affected: \`${ENGINE} ledger affected ${UNIT}\``,
       `record: \`${ENGINE} ledger record ${UNIT}\``,
       `build log: ${statePath(dir, `${UNIT}/build/log.md`)}`,

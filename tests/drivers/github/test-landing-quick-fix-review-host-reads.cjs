@@ -21,7 +21,7 @@ const assert = require('node:assert');
 
 const { ok, git, writeState, layout, FROZEN_AT } = require('../../scripts/engine-harness.cjs');
 const { calls, madeOnGithub } = require('./world.cjs');
-const { UNIT, BRANCH, SET } = require('../../scripts/quick-fix-world.cjs');
+const { UNIT, BRANCH, SET, treeGone } = require('../../scripts/quick-fix-world.cjs');
 const { changeRead } = require('../../scripts/quick-fix-review-by-hand.cjs');
 const { reviewHost } = require('./quick-fix-review-host.cjs');
 
@@ -51,6 +51,7 @@ describe('GitHub\'s landing driver and the board in a quick-fix\'s review, which
 describe('GitHub\'s landing driver and a quick-fix\'s review asked for in a clone holding no commit of its fixes (7.2.22, 19.5.14)', () => {
   it('reads the squash GitHub made as the fixes\' landing, by the `Task:` lines naming them', () => {
     const at = mergedOnHost('squash', true);
+    treeGone(at);
     side.deleted(at, BRANCH);
     git(at, ['update-ref', '-d', `refs/remotes/origin/${BRANCH}`]);
     git(at, ['reflog', 'expire', '--expire=now', '--all']);

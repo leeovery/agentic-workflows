@@ -17,7 +17,8 @@
 // (`mergeWaiting`, phase-checks.cjs). The review phase's verbs refuse as
 // it does.
 // Another session holding the checkout's code stops it at the build's code
-// gate, nothing written, and `--take` enters all the same (12.7.8, 12.S50).
+// gate, nothing written, and `--take` enters all the same (12.7.8, 12.S50)
+// — but a quick-fix's review, which reads the quick-fix's worktree.
 //
 // As the conversation arrives, every task the tracker holds in progress in
 // a phase the build has written — a fix task, the review's fix phases built
@@ -44,8 +45,10 @@
 // take (14.3.3); each report of the round under review already in, reading
 // as a reviewer's, so a return to the round briefs only the readers whose
 // reports are not; the fix phase a failing round's fixes are under way in —
-// the last round's while its fix tasks wait, else, once the round under
-// review has its reads, its own, where its fix tasks are written (P14);
+// the last round's while its fix tasks wait, else the round under review's,
+// where its fix tasks are written and a request met before them goes (P14),
+// and once a round ended the phase, the one after it, where a request met
+// before finish goes;
 // each task of the last round's fix phase not yet done, its findings'
 // fixes and any written there beyond them, and in step its fix phase
 // waiting at its merge's gate once they are (14.6.2); each builder's note
@@ -72,7 +75,7 @@ const { statePath } = require('../kernel/state-root.cjs');
 const {
   buildFinished, phaseClosed, buildRefusal, quickFixReviewRefusal, quickFixBuild, cutPhases, cutLength,
 } = require('./derivations.cjs');
-const { reading, reposOf, mergeWaiting } = require('./phase-checks.cjs');
+const { reading, mergeWaiting } = require('./phase-checks.cjs');
 const {
   codeHeld, buildLogOf, standingOf, ownInFlight, inFlightLines, waitingLines, askedLines, takeInFlight, readingOf,
 } = require('./build-entry.cjs');
@@ -82,7 +85,7 @@ const { specPath } = require('./spec-sections.cjs');
 const { summaryFile } = require('./knowledge/artifacts.cjs');
 const { notesPath } = require('./notes.cjs');
 const {
-  reviewStanding, recordedRounds, reportsIn, endedWords, readsWords, mergingWords, roundReportFile, takeSnapshot, snapshotRound, fixPhase, setAsideHeld,
+  reviewStanding, recordedRounds, reportsIn, endedWords, readsWords, mergingWords, roundReportFile, takeSnapshot, snapshotRound, fixPhase, setAsideHeld, treeRepos,
 } = require('./review-phase.cjs');
 const { reviewOpened } = require('./landing.cjs');
 const {
@@ -166,14 +169,15 @@ function readsLine(unit, { round, required, reads }, step) {
 
 /**
  * The fix phase a failing round's fixes are under way in (P14): the last
- * round's, while its fix tasks wait; else, while the round under review has
- * its reads, its own, where its fix tasks are written; none once the review
- * phase has ended.
- * @param {Record<string, any>} manifest @param {ReviewStanding} standing @returns {string|null}
+ * round's, while its fix tasks wait; else the round under review's, where
+ * its fix tasks are written, and where a request met before them goes;
+ * once a round ended the review phase, the one after it, where a request
+ * met before finish goes.
+ * @param {Record<string, any>} manifest @param {ReviewStanding} standing @returns {string}
  */
-function fixPhaseWords(manifest, { rounds, round, ended, waiting, reads }) {
+function fixPhaseWords(manifest, { rounds, round, ended, waiting }) {
   if (waiting.length > 0) return `phase ${fixPhase(manifest, rounds.length)}, where round ${rounds.length}'s fix tasks are built`;
-  if (ended || reads === null) return null;
+  if (ended) return `phase ${fixPhase(manifest, round)}, where a request met before finish goes`;
   return `phase ${fixPhase(manifest, round)}, where round ${round}'s fix tasks are written`;
 }
 
@@ -184,13 +188,12 @@ function areaWords(unit, manifest, { name, number, title }) {
 
 /** Where the review phase stands, a line each: the round, the areas, the reads, the reports in, the fix phase, the fix tasks waiting and, in step, their phase's merge. @param {string} cwd @param {string} unit @param {Record<string, any>} manifest @param {ReviewStanding} standing @returns {Line[]} */
 function standingLines(cwd, unit, manifest, standing) {
-  const fixes = fixPhaseWords(manifest, standing);
   return [
     ['round', roundWords(unit, standing)],
     ...standing.areas.map((area) => /** @type {Line} */ (['area', areaWords(unit, manifest, area)])),
     ...(standing.ended ? [] : [/** @type {Line} */ (['reads', readsLine(unit, standing, manifest.build?.position === 'step')])]),
     ...reportsIn(cwd, unit, standing).map((file) => /** @type {Line} */ (['report in', file])),
-    ...(fixes === null ? [] : [/** @type {Line} */ (['fix phase', fixes])]),
+    ['fix phase', fixPhaseWords(manifest, standing)],
     ...standing.waiting.map((fix) => /** @type {Line} */ (['fix task waiting', fix])),
     ...(standing.merging === null ? [] : [/** @type {Line} */ (['merge waiting', mergingWords(unit, standing.merging)])]),
     ...notesLines(cwd, unit, standing),
@@ -309,7 +312,7 @@ function arriving(at) {
   const opening = recordedRounds(at.cwd, at.unit).length === 0 && snapshotRound(at.cwd, at.unit) === null;
   if (opening) reviewOpened(at.cwd, at.unit);
   takeInFlight(at);
-  if (opening) takeSnapshot(at.cwd, at.unit, 1, reposOf(readingOf(at)));
+  if (opening) takeSnapshot(at.cwd, at.unit, 1, treeRepos(readingOf(at)));
 }
 
 /** @type {Entry} */

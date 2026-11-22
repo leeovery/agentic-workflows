@@ -41,10 +41,14 @@
 //   merge's other parents never on it (`taskLine`), else what its tip holds
 //   — else on any ref or reflog, so a branch deleted loses none, a branch a
 //   remedy kept never among them (`lastStamped`), as a branch holding one is
-//   told by its history (`stampsUnit`). What a read asks of many commits at
-//   once — whether each of many holds another's change, or a copy of it — is
-//   read in one call however many are asked (`holdChanges`, `belowOwn`,
-//   `copiesOf`).
+//   told by its history (`stampsUnit`). A quick-fix's task's own commits are
+//   read by one rule wherever they are read (`quickFixMerges`): a merge the
+//   door finished is the task's own only where everything it brings in is
+//   held by the branch the unit lands on, here or as last fetched, or by
+//   the host's copy of the quick-fix's branch as last fetched. What a read
+//   asks of many commits at once — whether each of many holds another's
+//   change, or a copy of it — is read in one call however many are asked
+//   (`holdChanges`, `belowOwn`, `copiesOf`).
 // - A commit is made with no checkout: a tree committed onto a parent, or a
 //   commit replayed onto another, which stops on a conflict; signed where
 //   the person's config signs every commit, as `git commit` signs it. A
@@ -429,20 +433,74 @@ function commitGraph(root, revs, since, key) {
  * The commits the commit `rev` holds that the revision `other` does not —
  * nor any of them, where it names several; every one, where it names none
  * — committed at or after the time `since` names where it names one,
- * oldest first, each after its parents, merges aside — each with its
- * message, the time it was committed, in milliseconds, and the value of
+ * oldest first, each after its parents, merges aside but one carrying the
+ * trailer that `merges` takes for its task's (`quickFixMerges`) — each with
+ * its message, the time it was committed, in milliseconds, and the value of
  * the trailer `key` it carries, null where it carries none.
- * @param {string} root @param {string} rev @param {string|string[]} other @param {string} key @param {string|null} [since]
+ * @param {string} root @param {string} rev @param {string|string[]} other @param {string} key @param {string|null} [since] @param {{merges?: MergeRule}} [how]
  * @returns {{sha: string, message: string, committed: number, value: string|null}[]}
  */
-function stampedPast(root, rev, other, key, since = null) {
+function stampedPast(root, rev, other, key, since = null, { merges = NO_MERGE } = {}) {
   const others = [other].flat().map((one) => revOf(root, one));
   const bound = since === null ? [] : [`--since=${since}`];
-  const read = git(root, ['log', '-z', '--reverse', '--topo-order', '--no-merges', `--format=%H%x1f%ct%x1f%(trailers:key=${key},valueonly)%x1f%B`, ...bound, rev, ...(others.length === 0 ? [] : ['--not', ...others]), '--']);
-  return read.split('\0').filter(Boolean).map((entry) => {
-    const [sha, time, values, message] = entry.split('\x1f');
-    return { sha, message, committed: Number(time) * 1000, value: values.split('\n').map((value) => value.trim()).find(Boolean) ?? null };
+  const read = git(root, ['log', '-z', '--reverse', '--topo-order', ...(merges === NO_MERGE ? ['--no-merges'] : []), `--format=%H%x1f%P%x1f%ct%x1f%(trailers:key=${key},valueonly)%x1f%B`, ...bound, rev, ...(others.length === 0 ? [] : ['--not', ...others]), '--']);
+  return read.split('\0').filter(Boolean).flatMap((entry) => {
+    const [sha, parents, time, values, message] = entry.split('\x1f');
+    const value = values.split('\n').map((one) => one.trim()).find(Boolean) ?? null;
+    const counted = value === null ? !isMerge(parents) : counts(merges, parents);
+    return counted ? [{ sha, message, committed: Number(time) * 1000, value }] : [];
   });
+}
+
+/**
+ * Whether a merge stamped with a task is that task's work, by its parents,
+ * in full, as `%P` lists them. @typedef {(parents: string[]) => boolean} MergeRule
+ */
+
+/** No merge a task's work: a read of a task's own commits on its branch past the one it lands on. @type {MergeRule} */
+const NO_MERGE = () => false;
+
+/** Every merge stamped with a task its work: the reads of where a task's work is found, but a quick-fix's (`quickFixMerges`). @type {MergeRule} */
+const EVERY_MERGE = () => true;
+
+/** Whether `parents`, as `%P` lists them, are a merge's. @param {string} parents */
+const isMerge = (parents) => parents.includes(' ');
+
+/** Whether a commit stamped with a task, by its parents as `%P` lists them, is that task's work: any but a merge, a merge only where `merges` takes it. @param {MergeRule} merges @param {string} parents */
+const counts = (merges, parents) => !isMerge(parents) || merges(parents.split(' '));
+
+/**
+ * The one rule a quick-fix's task's own commits are read by, every read of
+ * them taking it (the header's): a merge the door finished is the task's
+ * own where everything it brings in — each parent past its first — is held
+ * by the branch the repository lands the unit on, here or as last fetched,
+ * or by the host's copy of the quick-fix's branch as last fetched; no other
+ * merge is. Those tips are read at the first merge asked of, once, and each
+ * parent with an ancestry check per tip until one holds it.
+ * @param {string} cwd @param {Repo} repo @param {string} unit @returns {MergeRule}
+ */
+function quickFixMerges(cwd, repo, unit) {
+  /** @type {string[]|undefined} */
+  let tips;
+  return (parents) => {
+    const held = (tips ??= quickFixTips(cwd, repo, unit));
+    return parents.slice(1).every((parent) => held.some((tip) => isAncestor(repo.path, parent, tip)));
+  };
+}
+
+/** The tips a quick-fix's merge must bring in only what they hold to be its task's own (`quickFixMerges`). @param {string} cwd @param {Repo} repo @param {string} unit @returns {string[]} */
+function quickFixTips(cwd, repo, unit) {
+  const remote = remoteOf(cwd, repo);
+  const host = remote === null ? null : trackedTip(repo.path, remote, names.quickFixBranch(unit));
+  return [...landingBranchTips(cwd, repo, unit), ...(host === null ? [] : [host])];
+}
+
+/** The branch a repository lands the unit on, here and as last fetched from its remote where it has one. @param {string} cwd @param {Repo} repo @param {string} unit @returns {string[]} */
+function landingBranchTips(cwd, repo, unit) {
+  const branch = landingBranch(cwd, repo, unit);
+  const remote = remoteOf(cwd, repo);
+  const fetched = remote === null ? null : trackedTip(repo.path, remote, branch);
+  return [`${HEADS}${branch}`, ...(fetched === null ? [] : [fetched])];
 }
 
 /** The time git dates a commit made now in the repository at `root`, in milliseconds: its committer's, as the clock or `GIT_COMMITTER_DATE` gives it. @param {string} root */
@@ -697,14 +755,15 @@ function standingsOn(root, tip, commits) {
  * none does — its branch deleted —
  * has as its last the newest of its commits on any ref or reflog, but a
  * branch's a remedy kept (`stampedAnywhere`), which the caller reads only
- * where it asks of such a task.
- * @param {string} root @param {string} key @param {string} unit @param {string|null} since @param {Map<string, string>} [local] the branches here, where the caller read them
+ * where it asks of such a task. A merge stamped with a task is among its
+ * commits where `merges` takes it (`MergeRule`).
+ * @param {string} root @param {string} key @param {string} unit @param {string|null} since @param {Map<string, string>} [local] the branches here, where the caller read them @param {MergeRule} [merges]
  * @returns {{newest: Map<string, TimedCommit>, owned: Set<string>, oldest: Map<string, OldestOn>}}
  */
-function lastStamped(root, key, unit, since, local = branches(root)) {
+function lastStamped(root, key, unit, since, local = branches(root), merges = EVERY_MERGE) {
   const bound = since === null ? [] : [`--since=${since}`];
   const work = [...local].filter(([name]) => names.isWorkBranch(unit, name));
-  const { newest, oldest } = newestOnBranches(root, key, unit, bound, work);
+  const { newest, oldest } = newestOnBranches(root, key, unit, bound, work, merges);
   const owned = new Set([...newest.keys(), ...work.flatMap(([name]) => {
     const ref = names.taskOfBranch(unit, name);
     return ref === null ? [] : [taskId(ref)];
@@ -717,16 +776,22 @@ function lastStamped(root, key, unit, since, local = branches(root)) {
 /** A commit's stamps as `%(trailers)` lists them, of the unit's tasks. @param {string} unit @param {string[]} values */
 const unitStamps = (unit, values) => values.map((value) => value.trim()).filter((value) => value.startsWith(`${unit}-`));
 
+/** A commit's stamps of the unit's tasks (`unitStamps`) whose work it is (`counts`), by its parents as `%P` lists them: a merge's none that `merges` does not take. @param {string} unit @param {string[]} values @param {string} parents @param {MergeRule} merges */
+const workStamps = (unit, values, parents, merges) => {
+  const ids = unitStamps(unit, values);
+  return ids.length === 0 || counts(merges, parents) ? ids : [];
+};
+
 /**
  * The commit stamped with each of the unit's tasks nearest the tip of its
  * work branch among `work` on its line (`taskLine`) — a task's own branch
  * its task's, the quick-fix's one branch every task's its own branch does
  * not stand for — and the oldest so stamped on that line (`OldestOn`),
  * read in one call however many.
- * @param {string} root @param {string} key @param {string} unit @param {string[]} bound @param {[string, string][]} work by name, at its tip
+ * @param {string} root @param {string} key @param {string} unit @param {string[]} bound @param {[string, string][]} work by name, at its tip @param {MergeRule} merges
  * @returns {{newest: Map<string, TimedCommit>, oldest: Map<string, OldestOn>}}
  */
-function newestOnBranches(root, key, unit, bound, work) {
+function newestOnBranches(root, key, unit, bound, work, merges) {
   /** @type {Map<string, TimedCommit>} */
   const newest = new Map();
   /** @type {Map<string, OldestOn>} */
@@ -736,7 +801,7 @@ function newestOnBranches(root, key, unit, bound, work) {
   /** @type {Map<string, {parents: string[], commit: TimedCommit, ids: string[]}>} */
   const commits = new Map(logged.split('\0').filter(Boolean).map((entry) => {
     const [sha, parents, time, ...values] = entry.split('\x1f');
-    return [sha, { parents: parents.split(' ').filter(Boolean), commit: { sha, committed: Number(time) * 1000 }, ids: unitStamps(unit, values) }];
+    return [sha, { parents: parents.split(' ').filter(Boolean), commit: { sha, committed: Number(time) * 1000 }, ids: workStamps(unit, values, parents, merges) }];
   }));
   const owned = work.map(([name, tip]) => ({ ref: names.taskOfBranch(unit, name), tip })).sort((one, other) => Number(one.ref === null) - Number(other.ref === null));
   for (const { ref, tip } of owned) {
@@ -753,7 +818,7 @@ function newestOnBranches(root, key, unit, bound, work) {
     }
   }
   const unfound = owned.flatMap(({ ref, tip }) => (ref === null || newest.has(taskId(ref)) ? [] : [{ id: taskId(ref), tip }]));
-  for (const [id, commit] of newestHeld(root, key, unit, bound, unfound)) newest.set(id, commit);
+  for (const [id, commit] of newestHeld(root, key, unit, bound, unfound, merges)) newest.set(id, commit);
   return { newest, oldest };
 }
 
@@ -762,17 +827,17 @@ function newestOnBranches(root, key, unit, bound, work) {
  * with it, the newest its branch's tip holds, in topological order —
  * as the branch fast-forwarded onto a default branch that a merge commit
  * landed it on leaves it — read in one call however many.
- * @param {string} root @param {string} key @param {string} unit @param {string[]} bound @param {{id: string, tip: string}[]} unfound
+ * @param {string} root @param {string} key @param {string} unit @param {string[]} bound @param {{id: string, tip: string}[]} unfound @param {MergeRule} merges
  * @returns {Map<string, TimedCommit>}
  */
-function newestHeld(root, key, unit, bound, unfound) {
+function newestHeld(root, key, unit, bound, unfound, merges) {
   /** @type {Map<string, TimedCommit>} */
   const newest = new Map();
   if (unfound.length === 0) return newest;
   const logged = git(root, ['log', '-z', '--topo-order', `--format=%H%x1f%P%x1f%ct%x1f%(trailers:key=${key},valueonly,separator=%x1f)`, ...bound, ...new Set(unfound.map(({ tip }) => tip)), '--']);
   const order = logged.split('\0').filter(Boolean).map((entry) => {
     const [sha, parents, time, ...values] = entry.split('\x1f');
-    return { sha, parents: parents.split(' ').filter(Boolean), commit: { sha, committed: Number(time) * 1000 }, ids: unitStamps(unit, values) };
+    return { sha, parents: parents.split(' ').filter(Boolean), commit: { sha, committed: Number(time) * 1000 }, ids: workStamps(unit, values, parents, merges) };
   });
   const bySha = new Map(order.map((commit) => [commit.sha, commit]));
   for (const { id, tip } of unfound) {
@@ -787,21 +852,22 @@ function newestHeld(root, key, unit, bound, unfound) {
  * The commits stamped with each of the unit's tasks, committed at or after
  * the time `since` names where it names one, on any ref, or kept by a
  * reflog, but a branch a remedy kept, and its reflog, where `local` holds
- * one: by the task's internal id, newest first, in one call.
- * @param {string} root @param {string} key @param {string} unit @param {string|null} since @param {Map<string, string>} local the branches here
+ * one: by the task's internal id, newest first, in one call — a merge only
+ * where `merges` takes it (`MergeRule`).
+ * @param {string} root @param {string} key @param {string} unit @param {string|null} since @param {Map<string, string>} local the branches here @param {MergeRule} [merges]
  * @returns {Map<string, TimedCommit[]>}
  */
-function stampedAnywhere(root, key, unit, since, local) {
-  const format = `--format=%H %ct%n%(trailers:key=${key},valueonly)`;
+function stampedAnywhere(root, key, unit, since, local, merges = EVERY_MERGE) {
+  const format = `--format=%H %ct%n%P%n%(trailers:key=${key},valueonly)`;
   const read = [...(since === null ? [] : [`--since=${since}`]), '--fixed-strings', `--grep=${key}: ${unit}-`];
   const found = [...local.keys()].some(isKept)
     ? git(root, ['log', '-z', '--date-order', format, '--exclude=refs/*.kept-*', '--all', ...read, '--stdin', '--'], keptAside(root))
     : git(root, ['log', '-z', '--date-order', format, '--all', '--reflog', ...read, '--']);
   /** @type {Map<string, TimedCommit[]>} */
   const stamped = new Map();
-  for (const [head, ...values] of found.split('\0').filter(Boolean).map((entry) => entry.split('\n'))) {
+  for (const [head, parents, ...values] of found.split('\0').filter(Boolean).map((entry) => entry.split('\n'))) {
     const commit = timedCommit(head);
-    for (const value of unitStamps(unit, values)) stamped.set(value, [...(stamped.get(value) ?? []), commit]);
+    for (const value of workStamps(unit, values, parents, merges)) stamped.set(value, [...(stamped.get(value) ?? []), commit]);
   }
   return stamped;
 }
@@ -827,6 +893,22 @@ function committedAt(root, shas) {
     const [sha, at] = line.split(' ');
     return [sha, new Date(at).toISOString()];
   }));
+}
+
+/**
+ * Whether every commit the branch holds past each of `past` — on its line,
+ * or kept by its reflog alone, as a rewrite that left a commit off keeps it
+ * — merges aside, carries the trailer `key` naming one of the unit's tasks:
+ * read in one call however many, a reflog's commit git no longer holds
+ * passed over.
+ * @param {string} root @param {string} branch @param {string[]} past @param {string} key @param {string} unit
+ */
+function tasksAlone(root, branch, past, key, unit) {
+  const ref = `${HEADS}${branch}`;
+  const logged = (tryGit(root, ['reflog', 'show', '--format=%H', ref]) ?? '').split('\n').filter(Boolean);
+  const revs = [ref, ...new Set(logged), ...past.map((each) => `^${each}`)];
+  const read = git(root, ['log', '-z', '--no-merges', '--ignore-missing', `--format=%H%x1f%(trailers:key=${key},valueonly,separator=%x1f)`, '--stdin', '--'], `${revs.join('\n')}\n`);
+  return read.split('\0').filter(Boolean).every((entry) => unitStamps(unit, entry.split('\x1f').slice(1)).length > 0);
 }
 
 /**
@@ -1934,8 +2016,8 @@ function landingMade(repo, unit, branch) {
 }
 
 module.exports = {
-  short, readOnce, readAgain, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranches, holdingBranch, refsUnder, updateRefs, isAncestor, mergeOf, commitsIn, latestOf, mergeBase, treesOf, firstParentLine, commitAt, lineSince, commitPaths, taskLine, heldIn, commitGraph, stampedPast, committerTime, holdsChange, holdsTaskChange, holdsCopy, holdChanges, mergeTrees, heldMerges, pathsApart, belowOwn, copiesOf, standings, standingsOn, lastStamped, stampedAnywhere, committedAt, stampsUnit, tasksMarkedOn, commitsNamed, namedPast, commitWithTree, treesPast,
+  short, readOnce, readAgain, branches, branchesHeldBy, holdsBeyond, holdsWork, holdingBranches, holdingBranch, refsUnder, updateRefs, isAncestor, mergeOf, commitsIn, latestOf, mergeBase, treesOf, firstParentLine, commitAt, lineSince, commitPaths, taskLine, heldIn, commitGraph, stampedPast, committerTime, holdsChange, holdsTaskChange, holdsCopy, holdChanges, mergeTrees, heldMerges, pathsApart, belowOwn, copiesOf, standings, standingsOn, lastStamped, stampedAnywhere, quickFixMerges, committedAt, tasksAlone, stampsUnit, tasksMarkedOn, commitsNamed, namedPast, commitWithTree, treesPast,
   changedAtTop, signs, commitTree, Conflict, mergeTree, replay, ownChangeEmpty, plain, quoted, rebasedSince, rebasedPast, laidOn, madeAgainOn, ownLinePast, forcePushed, inRepoWords, saidIn, branchOut, remedy, moveTo, movedSinceOpened, rewrite, mergeContinued, scratchBlock, rebaseBlock, checkoutBlock, changesAt, pathsChanged, dirtBlock, moveBranch,
-  defaultBranch, repoDefault, remoteOf, recordedBranch, unitBranchIn, landingBranch, landingRev, landingMade, remoteUrlOf, pushBranch, pushBranches, gitSaid, fetchBranch, remoteHeads, trackedTip, trackedBranches, fetchedCommit, nothingPast,
+  defaultBranch, repoDefault, remoteOf, recordedBranch, unitBranchIn, landingBranch, landingRev, landingBranchTips, landingMade, remoteUrlOf, pushBranch, pushBranches, gitSaid, fetchBranch, remoteHeads, trackedTip, trackedBranches, fetchedCommit, nothingPast,
   worktrees, taskWorktree, mainCheckoutOf, projectCheckout, holderOf, samePlace, removing, branchInPlace, addWorktree, switchTo, removeWorktree, detach, scratchRoot, mergeHeld, mergeBegun, mergeDone,
 };

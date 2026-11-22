@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------------------
 // The landing conformance suite's quick-fix, its pull request merged by
-// hand, its branch then deleted (R12, R14): the contract every landing
+// hand, its worktree then taken apart and its branch deleted (R12, R14): the contract every landing
 // driver meets, run through the engine's verbs against each shipped driver
 // in turn, merged as the driver's side first merges by hand — every way it
 // merges is the by-hand suite's. A fix the merge landed reads as landed by
@@ -26,7 +26,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
 const { ok, refuses, git, readManifest } = require('./engine-harness.cjs');
-const { UNIT, DESCRIPTION, BRANCH, SET, checklistClosed, fixDone, quickFixConformance } = require('./quick-fix-world.cjs');
+const { UNIT, DESCRIPTION, BRANCH, SET, checklistClosed, fixDone, treeGone, quickFixConformance } = require('./quick-fix-world.cjs');
 const { listDrivers } = require('../../skills/ledger-engine/scripts/domain/drivers.cjs');
 
 for (const { name } of listDrivers('landing')) {
@@ -39,6 +39,7 @@ for (const { name } of listDrivers('landing')) {
       changed(at, 1);
       ok(at, ['land', 'open', UNIT, '1.1'], as());
       merge(at, BRANCH);
+      treeGone(at);
       side.deleted(at, BRANCH);
       const opening = refuses(at, ['land', 'open', UNIT, '1.1'], as()).error;
       const closing = refuses(at, ['task', 'close', UNIT, '1.1', '--reason', 'Merged by hand.'], as()).error;

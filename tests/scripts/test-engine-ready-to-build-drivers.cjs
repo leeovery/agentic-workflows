@@ -10,7 +10,9 @@
 // of driver named only where another serves the project, and a tool gone
 // while the screen waited still stopping the build (O20); and the yes writing
 // each driver's setting the project lacks, as the first verb needing it
-// would (22.4.3, F7). The stop's every wording is
+// would (22.4.3, F7); and, on a project landing through GitHub, the squash
+// default offered in the screen's place at its first ready to build (4.4.6,
+// 7.2.18). The stop's every wording is
 // test-engine-drivers-verbs.cjs's; each shipped driver's tools missing,
 // older or failing at ready to build, and a remote on a host, its own
 // suite's (tests/drivers/{name}/test-drivers.cjs); the defaults resolved
@@ -28,7 +30,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
 
-const { ok, output, refusedPristine, sectionOf, readManifest, readState, git, bareRepo, killedAt, stateGit, toolless, setEnvironment, commitAll } = require('./engine-harness.cjs');
+const { ok, output, refusedPristine, sectionOf, readManifest, readState, git, bareRepo, initRepo, killedAt, stateGit, toolless, setEnvironment, commitAll } = require('./engine-harness.cjs');
 const { UNIT, SESSION, closed, useReadyWorld } = require('./ready-to-build-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
@@ -98,6 +100,46 @@ describe('the drivers checked at ready to build (22.4.5–22.4.9)', () => {
       refusedPristine(dir(), ['render', 'ready-to-build', UNIT], { env: withoutTools() }).error,
       refusedPristine(dir(), ['ready-to-build', 'yes', UNIT, '--position', 'auto'], { env: withoutTools() }).error,
     ], [`render ready-to-build: ${open}`, `ready-to-build yes: ${open}`]);
+  });
+});
+
+describe('the squash default\'s offer (4.4.6, 7.2.18)', () => {
+  it('a project landing through GitHub is offered it in the screen\'s place at its first ready to build: what it makes each task land under, merge commits allowed beside it, what yes sets and where, and what no costs; its rows lead to the verb recording the answer, and the screen follows, the offer never made again', () => {
+    git(dir(), ['remote', 'add', 'origin', 'git@github.com:acme/lantern.git']);
+
+    const offer = screen();
+    const { next } = ok(dir(), ['gate', 'github squash gate', '--pick', 'n'], { env: env() });
+    ok(dir(), next.argv, { env: env() });
+
+    assert.strictEqual(offer, [
+      '=== MENU: github squash gate (emit verbatim as markdown (not a code block), then STOP for the user\'s response) ===',
+      '· · · · · · · · · · · ·',
+      'Ledger lands each task on GitHub as a pull request squashed into one commit. For that commit to carry the task\'s title and id, GitHub must build it from the pull request\'s title and description. Work of several phases lands on your default branch in one merge commit, so GitHub must allow those too. Yes sets both on Lantern\'s repository.',
+      '',
+      '**`◆ Set both on GitHub?`**',
+      '',
+      '**`y/yes`** → Set both on Lantern\'s repository',
+      '**`n/no`**  → Leave them as they are — *Ledger won\'t merge a phase\'s*',
+      `${'\u00a0'.repeat(8)}*pull requests without the squash default, nor land work*`,
+      `${'\u00a0'.repeat(8)}*of several phases without merge commits*`,
+      '',
+    ].join('\n'));
+    assert.deepStrictEqual(next, { kind: 'engine', argv: ['github-squash', 'no'] });
+    assert.match(screen(), /^=== MENU: ready to build /m);
+  });
+
+  it('names each repository nested in the project on GitHub, by its folder', () => {
+    git(dir(), ['remote', 'add', 'origin', 'git@github.com:acme/lantern.git']);
+    for (const [folder, url] of [['ext', 'git@github.com:acme/ext.git'], ['lib', 'https://github.com/acme/lib.git'], ['plain', 'https://git.example.org/acme/plain.git']]) {
+      git(initRepo(path.join(dir(), folder)), ['remote', 'add', 'origin', url]);
+    }
+
+    const offer = screen().split('\n');
+
+    assert.deepStrictEqual([offer[2], offer[6]], [
+      'Ledger lands each task on GitHub as a pull request squashed into one commit. For that commit to carry the task\'s title and id, GitHub must build it from the pull request\'s title and description. Work of several phases lands on your default branch in one merge commit, so GitHub must allow those too. Yes sets both on Lantern\'s repository and each one nested in it: ext, lib.',
+      '**`y/yes`** → Set both on each of Lantern\'s 3 repositories',
+    ]);
   });
 });
 

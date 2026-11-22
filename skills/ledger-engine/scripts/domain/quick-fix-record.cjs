@@ -46,8 +46,9 @@
 // The close stands on every fix ended, done or closed — one a question
 // parks named parked on it, its way on the question's raise, a fix its
 // blind question holds open among them (questions.cjs, `heldOpen`) — and
-// each fix done passed by its pair, as its rounds' reports say
-// (`pairVerdict`), and recorded (`recordedFixes`).
+// each fix done passed by its reviewers, as its rounds' reports say, or
+// a one-line fix, read by none, with why (`pairVerdict`), and recorded
+// (`recordedFixes`).
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
@@ -64,7 +65,7 @@ const { trackedPhase, copiedTasks, givenText, ENDED, STATUS_WORDS } = require('.
 const { headingLevels, fencedLines, unclosedFence } = require('./spec-sections.cjs');
 const { committed } = require('./task-account.cjs');
 const { parkedOf } = require('./task-parks.cjs');
-const { taskRounds, pairPassed, changedUnder } = require('./round-report.cjs');
+const { taskRounds, pairPassed, changedUnder, reviewedNone } = require('./round-report.cjs');
 const { refusing } = require('./staged-payload.cjs');
 const { summaryFile, SUMMARY_PHASE } = require('./knowledge/artifacts.cjs');
 const { syncKnowledge } = require('./knowledge/sync.cjs');
@@ -295,17 +296,20 @@ function takeOutRecord(cwd, ref) {
 }
 
 /**
- * The round a fix's pair ended its review in, every reviewer passing it or
- * the orchestrator settling it, and whether it was settled; null where its
- * review has not ended so, or the fix changed under that round since
+ * The round a fix's reviewers ended its review in, every reviewer passing
+ * it or the orchestrator settling it, and whether it was settled — round 0
+ * for a one-line fix, read by none, with its record's why; null where
+ * its review has not ended so, or the fix changed under that round since
  * (round-report.cjs).
- * @param {string} cwd @param {TaskRef} ref @returns {{round: number, settled: boolean}|null}
+ * @param {string} cwd @param {TaskRef} ref @returns {{round: number, settled: boolean, why: string|null}|null}
  */
 function pairVerdict(cwd, ref) {
+  const why = reviewedNone(cwd, ref);
+  if (why !== null) return { round: 0, settled: false, why };
   const rounds = taskRounds(cwd, ref);
   const last = rounds.at(-1);
   if (last === undefined || !pairPassed(last) || changedUnder(cwd, ref, rounds) !== null) return null;
-  return { round: last.round, settled: !last.passes };
+  return { round: last.round, settled: !last.passes, why: null };
 }
 
 /**
@@ -320,14 +324,14 @@ function unendedWords(cwd, unit, open) {
   const standing = open.map(({ ref, status }) => `${shownTask(ref)} is ${names(ref).length > 0 ? `parked on ${names(ref).join(', ')}` : STATUS_WORDS[status]}`).join(', ');
   const draws = [...new Set(open.flatMap(({ ref }) => names(ref)))].map((name) => `raise draw ${unit} ${name}`);
   const parkedWay = draws.length === 0 ? '' : `, a fix parked going on once the person answers its question through its raise: ${draws.join(', ')}`;
-  return `${unit} closes once each of its fixes has ended — ${standing}: each is done once it is committed, in ${unit}'s pull request and passed by its pair, or closed with its reason${parkedWay}`;
+  return `${unit} closes once each of its fixes has ended — ${standing}: each is done once it is committed, in ${unit}'s pull request and passed by its reviewers, where any read it, or closed with its reason${parkedWay}`;
 }
 
 /**
  * The quick-fix's fixes done, each with its record written, read from a
  * copy of the tracker's store, so the board asking whether the close draws
  * never waits on a writer — refused while a fix is not ended
- * (`unendedWords`), one done has no round its pair passed, as a fix marked
+ * (`unendedWords`), one done has no round its reviewers passed, as a fix marked
  * done in the tracker by hand leaves it (19.5.22), or one done has no
  * record, naming each and the way on.
  * @param {string} cwd @param {Record<string, any>} manifest the unit's @returns {TaskDetail[]}
@@ -340,7 +344,7 @@ function recordedFixes(cwd, manifest) {
   const done = fixes.filter(({ status }) => status === 'done');
   const unpassed = done.filter(({ ref }) => pairVerdict(cwd, ref) === null).map(({ ref }) => shownTask(ref));
   if (unpassed.length > 0) {
-    throw new Error(`${unit} closes once its pair has passed each fix done — ${unpassed.join(', ')} ${unpassed.length === 1 ? 'has' : 'have'} no round its pair passed: its pair reads it, engine brief reviewer ${unit} ${unpassed[0]} --letter a, and b`);
+    throw new Error(`${unit} closes once its reviewers have passed each fix done — ${unpassed.join(', ')} ${unpassed.length === 1 ? 'has' : 'have'} no round they passed: its reviewers read it, engine brief reviewer ${unit} ${unpassed[0]} --letter a, and b where two read it`);
   }
   const recorded = recordedIds(manifest);
   const owed = done.filter(({ ref }) => !recorded.includes(taskId(ref))).map(({ ref }) => shownTask(ref));

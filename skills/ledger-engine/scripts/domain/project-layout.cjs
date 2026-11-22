@@ -19,7 +19,11 @@
 //   repository's at the top its project's folder lies in — on the branch,
 //   made at its start or checked out as it stands, or detached at its
 //   start; or the worktree there already, the branch made in place or
-//   switched to. Each worktree the layout adds is prepared as Claude Code
+//   switched to. The engine's own layouts are kept out of every checkout
+//   of the project's repository by a line of its exclude file, in the git
+//   directory they share, which the layout writes where it is not
+//   (`keepLayoutsOut`): never committed, never named by git status, never
+//   taken by `git add`. Each worktree the layout adds is prepared as Claude Code
 //   prepares an isolation worktree (worktree-prep.cjs); the root of a
 //   task's worktree is Claude Code's own isolation's, prepared already. A
 //   worktree laid afresh to run the project's tests in — a reader's
@@ -28,15 +32,23 @@
 //   worktree in its project's folder, as a task's worktree does.
 // - A scratch worktree sits beside the builders' isolation worktrees, in
 //   `.claude/worktrees/` of the project's main checkout, by its name
-//   (`scratchTop`), and is taken apart deepest first (`takeApart`).
+//   (`scratchTop`), and is taken apart deepest first (`takeApart`). A
+//   unit's own layout is named for the unit — a quick-fix's worktree
+//   `ledger-{unit}`, a one-line task's `ledger-{unit}-{task}` — and every
+//   other for its kind and a dot (`kindName`), `ledger-scratch.`,
+//   `ledger-unfixed.`, `ledger-mutants.` (kernel/code-root.cjs,
+//   `LAYOUT_KINDS`): no unit's name holds a dot, so the two never meet, and
+//   no kind's sweep takes a unit's layout apart.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs');
 const path = require('path');
 const { git, tryGit } = require('../kernel/git.cjs');
 const { repoOf, repoPath, checkoutTop, folderUnder } = require('../kernel/repos.cjs');
+const { repoFacts } = require('../kernel/isolated-git.cjs');
+const { LAYOUTS, LAYOUT } = require('../kernel/code-root.cjs');
 const lg = require('./landing-git.cjs');
-const { prepareWorktree, prepareWorktreeSteps, LAYOUTS, LAYOUT } = require('./worktree-prep.cjs');
+const { prepareWorktree, prepareWorktreeSteps } = require('./worktree-prep.cjs');
 
 // Where a repository lands, loaded at its call: the landing reads the
 // tracker, whose verbs lay a task out through this module.
@@ -104,6 +116,7 @@ function layOutPart(part, branch) {
  * @param {Part[]} parts holders before the repositories nested in them @param {string|null} branch @param {string} project the project's folder in its own checkout, whose settings name what is linked
  */
 function layOut(parts, branch, project) {
+  keepLayoutsOut(parts[0].repo.path);
   for (const part of parts) layOutPart(part, branch);
   const added = parts.filter(({ make }) => make !== null && !make.inPlace);
   prepareWorktree(added.map(({ repo }) => repo), added.map(({ repo, at }) => ({ dir: repo.dir, path: at })), project);
@@ -139,11 +152,31 @@ function layOutCommits(project, repos, commits, top) {
 /** Whether `root` is its repository's main checkout, read with no git: its `.git` a folder, not a linked worktree's file. @param {string} root */
 const isMainCheckout = (root) => fs.statSync(path.join(root, '.git'), { throwIfNoEntry: false })?.isDirectory() === true;
 
-/** The folder the engine's own layouts sit in, beside the builders' isolation worktrees: the main checkout's (worktree-prep.cjs, `LAYOUTS`). @param {string} root a checkout of the project's own repository */
+/** The folder the engine's own layouts sit in, beside the builders' isolation worktrees: the main checkout's (kernel/code-root.cjs, `LAYOUTS`). @param {string} root a checkout of the project's own repository */
 const layoutsFolder = (root) => path.join(isMainCheckout(root) ? root : lg.mainCheckoutOf(root), ...LAYOUTS.split('/'));
 
 /** A layout's folder name, by its name. @param {string} name */
 const layoutFolderName = (name) => `${LAYOUT}${name}`;
+
+/** The name of a layout of the engine's own other than a unit's, by its kind and its own name (the header's). @param {import('../kernel/code-root.cjs').LayoutKind} kind @param {string} name */
+const kindName = (kind, name) => `${kind}.${name}`;
+
+/** The line of a repository's exclude file that keeps the engine's own layouts out of its checkouts. */
+const LAYOUTS_EXCLUDED = `/${LAYOUTS}/${LAYOUT}*/`;
+
+/**
+ * The engine's own layouts kept out of every checkout of the repository at
+ * `root` (the header's): the line in its exclude file, written where it is
+ * not.
+ * @param {string} root
+ */
+function keepLayoutsOut(root) {
+  const file = path.join(/** @type {NonNullable<ReturnType<typeof repoFacts>>} */ (repoFacts(root)).commonDir, 'info', 'exclude');
+  const text = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
+  if (text.split('\n').includes(LAYOUTS_EXCLUDED)) return;
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.appendFileSync(file, `${text === '' || text.endsWith('\n') ? '' : '\n'}${LAYOUTS_EXCLUDED}\n`);
+}
 
 /**
  * A scratch worktree's top: beside the builders' isolation worktrees, in
@@ -166,4 +199,4 @@ function takeApart(repos, top) {
   }
 }
 
-module.exports = { commitOf, heldIn, startsAt, layOut, layOutAt, layOutCommits, layoutsFolder, layoutFolderName, scratchTop, takeApart };
+module.exports = { commitOf, heldIn, startsAt, layOut, layOutAt, layOutCommits, layoutsFolder, layoutFolderName, kindName, scratchTop, takeApart };

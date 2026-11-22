@@ -19,7 +19,14 @@
 // into one phase, and ready to build's checklist closed — `feature`; and the
 // same with the person's change of a call of Claude's on the topic before
 // its close and of one at the spec, logged in a trust log the world carries
-// (`worldConfig`) — `featureDeparted`. Each
+// (`worldConfig`) — `featureDeparted`. A bugfix, `restore`, its
+// investigation hunted to its close — a symptom, the root cause and the fix
+// logged on Claude's calls, both validated and taken in, and the person's
+// change of a call of Claude's along the way, logged in the trust log the
+// world carries — and closed into its spec with no gate, its recap staged;
+// then its spec landed citing them, reviewed clean, cut into one phase and
+// ready to build's checklist closed — `bugfix`; a feature, `sync`, the
+// unit whose code its bug is in. Each
 // built once per run and copied for each test, its trust log in a
 // config folder of the test's own.
 // ---------------------------------------------------------------------------
@@ -33,6 +40,7 @@ const { createManifest, useTempFolder } = require('./discovery-test-utils.cjs');
 const { MADE } = require('./ledger-world.cjs');
 const { labelling } = require('./labels.cjs');
 const { DECIDED_ITEMS } = require('./pipeline-world.cjs');
+const { validated } = require('./investigation-world.cjs');
 
 const SCRIPTS = path.join(__dirname, '../../skills/ledger-engine/scripts');
 const { trustLogPath } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
@@ -40,6 +48,9 @@ const { trustLogPath } = require(path.join(SCRIPTS, 'domain/trust-log.cjs'));
 const UNIT = 'payments';
 const FEATURE = 'tally';
 const FEATURE_AT = `${FEATURE}.discussion.${FEATURE}`;
+const BUGFIX = 'restore';
+const BUGFIX_AT = `${BUGFIX}.investigation.${BUGFIX}`;
+const FIXES = 'sync';
 const SESSION = Object.freeze({ CLAUDE_CODE_SESSION_ID: 'ready-to-build-session' });
 const PERSON = Object.freeze({ by: 'person', who_moved_whom: 'none' });
 const SPEC_AT = `${UNIT}.specification`;
@@ -192,6 +203,44 @@ function buildFeature(dir, { departed = false } = {}) {
   closeReady(dir, FEATURE);
 }
 
+/** The bugfix's recap of its hunt. */
+const RECAP = Object.freeze({ hunt: 'Two hypotheses; an empty capture saved over a full one each time.' });
+
+/** The bugfix's recap staged, `bug` naming what the bug is in: the stage's answer. @param {string} dir @param {Record<string, string>} [bug] */
+function stageRecap(dir, bug = {}) {
+  return ok(dir, ['investigation', 'stage', BUGFIX, '--file', writeState(dir, layout.cache('scratch', 'recap.json'), JSON.stringify({ ...RECAP, ...bug }))], { env: SESSION });
+}
+
+/**
+ * The bugfix's investigation hunted to its close and closed into its spec,
+ * and its spec landed, reviewed, cut and closed for ready to build.
+ * @param {string} dir
+ */
+function buildBugfix(dir) {
+  createManifest(dir, BUGFIX, { work_type: 'bugfix' });
+  createManifest(dir, FIXES, { phases: { discussion: { items: { [FIXES]: { status: 'completed' } } } } });
+  commitAll(dir, 'init');
+  ok(dir, ['environment', 'confirm']);
+  ok(dir, ['enter', 'investigation', BUGFIX], { env: SESSION });
+  ok(dir, ['investigation-log', 'symptom', BUGFIX, '--text', 'Restore brought nothing back']);
+  made.cause = answered(dir, BUGFIX_AT, 'What empties the save?', { ...MADE, text: 'Every save trusts an empty capture.' });
+  ok(dir, ['investigation-log', 'root-cause', BUGFIX, '--entry', made.cause]);
+  validated(dir, BUGFIX, 'root-cause-validation', SESSION);
+  made.inHunt = reversed(dir, BUGFIX_AT, answered(dir, BUGFIX_AT, 'Does restore say what it lost?', { ...MADE, text: 'It says nothing.' }), 'It names what it lost.');
+  const asked = write(dir, 'ask', BUGFIX_AT, [], { ...MADE, text: 'How should restore stop losing sessions?' });
+  made.fix = write(dir, 'decide', BUGFIX_AT, ['--answers', asked], { ...MADE, text: 'Never save an empty capture over a full one.', why: 'The empty capture is the cause.' });
+  ok(dir, ['investigation-log', 'fix-direction', BUGFIX, '--question', asked]);
+  validated(dir, BUGFIX, 'fix-validation', SESSION);
+  stageRecap(dir);
+  written(dir, [
+    '# Restore', '', '## 1. Saving', '', '### 1.1 The capture', '',
+    `1.1.1 An empty capture is never saved over a full one. [${made.fix}]`, '',
+    '## 1-S. Scenarios for §1', '', '1.S1 Given a full save, when an empty capture is taken, then the save is kept. (1.1.1)', '',
+  ].join('\n'), BUGFIX);
+  cut(dir, [{ name: 'Saving', goal: 'A save is never emptied.', scenarios: ['1.S1'], sections: ['1'], relies_on: [] }], BUGFIX);
+  closeReady(dir, BUGFIX);
+}
+
 const landed = fixtureFrom('ready-to-build-', buildLanded, { kept: made });
 
 const closed = fixtureFrom('ready-to-build-closed-', (at) => {
@@ -205,6 +254,8 @@ const feature = fixtureFrom('ready-to-build-feature-', (dir) => buildFeature(dir
 const worldConfig = (dir) => path.join(dir, '.trust');
 
 const featureDeparted = fixtureFrom('ready-to-build-feature-departed-', (dir) => withEnv({ LEDGER_CONFIG_DIR: worldConfig(dir) }, () => buildFeature(dir, { departed: true })), { kept: made });
+
+const bugfix = fixtureFrom('ready-to-build-bugfix-', (dir) => withEnv({ LEDGER_CONFIG_DIR: worldConfig(dir) }, () => buildBugfix(dir)), { kept: made });
 
 /**
  * Each test of the calling file on a copy of `world`, removed after it, its
@@ -264,5 +315,5 @@ function readyHelpers(dir, unit = UNIT) {
 const commented = (id, text) => ({ [id]: { s: 'comment', t: { p1000: { by: 'p', x: text } } } });
 
 module.exports = {
-  UNIT, FEATURE, FEATURE_AT, FEATURE_PHASE, SESSION, SPEC_AT, READ_BACK, CARDS, REFUNDS, made, write, answered, cut, reviewPass, landReviewed, written, closeReady, landed, closed, feature, featureDeparted, worldConfig, useReadyWorld, readyHelpers, commented,
+  UNIT, FEATURE, FEATURE_AT, FEATURE_PHASE, BUGFIX, BUGFIX_AT, FIXES, RECAP, SESSION, SPEC_AT, READ_BACK, CARDS, REFUNDS, made, write, answered, cut, reviewPass, landReviewed, written, closeReady, landed, closed, feature, featureDeparted, bugfix, stageRecap, worldConfig, useReadyWorld, readyHelpers, commented,
 };

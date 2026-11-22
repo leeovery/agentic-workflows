@@ -26,7 +26,7 @@ const assert = require('node:assert');
 
 const harness = require('../../scripts/engine-harness.cjs');
 const { useTempFolder } = require('../../scripts/discovery-test-utils.cjs');
-const { UNIT, BRANCH, SET, fixChanged, fixDone, twoFixesBuilt, fixesRecorded } = require('../../scripts/quick-fix-world.cjs');
+const { UNIT, BRANCH, SET, fixChanged, fixDone, twoFixesBuilt, fixesRecorded, treeGone } = require('../../scripts/quick-fix-world.cjs');
 const side = require('./landing.cjs');
 const { GH_ENV, pulls, tipOnGithub } = require('./world.cjs');
 
@@ -83,6 +83,7 @@ describe('a quick-fix\'s one pull request on GitHub, squashed by hand there (R14
   it('squashed by hand there and its branch deleted, main here behind: a fix started after it has its branch cut afresh from main as GitHub has it', () => {
     dir = world();
     side.mergedOnGithub(dir, BRANCH, 'squash', false);
+    treeGone(dir);
     side.deleted(dir, BRANCH);
     third();
 
@@ -94,6 +95,7 @@ describe('a quick-fix\'s one pull request on GitHub, squashed by hand there (R14
     third();
     ok(dir, ['land', 'open', UNIT, '1.3'], as());
     side.mergedOnGithub(dir, BRANCH, 'squash', true);
+    treeGone(dir);
     side.deleted(dir, BRANCH);
     git(dir, ['update-ref', '-d', `refs/remotes/origin/${BRANCH}`]);
     git(dir, ['reflog', 'expire', '--expire=now', '--all']);

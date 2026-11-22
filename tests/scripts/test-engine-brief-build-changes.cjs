@@ -69,7 +69,7 @@ describe('a change to a task under review (12.1.4)', () => {
 
     writeState(dir, 'pay/build/tasks/1.2/addition.md', 'The person answered: the receipt names the amount.\n');
     ok(dir, ['task', 'add', UNIT, '1.2', '--file', statePath(dir, 'pay/build/tasks/1.2/addition.md'), '--by', 'orchestrator']);
-    const changed = 'task 1.2 of pay changed after round 1 passed — something was added to it, or a call of it decided against its lean — so its pair reads it again first: engine brief reviewer pay 1.2 --letter <letter>, each reviewer of round 2';
+    const changed = 'task 1.2 of pay changed after round 1 passed — something was added to it, or a call of it decided against its lean — so its reviewers read it again first: engine brief reviewer pay 1.2 --letter <letter>, each reviewer of round 2';
     const back = issued(['builder', UNIT, '1.2']).brief;
     assert.ok(back.includes('The task changed after your reviewers passed it in round 1 — something was added to it, or one of its calls decided against its lean: build what changed, and your reviewers read the task again before its account is written.'), back);
     assert.ok(!back.includes('it has landed'), back);

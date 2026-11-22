@@ -263,7 +263,7 @@ describe('the tracker set up by the first task verb (7.S17, 7.S21)', () => {
 
     const { error } = refuses(dir, ['task', 'create', UNIT, '1', '--file', taskFile(dir, 'write', template('Write the ledger'))]);
 
-    assert.match(error, new RegExp(`^phase 1 of pay is not written — and ${STATE_BRANCH} is committed here but was not pushed to origin`));
+    assert.match(error, new RegExp(`^phase 1 of pay is not written — write it first: engine task phase pay 1 --title <title> — and ${STATE_BRANCH} is committed here but was not pushed to origin`));
     assert.strictEqual(lastMessage(dir), 'task(pay): set up the tracker');
   });
 
@@ -341,7 +341,7 @@ describe('task phase and task create (7.1.3, 7.4.1, 12.4.1)', () => {
   });
 
   it('the tracker\'s verbs are the whole of `task`: the old plan\'s bookkeeping, its fix count and its analysis cycles answer the usage, a start by topic its own (3.S10, 13.S5)', () => {
-    const usage = 'Usage: engine task <phase|create|add|type|close-plan|link|unlink|ready|start|done|close|list|show|worktree|stopped|account|settle|note> …';
+    const usage = 'Usage: engine task <phase|create|add|type|close-plan|link|unlink|ready|start|done|close|list|show|worktree|stopped|account|review|settle|note> …';
     refusePristine([
       [['task', 'init', UNIT, UNIT], usage],
       [['task', 'fix-attempt', UNIT, UNIT], usage],
@@ -364,7 +364,7 @@ describe('task phase and task create (7.1.3, 7.4.1, 12.4.1)', () => {
       ...['Write\rthe ledger', 'Write\vthe ledger', 'Write\fthe ledger', 'Write the ledger\u2028', 'Write\u2028the ledger', 'Write\u2029the ledger']
         .map((title, i) => [['task', 'create', UNIT, '1', '--file', taskFile(dir, `broken-${i}`, template(title))], broken]),
       [['task', 'phase', UNIT, '1', '--title', 'Again'], 'phase 1 of pay is already written'],
-      [['task', 'create', UNIT, '2', '--file', file], 'phase 2 of pay is not written'],
+      [['task', 'create', UNIT, '2', '--file', file], 'phase 2 of pay is not written — write it first: engine task phase pay 2 --title <title>'],
       [['task', 'list', UNIT, '2'], 'phase 2 of pay is not written'],
       [['task', 'ready', UNIT, '2'], 'phase 2 of pay is not written'],
       [['task', 'link', UNIT, '1.9', '--after', '1.1'], 'task 1.9 of pay is not in the tracker'],
@@ -628,7 +628,7 @@ describe('a driver whose tools are not installed', () => {
       refusePristine([
         [['task', 'list', UNIT, '9'], 'phase 9 of pay is not written'],
         [['task', 'ready', UNIT, '9'], 'phase 9 of pay is not written'],
-        [['task', 'create', UNIT, '9', '--file', taskFile(dir, 'write', template('Write the ledger'))], 'phase 9 of pay is not written'],
+        [['task', 'create', UNIT, '9', '--file', taskFile(dir, 'write', template('Write the ledger'))], 'phase 9 of pay is not written — write it first: engine task phase pay 9 --title <title>'],
         [['task', 'phase', UNIT, '1', '--title', 'Again'], 'phase 1 of pay is already written'],
         [['task', 'show', UNIT, '1.9'], 'task 1.9 of pay is not in the tracker'],
       ]);
