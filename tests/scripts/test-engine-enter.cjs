@@ -27,7 +27,8 @@
 // quick-fix refused for manage (8.S12) and an epic past its spec for the
 // product's conversation; the open log carried on, or the next opened and
 // committed, the conversation's line written into it where the log's last
-// such line is another's (8.S62, 8.S70, 8.S75); the reads — the product's two latest logs, the
+// such line is another's (8.S62, 8.S70, 8.S75); the reads — the product's two latest logs, or
+// its picture and its latest sitting by its closing line once the picture is written, the
 // roadmap, the product record and the research owed (8.S69), an epic's older
 // logs by their closing lines and two latest in full, its first log's
 // pointers, its map and the product record (8.S53) — and a log another
@@ -693,6 +694,22 @@ describe('discovery: the product\'s conversation (8.2.7–8.2.10)', () => {
     const opened = read();
     fs.appendFileSync(at(layout.productSession('003')), '\nDark mode first.\n');
     assert.deepStrictEqual([opened, read()], [logs('001', '002'), logs('002', '003')]);
+  });
+
+  it('a return once the conversation has written its picture reads the picture in full and the latest log holding talk by its closing line, in place of the latest logs in full; a start from seeds reads the seeds and neither', () => {
+    writeState(dir, layout.productPicture, '# Where the product stands\n');
+    writeState(dir, '.inbox/ideas/2026-01-03--dark-mode.md', '# Dark mode\n');
+    const seeded = enter(['discovery', 'product', '--seeds', '.ledger/.inbox/ideas/2026-01-03--dark-mode.md']).sections;
+    assert.strictEqual(seeded.match(/^(?:picture|latest sitting|session log): .*$/gm), null);
+    assert.strictEqual(enter(['discovery', 'product']).sections, data([
+      `picture: ${at(layout.productPicture)}`,
+      `latest sitting: ${at(layout.productSession('002'))} — Pricing.`,
+      `roadmap: \`${ENGINE} roadmap state\``,
+      `product: \`${ENGINE} ledger product\``,
+      'research owed: no',
+      payloadAt('sess-1'),
+      `log: ${at(layout.productSession('003'))}`,
+    ]));
   });
 
   it('8.2.9: a piece of work\'s type call, with another live session in the product\'s conversation, asks nothing first and opens, writes, commits and records nothing — no session, no position, no presence, the other\'s hold left as it stands — and reads the roadmap and the live inbox, and the seeds where it starts from any; refused at an epic, writing nothing', () => {

@@ -37,7 +37,7 @@ const { stateRoot } = require('../kernel/state-root.cjs');
 const { codeRoot } = require('../kernel/code-root.cjs');
 const { STATE_BRANCH, withStateLock, commitState } = require('./state-worktree.cjs');
 const { SETTINGS_SPEC } = require('./settings.cjs');
-const { PRODUCT_SESSIONS } = require('./layout.cjs');
+const { PRODUCT_SESSIONS, PRODUCT_PICTURE } = require('./layout.cjs');
 
 /** The project manifest, state-relative. */
 const PROJECT_MANIFEST_SPEC = 'manifest.json';
@@ -78,10 +78,11 @@ function discoveryScope(cwd, workUnit) {
 
 /**
  * The product scope — what the product's conversation writes: its session
- * logs and the project manifest, where its marker and the roadmap are.
- * Shared by `commit --product` and `discovery-session close product`.
+ * logs, its picture, and the project manifest, where its marker and the
+ * roadmap are. Shared by `commit --product` and `discovery-session close
+ * product`.
  */
-const PRODUCT_SCOPE = Object.freeze([PRODUCT_SESSIONS, PROJECT_MANIFEST_SPEC]);
+const PRODUCT_SCOPE = Object.freeze([PRODUCT_SESSIONS, PRODUCT_PICTURE, PROJECT_MANIFEST_SPEC]);
 
 /**
  * The state commit: `paths` in the state worktree on `ledger-state`, with

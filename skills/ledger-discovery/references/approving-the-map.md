@@ -24,6 +24,10 @@ A topic on the map already is named alone. Each roadmap item the epic was starte
 
 What the shaping put beyond this epic — the person placed it later, or the log reads that way — goes on the roadmap with the map, never as a topic: `{"name", "summary", "horizon", "sources"}`, at capability grain, `sources` the log's path from the state root, and `"kind": "bug"` or `"quick-fix"` for those. The horizon is the person's.
 
+## The Earlier Record
+
+Where the person brought an earlier record, read it against the briefs: name to them each of its points that no brief carries, and put each where their word places it — a brief, a park, or a direction not taken.
+
 ## The Screen
 
 Write the payload to `.ledger/.cache/{home}/discovery/{home}/approve-map-payload.json`, `{"topics": […], "parks": […], "binds": […]}` — every live topic in its order — then stage it and draw the screen:

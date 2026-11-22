@@ -150,10 +150,11 @@ describe('discovery-log at the product (8.14.12)', () => {
     });
   });
 
-  it('a keep from a fresh conversation while the product\'s conversation holds the session commits its own line alone, onto the log as the branch holds it: what the product\'s conversation wrote stays in the tree, uncommitted', () => {
+  it('a keep from a fresh conversation while the product\'s conversation holds the session commits its own line alone, onto the log as the branch holds it: what the product\'s conversation wrote, its picture among it, stays in the tree, uncommitted', () => {
     ok(dir(), ['enter', 'discovery', 'product'], { env: { CLAUDE_CODE_SESSION_ID: 'talker' } });
     const talked = readState(dir(), LOG);
     writeState(dir(), LOG, `${talked}${talked.endsWith('\n') ? '' : '\n'}- The person wants notes kept as furniture.\n`);
+    writeState(dir(), layout.productPicture, '# Where the product stands\n');
     const before = stateGit(dir(), ['show', `HEAD:${LOG}`]);
 
     keep(['view', 'product', '--text', 'Notes are furniture.']);
@@ -164,7 +165,7 @@ describe('discovery-log at the product (8.14.12)', () => {
       committed: `${before}${before === '' ? '' : '\n'}## Views of the product\n\n- Notes are furniture.\n`,
       files: `${LOG}\n`,
       tree: `${talked}${talked.endsWith('\n') ? '' : '\n'}- The person wants notes kept as furniture.\n\n## Views of the product\n\n- Notes are furniture.\n`,
-      dirt: ` M ${LOG}\n`,
+      dirt: ` M ${LOG}\n?? ${layout.productPicture}\n`,
     });
     assert.match(talked, /^## \d{4}-\d{2}-\d{2} · session talker$/m, 'the product\'s conversation\'s header stands in the tree, uncommitted');
   });

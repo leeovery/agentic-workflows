@@ -81,7 +81,7 @@ const { ROLES, issuedOf } = require('./brief-names.cjs');
 const { loadManifest, loadProjectManifest } = require('./reads.cjs');
 const { buildBegun, buildRefusal, quickFixReviewRefusal, isFixPhase, computeTopicLifecycle, itemOf, phaseData, UNIT_PHASES } = require('./derivations.cjs');
 const { latestSessionLog, productSession } = require('./discovery-session.cjs');
-const { PRODUCT_SESSIONS } = require('./layout.cjs');
+const { PRODUCT_SESSIONS, PRODUCT_PICTURE } = require('./layout.cjs');
 const { phaseSkill, HANDOFF_TARGETS } = require('./handoff.cjs');
 const { stepOfId, shownTask } = require('./task-id.cjs');
 const { section, dataSection, GATE_MOD_INSTRUCTION } = require('./projections/surfaces.cjs');
@@ -515,9 +515,9 @@ function leaveUnit(sessionId, workUnit) {
 // discussion's names the topic's record and its log (24.2.1–24.2.3), and a
 // bugfix investigation's the same, its log the investigation (19.4.3);
 // discovery's, at an epic, the unit's map and the open log, and at the
-// product's conversation its open log (24.2.8, 8.14.6) — the latest on disk
-// where none is open; specification's, at the unit whatever topic its place
-// names, what its entry reads to carry it on — each live topic's record and
+// product's conversation its picture, where it has one, and its open log
+// (24.2.8, 8.14.6) — the latest on disk where none is open; specification's,
+// at the unit whatever topic its place names, what its entry reads to carry it on — each live topic's record and
 // log, the unit's own record, the canonical assets, then the spec once written and the cut once cut,
 // and while the person's review page is open, its address and where its
 // marks are read back to (spec-entry.cjs), the spec keeping no log;
@@ -605,13 +605,14 @@ function productActive(cwd) {
  */
 
 /**
- * A discovery home's note, carried whole: its calls, and its log — the open
- * one, else the latest on disk — read and caught up.
- * @param {string} skill @param {string[]} calls @param {string[]} log
+ * A discovery home's note, carried whole: its calls, what it reads before
+ * its log, and its log — the open one, else the latest on disk — read and
+ * caught up.
+ * @param {string} skill @param {string[]} calls @param {string[]} log @param {string[]} [before]
  * @returns {Work}
  */
-function discoveryWork(skill, calls, log) {
-  return { skill, documents: log, whole: { calls, log: log[0] ?? null } };
+function discoveryWork(skill, calls, log, before = []) {
+  return { skill, documents: [...before, ...log], whole: { calls, log: log[0] ?? null } };
 }
 
 /**
@@ -666,7 +667,7 @@ function workAt(cwd, position, manifest, sessionId) {
   const skill = skillAt(name, phase, typeof manifest?.work_type === 'string' ? manifest.work_type : undefined);
   if (skill === null) return { skill: null, documents: [] };
   if (phase === undefined) {
-    if (name === PRODUCT) return discoveryWork(skill, [], sessionLog(statePath(cwd, PRODUCT_SESSIONS), productActive(cwd)));
+    if (name === PRODUCT) return discoveryWork(skill, [], sessionLog(statePath(cwd, PRODUCT_SESSIONS), productActive(cwd)), [statePath(cwd, PRODUCT_PICTURE)]);
     if (name === ROADMAP) return { skill, documents: [] };
     return { skill, documents: [], whole: { calls: [], log: null } };
   }

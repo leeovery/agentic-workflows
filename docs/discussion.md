@@ -10,7 +10,7 @@ Before it says anything, Claude reads what the topic starts from: its brief, and
 
 The opening fits the topic: the shape of what has been said, a perspective from the brief or beyond it, what earlier decisions already settle and where from, and the open questions, with Claude's lean on any where a logical one exists. Each open question it names goes on the map. The opening decides nothing.
 
-What you settled on in discovery is working ground, never asked again. It moves when something here contradicts it, or when you reopen it yourself.
+What you settled on in discovery is working ground, never asked again. It moves when something here contradicts it, or when you reopen it yourself. A point the brief carries from an [earlier record](discovery.md#what-you-bring-from-before) is not: it goes on the map and is put to you once, with the earlier answer as Claude's lean, and the topic does not close while one waits unasked.
 
 ## The conversation
 

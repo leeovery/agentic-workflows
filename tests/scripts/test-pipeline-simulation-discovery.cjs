@@ -8,7 +8,8 @@
 // in words taking its type call in no session of the product's, so a fix
 // asked for in one window never stops, reads or closes the product's talk
 // going on in another; the next
-// day's session, after the last one ended on its roadmap items; the note a
+// day's session, after the last one ended on its roadmap items, opening
+// from the picture of the product it kept; the note a
 // compaction carries at either level; the brownfield offer's research, owed
 // from its yes until the findings land; the conversation moving between the
 // product, an epic's discovery and a topic in one session, with no handoff;
@@ -163,10 +164,11 @@ describe('pipeline simulation: discovery\'s entry', () => {
     assert.deepStrictEqual([asked, started.product_session_closed, started.next.kind, ended.session], [false, null, 'invoke', '001']);
   });
 
-  it('the next day\'s opening, after the session was ended, opens the next log and reads where it had got to (8.S69)', () => {
+  it('the next day\'s opening, after the session was ended, opens the next log and reads where it had got to, from the picture the session kept (8.S69)', () => {
     startPick(sim, 'p');
     inTheProduct(sim);
     fs.appendFileSync(logPath(sim, PRODUCT, 1), '\nLicensing waits on pricing.\n');
+    const picture = sim.write('.ledger/.product/picture.md', '# Where the product stands\n\n- Licensing waits on pricing — the person\'s view.\n');
 
     // A spike and a shared file land at the product's level; a path that is
     // not there lands nothing, and the prompt's skip lands the rest.
@@ -189,12 +191,13 @@ describe('pipeline simulation: discovery\'s entry', () => {
     sim.run(answerGate(sim, 'roadmap harvest gate', '--pick', 'y').next.argv);
     sim.run(['discovery-session', 'close', PRODUCT, '-m', 'discovery(product): end session 001']);
     assert.deepStrictEqual(sim.run(['roadmap', 'state']).items.map((/** @type {{name: string, sources: string[]}} */ i) => [i.name, i.sources]), [['licensing', [logOf(PRODUCT, 1)]]]);
+    assert.strictEqual(stateGit(sim.dir, ['status', '--porcelain', '--', '.product/picture.md']), '', 'the picture committed with the session');
 
     startPick(sim, 'p');
     const next = inTheProduct(sim);
     assert.strictEqual(next.started, true);
-    assert.deepStrictEqual([named(sim, 'session log'), named(sim, 'log'), named(sim, 'research owed')],
-      [[logPath(sim, PRODUCT, 1)], [logPath(sim, PRODUCT, 2)], ['no']]);
+    assert.deepStrictEqual([named(sim, 'picture'), named(sim, 'latest sitting'), named(sim, 'session log'), named(sim, 'log'), named(sim, 'research owed')],
+      [[path.join(sim.dir, picture)], [`${logPath(sim, PRODUCT, 1)} — Licensing waits on pricing.`], [], [logPath(sim, PRODUCT, 2)], ['no']]);
     const tail = () => /** @type {any} */ (startMenuScreen(startMenuRead(sim.dir)).rows.find((row) => row.key === 'p')?.label).tail;
     const opened = tail();
     fs.appendFileSync(logPath(sim, PRODUCT, 2), '\nSeats before pricing.\n');

@@ -190,12 +190,13 @@ describe('engine commit --discovery: a unit\'s discovery scope', () => {
   });
 });
 
-// The product's session log and the project manifest written, beside every
-// file `commit --product` leaves out: a unit's brief, the inbox, the
-// roadmap's notes, and a shared file no log links (9.S38).
+// The product's session log, its picture and the project manifest written,
+// beside every file `commit --product` leaves out: a unit's brief, the inbox,
+// the roadmap's notes, and a shared file no log links (9.S38).
 const productWorld = fixtureFrom('engine-commit-product-', (dir) => {
   twoTopics(dir);
   writeState(dir, layout.productSession('001'), '# Product session 001\n');
+  writeState(dir, layout.productPicture, '# Where the product stands\n');
   writeState(dir, layout.projectManifest, `${readState(dir, layout.projectManifest).trimEnd()}\n\n`);
   writeState(dir, layout.topic('payments', 'topic-a', 'brief.md'), '# Brief — topic A\n');
   writeState(dir, layout.inbox('ideas', '2026-10-30--dark-mode.md'), '# Dark mode\n');
@@ -204,7 +205,7 @@ const productWorld = fixtureFrom('engine-commit-product-', (dir) => {
 });
 
 describe('engine commit --product: the product\'s conversation\'s scope', () => {
-  it('commits the product\'s session logs and the project manifest — never a unit\'s files, the inbox, the roadmap\'s notes or an unlinked shared file; beside a work unit or another scope it is refused', () => {
+  it('commits the product\'s session logs, its picture and the project manifest — never a unit\'s files, the inbox, the roadmap\'s notes or an unlinked shared file; beside a work unit or another scope it is refused', () => {
     const dir = productWorld();
     try {
       assert.match(refuses(dir, ['commit', 'payments', '--product', '-m', 'x']).error, /Usage/);
@@ -212,7 +213,7 @@ describe('engine commit --product: the product\'s conversation\'s scope', () => 
       const untracked = [` M ${layout.brief('payments', 'topic-a')}`, '?? .inbox/', '?? .product/assets/', '?? .product/notes/'];
 
       ok(dir, ['commit', '--product', '-m', 'product: session 001']);
-      assert.deepStrictEqual([headFiles(dir).sort(), statusLines(dir).sort()], [[layout.productSession('001'), layout.projectManifest].sort(), untracked]);
+      assert.deepStrictEqual([headFiles(dir).sort(), statusLines(dir).sort()], [[layout.productSession('001'), layout.productPicture, layout.projectManifest].sort(), untracked]);
     } finally {
       cleanupFixture(dir);
     }

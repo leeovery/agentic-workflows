@@ -2398,8 +2398,8 @@ function runCommit(call, argv) {
     } else if (inbox) {
       scope = '.inbox';
     } else if (productScope) {
-      // The product's conversation's commit: its session logs and the project
-      // manifest, where its marker and the roadmap are.
+      // The product's conversation's commit: its session logs, its picture
+      // and the project manifest, where its marker and the roadmap are.
       scope = [...PRODUCT_SCOPE];
     } else {
       const wu = /** @type {string} */ (workUnit);

@@ -8,12 +8,12 @@
 // verb's own commit, `commit --whole` and `--migrations`, and a
 // transaction's tail, which answers the refusal as a commit pending (6.2.5,
 // 6.S6); a file gone, from the working tree or with its deletion staged,
-// refuses nothing. Every changed log of 4.11's rides along with the verb's
-// paths and is pushed with them, and no other file does (6.3.2, 6.S7) but
-// what a log links in a spike or the assets (9.10.11, 9.S39). The
-// files the person's tools leave beside the state's — Finder's, Explorer's,
-// AppleDouble's, Vim's, Emacs's, JetBrains' — are neither refused nor
-// committed, nor is an agent's `.txt` staging beside a file place, while a
+// refuses nothing. Every changed log of 4.11's, and the product's picture,
+// rides along with the verb's paths and is pushed with them, and no other
+// file does (6.3.2, 6.S7) but what a log links in a spike or the assets
+// (9.10.11, 9.S39). The files the person's tools leave beside the state's —
+// Finder's, Explorer's, AppleDouble's, Vim's, Emacs's, JetBrains' — are
+// neither refused nor committed, nor is an agent's `.txt` staging beside a file place, while a
 // `.txt` beside none is a stray; a name in another case is its place where the filesystem
 // ignores case; and a merge's landing is never held to the layout. The
 // places themselves are test-engine-layout.cjs's.
@@ -217,9 +217,9 @@ describe('the logs a state commit takes along (6.3.2)', () => {
     assert.strictEqual(status(root), '');
   });
 
-  it('takes 4.11\'s four logs alone: the layout\'s other files stay as they are', () => {
+  it('takes 4.11\'s four logs and the product\'s picture alone: the layout\'s other files stay as they are', () => {
     const { root } = codeProject(folder(), { state: true });
-    const logs = [LOG, layout.session(UNIT, '001'), layout.productSession('001'), layout.unit(UNIT, 'build', 'log.md')];
+    const logs = [LOG, layout.session(UNIT, '001'), layout.productSession('001'), layout.productPicture, layout.unit(UNIT, 'build', 'log.md')];
     const left = [SPEC, BRIEF];
     for (const rel of [...logs, ...left]) createFile(root, rel, `${rel}\n`);
     createFile(root, layout.projectManifest, '{}\n');

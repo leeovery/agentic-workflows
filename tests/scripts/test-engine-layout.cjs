@@ -4,14 +4,15 @@
 // The layout on disk (ledger-engine/scripts/domain/layout.cjs, 4.11): the
 // table of places and its reader, `layoutPlace`. Unit layer, no world.
 // Every place 4.11.17's tree draws holds a sample path, with its kind — the
-// logs 4.11's four, a topic's brief the engine's alone (8.7.6) — and a sample
-// outside each folder is in none, today's briefs folder among them; each
+// logs 4.11's four and the product's picture, which a state commit takes
+// along as it takes them, a topic's brief the engine's alone (8.7.6) — and a
+// sample outside each folder is in none, today's briefs folder among them; each
 // report place takes a letter per reviewer of the count (13.3.4), and an
 // area's report the area's number and slug, so none is named as another's;
 // names are compared as the fold spells them; the tracker's store is each
 // shipped task driver's; the product's conversation keeps one folder of
-// logs; the asset homes, and the spike folders among them; and the suites'
-// layout helper names only places the table holds.
+// logs, its picture beside it; the asset homes, and the spike folders among
+// them; and the suites' layout helper names only places the table holds.
 // ---------------------------------------------------------------------------
 
 require('./hermetic-env.cjs');
@@ -39,6 +40,7 @@ const DRAWN = Object.freeze({
   '.inbox/quickfixes/2026-10-30--typo.md': 'file .inbox/{ideas,bugs,quickfixes}/{YYYY-MM-DD}--{slug}.md',
   '.inbox/.archived/bugs/2026-10-30--login-timeout.md': 'file .inbox/.archived/{ideas,bugs,quickfixes}/{YYYY-MM-DD}--{slug}.md',
   '.product/sessions/session-001.md': 'log .product/sessions/session-{NNN}.md',
+  '.product/picture.md': 'log .product/picture.md',
   '.product/notes/2026-10-30--smart-retry.md': 'file .product/notes/{YYYY-MM-DD}--{slug}.md',
   '.product/spikes/001-pricing-page/round-1/index.html': 'free .product/spikes/{NNN}-{slug}',
   '.product/assets/brand/logo.svg': 'free .product/assets',
@@ -95,7 +97,7 @@ const DRAWN = Object.freeze({
 const OUTSIDE = Object.freeze([
   'notes.md', '.ledger.jsonl.bak', 'manifest.json.bak', '.tmp/notes.md',
   '.inbox/2026-10-30--smart-retry.md', '.inbox/ideas/smart-retry.md', '.inbox/notes/2026-10-30--smart-retry.md', '.inbox/.archived/2026-10-30--smart-retry.md',
-  '.product/notes.md', '.product/sessions/notes.md', '.product/notes/smart-retry.md', '.product/spikes/pricing-page/index.html',
+  '.product/notes.md', '.product/sessions/notes.md', '.product/sessions/picture.md', '.product/picture.txt', '.product/notes/smart-retry.md', '.product/spikes/pricing-page/index.html',
   '.state/notes.md', '.baseline/overview.md', 'pay/.state/discovery-gap-analysis.md',
   'pay/notes.md', 'pay/scratch/notes.md', 'pay/discovery/notes.md', 'pay/topics/auth.md', 'pay/topics/auth/notes.md', 'pay/topics/auth/mail/retry-policy.md',
   'pay/topics/auth/experiments/notes.md', 'pay/topics/auth/experiments/E1-token-cost/notes.md', 'pay/topics/auth/experiments/E1-token-cost/E1.1-cold-start/notes.md',
@@ -163,8 +165,8 @@ describe('4.11\'s places (4.11.17)', () => {
     }
   });
 
-  it('27.S5: the product\'s conversation keeps its logs in one folder, .product/sessions/, and in no other', () => {
-    assert.deepStrictEqual(LAYOUT.filter((at) => at.kind === 'log' && at.path.startsWith('.product/')).map((at) => at.path), ['.product/sessions/session-{NNN}.md']);
+  it('27.S5: the product\'s conversation keeps its logs in one folder, .product/sessions/, and in no other, its picture the one file beside them a state commit takes along as it takes them', () => {
+    assert.deepStrictEqual(LAYOUT.filter((at) => at.kind === 'log' && at.path.startsWith('.product/')).map((at) => at.path), ['.product/sessions/session-{NNN}.md', '.product/picture.md']);
   });
 
   it('the ledger\'s refusal names every verb that writes it', () => {
@@ -224,6 +226,7 @@ describe('the suites\' layout helper (discovery-test-utils.cjs)', () => {
       experiment: layout.experiment('pay', 'auth', 'E1-token-cost', 'problem.md'),
       session: layout.session('pay', '001'),
       productSession: layout.productSession('001'),
+      productPicture: layout.productPicture,
       productAssets: layout.productAssets('caching', 'topics', 'invalidation', 'log.md'),
       note: layout.note('2026-10-30--smart-retry.md'),
       spike: layout.spike('.product', '001-pricing', 'index.html'),

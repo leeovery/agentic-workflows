@@ -17,12 +17,14 @@
 // What it reads, as it found the home before writing anything:
 //   - the product's: its two latest logs holding talk in full — a log a
 //     conversation opened and said nothing in never pushes the talk out of
-//     what a return reads — the roadmap, the product
+//     what a return reads — or, once the conversation has written its
+//     picture of where the product stands, the picture in full and the
+//     latest of those logs by its closing line; the roadmap, the product
 //     record with the code's findings, and whether the baseline's research
 //     is owed (8.2.10, 8.12.13) — where it starts work from seeds, the seeds
-//     in place of the logs, and only those (18.8.15, seeds.cjs) — and where
-//     this conversation writes start this work's payload, a file of its own
-//     (`conversationFile`, start-this-work.cjs);
+//     in place of the logs and the picture, and only those (18.8.15,
+//     seeds.cjs) — and where this conversation writes start this work's
+//     payload, a file of its own (`conversationFile`, start-this-work.cjs);
 //   - an epic's: its older logs by their closing lines, its two latest
 //     holding talk in full, the pointers its first log keeps into the product's sessions
 //     (8.14.3), its map, and the product record with what discovery found of
@@ -63,6 +65,7 @@ const { PRODUCT } = require('../kernel/manifest-schema.cjs');
 const { ENGINE_COMMAND } = require('../kernel/call.cjs');
 const { handedSession } = require('../kernel/process.cjs');
 const { statePath } = require('../kernel/state-root.cjs');
+const { PRODUCT_PICTURE } = require('./layout.cjs');
 const { sessionLogs, activeSession, sessionLogsAt, openSession } = require('./discovery-session.cjs');
 const { discoveryStanding } = require('./topic-standing.cjs');
 const { readPosition, placeLine } = require('./position.cjs');
@@ -210,13 +213,25 @@ function catchUp({ cwd, unit, started }) {
 }
 
 /**
+ * Where the product's conversation had got to (the header's): its picture
+ * and its latest sitting by its closing line, else its latest logs in full.
+ * @param {string} cwd @returns {Line[]}
+ */
+function productStanding(cwd) {
+  const talk = talkLogs(cwd, PRODUCT);
+  const picture = statePath(cwd, PRODUCT_PICTURE);
+  if (!fs.existsSync(picture)) return talk.slice(-RECENT).map(as('session log'));
+  return [as('picture')(picture), ...talk.slice(-1).map((log) => as('latest sitting')(closedBy(log)))];
+}
+
+/**
  * What the product's conversation reads (8.2.10): from seeds, the seeds in
- * place of its latest logs (18.8.15).
+ * place of where it had got to (18.8.15).
  * @param {Entering} at @returns {Line[]}
  */
 function productReads(at) {
   return [
-    ...(at.seeds === null ? talkLogs(at.cwd, PRODUCT).slice(-RECENT).map(as('session log')) : seedReads(at.cwd, PRODUCT, at.seeds)),
+    ...(at.seeds === null ? productStanding(at.cwd) : seedReads(at.cwd, PRODUCT, at.seeds)),
     as('roadmap')(`\`${ENGINE_COMMAND} roadmap state\``),
     as('product')(`\`${productCall()}\``),
     as('research owed')(researchOwed(at.manifest) ? 'yes' : 'no'),

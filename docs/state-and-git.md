@@ -63,7 +63,7 @@ The state branch holds what the work is built from and what it leaves behind:
 - the build's log and notes for later, each task's account with its review rounds' reports, each phase review's reports and the verification runs;
 - the review phase's rounds and its report;
 - a quick-fix's short record after the work;
-- the inbox, and the product's conversation: its logs, the roadmap items' notes, its files;
+- the inbox, and the product's conversation: its logs, its picture, the roadmap items' notes, its files;
 - the tracker's own store, kept by its driver.
 
 Off the branch, ignored: `.ledger/.cache/`, each session's scratch and presence, and `.ledger/.knowledge/`, the knowledge base's store, rebuilt from the records, and its config, kept per copy of the project. At user level, in `~/.config/ledger/`: your system config, credentials, the trust log, the record of you, and each conversation's own folder.

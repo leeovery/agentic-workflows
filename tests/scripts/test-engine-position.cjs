@@ -27,7 +27,8 @@
 // the log does not name the conversation yet, or another conversation has
 // written since (24.S10, 9.S67); so does
 // discovery's, at an epic its map and its open log, at the product's
-// conversation its open log (24.S19, 8.S67); and specification's, at the
+// conversation its picture, once written, and its open log (24.S19, 8.S67);
+// and specification's, at the
 // unit, each live topic's record and log, the files linked canonical, then
 // the spec once written and its cut, and the review page while it is open,
 // a concluded spec carrying nothing on; the laboratory's, what its entry
@@ -747,11 +748,12 @@ describe('conversation position', () => {
   });
 
   /** A discovery home's note: its calls, then its log caught up from the transcript, found or not. */
-  function discoveryNote(where, calls, log, transcript = null) {
+  function discoveryNote(where, calls, log, transcript = null, before = []) {
     return [
       `The conversation was just compacted. This conversation is working in ${where}. Before anything else, re-read these in full, running each engine call:`,
       `- ${abs('.claude/skills/ledger-discovery/SKILL.md')} and its framework`,
       ...calls.map((call) => `- \`${call}\``),
+      ...before.map((file) => `- ${abs(file)}`),
       `- ${abs(log)}`,
       transcript === null
         ? 'This conversation\'s transcript cannot be found: say so in one line, and carry on from the log.'
@@ -827,7 +829,7 @@ describe('conversation position', () => {
     assert.deepStrictEqual(carried, [[skill, []], [skill, []]]);
   });
 
-  it('the project-level places: the product\'s conversation, carried whole in discovery\'s skill before any unit exists, its open log caught up from the transcript (24.S19); the roadmap with its skill alone, holding no session', () => {
+  it('the project-level places: the product\'s conversation, carried whole in discovery\'s skill before any unit exists, its picture where it has one and its open log caught up from the transcript (24.S19); the roadmap with its skill alone, holding no session', () => {
     install('ledger-roadmap');
     install('ledger-discovery');
     write('.ledger/.product/sessions/session-003.md', '## 2026-01-01 · session sess-1\n');
@@ -842,6 +844,12 @@ describe('conversation position', () => {
     assert.strictEqual(product.text, discoveryNote('the product\'s conversation', [], '.ledger/.product/sessions/session-003.md'), 'the transcript gone, said in one line');
     const file = transcript();
     assert.strictEqual(reads().text, discoveryNote('the product\'s conversation', [], '.ledger/.product/sessions/session-003.md', file));
+    write('.ledger/.product/picture.md', '# Where the product stands\n');
+    const pictured = reads();
+    assert.deepStrictEqual([pictured.files, pictured.text], [
+      [abs('.ledger/.product/picture.md'), abs('.ledger/.product/sessions/session-003.md')],
+      discoveryNote('the product\'s conversation', [], '.ledger/.product/sessions/session-003.md', file, ['.ledger/.product/picture.md']),
+    ], 'its picture, once written, re-read before the log');
   });
 
   it('a position left at the baseline, a place the project no longer has, carries nothing on', () => {
