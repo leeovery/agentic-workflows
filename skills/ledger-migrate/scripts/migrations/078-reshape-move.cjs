@@ -100,19 +100,17 @@
 // in the notice the move hands back, its store left where it is; one no
 // plan used left nothing behind, and is named nowhere.
 //
-// The user-level folder (21.5.19, P7): `WORKFLOWS_CONFIG_DIR` or
-// `~/.config/workflows/` moves into `LEDGER_CONFIG_DIR` or
-// `~/.config/ledger/` unchanged, merged into what is there already, and a
-// link to it is left in its place, so a project on the machine still on
-// today's skills keeps its settings, credentials and conversations; a later
-// project's move finds the link and does nothing. The two are compared
-// first and moved after: a file both hold byte for byte, or a sidecar both
-// hold, is no clash and goes, and a folder both hold is compared entry by
-// entry, down. Where any file differs, nothing moves, every clash is named
-// in the verification addendum, and the next project's move compares again.
-// An old folder that is itself a link elsewhere — a dotfiles link — moves
-// nothing, and the addendum says so. The old cache, the knowledge store and
-// the old migrations record are left where they are (21.5.10).
+// The user-level folder (21.5.19, P7): what `WORKFLOWS_CONFIG_DIR` or
+// `~/.config/workflows/` holds is copied into `LEDGER_CONFIG_DIR` or
+// `~/.config/ledger/`, and the old folder is left exactly as it was, so a
+// project on the machine still on today's skills keeps its own settings,
+// credentials and conversations, never sharing the engine's files. The
+// engine's copy wins: an entry its folder holds already, at any depth, is
+// never overwritten, and a folder both hold is merged entry by entry, so a
+// later project's migration copies only what is new. An old folder that is
+// itself a link elsewhere — a dotfiles link — is read through, the link
+// left as it is. The old cache, the knowledge store and the old migrations
+// record are left where they are (21.5.10).
 //
 // Each unit, a folder under `.workflows/` holding a manifest:
 //   - every old document a log takes — a topic's, a discovery session's, the
@@ -325,15 +323,8 @@
 //   - two notes of one name under different kinds keep the first, the second
 //     kept as legacy;
 //   - a roadmap source naming a file the move dropped keeps its old path;
-//   - the user-level folders on two filesystems abort the run at the move,
-//     which a run again meets the same way; a kill between the move and the
-//     link leaves the old folder gone and no link, so a project still on
-//     today's skills starts without its settings;
-//   - a session on today's skills writing the old folder between the move
-//     and the link makes the link fail (EEXIST), the run unrecorded; a run
-//     again merges what it wrote;
-//   - a project still on today's skills rewrites the shared `config.json`
-//     through the link, as it would have its own.
+//   - a kill while a file of the user-level folder is copied leaves its
+//     temporary file beside it in the engine's folder;
 //   - a dead-ended topic the move cancels keeps any experiment still running
 //     on it, and the wait its discussion holds on one;
 //   - a unit renamed to its lowercase name where another unit holds that
@@ -1944,86 +1935,35 @@ function lstatOf(at) {
   }
 }
 
-/** A folder, never a link to one. @param {string} at */
-const isFolder = (at) => lstatOf(at)?.isDirectory() === true;
-
-/** A file, never a link to one. @param {string} at */
-const isFile = (at) => lstatOf(at)?.isFile() === true;
-
-/** Whether two files hold the same bytes. @param {string} a @param {string} b */
-const sameBytes = (a, b) => isFile(a) && isFile(b) && fs.readFileSync(a).equals(fs.readFileSync(b));
-
 /**
- * What `from` and `to` both hold and differ in, `from`'s places: a file
- * both hold byte for byte, or a sidecar both hold, is no clash, and a folder
- * both hold is compared entry by entry, down.
- * @param {string} from @param {string} to @param {string} [at] `from`'s place
- * @returns {string[]}
- */
-function clashes(from, to, at = '') {
-  if (lstatOf(to) === null) return [];
-  if (isFolder(from) && isFolder(to)) {
-    return fs.readdirSync(from).sort().flatMap((name) => clashes(path.join(from, name), path.join(to, name), at === '' ? name : `${at}/${name}`));
-  }
-  if (isFolder(from) || isFolder(to)) return [at];
-  return SIDECAR_NAME.test(path.basename(from)) || sameBytes(from, to) ? [] : [at];
-}
-
-/**
- * What `from` holds moved into `to`, where nothing clashes: an entry `to`
- * lacks moved whole, a folder both hold merged, a file `to` holds already
- * dropped from `from`, and each folder of `from`'s, emptied, gone.
+ * What `from` holds that `to` lacks copied into it, read through any link:
+ * an entry `to` holds already, at any depth, is the engine's and kept as it
+ * is, and a folder both hold is merged entry by entry. Each file is written
+ * whole, its mode kept.
  * @param {string} from @param {string} to
  */
-function mergeInto(from, to) {
-  if (lstatOf(to) === null) {
-    fs.mkdirSync(path.dirname(to), { recursive: true });
-    fs.renameSync(from, to);
+function copyAbsent(from, to) {
+  const source = fs.statSync(from);
+  const held = lstatOf(to);
+  if (!source.isDirectory()) {
+    if (held === null) writeWhole(path.dirname(to), to, fs.readFileSync(from), source.mode & 0o777);
     return;
   }
-  if (!isFolder(from)) {
-    fs.rmSync(from);
-    return;
-  }
-  for (const name of fs.readdirSync(from)) mergeInto(path.join(from, name), path.join(to, name));
-  fs.rmdirSync(from);
-}
-
-/** Whether `from` is a link to `to`, both there. @param {string} from @param {string} to */
-function linksTo(from, to) {
-  try {
-    return fs.realpathSync(from) === fs.realpathSync(to);
-  } catch {
-    return false;
-  }
+  if (held !== null && !held.isDirectory()) return;
+  fs.mkdirSync(to, { recursive: true, mode: source.mode & 0o777 });
+  for (const name of fs.readdirSync(from)) copyAbsent(path.join(from, name), path.join(to, name));
 }
 
 /**
- * The user-level folder's contents moved to the engine's unchanged, and a
- * link to it left in its place, so a project on the machine still on
- * today's skills keeps its settings, credentials and conversations (21.5.19,
- * P7): once per machine, a later project finding the link. Compared first,
- * moved after: where any file both hold differs, nothing moves and the
- * sentence names every clash; where the old folder is a link elsewhere,
- * nothing moves and the sentence says so; else null.
- * @returns {string|null}
+ * The user-level folder's contents copied into the engine's, where it lacks
+ * them, so the engine starts with the machine's settings, credentials and
+ * conversations (21.5.19, P7) and a project still on today's skills keeps
+ * its own folder, never sharing the engine's files: a later project's
+ * migration copies only what is new.
  */
-function moveUserFolder() {
+function copyUserFolder() {
   const from = oldUserFolder();
-  const to = userFolder();
-  const held = lstatOf(from);
-  if (held?.isSymbolicLink()) {
-    return linksTo(from, to) ? null : `${from} is a link to ${fs.readlinkSync(from)}, not a folder of its own, so nothing in it was moved to ${to}: move what it holds into ${to} yourself.`;
-  }
-  if (held?.isDirectory() !== true) return null;
-  const clashing = clashes(from, to);
-  if (clashing.length > 0) {
-    return `Nothing in ${from} was moved: ${to} already holds a different ${clashing.map((rel) => rel || to).join(', ')}. `
-      + `${from} stays as it is, so a project still on today's skills reads it there; once each is settled, the next project's move compares them again.`;
-  }
-  mergeInto(from, to);
-  fs.symlinkSync(to, from);
-  return null;
+  if (fs.existsSync(from) && fs.statSync(from).isDirectory()) copyAbsent(from, userFolder());
 }
 
 /**
@@ -2135,7 +2075,7 @@ function move(projectDir, reportUpdate, reportSkip) {
   renameUnits(state, renames, new Set(stores.flatMap(({ files }) => files)));
   journalCorrections(state, mistyped, renames);
   const placed = (/** @type {string} */ rel) => renamedPath(rel, renames);
-  const userNote = moveUserFolder();
+  copyUserFolder();
   const lintersNote = carryLinters(state);
   const notes = [
     renames.size === 0 ? null : `${renames.size === 1 ? 'This unit\'s name' : 'These units\' names'} broke the rule a unit's name keeps — lowercase letters and digits, joined by single hyphens — by case alone, so ${renames.size === 1 ? 'it is' : 'each is'} carried under its lowercase name, its folder, its registry entry and every reference the move wrote to it following, its legacy files' words kept as they were: ${[...renames].map(([from, to]) => `${from} is ${to}`).join(', ')}.`,
@@ -2143,7 +2083,6 @@ function move(projectDir, reportUpdate, reportSkip) {
     legacyNote(legacy, placed),
     instruments.length === 0 ? null : `These files of experiment records, neither a record's problem, design or report nor in its data/, were moved under its data/, at their paths from the record's folder: ${instruments.map(placed).join(', ')}. A path a record's text or script spells out is left as written.`,
     settingsNote,
-    userNote,
     lintersNote,
   ].filter((note) => note !== null);
   const notice = unreadStores(unread.filter((name) => plannedIn(manifests, name)), 'the store this project\'s plans kept for its tracker stays where it is, outside the state');
@@ -2153,8 +2092,8 @@ function move(projectDir, reportUpdate, reportSkip) {
 
 module.exports = {
   id: '078',
-  description: 'move the project from .workflows/ into the layout in .ledger/, the state worktree on an unborn ledger-state — each topic\'s log, mail, brief and experiments in its own folder, imports as assets, specs as reference, the old system\'s own files in the unit\'s cache, the retired state dropped; the roadmap as the product, the baseline docs as its assets, the tracker\'s store and the knowledge config in the state, the user-level folder to ~/.config/ledger/, and the project\'s files to the new names',
-  info: 'The reshape moves the project\'s state out of .workflows/ into .ledger/, a worktree of its own unborn branch, ledger-state, committing nothing. Each topic\'s research, discussion and investigation become its log, its mail one sequence in its own folder, a cancelled topic\'s mail ideas in the inbox; research feeding several topics goes to a discovery session of the migration\'s, and a legacy split\'s superseded copies to the unit\'s assets as reference; imports become assets; every moved document\'s links follow the files they name; specs not yet built become reference assets, a completed quick-fix\'s spec its summary, a quick-fix whose scoping, implementation and review all completed counting as completed; a unit whose name breaks the kebab-case rule by its case alone is carried under its lowercase name, every reference the move writes following; the old engine\'s caches and the retired manifest state go; every file the old system\'s own agents and trackers wrote — the plans, the build\'s tracking and analysis, the reviews\' tracking and reports — is copied, as the old cache\'s reports are, into its unit\'s earlier/ in the state\'s ignored cache; and every other file with no place of its own is kept as it was under its unit\'s assets/legacy/, or the product\'s. A registry entry typed otherwise than its unit\'s manifest takes the manifest\'s type, listed among the review\'s corrections. The roadmap becomes .product/, its imports its assets, its sessions naming them there, and its items\' sources following their files; the baseline docs become reference in .product/assets/baseline/, a native, skipped or completed baseline remembered as the brownfield offer\'s answer, and with none, when the old state first entered git recorded, so the offer\'s judgment reads the history before then; the plan format and project skills defaults go, the session-label opt-in is renamed session_labels, and no driver is set, so the defaults serve; the old environment setup file\'s words become a note among the steps that prepare the environment, unconfirmed, for the first ready to build to show; the tracker\'s store and the checkout\'s knowledge config are carried into the state, the knowledge store left for the next boot to build. The user-level folder moves to ~/.config/ledger/, a link to it left in its place for projects still on today\'s skills. The code tree\'s .gitignore gains .ledger/, the settings hooks name the engine\'s new path, and .worktreeinclude loses its .workflows/ lines, none of it staged. .workflows/ and the tracker\'s store are left as they are until the migration\'s commit.',
+  description: 'move the project from .workflows/ into the layout in .ledger/, the state worktree on an unborn ledger-state — each topic\'s log, mail, brief and experiments in its own folder, imports as assets, specs as reference, the old system\'s own files in the unit\'s cache, the retired state dropped; the roadmap as the product, the baseline docs as its assets, the tracker\'s store and the knowledge config in the state, the user-level folder copied to ~/.config/ledger/, and the project\'s files to the new names',
+  info: 'The reshape moves the project\'s state out of .workflows/ into .ledger/, a worktree of its own unborn branch, ledger-state, committing nothing. Each topic\'s research, discussion and investigation become its log, its mail one sequence in its own folder, a cancelled topic\'s mail ideas in the inbox; research feeding several topics goes to a discovery session of the migration\'s, and a legacy split\'s superseded copies to the unit\'s assets as reference; imports become assets; every moved document\'s links follow the files they name; specs not yet built become reference assets, a completed quick-fix\'s spec its summary, a quick-fix whose scoping, implementation and review all completed counting as completed; a unit whose name breaks the kebab-case rule by its case alone is carried under its lowercase name, every reference the move writes following; the old engine\'s caches and the retired manifest state go; every file the old system\'s own agents and trackers wrote — the plans, the build\'s tracking and analysis, the reviews\' tracking and reports — is copied, as the old cache\'s reports are, into its unit\'s earlier/ in the state\'s ignored cache; and every other file with no place of its own is kept as it was under its unit\'s assets/legacy/, or the product\'s. A registry entry typed otherwise than its unit\'s manifest takes the manifest\'s type, listed among the review\'s corrections. The roadmap becomes .product/, its imports its assets, its sessions naming them there, and its items\' sources following their files; the baseline docs become reference in .product/assets/baseline/, a native, skipped or completed baseline remembered as the brownfield offer\'s answer, and with none, when the old state first entered git recorded, so the offer\'s judgment reads the history before then; the plan format and project skills defaults go, the session-label opt-in is renamed session_labels, and no driver is set, so the defaults serve; the old environment setup file\'s words become a note among the steps that prepare the environment, unconfirmed, for the first ready to build to show; the tracker\'s store and the checkout\'s knowledge config are carried into the state, the knowledge store left for the next boot to build. The user-level folder\'s contents are copied into ~/.config/ledger/ where it lacks them, the engine\'s own entries kept, and the old folder is left as it was for projects still on today\'s skills. The code tree\'s .gitignore gains .ledger/, the settings hooks name the engine\'s new path, and .worktreeinclude loses its .workflows/ lines, none of it staged. .workflows/ and the tracker\'s store are left as they are until the migration\'s commit.',
   run({ projectDir, reportUpdate, reportSkip }) {
     return move(projectDir, reportUpdate, reportSkip);
   },
